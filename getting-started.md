@@ -29,7 +29,7 @@ pear
 ```
 
 If a Pear application, such as [Keet](https://keet.io) is already installed on a machine then the Pear
-platform is already available. In this case, running `pear` should show the pear help output.
+platform is already available. In this case, running `pear` should show help output.
  
 If not, the first run of `pear` will fetch the platform from peers, after which running `pear` again should output help information.
 
