@@ -2,9 +2,13 @@
 
 The Pear Command Line Interface (CLI) is the entry point for developers. It provides access to development, deployment and production capabilities.
 
+Following commands are available in the Pear CLI:
+
 ## `pear init [dir]`
 
 Set up the initial files and structure for a new Pear project.
+
+A Pear project **must** have a `package.json` file and an entry file (`index.html`). The pear init command helps generate these files.
 
 | Flag        | Description              |
 | ----------- | ------------------------ |
@@ -14,7 +18,7 @@ Set up the initial files and structure for a new Pear project.
 
 Launch a Pear project in development mode.
 
-The files are loaded from disk instead of Hypercores.
+The files are loaded from disk instead of Hypercores. Which means the changes made would only be present in local environment and won't be added to P2P storage.
 
 | Flag               | Description                                                                                                                                 |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
