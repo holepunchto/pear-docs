@@ -1,6 +1,6 @@
 # Command Line Interface
 
-The Pear Command Line Interface (CLI) is the entry point for developers. It provides access to development, deployment and production capabilities.
+The Pear Command Line Interface (CLI) is a developer tool for making and sharing Pear applications.
 
 Following commands are available in the Pear CLI:
 
@@ -18,14 +18,14 @@ A Pear project **must** have a `package.json` file and an entry file (`index.htm
 
 Launch a Pear project in development mode.
 
-The files are loaded from disk instead of Hypercores. Which means the changes made would only be present in local environment and won't be added to P2P storage.
+In development mode applications are loaded from the filesystem while production Pear applications load from P2P storage structures
 
 | Flag               | Description                                                                                                                                 |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | --no-watch         | Disables watch-reload. In development mode, watch-reload is a feature that automatically reloads the application when changes are detected. |
 | --launch=key       | Launch an application in dev mode using its key.                                                                                            |
 | --link=url         | Simulate app opened with given deep link.                                                                                                   |
-| --store \| -s=path | Sets the path for the Application Storage. This allows you to specify where the application will store its datapath.                        |
+| --store \| -s=path | Sets the path for the Application Storage. This allows user to specify where the application will store its datapath.                        |
 | --tmp-store \| -t  | Automatically uses a new temporary folder as the store path. This is useful for temporary or disposable storage during testing.             |
 
 ## `pear stage <channel|key> [dir]`
@@ -36,7 +36,7 @@ The channel name must be specified when running stage command for first time, in
 
 This helps to continuously deploy a staging preview version of a Pear project.
 
-On running, CLI outputs diff information from previous version and project key.
+On running, the CLI outputs diff information from previous version and project key.
 
 | Flag            | Description                                                                                                                        |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -49,7 +49,7 @@ On running, CLI outputs diff information from previous version and project key.
 
 Seed or reseed a Pear project.
 
-Seeding in Pear refers to the process of initializing or updating a Pear project with data from other Hypercores or channels.
+Seeding in Pear refers to the process of adding or updating a Pear project with data from other Hypercores or channels.
 
 For seeding a staged project, specify a staged channel from a project folder.
 
@@ -68,7 +68,7 @@ Launch an application from Hyperspace using its key id.
 | Flag                              | Description                                                                                                                                                           |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | --dev                             | Launch the app in dev mode.                                                                                                                                           |
-| --store \| -s=path                | Sets the path for the Application Storage. This allows you to specify where the application will store its data.                                                      |
+| --store \| -s=path                | Sets the path for the Application Storage. This allows user to specify where the application will store its data.                                                      |
 | --tmp-store \| -t                 | Automatically uses a new temporary folder as the store path. This is useful for temporary or disposable storage during testing.                                       |
 | --checkout=n \| release \| staged | Launches a specific version of the application. You can specify a version (n), or use keywords like release or staged to launch the latest release or staged version. |
 
@@ -83,12 +83,14 @@ Use this to indicate production release points.
 | Flag   | Description                    |
 | ------ | ------------------------------ |
 | --json | Newline delimited JSON output. |
+| --checkout=n | Default: current checkout. Set a custom release length. |
+
 
 ## `pear info <key>`
 
-Get metadata for a key.
+Get metadata for a application from its key.
 
-This command provides details about the specified key, offering insights into the associated Pear project or application, including its name, channel, and release version.
+This command provides details about the application from specified key, offering insights into the associated Pear project or application, including its name, channel, and release version.
 
 | Flag   | Description                    |
 | ------ | ------------------------------ |
@@ -127,7 +129,7 @@ Outputs Pear version and versions of top level dependencies used.
 
 | Flag   | Description                       |
 | ------ | --------------------------------- |
-| --json | CLI output in single JSON object. |
+| --json | The CLI outputs in single JSON object. |
 
 ## Advanced
 
@@ -145,8 +147,3 @@ These advanced commands are for power-users helpful for internal development, an
 | ------ | ------------------ |
 | --name | Override app name. |
 
-#### `pear release <channel|key> [dir]`
-
-| Flag         | Description                                             |
-| ------------ | ------------------------------------------------------- |
-| --checkout=n | Default: current checkout. Set a custom release length. |
