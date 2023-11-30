@@ -25,7 +25,7 @@ In development mode applications are loaded from the filesystem while production
 | --no-watch         | Disables watch-reload. In development mode, watch-reload is a feature that automatically reloads the application when changes are detected. |
 | --launch=key       | Launch an application in dev mode using its key.                                                                                            |
 | --link=url         | Simulate app opened with given deep link.                                                                                                   |
-| --store \| -s=path | Sets the path for the Application Storage. This allows user to specify where the application will store its datapath.                        |
+| --store \| -s=path | Sets the path for the Application Storage. This allows user to specify where the application will store its datapath.                       |
 | --tmp-store \| -t  | Automatically uses a new temporary folder as the store path. This is useful for temporary or disposable storage during testing.             |
 
 ## `pear stage <channel|key> [dir]`
@@ -44,6 +44,7 @@ On running, the CLI outputs diff information from previous version and project k
 | --dry-run \| -d | Execute a stage without writing. Used to perform a trial run of the staging process without making any actual changes to the data. |
 | --bare \| -b    | Turn off warmup optimization, file data only. Useful for staging apps.                                                             |
 | --ignore        | Comma separated file path ignore list. Used to define a list of file paths that should be ignored during the staging process.      |
+| --name          | Advanced. Override app name.                                                                                                       |
 
 ## `pear seed <channel|key> [dir]`
 
@@ -60,6 +61,7 @@ For reseeding, specify a public key (or punch link) of a project.
 | --json          | Newline delimited JSON output.       |
 | --seeders \| -s | Additional public keys to seed from. |
 | --verbose \| -v | Verbose mode.                        |
+| --name          | Advanced. Override app name.         |
 
 ## `pear launch <key>`
 
@@ -68,7 +70,7 @@ Launch an application from Hyperspace using its key id.
 | Flag                              | Description                                                                                                                                                           |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | --dev                             | Launch the app in dev mode.                                                                                                                                           |
-| --store \| -s=path                | Sets the path for the Application Storage. This allows user to specify where the application will store its data.                                                      |
+| --store \| -s=path                | Sets the path for the Application Storage. This allows user to specify where the application will store its data.                                                     |
 | --tmp-store \| -t                 | Automatically uses a new temporary folder as the store path. This is useful for temporary or disposable storage during testing.                                       |
 | --checkout=n \| release \| staged | Launches a specific version of the application. You can specify a version (n), or use keywords like release or staged to launch the latest release or staged version. |
 
@@ -80,11 +82,10 @@ Set the release pointer against a version (default latest).
 
 Use this to indicate production release points.
 
-| Flag   | Description                    |
-| ------ | ------------------------------ |
-| --json | Newline delimited JSON output. |
+| Flag         | Description                                             |
+| ------------ | ------------------------------------------------------- |
+| --json       | Newline delimited JSON output.                          |
 | --checkout=n | Default: current checkout. Set a custom release length. |
-
 
 ## `pear info <key>`
 
@@ -107,6 +108,18 @@ This command is useful for extracting or backing up data from a Pear project's H
 | --json       | Newline delimited JSON output.               |
 | --checkout=n | Dump from a custom release length (version). |
 
+## `pear versions`
+
+Outputs Pear version and versions of top level dependencies used.
+
+| Flag   | Description                            |
+| ------ | -------------------------------------- |
+| --json | The CLI outputs in single JSON object. |
+
+# Advanced
+
+These advanced commands are for power-users helpful for internal development, and platform debugging.
+
 ## `pear sidecar`
 
 The Sidecar is a local-running process that provides access to P2P functionality.
@@ -122,28 +135,3 @@ and then becomes the Sidecar.
 ## `pear repl`
 
 Open a Read-Evaluate-Print-Loop (REPL) session with the Sidecar. A key is printed out during the Pear REPL session, which can be used with the REPL-swarm module to establish a connection.
-
-## `pear versions`
-
-Outputs Pear version and versions of top level dependencies used.
-
-| Flag   | Description                       |
-| ------ | --------------------------------- |
-| --json | The CLI outputs in single JSON object. |
-
-## Advanced
-
-These advanced commands are for power-users helpful for internal development, and platform debugging.
-
-#### `pear stage <channel|key> [dir]`
-
-| Flag   | Description        |
-| ------ | ------------------ |
-| --name | Override app name. |
-
-#### `pear seed <channel|key> [dir]`
-
-| Flag   | Description        |
-| ------ | ------------------ |
-| --name | Override app name. |
-
