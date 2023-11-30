@@ -18,7 +18,7 @@ A Pear project **must** have a `package.json` file and an entry file (`index.htm
 
 Launch a Pear project in development mode.
 
-In development mode applications are loaded from the filesystem while production Pear applications load from P2P storage structures
+In development mode, applications load from the filesystem, which is handy for easy testing and tweaking. While production Pear applications load from P2P storage structures
 
 | Flag               | Description                                                                                                                                 |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
