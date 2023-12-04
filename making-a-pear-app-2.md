@@ -1,55 +1,57 @@
-# Making your first Pear app
+# Making a Pear app
 
-This tutorial build on top of [this tutorial](/making-a-pear-app-1.md) and will teach you how to send persistent state between peers, by sharing a peer's nickname.
+This tutorial builds on top of [this tutorial](/making-a-pear-app-1.md) and will teach how to send persistent state between peers, by sharing a peer's nickname.
 
 It is important to understand that the complexity increases from the first version of the chat app. This is because there was no shared state between them in the first example. In peer-to-peer, if peer A writes some data, then peer C may receive this data from peer B, but still needs to be able to verify that it was written by A and not tampered with.
 
 ## Understand how hypercore data is shared and accessed
 
-Before going into the code, we need to explain how data is shared in the network of peers, but can't be accessed by everyone. This means that the whole network helps to share data, even though they may not even be able to have access to it. A lot of this happens under the hood, but it's important to understand.
+Before going into the code, let's look at how data is shared in the network of peers, but can't be read by everyone. This means that peers help share data, even though they may not have read access for it. A lot of this happens under the hood, but it's important to understand.
+
+A `hypercore` is an append-only log, where it's guaranteed that only a single peer can write to it, but all other peers can share it between each other. Each new entry in `hypercore` is called a block. Only peers with the (read access) `key` to the hypercore can read the data.
 
 **Sequence diagram about how blocks of data can be shared without read access**
 
 ```
 Peer A                Peer B                     Peer C
-  |
-Writes block a1b2c3
-  |
-  |  ====Send key====>  |
-  |                     |
+  |                     |                          |
+Writes block a1b2c3     |                          |
+  |                     |                          |
+  |  ====Send key====>  |                          |
+  |                     |                          |
   |  =============Send block a1b1c3=============>  |
   |                     |                          |
   |                     | <===Send block a1b1c3==  |
 ```
 
-In this scenario Peer A shares its (read access) key with Peer B. Some data from Peer A's hypecore is send to Peer C. Because Peer C does not have access to Peer A's key, they cannot read it. Later on, Peer B gets the block of data from Peer C, and can now read it.
+In this scenario Peer A shares its `key` with Peer B. Some data from Peer A's hypercore is send to Peer C. Because Peer C does not have access to Peer A's `key`, they cannot read it. Later on, Peer B gets the block of data from Peer C, and can now read it.
 
-The most important thing to understand is how data and read access to data is not the same ting.
+The most important thing to understand is that the way data is shared between peers and having read access to data is not the same thing.
 
 
 ## Step 1. Install modules.
 
-For this tutorial you will need to add `corestore`, `hyperbee`, and `protomux-rpc`.
+For this part of the tutorial, add `corestore`, `hyperbee`, and `protomux-rpc`.
 
 ```
 $ npm i corestore hyperbee protomux-rpc
 ```
 
-- [protomux-rpc](https://www.npmjs.com/package/protomux-rpc). Allows us to use rpc (remote procedure calls) on top of hyperswarm.
-- [corestore](https://www.npmjs.com/package/corestore). A [hypercore](https://github.com/holepunchto/hypercore) is an append-only log that can be written by one, but shared between peers. Corestore is a way to handle several hypercores. In this example we use this to store our own nickname. Every time we change our nickname, it will be a new log entry.
-- [hyperbee](https://www.npmjs.com/package/hyperbee). Use a [hypercore](https://github.com/holepunchto/hypercore) as a map, which you use to store the (read access) `key` for know peers' hypercore.
+- [protomux-rpc](https://www.npmjs.com/package/protomux-rpc). Use rpc (remote procedure calls) on top of hyperswarm.
+- [corestore](https://www.npmjs.com/package/corestore). A [hypercore](https://github.com/holepunchto/hypercore) is an append-only log that can be written by one, but shared between peers. Corestore is a way to handle several hypercores. In this example it's used to store the peer's nickname. Every time a peer's nickname nickname change, it will be a new log entry.
+- [hyperbee](https://www.npmjs.com/package/hyperbee). Use a map in a [hypercore](https://github.com/holepunchto/hypercore), which in this tutorial is used to store the (read access) `key` for known peers' hypercore.
 
 ## Step 2. Initialize state
 
-First you'll need to store all the state that our app needs to know. A `Corestore` is really just a factory of `hypercore`. A `hypercore` is an append-only log, where it's guaranteed that only a single peer can write to it, but all other peers can share it between each other. Each new entry in `hypercore` is called a block.
-
-The store is always written to disk, and if you use `config.storage` it's possible to pass a path to our app with `-s /tmp/foo`. This will become important when you need to run your app.
+### Corestore
 
 ``` js
 const store = new Corestore(config.storage)
 ```
 
-You'll need to store the state of this peer's user somewhere. To do that `userCore` is where we'll append a block (new state). Every time the nickname of the user changes, the change is appended as a new block. Blocks are shared between peers and they can verify that it was written by you.
+To store data, we're going to use a `Corestore`, which is really just a factory of `hypercores`. The store is always written to disk,  `config.storage` it's possible to pass a path to our app with `-s /tmp/foo`. This will become important when running the app.
+
+### User state
 
 ``` js
 const userCore = store.get({
@@ -58,9 +60,9 @@ const userCore = store.get({
 })
 ```
 
-Initially a peer cannot read other peers' hypercores. Even if you have the blocks, you cannot read them. This is a way to ensure that data can be shared between peers, even though not all of them can read the data. If peer B needs to read data from peer A, they will need to receive their `hypercore.key` somehow.
+The user's nickname is stored in a hypercore, `store.get()`. The name of the hyercore is set to `local` but can be anything, as it's just a name. Then every time the nickname of the user changes, the change is appended as a new block to `userCore`. Blocks are shared between peers and they can verify who it was written by.
 
-To store this locally you'll use another `hypercore`, but because this is a map, you can use `hyperbee` for it. `Hyperbee` is a map abstraction on top of a `hypercore` (it's a B-tree, but that's not relevant for this).
+### Keys for peers' hypercore
 
 ``` js
 const peerCoreKeys = new Hyperbee(store.get({ // swarm.connection.remotePublicKey => coreKey
@@ -71,9 +73,11 @@ const peerCoreKeys = new Hyperbee(store.get({ // swarm.connection.remotePublicKe
 })
 ```
 
-### Step 3. Bootstrapping data
+Initially a peer cannot read other peers' hypercores. Even if they have data blocks, they cannot read them. This is a way to ensure that data can be shared between peers, even though not all of them can read the data. If peer B needs to read data from peer A, they will need to receive their `hypercore.key` somehow.
 
-Often you will need to handle if there needs to be some first version of the state. In this case, it's just the nickname, so just generate a random name, and store it.
+Put this data in a map and use `hyperbee` for it. `Hyperbee` is just a map abstraction on top of a `hypercore` (it's a B-tree, but that's not relevant for this).
+
+### Step 3. Bootstrapping data
 
 ``` js
 // Bootstrap own nickname
@@ -85,27 +89,9 @@ if (isFirstRun) {
 }
 ```
 
-## Step 4. Enable replication of data
+Bootstrapping the initial state often needs to be handled in code. In this case, as it's just the nickname, generate a random name, and store it.
 
-In the previous version of the chat app, all messages were just streams. Now you need to replicate the shared data, share access to that data, and send messages - which you'll still do over the stream you get from `hyperswarm`.
-
-First enable replication with `store.replicate(connection)`. This tells the store to allow the peer (`connection`) to replicate all the blocks of data that the `store` knows. It's important to understand that in a peer-to-peer context, data can be shared freely between peers, but not read by everyone. So peer A may know some block of data about peer B, which they can freely send to all other peers. The other peers can only read it, if they have access to peer B's key.
-
-``` js
-swarm.on('connection', async connection => {
-  ...
-  store.replicate(connection) // This enables replication later on from this peer
-  ...
-})
-```
-
-## Step 5. Set up RPC and share access to local blocks of data
-
-Another thing that we also want to handle is exchanging of read access to our own data. Without this key, the other peer cannot read data - but can still share it. There also needs to be a way of exchanging the actual chat messages. To do this, you'll use `protoxmux-rpc`.
-
-First, set up the response messages. This is what will happen, when the peer calls these.
-
-As you can seee, one is simply to return the access to our `userCore` data. In other cases you may want to build some form of authentication into this, but that depends on the usecase.
+## Step 4. Set up RPC and share access to local blocks of data
 
 ``` js
 swarm.on('connection', async connection => {
@@ -118,15 +104,25 @@ swarm.on('connection', async connection => {
 })
 ```
 
+In the previous version of the chat app, all messages were just send as chunks on a stream. Now the stream needs to include replication of shared data, share access to that data, and send messages. To do that on one stream is called multiplexing, and to achieve this in a `hyperswarm`, use `protomux-rpc`. This module also allows RPC (remote procedure call) on the same stream.
+
+There needs to handling the exchange of the `key` that gets read access to the sahred data. Without this `key`, the other peer cannot read data (but could still share it). There also needs to be a way of exchanging the actual chat messages.
+
+First, set up the respond functions that triggers when the other peer calls them. As you can seee, one triger is simply returning the `key` to the `userCore` data. In other cases you may want to build some form of authentication into this, but that depends on the usecase.
+
+## Step 5. Enable replication of data
+
+``` js
+swarm.on('connection', async connection => {
+  ...
+  store.replicate(connection) // This enables replication later on from this peer
+  ...
+})
+```
+
+Now also enable replication with `store.replicate(connection)`. This tells the store to allow the peer (`connection`) to replicate all the blocks of data that the `store` knows. It's important to understand that in a peer-to-peer context, data can be shared freely between peers, but not read by everyone. So peer A may know some block of data about peer B, which they can freely send to all other peers. The other peers can only read it, if they have access to peer B's key.
+
 ## Step 6. Get access to the other peer's blocks of data
-
-If it's the first time this peer is seen, we want to ask them for their key, so we can read their shared data.
-
-The `rpc.request('getKey')` calls the `rpc.respond('getKey', ...)` we saw above, but on the other peer's end. Now keys have been exchaged.
-
-We use another hypercore, `peerCoreKeys` to store these keys in. Remember that this is also stored locally on your disk, so you'll not need to exchange keys when restarting.
-
-With the shared key, we also add another hypercore instance. This allows us to actually read the data, which we'll cover in the next step.
 
 ``` js
 swarm.on('connection', async connection => {
@@ -147,16 +143,18 @@ function createPeerCore(coreKey, remotePublicKey) {
   return peerCore
 }
 ```
+
+If it's the first time this peer is seen, ask them for their `key`, to enable reading their shared data.
+
+The `rpc.request('getKey')` calls the `rpc.respond('getKey', ...)` above, but on the other peer's end. Now keys have been exchaged.
+
+Another hypercore, `peerCoreKeys` is used to store these keys in. Remember that this is also stored locally on your disk, so there is no need to exchange keys when restarting the app.
+
+With the `key` shared, another hypercore instance is added. This allows to actually read the data, which is covered in the next step.
+
 ## Step 7. Continuously read updates to shared data
 
-Now that keys have been shared, we can read their blocks of shared data.
-
-With `await core.get(core.length - 1)` we read the latest block of data. Together with `core.on('append', ...)` we are able to always make sure to get the latest state.
-
-The important part to understand is that even though the data we get is written by Peer A, we may have been sent it through other peers.
-
 ```js
-
 function trackLatestState(core, remotePublicKey) {
   core.ready().then(reloadLatest)
   core.on('append', reloadLatest)
@@ -169,10 +167,13 @@ function trackLatestState(core, remotePublicKey) {
 }
 ```
 
+Now that keys have been shared, it's time to read their blocks of shared data.
+
+With `await core.get(core.length - 1)`, the latest block of data is fetched. Together with `core.on('append', ...)` it's how the app handles to always have the latest state.
+
+The important part to understand is that even though the data is written by Peer A, it may have been sent it through other peers.
+
 ## Step 8. Read data when starting the app
-
-The last part is actually the first part. When your app starts, you'll need to start listening to updates from the peers you already know. At the same time you should also listen to updates to your own `userCore`. This is important if the same peer would be connected from several clients at the same (meaning that several can write to the same hypercore), then they would still be able to share the state between them.
-
 
 ``` js
 trackLatestState(userCore)
@@ -183,6 +184,8 @@ async function initAllPeerCores() {
   }
 }
 ```
+
+The last part is actually the first part. When the app starts, start listening to updates from the peers that's already known. At the same time also listen to updates to `userCore`. This is important if the same peer would be connected from several clients at the same (meaning that several can write to the same hypercore), then they would still be able to share the state between them.
 
 ## Step 9. Putting it all together
 
@@ -530,9 +533,9 @@ function onNicknameUpdated({ nickname, remotePublicKey }) {
 
 ## Step 10. Running two different peers
 
-In the previous version of the app you did not store anything on disk, so there were no issues when running multiple instances of the same app on the same computer. That was not a problem when we tested locally.
+In the previous version of the app nothing was stored on disk, so there were no issues with running multiple instances of the same app on the same computer. That was also not a problem when we tested locally.
 
-Now we use `const store = new Corestore(config.storage)` which stores data to disk. This can be a problem when running multiple instances because they would use and overwrite the same storage. You should use the `-s` flag to let Pear know what to set `config.storage` to.
+After adding `corestore` data is being stored on disk. This can be a problem when running multiple instances because they would use and overwrite the same storage. To avoid this, use the `-s` flag to let Pear know what to set `config.storage` to.
 
 Run one instance of the app:
 
@@ -547,9 +550,11 @@ $ pear dev -s /tmp/peer2
 ```
 
 After a few messages have been exchanged:
+
 ![Some messages have been exchanged](/chat-app-7.png)
 
 One user updates their nickname, and it is updated on the peers:
+
 ![Nickname has been updated](/chat-app-8.png)
 
 ## Learnings, main takeaways
