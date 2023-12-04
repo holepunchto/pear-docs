@@ -16,7 +16,7 @@ A Pear project **must** include a `package.json` file and an entry file (`index.
 
 ## `pear dev [dir]`
 
-A Pear project is launched in development mode.
+Launches a Pear project in development mode.
 
 Applications are loaded from the filesystem in development mode, whereas in production from the P2P data-structures.
 
