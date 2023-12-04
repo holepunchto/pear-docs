@@ -52,9 +52,8 @@ $ npm i hyperswam graceful-goodbye b4a
 
 **Note**: If you install these while having the app running you will get an error similar to `Cannot find package 'graceful-goodbye' imported from /app.js`. When installing modules, you will need to close down your app, before they can be found.
 
-- [hyperswam](https://www.npmjs.com/package/hyperswam). One of Pear's building blocks. Able to find peers that share a "topic".
+- [hyperswam](https://www.npmjs.com/package/hyperswam). One of the main building blocks. Able to find peers that share a "topic".
 - [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto). A set of crypto function used in Pear.
-- [graceful-goodbye](https://www.npmjs.com/package/graceful-goodbye). A nice-to-have module that makes it easier to do some cleanup before your app exits.
 - [b4a](https://www.npmjs.com/package/b4a). A set of functions for bridging the gap between the Node.js `Buffer` class and the `Uint8Array` class.
 
 ## Step 5. Create the UI for your app
@@ -159,8 +158,8 @@ If you run with `pear dev` you will see this
 Open `app.js` in your code editor and replace it with this
 
 ``` js
+import { teardown } from 'pear'
 import Hyperswarm from 'hyperswarm'
-import goodbye from 'graceful-goodbye'
 import crypto from 'hypercore-crypto'
 import b4a from 'b4a'
 
@@ -169,7 +168,7 @@ const swarm = new Hyperswarm()
 
 // Unnannounce the public key before exiting the process
 // (This is not a requirement, but it helps avoid DHT pollution)
-goodbye(() => swarm.destroy())
+teardown(() => swarm.destroy())
 
 // When there's a new connection, add it to the `peers` array
 swarm.on('connection', peer => {
@@ -336,4 +335,6 @@ And now your app should run.
 
 That is it for the first version of your chat app.
 
-Next you will turn it into a real peer-to-peer app, and learn how to do that.
+Next up we want to add a list of chat rooms, and how you peers can share and persist that list.
+
+[Go to next tutorial](/making-a-pear-app-2.md)
