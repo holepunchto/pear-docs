@@ -6,9 +6,9 @@ Following commands are available in the Pear CLI:
 
 ## `pear init [dir]`
 
-The initial files and structure for a new Pear project are set up.
+Sets up the initial files and structure for a new Pear project.
 
-A Pear project **must** be provided with a `package.json` file and an entry file (`index.html`). These files are generated with the assistance of the `pear init` command.
+A Pear project **must** include a `package.json` file and an entry file (`index.html`). The `pear init` command generates these files.
 
 | Flag        | Description              |
 | ----------- | ------------------------ |
