@@ -118,7 +118,7 @@ When any Pear command is executed, it first starts and or connects to the Pear S
 | Flag             | Description                                                                                          |
 | ---------------- | ---------------------------------------------------------------------------------------------------- |
 | --mem            | Memory mode: RAM corestore. The Sidecar runs in memory mode, utilizing RAM for corestore operations. |
-| --attach-boot-io | Initial Sidecar I/O is included (if applicable)                                                      |
+| --attach-boot-io | Initial Sidecar I/O is included. (if applicable)                                                     |
 
 ## `pear repl`
 
