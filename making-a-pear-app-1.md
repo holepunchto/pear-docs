@@ -1,12 +1,12 @@
-# Making your first Pear app
+# Making a Pear app
 
-This tutorial will teach you on how to make your first Pear app.
+This tutorial will show how to create a basic chat app with Pear, and through that teach you how to use some of the main building blocks.
 
-As a simple example we will create a chat app where you can create a chat, and have others join it.
+In this first part of the app, users will be able to create chat rooms, connect to each other, and send messages.
 
 ## Step 1. Init
 
-Let's first create a new project using `pear init`.
+First create a new project using `pear init`.
 
 ```
 $ mkdir chat
@@ -14,51 +14,51 @@ $ cd chat
 $ pear init --yes
 ```
 
-This will create a base structure for your project.
+This will create a base structure for the project.
 
-- `package.json`. Config for your app. You should notice the `pear` property.
-- `index.html`. The UI for your app.
+- `package.json`. Config for the app. Notice the `pear` property.
+- `index.html`. The UI for the app.
 - `app.js`. The main code.
 - `test/index.test.js`. Skeleton for writing tests.
 
 ## Step 2. Test that everything works
 
-Before we write any code, let's just make sure that everything works the way it's supposed to by using `pear dev`.
+Before writing any code, make sure that everything works the way it's supposed to by using `pear dev`.
 
 ```
 $ pear dev
 ```
 
-This will open your app. Because it's opened in development mode, developer tools are also opened.
+This will open the app. Because it's opened in development mode, developer tools are also opened.
 
 ![Running pear dev](/chat-app-1.png)
 
 ## Step 3. Automatic reload
 
-Pear apps have automatic reload included. This means that you don't have to stop and start the app again to see the changes.
+Pear apps have automatic reload included. This means that there is no need to stop and start the app again to see changes.
 
-While keeping the app open with `pear dev`, open `index.html` in your editor. Change `<h1>chat</h1>` to `<h1>Hello world</h1>` and see the app again. It should now look like.
+While keeping the app open with `pear dev`, open `index.html` in a code editor. Change `<h1>chat</h1>` to `<h1>Hello world</h1>` and go to your app again. It should now look like this:
 
 ![Automatic reload](/chat-app-2.png)
 
 ## Step 4. Install modules
 
-For this chat app we are going to use these modules: `hyperswam`, `hypercore-crypto`, `graceful-goodbye`, and `b4a`.
-
+This app uses these modules: `hyperswam`, `hypercore-crypto`, and `b4a`.
 
 ```
-$ npm i hyperswam graceful-goodbye b4a
+$ npm i hyperswam hypercore-crypto b4a
 ```
 
-**Note**: If you install these while having the app running you will get an error similar to `Cannot find package 'graceful-goodbye' imported from /app.js`. When installing modules, you will need to close down your app, before they can be found.
+**Note**: If the modules are installed while the app is running an error is thrown similar to `Cannot find package 'hyperswarm' imported from /app.js`. When installing modules, close down your app, before they can be installed.
 
-- [hyperswam](https://www.npmjs.com/package/hyperswam). One of the main building blocks. Able to find peers that share a "topic".
+- [hyperswam](https://www.npmjs.com/package/hyperswam). One of the main building blocks. Find peers that share a "topic".
 - [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto). A set of crypto function used in Pear.
 - [b4a](https://www.npmjs.com/package/b4a). A set of functions for bridging the gap between the Node.js `Buffer` class and the `Uint8Array` class.
 
-## Step 5. Create the UI for your app
+## Step 5. Create the UI
 
-In your first chat app we want to be able to start a chat room and have others join it, and then write messages to each other.
+In this first version, users are able to create a chat room or join others. Then write messages to each other.
+
 
 ``` html
 <!DOCTYPE html>
@@ -149,13 +149,13 @@ In your first chat app we want to be able to start a chat room and have others j
 </html>
 ```
 
-If you run with `pear dev` you will see this
+After running with `pear dev` it should look like this:
 
 ![Layout of the app](/chat-app-3.png)
 
 ## Step 6. Write the javascript code, using `hyperswarm`
 
-Open `app.js` in your code editor and replace it with this
+Open `app.js` in a code editor and replace with this:
 
 ``` js
 import { teardown } from 'pear'
@@ -163,24 +163,21 @@ import Hyperswarm from 'hyperswarm'
 import crypto from 'hypercore-crypto'
 import b4a from 'b4a'
 
-const peers = []
 const swarm = new Hyperswarm()
 
 // Unnannounce the public key before exiting the process
 // (This is not a requirement, but it helps avoid DHT pollution)
 teardown(() => swarm.destroy())
 
-// When there's a new connection, add it to the `peers` array
+// When there's a new connection, listen for new messages, and add them to the UI
 swarm.on('connection', peer => {
   const name = b4a.toString(peer.remotePublicKey, 'hex').substr(0, 6)
-  peers.push(peer)
-  document.querySelector('#peers-count').textContent = peers.length
+  peer.on('data', message => onMessageAdded(name, message))
+})
 
-  peer.on('data', message => addMessage(name, message))
-  peer.once('close', () => {
-    peers.splice(peers.indexOf(peer), 1)
-    document.querySelector('#peers-count').textContent = peers.length
-  })
+// When there's updates to the swarm, update the peers count
+swarm.on('update', () => {
+  document.querySelector('#peers-count').textContent = swarm.connections.size
 })
 
 document.querySelector('#create-chat-room').addEventListener('click', createChatRoom)
@@ -218,78 +215,77 @@ function sendMessage(e) {
   document.querySelector('#message').value = ''
   e.preventDefault()
 
-  addMessage('You', message)
+  onMessageAdded('You', message)
 
   // Send the message to all peers (that you are connected to)
-  for (const peer of peers) {
-    peer.write(message)
-  }
+  const peers = [...swarm.connections]
+  peers.forEach(peer => peer.write(message))
 }
 
-function addMessage(from, message) {
+function onMessageAdded(from, message) {
   const $div = document.createElement('div')
   $div.textContent = `<${from}> ${message}`
   document.querySelector('#messages').appendChild($div)
 }
 ```
 
-## Step 7. Run the code
+## Step 7. Run the app
 
-Now we need to run the app we just wrote.
+Now it's time to write the app.
 
-As we need to have to apps running, open two terminals and run this in both of them
+As there will be two apps running, open two terminals, and run this in both of them:
 
 ```
 $ pear dev
 ```
 
-In the first app, you click on `Create chat room`. When it has started you will see a topic at the top. This is a 32 byte public key that counts as the shared topic.
+In the first app, click on `Create chat room`. When it has started the topic is at the top. This is a 32 byte public key that counts as the shared topic.
 
-In the second app you paste in the topic you got from the first, and then click on `Join chat room`.
+In the second app, paste in the topic that was shown in the first app, and then click on `Join chat room`.
 
 ![Use topic from creator](/chat-app-4.png)
 
-After that you can send messages between the peers
+After that the two apps are able to send messages between them
 
 ![Messages between the peers](/chat-app-5.png)
 
-## Step 8. Understanding the code
+## Understanding the code
 
-As you look through the code you may notice that quite a lot of it is just handling the layout. Understanding that is outside of this scope, but shouldn't look unfamiliar to you. You can easily use frameworks like React, but we'll cover that in other examples.
+Looking through the code, a great part of it has to with handling the layout. It's outside of the scope of this tutorial to delve into that, but shouldn't look unfamiliar to most. It's possible to use larger frameworks like React, but that will be covered in other examples.
 
-There are two main differences between a more common client-server chat app vs your new chat app
+There are two main differences between a more common client-server chat app vs this peer-to-peer chat app
 
 ### 1. Discovery
 
-In a client-server setup you would have a server hosted on an ip (or hostname) and a port, e.g. `http://localhost:3000`. This is what clients use to connect the server. And then it's the servers responsibility to have clients find each other.
+In a traditional client-server setup the server is hosted on an ip (or hostname) and a port, e.g. `http://localhost:3000`. This is what clients use to connect the server. And then it's the servers responsibility to have clients find each other.
 
-If you look in the code in your chat app you can see `swarm.join(topicBuffer, { client: true, server: true })`. Here `topicBuffer` is a 32 byte string. The creator of a chat room will create a random byte string, which they will share with others, who can then join.
+In our code it says `swarm.join(topicBuffer, { client: true, server: true })`. Here `topicBuffer` is a 32 byte string. The creator of a chat room will create a random byte string, which they will share with others, who can then join.
 
 ### 2. There are no server
 
-When you started your chat app there was not one of them that acted as a server, and another as a client. Instead they join/leave topics. This is an important point, because it means that even if the peer that created a chat room leaves, then it doesn't stop working.
+When the chat app was started there wasn't one of them that acting as a server, and another as a client. Instead they join/leave topics. This is an important point, because it means that even if the peer that created a chat room leaves, then it doesn't stop working.
 
-## Step 9. Release your app
+## Step 8. Release the app
 
-With Pear you can have one "release" (or "production") version of your app, and many other versions. Think of it, the same way that `git` works where you have branches. You put your code in a branch. This way others can test it, and when you are ready, you pull that branch into the main one.
+With Pear there are one single "release" (or "production") version of an app, and then many other named versions. Think of it, the same way that `git` has branches. Code is put into a branch. This way others can test it, and when everything is ready, that branch is pulled into the main one.
 
-Similarly, you use `pear stage some-name` to create a version of the app that others can testout. When you are ready you use `pear release some-name` and now this becomes the main version of your app.
+Similarly, use `pear stage some-name` to create a version of the app that others can test out. When everything is ready, use `pear release some-name` and now this becomes the main version of the app.
 
-We want to test your app, and since we don't have other versions, let's call it `main`. It is just a name, so you can call it whatever you want.
+For now we want to release the app, but since there are no other versions, let's call it `main`. It is just a name, so it can be called anything you want.
 
 ```
 $ pear stage main
 ```
 
-For now we won't go into details with stage/release, so just release it immediately by running
+For now let's not go into details with stage/release, so just release it immediately by running
 
 ```
 $ pear release main
 ```
 
-## Step 10. Seeding
+## Step 9. Seeding
 
-Afer releasing, your app is still only available on your computer. To distribute it to others, you need to start seeding it. You can think of this as deployment in a more traditional setup.
+Afer releasing, the app is still only available on that computer. To distribute it to others, start seeding it. Think of this as deployment in a more traditional setup.
 
 Run this:
 
@@ -309,17 +305,17 @@ Do not close the process. The output will look similar to:
 ^_^ announced
 ```
 
-## Step 11. Share your app
+## Step 10. Share your app
 
-From another terminal (or even another machine) you can now run
+From another terminal (or even another machine), now run:
 
 ```
 $ pear launch pear:w7tu... # Use the key you got in the previous output
 ```
 
-And now your app should run.
+And now the app should run.
 
-**Note**: You could now exit the process running `pear seed main` and while at least one computer is running the app, others will still be able to launch it using the key you had before. This is because that any user of the app also helps seeding it.
+**Note**: The process can be that runs `pear seed main` can now be exited, and while at least one computer is running the app, others will still be able to launch it using the key from before. This is because that any user of the app also helps seeding it.
 
 ![Launching the app with pear launch](/chat-app-6.png)
 
@@ -333,8 +329,8 @@ And now your app should run.
 
 ## Next
 
-That is it for the first version of your chat app.
+That is it for the first version of the chat app. Users can create and join rooms, and send messages to each other.
 
-Next up we want to add a list of chat rooms, and how you peers can share and persist that list.
+In the next part, let's add a nickname to all users, and the ability for them to change it.
 
 [Go to next tutorial](/making-a-pear-app-2.md)
