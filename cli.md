@@ -44,7 +44,7 @@ Seeds or reseeds a Pear project.
 
 To seed a project that has been locally staged, provide the corresponding channel name or key. To reseed an existing project, use the project's key.
 
-In the context of Pear, seeding is the act of synchronizing and distributing the project data within the Pear network
+In the context of Pear, seeding is the act of synchronizing and distributing the project data within the Pear network.
 
 | Flag            | Description                                   |
 | --------------- | --------------------------------------------- |
@@ -85,7 +85,7 @@ Retrieves and displays metadata for a Pear project, such as name, channel, and r
 
 ## `pear dump <key> <dir>`
 
-Dumps a Pear project's files from P2P data-structures to a local directory.
+Downloads a Pear project's files from P2P data-structures to a local directory.
 
 | Flag         | Description                                   |
 | ------------ | --------------------------------------------- |
