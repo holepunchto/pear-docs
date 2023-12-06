@@ -26,7 +26,7 @@ In development mode, application files are loaded from the filesystem. In produc
 
 ## `pear stage <channel|key> [dir]`
 
-Stages the application from the filesystem to a P2P data-structure (Hypercore) with a given channel name or key. This can be used to continuously deploy a staging preview version of a Pear project. When staging, the CLI prints the difference between the current and previous versions, along with the project key.
+Stages the application from the filesystem to a P2P data-structure (Hypercore) with a given channel name or key. This can be used to continuously deploy a staging preview version of a Pear project. When staging, the difference between the current and previous versions is output, along with the project key.
 
 A new key is generated when staging to a channel for the first time.
 
