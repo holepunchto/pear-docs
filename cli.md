@@ -1,57 +1,53 @@
 # Command Line Interface
 
-The Pear Command Line Interface (CLI) is a developer tool for building and sharing Pear applications.
+The Pear Command Line Interface (CLI) is a developer tool for building and distributing Pear applications.
 
 ## `pear init [dir]`
 
-Initializes the Pear project with `package.json` and an entry file (`index.html`).
+Sets up a Pear project with a `package.json` and `index.html` (entry file) 
 
 | Flag        | Description              |
 | ----------- | ------------------------ |
-| --yes \| -y | Autoselect all defaults. |
+| --yes \| -y | Autoselects all defaults. |
 
 ## `pear dev [dir]`
 
-Launches a Pear project in development mode.
+Starts a Pear project in development mode.
 
 {% hint style="info" %}
-Applications are loaded from the filesystem in development mode, whereas in production, they are loaded from the P2P data-structures.
+In development mode, application files are loaded from the filesystem. In production, they are loaded from the P2P data-structures.
 {% endhint %}
 
 | Flag               | Description                                                                                                                          |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| --no-watch         | Disables the watch-reload feature, which automatically reloads application file when changes are detected.                           |
+| --no-watch         | Turns off the watch-reload feature that refreshes the application automatically when file changes are detected.                         |
 | --launch=key       | Launches an application in dev mode using its key.                                                                                   |
-| --link=url         | Simulates opening an application with the given deep link.                                                                           |
+| --link=url         | Simulates opening an application with the specified deep link.                                                                           |
 | --store \| -s=path | Sets the path for the application storage.                                                                                           |
 | --tmp-store \| -t  | Uses a new temporary folder as the store path automatically. Useful for temporary or disposable storage during testing.              |
 
 ## `pear stage <channel|key> [dir]`
 
-Stages the application from the filesystem to a P2P data-structure with a given channel name or key. This is used to continuously deploy a staging preview version of a Pear project. When staging, the CLI prints the difference between the current and previous versions, along with the project key.
+Stages the application from the filesystem to a P2P data-structure with a given channel name or key. This can be used to continuously deploy a staging preview version of a Pear project. When staging, the CLI prints the difference between the current and previous versions, along with the project key.
 
 A new key is generated when staging to a channel for the first time.
-
-{% hint style="info" %}
-Applications are loaded from the filesystem in development mode, whereas in production, they are loaded from the P2P data-structures.
-{% endhint %}
 
 | Flag            | Description                                                                                                                        |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | --json          | Outputs the staging result in newline-delimited JSON format.                                                                       |
 | --dry-run \| -d | Performs a trial run of the stage without writing any changes.                                                                     |
-| --bare \| -b    | Disables warmup optimization, staging only the file data. Useful for apps.                                                        |
+| --bare \| -b    | Disables warmup optimization, staging only the file data.                                                                         |
 | --ignore        | Specifies a comma-separated list of file paths to ignore during the staging process.                                               |
 | --name          | Advanced: Overrides the app name.                                                                                                  |
 
 ## `pear seed <channel|key> [dir]`
 
-Seeds or reseeds a Pear project.
+Seeds or reseeds a Pear project. 
 
 For seeding a staged project, specify a staged channel from a project folder. For reseeding, specify the public key of a project.
 
 {% hint style="info" %}
-Seeding in Pear refers to the process of updating Pear project data to or from other P2P data-structures or channels.
+Seeding in Pear refers to the process of updating Pear project data to or from other P2P data-structures.
 {% endhint %}
 
 | Flag            | Description                                   |
@@ -67,18 +63,18 @@ Launches a Pear application using its key.
 
 | Flag                              | Description                                                                                       |
 | --------------------------------- | ------------------------------------------------------------------------------------------------- |
-| --dev                             | Launches the app in development mode.                                                            |
+| --dev                             | Launches the application in development mode.                                                            |
 | --store \| -s=path                | Sets the path for the Application Storage.                                                       |
 | --tmp-store \| -t                 | Uses a new temporary folder as the store path automatically. Useful for temporary storage during testing. |
 | --checkout=n \| release \| staged | Launches a specific version of the application by specifying a version number or using keywords like 'release' or 'staged' for the latest release or staged version. |
 
 ## `pear release <channel|key> [dir]`
 
-Adds a release tag to the Pear Project for a given version to the specified channel or key.
+Sets the release pointer to the specified version (default is latest) in a channel.
 
-The release pointer is set against a version (default is the latest).
-
-Indicates production release points.
+{% hint style="info" %}
+Production release points can be indicated this way.
+{% endhint %}
 
 | Flag            | Description                                                |
 | --------------- | ---------------------------------------------------------- |
@@ -87,7 +83,7 @@ Indicates production release points.
 
 ## `pear info <key>`
 
-Prints metadata of a Pear project, such as name, channel, and release version, by looking up the key.
+Retrieves and displays metadata for a Pear project, such as name, channel, and release version, by referencing the key.
 
 | Flag   | Description                                   |
 | ------ | --------------------------------------------- |
@@ -95,7 +91,7 @@ Prints metadata of a Pear project, such as name, channel, and release version, b
 
 ## `pear dump <key> <dir>`
 
-Dumps a Pear project's data into a local directory from remote P2P data-structures using its key.
+Dumps a Pear project's files from P2P data structures to a local directory using the project's key.
 
 | Flag         | Description                                   |
 | ------------ | --------------------------------------------- |
@@ -108,7 +104,9 @@ These advanced commands are provided for internal development, platform debuggin
 
 ## `pear sidecar`
 
-Starts a sidecar when for Pear applications to connect to. The Pear Sidecar is a locally-running HTTP and IPC server that provides access to P2P data-structures (Hypercores) containing Pear Applications.
+Commands any running sidecar process to terminate before taking its place.
+
+The Pear Sidecar is a locally-running HTTP and IPC server that provides access to P2P data-structures (Hypercores) containing Pear Applications. 
 
 | Flag             | Description                                                                                          |
 | ---------------- | ---------------------------------------------------------------------------------------------------- |
@@ -117,11 +115,13 @@ Starts a sidecar when for Pear applications to connect to. The Pear Sidecar is a
 
 ## `pear repl`
 
-Opens a Read-Evaluate-Print-Loop (REPL) session with the Sidecar. Provides a command to run for opening the session.
+Opens a Read-Evaluate-Print-Loop (REPL) session for interaction with the Sidecar and prints the key. 
+
+Connect to this session using repl-swarm.
 
 ## `pear versions`
 
-Displays versions of Pear and its dependencies.
+Displays the current versions of Pear and its dependencies.
 
 | Flag   | Description                                 |
 | ------ | ------------------------------------------- |
