@@ -4,7 +4,7 @@ The Pear Command Line Interface (CLI) is a developer tool for building and distr
 
 ## `pear init [dir]`
 
-Sets up a Pear project with a `package.json` and `index.html` (entry file) 
+Sets up a Pear project with a initial project files.
 
 | Flag        | Description              |
 | ----------- | ------------------------ |
