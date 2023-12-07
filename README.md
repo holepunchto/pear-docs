@@ -16,6 +16,7 @@ Welcome to the Internet of Peers
 ### Guide
 
 * [Getting Started](./guide/getting-started.md)
+* [Starting a Pear App](./guide/starting-a-pear-app.md)
 * [Making a Pear App](./guide/making-a-pear-app.md)
 * [Sharing a Pear App](./guide/sharing-a-pear-app.md)
 * [Releasing a Pear App](./guide/releasing-a-pear-app.md)
