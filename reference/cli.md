@@ -1,6 +1,6 @@
-# Command Line Interface
+# Command Line Interface (CLI)
 
-Pear's Command Line Interface (CLI) is the primary interface for Pear Development.
+The Command Line Interface is the primary interface for Pear Development.
 
 ## pear init [dir]
 
@@ -10,11 +10,18 @@ Create initial project files.
   --yes|-y      Autoselect all defaults
 ```
   
-## pear dev [dir]
+## pear dev [dir] -- [...args]
 
 Start a project in development mode.
 
 Edit project files on disk.
+
+Arguments supplied after a double-dash (`--`) are passed as `pear.config.args`.
+
+Using `--link` instead of arguments allows for application invite links.
+
+A Pear link takes the form: `pear://<key>/<data>`.
+The `<data>` portion of the link is available as `pear.config.linkData`.
 
 ```
   --no-watch       Disable watch-reload
@@ -55,9 +62,15 @@ Specify a remote key to reseed.
   --verbose|-v  Additional output
 ```
   
-## pear launch <key>
+## pear launch <key|link> -- [...args]
 
-Launch an application.
+Launch an application by key or link.
+
+A Pear link takes the form: `pear://<key>/<data>`.
+
+The `<data>` portion of the link is available as `pear.config.linkData`.
+
+Arguments supplied after a double-dash (`--`) are passed as `pear.config.args`.
 
 ```
   --dev                        Launch the app in dev mode
