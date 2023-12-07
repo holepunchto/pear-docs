@@ -1,6 +1,6 @@
 # Making a Pear app
 
-This tutorial will show how to create a basic chat app with Pear, and through that teach you how to use some of the main building blocks.
+This tutorial will show how to create a basic chat app with Pear, and through that teach how to use some of the main building blocks.
 
 In this first part of the app, users will be able to create chat rooms, connect to each other, and send messages.
 
@@ -37,7 +37,7 @@ This will open the app. Because it's opened in development mode, developer tools
 
 Pear apps have automatic reload included. This means that there is no need to stop and start the app again to see changes.
 
-While keeping the app open with `pear dev`, open `index.html` in a code editor. Change `<h1>chat</h1>` to `<h1>Hello world</h1>` and go to your app again. It should now look like this:
+While keeping the app open with `pear dev`, open `index.html` in a code editor. Change `<h1>chat</h1>` to `<h1>Hello world</h1>` and go to the app again. It should now look like this:
 
 ![Automatic reload](/chat-app-2.png)
 
@@ -49,7 +49,7 @@ This app uses these modules: `hyperswam`, `hypercore-crypto`, and `b4a`.
 $ npm i hyperswam hypercore-crypto b4a
 ```
 
-**Note**: If the modules are installed while the app is running an error is thrown similar to `Cannot find package 'hyperswarm' imported from /app.js`. When installing modules, close down your app, before they can be installed.
+**Note**: If the modules are installed while the app is running an error is thrown similar to `Cannot find package 'hyperswarm' imported from /app.js`. When installing modules, close down the app, before they can be installed.
 
 - [hyperswam](https://www.npmjs.com/package/hyperswam). One of the main building blocks. Find peers that share a "topic".
 - [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto). A set of crypto function used in Pear.
@@ -271,7 +271,7 @@ With Pear there are one single "release" (or "production") version of an app, an
 
 Similarly, use `pear stage some-name` to create a version of the app that others can test out. When everything is ready, use `pear release some-name` and now this becomes the main version of the app.
 
-For now we want to release the app, but since there are no other versions, let's call it `main`. It is just a name, so it can be called anything you want.
+For now we want to release the app, but since there are no other versions, let's call it `main`. It is just a name, so it can be called anything.
 
 ```
 $ pear stage main
@@ -305,12 +305,12 @@ Do not close the process. The output will look similar to:
 ^_^ announced
 ```
 
-## Step 10. Share your app
+## Step 10. Share the app
 
 From another terminal (or even another machine), now run:
 
 ```
-$ pear launch pear:w7tu... # Use the key you got in the previous output
+$ pear launch pear:w7tu... # Use the key received in the previous output
 ```
 
 And now the app should run.
