@@ -220,6 +220,6 @@ In a traditional client-server setup the server is hosted on an ip (or hostname)
 
 In our code it says `swarm.join(topicBuffer, { client: true, server: true })`. Here `topicBuffer` is a 32 byte string. The creator of a chat room will create a random byte string, which they will share with others, who can then join.
 
-### 2. There are no server
+### 2. No servers
 
 When the chat app was started there wasn't one of them that acting as a server, and another as a client. Instead they join/leave topics. This is an important point, because it means that even if the peer that created a chat room leaves, then it doesn't stop working.
