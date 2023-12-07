@@ -40,11 +40,9 @@ A new key is generated when staging to a channel for the first time.
 
 ## `pear seed <channel|key> [dir]`
 
-Seeds or reseeds a Pear project. 
+Seeds a Pear project from local machine or reseeds it by fetching it first from remote peers. 
 
-To seed a project that has been locally staged, provide the corresponding channel name or key. To reseed an existing project, use the project's key.
-
-In the context of Pear, seeding is the act of synchronizing and distributing the project data within the Pear network.
+In the context of Pear, seeding is the act of distributing the project data within the Pear network.
 
 | Flag            | Description                                   |
 | --------------- | --------------------------------------------- |
