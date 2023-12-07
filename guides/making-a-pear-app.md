@@ -1,47 +1,6 @@
-# Making a Pear app
+# Making a Pear App
 
-This tutorial will show how to create a basic chat app with Pear, and through that teach how to use some of the main building blocks.
-
-In this first part of the app, users will be able to create chat rooms, connect to each other, and send messages.
-
-## Step 1. Init
-
-First create a new project using `pear init`.
-
-```
-$ mkdir chat
-$ cd chat
-$ pear init --yes
-```
-
-This will create a base structure for the project.
-
-- `package.json`. Config for the app. Notice the `pear` property.
-- `index.html`. The UI for the app.
-- `app.js`. The main code.
-- `test/index.test.js`. Skeleton for writing tests.
-
-## Step 2. Test that everything works
-
-Before writing any code, make sure that everything works the way it's supposed to by using `pear dev`.
-
-```
-$ pear dev
-```
-
-This will open the app. Because it's opened in development mode, developer tools are also opened.
-
-![Running pear dev](../assets/chat-app-1.png)
-
-## Step 3. Automatic reload
-
-Pear apps have automatic reload included. This means that there is no need to stop and start the app again to see changes.
-
-While keeping the app open with `pear dev`, open `index.html` in a code editor. Change `<h1>chat</h1>` to `<h1>Hello world</h1>` and go to the app again. It should now look like this:
-
-![Automatic reload](../assets/chat-app-2.png)
-
-## Step 4. Install modules
+## Step 1. Install modules
 
 This app uses these modules: `hyperswam`, `hypercore-crypto`, and `b4a`.
 
@@ -55,7 +14,7 @@ $ npm i hyperswam hypercore-crypto b4a
 - [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto). A set of crypto function used in Pear.
 - [b4a](https://www.npmjs.com/package/b4a). A set of functions for bridging the gap between the Node.js `Buffer` class and the `Uint8Array` class.
 
-## Step 5. Create the UI
+## Step 2. Create the UI
 
 In this first version, users are able to create a chat room or join others. Then write messages to each other.
 
@@ -229,7 +188,7 @@ function onMessageAdded(from, message) {
 }
 ```
 
-## Step 7. Run the app
+## Step 3. Run the app
 
 Now it's time to write the app.
 
@@ -264,73 +223,3 @@ In our code it says `swarm.join(topicBuffer, { client: true, server: true })`. H
 ### 2. There are no server
 
 When the chat app was started there wasn't one of them that acting as a server, and another as a client. Instead they join/leave topics. This is an important point, because it means that even if the peer that created a chat room leaves, then it doesn't stop working.
-
-## Step 8. Release the app
-
-With Pear there are one single "release" (or "production") version of an app, and then many other named versions. Think of it, the same way that `git` has branches. Code is put into a branch. This way others can test it, and when everything is ready, that branch is pulled into the main one.
-
-Similarly, use `pear stage some-name` to create a version of the app that others can test out. When everything is ready, use `pear release some-name` and now this becomes the main version of the app.
-
-For now we want to release the app, but since there are no other versions, let's call it `main`. It is just a name, so it can be called anything.
-
-```
-$ pear stage main
-```
-
-For now let's not go into details with stage/release, so just release it immediately by running
-
-```
-$ pear release main
-```
-
-## Step 9. Seeding
-
-Afer releasing, the app is still only available on that computer. To distribute it to others, start seeding it. Think of this as deployment in a more traditional setup.
-
-Run this:
-
-```
-$ pear seed main
-```
-
-Do not close the process. The output will look similar to:
-
-```
-🍐 Seeding: chat [ main ]
-   ctrl^c to stop & exit
-
--o-:-
-    pear:w7tux8mzhqp8jo763adw39apcyuju3cthp8mt3yowfft8gg5xj80
-...
-^_^ announced
-```
-
-## Step 10. Share the app
-
-From another terminal (or even another machine), now run:
-
-```
-$ pear launch pear:w7tu... # Use the key received in the previous output
-```
-
-And now the app should run.
-
-**Note**: The process can be that runs `pear seed main` can now be exited, and while at least one computer is running the app, others will still be able to launch it using the key from before. This is because that any user of the app also helps seeding it.
-
-![Launching the app with pear launch](../assets/chat-app-6.png)
-
-
-## Learnings, main takeaways
-
-- How to set up a basic app with `pear init`
-- Discover other peers/computers with `hyperswarm` (also when developing locally)
-- Easy to distribute with `pear stage/release/seed`
-- There are no servers used
-
-## Next
-
-That is it for the first version of the chat app. Users can create and join rooms, and send messages to each other.
-
-In the next part, let's add a nickname to all users, and the ability for them to change it.
-
-[Go to next tutorial](../assets/making-a-pear-app-2.md)
