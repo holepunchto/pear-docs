@@ -1,4 +1,4 @@
-# Making a Pear App
+# Making a Pear Application
 
 ## Step 1. Install modules
 

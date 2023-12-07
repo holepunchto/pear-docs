@@ -1,4 +1,4 @@
-# Sharing a Pear App
+# Sharing a Pear Application
 
 Before releasing a Pear app to the public, it's possible to share it with others.
 

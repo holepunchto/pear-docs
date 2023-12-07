@@ -1,4 +1,4 @@
-# Starting a Pear App
+# Starting a Pear Project
 
 This tutorial will show how to create a basic chat app with Pear, and through that teach how to use some of the main building blocks.
 

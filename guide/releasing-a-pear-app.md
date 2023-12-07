@@ -1,4 +1,4 @@
-# Releasing a Pear App
+# Releasing a Pear Application
 
 As covered in [Sharing a Pear App](./sharing-a-pear-app.md), Pear use release channels in a similar way that git use branches. When the app has been tested, and it's ready to release it, it's really simple.
 
