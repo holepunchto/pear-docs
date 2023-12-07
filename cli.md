@@ -42,7 +42,7 @@ A new key is generated when staging to a channel for the first time.
 
 Seeds a Pear project from local machine or reseeds it by fetching it first from remote P2P data-structures. 
 
-In this context, seeding is the act of distributing the project files within the Pear network.
+Seeding is the process of distributing data within a P2P network such as Pear.
 
 | Flag            | Description                                   |
 | --------------- | --------------------------------------------- |
