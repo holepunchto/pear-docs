@@ -15,14 +15,13 @@ Welcome to the Internet of Peers
 
 ### Guide
 
-* [Getting Started](./getting-started.md)
-* [Starting a Pear App](./starting-a-pear-app.md)
-* [Making a Pear App](./making-a-pear-app.md)
-* [Sharing a Pear App](./sharing-a-pear-app.md)
-* [Releasing a Pear App](./releasing-a-pear-app.md)
+* [Getting Started](./guide/getting-started.md)
+* [Making a Pear App](./guide/making-a-pear-app.md)
+* [Sharing a Pear App](./guide/sharing-a-pear-app.md)
+* [Releasing a Pear App](./guide/releasing-a-pear-app.md)
 
 ### Reference
 
-* [Application Configuration](./configuration.md)
-* [Command-Line-Interface (CLI)](./cli.md)
-* [Application-Programming-Interface (API)](./api.md)
+* [Command-Line-Interface (CLI)](./reference/cli.md)
+* [Application-Programming-Interface (API)](./reference/api.md)
+* [Application Configuration](./reference/configuration.md)
