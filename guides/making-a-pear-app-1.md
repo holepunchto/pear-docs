@@ -31,7 +31,7 @@ $ pear dev
 
 This will open the app. Because it's opened in development mode, developer tools are also opened.
 
-![Running pear dev](/chat-app-1.png)
+![Running pear dev](../assets/chat-app-1.png)
 
 ## Step 3. Automatic reload
 
@@ -39,7 +39,7 @@ Pear apps have automatic reload included. This means that there is no need to st
 
 While keeping the app open with `pear dev`, open `index.html` in a code editor. Change `<h1>chat</h1>` to `<h1>Hello world</h1>` and go to the app again. It should now look like this:
 
-![Automatic reload](/chat-app-2.png)
+![Automatic reload](../assets/chat-app-2.png)
 
 ## Step 4. Install modules
 
@@ -151,7 +151,7 @@ In this first version, users are able to create a chat room or join others. Then
 
 After running with `pear dev` it should look like this:
 
-![Layout of the app](/chat-app-3.png)
+![Layout of the app](../assets/chat-app-3.png)
 
 ## Step 6. Write the javascript code, using `hyperswarm`
 
@@ -243,11 +243,11 @@ In the first app, click on `Create chat room`. When it has started the topic is 
 
 In the second app, paste in the topic that was shown in the first app, and then click on `Join chat room`.
 
-![Use topic from creator](/chat-app-4.png)
+![Use topic from creator](../assets/chat-app-4.png)
 
 After that the two apps are able to send messages between them
 
-![Messages between the peers](/chat-app-5.png)
+![Messages between the peers](../assets/chat-app-5.png)
 
 ## Understanding the code
 
@@ -317,7 +317,7 @@ And now the app should run.
 
 **Note**: The process can be that runs `pear seed main` can now be exited, and while at least one computer is running the app, others will still be able to launch it using the key from before. This is because that any user of the app also helps seeding it.
 
-![Launching the app with pear launch](/chat-app-6.png)
+![Launching the app with pear launch](../assets/chat-app-6.png)
 
 
 ## Learnings, main takeaways
@@ -333,4 +333,4 @@ That is it for the first version of the chat app. Users can create and join room
 
 In the next part, let's add a nickname to all users, and the ability for them to change it.
 
-[Go to next tutorial](/making-a-pear-app-2.md)
+[Go to next tutorial](../assets/making-a-pear-app-2.md)

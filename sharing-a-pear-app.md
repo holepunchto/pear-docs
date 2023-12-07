@@ -1,2 +1,0 @@
-* pear stage
-* pear launch
