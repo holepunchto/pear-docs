@@ -6,7 +6,7 @@ Pear by Holepunch is a combined Peer-to-Peer (P2P) Runtime, Development & Deploy
 
 Pear makes it possible to build, share and extend P2P applications using common Web and Mobile technology.
 
-Herein is everything needed to create unstoppable, zero-infrastructure P2P applications for Desktop, Terminal & Mobile.
+Herein is everything needed to create unstoppable, zero-infrastructure P2P applications for Desktop, Terminal (soon) & Mobile (soon).
 
 Welcome to the Internet of Peers
 &nbsp; _– Holepunch, the P2P Company_
