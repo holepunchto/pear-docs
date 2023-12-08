@@ -16,7 +16,7 @@ The `package.json` `pear` object contains application configuration and is expos
 
 Pear versioning is automatic. The `package.json` file does **not** require a version field, the version field will be ignored..
 
-## The `package.json`` `pear` field.
+## The `package.json` `pear` field.
 
 ### `pear.name` <String>
 
