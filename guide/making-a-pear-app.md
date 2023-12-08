@@ -124,11 +124,18 @@ In the first app, click on `Create chat room`. When it has started the topic is 
 
 In the second app, paste in the topic that was shown in the first app, and then click on `Join chat room`.
 
-![Use topic from creator](../assets/chat-app-4.png)
+<p align="center">
+  <img src="./assets/chat-app-4a.png" alt="The first app, with the topic"> <img src="../assets/chat-app-4b.png" alt="Second app, using topic from the first">
+</p>
 
 After that the two apps are able to send messages between them
 
-![Messages between the peers](../assets/chat-app-5.png)
+View from the first app
+
+<p align="center">
+  <img src="./assets/chat-app-5a.png" alt="View from the first app"> <img src="../assets/chat-app-5b.png" alt="View from the second app">
+</p>
+
 
 ## Understanding the code
 
