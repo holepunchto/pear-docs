@@ -41,7 +41,29 @@ While keeping the app open with `pear dev`, open `index.html` in a code editor. 
 
 ![Automatic reload](../assets/chat-app-2.png)
 
-## Step 4. Create a basic UI
+## Step 4. Chagne gui settings
+
+It's possible to change various settings with Pear. This is done with the `pear` property in `package.json`. See all the possibly options in the [reference doc](../reference/configuration.md).
+
+For now, open `package.json` and update it :
+```
+{
+  ...
+  "pear": {
+    "gui": {
+      "backgroundColor": "#00ff00",
+      "height": 540,
+      "width": 720,
+      "alwaysOnTop": true
+    }
+  }
+  ...
+}
+```
+
+When running the app now, it will be very green, and always stay on top.
+
+## Step 5. Create a basic UI
 
 To add some more interesting UI, let's have an example of a chat app, where users are able to create or join chat rooms and write messages to each other.
 

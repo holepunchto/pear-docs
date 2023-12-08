@@ -90,7 +90,27 @@ function onMessageAdded(from, message) {
 }
 ```
 
-## Step 3. Run the app
+## Step 3. Update gui settings
+
+To make sure that the app looks the way intended, update the `pear` property in `package.json`. See all the possibly options in the [reference doc](../reference/configuration.md).
+
+Open `package.json` and update the `"pear"` property:
+
+```
+{
+  ...
+  "pear": {
+    "gui": {
+      "backgroundColor": "#1F2430",
+      "height": 540,
+      "width": 720
+    }
+  }
+  ...
+}
+```
+
+## Step 4. Run the app
 
 Now it's time to write the app.
 
