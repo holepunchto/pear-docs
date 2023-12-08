@@ -42,6 +42,8 @@ In another terminal (or on another computer), run:
 $ pear launch pear:nykmkrpwgadcd8m9x5khhh43j9izj123eguzqg3ygta7yn1s379o
 ```
 
+![Launching the app with pear launch](../assets/chat-app-6.png)
+
 This will download and open the app.
 
 Note: Anyone running the app also help to seed it. So if the app had a lot of users, the original seeder could close down the process.

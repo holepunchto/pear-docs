@@ -16,8 +16,8 @@ $ pear init --yes
 
 This will create a base structure for the project.
 
-- `package.json`. Config for the app. Notice the `pear` property.
-- `index.html`. The UI for the app.
+- `package.json`. Configuration for the app. Notice the `pear` property.
+- `index.html`. The html for the app.
 - `app.js`. The main code.
 - `test/index.test.js`. Skeleton for writing tests.
 
@@ -41,9 +41,9 @@ While keeping the app open with `pear dev`, open `index.html` in a code editor. 
 
 ![Automatic reload](../assets/chat-app-2.png)
 
-## Step 4. Chagne gui settings
+## Step 4. Change Graphical User Interface (GUI) configuration
 
-It's possible to change various settings with Pear. This is done with the `pear` property in `package.json`. See all the possibly options in the [reference doc](../reference/configuration.md).
+It's possible to change various settings with Pear. This is done with the `pear` property in `package.json`
 
 For now, open `package.json` and update it :
 ```
@@ -63,7 +63,9 @@ For now, open `package.json` and update it :
 
 When running the app now, it will be very green, and always stay on top.
 
-## Step 5. Create a basic UI
+See all the possibly options in the [Configuration Documentation](../reference/configuration.md).
+
+## Step 5. Create a basic User Interface (UI)
 
 To add some more interesting UI, let's have an example of a chat app, where users are able to create or join chat rooms and write messages to each other.
 

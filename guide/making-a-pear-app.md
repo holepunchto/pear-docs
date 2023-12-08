@@ -90,9 +90,9 @@ function onMessageAdded(from, message) {
 }
 ```
 
-## Step 3. Update gui settings
+## Step 3. Update Graphical User Interface (GUI) settings
 
-To make sure that the app looks the way intended, update the `pear` property in `package.json`. See all the possibly options in the [reference doc](../reference/configuration.md).
+To make sure that the app looks the way intended, update the `pear` property in `package.json`. See all the possibly options in the [Configuration Documentation](../reference/configuration.md).
 
 Open `package.json` and update the `"pear"` property:
 
