@@ -7,7 +7,7 @@ With Pear there are one single "release" (or "production") version of an app, an
 To share apps, stage them using `pear stage some-name`. This builds a new version of the app and puts them into the `some-name` channel.
 
 
-## Step 1. Staging
+## Step 1. Stage
 
 Before sharing the app, first stage it into a channel called `example` (the name can be anything)
 
@@ -15,7 +15,7 @@ Before sharing the app, first stage it into a channel called `example` (the name
 $ pear stage example
 ```
 
-## Step 2. Seeding
+## Step 2. Seed
 
 After the app has been staged into the `example` channel, it now needs to be seeded. This is a way to signal that the app is now shared, so others can download and run it.
 
@@ -32,7 +32,7 @@ After the app has been staged into the `example` channel, it now needs to be see
 
 For now, keep this terminal open. As long as this process is running, your computer will help seed the application.
 
-## Step 3. Launching
+## Step 3. Launch
 
 Because the app is now being seeded, it' possible for others with the key (`pear:nykm...`) to launch it.
 
@@ -41,6 +41,8 @@ In another terminal (or on another computer), run:
 ```
 $ pear launch pear:nykmkrpwgadcd8m9x5khhh43j9izj123eguzqg3ygta7yn1s379o
 ```
+
+![Launching the app with pear launch](../assets/chat-app-6.png)
 
 This will download and open the app.
 

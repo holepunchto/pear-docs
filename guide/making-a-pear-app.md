@@ -90,7 +90,7 @@ function onMessageAdded(from, message) {
 }
 ```
 
-## Step 3. Run the app
+## Step 4. Run the app
 
 Now it's time to write the app.
 
@@ -104,13 +104,20 @@ In the first app, click on `Create chat room`. When it has started the topic is 
 
 In the second app, paste in the topic that was shown in the first app, and then click on `Join chat room`.
 
-![Use topic from creator](../assets/chat-app-4.png)
+<p align="center">
+  <img src="./assets/chat-app-4a.png" alt="The first app, with the topic"> <img src="../assets/chat-app-4b.png" alt="Second app, using topic from the first">
+</p>
 
 After that the two apps are able to send messages between them
 
-![Messages between the peers](../assets/chat-app-5.png)
+View from the first app
 
-## Understanding the code
+<p align="center">
+  <img src="./assets/chat-app-5a.png" alt="View from the first app"> <img src="../assets/chat-app-5b.png" alt="View from the second app">
+</p>
+
+
+## Understand the code
 
 Looking through the code, a great part of it has to do with handling the layout. It's outside of the scope of this tutorial to delve into that, but shouldn't look unfamiliar to most. It's possible to use larger frameworks like React, but that won't be covered here.
 
