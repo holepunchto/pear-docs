@@ -90,26 +90,6 @@ function onMessageAdded(from, message) {
 }
 ```
 
-## Step 3. Update Graphical User Interface (GUI) settings
-
-To make sure that the app looks the way intended, update the `pear` property in `package.json`. See all the possibly options in the [Configuration Documentation](../reference/configuration.md).
-
-Open `package.json` and update the `"pear"` property:
-
-```
-{
-  ...
-  "pear": {
-    "gui": {
-      "backgroundColor": "#1F2430",
-      "height": 540,
-      "width": 720
-    }
-  }
-  ...
-}
-```
-
 ## Step 4. Run the app
 
 Now it's time to write the app.
@@ -137,7 +117,7 @@ View from the first app
 </p>
 
 
-## Understanding the code
+## Understand the code
 
 Looking through the code, a great part of it has to do with handling the layout. It's outside of the scope of this tutorial to delve into that, but shouldn't look unfamiliar to most. It's possible to use larger frameworks like React, but that won't be covered here.
 

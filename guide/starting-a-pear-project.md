@@ -51,17 +51,16 @@ For now, open `package.json` and update it :
   ...
   "pear": {
     "gui": {
-      "backgroundColor": "#00ff00",
-      "height": 540,
-      "width": 720,
-      "alwaysOnTop": true
+      "backgroundColor": "#3592C3",
+      "height": 400,
+      "width": 700
     }
   }
   ...
 }
 ```
 
-When running the app now, it will be very green, and always stay on top.
+When running the app now, it will be light blue, and have a different size.
 
 See all the possibly options in the [Configuration Documentation](../reference/configuration.md).
 
@@ -78,6 +77,7 @@ To add some more interesting UI, let's have an example of a chat app, where user
       body {
         display: flex;
         height: 100vh;
+        background-color: #3592C3;
         color: white;
         justify-content: center;
         margin: 0;
