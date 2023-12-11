@@ -12,7 +12,9 @@ On MacOS and Linux, we recommend installing `node` using [`nvm`](https://github.
 
 On Windows we recommend installing `node` with [`nvs`](https://github.com/jasongin/nvs#setup).
 
-> Info: The Pear Runtime does not rely on `node`, `node` is only needed to install and run the `npm` package manager.
+{% hint style="info" %}
+The Pear Runtime does not rely on `node`, `node` is only needed to install and run the `npm` package manager.
+{% endhint %}
 
 ## Setup
 
