@@ -364,36 +364,22 @@ will be waited upon until resolution before calling the next teardown handler.
 
 Restart the application.
 
-### `pear.updates(options <Object>, listener <Async Function|Function>)`
+### `pear.updates(listener <Async Function|Function>)`
 
-The `listener` function is called for every incoming update, or if `perFile` is `true` for every
-updated file. 
-
-The `listener` function is called with an `update` object of the form:
+The `listener` function is called for every incoming update with an `update` object of the form:
 
 ```js
 { 
   type: 'pear/updates', 
   version: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null, 
   app <Boolean>,
-  filename <String|null>,
-  reloads <Array|nulll>
+  diff <Array <String> >,
 }
 ```
 
-* `version` is a Pear version object
+* `version` is a Pear version object holding incoming version information
 * `app` indicates whether the update represents an application (`true`) or platform (`false`) update
-* `filename` is supplied if the `perFile` option is `true` and is the path of the file from application root
-* `reloads` is supplied if the `liveReload` option is `true` and is an array of objects containing the original, previous and next module/component instances that can be passed on to a hot-reloader. Objects take the form `{ original <Module>, previous <Module>, next <Module> }`
-
-For launched applications, use the default behavior (`perFile: false`) to respond to platform and application updates in production.
-
-For developed applications, the `liveReload`, `perFile` and `paths` options in combination with `pear.config.watch` and `pear.config.dev` are useful for setting up project devex hot-reload functionality. In development mode `version` and `current` will always be `null`.
-
-**Options**
-* `liveReload <Boolean>` Default: `false` - auto-reload JS libraries and supply to `reloads` array to `listener` 
-* `perFile <Boolean>` Default: `liveReload` - rather than per incoming version, updates are per file
-* `paths <Array>` - array of paths to watch for updates on. Only applies is `perFile` is `true`
+* `diff` is an array of file paths from the application root (drive keys) that were updated
 
 
 ### `const win = new pear.Window(entry <String>, options <Object>)`
