@@ -375,12 +375,16 @@ The `listener` function is called with an `update` object of the form:
 { 
   type: 'pear/updates', 
   version: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null, 
-  current: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null, 
   app <Boolean>,
   filename <String|null>,
   reloads <Array|nulll>
 }
 ```
+
+* `version` is a Pear version object
+* `app` indicates whether the update represents an application (`true`) or platform (`false`) update
+* `filename` is supplied if the `perFile` option is `true` and is the path of the file from application root
+* `reloads` is supplied if the `liveReload` option is `true` and is an array of objects containing the original, previous and next module/component instances that can be passed on to a hot-reloader. Objects take the form `{ original <Module>, previous <Module>, next <Module> }`
 
 For launched applications, use the default behavior (`perFile: false`) to respond to platform and application updates in production.
 
