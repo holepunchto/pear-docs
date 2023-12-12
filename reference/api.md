@@ -159,7 +159,7 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 * [pear.config.checkpoint()](#pear--config-checkpoint-any)
 
-## pear.messages([ pattern ], [ listener ])
+## pear.messages([ pattern ], [ listener ]) -> Iterable
 
 A function which accepts a pattern object and returns an [`Iambus`](https://github.com/holepunchto/iambus) subscriber (which inherits from [`streamx`](https://github.com/mafintosh/streamx) `Readable`) which emits message objects matching a provided pattern object.
 
@@ -364,13 +364,41 @@ will be waited upon until resolution before calling the next teardown handler.
 
 Restart the application.
 
+### `pear.updates(options <Object>, listener <Async Function|Function>)`
+
+The `listener` function is called for every incoming update, or if `perFile` is `true` for every
+updated file. 
+
+The `listener` function is called with an `update` object of the form:
+
+```js
+{ 
+  type: 'pear/updates', 
+  version: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null, 
+  current: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null, 
+  app <Boolean>,
+  filename <String|null>,
+  reloads <Array|nulll>
+}
+```
+
+For launched applications, use the default behavior (`perFile: false`) to respond to platform and application updates in production.
+
+For developed applications, the `liveReload`, `perFile` and `paths` options in combination with `pear.config.watch` and `pear.config.dev` are useful for setting up project devex hot-reload functionality. In development mode `version` and `current` will always be `null`.
+
+**Options**
+* `liveReload <Boolean>` Default: `false` - auto-reload JS libraries and supply to `reloads` array to `listener` 
+* `perFile <Boolean>` Default: `liveReload` - rather than per incoming version, updates are per file
+* `paths <Array>` - array of paths to watch for updates on. Only applies is `perFile` is `true`
+
+
 ### `const win = new pear.Window(entry <String>, options <Object>)`
 
 Create a new `Window` instance.
 
 **Options**
 
-* `show` Default: `true` - show the window as soon as it has been opened
+* `show <Boolean>` Default: `true` - show the window as soon as it has been opened
 * `x <Integer>` - the horizontal position of left side of the window (pixels)
 * `y <Integer>` - vertical window position (pixels)
 * `width <Integer>` - the width of the window (pixels)
@@ -403,7 +431,7 @@ Receive a message from the window. The received `args` array is deserialized via
 
 **References**
 
-### [`win.send()`](#await-winsendargs)
+* [`win.send()`](#await-winsendargs)
 
 ### `const success = await win.open(options <Object>)`
 
