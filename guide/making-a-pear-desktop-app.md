@@ -1,4 +1,4 @@
-# Making a Pear Application
+# Making a Pear Desktop Application
 
 ## Step 1. Install modules
 
