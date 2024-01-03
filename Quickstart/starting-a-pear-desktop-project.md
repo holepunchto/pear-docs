@@ -166,4 +166,4 @@ After running with `pear dev` it should look like this:
 
 ## Next
 
-Now that there's some basic UI for a chat app, let's take a look at [making a Pear App](./making-a-pear-app.md).
+Now that there's some basic UI for a chat app, let's take a look at [making a Pear App](making-a-pear-desktop-app.md)

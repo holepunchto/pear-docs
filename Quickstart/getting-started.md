@@ -45,4 +45,4 @@ Pear loads applications from peers, so this command should launch [Keet](https:/
 
 ## Next
 
-* [Making a Pear App](./making-a-pear-app.md)
+* [Making a Pear App](./making-a-pear-desktop-app.md)

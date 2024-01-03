@@ -50,4 +50,4 @@ Note: Anyone running the app also help to seed it. So if the app had a lot of us
 
 ## Next
 
-The app is shared and others can now run it on their machines. To learn how a more production-ready setup would look like read [releasing a Pear App](./releasing-a-pear-app.md).
+The app is shared and others can now run it on their machines. To learn how a more production-ready setup would look like read [releasing a Pear App](./releasing-a-pear-app.md)

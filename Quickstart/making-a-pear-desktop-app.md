@@ -135,4 +135,4 @@ When the chat app was started there wasn't one of them that acting as a server, 
 
 ## Next
 
-Everything is starting to look good, and now that there's a running app, it's time to learn how we [share it with others](./sharing-a-pear-app.md).
+Everything is starting to look good, and now that there's a running app, it's time to learn how we [share it with others](./sharing-a-pear-app.md)
