@@ -1,6 +1,6 @@
 # Hypertele
 
-A swiss-knife proxy powered by [HyperDHT](../building-blocks/hyperswarm.md#hyperdht)!
+A swiss-knife proxy powered by [HyperDHT](../building-blocks/hyperdht.md)!
 
 {% embed url="https://github.com/bitfinexcom/hypertele" %}
 

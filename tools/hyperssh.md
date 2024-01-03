@@ -1,6 +1,6 @@
 # Hyperssh
 
-A utility to facilitate SSH operations via the [HyperDHT](../building-blocks/hyperswarm.md#hyperdht).
+A utility to facilitate SSH operations via the [HyperDHT](../building-blocks/hyperdht.md).
 
 {% embed url="https://github.com/mafintosh/hyperssh" %}
 
