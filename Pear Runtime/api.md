@@ -61,7 +61,7 @@ The `pear` configuration object as supplied via an applications `package.json` f
 
 **References**
 
-* [Configuration](./configuration.md)
+* [Configuration](../Pear%20Runtime/configuration.md)
 
 ### `pear.config.env <Object>`
 
@@ -97,7 +97,7 @@ The current release length as marked by the `pear release` command.
 
 **References**
 
-* [`pear release`](./cli.md)
+* [`pear release`](../Pear%20Runtime/cli.md)
 
 ### `pear.config.link <String>`
 
@@ -107,8 +107,8 @@ In development, `pear://dev/<data>`.
 
 **References**
 * [pear.config.link](#pearconfiglinkdata-string)
-* [`pear dev`](./cli.md)
-* [`pear launch`](./cli.md)
+* [`pear dev`](../Pear%20Runtime/cli.md)
+* [`pear launch`](../Pear%20Runtime/cli.md)
 
 ### `pear.config.linkData <String>`
 
@@ -121,8 +121,8 @@ In development, `pear://dev/<data>`.
 **References**
 
 * [pear.config.link](#pearconfiglink-string)
-* [`pear dev`](./cli.md)
-* [`pear launch`](./cli.md)
+* [`pear dev`](../Pear%20Runtime/cli.md)
+* [`pear launch`](../Pear%20Runtime/cli.md)
 
 
 ### `pear.config.checkpoint <Any>`
@@ -137,7 +137,7 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 **References**
 
-* [pear.checkpoint()](#pear-checkpoint-any)
+* [pear.checkpoint()](#pearcheckpointany--promise)
 
 ### `pear.config.release <Integer>`
 
@@ -157,7 +157,7 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 **References**
 
-* [pear.config.checkpoint()](#pear--config-checkpoint-any)
+* [pear.config.checkpoint()](#pearconfigcheckpoint-any)
 
 ## pear.messages([ pattern ], [ listener ])
 
@@ -496,11 +496,11 @@ Send arguments to the window. They will be serialized with `JSON.stringify`.
 
 Resolves to: `<String>`
 
-Correlates to the `id` property of objects in the array returned from [pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options).
+Correlates to the `id` property of objects in the array returned from [pear.media.desktopSources](#const-sources--await-pearmediadesktopsourcesoptions-object).
 
 **References**
 
-* [pear.media.desktopSources](#const-sources--await-appmediadesktopsourcesoptions-object)
+* [pear.media.desktopSources](#const-sources--await-pearmediadesktopsourcesoptions-object)
 * https://www.electronjs.org/docs/latest/api/browser-window#wingetmediasourceid
 
 ### `const dimensions = await win.dimensions()`
