@@ -7,19 +7,19 @@ The SecretStream instance is a Duplex stream that supports usability as a normal
 {% embed url="https://github.com/holepunchto/hyperswarm-secret-stream" %}
 
 * [SecretStream](secretstream.md#installation)
-  * [Create a new instance](secretstream.md#const-s-new-secretstream-isinitiator-rawstream-options)
+  * [Create a new instance](secretstream.md#const-s--new-secretstreamisinitiator-rawstream-options)
   * Basic:
     * Properties:
-      * [s.publicKey](secretstream.md#s.publickey)
-      * [s.remotePublicKey](secretstream.md#s.remotepublickey)
-      * [s.handshakeHash](secretstream.md#s.handshakehash)
+      * [s.publicKey](secretstream.md#spublickey)
+      * [s.remotePublicKey](secretstream.md#sremotepublickey)
+      * [s.handshakeHash](secretstream.md#shandshakehash)
     * Methods:
-      * [s.start(rawStream, \[options\])](secretstream.md#s.start-rawstream-options)
-      * [s.setTimeout(ms)](secretstream.md#s.settimeout-ms)
-      * [s.setKeepAlive(ms)](secretstream.md#s.setkeepalive-ms)
-      * [SecretStream.keyPair(\[seed\])](secretstream.md#const-keypair-secretstream.keypair-seed)
+      * [s.start(rawStream, \[options\])](secretstream.md#sstartrawstream-options)
+      * [s.setTimeout(ms)](secretstream.md#ssettimeoutms)
+      * [s.setKeepAlive(ms)](secretstream.md#ssetkeepalivems)
+      * [SecretStream.keyPair(\[seed\])](secretstream.md#const-keypair--secretstreamkeypairseed)
     * Events:
-      * [connect](secretstream.md#s.on-connect-onconnect)
+      * [connect](secretstream.md#sonconnect-onconnecthandler)
 
 ### Installation
 

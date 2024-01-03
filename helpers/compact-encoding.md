@@ -7,9 +7,9 @@ A series of binary encoders/decoders for building small and fast parsers and ser
 * [Compact-Encoding](compact-encoding.md#installation)
   * Methods
     * [state()](compact-encoding.md#state)
-      * [enc.preencode(state, val)](compact-encoding.md#enc.preencode-state-val)
-      * [enc.encode(state, val)](compact-encoding.md#enc.encode-state-val)
-      * [enc.decode(state)](compact-encoding.md#val-enc.decode-state)
+      * [enc.preencode(state, val)](compact-encoding.md#encencodestate-val)
+      * [enc.encode(state, val)](compact-encoding.md#encpreencodestate-val)
+      * [enc.decode(state)](compact-encoding.md#val--encdecodestate)
   * [Helpers](compact-encoding.md#helpers)
   * [Bundled Encodings](compact-encoding.md#bundled-encodings)
 
