@@ -10,36 +10,37 @@ Although Autobase is still under development, it finds application in many activ
 
 {% embed url="https://github.com/holepunchto/autobase" %}
 
-* [Autobase](autobase.md)
-  * [Create a new instance](autobase.md#const-base-new-autobase-options)
-  * Basic:
-    * Properties:
-      * [base.inputs](autobase.md#base.inputs)
-      * [base.outputs](autobase.md#base.outputs)
-      * [base.localInput](autobase.md#base.localinput)
-      * [base.localOutput](autobase.md#base.localoutput)
-    * Methods:
-      * [base.clock()](autobase.md#const-clock-base.clock)
-      * [base.isAutobase(core)](autobase.md#await-base.isautobase-core)
-      * [base.append(value, \[clock\], \[input\])](autobase.md#await-base.append-value-clock-input)
-      * [base.latest(\[input1, input2, ...\])](autobase.md#const-clock-await-base.latest-input1-input2-...)
-      * [base.addInput(input)](autobase.md#await-base.addinput-input)
-      * [base.removeInput(input)](autobase.md#await-base.removeinput-input)
-      * [base.addOutput(output)](autobase.md#await-base.addoutput-output)
-      * [base.removeOutput(output)](autobase.md#await-base.removeoutput-output)
-    * [Streams](autobase.md#streams):
-      * Methods:
-        * [base.createCausalStream()](autobase.md#const-stream-base.createcausalstream)
-        * [base.createReadStream(\[options\])](autobase.md#const-stream-base.createreadstream-options)
-    * [Linearized Views:](autobase.md#linearized-views)
-      * Properties:
-        * [view.status](autobase.md#view.status)
-        * [view.length](autobase.md#view.length)
-      * Methods:
-        * [base.start({ apply, unwrap } = {})](autobase.md#base.start-apply-unwrap)
-        * [view.update()](autobase.md#await-view.update)
-        * [view.get(idx, \[options\])](autobase.md#const-entry-await-view.get-idx-options)
-        * [view.append(\[blocks\])](autobase.md#await-view.append-blocks)
+- [Autobase](autobase.md)
+  - [Create a new instance](autobase.md#const-base-new-autobase-options)
+  - Basic:
+    - Properties:
+      - [base.inputs](autobase.md#baseinputs)
+      - [base.outputs](autobase.md#baseoutputs)
+      - [base.localInput](autobase.md#baselocalinput)
+      - [base.localOutput](autobase.md#baselocaloutput)
+    - Methods:
+      - [base.clock()](autobase.md#const-clock--baseclock)
+      - [base.isAutobase(core)](autobase.md#await-autobaseisautobasecore)
+      - [base.append(value, [clock], [input])](autobase.md#await-baseappendvalue-clock-input)
+      - [base.latest([input1, input2, ...])](autobase.md#const-clock--await-baselatestinput1-input2)
+      - [base.addInput(input)](autobase.md#await-baseaddinputinput)
+      - [base.removeInput(input)](autobase.md#await-baseremoveinputinput)
+      - [base.addOutput(output)](autobase.md#await-baseaddoutputoutput)
+      - [base.removeOutput(output)](autobase.md#await-baseremoveoutputoutput)
+    - Streams:
+      - Methods:
+        - [base.createCausalStream()](autobase.md#const-stream--basecreatecausalstream)
+        - [base.createReadStream([options])](autobase.md#const-stream--basecreatereadstreamoptions)
+    - Linearized Views:
+      - Properties:
+        - [view.status](autobase.md#viewstatus)
+        - [view.length](autobase.md#viewlength)
+      - Methods:
+        - [base.start({ apply, unwrap } = {})](autobase.md#basestart-apply-unwrap)
+        - [view.update()](autobase.md#await-viewupdate)
+        - [view.get(idx, [options])](autobase.md#const-entry--await-viewgetidx-options)
+        - [view.append([blocks])](autobase.md#await-viewappendblocks)
+
 
 ### Installation
 
@@ -83,7 +84,7 @@ The list of output Hypercores containing persisted linearized views.
 
 #### **`base.localInput`**
 
-If non-null, this Hypercore will be appended to in [base.append](autobase.md#await-base.append-value-clock-input) operations.
+If non-null, this Hypercore will be appended to in [base.append](autobase.md#await-baseappendvalue-clock-input) operations.
 
 #### **`base.localOutput`**
 
@@ -123,7 +124,7 @@ Generate a causal clock linking the latest entries of each input.
 
 `latest` will update the input Hypercores (`input.update()`) prior to returning the clock.
 
-You generally will not need to use this, and can instead just use [`append`](autobase.md#await-base.append-value-clock-input) with the default clock:
+You generally will not need to use this, and can instead just use [`append`](autobase.md#await-baseappendvalue-clock-input) with the default clock:
 
 ```javascript
 await base.append('hello world')

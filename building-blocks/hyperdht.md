@@ -9,41 +9,41 @@ In the HyperDHT, peers are identified by a public key, not by an IP address. If 
 {% embed url="https://github.com/holepunchto/hyperdht" %}
 
 * [HyperDHT](hyperdht.md#installation)
-  * [Create a new instance](hyperdht.md#const-node-new-dht-options)
+  * [Create a new instance](hyperdht.md#const-node--new-dhtoptions)
   * Basic:
     * Methods:
-      * [DHT.keyPair(\[seed\])](hyperdht.md#keypair-dht.keypair-seed)
-      * [DHT.bootstrapper(port, host, \[options\])](hyperdht.md#node-dht.bootstrapper-port-host-options)
-      * [node.destroy(\[options\])](hyperdht.md#await-node.destroy-options)
+      * [DHT.keyPair(\[seed\])](hyperdht.md#keypair--dhtkeypairseed)
+      * [DHT.bootstrapper(port, host, \[options\])](hyperdht.md#node--dhtbootstrapperport-host-options)
+      * [node.destroy(\[options\])](hyperdht.md#await-nodedestroyoptions)
     * [Creating P2P servers:](hyperdht.md#creating-p2p-servers)
-      * [node.createServer(\[options\], \[onconnection\])](hyperdht.md#const-server-node.createserver-options-onconnection)
+      * [node.createServer(\[options\], \[onconnection\])](hyperdht.md#const-server--nodecreateserveroptions-onconnection)
       * Methods:
-        * [server.listen(keyPair)](hyperdht.md#await-server.listen-keypair)
-        * [server.refresh()](hyperdht.md#server.refresh)
-        * [server.address()](hyperdht.md#server.address)
-        * [server.close()](hyperdht.md#await-server.close)
+        * [server.listen(keyPair)](hyperdht.md#await-serverlistenkeypair)
+        * [server.refresh()](hyperdht.md#serverrefresh)
+        * [server.address()](hyperdht.md#serveraddress)
+        * [server.close()](hyperdht.md#await-serverclose)
       * Events:
-        * [connection](hyperdht.md#server.on-connection-socket)
-        * [listening](hyperdht.md#server.on-listening)
-        * [close](hyperdht.md#server.on-close)
+        * [connection](hyperdht.md#serveronconnection-socket)
+        * [listening](hyperdht.md#serveronlistening)
+        * [close](hyperdht.md#serveronclose)
     * [Connecting to P2P servers](hyperdht.md#connecting-to-p2p-servers):
-      * [node.connect(remotePublicKey, \[options\])](hyperdht.md#const-socket-node.connect-remotepublickey-options)
+      * [node.connect(remotePublicKey, \[options\])](hyperdht.md#const-socket--nodeconnectremotepublickey-options)
       * Properties:
-        * [socket.remotePublicKey](hyperdht.md#socket.remotepublickey)
-        * [socket.publicKey](hyperdht.md#socket.publickey)
+        * [socket.remotePublicKey](hyperdht.md#socketremotepublickey)
+        * [socket.publicKey](hyperdht.md#socketpublickey)
       * Events:
-        * [open](hyperdht.md#socket.on-open)
+        * [open](hyperdht.md#socketonopen)
     * [Additional Peer Discovery](hyperdht.md#additional-peer-discovery):
       * Methods:
-        * [node.lookup(topic, \[options\])](hyperdht.md#const-stream-node.lookup-topic-options)
-        * [node.announce(topic, keyPair, \[relayAddresses\], \[options\])](hyperdht.md#const-stream-node.announce-topic-keypair-relayaddresses-options)
-        * [node.unannounce(topic, keyPair, \[options\])](hyperdht.md#await-node.unannounce-topic-keypair-options)
-  * [Mutable/immutable records:](hyperdht.md#mutable-immutable-records)
+        * [node.lookup(topic, \[options\])](hyperdht.md#const-stream--nodelookuptopic-options)
+        * [node.announce(topic, keyPair, \[relayAddresses\], \[options\])](hyperdht.md#const-stream--nodeannouncetopic-keypair-relayaddresses-options)
+        * [node.unannounce(topic, keyPair, \[options\])](hyperdht.md#await-nodeunannouncetopic-keypair-options)
+  * [Mutable/immutable records:](hyperdht.md#mutableimmutable-records)
     * Methods:
-      * [node.immutablePut(value, \[options\])](hyperdht.md#const-hash-closestnodes-await-node.immutableput-value-options)
-      * [node.immutableGet(hash, \[options\])](hyperdht.md#const-value-from-await-node.immutableget-hash-options)
-      * [node.mutablePut(keyPair, value, \[options\])](hyperdht.md#const-publickey-closestnodes-seq-signature-await-node.mutableput-keypair-value-options)
-      * [node.mutableGet(publicKey, \[options\])](hyperdht.md#const-value-from-seq-signature-await-node.mutableget-publickey-options)
+      * [node.immutablePut(value, \[options\])](hyperdht.md#const--hash-closestnodes---await-nodeimmutableputvalue-options)
+      * [node.immutableGet(hash, \[options\])](hyperdht.md#const--value-from---await-nodeimmutablegethash-options)
+      * [node.mutablePut(keyPair, value, \[options\])](hyperdht.md#const--publickey-closestnodes-seq-signature---await-nodemutableputkeypair-value-options)
+      * [node.mutableGet(publicKey, \[options\])](hyperdht.md#const--value-from-seq-signature---await-nodemutablegetpublickey-options)
 
 ### Installation
 

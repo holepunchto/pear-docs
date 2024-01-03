@@ -12,35 +12,35 @@ Hyperswarm offers a simple interface to abstract away the complexities of underl
   * [Create a new instance](hyperswarm.md#const-swarm-new-hyperswarm-options)
   * Basic:
     * Properties:
-      * [swarm.connecting](hyperswarm.md#swarm.connecting)
-      * [swarm.connections](hyperswarm.md#swarm.connections)
-      * [swarm.peers](hyperswarm.md#swarm.peers)
-      * [swarm.dht](hyperswarm.md#swarm.dht)
+      * [swarm.connecting](hyperswarm.md#swarmconnecting)
+      * [swarm.connections](hyperswarm.md#swarmconnections)
+      * [swarm.peers](hyperswarm.md#swarmpeers)
+      * [swarm.dht](hyperswarm.md#swarmdht)
     * Methods:
-      * [swarm.join(topic, [options])](hyperswarm.md#const-discovery-swarm.join-topic-options)
+      * [swarm.join(topic, [options])](hyperswarm.md#const-discovery--swarmjointopic-options)
     * Events:
-      * [connection](hyperswarm.md#swarm.on-connection-socket-peerinfo-greater-than)
-      * [update](hyperswarm.md#swarm.on-update-greater-than)
+      * [connection](hyperswarm.md#swarmonconnection-socket-peerinfo)
+      * [update](hyperswarm.md#swarmonupdate)
     * [Clients and Servers:](hyperswarm.md#clients-and-servers)
       * Methods:
-        * [swarm.leave(topic)](hyperswarm.md#await-swarm.leave-topic)
-        * [swarm.joinPeer(noisePublicKey)](hyperswarm.md#swarm.joinpeer-noisepublickey)
-        * [swarm.leavePeer(noisePublicKey)](hyperswarm.md#swarm.leavepeer-noisepublickey)
-        * [swarm.status(topic)](hyperswarm.md#const-discovery-swarm.status-topic)
-        * [swarm.listen()](hyperswarm.md#await-swarm.listen)
-        * [swarm.flush()](hyperswarm.md#await-swarm.flush)
+        * [swarm.leave(topic)](hyperswarm.md#await-swarmleavetopic)
+        * [swarm.joinPeer(noisePublicKey)](hyperswarm.md#swarmjoinpeernoisepublickey)
+        * [swarm.leavePeer(noisePublicKey)](hyperswarm.md#swarmleavepeernoisepublickey)
+        * [swarm.status(topic)](hyperswarm.md#const-discovery--swarmstatustopic)
+        * [swarm.listen()](hyperswarm.md#await-swarmlisten)
+        * [swarm.flush()](hyperswarm.md#await-swarmflush)
     * [Peer info:](hyperswarm.md#peerinfo)
       * Properties:
-        * [peerInfo.publicKey](hyperswarm.md#peerinfo.publickey)
-        * [peerInfo.topics](hyperswarm.md#peerinfo.topics)
-        * [peerInfo.prioritized](hyperswarm.md#peerinfo.prioritized)
+        * [peerInfo.publicKey](hyperswarm.md#peerinfopublickey)
+        * [peerInfo.topics](hyperswarm.md#peerinfotopics)
+        * [peerInfo.prioritized](hyperswarm.md#peerinfoprioritized)
       * Methods:
-        * [peerInfo.ban(banStatus = false)](hyperswarm.md#peerinfo.ban-banstatus-false)
+        * [peerInfo.ban(banStatus = false)](hyperswarm.md#peerinfobanbanstatus--false)
     * [Peer Discovery:](hyperswarm.md#peer-discovery)
       * Methods:
-        * [discovery.flushed()](hyperswarm.md#await-discovery.flushed)
-        * [discovery.refresh({ client, server })](hyperswarm.md#await-discovery.refresh-client-server)
-        * [discovery.destroy()](hyperswarm.md#await-discovery.destroy)
+        * [discovery.flushed()](hyperswarm.md#await-discoveryflushed)
+        * [discovery.refresh({ client, server })](hyperswarm.md#await-discoveryrefresh-client-server)
+        * [discovery.destroy()](hyperswarm.md#await-discoverydestroy)
 
 ### Installation
 
@@ -84,7 +84,7 @@ See the [`PeerInfo`](hyperswarm.md#peerinfo) API for more details.
 
 #### **`swarm.dht`**
 
-A [`HyperDHT`](hyperdht.md) instance. Useful if you want lower-level control over Hyperswarm's networking.
+A [`HyperDHT`](./hyperdht.md) instance. Useful if you want lower-level control over Hyperswarm's networking.
 
 #### Methods
 
@@ -92,7 +92,7 @@ A [`HyperDHT`](hyperdht.md) instance. Useful if you want lower-level control ove
 
 Returns a [`PeerDiscovery`](hyperswarm.md#peer-discovery) object.
 
-Start discovering and connecting to peers sharing a common topic. As new peers are connected, they will be emitted from the swarm as [`connection`](hyperswarm.md#swarm.on-connection-socket-peerinfo-greater-than) events.
+Start discovering and connecting to peers sharing a common topic. As new peers are connected, they will be emitted from the swarm as [`connection`](hyperswarm.md#swarmonconnection-socket-peerinfo) events.
 
 `topic` must be a 32-byte Buffer and use a publicly sharable id, typically a Hypercore `discoveryKey` which we can then link to (join will leak the `topic` to DHT nodes).
 
