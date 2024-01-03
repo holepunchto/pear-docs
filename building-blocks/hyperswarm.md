@@ -1,0 +1,236 @@
+# Hyperswarm
+
+<mark style="background-color:green;">**stable**</mark>
+
+Hyperswarm allows you to find and connect to peers announcing a common 'topic' that can be anything. With Hyperswarm, you can discover and connect peers with a shared interest over a distributed network. For example, we often use Hypercore's discovery key as the swarm topic for discovering peers to replicate with.
+
+Hyperswarm offers a simple interface to abstract away the complexities of underlying modules such as [HyperDHT](hyperdht.md) and [SecretStream](../helpers/secretstream.md). These modules can also be used independently for specialized tasks.
+
+{% embed url="https://github.com/hyperswarm/hyperswarm" %}
+
+* [Hyperswarm](hyperswarm.md#installation)
+  * [Create a new instance](hyperswarm.md#const-swarm-new-hyperswarm-options)
+  * Basic:
+    * Properties:
+      * [swarm.connecting](hyperswarm.md#swarm.connecting)
+      * [swarm.connections](hyperswarm.md#swarm.connections)
+      * [swarm.peers](hyperswarm.md#swarm.peers)
+      * [swarm.dht](hyperswarm.md#swarm.dht)
+    * Methods:
+      * [swarm.join(topic, [options])](hyperswarm.md#const-discovery-swarm.join-topic-options)
+    * Events:
+      * [connection](hyperswarm.md#swarm.on-connection-socket-peerinfo-greater-than)
+      * [update](hyperswarm.md#swarm.on-update-greater-than)
+    * [Clients and Servers:](hyperswarm.md#clients-and-servers)
+      * Methods:
+        * [swarm.leave(topic)](hyperswarm.md#await-swarm.leave-topic)
+        * [swarm.joinPeer(noisePublicKey)](hyperswarm.md#swarm.joinpeer-noisepublickey)
+        * [swarm.leavePeer(noisePublicKey)](hyperswarm.md#swarm.leavepeer-noisepublickey)
+        * [swarm.status(topic)](hyperswarm.md#const-discovery-swarm.status-topic)
+        * [swarm.listen()](hyperswarm.md#await-swarm.listen)
+        * [swarm.flush()](hyperswarm.md#await-swarm.flush)
+    * [Peer info:](hyperswarm.md#peerinfo)
+      * Properties:
+        * [peerInfo.publicKey](hyperswarm.md#peerinfo.publickey)
+        * [peerInfo.topics](hyperswarm.md#peerinfo.topics)
+        * [peerInfo.prioritized](hyperswarm.md#peerinfo.prioritized)
+      * Methods:
+        * [peerInfo.ban(banStatus = false)](hyperswarm.md#peerinfo.ban-banstatus-false)
+    * [Peer Discovery:](hyperswarm.md#peer-discovery)
+      * Methods:
+        * [discovery.flushed()](hyperswarm.md#await-discovery.flushed)
+        * [discovery.refresh({ client, server })](hyperswarm.md#await-discovery.refresh-client-server)
+        * [discovery.destroy()](hyperswarm.md#await-discovery.destroy)
+
+### Installation
+
+Install with [npm](https://www.npmjs.com/):
+
+```bash
+npm install hyperswarm
+```
+
+### API
+
+#### **`const swarm = new Hyperswarm([options])`**
+
+Construct a new Hyperswarm instance.
+
+The following table describes the properties of the optional `options` object.
+
+|    Property    | Description                                                                                                                                     |
+| :------------: | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+|  **`keyPair`** | A Noise keypair will be used to listen/connect on the DHT. Defaults to a new key pair.                                                          |
+|   **`seed`**   | A unique, 32-byte, random seed that can be used to deterministically generate the key pair.                                                     |
+| **`maxPeers`** | The maximum number of peer connections allowed.                                                                                                 |
+| **`firewall`** | A sync function of the form `remotePublicKey => (true\|false)`. If true, the connection will be rejected. Defaults to allowing all connections. |
+|    **`dht`**   | A DHT instance. Defaults to a new instance.                                                                                                     |
+
+#### **Properties:**
+
+#### **`swarm.connecting`**
+
+A number that indicates connections in progress.
+
+#### **`swarm.connections`**
+
+A set of all active client/server connections.
+
+#### **`swarm.peers`**
+
+A Map containing all connected peers, of the form: `(Noise public key hex string) -> PeerInfo object`
+
+See the [`PeerInfo`](hyperswarm.md#peerinfo) API for more details.
+
+#### **`swarm.dht`**
+
+A [`HyperDHT`](hyperdht.md) instance. Useful if you want lower-level control over Hyperswarm's networking.
+
+#### Methods
+
+#### **`const discovery = swarm.join(topic, [options])`**
+
+Returns a [`PeerDiscovery`](hyperswarm.md#peer-discovery) object.
+
+Start discovering and connecting to peers sharing a common topic. As new peers are connected, they will be emitted from the swarm as [`connection`](hyperswarm.md#swarm.on-connection-socket-peerinfo-greater-than) events.
+
+`topic` must be a 32-byte Buffer and use a publicly sharable id, typically a Hypercore `discoveryKey` which we can then link to (join will leak the `topic` to DHT nodes).
+
+`options` can include:
+
+|   Property   | Description                                                                | Type    | Default |
+| :----------: | -------------------------------------------------------------------------- | ------- | ------- |
+| **`server`** | Accept server connections for this topic by announcing yourself to the DHT | Boolean | `true`  |
+| **`client`** | Actively search for and connect to discovered servers                      | Boolean | `true`  |
+
+{% hint style="info" %}
+Calling `swarm.join()` makes this core directly discoverable. To ensure that this core remains discoverable, Hyperswarm handles the periodic refresh of the join. For maximum efficiency, fewer joins should be called; if sharing a single Hypercore that links to other Hypercores, only join a `topic` for the first one.
+{% endhint %}
+
+#### Events
+
+#### **`swarm.on('connection', (socket, peerInfo) => {})`**
+
+Emitted whenever the swarm connects to a new peer.
+
+`socket` is an end-to-end (Noise) encrypted Duplex stream.
+
+`peerInfo` is a [`PeerInfo`](hyperswarm.md#peerinfo) instance.
+
+#### `swarm.on('update', () => {})`
+
+Emitted when internal values are changed, useful for user interfaces.
+
+{% hint style="info" %}
+For instance, the 'update' event is emitted when `swarm.connecting` or `swarm.connections` changes.
+{% endhint %}
+
+### **Clients and Servers**
+
+In Hyperswarm, there are two ways for peers to join the swarm: client mode and server mode. If you've previously used Hyperswarm v2, these were called 'lookup' and 'announce', but we now think 'client' and 'server' are more descriptive.
+
+When you join a topic as a server, the swarm will start accepting incoming connections from clients (peers that have joined the same topic in client mode). Server mode will announce your keypair to the DHT so that other peers can discover your server. When server connections are emitted, they are not associated with a specific topic -- the server only knows it received an incoming connection.
+
+When you join a topic as a client, the swarm will do a query to discover available servers, and will eagerly connect to them. As with server mode, these connections will be emitted as `connection` events, but in client mode, they will be associated with the topic (`info.topics` will be set in the `connection` event).
+
+#### Methods
+
+#### **`await swarm.leave(topic)`**
+
+Stop discovering peers for the given topic.
+
+`topic` must be a 32-byte Buffer
+
+{% hint style="info" %}
+If a topic was previously joined in server mode, `leave` will stop announcing the topic on the DHT.
+
+If a topic was previously joined in client mode, `leave` will stop searching for servers announcing the topic.
+{% endhint %}
+
+`leave` will **not** close any existing connections.
+
+#### **`swarm.joinPeer(noisePublicKey)`**
+
+Establish a direct connection to a known peer.
+
+`noisePublicKey` must be a 32-byte Buffer
+
+As with the standard `join` method, `joinPeer` will ensure that peer connections are reestablished in the event of failures.
+
+#### **`swarm.leavePeer(noisePublicKey)`**
+
+Stop attempting direct connections to a known peer.
+
+`noisePublicKey` must be a 32-byte Buffer
+
+{% hint style="info" %}
+If a direct connection is already established, that connection will **not** be destroyed by `leavePeer`.
+{% endhint %}
+
+#### **`const discovery = swarm.status(topic)`**
+
+Get the `PeerDiscovery` object associated with the topic, if it exists.
+
+#### **`await swarm.listen()`**
+
+Explicitly start listening for incoming connections. This will be called internally after the first `join`, so it rarely needs to be called manually.
+
+#### **`await swarm.flush()`**
+
+Wait for any pending DHT announcements, and for the swarm to connect to any pending peers (peers that have been discovered, but are still in the queue awaiting processing).
+
+Once a `flush()` has completed, the swarm will have connected to every peer it can discover from the current set of topics it's managing.
+
+{% hint style="info" %}
+`flush()` is not topic-specific, so it will wait for every pending DHT operation and connection to be processed -- it's quite heavyweight, so it could take a while. In most cases, it's not necessary, as connections are emitted by `swarm.on('connection')` immediately after they're opened.
+{% endhint %}
+
+### PeerInfo
+
+`swarm.on('connection', ...)` emits a `PeerInfo` instance whenever a new connection is established.
+
+There is a one-to-one relationship between connections and `PeerInfo` objects -- if a single peer announces multiple topics, those topics will be multiplexed over a single connection.
+
+#### **Properties:**
+
+#### **`peerInfo.publicKey`**
+
+The peer's Noise public key.
+
+#### **`peerInfo.topics`**
+
+An Array of topics that this Peer is associated with -- `topics` will only be updated when the Peer is in client mode.
+
+#### **`peerInfo.prioritized`**
+
+If true, the swarm will rapidly attempt to reconnect to this peer.
+
+#### **Methods:**
+
+#### **`peerInfo.ban(banStatus = false)`**
+
+Ban or unban the peer. Banning will prevent any future reconnection attempts, but it will **not** close any existing connections.
+
+### Peer Discovery
+
+`swarm.join` returns a `PeerDiscovery` instance which allows you to both control discovery behavior, and respond to lifecycle changes during discovery.
+
+#### Methods
+
+#### **`await discovery.flushed()`**
+
+Wait until the topic has been fully announced to the DHT. This method is only relevant in server mode. When `flushed()` has completed, the server will be available to the network.
+
+#### **`await discovery.refresh({ client, server })`**
+
+Update the `PeerDiscovery` configuration, optionally toggling client and server modes. This will also trigger an immediate re-announce of the topic when the `PeerDiscovery` is in server mode.
+
+#### **`await discovery.destroy()`**
+
+Stop discovering peers for the given topic.
+
+{% hint style="info" %}
+If a topic was previously joined in server mode, `leave` will stop announcing the topic on the DHT.
+
+If a topic was previously joined in client mode, `leave` will stop searching for servers announcing the topic.
+{% endhint %}
