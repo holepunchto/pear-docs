@@ -74,6 +74,6 @@ Welcome to the Internet of Peers
 
 ### Reference
 
-* [Command-Line-Interface (CLI)](./reference/cli.md)
-* [Application-Programming-Interface (API)](./reference/api.md)
-* [Application Configuration](./reference/configuration.md)
+* [Command-Line-Interface (CLI)](./Pear%20Runtime/cli.md)
+* [Application-Programming-Interface (API)](./Pear%20Runtime/api.md)
+* [Application Configuration](./Pear%20Runtime/configuration.md)
