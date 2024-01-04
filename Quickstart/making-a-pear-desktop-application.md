@@ -1,4 +1,10 @@
-# Getting Started with Pear
+# Building a Desktop Application with Pear
+
+This tutorial will show how to create a basic chat app with Pear along with how to use some of the main building blocks.
+
+In this app users will be able to create chat rooms, connect to each other, and send messages.
+
+# Installing Pear
 
 ## Requirements
 
@@ -47,11 +53,7 @@ Pear loads applications from peers, so this command should launch [Keet](https:/
 Now that we're all setup time to build an application with Pear!
 
 
-# Building a Desktop Application with Pear
-
-This tutorial will show how to create a basic chat app with Pear along with how to use some of the main building blocks.
-
-In this first part of the app, users will be able to create chat rooms, connect to each other, and send messages.
+# Creating the project setup
 
 ## Step 1. Init
 
@@ -215,7 +217,7 @@ After running with `pear dev` it should look like this:
 
 ## Next
 
-Now that there's some basic UI for a chat app, let's take a look at making a Pear App.
+Now that we've created some basic UI for a chat app, let's integrate it with Pear to make it functional.
 
 # Making a Pear App
 
@@ -354,75 +356,9 @@ In the code it says `swarm.join(topicBuffer, { client: true, server: true })`. H
 When the chat app was started there wasn't one of them that acting as a server, and another as a client. Instead they join/leave topics. This is an important point, because it means that even if the peer that created a chat room leaves, then it doesn't stop working.
 
 ## Next
-
-Everything is starting to look good, and now that there's a running app, it's time to learn how we share it with others.
-
-# Sharing a Pear Application
-
-Before releasing a Pear app to the public, it's possible to share it with others.
-
-With Pear there are one single "release" (or "production") version of an app, and then many other named versions. Think of it, the same way that `git` use branches. Code is put into channels. This way others can test it, and when everything is ready, that branch is pulled into the release channel.
-
-To share apps, stage them using `pear stage some-name`. This builds a new version of the app and puts them into the `some-name` channel.
+We've built the app and got it running, awesome! \
+Now it's time to learn how to [share it with others](../guides/publishing-and-sharing-your-pear-app.md).
 
 
-## Step 1. Stage
 
-Before sharing the app, first stage it into a channel called `example` (the name can be anything)
-
-```
-$ pear stage example
-```
-
-## Step 2. Seed
-
-After the app has been staged into the `example` channel, it now needs to be seeded. This is a way to signal that the app is now shared, so others can download and run it.
-
-```$ pear seed example
-
-🍐 Seeding: chat [ example ]
-   ctrl^c to stop & exit
-
--o-:-
-    pear:nykmkrpwgadcd8m9x5khhh43j9izj123eguzqg3ygta7yn1s379o
-...
-^_^ announced
-```
-
-For now, keep this terminal open. As long as this process is running, your computer will help seed the application.
-
-## Step 3. Launch
-
-Because the app is now being seeded, it's possible for others with the key (`pear:nykm...`) to launch it.
-
-In another terminal (or on another computer), run:
-
-```
-$ pear launch pear:nykmkrpwgadcd8m9x5khhh43j9izj123eguzqg3ygta7yn1s379o
-```
-
-![Launching the app with pear launch](../assets/chat-app-6.png)
-
-This will download and open the app.
-
-Note: Anyone running the app also help to seed it. So if the app had a lot of users, the original seeder could close down the process.
-
-## Next
-
-The app is shared and others can now run it on their machines. 
-The next section contains an overview of what a production-ready setup would like with Pear.
-
-# Releasing a Pear Application
-
-As covered in Sharing a Pear Application, Pear use release channels in a similar way that git use branches. When the app has been tested, and it's ready to release it, it's really simple.
-
-## Release
-
-Assume that the app was staged into `example`, then releasing it is simply:
-
-```
-$ pear release example
-```
-
-This moves the example channel to the released version. The seeders who are already seeding that channel, will still be seeding.
 

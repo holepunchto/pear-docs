@@ -1,7 +1,7 @@
 # Table of contents
 
 * [Overview](README.md)
-* [Quick start](./Quickstart/getting-started.md)
+* [Quick start](./Quickstart/making-a-pear-desktop-application.md)
 * [Changelog](./changelog.md)
 
 ## Platform
@@ -25,8 +25,10 @@
 
 ### Guides
 
-* [A primer on Holepunch's Modular building blocks](./guides/A%20primer%20on%20Holepunch's%20modular%20building%20blocks.md)
+* [Publishing and sharing your Pear Application](./guides/publishing-and-sharing-your-pear-app.md)
+* [Playing with the building blocks](./guides/playing-with-the-building-blocks.md)
 * [Personal Keet p2p chat Relay](./guides/personal-keet-p2p-chat-relay.md)
+* [Making a Pear Terminal Application](./guides/making-a-pear-terminal-app.md)
 
 ### Helpers 
 
