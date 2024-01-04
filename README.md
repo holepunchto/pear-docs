@@ -14,14 +14,7 @@ Welcome to the Internet of Peers
 ## Table of Content
 
 ### Quickstart
-
-* [Getting Started](./Quickstart/getting-started.md)
-* [Starting a Pear Desktop Project](./Quickstart/starting-a-pear-desktop-project.md)
-* [Making a Pear Desktop Application](./Quickstart/making-a-pear-desktop-app.md)
-* [Starting a Pear Terminal Project](./Quickstart/starting-a-pear-terminal-project.md)
-* [Making a Pear Terminal Application](./Quickstart/making-a-pear-terminal-app.md)
-* [Sharing a Pear Application](./Quickstart/sharing-a-pear-app.md)
-* [Releasing a Pear Application](./Quickstart/releasing-a-pear-app.md)
+* [Making a Pear Desktop Application](./Quickstart/making-a-pear-desktop-application.md)
 
 ### <span style="color:black;">[Changelog](./changelog.md)</span>
 
