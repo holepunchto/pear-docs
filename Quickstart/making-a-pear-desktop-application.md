@@ -4,9 +4,13 @@ This tutorial will show how to create a basic chat app with Pear along with how 
 
 In this app users will be able to create chat rooms, connect to each other, and send messages.
 
-# Installing Pear
+* [Setup](./making-a-pear-desktop-application.md#setup)
+* [Creating a Project](./making-a-pear-desktop-application.md#creating-the-project-setup)
+* [Making a peer desktop app](./making-a-pear-desktop-application.md#making-a-pear-app)
 
-## Requirements
+
+## Installing Pear
+### Requirements
 
 Pear runs on Windows, Mac and Linux.
 
@@ -48,8 +52,6 @@ pear launch keet
 
 Pear loads applications from peers, so this command should launch [Keet](https://keet.io) whether or not it was downloaded and installed beforehand.
 
-
-## Next
 Now that we're all setup time to build an application with Pear!
 
 
@@ -215,7 +217,6 @@ After running with `pear dev` it should look like this:
 ![Layout of the app](../assets/chat-app-3.png)
 
 
-## Next
 
 Now that we've created some basic UI for a chat app, let's integrate it with Pear to make it functional.
 
@@ -355,7 +356,6 @@ In the code it says `swarm.join(topicBuffer, { client: true, server: true })`. H
 
 When the chat app was started there wasn't one of them that acting as a server, and another as a client. Instead they join/leave topics. This is an important point, because it means that even if the peer that created a chat room leaves, then it doesn't stop working.
 
-## Next
 We've built the app and got it running, awesome! \
 Now it's time to learn how to [share it with others](../guides/publishing-and-sharing-your-pear-app.md).
 
