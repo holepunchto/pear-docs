@@ -1,57 +1,54 @@
 # Table of contents
 
 * [Overview](README.md)
-* [Quick start](./Quickstart/making-a-pear-desktop-application.md)
-* [Changelog](./changelog.md)
+* [Quick start](Quickstart/making-a-pear-desktop-application.md)
+* [Changelog](changelog.md)
 
-### Pear Runtime
+## Pear Runtime
 
-* [API](./Pear%20Runtime/api.md)
-* [CLI](./Pear%20Runtime/cli.md)
-* [Configuration](./Pear%20Runtime/configuration.md)
+* [API](<Pear Runtime/api.md>)
+* [CLI](<Pear Runtime/cli.md>)
+* [Configuration](<Pear Runtime/configuration.md>)
 
-### Building blocks
+## Building blocks
 
-* [Hypercore](./building-blocks/hypercore.md)
-* [Hyperbee](./building-blocks/hyperbee.md)
-* [Hyperdrive](./building-blocks/hyperdrive.md)
-* [Autobase](./building-blocks/autobase.md)
-* [Hyperdht](./building-blocks/hyperdht.md)
-* [Hyperswarm](./building-blocks/hyperswarm.md)
+* [Hypercore](building-blocks/hypercore.md)
+* [Hyperbee](building-blocks/hyperbee.md)
+* [Hyperdrive](building-blocks/hyperdrive.md)
+* [Autobase](building-blocks/autobase.md)
+* [Hyperdht](building-blocks/hyperdht.md)
+* [Hyperswarm](building-blocks/hyperswarm.md)
 
+## Guides
 
-### Guides
+* [Publishing and sharing your Pear Application](guides/publishing-and-sharing-your-pear-app.md)
+* [Playing with the building blocks](guides/playing-with-the-building-blocks.md)
+* [Personal Keet p2p chat Relay](guides/personal-keet-p2p-chat-relay.md)
+* [Making a Pear Terminal Application](guides/making-a-pear-terminal-app.md)
 
-* [Publishing and sharing your Pear Application](./guides/publishing-and-sharing-your-pear-app.md)
-* [Playing with the building blocks](./guides/playing-with-the-building-blocks.md)
-* [Personal Keet p2p chat Relay](./guides/personal-keet-p2p-chat-relay.md)
-* [Making a Pear Terminal Application](./guides/making-a-pear-terminal-app.md)
+## Helpers
 
-### Helpers 
+* [Corestore](helpers/corestore.md)
+* [Localdrive](helpers/localdrive.md)
+* [Mirrordrive](helpers/mirrordrive.md)
+* [Secretstream](helpers/secretstream.md)
+* [Compact encoding](helpers/compact-encoding.md)
+* [Protomux](helpers/protomux.md)
 
-* [Corestore](./helpers/corestore.md)
-* [Localdrive](./helpers/localdrive.md)
-* [Mirrordrive](./helpers/mirrordrive.md)
-* [Secretstream](./helpers/secretstream.md)
-* [Compact encoding](./helpers/compact-encoding.md)
-* [Protomux](./helpers/protomux.md)
+## Tools
 
-### Tools
+* [Hypershell](tools/hypershell.md)
+* [Hypertele](tools/hypertele.md)
+* [Hyperbeam](tools/hyperbeam.md)
+* [Hyperssh](tools/hyperssh.md)
+* [Drives](tools/drives.md)
 
-* [Hypershell](./tools/hypershell.md)
-* [Hypertele](./tools/hypertele.md)
-* [Hyperbeam](./tools/hyperbeam.md)
-* [Hyperssh](./tools/hyperssh.md)
-* [Drives](./tools/drives.md)
+## Apps
 
-### Apps
+* [Keet.io](apps/keet.io.md)
 
-* [Keet.io](./apps/keet.io.md)
+## Reference
 
-### [Terminology](./terminology.md) 
-
-### Reference
-
-* [Command-Line-Interface (CLI)](./Pear%20Runtime/cli.md)
-* [Application-Programming-Interface (API)](./Pear%20Runtime/api.md)
-* [Application Configuration](./Pear%20Runtime/configuration.md)
+*
+*
+*
