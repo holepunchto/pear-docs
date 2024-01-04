@@ -4,9 +4,6 @@
 * [Quick start](./Quickstart/getting-started.md)
 * [Changelog](./changelog.md)
 
-## Platform
-* [Command line](./01-command-line.md)
-
 ### Pear Runtime
 
 * [API](./Pear%20Runtime/api.md)
