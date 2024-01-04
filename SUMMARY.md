@@ -4,9 +4,6 @@
 * [Quick start](./Quickstart/making-a-pear-desktop-application.md)
 * [Changelog](./changelog.md)
 
-## Platform
-* [Command line](./01-command-line.md)
-
 ### Pear Runtime
 
 * [API](./Pear%20Runtime/api.md)
