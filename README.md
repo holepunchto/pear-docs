@@ -23,9 +23,7 @@ Welcome to the Internet of Peers
 * [Sharing a Pear Application](./Quickstart/sharing-a-pear-app.md)
 * [Releasing a Pear Application](./Quickstart/releasing-a-pear-app.md)
 
-### Changelog
-
-* [Changelog for Holepunch](./Changelog/changelog.md)
+### <span style="color:black;">[Changelog](./changelog.md)</span>
 
 ### Pear Runtime
 
@@ -35,12 +33,13 @@ Welcome to the Internet of Peers
 
 ### Building blocks
 
-* [Autobase](./building-blocks/autobase.md)
-* [Hyperdht](./building-blocks/hyperdht.md)
-* [Hyperswarm](./building-blocks/hyperswarm.md)
 * [Hypercore](./building-blocks/hypercore.md)
 * [Hyperbee](./building-blocks/hyperbee.md)
 * [Hyperdrive](./building-blocks/hyperdrive.md)
+* [Autobase](./building-blocks/autobase.md)
+* [Hyperdht](./building-blocks/hyperdht.md)
+* [Hyperswarm](./building-blocks/hyperswarm.md)
+
 
 ### Guides
 
@@ -62,15 +61,13 @@ Welcome to the Internet of Peers
 * [Hypertele](./tools/hypertele.md)
 * [Hyperbeam](./tools/hyperbeam.md)
 * [Hyperssh](./tools/hyperssh.md)
-* [drives](./tools/drives.md)
+* [Drives](./tools/drives.md)
 
 ### Apps
 
 * [Keet.io](./apps/keet.io.md)
 
-### Terminology 
-
-* [Terminology](./terminology.md)
+### [Terminology](./terminology.md) 
 
 ### Reference
 
