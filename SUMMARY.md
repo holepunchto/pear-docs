@@ -52,6 +52,6 @@
 
 ### Reference
 
-* [Command-Line-Interface (CLI)](./Pear%20Runtime/cli.md)
-* [Application-Programming-Interface (API)](./Pear%20Runtime/api.md)
-* [Application Configuration](./Pear%20Runtime/configuration.md)
+* [CLI](./Pear%20Runtime/cli.md)
+* [API](./Pear%20Runtime/api.md)
+* [Configuration](./Pear%20Runtime/configuration.md)
