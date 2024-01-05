@@ -56,5 +56,5 @@
 
 * [Keet.io](apps/keet.io.md)
 
-## [Terminology](./terminology.md) 
+## [Terminology](terminology.md) 
 
