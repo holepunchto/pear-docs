@@ -6,9 +6,9 @@
 
 ## Pear
 
-* [CLI](./pear/cli.md)
-* [API](./pear/api.md)
-* [Config](./pear/config.md)
+* [Command Line Interface (CLI)](./pear/cli.md)
+* [Application Programming Interface (API)](./pear/api.md)
+* [Configuration](./pear/config.md)
 
 ## Building blocks
 
