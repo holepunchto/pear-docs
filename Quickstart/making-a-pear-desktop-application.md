@@ -1,12 +1,12 @@
 # Building a Desktop Application with Pear
 
-This tutorial will show how to create a basic chat app with Pear along with how to use some of the main building blocks.
+This tutorial will show how to create a basic chat app with Pear using the building blocks from Holepunch
 
 In this app users will be able to create chat rooms, connect to each other, and send messages.
 
 * [Setup](./making-a-pear-desktop-application.md#setup)
-* [Creating a Project](./making-a-pear-desktop-application.md#creating-the-project-setup)
-* [Making a peer desktop app](./making-a-pear-desktop-application.md#making-a-pear-app)
+* [Creating a Project](./making-a-pear-desktop-application.md#creating-a-project)
+* [Making a Pear desktop app](./making-a-pear-desktop-application.md#making-a-pear-app)
 
 
 ## Installing Pear
@@ -55,7 +55,7 @@ Pear loads applications from peers, so this command should launch [Keet](https:/
 Now that we're all setup time to build an application with Pear!
 
 
-# Creating the project setup
+# Creating a project
 
 ## Step 1. Init
 
@@ -356,6 +356,7 @@ In the code it says `swarm.join(topicBuffer, { client: true, server: true })`. H
 
 When the chat app was started there wasn't one of them that acting as a server, and another as a client. Instead they join/leave topics. This is an important point, because it means that even if the peer that created a chat room leaves, then it doesn't stop working.
 
+### Next
 We've built the app and got it running, awesome! \
 Now it's time to learn how to [share it with others](../guides/publishing-and-sharing-your-pear-app.md).
 

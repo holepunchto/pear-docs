@@ -1,6 +1,6 @@
-# Starting a Pear Terminal Project
+# Creating the project setup
 
-## Step 1. Init
+### Step 1. Init
 
 First create a new project using `pear init`.
 
@@ -16,10 +16,10 @@ This will create a base structure for the project.
 - `index.js`. The entrpoint for the app.
 - `app.js`. The main code.
 - `test/index.test.js`. Skeleton for writing tests.
+----
+## Making a Pear Terminal Application
 
-# Making a Pear Terminal Application
-
-## Step 1. Install modules
+### Step 1. Install modules
 
 This app uses these modules: `hyperswarm`, `hypercore-crypto`, and `b4a`.
 
@@ -33,5 +33,5 @@ $ npm i hyperswarm hypercore-crypto b4a
 - [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto). A set of crypto function used in Pear.
 - [b4a](https://www.npmjs.com/package/b4a). A set of functions for bridging the gap between the Node.js `Buffer` class and the `Uint8Array` class.
 
-## Step 2. 
+### Step 2. 
 TBD
