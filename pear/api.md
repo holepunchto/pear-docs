@@ -1,4 +1,4 @@
-# Application Programming Interface (API)
+## Application Programming Interface (API)
 
 The Pear API enables applications to interact with Pear platform features.
 
@@ -7,7 +7,7 @@ Most application peer-to-peer functionality is provided by ecosystem modules rat
 Platform APIs are unchangable. Compatiblity cannot break. So the Pear API surface aims to be (and remain)
 as small as possible.
 
-## `import pear from 'pear'`
+### `import pear from 'pear'`
 
 To use the Pear Platform API: import `pear`.
 
@@ -21,85 +21,85 @@ Import namespaces are also supported, for example:
 import { config } from 'pear'
 ```
 
-## `pear.config <Object>`
+### `pear.config <Object>`
 
 Contains application configuration data.
 
-### `pear.config.key <Object|null>`
+#### `pear.config.key <Object|null>`
 
 The application key, `null` in development mode.
 The `config.key` object holds both Hexadecimal and Z-Base-32 encodings of the key, and is of the form `{ z32: <String>, hex: <String> }`,
 
-### `pear.config.dev <Boolean>`
+#### `pear.config.dev <Boolean>`
 
 Whether application is in development mode
 
-### `pear.config.tier <String>`
+#### `pear.config.tier <String>`
 
 Runtime scenario (dev, staging or production)
 
-### `pear.config.storage <String>`
+#### `pear.config.storage <String>`
 
 Application storage path
 
-### `pear.config.name <String>`
+#### `pear.config.name <String>`
 
 Application name
 
-### `pear.config.main <String>`
+#### `pear.config.main <String>`
 
 Application entry file
 
-### `pear.config.channel <String|null>`
+#### `pear.config.channel <String|null>`
 
 Application release/staging channel, `null` in development mode.
 
-### `pear.config.options <Object>`
+#### `pear.config.options <Object>`
 
 Configuration options.
 The `pear` configuration object as supplied via an applications `package.json` file.
 
 **References**
 
-* [Configuration](./configuration.md)
+* [Configuration](../Pear%20Runtime/configuration.md)
 
-### `pear.config.env <Object>`
+#### `pear.config.env <Object>`
 
 The environment variables that an application was started with, as key-value pairs in an object.
 
-### `pear.config.cwd <String>`
+#### `pear.config.cwd <String>`
 
 The current working directory that an application was started from.
 
-### `pear.config.flags <Object>`
+#### `pear.config.flags <Object>`
 
 Parsed command-line flag values as supplied when an application was started.
 
-### `pear.config.tools <Boolean>`
+#### `pear.config.tools <Boolean>`
 
 Indicates whether or not Devtools is enabled.
 
-### `pear.config.watch <Boolean>`
+#### `pear.config.watch <Boolean>`
 
 Indicates whether or not Watch-Reload functionality is enabled.
 
-### `pear.config.storage <String>`
+#### `pear.config.storage <String>`
 
 Application storage path.
 
-### `pear.config.args <Array>`
+#### `pear.config.args <Array>`
 
 Command-line application arguments passed after double dash `--`.
 
-### `pear.config.release <Number>`
+#### `pear.config.release <Number>`
 
 The current release length as marked by the `pear release` command.
 
 **References**
 
-* [`pear release`](./cli.md)
+* [`pear release`](../Pear%20Runtime/cli.md)
 
-### `pear.config.link <String>`
+#### `pear.config.link <String>`
 
 The Pear link of an application. Takes the form `pear://<key>/<data>`.
 
@@ -107,10 +107,10 @@ In development, `pear://dev/<data>`.
 
 **References**
 * [pear.config.link](#pearconfiglinkdata-string)
-* [`pear dev`](./cli.md)
-* [`pear launch`](./cli.md)
+* [`pear dev`](../Pear%20Runtime/cli.md)
+* [`pear launch`](../Pear%20Runtime/cli.md)
 
-### `pear.config.linkData <String>`
+#### `pear.config.linkData <String>`
 
 Holds just the data portion of a Pear link.
 
@@ -121,11 +121,11 @@ In development, `pear://dev/<data>`.
 **References**
 
 * [pear.config.link](#pearconfiglink-string)
-* [`pear dev`](./cli.md)
-* [`pear launch`](./cli.md)
+* [`pear dev`](../Pear%20Runtime/cli.md)
+* [`pear launch`](../Pear%20Runtime/cli.md)
 
 
-### `pear.config.checkpoint <Any>`
+#### `pear.config.checkpoint <Any>`
 
 Holds state as set by `pear.checkpoint()`. When an application restarts it will hold the most recent value passed to `pear.checkpoint()`.
 
@@ -137,17 +137,17 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 **References**
 
-* [pear.checkpoint()](#pear-checkpoint-any)
+* [pear.checkpoint()](#pearcheckpointany--promise)
 
-### `pear.config.release <Integer>`
+#### `pear.config.release <Integer>`
 
 Application release sequence integer, `null` in development mode.
 
-### `pear.config.flags <Object>`
+#### `pear.config.flags <Object>`
 
 Parsed runtime flags. For internal/advanced use.
 
-## `pear.checkpoint(<Any>) => Promise`
+### `pear.checkpoint(<Any>) => Promise`
 
 Stores state that will be available as `pear.config.checkpoint` next time the application starts.
 
@@ -157,9 +157,9 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 **References**
 
-* [pear.config.checkpoint()](#pear--config-checkpoint-any)
+* [pear.config.checkpoint()](#pearconfigcheckpoint-any)
 
-## pear.messages([ pattern ], [ listener ])
+### `pear.messages([ pattern ], [ listener ])`
 
 A function which accepts a pattern object and returns an [`Iambus`](https://github.com/holepunchto/iambus) subscriber (which inherits from [`streamx`](https://github.com/mafintosh/streamx) `Readable`) which emits message objects matching a provided pattern object.
 
@@ -169,7 +169,7 @@ The subscriber stream has a `data` event which can be listened to, it can also b
 
 A message object may have any properties. Platform-generated messages are given a `type` property.
 
-### Examples:
+#### Examples:
 
 Listen for an internal platform message using a pattern object and listener function:
 
@@ -206,7 +206,7 @@ onUserClickCta((event, data) => {
 })
 ```
 
-## `await pear.message(<Object>)`
+### `await pear.message(<Object>)`
 
 Send a message which will be:
 
@@ -226,29 +226,29 @@ do {
 } while (count++ < 1000)
 ```
 
-## `pear.preferences <Function|Object>`
+### `pear.preferences <Function|Object>`
 
 User preferences management.
 
-### `for await (const [operation, key, value] of pear.preferences())`
+#### `for await (const [operation, key, value] of pear.preferences())`
 
 An async iterable that yields arrays containing `operation <String>`, `key <String>` and `value <any>`.
 
 Watch for application updates. The `operation` may be `set` or `del`. In the case of `del`, `value` is always `null`.
 
-### `for await (const [key, value] of pear.preferences.list())`
+#### `for await (const [key, value] of pear.preferences.list())`
 
 Iterate through all available application preferences.
 
-### `const success = await pear.preferences.set(key, value)`
+#### `const success = await pear.preferences.set(key, value)`
 
 Set a preference. The promise resolves to a boolean indicating success when the operation is complete.
 
-### `const value = await pear.preferences.get(key)`
+#### `const value = await pear.preferences.get(key)`
 
 Get a preference. The promise resolves with the value.
 
-### `const success = await pear.preferences.del(key)`
+#### `const success = await pear.preferences.del(key)`
 
 Delete a preference. The promise resolves to a boolean indicating success when the operation is complete.
 
@@ -263,11 +263,11 @@ async function logPrefUpdates () {
 logPrefUpdates().catch(console.error)
 ```
 
-## `pear.media <Object>`
+### `pear.media <Object>`
 
 Media interface
 
-### `const status = await pear.media.status.microphone()`
+#### `const status = await pear.media.status.microphone()`
 
 Resolves to: `<String>`.
 
@@ -275,7 +275,7 @@ If access to the microphone is available, resolved value will be `'granted'`.
 
 Any other string indicates lack of permission. Possible values are `'granted'`, `'not-determined'`, `'denied'`, `'restricted'`, `'unknown'`.
 
-### `const status = await pear.media.status.camera()`
+#### `const status = await pear.media.status.camera()`
 
 Resolves to: `<String>`.
 
@@ -283,7 +283,7 @@ If access to the camera is available, resolved value will be `'granted'`.
 
 Any other string indicates lack of permission. Possible values are `'granted'`, `'not-determined'`, `'denied'`, `'restricted'`, `'unknown'`.
 
-### `const status = await pear.media.status.screen()`
+#### `const status = await pear.media.status.screen()`
 
 Resolves to: `<String>`
 
@@ -291,25 +291,25 @@ If access to the screen is available, resolved value will be `'granted'`.
 
 Any other string indicates lack of permission. Possible values are `'granted'`, `'not-determined'`, `'denied'`, `'restricted'`, `'unknown'`.
 
-### `const success = await pear.media.access.microphone()`
+#### `const success = await pear.media.access.microphone()`
 
 Resolves to: `<Boolean>`
 
 Request access to the microphone. Resolves to `true` if permission is granted.
 
-### `const success = await pear.media.access.camera()`
+#### `const success = await pear.media.access.camera()`
 
 Resolves to: `<Boolean>`
 
 Request access to the camera. Resolves to `true` if permission is granted.
 
-### `const success = await pear.media.access.screen()`
+#### `const success = await pear.media.access.screen()`
 
 Resolves to: `<Boolean>`
 
 Request access to screen sharing. Resolves to `true` if permission is granted.
 
-### `const sources = await pear.media.desktopSources(options <Object>)`
+#### `const sources = await pear.media.desktopSources(options <Object>)`
 
 Captures available desktop sources. Resolves to an array of objects with shape `{ id <String>, name <String>, thumbnail <NativeImage>, display_id <String>, appIcon <NativeImage> }`. The `id` is the window or screen identifier. The `name` is the window title or `'Screen <index>'` in multiscreen scenarios or else `Entire Screen`. The `display_id` identifies the screen. The thumbnail is a scaled down screen capture of the window/screen.
 
@@ -337,11 +337,11 @@ The `key` is a Buffer of the launch key. The `length` is the size of the relevan
 
 These three properties together are a unique identifier for the entire state of both applications and the Pear platform.
 
-### `pear.versions.platform { fork <Integer>, length <Integer>, key <Buffer> }`
+#### `pear.versions.platform { fork <Integer>, length <Integer>, key <Buffer> }`
 
 The platform version.
 
-### `pear.versions.application { fork <Integer>, length <Integer>, key <Buffer> }`
+#### `pear.versions.application { fork <Integer>, length <Integer>, key <Buffer> }`
 
 The application version.
 
@@ -364,7 +364,7 @@ will be waited upon until resolution before calling the next teardown handler.
 
 Restart the application.
 
-### `const win = new pear.Window(entry <String>, options <Object>)`
+#### `const win = new pear.Window(entry <String>, options <Object>)`
 
 Create a new `Window` instance.
 
@@ -396,16 +396,16 @@ Create a new `Window` instance.
 * `transparent <Boolean>` - Set window transparency
 * `backgroundColor <String>` Default: `'#FFF'` - window default background color. Hex, RGB, RGBA, HSL HSLA, CSS color
 
-### `win.on[ce]('message', (...args) => { })`
-### `for await (const [ ...args ] of win)`
+#### `win.on[ce]('message', (...args) => { })`
+#### `for await (const [ ...args ] of win)`
 
 Receive a message from the window. The received `args` array is deserialized via `JSON.parse`.
 
 **References**
 
-### [`win.send()`](#await-winsendargs)
+#### [`win.send()`](#await-winsendargs)
 
-### `const success = await win.open(options <Object>)`
+#### `const success = await win.open(options <Object>)`
 
 Resolves to: `<Boolean>`
 
@@ -439,31 +439,31 @@ Open the window.
 * `transparent <Boolean>` - Set window transparency
 * `backgroundColor <String>` Default: `'#FFF'` - window default background color. Hex, RGB, RGBA, HSL HSLA, CSS color
 
-### `const success = await win.close()`
+#### `const success = await win.close()`
 
 Resolves to: `<Boolean>`
 
 Close the window.
 
-### `const success = await win.show()`
+#### `const success = await win.show()`
 
 Resolves to: `<Boolean>`
 
 Show the window.
 
-### `const success = await win.hide()`
+#### `const success = await win.hide()`
 
 Resolves to: `<Boolean>`
 
 Hide the window.
 
-### `const success = await win.focus()`
+#### `const success = await win.focus()`
 
 Resolves to: `<Boolean>`
 
 Focus the window.
 
-### `const success = await win.blur()`
+#### `const success = await win.blur()`
 
 Resolves to: `<Boolean>`
 
@@ -475,35 +475,35 @@ Resolves to: `<Boolean>`
 
 Minimize the window.
 
-### `const success = await win.maximize()`
+#### `const success = await win.maximize()`
 
 Resolves to: `<Boolean>`
 
 Maximize the window.
 
-### `const success = await win.restore()`
+#### `const success = await win.restore()`
 
 Resolves to: `<Boolean>`
 
 Unmaximize/unminimize the window if it is currently maximized/minimized.
 
-### `await win.send(...args)`
+#### `await win.send(...args)`
 
 Send arguments to the window. They will be serialized with `JSON.stringify`.
 
 
-### `const sourceId = await win.getMediaSourceId()`
+#### `const sourceId = await win.getMediaSourceId()`
 
 Resolves to: `<String>`
 
-Correlates to the `id` property of objects in the array returned from [pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options).
+Correlates to the `id` property of objects in the array returned from [pear.media.desktopSources](#const-sources--await-pearmediadesktopsourcesoptions-object).
 
 **References**
 
-* [pear.media.desktopSources](#const-sources--await-appmediadesktopsourcesoptions-object)
+* [pear.media.desktopSources](#const-sources--await-pearmediadesktopsourcesoptions-object)
 * https://www.electronjs.org/docs/latest/api/browser-window#wingetmediasourceid
 
-### `const dimensions = await win.dimensions()`
+#### `const dimensions = await win.dimensions()`
 
 Resolves to: `{x <Integer>, y <Integer>, width <Integer>, height <Integer>} | null`.
 
@@ -517,7 +517,7 @@ If the window is closed this will resolve to `null`.
 
 * [await win.dimensions(options)](#await-windimensionsoptions-object)
 
-### `await win.dimensions(options <Object>)`
+#### `await win.dimensions(options <Object>)`
 
 ```js
 import { Window } from 'pear'
@@ -557,37 +557,37 @@ Sets the dimensions of the window.
 * [const dimensions = await win.dimensions()](#const-dimensions-await-windimensions)
 
 
-### `const visible = await win.isVisible()`
+#### `const visible = await win.isVisible()`
 
 Resolves to: `<Boolean>`
 
 Whether the window is visible.
 
-### `const minimized = await win.isMinimized()`
+#### `const minimized = await win.isMinimized()`
 
 Resolves to: `<Boolean>`
 
 Whether the window is minimized.
 
-### `const maximized = await win.isMaximized()`
+#### `const maximized = await win.isMaximized()`
 
 Resolves to: `<Boolean>`
 
 Whether the window is maximized.
 
-### `const closed = await win.isClosed()`
+#### `const closed = await win.isClosed()`
 
 Resolves to: `<Boolean>`
 
 Whether the window is closed.
 
-### `const closed = await win.isClosed()`
+#### `const closed = await win.isClosed()`
 
 Resolves to: `<Boolean>`
 
 Whether the window is closed.
 
-### `const view = new pear.View(options <Object>)`
+#### `const view = new pear.View(options <Object>)`
 
 Create a new `View` instance. Views provide isolated content views. Frameless, chromeless windows that can be embedded inside other windows and views.
 
@@ -605,8 +605,8 @@ Create a new `View` instance. Views provide isolated content views. Frameless, c
 * https://www.electronjs.org/docs/latest/api/browser-view#viewsetautoresizeoptions-experimental
 * https://www.electronjs.org/docs/latest/api/browser-view#viewsetbackgroundcolorcolor-experimental
 
-### `view.on[ce]('message', (...args) => { })`
-### `for await (const [ ...args ] of view)`
+#### `view.on[ce]('message', (...args) => { })`
+#### `for await (const [ ...args ] of view)`
 
 Receive a message from the view. The received `args` array is deserialized via `JSON.parse`.
 
@@ -614,7 +614,7 @@ Receive a message from the view. The received `args` array is deserialized via `
 
 * [`view.send()`](#await-viewsendargs)
 
-### `const success = await view.open(options <Object>)`
+#### `const success = await view.open(options <Object>)`
 
 Resolves to: `<Boolean>`
 
@@ -629,41 +629,41 @@ Open the view.
 * `backgroundColor <String>` Default: `'#FFF'` - view default background color. Hex, RGB, RGBA, HSL HSLA, CSS color
 * `autoresize <Object>` Default `{ width=true, height=true, vertical=false, horizontal=false }` - dimensions for the view to autoresize alongside. For example, if `width` is `true` and the view container increases/decreases in width, the view will increase/decrease in width at the same rate.
 
-### `const success = await view.close()`
+#### `const success = await view.close()`
 
 Resolves to: `<Boolean>`
 
 Close the view.
 
-### `const success = await view.show()`
+#### `const success = await view.show()`
 
 Resolves to: `<Boolean>`
 
 Show the view.
 
-### `const success = await view.hide()`
+#### `const success = await view.hide()`
 
 Resolves to: `<Boolean>`
 
 Hide the view.
 
-### `const success = await view.focus()`
+#### `const success = await view.focus()`
 
 Resolves to: `<Boolean>`
 
 Focus the view.
 
-### `const success = await view.blur()`
+#### `const success = await view.blur()`
 
 Resolves to: `<Boolean>`
 
 Blur the view.
 
-### `await view.send(...args)`
+#### `await view.send(...args)`
 
 Send arguments to the view. They will be serialized with `JSON.stringify`.
 
-### `const sourceId = await view.getMediaSourceId()`
+#### `const sourceId = await view.getMediaSourceId()`
 
 Resolves to: `<String>`
 
@@ -674,7 +674,7 @@ Supplies the `id` property of objects in the array returned from [pear.media.des
 * [pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options)
 * https://www.electronjs.org/docs/latest/api/browser-window#wingetmediasourceid
 
-### `const dimensions = await view.dimensions()`
+#### `const dimensions = await view.dimensions()`
 
 Resolves to: `{x <Integer>, y <Integer>, width <Integer>, height <Integer>} | null`.
 
@@ -688,7 +688,7 @@ If the Window is closed this will resolve to `null`.
 
 * [await view.dimensions(options)](#await-viewdimensionsoptions-object)
 
-### `await view.dimensions(options <Object>)`
+#### `await view.dimensions(options <Object>)`
 
 ```js
 import { View } from 'pear'
@@ -724,45 +724,45 @@ Sets the dimensions of the view.
 
 * [const dimensions = await view.dimensions()](#const-dimensions--await-viewdimensions)
 
-### `const visible = await view.isVisible()`
+#### `const visible = await view.isVisible()`
 
 Resolves to: `<Boolean>`
 
 Whether the view is visible.
 
-### `const closed = await view.isClosed()`
+#### `const closed = await view.isClosed()`
 
 Resolves to: `<Boolean>`
 
 Whether the view is closed.
 
-### `const { self } = pear.Window`  `const { self } = pear.View`
+#### `const { self } = pear.Window`  `const { self } = pear.View`
 
-### `const success = await self.focus()`
+#### `const success = await self.focus()`
 
 Resolves to: `<Boolean>`
 
 Focus current view or window.
 
-### `const success = await self.blur()`
+#### `const success = await self.blur()`
 
 Resolves to: `<Boolean>`
 
 Blur current view or window.
 
-### `const success = await self.show()`
+#### `const success = await self.show()`
 
 Resolves to: `<Boolean>`
 
 Show current view or window.
 
-### `const success = await self.hide()`
+#### `const success = await self.hide()`
 
 Resolves to: `<Boolean>`
 
 Hide current view or window.
 
-### `const sourceId = await self.getMediaSourceId()`
+#### `const sourceId = await self.getMediaSourceId()`
 
 Get the sourceId of the current window or view.
 
@@ -771,7 +771,7 @@ Get the sourceId of the current window or view.
 * [win.getMediaSourceId()](const-sourceId--await-wingetMediaSourceId)
 
 
-### `const success = await self.minimize()`
+#### `const success = await self.minimize()`
 
 Resolves to: `<Boolean>`
 
@@ -779,7 +779,7 @@ Minimize current window.
 
 Throws a `TypeError` if `self` is a view.
 
-### `const success = await self.maximize()`
+#### `const success = await self.maximize()`
 
 Resolves to: `<Boolean>`
 
@@ -787,7 +787,7 @@ Maximize current window.
 
 Throws a `TypeError` if `self` is a view.
 
-### `const success = await self.restore()`
+#### `const success = await self.restore()`
 
 Resolves to: `<Boolean>`
 
@@ -796,68 +796,68 @@ Unmaximize/unminimize the current window if it is currently maximized/minimized.
 Throws a `TypeError` if `self` is a view.
 
 
-### `const success = await self.close()`
+#### `const success = await self.close()`
 
 Resolves to: `<Boolean>`
 
 Closes the current view or window.
 
 
-### `const isVisible = await self.isVisible()`
+#### `const isVisible = await self.isVisible()`
 
 Resolves to: `<Boolean>`
 
 Whether the current window or view is visible.
 
-### `const isMaximized = await self.isMaximized()`
+#### `const isMaximized = await self.isMaximized()`
 Resolves to: `<Boolean>`
 
 Whether the current window is maximized. Throws a `TypeError` if `self` is a view.
 
 
-### `const isMinimized = await self.isMinimized()`
+#### `const isMinimized = await self.isMinimized()`
 
 Resolves to: `<Boolean>`
 
 Whether the current window is minmized. Throws a `TypeError` if `self` is a view.
 
-### `const { parent } = pear.Window`  `const { parent } = pear.View`
+#### `const { parent } = pear.Window`  `const { parent } = pear.View`
 
-### `parent.on[ce]('message', (...args) => { })`
-### `for await (const [ ...args ] of parent)`
+#### `parent.on[ce]('message', (...args) => { })`
+#### `for await (const [ ...args ] of parent)`
 
 Receive a message from the parent window or view. The received `args` array is deserialized via `JSON.parse`.
 
-### `await parent.send(...args)`
+#### `await parent.send(...args)`
 
 Send arguments to the parent view or window. They will be serialized with `JSON.stringify`.
 
 
-### `const success = await parent.focus()`
+#### `const success = await parent.focus()`
 
 Resolves to: `<Boolean>`
 
 Focus parent view or window.
 
-### `const success = await parent.blur()`
+#### `const success = await parent.blur()`
 
 Resolves to: `<Boolean>`
 
 Blur parent view or window.
 
-### `const success = await parent.show()`
+#### `const success = await parent.show()`
 
 Resolves to: `<Boolean>`
 
 Show parent view or window.
 
-### `const success = await parent.hide()`
+#### `const success = await parent.hide()`
 
 Resolves to: `<Boolean>`
 
 Hide parent view or window.
 
-### `const sourceId = await parent.getMediaSourceId()`
+#### `const sourceId = await parent.getMediaSourceId()`
 
 Get the sourceId of the parent window or view.
 
@@ -866,7 +866,7 @@ Get the sourceId of the parent window or view.
 * [win.getMediaSourceId()](#const-sourceId--await-wingetMediaSourceId)
 
 
-### `const success = await parent.minimize()`
+#### `const success = await parent.minimize()`
 
 Resolves to: `<Boolean>`
 
@@ -874,7 +874,7 @@ Minimize parent window.
 
 Throws a `TypeError` if `parent` is a view.
 
-### `const success = await parent.maximize()`
+#### `const success = await parent.maximize()`
 
 Resolves to: `<Boolean>`
 
@@ -882,7 +882,7 @@ Maximize parent window.
 
 Throws a `TypeError` if `parent` is a view.
 
-### `const success = await parent.restore()`
+#### `const success = await parent.restore()`
 
 Resolves to: `<Boolean>`
 
@@ -890,38 +890,38 @@ Unmaximize/unminimize the parent window if it is currently maximized/minimized.
 
 Throws a `TypeError` if `parent` is a view.
 
-### `const success = await parent.close()`
+#### `const success = await parent.close()`
 
 Resolves to: `<Boolean>`
 
 Closes the parent view or window.
 
-### `const isVisible = await parent.isVisible()`
+#### `const isVisible = await parent.isVisible()`
 
 Resolves to: `<Boolean>`
 
 Whether the parent window or view is visible.
 
-### `const isMaximized = await parent.isMaximized()`
+#### `const isMaximized = await parent.isMaximized()`
 Resolves to: `<Boolean>`
 
 Whether the parent window is maximized. Throws a `TypeError` if `parent` is a view.
 
 
-### `const isMinimized = await parent.isMinimized()`
+#### `const isMinimized = await parent.isMinimized()`
 
 Resolves to: `<Boolean>`
 
 Whether the parent window is minmized. Throws a `TypeError` if `parent` is a view.
 
 
-## Web APIs
+### Web APIs
 
 Most [Web APIs](https://developer.mozilla.org/en-US/docs/Web/API) will work as-is.
 
 This section details deviations in behavior from and notable aspects of Web APIs as they relate to Pear.
 
-### `window.open`
+#### `window.open`
 
 The [`window.open`](https://developer.mozilla.org/en-US/docs/Web/API/Window/open) Web API function will ignore all arguments except for the URL parameter.
 
@@ -931,7 +931,7 @@ In Pear, `window.open` loads the URL in the **default system browser**. It does 
 
 Therefore Pear's `window.open` only supports a single url argument. The `target` and `windowFeatures` parameters that browsers support are discarded.
 
-### Scripts and Modules
+#### Scripts and Modules
 
 Like browsers, there is no support for CommonJS (e.g. the `require` function as used by Node.js is not supported in Pear Applications).
 
@@ -941,6 +941,6 @@ Use `<script type="module" src="path/to/my-file.js">` to load a JavaScript Modul
 
 Use `<script src="path/to/my-file.js">` to load a JavaScript Script.
 
-## Development Global
+### Development Global
 
 The Pear API is exposed as `global.pear` for the explicit purpose of easy API experimentation in the Devtools Console. It is *only* exposed globally in development mode. Any module that uses the Pear API must be sure to import `pear`, relying on `global.pear` will cause production breakage.
