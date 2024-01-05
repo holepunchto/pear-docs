@@ -11,9 +11,6 @@ In this app users will be able to create chat rooms, connect to each other and s
 
 ## Setup
 
-
-### Requirements
-
 Pear runs on Windows, Mac and Linux.
 
 The `pear` CLI can be installed from [npm](https://www.npmjs.com/), which comes with [`node`](https://nodejs.org/en/about). 
