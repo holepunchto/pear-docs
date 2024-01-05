@@ -1,11 +1,14 @@
 # Table of contents
 
 * [Overview](README.md)
-* [Quick start](Quickstart/making-a-pear-desktop-application.md)
+* [Quick start](quick-start.md)
 * [Changelog](changelog.md)
-* [Pear Runtime](./Pear%20Runtime/pear-runtime.md)
 
+## Pear
 
+* [CLI](./pear/cli.md)
+* [API](./pear/api.md)
+* [Config](./pear/config.md)
 
 ## Building blocks
 
@@ -16,7 +19,6 @@
 * [HyperDHT](building-blocks/hyperdht.md)
 * [Hyperswarm](building-blocks/hyperswarm.md)
 
-
 ## Guides
 
 * [Making a Pear Terminal Application](guides/making-a-pear-terminal-app.md)
@@ -24,8 +26,6 @@
 * [Playing with the building blocks](guides/playing-with-the-building-blocks.md)
 * [Personal Keet p2p chat Relay](guides/personal-keet-p2p-chat-relay.md)
 * [Terminology](./guides/terminology.md)
-
-
 
 ## Helpers 
 
@@ -36,7 +36,6 @@
 * [Compact encoding](helpers/compact-encoding.md)
 * [Protomux](helpers/protomux.md)
 
-
 ## Tools
 
 * [Hypershell](tools/hypershell.md)
@@ -44,7 +43,6 @@
 * [Hyperbeam](tools/hyperbeam.md)
 * [Hyperssh](tools/hyperssh.md)
 * [Drives](tools/drives.md)
-
 
 ## Apps
 

@@ -1,17 +1,20 @@
----
-description: Welcome to the World of Pears-Holepunch, the P2P Company!! 👋
----
-
-Pear enables you to create, and share applications with peers.
-
 # Pear from Holepunch
 
+Holepunch equips developers with a powerful suite of independent components to effortlessly construct peer-to-peer applications.
+
 Pear from Holepunch is a Combined Runtime, Software Development Kit (SDK), and Peer-to-Peer (P2P) Deployment tool that makes it possible to build, share, and extend P2P applications using common web and mobile technology stacks.
-Pear has everything you need to create unstoppable, zero-infrastructure P2P applications for desktop, terminal, and mobile.
 
+Together you have everything you need to create unstoppable, zero-infrastructure P2P applications for desktop, terminal, and mobile.
 
-## Platform
-The [Pear Command line](./01-command-line.md) provides access to develop, deploy, and production capabilities for the apps.
+Welcome to the Internet of Pears - Holepunch, the P2P Company!
+
+## Pear
+
+Learn how to use, interact and configure Pear for your applications
+
+1. [cli.md]](./pear/cli.md) provides access to develop, deploy, and production capabilities for the apps.
+2. [api.md]](./pear/api.md) enables applications to interact with Pear platform features.
+3. [config.md]](./pear/cli.md exposes various configurations to customize your pear application 
 
 ## Building blocks
 
