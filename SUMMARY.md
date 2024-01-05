@@ -3,12 +3,7 @@
 * [Overview](README.md)
 * [Quick start](Quickstart/making-a-pear-desktop-application.md)
 * [Changelog](changelog.md)
-
-
-
-
-## Pear Runtime
-* [Pear Runtime API](./Pear%20Runtime/pear-runtime.md)
+* [Pear Runtime](./Pear%20Runtime/pear-runtime.md)
 
 
 
