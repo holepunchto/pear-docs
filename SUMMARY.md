@@ -7,7 +7,8 @@
 
 
 
-## [Pear Runtime](./Pear%20Runtime/pear-runtime.md)
+## Pear Runtime
+* [Pear Runtime API](./Pear%20Runtime/pear-runtime.md)
 
 
 
@@ -27,6 +28,7 @@
 * [Publishing and sharing your Pear Application](guides/publishing-and-sharing-your-pear-app.md)
 * [Playing with the building blocks](guides/playing-with-the-building-blocks.md)
 * [Personal Keet p2p chat Relay](guides/personal-keet-p2p-chat-relay.md)
+* [Terminology](./guides/terminology.md)
 
 
 
@@ -53,5 +55,4 @@
 
 * [Keet.io](apps/keet.io.md)
 
-## [Terminology](terminology.md) 
 
