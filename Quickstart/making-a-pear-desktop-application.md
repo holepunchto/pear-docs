@@ -1,12 +1,12 @@
 # Building a Desktop Application with Pear
 
-This tutorial will show how to create a basic chat app with Pear using the building blocks from Holepunch
+This tutorial will show you how to create a basic chat app with Pear using the building blocks from Holepunch.
 
-In this app users will be able to create chat rooms, connect to each other, and send messages.
+In this app users will be able to create chat rooms, connect to each other and send messages.
 
-* [Setup](./making-a-pear-desktop-application.md#setup)
+* [Installing Pear](./making-a-pear-desktop-application.md#installing-pear)
 * [Creating a Project](./making-a-pear-desktop-application.md#creating-a-project)
-* [Making a Pear desktop app](./making-a-pear-desktop-application.md#making-a-pear-app)
+* [Making the Pear App functional](./making-a-pear-desktop-application.md#making-the-pear-app-functional)
 
 
 ## Installing Pear
@@ -26,7 +26,7 @@ On Windows we recommend installing `node` with [`nvs`](https://github.com/jasong
 The Pear Runtime does not rely on `node`, `node` is only needed to install and run the `npm` package manager.
 {% endhint %}
 
-## Setup
+### Setup
 
 To install Pear run the following command:
 
@@ -55,9 +55,9 @@ Pear loads applications from peers, so this command should launch [Keet](https:/
 Now that we're all setup time to build an application with Pear!
 
 
-# Creating a project
+## Creating a Project
 
-## Step 1. Init
+### Step 1. Init
 
 First create a new project using `pear init`.
 
@@ -74,7 +74,7 @@ This will create a base structure for the project.
 - `app.js`. The main code.
 - `test/index.test.js`. Skeleton for writing tests.
 
-## Step 2. Test that everything works
+### Step 2. Test that everything works
 
 Before writing any code, make sure that everything works the way it's supposed to by using `pear dev`.
 
@@ -86,7 +86,7 @@ This will open the app. Because it's opened in development mode, developer tools
 
 ![Running pear dev](../assets/chat-app-1.png)
 
-## Step 3. Automatic reload
+### Step 3. Automatic reload
 
 Pear apps have automatic reload included. This means that there is no need to stop and start the app again to see changes.
 
@@ -94,7 +94,7 @@ While keeping the app open with `pear dev`, open `index.html` in a code editor. 
 
 ![Automatic reload](../assets/chat-app-2.png)
 
-## Step 4. Change the Graphical User Interface (GUI) configuration
+### Step 4. Change the Graphical User Interface (GUI) configuration
 
 It's possible to change various settings with Pear. This is done with the `pear` property in `package.json`
 
@@ -117,7 +117,7 @@ Now the running app will be light blue and have a different size.
 
 See all the possible options in the [Configuration Documentation](../reference/configuration.md).
 
-## Step 5. Create a basic User Interface (UI)
+### Step 5. Create a basic User Interface (UI)
 
 In index.html let's create a simple UI for a chat app where users are able to create or join chat rooms and write messages to each other.
 
@@ -218,12 +218,12 @@ After running with `pear dev` it should look like this:
 
 
 
-Now that we've created some basic UI for a chat app, let's integrate it with Pear to make it functional.
+Now that we've created some basic UI for a chat app, let's integrate it with Pear and Holepunch building blocks to make it functional.
 
-# Making a Pear App
+## Making the Pear App functional
 
 
-## Step 1. Install modules
+### Step 1. Install modules
 
 This app uses the following modules: `hyperswarm`, `hypercore-crypto`, and `b4a`.
 
@@ -237,7 +237,7 @@ $ npm i hyperswarm hypercore-crypto b4a
 - [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto). A set of crypto function used in Pear.
 - [b4a](https://www.npmjs.com/package/b4a). A set of functions for bridging the gap between the Node.js `Buffer` class and the `Uint8Array` class.
 
-## Step 2. Write the javascript code, using `hyperswarm`
+### Step 2. Integrating with Hyperswarm
 
 Open `app.js` in a code editor and replace the content with this:
 
@@ -313,9 +313,9 @@ function onMessageAdded(from, message) {
 }
 ```
 
-## Step 3. Run the app
+### Step 3. Run the app
 
-Now it's time to develop the app.
+Now it's time to run the app.
 
 We'll be running two instances of the application for communication in separate terminals:
 
@@ -356,7 +356,7 @@ In the code it says `swarm.join(topicBuffer, { client: true, server: true })`. H
 
 When the chat app was started there wasn't one of them that acting as a server, and another as a client. Instead they join/leave topics. This is an important point, because it means that even if the peer that created a chat room leaves, then it doesn't stop working.
 
-### Next
+## Next
 We've built the app and got it running, awesome! \
 Now it's time to learn how to [share it with others](../guides/publishing-and-sharing-your-pear-app.md).
 
