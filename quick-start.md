@@ -1,16 +1,15 @@
 # Building a Desktop Application with Pear
 
-This tutorial will show you how to create a basic chat app with Pear using the building blocks from Holepunch.
+This tutorial will show you how to build a basic chat app using Pear and building blocks from Holepunch.
 
 In this app users will be able to create chat rooms, connect to each other and send messages.
 
-* [Installing Pear](./making-a-pear-desktop-application.md#installing-pear)
+* [Setup](./making-a-pear-desktop-application.md#installing-pear)
 * [Creating a Project](./making-a-pear-desktop-application.md#creating-a-project)
 * [Making the Pear App functional](./making-a-pear-desktop-application.md#making-the-pear-app-functional)
 
 
-## Installing Pear
-### Requirements
+## Setup
 
 Pear runs on Windows, Mac and Linux.
 
@@ -26,7 +25,7 @@ On Windows we recommend installing `node` with [`nvs`](https://github.com/jasong
 The Pear Runtime does not rely on `node`, `node` is only needed to install and run the `npm` package manager.
 {% endhint %}
 
-### Setup
+### Installing Pear
 
 To install Pear run the following command:
 
@@ -221,7 +220,6 @@ After running with `pear dev` it should look like this:
 Now that we've created some basic UI for a chat app, let's integrate it with Pear and Holepunch building blocks to make it functional.
 
 ## Making the Pear App functional
-
 
 ### Step 1. Install modules
 
