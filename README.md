@@ -1,8 +1,8 @@
 # Pear from Holepunch
 
-Holepunch equips developers with a powerful suite of independent components to effortlessly construct peer-to-peer applications.
-
 Pear from Holepunch is a Combined Runtime, Software Development Kit (SDK), and Peer-to-Peer (P2P) Deployment tool that makes it possible to build, share, and extend P2P applications using common web and mobile technology stacks.
+
+Holepunch equips developers with a powerful suite of independent components to effortlessly construct peer-to-peer applications.
 
 Herein is everything needed to create unstoppable, zero-infrastructure P2P applications for Desktop, Terminal & Mobile (soon)
 
