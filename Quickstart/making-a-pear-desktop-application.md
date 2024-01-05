@@ -6,7 +6,7 @@ In this app users will be able to create chat rooms, connect to each other and s
 
 * [Installing Pear](./making-a-pear-desktop-application.md#installing-pear)
 * [Creating a Project](./making-a-pear-desktop-application.md#creating-a-project)
-* [Making a Pear Desktop App](./making-a-pear-desktop-application.md#making-a-pear-desktop-app)
+* [Making the Pear App functional](./making-a-pear-desktop-application.md#making-the-pear-app-functional)
 
 
 ## Installing Pear
@@ -218,9 +218,9 @@ After running with `pear dev` it should look like this:
 
 
 
-Now that we've created some basic UI for a chat app, let's integrate it with Pear to make it functional.
+Now that we've created some basic UI for a chat app, let's integrate it with Pear and Holepunch building blocks to make it functional.
 
-## Making a Pear Desktop App
+## Making the Pear App functional
 
 
 ### Step 1. Install modules
