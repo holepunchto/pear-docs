@@ -10,11 +10,11 @@ Welcome to the Internet of Pears - Holepunch, the P2P Company!
 
 ## Pear
 
-Learn how to use, interact and configure Pear for your applications
+Learn how to use, interact with and configure Pear for your applications
 
-1. [cli.md]](./pear/cli.md) provides access to develop, deploy, and production capabilities for the apps.
-2. [api.md]](./pear/api.md) enables applications to interact with Pear platform features.
-3. [config.md]](./pear/cli.md exposes various configurations to customize your pear application 
+1. [cli.md](./pear/cli.md) provides access to develop, deploy, and production capabilities for the apps.
+2. [api.md](./pear/api.md) enables applications to interact with Pear platform features.
+3. [config.md](./pear/cli.md) exposes various configurations to customize your pear application 
 
 ## Building blocks
 
