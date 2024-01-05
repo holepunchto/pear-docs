@@ -7,11 +7,8 @@
 
 
 
-## Pear Runtime
+## [Pear Runtime](./Pear%20Runtime/pear-runtime.md)
 
-* [API](<Pear Runtime/api.md>)
-* [CLI](<Pear Runtime/cli.md>)
-* [Configuration](<Pear Runtime/configuration.md>)
 
 
 ## Building blocks

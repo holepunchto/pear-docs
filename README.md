@@ -1,26 +1,23 @@
 ---
-description: Welcome to the Pear docs! 👋
+description: Welcome to the World of Pears-Holepunch, the P2P Company!! 👋
 ---
+
+Pear enables you to create, and share applications with peers.
 
 # Pear from Holepunch
 
-> Pear loads applications remotely from peers and allows anyone to create and share applications with peers.
+Pear from Holepunch is a Combined Runtime, Software Development Kit (SDK), and Peer-to-Peer (P2P) Deployment tool that makes it possible to build, share, and extend P2P applications using common web and mobile technology stacks.
+Pear has everything you need to create unstoppable, zero-infrastructure P2P applications for desktop, terminal, and mobile.
 
-Pear from Holepunch is a combined Runtime, Software Development Kit (SDK) and Peer-to-Peer (P2P) Deployment tool.
-Pear makes it possible to build, share and extend P2P applications using common web and mobile technology stacks.
-Herein is everything needed to create unstoppable, zero-infrastructure P2P applications for desktop, terminal and mobile.
-
-Welcome to the Internet of Peers
-Holepunch, the P2P Company
 
 ## Platform
-* [Pear Command line](./01-command-line.md)
+The [Pear Command line](./01-command-line.md) provides access to develop, deploy, and production capabilities for the apps.
 
 ## Building blocks
 
 The Holepunch Ecosystem is constructed utilizing the following structural components.
 
-1. [hypercore.md](./building-blocks/hypercore.md "mention"): A distributed, secure append-only log is a useful tool for creating fast and scalable applications without a backend, as it is entirely peer-to-peer.
+1. [hypercore.md](./building-blocks/hypercore.md "mention"): A distributed, secure, append-only log is a useful tool for creating fast, and scalable applications without a backend, as it is entirely peer-to-peer.
 2. [hyperbee.md](./building-blocks/hyperbee.md "mention"): An append-only B-tree running on a Hypercore. It provides key-value store API, with methods for inserting and getting key/value pairs, atomic batch insertions, and creation of sorted iterators.
 3. [hyperdrive.md](./building-blocks/hyperdrive.md "mention"): A secure, real-time distributed file system that simplifies peer-to-peer (P2P) file sharing. It provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
 4. [autobase.md](./building-blocks/autobase.md "mention"): An experimental module that's used to automatically rebase multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration.
@@ -34,7 +31,7 @@ Helper modules can be used together with the building blocks to create cutting-e
 1. [corestore.md](./helpers/corestore.md "mention"): A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.
 2. [localdrive.md](./helpers/localdrive.md "mention"): A file system interoperable with Hyperdrive.
 3. [mirrordrive.md](./helpers/mirrordrive.md "mention"): Mirror a [hyperdrive.md](./building-blocks/hyperdrive.md "mention") or a [localdrive.md](./helpers/localdrive.md "mention") into another one.
-4. [secretstream.md](./helpers/secretstream.md "mention"): SecretStream is used to securely create connections between two peers in Hyperswarm.
+4. [secretstream.md](./helpers/secretstream.md "mention"): Used to securely create connections between two peers in Hyperswarm.
 5. [compact-encoding.md](./helpers/compact-encoding.md "mention"): A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.
 6. [protomux.md](./helpers/protomux.md "mention"): Multiplex multiple message oriented protocols over a stream.
 
@@ -52,11 +49,11 @@ These tools are extensively employed in the day-to-day development and operation
 
 ## What's new?
 
-If you're already familiar with [hypercore.md](./building-blocks/hypercore.md "mention"), [hyperswarm.md](./building-blocks/hyperswarm.md "mention"), and the rest of the modules here, you might be wondering what's changed recently. In short: a lot! Here's a brief breakdown of some of the highlights.
+If you're already familiar with [hypercore.md](./building-blocks/hypercore.md "mention"), [hyperswarm.md](./building-blocks/hyperswarm.md "mention"), and the rest of the modules here, you might be wondering what's changed recently. In short, a lot! here's a brief breakdown of some of the highlights.
 
-### Better Building Blocks
+### Enhanced Building Blocks
 
-We've decided to focus entirely on making our core building blocks as easy to use, as fast, and as reliable as possible. The goal is to give developers all the essential pieces needed to make killer P2P apps, without being unnecessarily opinionated and without introducing operational complexity.
+Pear main focus is on making our core building blocks as easy to use, as fast, and as reliable as possible. The goal is to give developers all the essential pieces needed to develop powerful P2P apps, without being unnecessarily opinionated and without introducing operational complexity.
 
 We'd previously introduced the Hyperspace daemon and `hyp` CLI tool as core modules, but in practice found that they don't fit cleanly into this vision. We feel it's better to keep a tight focus on the fundamental building blocks so that others can build similar higher-level tools with zero friction. Given that, they are both now considered deprecated.
 
@@ -77,7 +74,7 @@ We'd previously introduced the Hyperspace daemon and `hyp` CLI tool as core modu
 ### Hyperdrive
 
 * Uses Hyperbee internally for storing file metadata
-* Major API simplification. Instead of mirroring POSIX APIs, the new API better captures the core requirements of P2P file transfer.
+* Major API simplification: Instead of mirroring POSIX APIs, the new API captures the core requirements of P2P file transfer efficiently.
 * Auxiliary tools, [localdrive.md](./helpers/localdrive.md "mention") and [mirrordrive.md](./helpers/mirrordrive.md "mention"), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem. We use these every day when deploying Keet.
 
 ### Autobase (experimental)
@@ -118,4 +115,3 @@ The following stability indices have been used:
 Any part of a module (method, event, or property) that is not documented as part of that module's public API is subject to change at any time.
 
 {% endhint %}
-
