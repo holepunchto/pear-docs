@@ -11,6 +11,9 @@ In this app users will be able to create chat rooms, connect to each other and s
 
 ## Setup
 
+
+### Requirements
+
 Pear runs on Windows, Mac and Linux.
 
 The `pear` CLI can be installed from [npm](https://www.npmjs.com/), which comes with [`node`](https://nodejs.org/en/about). 
@@ -56,7 +59,7 @@ Now that we're all setup time to build an application with Pear!
 
 ## Creating a Project
 
-### Step 1. Init
+### Step 1. Initialize project
 
 First create a new project using `pear init`.
 
@@ -215,11 +218,9 @@ After running with `pear dev` it should look like this:
 
 ![Layout of the app](../assets/chat-app-3.png)
 
-
+## Making the Pear App functional
 
 Now that we've created some basic UI for a chat app, let's integrate it with Pear and Holepunch building blocks to make it functional.
-
-## Making the Pear App functional
 
 ### Step 1. Install modules
 
@@ -354,9 +355,9 @@ In the code it says `swarm.join(topicBuffer, { client: true, server: true })`. H
 
 When the chat app was started there wasn't one of them that acting as a server, and another as a client. Instead they join/leave topics. This is an important point, because it means that even if the peer that created a chat room leaves, then it doesn't stop working.
 
-## Next
+## Next steps
 We've built the app and got it running, awesome! \
-Now it's time to learn how to [share it with others](../guides/publishing-and-sharing-your-pear-app.md).
+- Let's look at how to [share it with others](../guides/publishing-and-sharing-your-pear-app.md).
 
 
 
