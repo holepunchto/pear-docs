@@ -159,7 +159,7 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 * [pear.config.checkpoint()](#pear--config-checkpoint-any)
 
-## pear.messages([ pattern ], [ listener ])
+## pear.messages([ pattern ], [ listener ]) -> Iterable
 
 A function which accepts a pattern object and returns an [`Iambus`](https://github.com/holepunchto/iambus) subscriber (which inherits from [`streamx`](https://github.com/mafintosh/streamx) `Readable`) which emits message objects matching a provided pattern object.
 
@@ -364,13 +364,31 @@ will be waited upon until resolution before calling the next teardown handler.
 
 Restart the application.
 
+### `pear.updates(listener <Async Function|Function>)`
+
+The `listener` function is called for every incoming update with an `update` object of the form:
+
+```js
+{ 
+  type: 'pear/updates', 
+  version: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null, 
+  app <Boolean>,
+  diff <Array <String> >,
+}
+```
+
+* `version` is a Pear version object holding incoming version information
+* `app` indicates whether the update represents an application (`true`) or platform (`false`) update
+* `diff` is an array of file paths from the application root (drive keys) that were updated
+
+
 ### `const win = new pear.Window(entry <String>, options <Object>)`
 
 Create a new `Window` instance.
 
 **Options**
 
-* `show` Default: `true` - show the window as soon as it has been opened
+* `show <Boolean>` Default: `true` - show the window as soon as it has been opened
 * `x <Integer>` - the horizontal position of left side of the window (pixels)
 * `y <Integer>` - vertical window position (pixels)
 * `width <Integer>` - the width of the window (pixels)
@@ -403,7 +421,7 @@ Receive a message from the window. The received `args` array is deserialized via
 
 **References**
 
-### [`win.send()`](#await-winsendargs)
+* [`win.send()`](#await-winsendargs)
 
 ### `const success = await win.open(options <Object>)`
 
