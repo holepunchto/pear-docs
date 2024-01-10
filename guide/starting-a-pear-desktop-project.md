@@ -1,12 +1,10 @@
-# Starting a Pear Project
+# Starting a Pear Desktop Project
 
-This tutorial will show how to create a basic chat app with Pear, and through that teach how to use some of the main building blocks.
+In preparation for [Making a Pear Application](./making-a-pear-app.md) the following steps outline how to generate, configure, and develop a Pear Desktop Project.
 
-In this first part of the app, users will be able to create chat rooms, connect to each other, and send messages.
+## Step 1. Initialization
 
-## Step 1. Init
-
-First create a new project using `pear init`.
+To create a new Pear project use `pear init`.
 
 ```
 $ mkdir chat
@@ -21,7 +19,7 @@ This will create a base structure for the project.
 - `app.js`. The main code.
 - `test/index.test.js`. Skeleton for writing tests.
 
-## Step 2. Test that everything works
+## Step 2. Check that everything works
 
 Before writing any code, make sure that everything works the way it's supposed to by using `pear dev`.
 
@@ -29,23 +27,32 @@ Before writing any code, make sure that everything works the way it's supposed t
 $ pear dev
 ```
 
-This will open the app. Because it's opened in development mode, developer tools are also opened.
+This will open the app in development mode, by default developer tools are also opened.
 
 ![Running pear dev](../assets/chat-app-1.png)
 
 ## Step 3. Automatic reload
 
-Pear apps have automatic reload included. This means that there is no need to stop and start the app again to see changes.
+By default Pear watches project files and automatically reloads the page when files change.
 
-While keeping the app open with `pear dev`, open `index.html` in a code editor. Change `<h1>chat</h1>` to `<h1>Hello world</h1>` and go to the app again. It should now look like this:
+This means that there is no need to stop and start the app again to see changes.
+
+While keeping the app open with `pear dev`, open `index.html` in a code editor.
+
+Try changing `<h1>chat</h1>` to `<h1>Hello world</h1>` and look observe the app update.
+
+It should now look like this:
 
 ![Automatic reload](../assets/chat-app-2.png)
 
-## Step 4. Change Graphical User Interface (GUI) configuration
+> Live reloading with hot-module reloading can be achieved with a combination of `pear.watch` configuration, [`pear.updates`](../reference/api.md#pearupdateslistener-async-functionfunction) API or the [pear-hotmods](https://github.com/holepunchto/pear-hotmods) convenience module.
 
-It's possible to change various settings with Pear. This is done with the `pear` property in `package.json`
+## Step 4. Configuration
 
-For now, open `package.json` and update it :
+Application configuration all happens via the `pear` property in `package.json`
+
+For now, open `package.json` and update it like so:
+
 ```
 {
   ...
@@ -60,110 +67,12 @@ For now, open `package.json` and update it :
 }
 ```
 
-When running the app now, it will be light blue, and have a different size.
+If the app is open, close it and then run `pear dev` to see the configuration change.
 
-See all the possibly options in the [Configuration Documentation](../reference/configuration.md).
+The initial background color will be light blue and the window will start with a different initial size.
 
-## Step 5. Create a basic User Interface (UI)
-
-To add some more interesting UI, let's have an example of a chat app, where users are able to create or join chat rooms and write messages to each other.
-
-
-``` html
-<!DOCTYPE html>
-<html>
-  <head>
-    <style>
-      body {
-        display: flex;
-        height: 100vh;
-        background-color: #3592C3;
-        color: white;
-        justify-content: center;
-        margin: 0;
-        padding: 0;
-      }
-
-      .hidden {
-        display: none !important;
-      }
-
-      #setup {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-      }
-
-      #loading {
-        align-self: center;
-      }
-
-      #chat {
-        display: flex;
-        flex-direction: column;
-        width: 100vw;
-      }
-
-      #header {
-        display: flex;
-        justify-content: space-between;
-      }
-
-      #messages {
-        flex: 1;
-        font-family: 'Courier New', Courier, monospace;
-        overflow-y: scroll;
-      }
-
-      #message-form {
-        display: flex;
-      }
-
-      #message {
-        flex: 1;
-      }
-    </style>
-    <script type='module' src='./app.js'></script>
-  </head>
-  <body>
-    <div id="setup">
-      <div>
-        <button id="create-chat-room">Create chat room</button>
-      </div>
-      <div>
-        - or -
-      </div>
-      <div>
-        <button id="join-chat-room">Join chat room</button>
-        <input id="join-chat-room-topic" type="text" placeholder="Topic for chat room" />
-      </div>
-    </div>
-    <div id="loading" class="hidden">Loading ...</div>
-    <div id="chat" class="hidden">
-      <div id="header">
-        <div>
-          Topic: <span id="chat-room-topic"></span>
-        </div>
-        <div>
-          Peers: <span id="peers-count">0</span>
-        </div>
-      </div>
-      <div id="messages"></div>
-      <form id="message-form">
-        <input id="message" type="text" />
-        <input type="submit" value="Send" />
-      </form>
-    </div>
-  </body>
-</html>
-```
-
-After running with `pear dev` it should look like this:
-
-![Layout of the app](../assets/chat-app-3.png)
-
+See the [Configuration Documentation](../reference/configuration.md) for all configuration possibilities.
 
 ## Next
 
-Now that there's some basic UI for a chat app, let's take a look at [making a Pear App](./making-a-pear-app.md).
+* [Making a Pear Application](./making-a-pear-app.md).
