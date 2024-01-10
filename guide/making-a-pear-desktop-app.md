@@ -116,9 +116,9 @@ After running with `pear dev` it should look like this:
 
 Our app is going to use these modules:
 
-- [hyperswarm](https://www.npmjs.com/package/hyperswarm). One of the main building blocks. Find peers that share a "topic".
-- [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto). A set of crypto functions.
-- [b4a](https://www.npmjs.com/package/b4a). A set of functions for bridging the gap between the Node.js `Buffer` class and the `Uint8Array` class.
+- [hyperswarm](https://www.npmjs.com/package/hyperswarm) - Find peers that share a "topic". An essential building block.
+- [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto) - A set of crypto functions.
+- [b4a](https://www.npmjs.com/package/b4a) - A set of functions for bridging the gap between the Node.js `Buffer` class and the `Uint8Array` class.
 
 The dependencies can be installed with the following command:
 
@@ -222,13 +222,13 @@ In the first app, click on `Create chat room`. Once the app has started the topi
 Paste the topic from the first app into the input of the second app and then click on `Join chat room`.
 
 <p align="center">
-  <img src="./assets/chat-app-4a.png" alt="The first app, with the topic"> <img src="../assets/chat-app-4b.png" alt="Second app, using topic from the first">
+  <img src="../assets/chat-app-4a.png" alt="The first app, with the topic"> <img src="../assets/chat-app-4b.png" alt="Second app, using topic from the first">
 </p>
 
 Once connected messages can be sent between the applications.
 
 <p align="center">
-  <img src="./assets/chat-app-5a.png" alt="View from the first app"> <img src="../assets/chat-app-5b.png" alt="View from the second app">
+  <img src="../assets/chat-app-5a.png" alt="View from the first app"> <img src="../assets/chat-app-5b.png" alt="View from the second app">
 </p>
 
 
@@ -236,9 +236,9 @@ Once connected messages can be sent between the applications.
 
 In a traditional client-server setup the server is hosted at an IP address (or hostname) and a port, e.g. `http://localhost:3000`. This is what clients use to connect to the server.
 
-The code in `app.js` contains the line `swarm.join(topicBuffer, { client: true, server: true })`. Here `topicBuffer` is a 32 byte string. The creator of a chat room will generate a random byte string which acts as a room invinitation. Any peers with this invite (the topic) can use it to message to all other peers with the invite. Note also that both applications behave the same way, neither is only a client and neither is only a server.
+The code in `app.js` contains the line `swarm.join(topicBuffer, { client: true, server: true })`. Here `topicBuffer` is a 32 byte string. The creator of a chat room will generate a random byte string which acts as a room invinitation. Any peers with this invite (the topic) can use it to message all other peers with the invite. Note also that both applications behave the same way, neither is only a client and neither is only a server.
 
-Applications join and leave topics so if the peer who created the topic/invite goes offline or even leaves the topic this has no effect on functionality.
+Applications join and leave topics, so if the peer who created the topic/invite goes offline or even leaves the topic this has no effect on functionality.
 
 Two application instances are running on the same machine, connecting over a Distributed Hash Table (DHT) via `hyperswarm`.
 
