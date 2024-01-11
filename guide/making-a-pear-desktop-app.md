@@ -234,17 +234,23 @@ Once connected messages can be sent between the applications.
 
 ### Discussion
 
+#### Whether two terminals or two machines, it's functionally the same
+
+Two application instances are running on the same machine, connecting over a Distributed Hash Table (DHT) via `hyperswarm`.
+
+The code could be copied to another machine and `pear dev` could be ran on two machines instead of two terminals. However [Sharing a Pear Application](./sharing-a-pear-app.md) covers sharing the application itself over the same DHT. So then instead of manually copying files between machines, `pear` can be used to generate a topic for an app (the application key) and then that app on a peer machine by passing that key to the `pear` installation on that machine. See [Sharing a Pear Application](./sharing-a-pear-app.md) for details.
+
+#### Peers joining topics versus clients joining servers
+
 In a traditional client-server setup the server is hosted at an IP address (or hostname) and a port, e.g. `http://localhost:3000`. This is what clients use to connect to the server.
 
 The code in `app.js` contains the line `swarm.join(topicBuffer, { client: true, server: true })`. Here `topicBuffer` is a 32 byte string. The creator of a chat room will generate a random byte string which acts as a room invinitation. Any peers with this invite (the topic) can use it to message all other peers with the invite. Note also that both applications behave the same way, neither is only a client and neither is only a server.
 
 Applications join and leave topics, so if the peer who created the topic/invite goes offline or even leaves the topic this has no effect on functionality.
 
-Two application instances are running on the same machine, connecting over a Distributed Hash Table (DHT) via `hyperswarm`.
+#### Frontend Frameworks
 
-The code could be copied to another machine and `pear dev` could be ran on two machines instead of two terminals. However [Sharing a Pear Application](./sharing-a-pear-app.md) covers sharing the application itself over the same DHT. So then instead of copying, `pear` can be used to generate a topic for an app (the application key) and then that app on a peer machine by passing that key to the `pear` installation on that machine.
-
-> No frameworks were used to build this application but any frontend framework can be used with Pear.
+No frameworks were used to build this application but any frontend framework can be used with Pear.
 
 ## Next
 

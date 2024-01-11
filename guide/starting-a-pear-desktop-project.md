@@ -73,6 +73,7 @@ The initial background color will be light blue and the window will start with a
 
 See the [Configuration Documentation](../reference/configuration.md) for all configuration possibilities.
 
+
 ## Next
 
 * [Making a Pear Desktop Application](./making-a-pear-desktop-app.md)

@@ -11,9 +11,15 @@ Herein is everything needed to create unstoppable, zero-infrastructure P2P appli
 Welcome to the Internet of Peers
 &nbsp; _– Holepunch, the P2P Company_
 
-## Table of Content
+## Table of Contents
 
-### Guide
+### References
+
+* [Command-Line-Interface (CLI)](./reference/cli.md)
+* [Application-Programming-Interface (API)](./reference/api.md)
+* [Application Configuration](./reference/configuration.md)
+
+### Guides
 
 * [Getting Started](./guide/getting-started.md)
 * [Starting a Pear Desktop Project](./guide/starting-a-pear-desktop-project.md)
@@ -21,10 +27,4 @@ Welcome to the Internet of Peers
 * [Starting a Pear Terminal Project](./guide/starting-a-pear-terminal-project.md)
 * [Making a Pear Terminal Application](./guide/making-a-pear-terminal-app.md)
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
-* [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
-
-### Reference
-
-* [Command-Line-Interface (CLI)](./reference/cli.md)
-* [Application-Programming-Interface (API)](./reference/api.md)
-* [Application Configuration](./reference/configuration.md)
+* [Marking a Release](./guide/releasing-a-pear-app.md)

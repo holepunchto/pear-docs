@@ -7,7 +7,7 @@ With Pear there are one single "release" (or "production") version of an app, an
 To share apps, stage them using `pear stage some-name`. This builds a new version of the app and puts them into the `some-name` channel.
 
 
-## Step 1. Stage
+## Step 1. Stage the app
 
 Before sharing the app, first stage it into a channel called `example` (the name can be anything)
 
@@ -15,7 +15,7 @@ Before sharing the app, first stage it into a channel called `example` (the name
 $ pear stage example
 ```
 
-## Step 2. Seed
+## Step 2. Seed the app
 
 After the app has been staged into the `example` channel, it now needs to be seeded. This is a way to signal that the app is now shared, so others can download and run it.
 
@@ -32,21 +32,36 @@ After the app has been staged into the `example` channel, it now needs to be see
 
 For now, keep this terminal open. As long as this process is running, your computer will help seed the application.
 
-## Step 3. Launch
+## Step 3. Run the app
 
-Because the app is now being seeded, it' possible for others with the key (`pear:nykm...`) to launch it.
-
-In another terminal (or on another computer), run:
+In another terminal run:
 
 ```
-$ pear launch pear:nykmkrpwgadcd8m9x5khhh43j9izj123eguzqg3ygta7yn1s379o
+$ pear run pear:nykmkrpwgadcd8m9x5khhh43j9izj123eguzqg3ygta7yn1s379o
 ```
 
-![Launching the app with pear launch](../assets/chat-app-6.png)
+![Launching the app with pear run](../assets/chat-app-6.png)
 
-This will download and open the app.
 
-> Anyone running the app also help to seed it. So if an app has a lot of users the original seeder could close down the process with no consequences to application uptime/functionality.
+Since the app is now being seeded, any one with the key (`pear:nykmk..`) can run the same app with `pear`.
+
+So now try running the same command on another machine or giving the command to a friend to run:
+
+```
+$ pear run pear:nykmkrpwgadcd8m9x5khhh43j9izj123eguzqg3ygta7yn1s379o
+```
+
+
+### Discussion
+
+#### Marking releases 
+
+#### Previewing prereleases
+
+#### Reseeding
+
+#### Lazy loading and sparse replication
+
 
 ## Next
 
