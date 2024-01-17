@@ -19,13 +19,13 @@ The Holepunch Ecosystem is constructed utilizing the following structural compon
 
 ## Helpers
 
-Helper modules can be used together with the building blocks to create cutting-edge peer-to-peer tools and applications.
+Helper modules can be used together with the building blocks to create cutting-edge P2P tools and applications.
 
 1. [corestore.md](helpers/corestore.md "mention"): A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.
 2. [localdrive.md](helpers/localdrive.md "mention"): A file system interoperable with Hyperdrive.
 3. [mirrordrive.md](helpers/mirrordrive.md "mention"): Mirror a [hyperdrive.md](building-blocks/hyperdrive.md "mention") or a [localdrive.md](helpers/localdrive.md "mention") into another one.
 4. [secretstream.md](helpers/secretstream.md "mention"): SecretStream is used to securely create connections between two peers in Hyperswarm.
-5. [compact-encoding.md](helpers/compact-encoding.md "mention"): A series of binary encoding schemes for building fast and small parsers and serializers. Pears use this in Keet to store chat messages and in Hypercore's replication protocol.
+5. [compact-encoding.md](helpers/compact-encoding.md "mention"): A series of binary encoding schemes for building fast and small parsers and serializers. Holepunch use this in Keet to store chat messages and in Hypercore's replication protocol.
 6. [protomux.md](helpers/protomux.md "mention"): Multiplex multiple message oriented protocols over a stream.
 
 ## Tools built using Holepunch
@@ -41,11 +41,11 @@ Helper modules can be used together with the building blocks to create cutting-e
 
 ## What's new?
 
-Pears is continuously introucing new enhancements and following are the few highlights.
+Holepunch is continuously introucing new enhancements and following are the few highlights.
 
 ### Better Building Blocks
 
-Pears focus is on making the core building blocks easy to use, fast, and reliable. The goal is to give developers all the essential pieces to make powerful P2P apps without being unnecessarily opinionated and without any operational complexity.
+Holepunch focus is on making the core building blocks easy to use, fast, and reliable. The goal is to give developers all the essential pieces to make powerful P2P apps without being unnecessarily opinionated and without any operational complexity.
 
 The core modules Hyperspace daemon and `hyp` CLI tools are now deprecated.
 
