@@ -6,12 +6,11 @@ description: Welcome to the Pear docs! 👋
 
 > Pear loads applications remotely from peers and allows anyone to create and share applications with peers.
 
-Pear by Holepunch is a combined Runtime, Software Development Kit (SDK) and Peer-to-Peer (P2P) Deployment tool.
-Pear makes it possible to build, share and extend P2P applications using common web and mobile technology stacks.
-Herein is everything needed to create unstoppable, zero-infrastructure P2P applications for desktop, terminal and mobile.
+Pear by Holepunch is a combined runtime, Software Development Kit (SDK) and Peer-to-Peer (P2P) Deployment tool.
+Pear makes it possible to build, share, and extend P2P applications using common web and mobile technology stacks.
+Pears enables to create unstoppable, zero-infrastructure P2P applications for desktop, terminal and mobile.
 
-Welcome to the Internet of Peers
-Holepunch, the P2P Company
+Welcome to the Internet of Pears-Holepunch, the P2P Company!
 
 ## Platform
 * [Pear Command line](pear/01-command-line.md)
@@ -20,10 +19,10 @@ Holepunch, the P2P Company
 
 The Holepunch Ecosystem is constructed utilizing the following structural components.
 
-1. [hypercore.md](building-blocks/hypercore.md "mention"): A distributed, secure append-only log is a useful tool for creating fast and scalable applications without a backend, as it is entirely peer-to-peer.
-2. [hyperbee.md](building-blocks/hyperbee.md "mention"): An append-only B-tree running on a Hypercore. It provides key-value store API, with methods for inserting and getting key/value pairs, atomic batch insertions, and creation of sorted iterators.
-3. [hyperdrive.md](building-blocks/hyperdrive.md "mention"): A secure, real-time distributed file system that simplifies peer-to-peer (P2P) file sharing. It provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
-4. [autobase.md](building-blocks/autobase.md "mention"): An experimental module that's used to automatically rebase multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration.
+1. [hypercore.md](building-blocks/hypercore.md "mention"): A distributed, secure append-only log is a tool for creating fast and scalable applications without a backend, as it is entirely peer-to-peer.
+2. [hyperbee.md](building-blocks/hyperbee.md "mention"): An append-only B-tree running on a Hypercore that provides key-value store API, with methods for inserting and getting key/value pairs, atomic batch insertions, and creation of sorted iterators.
+3. [hyperdrive.md](building-blocks/hyperdrive.md "mention"): A secure, real-time distributed file system that simplifies P2P file sharing that provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
+4. [autobase.md](building-blocks/autobase.md "mention"): An experimental module used to automatically rebase multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration.
 5. [hyperdht.md](building-blocks/hyperdht.md "mention"): A DHT powering Hyperswarm. Through this DHT, each server is bound to a unique key pair, with the client connecting to the server using the server's public key.
 6. [hyperswarm.md](building-blocks/hyperswarm.md "mention"): A high-level API for finding and connecting to peers who are interested in a "topic."
 
@@ -35,7 +34,7 @@ Helper modules can be used together with the building blocks to create cutting-e
 2. [localdrive.md](helpers/localdrive.md "mention"): A file system interoperable with Hyperdrive.
 3. [mirrordrive.md](helpers/mirrordrive.md "mention"): Mirror a [hyperdrive.md](building-blocks/hyperdrive.md "mention") or a [localdrive.md](helpers/localdrive.md "mention") into another one.
 4. [secretstream.md](helpers/secretstream.md "mention"): SecretStream is used to securely create connections between two peers in Hyperswarm.
-5. [compact-encoding.md](helpers/compact-encoding.md "mention"): A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.
+5. [compact-encoding.md](helpers/compact-encoding.md "mention"): A series of binary encoding schemes for building fast and small parsers and serializers. Pears use this in Keet to store chat messages and in Hypercore's replication protocol.
 6. [protomux.md](helpers/protomux.md "mention"): Multiplex multiple message oriented protocols over a stream.
 
 ## Tools built using Holepunch
@@ -51,13 +50,13 @@ Helper modules can be used together with the building blocks to create cutting-e
 
 ## What's new?
 
-If you're already familiar with [hypercore.md](building-blocks/hypercore.md "mention"), [hyperswarm.md](building-blocks/hyperswarm.md "mention"), and the rest of the modules here, you might be wondering what's changed recently. In short: a lot! Here's a brief breakdown of some of the highlights.
+Pears is continuously introucing new enhancements and following are the few highlights.
 
 ### Better Building Blocks
 
-We've decided to focus entirely on making our core building blocks as easy to use, as fast, and as reliable as possible. The goal is to give developers all the essential pieces needed to make killer P2P apps, without being unnecessarily opinionated and without introducing operational complexity.
+Pears focus is on making the core building blocks easy to use, fast, and reliable. The goal is to give developers all the essential pieces to make powerful P2P apps without being unnecessarily opinionated and without any operational complexity.
 
-We'd previously introduced the Hyperspace daemon and `hyp` CLI tool as core modules, but in practice found that they don't fit cleanly into this vision. We feel it's better to keep a tight focus on the fundamental building blocks so that others can build similar higher-level tools with zero friction. Given that, they are both now considered deprecated.
+The core modules Hyperspace daemon and `hyp` CLI tools are now deprecated.
 
 ### Hypercore v10
 
@@ -65,7 +64,7 @@ We'd previously introduced the Hyperspace daemon and `hyp` CLI tool as core modu
 * A [`truncate`](building-blocks/hypercore.md#await-core.truncate-newlength-forkid) method for intentionally creating a new fork, starting at a given length. We use this method extensively in [autobase.md](building-blocks/autobase.md "mention"), as described below.
 * An improved fork detection in the replication protocol, to improve resilience.
 * Optional on-disk encryption for blocks (in addition to the existing transport encryption).
-* The storage layer now uses a write-ahead log to better ensure that power loss or unexpected shutdown cannot lead to data corruption.
+* The storage layer now uses a write-ahead log to ensure that power loss or unexpected shutdown cannot lead to data corruption.
 
 ### Hyperswarm v4
 
@@ -77,15 +76,21 @@ We'd previously introduced the Hyperspace daemon and `hyp` CLI tool as core modu
 
 * Uses Hyperbee internally for storing file metadata
 * Major API simplification. Instead of mirroring POSIX APIs, the new API better captures the core requirements of P2P file transfer.
-* Auxiliary tools, [localdrive.md](helpers/localdrive.md "mention") and [mirrordrive.md](helpers/mirrordrive.md "mention"), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem. We use these every day when deploying Keet.
+* Auxiliary tools, [localdrive.md](helpers/localdrive.md "mention") and [mirrordrive.md](helpers/mirrordrive.md "mention"), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem when deploying Keet.
 
 ### Autobase (experimental)
 
-Hypercores are single-writer data structures, but collaboration is crucial. [autobase.md](building-blocks/autobase.md "mention") is an experimental module that allows you to turn many Hypercores, owned by many different people, into a single 'virtual' Hypercore. In Keet, every member of a room has their input Hypercore where they write chat messages, and Autobase merges these into the linear view you see on screen.
+Hypercores are single-writer data structures, but collaboration is crucial. [autobase.md](building-blocks/autobase.md "mention") is an experimental module that allows to turn many Hypercores, owned by different people, into a single 'virtual' Hypercore. In Keet, every member of a room has their input Hypercore where they write chat messages, and Autobase merges these into the linear view to see on screen.
 
-Since Autobase's output shares the familiar Hypercore API, you can plug it into higher-level modules like Hyperbee and Hyperdrive, getting a multi-user collaboration with little additional effort.
+As Autobase's output shares the familiar Hypercore API, it is possible to plug it into higher-level modules like Hyperbee and Hyperdrive, getting a multi-user collaboration with little additional effort.
 
+<<<<<<< HEAD
+{% hint style="warning" %}
+Autobase is still experimental and is likely to change significantly in the near future. Give it a shot!
+{% endhint %}
+=======
     Autobase is still experimental and is likely to change significantly in the near future. If you're feeling adventurous, give it a shot!
+>>>>>>> ea20f22852e518505a9bc5035bfc5ee1c67373ee
 
 
 ## Stability indexing
