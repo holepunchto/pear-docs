@@ -14,23 +14,23 @@ description: A primer on Holepunch's modular building blocks
 
 ### Setup
 
-> ⚠️ Before we begin, make sure you are running Node v16 or greater.
+> ⚠️ Before begining the setup, ensure sure the system is running on Node v16 or greater.
 
 
-To follow along with this quick-start guide, download the [Holepunch examples repo](https://github.com/holepunchto/examples)
+Download the [Holepunch examples repo](https://github.com/holepunchto/examples)
 
 ```bash
 git clone https://github.com/holepunchto/examples
 ```
 
-Install the required dependencies
+Install the required dependencies:
 
 ```bash
 cd examples
 npm install
 ```
 
-Install the required dependencies
+Install the required dependencies:
 
 
 ```bash
@@ -38,12 +38,12 @@ npm install hyperswarm hypercore corestore hyperbee hyperdrive localdrive b4a de
 ```
 
 ```
-ℹ️: Every code example in this page is meant to be run standalone, so you can copy/paste each example into a JS file, and run it with NodeJS.
+ℹ️: Every code example in this page is meant to be run standalone, so copy/paste each example into a JS file, and run it with NodeJS.
 ```
 
 ### Hyperswarm's DHT: Connecting Two Peers by Key
 
-[Hyperswarm](building-blocks/hyperswarm.md) allows you to find and connect to peers who are announcing a common 'topic'. The swarm topic can be anything. The HyperDHT uses a series of holepunching techniques to establish direct connections between peers, even if they're located on home networks with tricky NATs.
+[Hyperswarm](building-blocks/hyperswarm.md) used to find and connect to peers who are announcing a common 'topic'. The swarm topic can be anything. The HyperDHT uses a series of holepunching techniques to establish direct connections between peers, even if they're located on home networks with tricky NATs.
 
 In the HyperDHT, peers are identified by a public key, not by an IP address. If you know someone's public key, you can connect to them regardless of where they're located, even if they move between different networks.
 
@@ -53,7 +53,7 @@ In the HyperDHT, peers are identified by a public key, not by an IP address. If 
 For example, Keet implements its own relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
 ```
 
-Let's use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. This example consists of two files: `client.mjs` and `server.mjs`.
+For example, use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. This example consists of two files: `client.mjs` and `server.mjs`.
 
 `server.mjs` will create a key pair and then start a server that will listen on the generated key pair. The public key is logged into the console. Copy it for instantiating the client.
 
@@ -109,15 +109,15 @@ process.stdin.pipe(conn).pipe(process.stdout)
 
 ### Hyperswarm: Connecting to Many Peers by Topic
 
-In the above example, we connected two peers directly using the first peer's public key. Often, you'll want to discover peers swarming a common topic, and connect to as many of them as you can. This will become clearer in the Hypercore example, but it's the best way to distribute peer-to-peer data structures.
+In the above example, two peers connected directly using the first peer's public key. The frequent use of Hyperswarm is to discover peers swarming a common topic, and connect to as many of them as possible. This will become clearer in the Hypercore example, but it's the best way to distribute peer-to-peer data structures.
 
-The [Hyperswarm](building-blocks/hyperswarm.md) module provides a higher-level interface over the underlying DHT, abstracting away the mechanics of establishing and maintaining connections. Instead, you 'join' topics, and the swarm discovers peers automatically. It also handles reconnections in the event of failures.
+The [Hyperswarm](building-blocks/hyperswarm.md) module provides a higher-level interface over the underlying DHT, abstracting away the mechanics of establishing and maintaining connections. Instead, 'join' topics, and the swarm discovers peers automatically. It also handles reconnections in the event of failures.
 
-In the previous example, we needed to explicitly indicate which peer was the server and which was the client. Here, we create two peers, have them join a common topic, and let the swarm deal with connections.
+In the previous example, to explicitly indicate which peer was the server and which was the client, create two peers, have them join a common topic, and let the swarm deal with connections.
 
 This example consists of a single file, `peer.mjs`. In one terminal, type `node peer.mjs`, it will display the topic. Copy/paste that topic into N additional terminals with `node peer.mjs (topic)`. Each peer will log information about the other connected peers.
 
-Start typing into any terminal you like, and it will be broadcast to all connected peers!
+Start typing into any terminal anything, and it will be broadcast to all connected peers!
 
 
 
@@ -164,7 +164,7 @@ In the Hyperswarm examples, peers can exchange chat messages so long as both are
 
 [hypercore.md](building-blocks/hypercore.md "mention") is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
-Let's extend the ephemeral chat example above but using Hypercore to add many significant new features:
+Now extend the ephemeral chat example above but using Hypercore to add many significant new features:
 
 1. **Persistence**: The owner of the Hypercore can add messages at any time, and they'll be persisted to disk. Whenever they come online, readers can replicate these messages over Hyperswarm.
 2. **Many Readers:** New messages added to the Hypercore will be broadcast to interested readers. The owner gives each reader a reading capability (`core.key`) and a corresponding discovery key (`core.discoveryKey`). The former is used to authorize the reader, ensuring that they have permission to read messages, and the latter is used to discover the owner (and other readers) on the swarm.
@@ -241,13 +241,13 @@ for await (const block of core.createReadStream({ start: core.length, live: true
 
 ### Corestore: Working with Many Hypercores
 
-An append-only log is powerful on its own, but it's most useful as a building block for constructing larger data structures, such as databases or filesystems. When building these data structures, you'll often need many cores, each with different responsibilities. For example, Hyperdrive uses one core to store file metadata and another to store file contents.
+An append-only log is powerful on its own, but it's most useful as a building block for constructing larger data structures, such as databases or filesystems. Building these data structures often requires many cores, each with different responsibilities. For example, Hyperdrive uses one core to store file metadata and another to store file contents.
 
-[corestore.md](helpers/corestore.md "mention") is a Hypercore factory that makes it easier to manage large collections of named Hypercores. Below you'll find a simple example that demonstrates a pattern we often use: co-replicating many cores using Corestore, where several 'internal cores' are linked to from a primary core. Only the primary core is announced on the swarm -- the keys for the others are recorded inside of that core.
+[corestore.md](helpers/corestore.md "mention") is a Hypercore factory that makes it easier to manage large collections of named Hypercores. A simple example below demonstrates a pattern often in use: co-replicating many cores using Corestore, where several 'internal cores' are linked to from a primary core. Only the primary core is announced on the swarm -- the keys for the others are recorded inside of that core.
 
 This example consists of two files: `writer.mjs` and `reader.mjs`. In the previous example, we replicated only a single Hypercore instance. But in this example, we will replicate a single Corestore instance, which will internally manage the replication of a collection of Hypercores.
 
-The file `writer.mjs` uses a Corestore instance to create three Hypercores, which are then replicated with other peers using Hyperswarm. The keys for the second and third cores are stored in the first core (the first core 'bootstraps' the system). Messages entered into the command line are written into the second and third cores, depending on the length of the message. To execute `reader.mjs`, you should copy the main core key logged into the command line.
+The file `writer.mjs` uses a Corestore instance to create three Hypercores, which are then replicated with other peers using Hyperswarm. The keys for the second and third cores are stored in the first core (the first core 'bootstraps' the system). Messages entered into the command line are written into the second and third cores, depending on the length of the message. To execute `reader.mjs`, copy the main core key logged into the command line.
 
 
 ```javascript
@@ -436,7 +436,7 @@ async function loadDictionary() {
 
 `bee-reader.mjs` creates a Corestore instance and replicates it using the Hyperswarm instance to the same topic as the above file. On every word entered in the command line, it will download the respective data to the local Hyperbee instance.
 
-Try looking at how much disk space the `reader-storage` directory is using after each query. You'll notice that it's significantly smaller than `writer-storage`! This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature we call **sparse downloading.**
+Try looking at disk space the `reader-storage` directory is using after each query. notice that it's significantly smaller than `writer-storage`! This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature we call **sparse downloading.**
 
 ```javascript
 bee-reader.mjs
@@ -486,7 +486,7 @@ process.stdin.on('data', data => {
 })
 ```
 
-Importantly, a Hyperbee is **just** a Hypercore, where the tree nodes are stored as Hypercore blocks. Let's examine the Hyperbee as if it were just a Hypercore and log out a few blocks.
+Importantly, a Hyperbee is **just** a Hypercore, where the tree nodes are stored as Hypercore blocks. Now examine the Hyperbee as if it were just a Hypercore and log out a few blocks.
 
 `core-reader.mjs` will continually download and log the last block of the Hypercore containing the Hyperbee data. Note that these blocks are encoded using Hyperbee's Node encoding, which we can easily import and use.
 
@@ -597,7 +597,7 @@ async function mirrorDrive () {
 
 `drive-reader.mjs` creates a local drive instance for a local directory and then mirrors the contents of the local Hyperdrive instance into the local drive instance (which will write the contents to the local directory).
 
-Try running `node drive-reader.mjs (key-from-above)`, then add/remove/modify files inside `writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). You'll see all new changes mirror into `reader-dir`.
+Try running `node drive-reader.mjs (key-from-above)`, then add/remove/modify files inside `writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). Observe that all new changes mirror into `reader-dir`.
 
 
 ```javascript
@@ -652,7 +652,7 @@ async function mirrorDrive () {
 ```
 
 
-Just as a Hyperbee is **just** a Hypercore, a Hyperdrive is **just** a Hyperbee (which is **just** a Hypercore). Let's inspect the Hyperdrive as though it were a Hyperbee, and log out some file metadata.
+Just as a Hyperbee is **just** a Hypercore, a Hyperdrive is **just** a Hyperbee (which is **just** a Hypercore). Now inspect the Hyperdrive as though it were a Hyperbee, and log out some file metadata.
 
 `bee-reader.mjs` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.
 
