@@ -41,7 +41,7 @@ Helper modules can be used together with the building blocks to create cutting-e
 
 <table data-view="cards"><thead><tr><th></th><th></th><th data-hidden data-card-cover data-type="files"></th><th data-hidden data-card-target data-type="content-ref"></th></tr></thead><tbody><tr><td><a data-mention href="tools/hypershell.md">hypershell.md</a></td><td>A CLI to create and connect to P2P E2E encrypted shells.</td><td></td><td><a href="tools/hypershell.md">hypershell.md</a></td></tr><tr><td><a data-mention href="tools/hypertele.md">hypertele.md</a></td><td>A swiss-knife proxy powered by <a data-mention href="building-blocks/hyperdht.md">hyperdht.md</a>.</td><td></td><td><a href="tools/hypertele.md">hypertele.md</a></td></tr><tr><td><a data-mention href="tools/hyperbeam.md">hyperbeam.md</a></td><td>A one-to-one and end-to-end encrypted internet pipe.</td><td></td><td><a href="tools/hyperbeam.md">hyperbeam.md</a></td></tr><tr><td><a data-mention href="tools/hyperssh.md">hyperssh.md</a></td><td>A CLI to run SSH over the <a data-mention href="building-blocks/hyperdht.md">hyperdht.md</a>.</td><td></td><td><a href="tools/hyperssh.md">hyperssh.md</a></td></tr><tr><td><a data-mention href="tools/drives.md">drives.md</a></td><td>CLI to download, seed, and mirror a <a data-mention href="building-blocks/hyperdrive.md">hyperdrive.md</a> or a <a data-mention href="helpers/localdrive.md">localdrive.md</a>.</td><td></td><td><a href="tools/drives.md">drives.md</a></td></tr></tbody></table>
 
-    These tools are extensively employed in the day-to-day development and operation of applications built on Holepunch, like [Keet.io](https://keet.io/).
+    ✔️These tools are extensively employed in the day-to-day development and operation of applications built on Holepunch, like [Keet.io](https://keet.io/).
 
 
 ## Applications built using Holepunch
@@ -84,13 +84,7 @@ Hypercores are single-writer data structures, but collaboration is crucial. [aut
 
 As Autobase's output shares the familiar Hypercore API, it is possible to plug it into higher-level modules like Hyperbee and Hyperdrive, getting a multi-user collaboration with little additional effort.
 
-<<<<<<< HEAD
-{% hint style="warning" %}
-Autobase is still experimental and is likely to change significantly in the near future. Give it a shot!
-{% endhint %}
-=======
-    Autobase is still experimental and is likely to change significantly in the near future. If you're feeling adventurous, give it a shot!
->>>>>>> ea20f22852e518505a9bc5035bfc5ee1c67373ee
+    ⚠️ Autobase is still experimental and is likely to change significantly in the near future. If you're feeling adventurous, give it a shot!
 
 
 ## Stability indexing
@@ -118,4 +112,4 @@ The following stability indices have been used:
 | [hyperdht.md](building-blocks/hyperdht.md "mention")     |    <mark style="background-color:green;">**stable**</mark>   |
 
 
-    Any part of a module (method, event, or property) that is not documented as part of that module's public API is subject to change at any time.
+    ⚠️ Any part of a module (method, event, or property) that is not documented as part of that module's public API is subject to change at any time.
