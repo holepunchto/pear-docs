@@ -35,9 +35,7 @@ npm install
 npm install hyperswarm hypercore corestore hyperbee hyperdrive localdrive b4a debounceify graceful-goodbye --save
 ```
 
-```
-ℹ️: Every code example in this page is meant to be run standalone, so copy/paste each example into a JS file, and run it with NodeJS.
-```
+> ℹ️ Every code example in this page is meant to be run standalone, so copy/paste each example into a JS file, and run it with NodeJS.
 
 ### Hyperswarm's DHT: Connecting Two Peers by Key
 
@@ -45,11 +43,9 @@ npm install hyperswarm hypercore corestore hyperbee hyperdrive localdrive b4a de
 
 In the HyperDHT, peers are identified by a public key, not by an IP address. If you know someone's public key, you can connect to them regardless of where they're located, even if they move between different networks.
 
-```
-ℹ️: Hyperswarm's holepunching will fail if both the client peer and the server peer are on randomizing NATs, in which case the connection must be relayed through a third peer. Hyperswarm does not do any relaying by default.
-
+> ℹ️ Hyperswarm's holepunching will fail if both the client peer and the server peer are on randomizing NATs, in which case the connection must be relayed through a third peer. Hyperswarm does not do any relaying by default.
 For example, Keet implements its own relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
-```
+
 
 For example, use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. This example consists of two files: `client.mjs` and `server.mjs`.
 
@@ -360,9 +356,7 @@ The example consists of three files: `writer.mjs` , `bee-reader.mjs` and `core-r
 
 `writer.mjs` stores 100k entries from a given dictionary file into a Hyperbee instance. The Corestore instance used to create the Hyperbee instance is replicated using Hyperswarm. This enables other peers to replicate their Corestore instance and download the dictionary data into their local Hyperbee instances.
 
-```
-ℹ️ Download the `dict.json.gz` compressed file from the [GitHub repository](https://github.com/holepunchto/examples/blob/main/quick-start/hyperbee/dict.json.gz) to the folder where the `writer.mjs`is present. The compressed file contains 100K dictionary words.
-```
+> ℹ️ Download the `dict.json.gz` compressed file from the [GitHub repository](https://github.com/holepunchto/examples/blob/main/quick-start/hyperbee/dict.json.gz) to the folder where the `writer.mjs`is present. The compressed file contains 100K dictionary words.
 
 ```javascript
 writer.mjs
@@ -533,7 +527,7 @@ console.log(`Decoded Block ${seq}`, Node.decode(lastBlock))
 
 [hyperdrive.md](building-blocks/hyperdrive.md "mention") is a secure, real-time distributed file system designed for easy P2P file sharing. In the same way that a Hyperbee is just a wrapper around a Hypercore, a Hyperdrive is a wrapper around two Hypercores: one is a Hyperbee index for storing file metadata, and the other is used to store file contents.
 
-Let's mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, we'll use two additional tools: [mirrordrive.md](helpers/mirrordrive.md "mention") and [localdrive.md](helpers/localdrive.md "mention"), which handle all interactions between Hyperdrives and the local filesystem.
+Now mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, use two additional tools: [mirrordrive.md](helpers/mirrordrive.md "mention") and [localdrive.md](helpers/localdrive.md "mention"), which handle all interactions between Hyperdrives and the local filesystem.
 
 This example consists of three files: `writer.mjs`, `drive-reader.mjs` and `bee-reader.mjs`.
 
