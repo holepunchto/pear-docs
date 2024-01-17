@@ -38,11 +38,8 @@ Install the required dependencies
 npm install hyperswarm hypercore corestore hyperbee hyperdrive localdrive b4a debounceify graceful-goodbye --save
 ```
 
-{% endcode %}
+  ℹ️ Every code example in this page is meant to be run standalone, so you can copy/paste each example into a JS file, and run it with NodeJS.
 
-{% hint style="info" %}
-Every code example in this page is meant to be run standalone, so you can copy/paste each example into a JS file, and run it with NodeJS.
-{% endhint %}
 
 ### Hyperswarm's DHT: Connecting Two Peers by Key
 
@@ -50,11 +47,11 @@ Every code example in this page is meant to be run standalone, so you can copy/p
 
 In the HyperDHT, peers are identified by a public key, not by an IP address. If you know someone's public key, you can connect to them regardless of where they're located, even if they move between different networks.
 
-{% hint style="info" %}
-Hyperswarm's holepunching will fail if both the client peer and the server peer are on randomizing NATs, in which case the connection must be relayed through a third peer. Hyperswarm does not do any relaying by default.
 
-For example, Keet implements its own relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
-{% endhint %}
+  ℹ️ Hyperswarm's holepunching will fail if both the client peer and the server peer are on randomizing NATs, in which case the connection must be relayed through a third peer. Hyperswarm does not do any relaying by default.
+
+  For example, Keet implements its own relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
+
 
 Let's use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. This example consists of two files: `client.mjs` and `server.mjs`.
 
@@ -369,9 +366,9 @@ The example consists of three files: `writer.mjs` , `bee-reader.mjs` and `core-r
 
 `writer.mjs` stores 100k entries from a given dictionary file into a Hyperbee instance. The Corestore instance used to create the Hyperbee instance is replicated using Hyperswarm. This enables other peers to replicate their Corestore instance and download the dictionary data into their local Hyperbee instances.
 
-{% hint style="info" %}
-Download the `dict.json.gz` compressed file from the [GitHub repository](https://github.com/holepunchto/examples/blob/main/quick-start/hyperbee/dict.json.gz) to the folder where the `writer.mjs`is present. The compressed file contains 100K dictionary words.
-{% endhint %}
+
+  ℹ️ Download the `dict.json.gz` compressed file from the [GitHub repository](https://github.com/holepunchto/examples/blob/main/quick-start/hyperbee/dict.json.gz) to the folder where the `writer.mjs`is present. The compressed file contains 100K dictionary words.
+
 
 {% code title="writer.mjs" %}
 
