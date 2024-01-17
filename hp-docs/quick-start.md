@@ -30,8 +30,6 @@ cd examples
 npm install
 ```
 
-Install the required dependencies:
-
 
 ```bash
 npm install hyperswarm hypercore corestore hyperbee hyperdrive localdrive b4a debounceify graceful-goodbye --save
