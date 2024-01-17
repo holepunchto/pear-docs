@@ -32,14 +32,14 @@ npm install
 
 Install the required dependencies
 
-{% code overflow="wrap" %}
 
 ```bash
 npm install hyperswarm hypercore corestore hyperbee hyperdrive localdrive b4a debounceify graceful-goodbye --save
 ```
 
-  ℹ️ Every code example in this page is meant to be run standalone, so you can copy/paste each example into a JS file, and run it with NodeJS.
-
+```
+  ℹ️: Every code example in this page is meant to be run standalone, so you can copy/paste each example into a JS file, and run it with NodeJS.
+```
 
 ### Hyperswarm's DHT: Connecting Two Peers by Key
 
@@ -48,7 +48,7 @@ npm install hyperswarm hypercore corestore hyperbee hyperdrive localdrive b4a de
 In the HyperDHT, peers are identified by a public key, not by an IP address. If you know someone's public key, you can connect to them regardless of where they're located, even if they move between different networks.
 
 
-  ℹ️ Hyperswarm's holepunching will fail if both the client peer and the server peer are on randomizing NATs, in which case the connection must be relayed through a third peer. Hyperswarm does not do any relaying by default.
+  ℹ️: Hyperswarm's holepunching will fail if both the client peer and the server peer are on randomizing NATs, in which case the connection must be relayed through a third peer. Hyperswarm does not do any relaying by default.
 
   For example, Keet implements its own relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
 
@@ -57,9 +57,9 @@ Let's use the HyperDHT to create a basic CLI chat app where a client peer connec
 
 `server.mjs` will create a key pair and then start a server that will listen on the generated key pair. The public key is logged into the console. Copy it for instantiating the client.
 
-{% code title="server.mjs" %}
 
 ```javascript
+server.mjs
 import DHT from 'hyperdht'
 import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
@@ -83,15 +83,16 @@ server.listen(keyPair).then(() => {
 goodbye(() => server.close())
 ```
 
-{% endcode %}
+
 
 `client.mjs` will spin up a client, and the public key copied earlier must be supplied as a command line argument for connecting to the server. The client process will log `got connection` into the console when it connects to the server.
 
 Once it's connected, try typing in both terminals!
 
-{% code title="client.mjs" %}
+
 
 ``` javascript
+client.mjs
 import DHT from 'hyperdht'
 import b4a from 'b4a'
 
@@ -105,7 +106,6 @@ conn.once('open', () => console.log('got connection!'))
 process.stdin.pipe(conn).pipe(process.stdout)
 ```
 
-{% endcode %}
 
 ### Hyperswarm: Connecting to Many Peers by Topic
 
@@ -119,9 +119,10 @@ This example consists of a single file, `peer.mjs`. In one terminal, type `node 
 
 Start typing into any terminal you like, and it will be broadcast to all connected peers!
 
-{% code title="peer.mjs" %}
+
 
 ```javascript
+peer.mjs
 import Hyperswarm from 'hyperswarm'
 import goodbye from 'graceful-goodbye'
 import crypto from 'hypercore-crypto'
@@ -157,8 +158,6 @@ discovery.flushed().then(() => {
 })
 ```
 
-{% endcode %}
-
 ### Hypercore: The Basics
 
 In the Hyperswarm examples, peers can exchange chat messages so long as both are online at the same time and directly connected, and those messages are not persistent (they will be lost if the recipient is offline). Hypercore fixes all of these problems.
@@ -174,9 +173,10 @@ The following example consists of two files: `reader.mjs` and `writer.mjs`. When
 
 `writer.mjs` stores the data entered into the command line to the Hypercore instance. The Hypercore instance is replicated with other peers using Hyperswarm.
 
-{% code title="writer.mjs" %}
+
 
 ```javascript
+writer.mjs
 import Hyperswarm from 'hyperswarm'
 import Hypercore from 'hypercore'
 import goodbye from 'graceful-goodbye'
@@ -200,13 +200,13 @@ swarm.join(core.discoveryKey)
 swarm.on('connection', conn => core.replicate(conn))
 ```
 
-{% endcode %}
 
 `reader.mjs` uses Hyperswarm to connect to the previously initiated peer and synchronize the local Hypercore instance with the Hypercore instance of the writer.
 
-{% code title="reader.mjs" %}
+
 
 ```javascript
+reader.mjs
 import Hyperswarm from 'hyperswarm'
 import Hypercore from 'hypercore'
 import goodbye from 'graceful-goodbye'
@@ -238,7 +238,6 @@ for await (const block of core.createReadStream({ start: core.length, live: true
 }
 ```
 
-{% endcode %}
 
 ### Corestore: Working with Many Hypercores
 
@@ -250,9 +249,9 @@ This example consists of two files: `writer.mjs` and `reader.mjs`. In the previo
 
 The file `writer.mjs` uses a Corestore instance to create three Hypercores, which are then replicated with other peers using Hyperswarm. The keys for the second and third cores are stored in the first core (the first core 'bootstraps' the system). Messages entered into the command line are written into the second and third cores, depending on the length of the message. To execute `reader.mjs`, you should copy the main core key logged into the command line.
 
-{% code title="writer.mjs" %}
 
 ```javascript
+writer.mjs
 import Corestore from 'corestore'
 import Hyperswarm from 'hyperswarm'
 import goodbye from 'graceful-goodbye'
@@ -299,13 +298,12 @@ process.stdin.on('data', data => {
 })
 ```
 
-{% endcode %}
 
 `reader.mjs` connects to the previous peer with Hyperswarm and replicates the local Corestore instance to receive the data from it. This requires the copied key to be supplied as an argument when executing the file, which will then be used to create a core with the same public key as the other peer (i.e., the same discovery key for both the reader and writer peers).
 
-{% code title="reader.mjs" %}
 
 ```javascript
+reader.mjs
 import Corestore from 'corestore'
 import Hyperswarm from 'hyperswarm'
 import goodbye from 'graceful-goodbye'
@@ -356,8 +354,6 @@ for (const key of otherKeys) {
 }
 ```
 
-{% endcode %}
-
 ### Hyperbee: Sharing Append-Only Databases
 
 [hyperbee.md](building-blocks/hyperbee.md "mention") is an append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
@@ -370,9 +366,8 @@ The example consists of three files: `writer.mjs` , `bee-reader.mjs` and `core-r
   ℹ️ Download the `dict.json.gz` compressed file from the [GitHub repository](https://github.com/holepunchto/examples/blob/main/quick-start/hyperbee/dict.json.gz) to the folder where the `writer.mjs`is present. The compressed file contains 100K dictionary words.
 
 
-{% code title="writer.mjs" %}
-
 ```javascript
+writer.mjs
 import fs from 'fs'
 import zlib from 'zlib'
 
@@ -438,15 +433,13 @@ async function loadDictionary() {
 }
 ```
 
-{% endcode %}
 
 `bee-reader.mjs` creates a Corestore instance and replicates it using the Hyperswarm instance to the same topic as the above file. On every word entered in the command line, it will download the respective data to the local Hyperbee instance.
 
 Try looking at how much disk space the `reader-storage` directory is using after each query. You'll notice that it's significantly smaller than `writer-storage`! This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature we call **sparse downloading.**
 
-{% code title="bee-reader.mjs" %}
-
 ```javascript
+bee-reader.mjs
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
@@ -493,15 +486,13 @@ process.stdin.on('data', data => {
 })
 ```
 
-{% endcode %}
-
 Importantly, a Hyperbee is **just** a Hypercore, where the tree nodes are stored as Hypercore blocks. Let's examine the Hyperbee as if it were just a Hypercore and log out a few blocks.
 
 `core-reader.mjs` will continually download and log the last block of the Hypercore containing the Hyperbee data. Note that these blocks are encoded using Hyperbee's Node encoding, which we can easily import and use.
 
-{% code title="core-reader.mjs" %}
 
 ```javascript
+core-reader.mjs
 import Hypercore from 'hypercore'
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
@@ -540,8 +531,6 @@ console.log(`Raw Block ${seq}:`, lastBlock)
 console.log(`Decoded Block ${seq}`, Node.decode(lastBlock))
 ```
 
-{% endcode %}
-
 ### Hyperdrive: A Full P2P Filesystem
 
 [hyperdrive.md](building-blocks/hyperdrive.md "mention") is a secure, real-time distributed file system designed for easy P2P file sharing. In the same way that a Hyperbee is just a wrapper around a Hypercore, a Hyperdrive is a wrapper around two Hypercores: one is a Hyperbee index for storing file metadata, and the other is used to store file contents.
@@ -552,9 +541,9 @@ This example consists of three files: `writer.mjs`, `drive-reader.mjs` and `bee-
 
 `writer.mjs` creates a local drive instance for a local directory and then mirrors the local drive into the Hyperdrive instance. The store used to create the Hyperdrive instance is replicated using Hyperswarm to make the data of Hyperdrive accessible to other peers. Copy the drive key logged into the command line for the `reader.mjs` execution.
 
-{% code title="writer.mjs" %}
 
 ```javascript
+writer.js
 import Hyperswarm from 'hyperswarm'
 import Hyperdrive from 'hyperdrive'
 import Localdrive from 'localdrive'
@@ -606,15 +595,13 @@ async function mirrorDrive () {
 }
 ```
 
-{% endcode %}
-
 `drive-reader.mjs` creates a local drive instance for a local directory and then mirrors the contents of the local Hyperdrive instance into the local drive instance (which will write the contents to the local directory).
 
 Try running `node drive-reader.mjs (key-from-above)`, then add/remove/modify files inside `writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). You'll see all new changes mirror into `reader-dir`.
 
-{% code title="drive-reader.mjs" %}
 
 ```javascript
+drive-reader.mjs
 import Hyperswarm from 'hyperswarm'
 import Hyperdrive from 'hyperdrive'
 import Localdrive from 'localdrive'
@@ -664,7 +651,6 @@ async function mirrorDrive () {
 }
 ```
 
-{% endcode %}
 
 Just as a Hyperbee is **just** a Hypercore, a Hyperdrive is **just** a Hyperbee (which is **just** a Hypercore). Let's inspect the Hyperdrive as though it were a Hyperbee, and log out some file metadata.
 
@@ -672,9 +658,9 @@ Just as a Hyperbee is **just** a Hypercore, a Hyperdrive is **just** a Hyperbee 
 
 Try adding or removing a few files from the writer's data directory, then pressing `Enter` in the writer's terminal to mirror the changes.
 
-{% code title="bee-reader.mjs" %}
 
 ```javascript
+bee-reader.mjs
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
@@ -722,4 +708,3 @@ async function listBee () {
 }
 ```
 
-{% endcode %}
