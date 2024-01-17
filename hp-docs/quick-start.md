@@ -14,9 +14,8 @@ description: A primer on Holepunch's modular building blocks
 
 ### Setup
 
-{% hint style="warning" %}
-Before we begin, make sure you are running Node v16 or greater.
-{% endhint %}
+> ⚠️ Before we begin, make sure you are running Node v16 or greater.
+
 
 To follow along with this quick-start guide, download the [Holepunch examples repo](https://github.com/holepunchto/examples)
 
