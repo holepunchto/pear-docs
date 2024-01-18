@@ -4,7 +4,7 @@ Welcome to the Holepunch docs! 👋
 
 # Overview
 
-Holepunch equips developers with a powerful suite of independent components to effortlessly construct P2P applications.  
+Holepunch equips developers with a powerful suite of independent components to effortlessly construct P2P applications.
 
 ## Building blocks
 
@@ -25,7 +25,7 @@ Helper modules can be used together with the building blocks to create cutting-e
 2. [localdrive.md](helpers/localdrive.md): A file system interoperable with Hyperdrive.
 3. [mirrordrive.md](helpers/mirrordrive.md): Mirror a [hyperdrive.md](building-blocks/hyperdrive.md) or a [localdrive.md](helpers/localdrive.md) into another one.
 4. [secretstream.md](helpers/secretstream.md): SecretStream is used to securely create connections between two peers in Hyperswarm.
-5. [compact-encoding.md](helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. Holepunch uses this in Keet to store chat messages and in Hypercore's replication protocol.
+5. [compact-encoding.md](helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.
 6. [protomux.md](helpers/protomux.md): Multiplex multiple message oriented protocols over a stream.
 
 ## Tools built using Holepunch
