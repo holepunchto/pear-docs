@@ -21,12 +21,12 @@ The Holepunch Ecosystem is constructed utilizing the following structural compon
 
 Helper modules can be used together with the building blocks to create cutting-edge P2P tools and applications.
 
-1. [corestore.md](helpers/corestore.md "mention"): A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.
-2. [localdrive.md](helpers/localdrive.md "mention"): A file system interoperable with Hyperdrive.
-3. [mirrordrive.md](helpers/mirrordrive.md "mention"): Mirror a [hyperdrive.md](building-blocks/hyperdrive.md "mention") or a [localdrive.md](helpers/localdrive.md "mention") into another one.
-4. [secretstream.md](helpers/secretstream.md "mention"): SecretStream is used to securely create connections between two peers in Hyperswarm.
-5. [compact-encoding.md](helpers/compact-encoding.md "mention"): A series of binary encoding schemes for building fast and small parsers and serializers. Holepunch use this in Keet to store chat messages and in Hypercore's replication protocol.
-6. [protomux.md](helpers/protomux.md "mention"): Multiplex multiple message oriented protocols over a stream.
+1. [corestore.md](helpers/corestore.md): A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.
+2. [localdrive.md](helpers/localdrive.md): A file system interoperable with Hyperdrive.
+3. [mirrordrive.md](helpers/mirrordrive.md): Mirror a [hyperdrive.md](building-blocks/hyperdrive.md) or a [localdrive.md](helpers/localdrive.md) into another one.
+4. [secretstream.md](helpers/secretstream.md): SecretStream is used to securely create connections between two peers in Hyperswarm.
+5. [compact-encoding.md](helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. Holepunch use this in Keet to store chat messages and in Hypercore's replication protocol.
+6. [protomux.md](helpers/protomux.md): Multiplex multiple message oriented protocols over a stream.
 
 ## Tools built using Holepunch
 
