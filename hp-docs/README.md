@@ -73,11 +73,11 @@ The core modules Hyperspace daemon and `hyp` CLI tools are now deprecated.
 
 * Uses Hyperbee internally for storing file metadata
 * Major API simplification. Instead of mirroring POSIX APIs, the new API better captures the core requirements of P2P file transfer.
-* Auxiliary tools, [localdrive.md](helpers/localdrive.md) and [mirrordrive.md](helpers/mirrordrive.md), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem. We use this every day when deploying Keet.
+* Auxiliary tools, [localdrive.md](helpers/localdrive.md) and [mirrordrive.md](helpers/mirrordrive.md), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem. We use these every day when deploying Keet.
 
 ### Autobase (experimental)
 
-Hypercores are single-writer data structures, but collaboration is crucial. [autobase.md](building-blocks/autobase.md "mention") is an experimental module that allows to turn many Hypercores, owned by different people, into a single 'virtual' Hypercore. In Keet, every member of a room has their input Hypercore where they write chat messages, and Autobase merges these into the linear view the member see on the screen.
+Hypercores are single-writer data structures, but collaboration is crucial. [autobase.md](building-blocks/autobase.md "mention") is an experimental module that allows to turn many Hypercores, owned by different people, into a single 'virtual' Hypercore. In Keet, every member of a room has their input Hypercore where they write chat messages, and Autobase merges these into the linear view members see on the screen.
 
 As Autobase's output shares the familiar Hypercore API, it is possible to plug it into higher-level modules like Hyperbee and Hyperdrive, getting a multi-user collaboration with little additional effort.
 
