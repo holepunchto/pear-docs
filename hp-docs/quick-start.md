@@ -1,8 +1,6 @@
----
-description: A primer on Holepunch's modular building blocks
----
-
 # Quick start
+
+A primer on Holepunch's modular building blocks
 
 * [Setup](quick-start.md#setup)
 * [Hyperswarm's DHT: Connecting Two Peers by Key](quick-start.md#hyperswarms-dht-connecting-two-peers-by-key)
