@@ -39,15 +39,16 @@ npm install hyperswarm hypercore corestore hyperbee hyperdrive localdrive b4a de
 
 ### Hyperswarm's DHT: Connecting Two Peers by Key
 
-[Hyperswarm](building-blocks/hyperswarm.md) used to find and connect to peers who are announcing a common 'topic'. The swarm topic can be anything. The HyperDHT uses a series of holepunching techniques to establish direct connections between peers, even if they're located on home networks with tricky NATs.
+[Hyperswarm](building-blocks/hyperswarm.md) helps to find and connect to peers who are announcing a common 'topic'. The swarm topic can be anything. The HyperDHT uses a series of holepunching techniques to establish direct connections between peers, even if they're located on home networks with tricky NATs.
 
-In the HyperDHT, peers are identified by a public key, not by an IP address. If you know someone's public key, you can connect to them regardless of where they're located, even if they move between different networks.
+In the HyperDHT, peers are identified by a public key, not by an IP address. With the public key, users can connect to each other irrespective of their location, even if they move between different networks.
 
 > ℹ️ Hyperswarm's holepunching will fail if both the client peer and the server peer are on randomizing NATs, in which case the connection must be relayed through a third peer. Hyperswarm does not do any relaying by default.
-For example, Keet implements its relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
+>
+> For example, Keet implements its relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
 
 
-For example, use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. This example consists of two files: `client.mjs` and `server.mjs`.
+Use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. This example consists of two files: `client.mjs` and `server.mjs`.
 
 `server.mjs` will create a key pair and then start a server that will listen on the generated key pair. The public key is logged into the console. Copy it for instantiating the client.
 
@@ -103,15 +104,15 @@ process.stdin.pipe(conn).pipe(process.stdout)
 
 ### Hyperswarm: Connecting to Many Peers by Topic
 
-In the above example, two peers connected directly using the first peer's public key. The frequent use of Hyperswarm is to discover peers swarming a common topic, and connect to as many of them as possible. This will become clearer in the Hypercore example, but it's the best way to distribute peer-to-peer data structures.
+In the above example, two peers connected directly using the first peer's public key. Hyperswarm helps to discover peers swarming a common topic, and connect to as many of them as possible. This will become clearer in the Hypercore example, but it's the best way to distribute peer-to-peer data structures.
 
 The [Hyperswarm](building-blocks/hyperswarm.md) module provides a higher-level interface over the underlying DHT, abstracting away the mechanics of establishing and maintaining connections. Instead, 'join' topics, and the swarm discovers peers automatically. It also handles reconnections in the event of failures.
 
-In the previous example, to explicitly indicate which peer was the server and which was the client, create two peers, have them join a common topic, and let the swarm deal with connections.
+In the previous example, we needed to explicitly indicate which peer was the server and which was the client. By using Hyperswarm, we create two peers, have them join a common topic, and let the swarm deal with connections.
 
 This example consists of a single file, `peer.mjs`. In one terminal, type `node peer.mjs`, it will display the topic. Copy/paste that topic into N additional terminals with `node peer.mjs (topic)`. Each peer will log information about the other connected peers.
 
-Start typing into any terminal anything, and it will be broadcast to all connected peers!
+Start typing into any terminal, and it will be broadcast to all connected peers!
 
 
 
