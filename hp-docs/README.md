@@ -2,8 +2,6 @@
 Welcome to the Holepunch docs! 👋
 ---
 
-# Overview
-
 Holepunch equips developers with a powerful suite of independent components to effortlessly construct P2P applications.
 
 ## Building blocks
