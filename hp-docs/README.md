@@ -10,12 +10,12 @@ Holepunch equips developers with a powerful suite of independent components to e
 
 The Holepunch Ecosystem is constructed utilizing the following structural components.
 
-1. [hypercore.md](building-blocks/hypercore.md "mention"): A distributed, secure append-only log is a tool for creating fast and scalable applications without a backend, as it is entirely peer-to-peer.
-2. [hyperbee.md](building-blocks/hyperbee.md "mention"): An append-only B-tree running on a Hypercore that provides key-value store API, with methods for inserting and getting key/value pairs, atomic batch insertions, and creation of sorted iterators.
-3. [hyperdrive.md](building-blocks/hyperdrive.md "mention"): A secure, real-time distributed file system that simplifies P2P file sharing that provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
-4. [autobase.md](building-blocks/autobase.md "mention"): An experimental module used to automatically rebase multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration.
-5. [hyperdht.md](building-blocks/hyperdht.md "mention"): A DHT powering Hyperswarm. Through this DHT, each server is bound to a unique key pair, with the client connecting to the server using the server's public key.
-6. [hyperswarm.md](building-blocks/hyperswarm.md "mention"): A high-level API for finding and connecting to peers who are interested in a "topic."
+1. [hypercore.md](building-blocks/hypercore.md): A distributed, secure append-only log is a tool for creating fast and scalable applications without a backend, as it is entirely peer-to-peer.
+2. [hyperbee.md](building-blocks/hyperbee.md): An append-only B-tree running on a Hypercore that provides key-value store API, with methods for inserting and getting key/value pairs, atomic batch insertions, and creation of sorted iterators.
+3. [hyperdrive.md](building-blocks/hyperdrive.md): A secure, real-time distributed file system that simplifies P2P file sharing that provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
+4. [autobase.md](building-blocks/autobase.md): An experimental module used to automatically rebase multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration.
+5. [hyperdht.md](building-blocks/hyperdht.md): A DHT powering Hyperswarm. Through this DHT, each server is bound to a unique key pair, with the client connecting to the server using the server's public key.
+6. [hyperswarm.md](building-blocks/hyperswarm.md): A high-level API for finding and connecting to peers who are interested in a "topic."
 
 ## Helpers
 
@@ -43,11 +43,11 @@ Helper modules can be used together with the building blocks to create cutting-e
 
 ## Applications built using Holepunch
 
-* [keet.io.md](apps/keet.io.md "mention")**:** A peer-to-peer chat and video-conferencing application with end-to-end encryption.
+* [keet.io.md](apps/keet.io.md)**:** A peer-to-peer chat and video-conferencing application with end-to-end encryption.
 
 ## What's new?
 
-Holepunch is continuously introucing new enhancements and following are the few highlights.
+Holepunch is continuously introducing new enhancements and the following are a few highlights.
 
 ### Better Building Blocks
 
@@ -55,15 +55,15 @@ Holepunch focus is on making the core building blocks easy to use, fast, and rel
 
 The core modules Hyperspace daemon and `hyp` CLI tools are now deprecated.
 
-### Hypercore v10
+### Hypercore 
 
 * The [`session`](building-blocks/hypercore.md#core.session-options) and [`snapshot`](building-blocks/hypercore.md#core.snapshot-options) methods for providing multiple views over the same underlying Hypercore, which simplifies resource management.
-* A [`truncate`](building-blocks/hypercore.md#await-core.truncate-newlength-forkid) method for intentionally creating a new fork, starting at a given length. We use this method extensively in [autobase.md](building-blocks/autobase.md "mention"), as described below.
+* A [`truncate`](building-blocks/hypercore.md#await-core.truncate-newlength-forkid) method for intentionally creating a new fork, starting at a given length. We use this method extensively in [autobase.md](building-blocks/autobase.md), as described below.
 * An improved fork detection in the replication protocol, to improve resilience.
 * Optional on-disk encryption for blocks (in addition to the existing transport encryption).
 * The storage layer now uses a write-ahead log to ensure that power loss or unexpected shutdown cannot lead to data corruption.
 
-### Hyperswarm v4
+### Hyperswarm
 
 * An improved UDP holepunching algorithm that uses arbitrary DHT nodes (optionally selected by the connecting peers) to proxy necessary metadata while being maximally privacy-preserving.
 * A custom-built transport protocol, [UDX](https://github.com/hyperswarm/libudx), that takes advantage of the holepunching algorithm to avoid unnecessary overhead (it doesn't include handshaking since holepunching takes care of that, for example). It's blazing fast.
@@ -73,7 +73,7 @@ The core modules Hyperspace daemon and `hyp` CLI tools are now deprecated.
 
 * Uses Hyperbee internally for storing file metadata
 * Major API simplification. Instead of mirroring POSIX APIs, the new API better captures the core requirements of P2P file transfer.
-* Auxiliary tools, [localdrive.md](helpers/localdrive.md "mention") and [mirrordrive.md](helpers/mirrordrive.md "mention"), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem when deploying Keet.
+* Auxiliary tools, [localdrive.md](helpers/localdrive.md) and [mirrordrive.md](helpers/mirrordrive.md), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem when deploying Keet.
 
 ### Autobase (experimental)
 
@@ -101,12 +101,12 @@ The following stability indices have been used:
 
 | Module                                                   |                           Stability                          |
 | -------------------------------------------------------- | :----------------------------------------------------------: |
-| [hypercore.md](building-blocks/hypercore.md "mention")   |    <mark style="background-color:green;">**stable**</mark>   |
-| [hyperbee.md](building-blocks/hyperbee.md "mention")     |    <mark style="background-color:green;">**stable**</mark>   |
-| [hyperdrive.md](building-blocks/hyperdrive.md "mention") |    <mark style="background-color:green;">**stable**</mark>   |
-| [autobase.md](building-blocks/autobase.md "mention")     | <mark style="background-color:blue;">**experimental**</mark> |
-| [hyperswarm.md](building-blocks/hyperswarm.md "mention") |    <mark style="background-color:green;">**stable**</mark>   |
-| [hyperdht.md](building-blocks/hyperdht.md "mention")     |    <mark style="background-color:green;">**stable**</mark>   |
+| [hypercore.md](building-blocks/hypercore.md)   |    <mark style="background-color:green;">**stable**</mark>   |
+| [hyperbee.md](building-blocks/hyperbee.md)     |    <mark style="background-color:green;">**stable**</mark>   |
+| [hyperdrive.md](building-blocks/hyperdrive.md) |    <mark style="background-color:green;">**stable**</mark>   |
+| [autobase.md](building-blocks/autobase.md)     | <mark style="background-color:blue;">**experimental**</mark> |
+| [hyperswarm.md](building-blocks/hyperswarm.md) |    <mark style="background-color:green;">**stable**</mark>   |
+| [hyperdht.md](building-blocks/hyperdht.md)     |    <mark style="background-color:green;">**stable**</mark>   |
 
 
  >⚠️ Any part of a module (method, event, or property) that is not documented as part of that module's public API is subject to change at any time.
