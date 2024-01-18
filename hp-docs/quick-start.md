@@ -14,7 +14,7 @@ description: A primer on Holepunch's modular building blocks
 
 ### Setup
 
-> ⚠️ Before begining the setup, ensure sure the system is running on Node v16 or greater.
+> ⚠️ Before beginning the setup, ensure sure the system is running on Node v16 or greater.
 
 
 Download the [Holepunch examples repo](https://github.com/holepunchto/examples)
@@ -44,7 +44,7 @@ npm install hyperswarm hypercore corestore hyperbee hyperdrive localdrive b4a de
 In the HyperDHT, peers are identified by a public key, not by an IP address. If you know someone's public key, you can connect to them regardless of where they're located, even if they move between different networks.
 
 > ℹ️ Hyperswarm's holepunching will fail if both the client peer and the server peer are on randomizing NATs, in which case the connection must be relayed through a third peer. Hyperswarm does not do any relaying by default.
-For example, Keet implements its own relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
+For example, Keet implements its relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
 
 
 For example, use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. This example consists of two files: `client.mjs` and `server.mjs`.
@@ -156,7 +156,7 @@ discovery.flushed().then(() => {
 
 In the Hyperswarm examples, peers can exchange chat messages so long as both are online at the same time and directly connected, and those messages are not persistent (they will be lost if the recipient is offline). Hypercore fixes all of these problems.
 
-[hypercore.md](building-blocks/hypercore.md "mention") is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
+[hypercore.md](building-blocks/hypercore.md) is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
 Now extend the ephemeral chat example above but using Hypercore to add many significant new features:
 
@@ -237,7 +237,7 @@ for await (const block of core.createReadStream({ start: core.length, live: true
 
 An append-only log is powerful on its own, but it's most useful as a building block for constructing larger data structures, such as databases or filesystems. Building these data structures often requires many cores, each with different responsibilities. For example, Hyperdrive uses one core to store file metadata and another to store file contents.
 
-[corestore.md](helpers/corestore.md "mention") is a Hypercore factory that makes it easier to manage large collections of named Hypercores. A simple example below demonstrates a pattern often in use: co-replicating many cores using Corestore, where several 'internal cores' are linked to from a primary core. Only the primary core is announced on the swarm -- the keys for the others are recorded inside of that core.
+[corestore.md](helpers/corestore.md) is a Hypercore factory that makes it easier to manage large collections of named Hypercores. A simple example below demonstrates a pattern often in use: co-replicating many cores using Corestore, where several 'internal cores' are linked to from a primary core. Only the primary core is announced on the swarm -- the keys for the others are recorded inside of that core.
 
 This example consists of two files: `writer.mjs` and `reader.mjs`. In the previous example, we replicated only a single Hypercore instance. But in this example, we will replicate a single Corestore instance, which will internally manage the replication of a collection of Hypercores.
 
@@ -350,7 +350,7 @@ for (const key of otherKeys) {
 
 ### Hyperbee: Sharing Append-Only Databases
 
-[hyperbee.md](building-blocks/hyperbee.md "mention") is an append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
+[hyperbee.md](building-blocks/hyperbee.md) is an append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
 
 The example consists of three files: `writer.mjs` , `bee-reader.mjs` and `core-reader.mjs`.
 
@@ -525,9 +525,9 @@ console.log(`Decoded Block ${seq}`, Node.decode(lastBlock))
 
 ### Hyperdrive: A Full P2P Filesystem
 
-[hyperdrive.md](building-blocks/hyperdrive.md "mention") is a secure, real-time distributed file system designed for easy P2P file sharing. In the same way that a Hyperbee is just a wrapper around a Hypercore, a Hyperdrive is a wrapper around two Hypercores: one is a Hyperbee index for storing file metadata, and the other is used to store file contents.
+[hyperdrive.md](building-blocks/hyperdrive.md) is a secure, real-time distributed file system designed for easy P2P file sharing. In the same way that a Hyperbee is just a wrapper around a Hypercore, a Hyperdrive is a wrapper around two Hypercores: one is a Hyperbee index for storing file metadata, and the other is used to store file contents.
 
-Now mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, use two additional tools: [mirrordrive.md](helpers/mirrordrive.md "mention") and [localdrive.md](helpers/localdrive.md "mention"), which handle all interactions between Hyperdrives and the local filesystem.
+Now mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, use two additional tools: [mirrordrive.md](helpers/mirrordrive.md) and [localdrive.md](helpers/localdrive.md), which handle all interactions between Hyperdrives and the local filesystem.
 
 This example consists of three files: `writer.mjs`, `drive-reader.mjs` and `bee-reader.mjs`.
 
