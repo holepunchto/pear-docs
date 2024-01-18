@@ -82,7 +82,7 @@ Hypercores are single-writer data structures, but collaboration is crucial. [aut
 
 As Autobase's output shares the familiar Hypercore API, it is possible to plug it into higher-level modules like Hyperbee and Hyperdrive, getting a multi-user collaboration with little additional effort.
 
-    ⚠️ Autobase is still experimental and is likely to change significantly in the near future. If you're feeling adventurous, give it a shot!
+> ⚠️ Autobase is still experimental and is likely to change significantly in the near future. If you're feeling adventurous, give it a shot!
 
 
 ## Stability indexing
@@ -110,4 +110,4 @@ The following stability indices have been used:
 | [hyperdht.md](building-blocks/hyperdht.md "mention")     |    <mark style="background-color:green;">**stable**</mark>   |
 
 
-    ⚠️ Any part of a module (method, event, or property) that is not documented as part of that module's public API is subject to change at any time.
+ >⚠️ Any part of a module (method, event, or property) that is not documented as part of that module's public API is subject to change at any time.
