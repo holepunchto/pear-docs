@@ -25,7 +25,7 @@ Helper modules can be used together with the building blocks to create cutting-e
 2. [localdrive.md](helpers/localdrive.md): A file system interoperable with Hyperdrive.
 3. [mirrordrive.md](helpers/mirrordrive.md): Mirror a [hyperdrive.md](building-blocks/hyperdrive.md) or a [localdrive.md](helpers/localdrive.md) into another one.
 4. [secretstream.md](helpers/secretstream.md): SecretStream is used to securely create connections between two peers in Hyperswarm.
-5. [compact-encoding.md](helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. Holepunch use this in Keet to store chat messages and in Hypercore's replication protocol.
+5. [compact-encoding.md](helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. Holepunch uses this in Keet to store chat messages and in Hypercore's replication protocol.
 6. [protomux.md](helpers/protomux.md): Multiplex multiple message oriented protocols over a stream.
 
 ## Tools built using Holepunch
@@ -51,7 +51,7 @@ Holepunch is continuously introducing new enhancements and the following are a f
 
 ### Better Building Blocks
 
-Holepunch focus is on making the core building blocks easy to use, fast, and reliable. The goal is to give developers all the essential pieces to make powerful P2P apps without being unnecessarily opinionated and without any operational complexity.
+Holepunch focus is on making the core building blocks easy to use, fast, and reliable. The goal is to give developers all the essential pieces to make powerful P2P apps without being opinionated and introducing any operational complexity.
 
 The core modules Hyperspace daemon and `hyp` CLI tools are now deprecated.
 
@@ -73,11 +73,11 @@ The core modules Hyperspace daemon and `hyp` CLI tools are now deprecated.
 
 * Uses Hyperbee internally for storing file metadata
 * Major API simplification. Instead of mirroring POSIX APIs, the new API better captures the core requirements of P2P file transfer.
-* Auxiliary tools, [localdrive.md](helpers/localdrive.md) and [mirrordrive.md](helpers/mirrordrive.md), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem when deploying Keet.
+* Auxiliary tools, [localdrive.md](helpers/localdrive.md) and [mirrordrive.md](helpers/mirrordrive.md), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem. We use this every day when deploying Keet.
 
 ### Autobase (experimental)
 
-Hypercores are single-writer data structures, but collaboration is crucial. [autobase.md](building-blocks/autobase.md "mention") is an experimental module that allows to turn many Hypercores, owned by different people, into a single 'virtual' Hypercore. In Keet, every member of a room has their input Hypercore where they write chat messages, and Autobase merges these into the linear view to see on screen.
+Hypercores are single-writer data structures, but collaboration is crucial. [autobase.md](building-blocks/autobase.md "mention") is an experimental module that allows to turn many Hypercores, owned by different people, into a single 'virtual' Hypercore. In Keet, every member of a room has their input Hypercore where they write chat messages, and Autobase merges these into the linear view the member see on the screen.
 
 As Autobase's output shares the familiar Hypercore API, it is possible to plug it into higher-level modules like Hyperbee and Hyperdrive, getting a multi-user collaboration with little additional effort.
 
