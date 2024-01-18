@@ -30,7 +30,13 @@ Helper modules can be used together with the building blocks to create cutting-e
 
 ## Tools built using Holepunch
 
-<table data-view="cards"><thead><tr><th></th><th></th><th data-hidden data-card-cover data-type="files"></th><th data-hidden data-card-target data-type="content-ref"></th></tr></thead><tbody><tr><td><a data-mention href="tools/hypershell.md">hypershell.md</a></td><td>A CLI to create and connect to P2P E2E encrypted shells.</td><td></td><td><a href="tools/hypershell.md">hypershell.md</a></td></tr><tr><td><a data-mention href="tools/hypertele.md">hypertele.md</a></td><td>A swiss-knife proxy powered by <a data-mention href="building-blocks/hyperdht.md">hyperdht.md</a>.</td><td></td><td><a href="tools/hypertele.md">hypertele.md</a></td></tr><tr><td><a data-mention href="tools/hyperbeam.md">hyperbeam.md</a></td><td>A one-to-one and end-to-end encrypted internet pipe.</td><td></td><td><a href="tools/hyperbeam.md">hyperbeam.md</a></td></tr><tr><td><a data-mention href="tools/hyperssh.md">hyperssh.md</a></td><td>A CLI to run SSH over the <a data-mention href="building-blocks/hyperdht.md">hyperdht.md</a>.</td><td></td><td><a href="tools/hyperssh.md">hyperssh.md</a></td></tr><tr><td><a data-mention href="tools/drives.md">drives.md</a></td><td>CLI to download, seed, and mirror a <a data-mention href="building-blocks/hyperdrive.md">hyperdrive.md</a> or a <a data-mention href="helpers/localdrive.md">localdrive.md</a>.</td><td></td><td><a href="tools/drives.md">drives.md</a></td></tr></tbody></table>
+|                           Tools                           |                         Description                         |
+| :----------------------------------------------------------: | :---------------------------------------------------------: |
+|    <mark>**[Hypershell](https://docs.holepunch.to/tools/hypershell)**</mark>   | A CLI to create and connect to P2P E2E encrypted shells.. |
+| <mark>**[Hypertele](https://docs.holepunch.to/tools/hypertele)**</mark> | A swiss-knife proxy powered by [HyperDHT](https://docs.holepunch.to/building-blocks/hyperdht).            |
+| <mark>**[Hyperbeam](https://docs.holepunch.to/tools/hyperbeam)**</mark> | A one-to-one and end-to-end encrypted internet pipe.          |
+|    <mark>**[Hyperssh](https://docs.holepunch.to/tools/hyperssh)**</mark>   | A CLI to run SSH over the [HyperDHT](https://docs.holepunch.to/building-blocks/hyperdht).          |
+|    <mark>**[Drives](https://docs.holepunch.to/tools/drives)**</mark>   | CLI to download, seed, and mirror a [hyperdrive](https://docs.holepunch.to/building-blocks/hyperdrive) or a [localdrive](https://docs.holepunch.to/helpers/localdrive).          |
 
 > ✔️ These tools are extensively employed in the day-to-day development and operation of applications built on Holepunch, like [Keet.io](https://keet.io/).
 
