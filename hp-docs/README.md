@@ -51,7 +51,7 @@ Holepunch is continuously introducing new enhancements and the following are a f
 
 ### Better Building Blocks
 
-Holepunch focus is on making the core building blocks easy to use, fast, and reliable. The goal is to give developers all the essential pieces to make powerful P2P apps without being opinionated and introducing any operational complexity.
+Our focus is on making the core building blocks easy to use, fast, and reliable. The goal is to give developers all the essential pieces to make powerful P2P apps without being opinionated and introducing any operational complexity.
 
 The core modules Hyperspace daemon and `hyp` CLI tools are now deprecated.
 
