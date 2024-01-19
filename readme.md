@@ -32,7 +32,7 @@ Welcome to the Internet of Peers
 
 ## Building blocks
 
-The Holepunch Ecosystem is constructed utilizing the following structural components.
+The following structural components form the backbone of the Pear Ecosystem.
 
 1. [hypercore.md](./building-blocks/hypercore.md): A distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely peer-to-peer.
 2. [hyperbee.md](./building-blocks/hyperbee.md): An append-only B-tree running on a Hypercore that provides key-value store API, with methods for inserting and getting key/value pairs, atomic batch insertions, and creation of sorted iterators.
@@ -45,12 +45,12 @@ The Holepunch Ecosystem is constructed utilizing the following structural compon
 
 Helper modules can be used together with the building blocks to create cutting-edge P2P tools and applications.
 
-1. [corestore.md](helpers/corestore.md): A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.
-2. [localdrive.md](helpers/localdrive.md): A file system interoperable with Hyperdrive.
-3. [mirrordrive.md](helpers/mirrordrive.md): Mirror a [hyperdrive.md](./building-blocks/hyperdrive.md) or a [localdrive.md](helpers/localdrive.md) into another one.
-4. [secretstream.md](helpers/secretstream.md): SecretStream is used to securely create connections between two peers in Hyperswarm.
-5. [compact-encoding.md](helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.
-6. [protomux.md](helpers/protomux.md): Multiplex multiple message oriented protocols over a stream.
+1. [corestore.md](./helpers/corestore.md): A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.
+2. [localdrive.md](./helpers/localdrive.md): A file system interoperable with Hyperdrive.
+3. [mirrordrive.md](./helpers/mirrordrive.md): Mirror a [hyperdrive.md](./building-blocks/hyperdrive.md) or a [localdrive.md](./helpers/localdrive.md) into another one.
+4. [secretstream.md](./helpers/secretstream.md): SecretStream is used to securely create connections between two peers in Hyperswarm.
+5. [compact-encoding.md](./helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.
+6. [protomux.md](./helpers/protomux.md): Multiplex multiple message oriented protocols over a stream.
 
 ## Tools
 
@@ -62,17 +62,13 @@ Helper modules can be used together with the building blocks to create cutting-e
 |    <mark>**[Hyperssh](./tools/hyperssh)**</mark>   | A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht).          |
 |    <mark>**[Drives](./tools/drives)**</mark>   | CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive) or a [localdrive](./helpers/localdrive).          |
 
-> ✔️ These tools are extensively employed in the day-to-day development and operation of applications built on Holepunch, like [Keet.io](https://keet.io/).
+> ✔️ These tools are extensively employed in the day-to-day development and operation of applications built on Pear, like [Keet.io](https://keet.io/).
 
-
-## Applications built on Pear
-
-* [keet.io.md](apps/keet.io.md)**:** A peer-to-peer chat and video-conferencing application with end-to-end encryption.
 
 ### Hypercore
 
 * The [`session`](./building-blocks/hypercore.md#core.session-options) and [`snapshot`](./building-blocks/hypercore.md#core.snapshot-options) methods for providing multiple views over the same underlying Hypercore, which simplifies resource management.
-* A [`truncate`](./building-blocks/hypercore.md#await-core.truncate-newlength-forkid) method for intentionally creating a new fork, starting at a given length. We use this method extensively in [autobase.md](./building-blocks/autobase.md), as described below.
+* A [`truncate`](./building-blocks/hypercore.md#await-core.truncate-newlength-forkid) method for intentionally creating a new fork, starting at a given length. We use this method extensively in [`autobase`](./building-blocks/autobase.md), as described below.
 * An improved fork detection in the replication protocol, to improve resilience.
 * Optional on-disk encryption for blocks (in addition to the existing transport encryption).
 * The storage layer now uses a write-ahead log to ensure that power loss or unexpected shutdown cannot lead to data corruption.
@@ -87,11 +83,11 @@ Helper modules can be used together with the building blocks to create cutting-e
 
 * Uses Hyperbee internally for storing file metadata
 * Major API simplification. Instead of mirroring POSIX APIs, the new API better captures the core requirements of P2P file transfer.
-* Auxiliary tools, [localdrive.md](helpers/localdrive.md) and [mirrordrive.md](helpers/mirrordrive.md), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem. We use these every day when deploying Keet.
+* Auxiliary tools, [`localdrive`](./helpers/localdrive.md) and [`mirrordrive`](./helpers/mirrordrive.md), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem. We use these every day when deploying Keet.
 
 ### Autobase (experimental)
 
-Hypercores are single-writer data structures, but collaboration is crucial. [autobase.md](./building-blocks/autobase.md "mention") is an experimental module that allows to turn many Hypercores, owned by different people, into a single 'virtual' Hypercore. In Keet, every member of a room has their input Hypercore where they write chat messages, and Autobase merges these into the linear view members see on the screen.
+Hypercores are single-writer data structures, but collaboration is crucial. [`autobase`](./building-blocks/autobase.md "mention") is an experimental module that allows to turn many Hypercores, owned by different people, into a single 'virtual' Hypercore. In Keet, every member of a room has their input Hypercore where they write chat messages, and Autobase merges these into the linear view members see on the screen.
 
 As Autobase's output shares the familiar Hypercore API, it is possible to plug it into higher-level modules like Hyperbee and Hyperdrive, getting a multi-user collaboration with little additional effort.
 
@@ -114,12 +110,12 @@ The following stability indices have been used:
 
 | Module                                                   |                           Stability                          |
 | -------------------------------------------------------- | :----------------------------------------------------------: |
-| [hypercore.md](./building-blocks/hypercore.md)   |    <mark style="background-color:green;">**stable**</mark>   |
-| [hyperbee.md](./building-blocks/hyperbee.md)     |    <mark style="background-color:green;">**stable**</mark>   |
-| [hyperdrive.md](./building-blocks/hyperdrive.md) |    <mark style="background-color:green;">**stable**</mark>   |
-| [autobase.md](./building-blocks/autobase.md)     | <mark style="background-color:blue;">**experimental**</mark> |
-| [hyperswarm.md](./building-blocks/hyperswarm.md) |    <mark style="background-color:green;">**stable**</mark>   |
-| [hyperdht.md](./building-blocks/hyperdht.md)     |    <mark style="background-color:green;">**stable**</mark>   |
+| [`hypercore`](./building-blocks/hypercore.md)   |    <mark style="background-color:green;">**stable**</mark>   |
+| [`hyperbee`](./building-blocks/hyperbee.md)     |    <mark style="background-color:green;">**stable**</mark>   |
+| [`hyperdrive`](./building-blocks/hyperdrive.md) |    <mark style="background-color:green;">**stable**</mark>   |
+| [`autobase`](./building-blocks/autobase.md)     | <mark style="background-color:blue;">**experimental**</mark> |
+| [`hyperswarm`](./building-blocks/hyperswarm.md) |    <mark style="background-color:green;">**stable**</mark>   |
+| [`hyperdht`](./building-blocks/hyperdht.md)     |    <mark style="background-color:green;">**stable**</mark>   |
 
 
  > Any part of a module (method, event, or property) that is not documented as part of that module's public API is subject to change at any time.
