@@ -34,23 +34,23 @@ Welcome to the Internet of Peers
 
 The following structural components form the backbone of the Pear Ecosystem.
 
-1. [hypercore.md](./building-blocks/hypercore.md): A distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely peer-to-peer.
-2. [hyperbee.md](./building-blocks/hyperbee.md): An append-only B-tree running on a Hypercore that provides key-value store API, with methods for inserting and getting key/value pairs, atomic batch insertions, and creation of sorted iterators.
-3. [hyperdrive.md](./building-blocks/hyperdrive.md): A secure, real-time distributed file system that simplifies P2P file sharing that provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
-4. [autobase.md](./building-blocks/autobase.md): An experimental module used to automatically rebase multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration.
-5. [hyperdht.md](./building-blocks/hyperdht.md): A DHT powering Hyperswarm. Through this DHT, each server is bound to a unique key pair, with the client connecting to the server using the server's public key.
-6. [hyperswarm.md](./building-blocks/hyperswarm.md): A high-level API for finding and connecting to peers who are interested in a "topic."
+1. [`hypercore`](./building-blocks/hypercore.md): A distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely peer-to-peer.
+2. [`hyperbee`](./building-blocks/hyperbee.md): An append-only B-tree running on a Hypercore that provides key-value store API, with methods for inserting and getting key/value pairs, atomic batch insertions, and creation of sorted iterators.
+3. [`hyperdrive`](./building-blocks/hyperdrive.md): A secure, real-time distributed file system that simplifies P2P file sharing that provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
+4. [`autobase`](./building-blocks/autobase.md): An experimental module used to automatically rebase multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration.
+5. [`hyperdht`](./building-blocks/hyperdht.md): A DHT powering Hyperswarm. Through this DHT, each server is bound to a unique key pair, with the client connecting to the server using the server's public key.
+6. [`hyperswarm`](./building-blocks/hyperswarm.md): A high-level API for finding and connecting to peers who are interested in a "topic."
 
 ## Helpers
 
 Helper modules can be used together with the building blocks to create cutting-edge P2P tools and applications.
 
-1. [corestore.md](./helpers/corestore.md): A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.
-2. [localdrive.md](./helpers/localdrive.md): A file system interoperable with Hyperdrive.
-3. [mirrordrive.md](./helpers/mirrordrive.md): Mirror a [hyperdrive.md](./building-blocks/hyperdrive.md) or a [localdrive.md](./helpers/localdrive.md) into another one.
-4. [secretstream.md](./helpers/secretstream.md): SecretStream is used to securely create connections between two peers in Hyperswarm.
-5. [compact-encoding.md](./helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.
-6. [protomux.md](./helpers/protomux.md): Multiplex multiple message oriented protocols over a stream.
+1. [`corestore`](./helpers/corestore.md): A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.
+2. [`localdrive`](./helpers/localdrive.md): A file system interoperable with Hyperdrive.
+3. [`mirrordrive`](./helpers/mirrordrive.md): Mirror a [`hyperdrive`](./building-blocks/hyperdrive.md) or a [`localdrive`](./helpers/localdrive.md) into another one.
+4. [`secretstream`](./helpers/secretstream.md): SecretStream is used to securely create connections between two peers in Hyperswarm.
+5. [compact-`encoding`](./helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.
+6. [`protomux`](./helpers/protomux.md): Multiplex multiple message oriented protocols over a stream.
 
 ## Tools
 
