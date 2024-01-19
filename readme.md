@@ -54,6 +54,8 @@ Helper modules can be used together with the building blocks to create cutting-e
 
 ## Tools
 
+The following tools are used extensively employed in the day-to-day development and operation of applications built on Pear
+
 |                           Tools                           |                         Description                         |
 | :----------------------------------------------------------: | :---------------------------------------------------------: |
 |    <mark>**[Hypershell](./tools/hypershell)**</mark>   | A CLI to create and connect to P2P E2E encrypted shells.. |
@@ -61,8 +63,6 @@ Helper modules can be used together with the building blocks to create cutting-e
 | <mark>**[Hyperbeam](./tools/hyperbeam)**</mark> | A one-to-one and end-to-end encrypted internet pipe.          |
 |    <mark>**[Hyperssh](./tools/hyperssh)**</mark>   | A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht).          |
 |    <mark>**[Drives](./tools/drives)**</mark>   | CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive) or a [localdrive](./helpers/localdrive).          |
-
-> ✔️ These tools are extensively employed in the day-to-day development and operation of applications built on Pear, like [Keet.io](https://keet.io/).
 
 
 ### Hypercore
