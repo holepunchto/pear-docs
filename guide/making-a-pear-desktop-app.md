@@ -221,16 +221,12 @@ In the first app, click on `Create chat room`. Once the app has started the topi
 
 Paste the topic from the first app into the input of the second app and then click on `Join chat room`.
 
-<p align="center">
-  <img src="../assets/chat-app-4a.png" alt="The first app, with the topic"> <img src="../assets/chat-app-4b.png" alt="Second app, using topic from the first">
-</p>
+![The first app, with the topic](../assets/chat-app-4a.png) 
+![Second app, using topic from the first](../assets/chat-app-4b.png) 
 
 Once connected messages can be sent between the applications.
 
-<p align="center">
-  <img src="../assets/chat-app-5a.png" alt="View from the first app"> <img src="../assets/chat-app-5b.png" alt="View from the second app">
-</p>
-
+![View from the first app](../assets/chat-app-5a.png)
 
 ### Discussion
 

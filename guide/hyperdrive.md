@@ -15,13 +15,13 @@ npm install hyperswarm hyperdrive localdrive corestore debounceify b4a graceful-
 
 Now mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, use two additional tools: [mirrordrive.md](../helpers/mirrordrive.md) and [localdrive.md](../helpers/localdrive.md), which handle all interactions between Hyperdrives and the local filesystem.
 
-This example consists of three files: `writer.mjs`, `drive-reader.mjs` and `bee-reader.mjs`.
+This example consists of three files: `writer.js`, `drive-reader.js` and `bee-reader.js`.
 
-`writer.mjs` creates a local drive instance for a local directory and then mirrors the local drive into the Hyperdrive instance. The store used to create the Hyperdrive instance is replicated using Hyperswarm to make the data of Hyperdrive accessible to other peers. Copy the drive key logged into the command line for the `reader.mjs` execution.
+`writer.js` creates a local drive instance for a local directory and then mirrors the local drive into the Hyperdrive instance. The store used to create the Hyperdrive instance is replicated using Hyperswarm to make the data of Hyperdrive accessible to other peers. Copy the drive key logged into the command line for the `reader.mjs` execution.
 
 
 ```javascript
-writer.js
+//writer.js
 import Hyperswarm from 'hyperswarm'
 import Hyperdrive from 'hyperdrive'
 import Localdrive from 'localdrive'
@@ -79,7 +79,7 @@ Try running `node drive-reader.mjs (key-from-above)`, then add/remove/modify fil
 
 
 ```javascript
-drive-reader.mjs
+//drive-reader.js
 import Hyperswarm from 'hyperswarm'
 import Hyperdrive from 'hyperdrive'
 import Localdrive from 'localdrive'
@@ -138,7 +138,7 @@ Try adding or removing a few files from the writer's data directory, then pressi
 
 
 ```javascript
-bee-reader.mjs
+//bee-reader.js
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'

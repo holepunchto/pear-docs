@@ -18,13 +18,13 @@ In the HyperDHT, peers are identified by a public key, not by an IP address. Wit
 
 > For example, Keet implements its relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
 
-Use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. This example consists of two files: `client.mjs` and `server.mjs`.
+Use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. This example consists of two files: `client.js` and `server.js`.
 
-`server.mjs` will create a key pair and then start a server that will listen on the generated key pair. The public key is logged into the console. Copy it for instantiating the client.
+`server.js` will create a key pair and then start a server that will listen on the generated key pair. The public key is logged into the console. Copy it for instantiating the client.
 
 
 ```javascript
-//server.mjs
+//server.js
 import DHT from 'hyperdht'
 import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
@@ -48,12 +48,12 @@ server.listen(keyPair).then(() => {
 goodbye(() => server.close())
 ```
 
-`client.mjs` will spin up a client, and the public key copied earlier must be supplied as a command line argument for connecting to the server. The client process will log `got connection` into the console when it connects to the server.
+`client.js` will spin up a client, and the public key copied earlier must be supplied as a command line argument for connecting to the server. The client process will log `got connection` into the console when it connects to the server.
 
 Once it's connected, try typing in both terminals!
 
 ``` javascript
-//client.mjs
+//client.js
 import DHT from 'hyperdht'
 import b4a from 'b4a'
 
