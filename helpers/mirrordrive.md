@@ -2,7 +2,7 @@
 
 Mirrors a [hyperdrive.md](../building-blocks/hyperdrive.md "mention") or a [localdrive.md](../helpers/localdrive.md "mention") into another one.
 
-> [Github (Mirrordrive)](https://github.com/holepunchto/mirror-drive
+> [Github (Mirrordrive)](https://github.com/holepunchto/mirror-drive)
 
 * [Installation](./mirrordrive.md#installation)
 * [Basic usage](mirrordrive.md#basic-usage)
