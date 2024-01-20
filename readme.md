@@ -46,6 +46,7 @@ The following tools are used extensively employed in the day-to-day development 
 |    <mark>**[Hyperssh](./tools/hyperssh)**</mark>   | A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht).          |
 |    <mark>**[Drives](./tools/drives)**</mark>   | CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive) or a [localdrive](./helpers/localdrive).          |
 
+Holepunch is continuously introducing new enhancements and the following are a few core building blocks that are easy to use, fast, and reliable. 
 
 ### Hypercore
 
