@@ -10,7 +10,7 @@
 |Keet video calls operate over direct connections between you and your friends, without using servers that can throttle your performance. You'll notice the difference.| Keet only shares end-to-end encrypted data between participants in your calls. Without middlemen, third-parties, or servers, there’s nobody left who can snoop or leak data. |  When you share a file in Keet, you don’t have to wait for it to upload. Other peers can immediately download it straight from the source. Megabytes, gigabytes, or terabytes. No limits.|
 
 
-> ✔️ Built-in Bitcoin Lightning and USDt micro-payments make it easy to incorporate powerful paid features into apps. Peers control their data, including buying/selling, eliminating tokens, ads, incentives, and data harvesting. Future updates will introduce P2P payments to send tips, pay for services, bandwidth, storage, etc.
+> Built-in Bitcoin Lightning and USDt micro-payments make it easy to incorporate powerful paid features into apps. Peers control their data, including buying/selling, eliminating tokens, ads, incentives, and data harvesting. Future updates will introduce P2P payments to send tips, pay for services, bandwidth, storage, etc.
 
 ### How it works
 
@@ -27,11 +27,11 @@ Here is the step-by-step process of how it works:
 
 ### Join the Internet of Peers
 
-#### Desktop 🖥️
+#### Desktop
 
 Keet is available for download on Windows, macOS, and Linux desktops. [Download](https://keet.io/) now and discover the power of communication without compromises!
 
-#### Mobile 📱
+#### Mobile
 
 Experience P2P communications on your mobile devices. Download Keet Mobile on your [Android](https://play.google.com/store/apps/details?id=io.keet.app) and [iOS](https://apps.apple.com/us/app/keet-by-holepunch/id6443880549) mobile devices today!
 
