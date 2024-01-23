@@ -69,20 +69,20 @@ A Hypercore can only be modified by its creator; internally it signs updates wit
 
 Creates a new Hypercore instance.
 
-`storage` should be set to a directory where you want to store the data and core metadata.
+`storage` should be set to a directory where user want to store the data and core metadata.
 
 ```javascript
 const core = new Hypercore('./directory') // store data in ./directory
 ```
 
-> Alternatively, the user can pass a function instead that is called with every filename Hypercore needs to function and return your own [abstract-random-access](https://github.com/random-access-storage/abstract-random-access) instance that is used to store the data.
+> Alternatively, the user can pass a function instead that is called with every filename Hypercore needs to function and return to their own [abstract-random-access](https://github.com/random-access-storage/abstract-random-access) instance that is used to store the data.
 
 
 ```javascript
 const RAM = require('random-access-memory')
 const core = new Hypercore((filename) => {
   // Filename will be one of: data, bitfield, tree, signatures, key, secret_key
-  // The data file will contain all your data concatenated.
+  // The data file will contain all the user data concatenated.
 
   // Store all files in ram by returning a random-access-memory instance
   return new RAM()
@@ -102,24 +102,24 @@ Hypercore will produce the following files:
 > `tree`, `data`, and `bitfield` are normally very sparse files.
 
 
-`key` can be set to a Hypercore public key. If you do not set this the public key will be loaded from storage. If no key exists a new key pair will be generated.
+`key` can be set to a Hypercore public key. If this is not set, the public key will be loaded from storage. If no key exists a new key pair will be generated.
 
 `options` include:
 
 |        Property       | Description                                                                             | Type     | Default            |
 | :-------------------: | --------------------------------------------------------------------------------------- | -------- | ------------------ |
-| **`createIfMissing`** | create a new Hypercore key pair if none was present in the storage                      | Boolean  | `true`             |
-|    **`overwrite`**    | overwrite any old Hypercore that might already exist                                    | Boolean  | `false`            |
-|      **`sparse`**     | enable sparse mode, counting unavailable blocks towards core.length and core.byteLength | Boolean  | `true`             |
+| **`createIfMissing`** | creates a new Hypercore key pair if none was present in the storage                      | Boolean  | `true`             |
+|    **`overwrite`**    | overwrites any old Hypercore that might already exist                                    | Boolean  | `false`            |
+|      **`sparse`**     | enables sparse mode, counting unavailable blocks towards core.length and core.byteLength | Boolean  | `true`             |
 |  **`valueEncoding`**  | one of 'json', 'utf-8', or 'binary'                                                     | String   | `'binary'`         |
 |   **`encodeBatch`**   | optionally apply an encoding to complete batches                                        | Function | `batch => { ... }` |
-|     **`keyPair`**     | optionally pass the public key and secret key as a key pair                             | Object   | `null`             |
-|  **`encryptionKey`**  | optionally pass an encryption key to enable block encryption                            | String   | `null`             |
+|     **`keyPair`**     | optionally passes the public key and secret key as a key pair                             | Object   | `null`             |
+|  **`encryptionKey`**  | optionally passes an encryption key to enable block encryption                            | String   | `null`             |
 |      **`onwait`**     | hook that is called if gets are waiting for download                                    | Function | `() => {}`         |
 |     **`timeout`**     | constructor timeout                                                                     | integer  | `0`                  |
-|     **`writable`**     |  disable appends and truncates                                                                     | Boolean  | `true`                |
+|     **`writable`**     |  disables appends and truncates                                                                     | Boolean  | `true`                |
 
-We can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) or [compact-encoding](https://github.com/compact-encoding) instance.
+Users can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) or [compact-encoding](https://github.com/compact-encoding) instance.
 
 valueEncodings will be applied to individual blocks, even if we append batches. To control encoding at the batch level, the `encodeBatch` option can be used, which is a function that takes a batch and returns a binary-encoded batch. If a custom valueEncoding is provided, it will not be applied prior to `encodeBatch`.
 
@@ -160,7 +160,7 @@ An object containing buffers of the core's public and secret key
 
 #### **`core.discoveryKey`**
 
-Buffer containing a key derived from the core's public key. In contrast to `core.key,` this key does not allow you to verify the data. It can be used to announce or look for peers that are sharing the same core, without leaking the core key.
+Buffer containing a key derived from the core's public key. In contrast to `core.key,` this key does not allows to verify the data. It can be used to announce or look for peers that are sharing the same core, without leaking the core key.
 
 > The above properties are populated after [`ready`](hypercore.md#await-core.ready) has been emitted. Will be `null` before the event.
 
@@ -186,7 +186,7 @@ The number of blocks contiguously available starting from the first block of thi
 
 #### **`core.fork`**
 
-The current fork id of this core
+The current fork ID of this core
 
 > The above properties are populated after [`ready`](hypercore.md#await-core.ready) has been emitted. Will be `0` before the event.
 
@@ -231,19 +231,19 @@ const blockLocal = await core.get(44, { wait: false })
 
 |       Property      | Description                                            | Type    | Default              |
 | :-----------------: | ------------------------------------------------------ | ------- | -------------------- |
-|      **`wait`**     | Wait for the block to be downloaded                    | Boolean | `true`               |
-|     **`onwait`**    | Hook that is called if the get is waiting for download | Boolean | `() => {}`           |
-|    **`timeout`**    | Wait at max some milliseconds (0 means no timeout)     | Boolean | `0`                  |
+|      **`wait`**     | Waits for the block to be downloaded                    | Boolean | `true`               |
+|     **`onwait`**    | Hooks that is called if the get is waiting for download | Boolean | `() => {}`           |
+|    **`timeout`**    | Waits at max some milliseconds (0 means no timeout)     | Boolean | `0`                  |
 | **`valueEncoding`** | One of 'json', 'utf-8', or 'binary'                    | String  | core's valueEncoding |
 |    **`decrypt`**    | Automatically decrypts the block if encrypted          | Boolean | `true`               |
 
 #### **`const has = await core.has(start, [end])`**
 
-Check if the core has all blocks between `start` and `end`.
+Checks if the core has all blocks between `start` and `end`.
 
 #### **`const updated = await core.update([options])`**
 
-Wait for the core to try and find a signed update to its length. Does not download any data from peers except for proof of the new core length.
+Waits for the core to try and find a signed update to its length. Does not download any data from peers except for proof of the new core length.
 
 ```javascript
 const updated = await core.update()
@@ -258,7 +258,7 @@ console.log('core was updated?', updated, 'length is', core.length)
 
 #### **`const [index, relativeOffset] = await core.seek(byteOffset, [options])`**
 
-Seek a byte offset.
+Seeks a byte offset.
 
 Returns `[index, relativeOffset]`, where `index` is the data block the byteOffset is contained in and `relativeOffset` is the relative byte offset in the data block.
 
@@ -307,7 +307,7 @@ for await (const data of fullStream) {
 
 #### `const bs = core.createByteStream([options])`
 
-Make a byte stream to read a range of bytes.
+Makes a byte stream to read a range of bytes.
 
 ``` js
 // Read the full core
@@ -338,11 +338,11 @@ Clears stored blocks between `start` and `end`, reclaiming storage when possible
 
 | Property          | Description                                                           | Type    | Default |
 | ----------------- | --------------------------------------------------------------------- | ------- | ------- |
-| **`diff`** | Returned `cleared` bytes object is null unless you enable this | Boolean | `false` |
+| **`diff`** | Returns `cleared` bytes object is null unless this is enabled | Boolean | `false` |
 
 ```javascript
-await core.clear(4) // clear block 4 from your local cache
-await core.clear(0, 10) // clear block 0-10 from your local cache
+await core.clear(4) // clear block 4 from the local cache
+await core.clear(0, 10) // clear block 0-10 from the local cache
 ```
 
 The core will also 'gossip' with peers it is connected to, that is no longer has these blocks.
@@ -355,7 +355,7 @@ Per default, this will update the fork ID of the core to `+ 1`, but we can set t
 
 #### `await core.purge()`
 
-Purge the Hypercore from your storage, completely removing all data.
+Purge the Hypercore from user storage, completely removing all data.
 
 #### **`const hash = await core.treeHash([length])`**
 
@@ -363,9 +363,9 @@ Get the Merkle Tree hash of the core at a given length, defaulting to the curren
 
 #### **`const range = core.download([range])`**
 
-Download a range of data.
+Downloads a range of data.
 
-You can await until the range has been fully downloaded by doing:
+Users can await until the range has been fully downloaded by doing:
 
 ```javascript
 await range.done()
@@ -408,7 +408,7 @@ Creates a new Hypercore instance that shares the same underlying core. Options a
 
 `options` are the same as in the constructor.
 
-> You must close any session you make.
+> Any user session must be closed.
 
 #### **`const info = await core.info([options])`**
 
@@ -438,7 +438,7 @@ Info {
 
 | Property  | Description                    | Type    | Default |
 | --------- | ------------------------------ | ------- | ------- |
-| `storage` | get storage estimates in bytes | Boolean | `false` |
+| `storage` | gets storage estimates in bytes | Boolean | `false` |
 
 #### **`await core.close()`**
 
@@ -450,17 +450,16 @@ Waits for the core to open.
 
 After this has been called `core.length` and other properties have been set.
 
-> ℹ️ In general, you do not need to wait for `ready` unless you're checking a synchronous property (like `key` or `discoverykey`), as all async methods on the public API, will await this internally.
+>In general, user need not wait for `ready` unless checking a synchronous property (like `key` or `discoverykey`), as all async methods on the public API, will await this internally.
 
 
 #### **`const stream = core.replicate(isInitiator|stream, options)`**
 
 Creates a replication stream. We should pipe this to another Hypercore instance.
 
-The `isInitiator` argument is a boolean indicating whether you are the initiator of the connection (ie the client) or if you are the passive part (i.e., the server).
+The `isInitiator` argument is a boolean indicating whether user is the initiator of the connection (ie the client) or the passive part (i.e., the server).
 
-> If a P2P swarm like Hyperswarm is being used, you can know this by checking if the swarm connection is a client socket or a server socket. In Hyperswarm, a user can check that using the [client property on the peer details object](https://github.com/hyperswarm/hyperswarm#swarmonconnection-socket-details--).
-
+> To check if a P2P swarm like Hyperswarm is being used, check if the swarm connection is a client socket or a server socket. In Hyperswarm, a user can check that using the [client property on the peer details object](https://github.com/hyperswarm/hyperswarm#swarmonconnection-socket-details--).
 
 
 To multiplex the replication over an existing Hypercore replication stream, another stream instance can be passed instead of the `isInitiator` Boolean.
@@ -474,10 +473,10 @@ swarm.on('connection', conn => {
 })
 ```
 
-> If you want to replicate many Hypercores over a single Hyperswarm connection, you probably want to be using [corestore.md](../helpers/corestore.md "mention").
+> To replicate many Hypercores over a single Hyperswarm connection, use [corestore.md](../helpers/corestore.md "mention").
 
 
-If not using [hyperswarm.md](hyperswarm.md "mention") or [corestore.md](../helpers/corestore.md "mention"), specify the `isInitiator` field, which will create a fresh protocol stream that can be piped over any transport you'd like:
+If not using [hyperswarm.md](hyperswarm.md "mention") or [corestore.md](../helpers/corestore.md "mention"), specify the `isInitiator` field, which will create a fresh protocol stream that can be piped over any transport user likes:
 
 ```javascript
 // assuming we have two cores, localCore + remoteCore, sharing the same key
@@ -492,7 +491,7 @@ const socket = net.connect(...)
 socket.pipe(localCore.replicate(true)).pipe(socket)
 ```
 
-> In almost all cases, the use of both Hyperswarm and Corestore Replication is advised and will meet all your needs.
+> In almost all cases, the use of both Hyperswarm and Corestore Replication is advised and will meet all the user needs.
 
 #### **`const done = core.findingPeers()`**
 
@@ -543,7 +542,7 @@ await session1.close() // will close the Hypercore
 
 #### **`core.snapshot([options])`**
 
-Returns a snapshot of the core at that particular time. This is useful if you want to ensure that multiple `get` operations are acting on a consistent view of the Hypercore (i.e., if the core forks in between two reads, the second should throw an error).
+Returns a snapshot of the core at that particular time. This is useful to ensure that multiple `get` operations are acting on a consistent view of the Hypercore (i.e., if the core forks in between two reads, the second should throw an error).
 
 If [`core.update()`](hypercore.md#const-updated--await-coreupdateoptions) is explicitly called on the snapshot instance, it will no longer be locked to the previous data. Rather, it will get updated with the current state of the Hypercore instance.
 
