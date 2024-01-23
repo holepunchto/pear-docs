@@ -65,7 +65,7 @@ hypershell-keygen
 
 **Client**
 
-Now, you can connect to servers (provided they allow your public key):
+Now, users can connect to servers (provided they allow their public key):
 
 ```bash
 hypershell <server public key>
@@ -81,7 +81,7 @@ hypershell-server
 
 `~/.hypershell/firewall` will be automatically created as an empty file. That means all connections are denied by default.
 
-> You can allow public keys in real time by adding them to the firewall list.
+> Users can allow public keys in real time by adding them to the firewall list.
 
 ### Known peers
 
@@ -98,7 +98,7 @@ Utilize `hypershell home` to eliminate the need for constantly providing the ful
 
 ### Multiple keys
 
-To have multiple servers, you need multiple keys.
+Multiple keys are required to have multiple servers.
 
 Generate another key:
 
