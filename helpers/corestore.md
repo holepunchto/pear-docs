@@ -68,7 +68,7 @@ const core4 = store.get({ key: otherKey })
 const core5 = store.get(otherKey)
 ```
 
-> The names you provide are only relevant **locally**, in that they are used to deterministically generate key pairs. Whenever you load a core by name, that core will be writable. Names are not shared with remote peers.
+> The names provided are only relevant **locally**, in that they are used to deterministically generate key pairs. Whenever user loads a core by name, core will be writable. Names are not shared with remote peers.
 
 #### **`const stream = store.replicate(options|stream)`**
 
@@ -112,7 +112,7 @@ const core1 = ns1.get({ name: 'main' }) // These will load different Hypercores
 const core2 = ns2.get({ name: 'main' })
 ```
 
-Namespacing is particularly useful if your application needs to create many different data structures, such as [hyperdrive.md](../building-blocks/hyperdrive.md "mention")s, that all share a common storage location:
+Namespacing is particularly useful if the application needs to create many different data structures, such as [hyperdrive.md](../building-blocks/hyperdrive.md "mention")s, that all share a common storage location:
 
 ```javascript
 const store = new Corestore('./my-storage-dir')
