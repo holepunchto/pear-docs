@@ -88,4 +88,4 @@ drives info [my-drive-key]
 ```
 --- 
 
-> Use `drives --help` for more information, `drives mirror --help`, etc. You can always add `--corestore [path]`, by default it's `./corestore`.
+> Use `drives --help` for more information, `drives mirror --help`, etc. Always add `--corestore [path]`, by default it's `./corestore`.
