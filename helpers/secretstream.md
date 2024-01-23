@@ -35,7 +35,7 @@ npm install @hyperswarm/secret-stream
 
 Makes a new stream.
 
-`isInitiator` is a boolean indicating whether you are the client or the server.
+`isInitiator` is a boolean indicating whether user is the client or the server.
 
 `rawStream` can be set to an underlying transport stream to run the noise stream over.
 
