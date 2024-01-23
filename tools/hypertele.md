@@ -96,7 +96,7 @@ hypertele-pub -l 5555 --seed XXX
 hypertele --help
 ```
 
-**Create a JSON config file for your client**
+**Create a JSON config file for client**
 
 ```javascript
 {
