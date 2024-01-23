@@ -67,7 +67,7 @@ npm install hyperdrive
 
 Creates a new Hyperdrive instance. `store` must be an instance of [corestore.md](../helpers/corestore.md "mention").
 
-By default, it uses the core at `{ name: 'db' }` from `store`, unless you set the public `key`.
+By default, it uses the core at `{ name: 'db' }` from `store`, unless user sets the public `key`.
 
 #### Properties
 
@@ -121,7 +121,7 @@ Boolean indicating if the drive handles or not metadata. Always `true`.
 
 Waits until the internal state is loaded.
 
-Use it once before reading synchronous properties like `drive.discoveryKey`, unless you called any of the other APIs.
+Use it once before reading synchronous properties like `drive.discoveryKey`, unless called any of the other APIs.
 
 #### **`await drive.close()`**
 
@@ -201,7 +201,7 @@ Deletes the blob from storage to free up space, but the file structure reference
 
 | Property          | Description                                                           | Type    | Default |
 | ----------------- | --------------------------------------------------------------------- | ------- | ------- |
-| **`diff`** | Returned `cleared` bytes object is null unless you enable this | Boolean | `false` |
+| **`diff`** | Returned `cleared` bytes object is null unless user enable this | Boolean | `false` |
 
 #### `const cleared = await drive.clearAll([options])`
 
@@ -211,11 +211,11 @@ Deletes all the blobs from storage to free up space, similar to how `drive.clear
 
 | Property          | Description                                                           | Type    | Default |
 | ----------------- | --------------------------------------------------------------------- | ------- | ------- |
-| **`diff`** | Returned `cleared` bytes object is null unless you enable this | Boolean | `false` |
+| **`diff`** | Returned `cleared` bytes object is null unless user enable this | Boolean | `false` |
 
 #### `await drive.purge()`
 
-Purges both cores (db and blobs) from your storage, completely removing all the drive's data.
+Purges both cores (db and blobs) from user storage, completely removing all the drive's data.
 
 #### **`await drive.symlink(path, linkname)`**
 
@@ -283,7 +283,7 @@ Waits until the watcher is loaded and detecting changes.
 
 `await watcher.destroy()`
 
-Stops the watcher. You could also stop it by using `break` in the loop.
+Stops the watcher. Users can also stop it by using `break` in the loop.
 
 #### **`const rs = drive.createReadStream(path, [options])`**
 
