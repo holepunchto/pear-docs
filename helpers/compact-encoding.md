@@ -43,7 +43,7 @@ const state = cenc.state()
 
 #### **`enc.preencode(state, val)`**
 
-Performs a fast preencode dry-run that only sets `state.end`. Use this to figure out how big of a buffer you need.
+Performs a fast preencode dry-run that only sets `state.end`. Use this to estimate the buffer.
 
 ```javascript
 const cenc = require('compact-encoding')
@@ -84,7 +84,7 @@ cenc.string.decode(state) // 'hi'
 
 ### Helpers
 
-To encode to a buffer or decode from one, use the `encode` and `decode` helpers to reduce your boilerplate.
+To encode to a buffer or decode from one, use the `encode` and `decode` helpers to reduce the boilerplate.
 
 ```javascript
 const buf = cenc.encode(cenc.bool, true)
