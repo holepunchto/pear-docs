@@ -123,7 +123,7 @@ Our app is going to use these modules:
 The dependencies can be installed with the following command:
 
 ```
-$ npm i hyperswarm hypercore-crypto b4a
+npm i hyperswarm hypercore-crypto b4a
 ```
 
 **Note**: If the modules are installed while the app is running, an error is thrown similar to `Cannot find package 'hyperswarm' imported from /app.js`. When installing modules, close down the app before attempting dependency installation.
@@ -214,7 +214,7 @@ function onMessageAdded (from, message) {
 As there will be two apps running, open two terminals and in each of them run the following:
 
 ```
-$ pear dev
+pear dev
 ```
 
 In the first app, click on `Create chat room`. Once the app has started the topic can be found near the top. 

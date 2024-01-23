@@ -15,12 +15,12 @@ The [Hyperswarm](../building-blocks/hyperswarm.md) module provides a higher-leve
 
 In the previous example, we needed to explicitly indicate which peer was the server and which was the client. By using Hyperswarm, we create two peers, have them join a common topic, and let the swarm deal with connections.
 
-This example consists of a single file, `peer.mjs`. In one terminal, type `node peer.mjs`, it will display the topic. Copy/paste that topic into N additional terminals with `node peer.mjs (topic)`. Each peer will log information about the other connected peers.
+This example consists of a single file, `peer.js`. In one terminal, type `node peer.js`, it will display the topic. Copy/paste that topic into N additional terminals with `node peer.js (topic)`. Each peer will log information about the other connected peers.
 
 Start typing into any terminal, and it will be broadcast to all connected peers.
 
 ```javascript
-//peer.mjs
+//peer.js
 import Hyperswarm from 'hyperswarm'
 import goodbye from 'graceful-goodbye'
 import crypto from 'hypercore-crypto'

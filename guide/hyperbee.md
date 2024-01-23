@@ -11,14 +11,14 @@ npm install hyperdht b4a graceful-goodbye
 
 [hyperbee.md](../building-blocks/hyperbee.md) is an append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
 
-The example consists of three files: `writer.mjs` , `bee-reader.mjs` and `core-reader.mjs`.
+The example consists of three files: `writer.js` , `bee-reader.js` and `core-reader.js`.
 
-`writer.mjs` stores 100k entries from a given dictionary file into a Hyperbee instance. The Corestore instance used to create the Hyperbee instance is replicated using Hyperswarm. This enables other peers to replicate their Corestore instance and download the dictionary data into their local Hyperbee instances.
+`writer.js` stores 100k entries from a given dictionary file into a Hyperbee instance. The Corestore instance used to create the Hyperbee instance is replicated using Hyperswarm. This enables other peers to replicate their Corestore instance and download the dictionary data into their local Hyperbee instances.
 
-> Download the `dict.json.gz` compressed file from the [GitHub repository](https://github.com/holepunchto/examples/blob/main/quick-start/hyperbee/dict.json.gz) to the folder where the `writer.mjs`is present. The compressed file contains 100K dictionary words.
+> Download the `dict.json.gz` compressed file from the [GitHub repository](https://github.com/holepunchto/examples/blob/main/quick-start/hyperbee/dict.json.gz) to the folder where the `writer.js`is present. The compressed file contains 100K dictionary words.
 
 ```javascript
-//writer.mjs
+//writer.js
 import fs from 'fs'
 import zlib from 'zlib'
 
@@ -85,12 +85,12 @@ async function loadDictionary() {
 ```
 
 
-`bee-reader.mjs` creates a Corestore instance and replicates it using the Hyperswarm instance to the same topic as the above file. On every word entered in the command line, it will download the respective data to the local Hyperbee instance.
+`bee-reader.js` creates a Corestore instance and replicates it using the Hyperswarm instance to the same topic as the above file. On every word entered in the command line, it will download the respective data to the local Hyperbee instance.
 
 Try looking at disk space the `reader-storage` directory is using after each query. notice that it's significantly smaller than `writer-storage`! This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature we call **sparse downloading.**
 
 ```javascript
-bee-reader.mjs
+bee-reader.js
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
@@ -139,11 +139,11 @@ process.stdin.on('data', data => {
 
 Importantly, a Hyperbee is **just** a Hypercore, where the tree nodes are stored as Hypercore blocks. Now examine the Hyperbee as if it were just a Hypercore and log out a few blocks.
 
-`core-reader.mjs` will continually download and log the last block of the Hypercore containing the Hyperbee data. Note that these blocks are encoded using Hyperbee's Node encoding, which we can easily import and use.
+`core-reader.js` will continually download and log the last block of the Hypercore containing the Hyperbee data. Note that these blocks are encoded using Hyperbee's Node encoding, which we can easily import and use.
 
 
 ```javascript
-core-reader.mjs
+core-reader.js
 import Hypercore from 'hypercore'
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'

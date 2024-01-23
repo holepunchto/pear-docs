@@ -7,9 +7,9 @@ In preparation for [Making a Pear Desktop Application](./making-a-pear-desktop-a
 To create a new Pear project use `pear init`.
 
 ```
-$ mkdir chat
-$ cd chat
-$ pear init --yes
+mkdir chat
+cd chat
+pear init --yes
 ```
 
 This will create a base structure for the project.
@@ -24,7 +24,7 @@ This will create a base structure for the project.
 Before writing any code, make sure that everything works the way it's supposed to by using `pear dev`.
 
 ```
-$ pear dev
+pear dev
 ```
 
 This will open the app in development mode, by default developer tools are also opened.

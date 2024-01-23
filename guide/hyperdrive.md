@@ -15,9 +15,9 @@ npm install hyperswarm hyperdrive localdrive corestore debounceify b4a graceful-
 
 Now mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, use two additional tools: [mirrordrive.md](../helpers/mirrordrive.md) and [localdrive.md](../helpers/localdrive.md), which handle all interactions between Hyperdrives and the local filesystem.
 
-This example consists of three files: `writer.mjs`, `drive-reader.mjs` and `bee-reader.mjs`.
+This example consists of three files: `writer.js`, `drive-reader.js` and `bee-reader.js`.
 
-`writer.mjs` creates a local drive instance for a local directory and then mirrors the local drive into the Hyperdrive instance. The store used to create the Hyperdrive instance is replicated using Hyperswarm to make the data of Hyperdrive accessible to other peers. Copy the drive key logged into the command line for the `reader.mjs` execution.
+`writer.js` creates a local drive instance for a local directory and then mirrors the local drive into the Hyperdrive instance. The store used to create the Hyperdrive instance is replicated using Hyperswarm to make the data of Hyperdrive accessible to other peers. Copy the drive key logged into the command line for the `reader.js` execution.
 
 
 ```javascript
@@ -73,13 +73,13 @@ async function mirrorDrive () {
 }
 ```
 
-`drive-reader.mjs` creates a local drive instance for a local directory and then mirrors the contents of the local Hyperdrive instance into the local drive instance (which will write the contents to the local directory).
+`drive-reader.js` creates a local drive instance for a local directory and then mirrors the contents of the local Hyperdrive instance into the local drive instance (which will write the contents to the local directory).
 
-Try running `node drive-reader.mjs (key-from-above)`, then add/remove/modify files inside `writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). Observe that all new changes mirror into `reader-dir`.
+Try running `node drive-reader.js (key-from-above)`, then add/remove/modify files inside `writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). Observe that all new changes mirror into `reader-dir`.
 
 
 ```javascript
-drive-reader.mjs
+drive-reader.js
 import Hyperswarm from 'hyperswarm'
 import Hyperdrive from 'hyperdrive'
 import Localdrive from 'localdrive'
@@ -132,13 +132,13 @@ async function mirrorDrive () {
 
 Just as a Hyperbee is **just** a Hypercore, a Hyperdrive is **just** a Hyperbee (which is **just** a Hypercore). Now inspect the Hyperdrive as though it were a Hyperbee, and log out some file metadata.
 
-`bee-reader.mjs` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.
+`bee-reader.js` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.
 
 Try adding or removing a few files from the writer's data directory, then pressing `Enter` in the writer's terminal to mirror the changes.
 
 
 ```javascript
-bee-reader.mjs
+bee-reader.js
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
