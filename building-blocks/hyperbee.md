@@ -93,7 +93,7 @@ Buffer containing the public key identifying this bee.
 
 Buffer containing a key derived from `db.key`.
 
-> This discovery key does not allow you to verify the data, it's only to announce or look for peers that are sharing the same bee, without leaking the bee key.
+> This discovery key does not allow users to verify the data, it's only to announce or look for peers that are sharing the same bee, without leaking the bee key.
 
 
 #### **`db.writable`**
@@ -110,7 +110,7 @@ Boolean indicating if we can read from this bee. After closing the bee this will
 
 Waits until the internal state is loaded.
 
-Use it once before reading synchronous properties like `db.version`, unless you called any of the other APIs.
+Use it once before reading synchronous properties like `db.version`, unless called any of the other APIs.
 
 #### **`await db.close()`**
 
@@ -151,7 +151,7 @@ await db.put('number', '456', { cas })
 console.log(await db.get('number')) // => { seq: 2, key: 'number', value: '456' }
 
 function cas (prev, next) {
-  // You can use same-data or same-object lib, depending on the value complexity
+  //  use same-data or same-object lib, depending on the value complexity
   return prev.value !== next.value
 }
 ```
