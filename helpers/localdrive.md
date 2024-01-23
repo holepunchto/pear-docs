@@ -80,7 +80,7 @@ String with the resolved (absolute) drive path.
 
 Boolean that indicates if the drive handles or not metadata. Default `false`.
 
-If you pass `options.metadata` hooks then `supportsMetadata` becomes true.
+If `options.metadata`hooks is passed then `supportsMetadata` becomes true.
 
 **`await drive.put(key, buffer, [options])`**
 
@@ -130,7 +130,7 @@ Deletes the file at `key` path from the drive.
 
 Creates an entry in drive at `key` path that points to the entry at `linkname`.
 
-> ℹ️ If a blob entry currently exists at `key` path then it will be overwritten and `drive.get(key)` will return null, while `drive.entry(key)` will return the entry with symlink information.
+> If a blob entry currently exists at `key` path then it will be overwritten and `drive.get(key)` will return null, while `drive.entry(key)` will return the entry with symlink information.
 
 #### **`const comparison = drive.compare(entryA, entryB)`**
 
