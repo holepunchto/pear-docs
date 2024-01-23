@@ -4,7 +4,7 @@
 
 The DHT powering Hyperswarm and built on top of [dht-rpc](https://github.com/mafintosh/dht-rpc). The HyperDHT uses a series of holepunching techniques to ensure connectivity works on most networks and is mainly used to facilitate finding and connecting to peers using end-to-end encrypted Noise streams.
 
-In the HyperDHT, peers are identified by a public key, not by an IP address. If you know someone's public key, you can connect to them regardless of where they're located, even if they move between different networks.
+In the HyperDHT, peers are identified by a public key, not by an IP address. Using someone's public key, users can connect to them regardless of where they're located, even if they move between different networks.
 
 > [Github (Hyperdht)](https://github.com/holepunchto/hyperdht)
 
@@ -68,7 +68,7 @@ Create a new DHT node.
 
 See [dht-rpc](https://github.com/mafintosh/dht-rpc) for more options as HyperDHT inherits from that.
 
-> ℹ️ The default bootstrap servers are publicly served on behalf of the commons. To run a fully isolated DHT, start one or more DHT nodes with an empty bootstrap array (`new DHT({bootstrap:[]})`) and then use the addresses of those nodes as the `bootstrap` option in all other DHT nodes. You'll need at least one persistent node for the network to be completely operational.
+> ℹ️ The default bootstrap servers are publicly served on behalf of the commons. To run a fully isolated DHT, start one or more DHT nodes with an empty bootstrap array (`new DHT({bootstrap:[]})`) and then use the addresses of those nodes as the `bootstrap` option in all other DHT nodes. At least one persistent node for the network is required to be completely operational.
 
 #### Methods
 
@@ -82,13 +82,13 @@ Any options passed are forwarded to dht-rpc.
 
 #### `node = DHT.bootstrapper(port, host, [options])`
 
-To run your own Hyperswarm network use this method to easily create a bootstrap node.
+To run one's own Hyperswarm network, use this method to easily create a bootstrap node.
 
 #### **`await node.destroy([options])`**
 
 Fully destroy this DHT node.
 
-> This will also unannounce any running servers. If you want to force close the node without waiting for the servers to unannounce pass `{ force: true }`.
+> This will also unannounce any running servers. Tto force close the node without waiting for the servers to unannounce pass `{ force: true }`.
 
 ### Creating P2P Servers
 
@@ -231,9 +231,9 @@ Announces that users are listening on a key pair to the DHT under a specific top
 
 Any passed options are forwarded to dht-rpc.
 
-> When announcing you'll send a signed proof to peers that you own the key pair and wish to announce under the specific topic. Optionally you can provide up to 3 nodes, indicating which DHT nodes can relay messages to you - this speeds up connects later on for other users.
+> When announcing, send a signed proof to peers that user own the key pair and wish to announce under the specific topic. Optionally, also provide up to 3 nodes, indicating which DHT nodes can relay messages to you - this speeds up connects later on for other users.
 >
-> Creating a server using `dht.createServer` automatically announces itself periodically on the key pair it is listening on. When announcing the server under a specific topic, you can access the nodes it is close to using `server.nodes`.
+> Creating a server using `dht.createServer` automatically announces itself periodically on the key pair it is listening on. When announcing the server under a specific topic, user can access the nodes it is close to using `server.nodes`.
 
 #### **`await node.unannounce(topic, keyPair, [options])`**
 
