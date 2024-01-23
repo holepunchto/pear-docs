@@ -39,7 +39,7 @@ hyperssh -s ab01f... -u maf
 hyperssh -s ab01f... -u maf -i keypair.json
 ```
 
-That's it! Remembering hostnames is required no more! 😌
+There is no need to remember hostnames any more.
 
 
 > Under the hood, Hyperswarm performs UDP holepunching. So, your server should be accessible even if it is located on a home network. Refer to identity management for more information.
