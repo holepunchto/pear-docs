@@ -23,11 +23,11 @@ npm install hyperbeam
 const Hyperbeam = require('hyperbeam')
 
 // to generate a passphrase, leave the constructor empty 
-// and hyperbeam will generate one for you
+// and hyperbeam will generate one passphrase
 const beam = new Hyperbeam()
 
 // Use the following constructor with ('neznr3z3j44l7q7sgynbzpdrdlpausurbpcmqvwupmuoidolbopa') a 32-byte unique passphrase
-// to find the other side of your pipe.
+// to find the other side of the user pipe.
 // const beam = new Hyperbeam('neznr3z3j44l7q7sgynbzpdrdlpausurbpcmqvwupmuoidolbopa')
 
 // beam.key gives the passphrase
@@ -65,7 +65,7 @@ hyperbeam neznr3z3j44l7q7sgynbzpdrdlpausurbpcmqvwupmuoidolbopa
 
 **`const stream = new Hyperbeam([key][, options])`**
 
-Make a new Hyperbeam duplex stream.
+Makes a new Hyperbeam duplex stream.
 
 This stream will auto-connect to another peer using the same key with an end-to-end encrypted tunnel. When the other peer writes it's emitted as `data` on this stream. Likewise, when user writes to this stream it's emitted as `data` on the other peer's stream.
 
