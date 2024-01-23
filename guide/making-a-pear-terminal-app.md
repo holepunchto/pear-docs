@@ -5,7 +5,7 @@
 This app uses these modules: `hyperswarm`, `hypercore-crypto`, and `b4a`.
 
 ```
-$ npm i hyperswarm hypercore-crypto b4a
+npm i hyperswarm hypercore-crypto b4a
 ```
 
 **Note**: If the modules are installed while the app is running an error is thrown similar to `Cannot find package 'hyperswarm' imported from /app.js`. When installing modules, close down the app, before they can be installed.

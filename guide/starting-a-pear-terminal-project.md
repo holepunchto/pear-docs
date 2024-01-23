@@ -5,9 +5,9 @@
 First create a new project using `pear init`.
 
 ```
-$ mkdir chat-bot
-$ cd chat-bot
-$ pear init --yes
+mkdir chat-bot
+cd chat-bot
+pear init --yes
 ```
 
 This will create a base structure for the project.
