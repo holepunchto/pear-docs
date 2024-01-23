@@ -264,7 +264,7 @@ A batch is atomic: it is either processed fully or not at all.
 
 A Hyperbee has a single write lock. A batch acquires this write lock with its first modifying operation (**`put`**, **`del`**), and releases it when it flushes. We can also explicitly acquire the lock with **`await batch.lock()`**. If using the batch only for read operations, the write lock is never acquired. Once the write lock is acquired, the batch must flush before any other writes to the Hyperbee can be processed.
 
-A batch's state snaps at creation time, so write operations applied outside of the batch are not taken into account when reading. Write operations within the batch do get taken into account, as is to be expected — if you first run **`await batch.put('myKey', 'newValue')`** and later run **`await batch.get('myKey')`**, you will observe **`'newValue'`**.
+A batch's state snaps at creation time, so write operations applied outside of the batch are not taken into account when reading. Write operations within the batch do get taken into account, as is to be expected — if the **`await batch.put('myKey', 'newValue')`** ran first and later **`await batch.get('myKey')`**, a **`'newValue'`** is observed.
 
 </details>
 
@@ -272,7 +272,7 @@ A batch's state snaps at creation time, so write operations applied outside of t
 
 Make a read stream. Sort order is based on the binary value of the keys. All entries in the stream are similar to the ones returned from **`db.get`**.
 
-`range` should specify the range you want to read and looks like this:
+`range` should specify the range users want to read and looks like this:
 
 ```javascript
 {
@@ -288,7 +288,7 @@ Make a read stream. Sort order is based on the binary value of the keys. All ent
 | Property      | Description                        | Type    | Default |
 | ------------- | ---------------------------------- | ------- | ------- |
 | **`reverse`** | determine order of the keys        | Boolean | `false` |
-| **`limit`**   | maximum number of entries you want     | Integer | `-1`    |
+| **`limit`**   | maximum number of user wants    | Integer | `-1`    |
 
 #### **`const { seq, key, value } = await db.peek([range], [options])`**
 
@@ -308,7 +308,7 @@ Create a stream of all entries ever inserted or deleted from the `db`. Each entr
 | **`gte`**     | start with this seq (inclusive)                                          | Integer | `null`  |
 | **`lt`**      | stop before this index                                                   | Integer | `null`  |
 | **`lte`**     | stop after this index                                                    | Integer | `null`  |
-| **`limit`**   | maximum number of entries you want                                           | Integer | `-1`    |
+| **`limit`**   | maximum number of entries user wants                                     | Integer | `-1`    |
 
 
 > If any of the gte, gt, lte, lt arguments are `< 0` then they'll implicitly be added with the version before starting so doing `{ gte: -1 }` makes a stream starting at the last index.
@@ -340,7 +340,7 @@ Returns a watcher which listens to changes on the given key.
 
 `entryWatcher.node` contains the current entry in the same format as the result of `bee.get(key)`, and will be updated as it changes.
 
-> By default, the node will have the bee's key encoding and value encoding, but you can overwrite it by setting the `keyEncoding` and `valueEncoding` options.
+> By default, the node will have the bee's key encoding and value encoding, but user can overwrite it by setting the `keyEncoding` and `valueEncoding` options.
 >
 >Listen to `entryWatcher.on('update')` to be notified when the value of node has changed.
 
@@ -374,10 +374,10 @@ Waits until the watcher is loaded and detects changes.
 
 `await watcher.destroy()`
 
-Stops the watcher. You could also stop it by using `break` inside the loop.
+Stops the watcher. It could also stop by using `break` inside the loop.
 
 
-> Do not attempt to close the snapshots yourself. Since they're used internally, let them be auto-closed.
+> Do not attempt to close the snapshots forcibly. Since they're used internally, let them be auto-closed.
 >
 >  Watchers are not supported on subs and checkouts. Instead, use the `range` option to limit the scope.
 
