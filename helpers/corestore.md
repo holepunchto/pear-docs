@@ -4,7 +4,7 @@
 
 Corestore is a Hypercore factory that makes it easier to manage large collections of named Hypercores. It is designed to efficiently store and replicate multiple sets of interlinked [Hypercore](../building-blocks/hypercore.md "mention")(s), such as those used by [Hyperdrive](../building-blocks/hyperdrive.md "mention"), removing the responsibility of managing custom storage/replication code from these higher-level modules.
 
-> [Github (Corestore)](https://github.com/holepunchto/corestore)
+> [GitHub (Corestore)](https://github.com/holepunchto/corestore)
 
 * [Corestore](corestore.md#installation)
   * [Create a new instance](corestore.md#const-store--new-corestorestorage-options)
