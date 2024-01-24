@@ -48,8 +48,7 @@ Loads a Hypercore, either by name (if the `name` option is provided), or from th
 
 If that Hypercore has previously been loaded, subsequent calls to `get` will return a new Hypercore session on the existing core.
 
-If the `exclusive` option is set and a writable session is opened, it will wait for all other exclusive writable to close before
-opening the Hypercore. In other words, any operation on the core will wait until it is exclusive.
+If the `exclusive` option is set and a writable session is opened, it will wait for all other exclusive writable sessions to close before opening the Hypercore. In other words, any operation on the core will wait until it is exclusive.
 
 All other options besides `name` and `key` and `exclusive` will be forwarded to the Hypercore constructor.
 
@@ -125,12 +124,12 @@ const drive2 = new Hyperdrive(store.namespace('drive-b'))
 
 #### `const session = store.session([options])`
 
-Creates a new Corestore that shares resources with the original, like cache, cores, replication streams, and storage, while optionally resetting the namespace, overriding `primaryKey`. Useful when an application wants to accept an optional Corestore, but needs to maintain a predictable key derivation.
+Creates a new Corestore that shares resources with the original, like cache, cores, replication streams, and storage, while optionally resetting the namespace and overriding `primaryKey`. This is useful when an application wants to accept an optional Corestore but needs to maintain a predictable key derivation.
 
 `options` are the same as the constructor options:
 
 | Property         | Description                                                                             | Type   | Default                          |
 | ---------------- | --------------------------------------------------------------------------------------- | ------ | -------------------------------- |
-| **`primaryKey`** | Overrides the default `primaryKey` for this session                                     | Buffer | The store's current `primaryKey` |
+| **`primaryKey`** | Overrides the default `primaryKey` for this session.                                     | Buffer | The store's current `primaryKey` |
 | **`namespace`**  | Overrides the namespace for this session. If `null`, the default namespace will be used. | Buffer | The store's current namespace.   |
 | **`detach`**    | By disabling this, closing the session will also close the store that created the session. | Boolean | `true`   |
