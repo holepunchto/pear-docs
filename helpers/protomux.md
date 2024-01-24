@@ -1,3 +1,4 @@
+
 # Protomux
 
 Multiplex multiple message-oriented protocols over a stream
@@ -22,7 +23,7 @@ npm install protomux
 const Protomux = require('protomux')
 const c = require('compact-encoding')
 
-// By framed stream, it has be a stream that preserves the messages, ie something that length prefixes
+// By framed stream, it has to be a stream that preserves the messages, i.e. something that length prefixes
 // like @hyperswarm/secret-stream
 
 const mux = new Protomux(aStreamThatFrames)
@@ -99,12 +100,12 @@ Adds a new protocol channel.
   id: buffer,
   // Optional encoding for a handshake
   handshake: encoding,
-  // Optional array of message types you want to send/receive.
+  // Optional array of message types that you want to send/receive.
   messages: [],
   // Called when the remote side adds this protocol.
   // Errors here are caught and forwarded to stream.destroy
   async onopen (handshake) {},
-  // Called when the channel closes - ie the remote side closes or rejects this protocol or we closed it.
+  // Called when the channel closes - i.e. the remote side closes or rejects this protocol or we closed it.
   // Errors here are caught and forwarded to stream.destroy
   async onclose () {},
   // Called after onclose when all pending promises have been resolved.
@@ -114,7 +115,7 @@ Adds a new protocol channel.
 
 Sessions are paired based on a queue, so the first remote channel with the same `protocol` and `id`.
 
-> `mux.createChannel` returns `null` if the channel should not be opened, it's a duplicate channel or the remote has already closed this one. To have multiple sessions with the same `protocol` and `id`, set `unique: false` as an option.
+> `mux.createChannel` returns `null` if the channel should not be opened, it's a duplicate channel, or the remote has already closed this one. To have multiple sessions with the same `protocol` and `id`, set `unique: false` as an option.
 
 #### **`const opened = mux.opened({ protocol, id })`**
 
