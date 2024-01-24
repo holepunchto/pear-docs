@@ -4,7 +4,7 @@
 
 Hypercore is a secure, distributed append-only log built for sharing large datasets and streams of real-time data. It comes with a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
-> [Github (Hypercore)](https://github.com/holepunchto/hypercore)
+> [GitHub (Hypercore)](https://github.com/holepunchto/hypercore)
 
 * [Hypercore](../building-blocks/hypercore.md)
   * [Creating a new instance](hypercore.md#installation)
@@ -199,7 +199,7 @@ The amount of padding applied to each block of this core. Will be `0` unless blo
 
 #### **`const { length, byteLength } = await core.append(block)`**
 
-Append a block of data (or an array of blocks) to the core. Returns the new length and byte length of the core.
+Appends a block of data (or an array of blocks) to the core. Returns the new length and byte length of the core.
 
 > This operation is 'atomic'. This means that the block is appended altogether or not at all (in case of I/O failure).
 
