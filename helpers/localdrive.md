@@ -1,6 +1,6 @@
 # Localdrive
 
-A file system API that is similar to [hyperdrive.md](../building-blocks/hyperdrive.md "mention"). This tool comes in handy when mirroring files from user filesystem to a drive, and vice-versa.
+A file system API that is similar to [Hyperdrive](../building-blocks/hyperdrive.md "mention"). This tool comes in handy when mirroring files from user filesystem to a drive, and vice-versa.
 
 > [Github (Localdrive)](https://github.com/holepunchto/localdrive)
 
@@ -146,7 +146,7 @@ Returns a stream of all subpaths of entries in drive stored at paths prefixed by
 
 **`const mirror = drive.mirror(out, [options])`**
 
-Mirrors this drive into another. Returns a [mirrordrive.md](../helpers/mirrordrive.md "mention") instance constructed with `options`.
+Mirrors this drive into another. Returns a [Mirrordrive](../helpers/mirrordrive.md "mention") instance constructed with `options`.
 
 Call [`await mirror.done()`](../helpers/mirrordrive.md#await-mirrordone) to wait for the mirroring to finish.
 
