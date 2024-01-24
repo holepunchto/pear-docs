@@ -100,7 +100,7 @@ Adds a new protocol channel.
   id: buffer,
   // Optional encoding for a handshake
   handshake: encoding,
-  // Optional array of message types that you want to send/receive.
+  // Optional array of message types that user wants to send/receive.
   messages: [],
   // Called when the remote side adds this protocol.
   // Errors here are caught and forwarded to stream.destroy
