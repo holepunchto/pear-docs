@@ -10,9 +10,9 @@ cd chat-bot
 pear init --yes
 ```
 
-This will create a base structure for the project.
+This creates the base project structure.
 
-- `package.json`. Configuration for the app. Notice the `pear` property.
-- `index.js`. The entrpoint for the app.
-- `app.js`. The main code.
-- `test/index.test.js`. Skeleton for writing tests.
+- `package.json`. App configuration. Notice the `pear` property.
+- `index.js`. App entrypoint.
+- `app.js`. Main code.
+- `test/index.test.js`. Test skeleton.
