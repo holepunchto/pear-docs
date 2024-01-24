@@ -1,9 +1,9 @@
 
 # Protomux
 
-Multiplex multiple message-oriented protocols over a stream
+Multiplex multiple message-oriented protocols over a stream.
 
->[Github (Protomux)](https://github.com/mafintosh/protomux)
+>[GitHub (Protomux)](https://github.com/mafintosh/protomux)
 
 * [Installation](protomux.md#installation)
 * [Basic usage](protomux.md#basic-usage)
