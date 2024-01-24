@@ -94,7 +94,7 @@ A Boolean indicating if `base.view` has been created.
 
 See the [linearized views section](autobase.md#linearized-views) for details about the `apply` option.
 
-> ℹ️ Prior to calling `base.start()`, `base.view` will be `null`.
+> Prior to calling `base.start()`, `base.view` will be `null`.
 
 
 #### Methods
@@ -111,13 +111,13 @@ Returns `true` if `core` is an Autobase input or an output.
 
 #### **`await base.append(value, [clock], [input])`**
 
-Append a new value to the autobase.
+Appends a new value to the autobase.
 
 * `clock`: The causal clock defaults to base.latest.
 
 #### **`const clock = await base.latest([input1, input2, ...])`**
 
-Generate a causal clock linking the latest entries of each input.
+Generates a causal clock linking the latest entries of each input.
 
 `latest` will update the input Hypercores (`input.update()`) prior to returning the clock.
 
@@ -139,11 +139,9 @@ Removes an input Hypercore.
 
 * `input` must be a Hypercore that is currently an input.
 
-{% hint style="info" %}
-Removing an input, and then subsequently linearizing the Autobase into an existing output, could result in a large truncation operation on that output -- this is effectively 'purging' that input entirely.
+> Removing an input, and then subsequently linearizing the Autobase into an existing output, could result in a large truncation operation on that output -- this is effectively 'purging' that input entirely.
 
-Future releases will see the addition of 'soft removal', which will freeze an input at a specific length, and no process blocks past that length, while still preserving that input's history in linearized views. For most applications, soft removal matches the intuition behind 'removing a user'.
-{% endhint %}
+> Future releases will see the addition of 'soft removal', which will freeze an input at a specific length, and no process blocks past that length, while still preserving that input's history in linearized views. For most applications, soft removal matches the intuition behind 'removing a user'.
 
 #### **`await base.addOutput(output)`**
 
@@ -177,7 +175,7 @@ The simplest kind of linearized view (`const view = base.linearize()`), is just 
 
 #### **`const stream = base.createCausalStream()`**
 
-Generate a Readable stream of input blocks with deterministic, causal ordering.
+Generates a Readable stream of input blocks with deterministic, causal ordering.
 
 Any two users who create an Autobase with the same set of inputs, and the same lengths (i.e., both users have the same initial states), and will produce identical causal streams.
 
@@ -189,7 +187,7 @@ Similar to `Hypercore.createReadStream()`, this stream starts at the beginning o
 
 #### **`const stream = base.createReadStream([options])`**
 
-Generate a Readable stream of input blocks, from earliest to latest.
+Generates a Readable stream of input blocks, from earliest to latest.
 
 Unlike `createCausalStream`, the ordering of `createReadStream` is not deterministic. The read stream only gives the guarantee that every node it yields will **not** be causally-dependent on any node yielded later.
 
@@ -288,7 +286,7 @@ Ensures the view is up-to-date.
 
 #### **`const entry = await view.get(idx, [options])`**
 
-Gets an entry from the view. If set `unwrap` to true, it returns `entry.value`. Otherwise, it returns an entry similar to this:
+Gets an entry from the view. If set `unwrap` to true, returns `entry.value` or returns an entry similar to this:
 
 ```javascript
 {
