@@ -2,7 +2,7 @@
 
 A file system API that is similar to [Hyperdrive](../building-blocks/hyperdrive.md "mention"). This tool comes in handy when mirroring files from user filesystem to a drive, and vice-versa.
 
-> [Github (Localdrive)](https://github.com/holepunchto/localdrive)
+> [GitHub (Localdrive)](https://github.com/holepunchto/localdrive)
 
 * [Installation](localdrive.md#installation)
 * [Usage](localdrive.md#usage)
