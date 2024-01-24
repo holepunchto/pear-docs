@@ -2,7 +2,7 @@
 
 A swiss-knife proxy powered by [HyperDHT](../building-blocks/hyperdht.md)!
 
-> [Github (Hypertele)](https://github.com/bitfinexcom/hypertele)
+> [GitHub (Hypertele)](https://github.com/bitfinexcom/hypertele)
 
 * [Installation](hypertele.md#installation)
 * [Basic usage](hypertele.md#basic-usage)
@@ -76,7 +76,7 @@ hypertele-pub --help
 ```yaml
 options:
 
--l PORT : port of the local service you want to expose to the peers
+-l PORT : port of the local service user want to expose to the peers
 --seed SEED : seed (command-line)
 ```
 
