@@ -2,7 +2,7 @@
 
 A command-line interface for generating and connecting to peer-to-peer, end-to-end encrypted shells.
 
->[Github (Hypershell)](https://github.com/holepunchto/hypershell)
+>[GitHub (Hypershell)](https://github.com/holepunchto/hypershell)
 
 * [Installation](hypershell.md#installation)
 * [Basic usage](hypershell.md#basic-usage)
