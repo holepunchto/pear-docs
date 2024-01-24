@@ -6,7 +6,6 @@ CLI to download, seed, and mirror a Hyperdrive or Localdrive.
 
 * [Installation](drives.md#installation)
 * [Basic usage](drives.md#basic-usage)
-* [API](drives.md#api)
 
 ### Installation
 
