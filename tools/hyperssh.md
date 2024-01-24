@@ -42,14 +42,14 @@ hyperssh -s ab01f... -u maf -i keypair.json
 There is no need to remember hostnames any more.
 
 
-> Under the hood, Hyperswarm performs UDP holepunching. So, your server should be accessible even if it is located on a home network. Refer to identity management for more information.
+> Under the hood, Hyperswarm performs UDP holepunching. So, user server should be accessible even if it is located on a home network. Refer to identity management for more information.
 
 
 ### Windows RDP
 
-Hyperssh can also be used with Windows RDP to remotely log in to your windows machines over Hyperswarm.
+Hyperssh can also be used with Windows RDP to remotely log in to user windows machines over Hyperswarm.
 
-**On the computer (ensure RDP is enabled) you want to login to (server), run:**
+**On the computer (ensure RDP is enabled) and user want to login to (server), run:**
 
 ```bash
 hypertele-server --seed SEED -l 3389
