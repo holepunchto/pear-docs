@@ -48,7 +48,7 @@ Makes a new stream.
 |     **`keyPair`**     | Combination of PublicKey and SecretKey                                     | { publicKey, secretKey }                              |
 |    **`handshake`**    | To use a handshake performed elsewhere, pass it here                       | { tx, rx, handshakeHash, publicKey, remotePublicKey } |
 
-The SecretStream returned is a Duplex stream that you use as a normal stream, to write/read data from, except its payloads are encrypted using the libsodium secretstream.
+The SecretStream returned is a Duplex stream that you use as a normal stream, to write/read data from, except its payloads are encrypted using the libsodium SecretStream.
 
 > By default, the above process uses ed25519 for the handshakes.
 
