@@ -2,7 +2,7 @@
 
 An end-to-end encrypted pipeline for the Internet, utilizing the [hyperswarm.md](../building-blocks/hyperswarm.md "mention") and Noise Protocol for secure communications.
 
-> [Github (Hyperbeam)](https://github.com/mafintosh/hyperbeam)
+> [GitHub (Hyperbeam)](https://github.com/mafintosh/hyperbeam)
 
 * [Installation](hyperbeam.md#installation)
 * [Basic usage](hyperbeam.md#usage)
