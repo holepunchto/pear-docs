@@ -2,7 +2,7 @@
 
 A utility to facilitate SSH operations via the [HyperDHT](../building-blocks/hyperdht.md).
 
-> [Github (Hyperssh)](https://github.com/mafintosh/hyperssh)
+> [GitHub (Hyperssh)](https://github.com/mafintosh/hyperssh)
 
 * [Installation](hyperssh.md#installation)
 * [Basic usage](hyperssh.md#basic-usage)
