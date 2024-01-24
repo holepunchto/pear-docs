@@ -1,8 +1,8 @@
 # MirrorDrive
 
-Mirrors a [hyperdrive.md](../building-blocks/hyperdrive.md "mention") or a [localdrive.md](../helpers/localdrive.md "mention") into another one.
+Mirrors a [Hyperdrive](../building-blocks/hyperdrive.md "mention") or a [Localdrive](../helpers/localdrive.md "mention") into another one.
 
-> [Github (Mirrordrive)](https://github.com/holepunchto/mirror-drive)
+> [GitHub (Mirrordrive)](https://github.com/holepunchto/mirror-drive)
 
 * [Installation](./mirrordrive.md#installation)
 * [Basic usage](mirrordrive.md#basic-usage)
