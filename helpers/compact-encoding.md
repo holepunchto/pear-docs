@@ -2,7 +2,7 @@
 
 A series of binary encoders/decoders for building small and fast parsers and serializers.
 
-> [Github (Compact-Encoding)](https://github.com/compact-encoding/compact-encoding)
+> [GitHub (Compact-Encoding)](https://github.com/compact-encoding/compact-encoding)
 
 * [Compact-Encoding](compact-encoding.md#installation)
   * Methods
