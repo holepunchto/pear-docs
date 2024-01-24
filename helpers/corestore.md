@@ -2,7 +2,7 @@
 
 <mark style="background-color:green;">**stable**</mark>
 
-Corestore is a Hypercore factory that makes it easier to manage large collections of named Hypercores. It is designed to efficiently store and replicate multiple sets of interlinked [hypercore.md](../building-blocks/hypercore.md "mention")(s), such as those used by [hyperdrive.md](../building-blocks/hyperdrive.md "mention"), removing the responsibility of managing custom storage/replication code from these higher-level modules.
+Corestore is a Hypercore factory that makes it easier to manage large collections of named Hypercores. It is designed to efficiently store and replicate multiple sets of interlinked [Hypercore](../building-blocks/hypercore.md "mention")(s), such as those used by [Hyperdrive](../building-blocks/hyperdrive.md "mention"), removing the responsibility of managing custom storage/replication code from these higher-level modules.
 
 > [Github (Corestore)](https://github.com/holepunchto/corestore)
 
@@ -79,7 +79,7 @@ Corestore replicates in an 'all-to-all' fashion, meaning that when replication b
 
 If the remote side dynamically adds a new Hypercore to the replication stream (by opening that core with a `get` on their Corestore, for example), Corestore will load and replicate that core if possible.
 
-Using [hyperswarm.md](../building-blocks/hyperswarm.md "mention") one can replicate Corestores as follows:
+Using [Hyperswarm](../building-blocks/hyperswarm.md "mention") one can replicate Corestores as follows:
 
 ```javascript
 const swarm = new Hyperswarm()
