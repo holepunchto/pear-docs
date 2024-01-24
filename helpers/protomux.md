@@ -105,7 +105,7 @@ Adds a new protocol channel.
   // Called when the remote side adds this protocol.
   // Errors here are caught and forwarded to stream.destroy
   async onopen (handshake) {},
-  // Called when the channel closes - i.e. the remote side closes or rejects this protocol or we closed it.
+  // Called when the channel closes - i.e. the remote side closes or rejects this protocol or the user has closed it.
   // Errors here are caught and forwarded to stream.destroy
   async onclose () {},
   // Called after onclose when all pending promises have been resolved.
