@@ -4,7 +4,7 @@ SecretStream is used to securely create connections between two peers in Hypersw
 
 The SecretStream instance is a Duplex stream that supports usability as a normal stream for standard read/write operations. Furthermore, its payloads are encrypted with libsodium's SecretStream for secure transmission.
 
->[Github (SecretStream)](https://github.com/holepunchto/hyperswarm-secret-stream)
+>[GitHub (SecretStream)](https://github.com/holepunchto/hyperswarm-secret-stream)
 
 * [SecretStream](secretstream.md#installation)
   * [Create a new instance](secretstream.md#const-s--new-secretstreamisinitiator-rawstream-options)
