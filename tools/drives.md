@@ -34,7 +34,6 @@ Commands:
 | ls | [options] <src> | List files of the drive |
 | info | [options] [key] | Show info about the Hyperdrive |
 
-### API
 
 #### Create a writable Hyperdrive
 
