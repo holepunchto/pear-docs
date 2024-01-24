@@ -2,12 +2,12 @@
 
 <mark style="background-color:green;">**stable**</mark>
 
-Hyperbee is an append only B-tree based on [hypercore.md](hypercore.md "mention"). It provides a key/value-store API, with methods for inserting and getting key-value pairs, atomic batch insertions, and creating sorted iterators. It uses a single Hypercore for storage, using a technique called embedded indexing. It provides features like cache warmup extension, efficient diffing, version control, sorted iteration, and sparse downloading.
+Hyperbee is an append only B-tree based on [Hypercore](hypercore.md "mention"). It provides a key/value-store API, with methods for inserting and getting key-value pairs, atomic batch insertions, and creating sorted iterators. It uses a single Hypercore for storage, using a technique called embedded indexing. It provides features like cache warmup extension, efficient diffing, version control, sorted iteration, and sparse downloading.
 
 > As with the Hypercore, a Hyperbee can only have a **single writer on a single machine**; the creator of the Hyperdrive is the only person who can modify it as they're the only one with the private key. That said, the writer can replicate to **many readers**, in a manner similar to BitTorrent.
 
 
-> [Github (Hyperbee)](https://github.com/holepunchto/hyperbee)
+> [GitHub (Hyperbee)](https://github.com/holepunchto/hyperbee)
 
 * [Hyperbee](../building-blocks/hyperbee.md):
   * [Create a new instance](hyperbee.md#installation):
@@ -58,7 +58,7 @@ npm install hyperbee
 
 #### **`const db = new Hyperbee(core, [options])`**
 
-Make a new Hyperbee instance. `core` should be a [hypercore.md](hypercore.md "mention").
+Makes a new Hyperbee instance. `core` should be a [Hypercore](hypercore.md "mention").
 
 `options` include:
 
@@ -114,7 +114,7 @@ Use it once before reading synchronous properties like `db.version`, unless call
 
 #### **`await db.close()`**
 
-Fully close this bee, including its core.
+Fully closes this bee, including its core.
 
 #### **`await db.put(key, [value], [options])`**
 
@@ -166,8 +166,8 @@ Gets a key's value. Returns `null` if the key doesn't exist.
 
 | Property            | Description                                                                 | Type    | Default  |
 | ------------------- | --------------------------------------------------------------------------- | ------- | -------- |
-| **`wait`**          | Wait for the meta-data of hypercore to be updated                           | Boolean | `true`   |
-| **`update`**        | Determine if the core has to be updated before any operation                | Boolean | `true`  |
+| **`wait`**          | Waits for the meta-data of hypercore to be updated                           | Boolean | `true`   |
+| **`update`**        | Determines if the core has to be updated before any operation                | Boolean | `true`  |
 | **`keyEncoding`**   | Encoding type for the keys. Takes values of 'json', 'utf-8', or 'binary'.   | String  | `binary` |
 | **`valueEncoding`** | Encoding type for the values. Takes values of 'json', 'utf-8', or 'binary'. | String  | `binary` |
 
@@ -177,7 +177,7 @@ Gets a key's value. Returns `null` if the key doesn't exist.
 
 #### **`await db.del(key, [options])`**
 
-Delete a key.
+Deletes a key.
 
 `options` include:
 
@@ -270,7 +270,7 @@ A batch's state snaps at creation time, so write operations applied outside of t
 
 #### **`const stream = db.createReadStream([range], [options])`**
 
-Make a read stream. Sort order is based on the binary value of the keys. All entries in the stream are similar to the ones returned from **`db.get`**.
+Makes a read stream. Sort order is based on the binary value of the keys. All entries in the stream are similar to the ones returned from **`db.get`**.
 
 `range` should specify the range users want to read and looks like this:
 
@@ -287,8 +287,8 @@ Make a read stream. Sort order is based on the binary value of the keys. All ent
 
 | Property      | Description                        | Type    | Default |
 | ------------- | ---------------------------------- | ------- | ------- |
-| **`reverse`** | determine order of the keys        | Boolean | `false` |
-| **`limit`**   | maximum number of user wants    | Integer | `-1`    |
+| **`reverse`** | determines order of the keys        | Boolean | `false` |
+| **`limit`**   | maximum number of entries users wants| Integer | `-1`    |
 
 #### **`const { seq, key, value } = await db.peek([range], [options])`**
 
@@ -296,18 +296,18 @@ Similar to doing a read stream and returning the first value, but a bit faster t
 
 #### **`const stream = db.createHistoryStream([options])`**
 
-Create a stream of all entries ever inserted or deleted from the `db`. Each entry has an additional `type` property indicating if it was a `put` or `del` operation.
+Creates a stream of all entries ever inserted or deleted from the `db`. Each entry has an additional `type` property indicating if it was a `put` or `del` operation.
 
 `options` include:
 
 | Property      | Description                                                              | Type    | Default |
 | ------------- | ------------------------------------------------------------------------ | ------- | ------- |
-| **`live`**    | determine whether the stream will wait for new data and never end or not | Boolean | `false` |
-| **`reverse`** | determine the order in which data is received                            | Boolean | `false` |
-| **`gt`**      | start after this index                                                   | Integer | `null`  |
-| **`gte`**     | start with this seq (inclusive)                                          | Integer | `null`  |
-| **`lt`**      | stop before this index                                                   | Integer | `null`  |
-| **`lte`**     | stop after this index                                                    | Integer | `null`  |
+| **`live`**    | determines whether the stream will wait for new data and never end or not | Boolean | `false` |
+| **`reverse`** | determines the order in which data is received                            | Boolean | `false` |
+| **`gt`**      | starts after this index                                                   | Integer | `null`  |
+| **`gte`**     | starts with this seq (inclusive)                                          | Integer | `null`  |
+| **`lt`**      | stops before this index                                                   | Integer | `null`  |
+| **`lte`**     | stops after this index                                                    | Integer | `null`  |
 | **`limit`**   | maximum number of entries user wants                                     | Integer | `-1`    |
 
 
@@ -384,7 +384,7 @@ Stops the watcher. It could also stop by using `break` inside the loop.
 
 #### **`const snapshot = db.checkout(version)`**
 
-Get a read-only snapshot of a previous version.
+Gets a read-only snapshot of a previous version.
 
 #### **`const snapshot = db.snapshot()`**
 
@@ -392,7 +392,7 @@ Shorthand for getting a checkout for the current version.
 
 #### **`const sub = db.sub('sub-prefix', options = {})`**
 
-Create a sub-database where a given value will prefix all entries.
+Creates a sub-database where a given value will prefix all entries.
 
 This makes it easy to create namespaces within a single Hyperbee.
 
