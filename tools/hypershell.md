@@ -65,7 +65,7 @@ hypershell-keygen
 
 **Client**
 
-Now, users can connect to servers (provided they allow their public key):
+Now the server can be connected to (providing the public key has been allowed):
 
 ```bash
 hypershell <server public key>
