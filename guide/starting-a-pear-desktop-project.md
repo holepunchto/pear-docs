@@ -1,6 +1,6 @@
 # Starting a Pear Desktop Project
 
-This section shows how to generate, configure, and develop a Pear desktop project, in preparation for [Making a Pear Desktop Application](./making-a-pear-desktop-app.md) .
+This section shows how to generate, configure, and develop a Pear desktop project, in preparation for [Making a Pear Desktop Application](./making-a-pear-desktop-app.md).
 
 ## Step 1. Initialization
 
