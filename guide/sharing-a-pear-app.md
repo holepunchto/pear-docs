@@ -14,7 +14,7 @@ If starting from [Making a Pear Desktop Application](./making-a-pear-desktop-app
 
 ## Step 1. Stage the app
 
-To view the help for the `pear stage` command we can run `pear stage help`.
+To view the help for the `pear stage` command run `pear stage help`.
 
 The command signature for `pear stage` is `pear stage <channel|key> [dir]`.
 
@@ -38,7 +38,7 @@ If the application is a desktop application there will also be a warmup step whe
 
 ## Step 2. Run the app on the same machine
 
-To view the help for the `pear run` command we can run `pear run help`.
+To view the help for the `pear run` command run `pear run help`.
 
 The command signature for `pear run` is `pear run <key>`.
 
@@ -54,7 +54,7 @@ Where `pear dev` opens an application from the filesystem, `pear run`  opens the
 
 The application can be shared with other peers by announcing the application to the DHT and then supplying the application key to other peers.
 
-To view the help for the `pear seed` command we can run `pear seed help`.
+To view the help for the `pear seed` command run `pear seed help`.
 
 The command signature for `pear seed` is `pear seed <channel|key> [dir]`.
 

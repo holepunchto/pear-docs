@@ -62,21 +62,25 @@ Specify a remote key to reseed.
   --verbose|-v  Additional output
 ```
   
-## pear launch <key|link> -- [...args]
+## pear run <key> -- [...args]
 
-Launch an application by key or link.
+Run an application from a key.
 
-A Pear link takes the form: `pear://<key>/<data>`.
+The key argument may also be a a Pear Link containing the key.
+
+A Pear Link takes the form: `pear://<key>/<data>`.
 
 The `<data>` portion of the link is available as `pear.config.linkData`.
 
 Arguments supplied after a double-dash (`--`) are passed as `pear.config.args`.
 
 ```
-  --dev                        Launch the app in dev mode
-  --store|-s=path              Set the Application Storage path
-  --tmp-store|-t               Automatic new tmp folder as store path
-  --checkout=n|release|staged  Launch a version
+  --dev                      Run the app in dev mode
+  --store|-s=path            Set the Application Storage path
+  --tmp-store|-t             Automatic new tmp folder as store path
+  --checkout=n               Run a checkout, n is version length
+  --checkout=release         Run checkout from marked released length
+  --checkout=staged          Run checkout from latest version length
 ```
   
 ## pear release <channel|key> [dir]
@@ -128,8 +132,12 @@ Connect to a Read-Eval-Print-Loop session with sidecar.
 
 A key is printed out, use with repl-swarm module to connect.
   
+## pear use <key>
+
+Switch to a different platform release-line.
+
 ## pear versions
-    
+
 Output version information.
 
 ```
