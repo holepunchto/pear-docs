@@ -23,7 +23,7 @@ npm install hyperbeam
 const Hyperbeam = require('hyperbeam')
 
 // to generate a passphrase, leave the constructor empty 
-// and hyperbeam will generate one passphrase
+a passphrase
 const beam = new Hyperbeam()
 
 // Use the following constructor with ('neznr3z3j44l7q7sgynbzpdrdlpausurbpcmqvwupmuoidolbopa') a 32-byte unique passphrase
