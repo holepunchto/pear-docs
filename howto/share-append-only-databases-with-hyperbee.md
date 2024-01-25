@@ -1,5 +1,5 @@
 
-### How to share Append-Only Databases with Hyperbee
+# How to share Append-Only Databases with Hyperbee
 
 Get setup by creating a project folder and installing dependencies:
 

@@ -1,5 +1,5 @@
 
-### How to work with many Hypercores using Corestore
+# How to work with many Hypercores using Corestore
 
 Get setup by creating a project folder and installing dependencies:
 

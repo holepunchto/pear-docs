@@ -1,4 +1,4 @@
-### How to connect to many peers by topic with Hyperswarm
+# How to connect to many peers by topic with Hyperswarm
 
 Get setup by creating a project folder and installing dependencies:
 

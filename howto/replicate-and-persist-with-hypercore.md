@@ -1,4 +1,4 @@
-### How to replicate and persist with Hypercore
+# How to replicate and persist with Hypercore
 
 Get setup by creating a project folder and installing dependencies:
 

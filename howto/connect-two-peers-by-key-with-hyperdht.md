@@ -1,5 +1,5 @@
 
-### How to connect two Peers by key with Hyperdht
+# How to connect two Peers by key with Hyperdht
 
 Get setup by creating a project folder and installing dependencies:
 

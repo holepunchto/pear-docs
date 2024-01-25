@@ -1,4 +1,4 @@
-### How to create a full peer-to-peer filesystem with Hyperdrive
+# How to create a full peer-to-peer filesystem with Hyperdrive
 
 Get setup by creating a project folder and installing dependencies:
 
