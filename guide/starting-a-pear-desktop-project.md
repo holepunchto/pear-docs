@@ -47,7 +47,7 @@ The app should now show:
 
 ## Step 4. Configuration
 
-Application configuration lives under the `pear` property in `package.json`
+Application configuration is under the `pear` property in `package.json`
 
 Open `package.json` and update it to:
 
