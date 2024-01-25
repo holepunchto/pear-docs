@@ -81,7 +81,7 @@ hypershell-server
 
 `~/.hypershell/firewall` will be automatically created as an empty file. That means all connections are denied by default.
 
-> Users can allow public keys in real time by adding them to the firewall list.
+>  Public keys can be added in real time by adding them to the firewall list while `hypershell-server` is running.
 
 ### Known peers
 
