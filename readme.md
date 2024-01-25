@@ -14,7 +14,7 @@ Welcome to the Internet of Peers
 
 ## Table of Contents
 
-### References
+### Reference
 
 * [Command-Line-Interface (CLI)](./reference/cli.md)
 * [Application-Programming-Interface (API)](./reference/api.md)
