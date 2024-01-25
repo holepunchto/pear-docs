@@ -2,7 +2,7 @@
 
 CLI to download, seed, and mirror a Hyperdrive or Localdrive.
 
->[Github (drives)](https://github.com/holepunchto/drives)
+>[GitHub (drives)](https://github.com/holepunchto/drives)
 
 * [Installation](drives.md#installation)
 * [Basic usage](drives.md#basic-usage)

@@ -4,7 +4,7 @@
 
 Hyperdrive is a secure, real-time distributed file system designed for easy P2P file sharing. We use it extensively inside Holepunch; apps like Keet are distributed to users as Hyperdrives, as is the Holepunch platform itself.
 
-> [Github (Hyperdrive)](https://github.com/holepunchto/hyperdrive)
+> [GitHub (Hyperdrive)](https://github.com/holepunchto/hyperdrive)
 
 * [Hyperdrive](../building-blocks/hyperdrive.md)
   * [Create a new instance](hyperdrive.md#installation)
@@ -65,9 +65,9 @@ npm install hyperdrive
 
 #### **`const drive = new Hyperdrive(store, [key])`**
 
-Creates a new Hyperdrive instance. `store` must be an instance of [corestore.md](../helpers/corestore.md "mention").
+Creates a new Hyperdrive instance. `store` must be an instance of [corestore.md](../helpers/corestore.md).
 
-By default, it uses the core at `{ name: 'db' }` from `store`, unless you set the public `key`.
+By default, it uses the core at `{ name: 'db' }` from `store`, unless the public `key` is set.
 
 #### Properties
 
@@ -121,7 +121,9 @@ Boolean indicating if the drive handles or not metadata. Always `true`.
 
 Waits until the internal state is loaded.
 
-Use it once before reading synchronous properties like `drive.discoveryKey`, unless you called any of the other APIs.
+Use it once before reading synchronous properties like `drive.discoveryKey`. 
+If any of the other APIs are called first they will wait for readiness so this is only needed to lookup
+synchronous properties before any API call.
 
 #### **`await drive.close()`**
 
@@ -201,7 +203,7 @@ Deletes the blob from storage to free up space, but the file structure reference
 
 | Property          | Description                                                           | Type    | Default |
 | ----------------- | --------------------------------------------------------------------- | ------- | ------- |
-| **`diff`** | Returned `cleared` bytes object is null unless you enable this | Boolean | `false` |
+| **`diff`** | Returned `cleared` bytes object is null unless enabled | Boolean | `false` |
 
 #### `const cleared = await drive.clearAll([options])`
 
@@ -211,11 +213,11 @@ Deletes all the blobs from storage to free up space, similar to how `drive.clear
 
 | Property          | Description                                                           | Type    | Default |
 | ----------------- | --------------------------------------------------------------------- | ------- | ------- |
-| **`diff`** | Returned `cleared` bytes object is null unless you enable this | Boolean | `false` |
+| **`diff`** | Returned `cleared` bytes object is null unless enabled | Boolean | `false` |
 
 #### `await drive.purge()`
 
-Purges both cores (db and blobs) from your storage, completely removing all the drive's data.
+Purges both cores (db and blobs) from storage, completely removing all the drive's data.
 
 #### **`await drive.symlink(path, linkname)`**
 
@@ -253,7 +255,7 @@ Returns a read stream of entries in the drive.
 
 #### **`const mirror = drive.mirror(out, [options])`**
 
-Mirrors this drive into another. Returns a [mirrordrive.md](../helpers/mirrordrive.md "mention") instance constructed with `options`.
+Mirrors this drive into another. Returns a [mirrordrive.md](../helpers/mirrordrive.md) instance constructed with `options`.
 
 Call `await mirror.done()` to wait for the mirroring to finish.
 
@@ -283,7 +285,7 @@ Waits until the watcher is loaded and detecting changes.
 
 `await watcher.destroy()`
 
-Stops the watcher. You could also stop it by using `break` in the loop.
+Stops the watcher. I can also be stopped by using `break` in the `for await` loop.
 
 #### **`const rs = drive.createReadStream(path, [options])`**
 

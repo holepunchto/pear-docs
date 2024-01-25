@@ -6,7 +6,7 @@ Hyperswarm helps to find and connect to peers announcing a common 'topic' that c
 
 Hyperswarm offers a simple interface to abstract away the complexities of underlying modules such as [HyperDHT](hyperdht.md) and [SecretStream](../helpers/secretstream.md). These modules can also be used independently for specialized tasks.
 
-> [Github (Hyperswarm)](https://github.com/hyperswarm/hyperswarm)
+> [GitHub (Hyperswarm)](https://github.com/hyperswarm/hyperswarm)
 
 * [Hyperswarm](../building-blocks/hyperswarm.md)
   * [Create a new instance](hyperswarm.md#installation)
@@ -84,7 +84,7 @@ See the [`PeerInfo`](hyperswarm.md#peerinfo) API for more details.
 
 #### **`swarm.dht`**
 
-A [`HyperDHT`](./hyperdht.md) instance. Useful if you want lower-level control over Hyperswarm's networking.
+A [`HyperDHT`](./hyperdht.md) instance. Useful for lower-level control over Hyperswarm's networking.
 
 #### Methods
 
@@ -100,7 +100,7 @@ Start discovering and connecting to peers sharing a common topic. As new peers a
 
 |   Property   | Description                                                                | Type    | Default |
 | :----------: | -------------------------------------------------------------------------- | ------- | ------- |
-| **`server`** | Accept server connections for this topic by announcing yourself to the DHT | Boolean | `true`  |
+| **`server`** | Accept server connections for this topic by self-announcing to the DHT     | Boolean | `true`  |
 | **`client`** | Actively search for and connect to discovered servers                      | Boolean | `true`  |
 
 > Calling `swarm.join()` makes this core directly discoverable. To ensure that this core remains discoverable, Hyperswarm handles the periodic refresh of the join. For maximum efficiency, fewer joins should be called; if sharing a single Hypercore that links to other Hypercores, only join a `topic` for the first one.
@@ -123,7 +123,7 @@ Emitted when internal values are changed, useful for user interfaces.
 
 ### **Clients and Servers**
 
-In Hyperswarm, there are two ways for peers to join the swarm: client mode and server mode. If you've previously used Hyperswarm v2, these were called 'lookup' and 'announce', but we now think 'client' and 'server' are more descriptive.
+In Hyperswarm, there are two ways for peers to join the swarm: client mode and server mode. Previously in Hyperswarm v2, these were called 'lookup' and 'announce', but we now think 'client' and 'server' are more descriptive.
 
 When user joins a topic as a server, the swarm will start accepting incoming connections from clients (peers that have joined the same topic in client mode). Server mode will announce this user keypair to the DHT so that other peers can discover the user server. When server connections are emitted, they are not associated with a specific topic -- the server only knows it received an incoming connection.
 
@@ -203,7 +203,7 @@ Ban or unban the peer. Banning will prevent any future reconnection attempts, bu
 
 ### Peer Discovery
 
-`swarm.join` returns a `PeerDiscovery` instance which allows you to both control discovery behavior, and respond to lifecycle changes during discovery.
+`swarm.join` returns a `PeerDiscovery` instance which allows for both the controlling of discovery behavior and responding to lifesycle changes during discovery.
 
 #### Methods
 

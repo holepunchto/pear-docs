@@ -4,9 +4,9 @@
 
 The DHT powering Hyperswarm and built on top of [dht-rpc](https://github.com/mafintosh/dht-rpc). The HyperDHT uses a series of holepunching techniques to ensure connectivity works on most networks and is mainly used to facilitate finding and connecting to peers using end-to-end encrypted Noise streams.
 
-In the HyperDHT, peers are identified by a public key, not by an IP address. If you know someone's public key, you can connect to them regardless of where they're located, even if they move between different networks.
+In the HyperDHT, peers are identified by a public key, not by an IP address. A public key can be connected regardless of where the peers are located, even if they move between different networks.
 
-> [Github (Hyperdht)](https://github.com/holepunchto/hyperdht)
+> [GitHub (Hyperdht)](https://github.com/holepunchto/hyperdht)
 
 * [HyperDHT](../building-blocks/hyperdht.md)
   * [Create a new instance](hyperdht.md#installation)
@@ -68,7 +68,7 @@ Create a new DHT node.
 
 See [dht-rpc](https://github.com/mafintosh/dht-rpc) for more options as HyperDHT inherits from that.
 
-> ℹ️ The default bootstrap servers are publicly served on behalf of the commons. To run a fully isolated DHT, start one or more DHT nodes with an empty bootstrap array (`new DHT({bootstrap:[]})`) and then use the addresses of those nodes as the `bootstrap` option in all other DHT nodes. You'll need at least one persistent node for the network to be completely operational.
+> ℹ️ The default bootstrap servers are publicly served on behalf of the commons. To run a fully isolated DHT, start one or more DHT nodes with an empty bootstrap array (`new DHT({bootstrap:[]})`) and then use the addresses of those nodes as the `bootstrap` option in all other DHT nodes. At least one persistent node is needed for the network to be completely operational.
 
 #### Methods
 
@@ -82,13 +82,13 @@ Any options passed are forwarded to dht-rpc.
 
 #### `node = DHT.bootstrapper(port, host, [options])`
 
-To run your own Hyperswarm network use this method to easily create a bootstrap node.
+Use this method to create a bootstrap node for in order to run a Hyperswarm network.
 
 #### **`await node.destroy([options])`**
 
 Fully destroy this DHT node.
 
-> This will also unannounce any running servers. If you want to force close the node without waiting for the servers to unannounce pass `{ force: true }`.
+> This will also unannounce any running servers. To force close the node without waiting for the servers to unannounce pass `{ force: true }`.
 
 ### Creating P2P Servers
 
@@ -101,8 +101,8 @@ Creates a new server for accepting incoming encrypted P2P connections.
 ```javascript
 {
   firewall (remotePublicKey, remoteHandshakePayload) {
-    // validate if you want a connection from remotePublicKey
-    // if you do return false, else return true
+    // validate if connection from remotePublicKey is accepted
+    // if it is accepted return false, else return true
     // remoteHandshakePayload contains their ip and some more info
     return true
   }
@@ -148,7 +148,7 @@ Emitted when a new encrypted connection has passed the firewall check.
 
 `socket` is a [NoiseSecretStream](https://github.com/holepunchto/hyperswarm-secret-stream) instance.
 
-To check about user you are connected to using `socket.remotePublicKey` and `socket.handshakeHash` contains a unique hash representing this crypto session (same on both sides).
+User connections are identifiable by `socket.remotePublicKey` and `socket.handshakeHash` contains a unique hash representing this crypto session (same on both sides).
 
 #### **`server.on('listening')`**
 
@@ -212,7 +212,7 @@ The returned stream looks like this
 {
   // Who sent the response?
   from: { id, host, port },
-  // What address they responded to (i.e., your address)
+  // What address they responded to
   to: { host, port },
   // List of peers announcing under this topic
   peers: [ { publicKey, nodes: [{ host, port }, ...] } ]
@@ -227,13 +227,13 @@ Any passed options are forwarded to dht-rpc.
 
 #### **`const stream = node.announce(topic, keyPair, [relayAddresses], [options])`**
 
-Announces that users are listening on a key pair to the DHT under a specific topic. An announce does a parallel lookup so the stream returned looks like the lookup stream.
+Announces that users are listening on a key pair to the DHT under a specific topic. An announce does a parallel lookup so the stream returned that looks like the lookup stream.
 
-Any passed options are forwarded to dht-rpc.
+Any passed options are forwarded to `dht-rpc`.
 
-> When announcing you'll send a signed proof to peers that you own the key pair and wish to announce under the specific topic. Optionally you can provide up to 3 nodes, indicating which DHT nodes can relay messages to you - this speeds up connects later on for other users.
+> When announcing, a signed proof is sent to peers that the peer owns the key pair and wishes to announce under the specific topic. Optionally up to 3 nodes can be provided, indicating which DHT nodes can relay messages to the peer - this speeds up connects later on for other users.
 >
-> Creating a server using `dht.createServer` automatically announces itself periodically on the key pair it is listening on. When announcing the server under a specific topic, you can access the nodes it is close to using `server.nodes`.
+> Creating a server using `dht.createServer` automatically announces itself periodically on the key pair it is listening on. When announcing the server under a specific topic, access the nodes it is close to using `server.nodes`.
 
 #### **`await node.unannounce(topic, keyPair, [options])`**
 

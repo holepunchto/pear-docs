@@ -31,7 +31,7 @@ import b4a from 'b4a'
 
 const dht = new DHT()
 
-// This keypair is your peer identifier in the DHT
+// This keypair is the peer identifier in the DHT
 const keyPair = DHT.keyPair()
 
 const server = dht.createServer(conn => {

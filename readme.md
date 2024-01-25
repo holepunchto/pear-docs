@@ -4,9 +4,7 @@
 
 Pear by Holepunch is a combined Peer-to-Peer (P2P) Runtime, Development & Deployment tool.
 
-Pear makes it possible to build, share and extend P2P applications using common Web and Mobile technology.
-
-Herein is everything needed to create unstoppable, zero-infrastructure P2P applications for Desktop, Terminal & Mobile (soon).
+Build, share & extend unstoppable, zero-infrastructure P2P applications for Desktop, Terminal & Mobile.
 
 Welcome to the Internet of Peers
 
@@ -97,7 +95,7 @@ The `hyperdht` module is the Distributed Hash Table (DHT) powering Hyperswarm. T
 
 Notable features include:
 
-* lower-level module provides direct access to the DHT for connecting peers using keypairs
+* lower-level module provides direct access to the DHT for connecting peers using key pairs
 
 ## Helpers
 

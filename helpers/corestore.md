@@ -2,9 +2,9 @@
 
 <mark style="background-color:green;">**stable**</mark>
 
-Corestore is a Hypercore factory that makes it easier to manage large collections of named Hypercores. It is designed to efficiently store and replicate multiple sets of interlinked [hypercore.md](../building-blocks/hypercore.md "mention")(s), such as those used by [hyperdrive.md](../building-blocks/hyperdrive.md "mention"), removing the responsibility of managing custom storage/replication code from these higher-level modules.
+Corestore is a Hypercore factory that makes it easier to manage large collections of named Hypercores. It is designed to efficiently store and replicate multiple sets of interlinked [hypercore.md](../building-blocks/hypercore.md)(s), such as those used by [hyperdrive.md](../building-blocks/hyperdrive.md), removing the responsibility of managing custom storage/replication code from these higher-level modules.
 
-> [Github (Corestore)](https://github.com/holepunchto/corestore)
+> [GitHub (Corestore)](https://github.com/holepunchto/corestore)
 
 * [Corestore](corestore.md#installation)
   * [Create a new instance](corestore.md#const-store--new-corestorestorage-options)
@@ -68,7 +68,7 @@ const core4 = store.get({ key: otherKey })
 const core5 = store.get(otherKey)
 ```
 
-> The names you provide are only relevant **locally**, in that they are used to deterministically generate key pairs. Whenever you load a core by name, that core will be writable. Names are not shared with remote peers.
+> The names provided are only relevant **locally**, in that they are used to deterministically generate key pairs. Whenever a core is loaded by name, that core will be writable. Names are not shared with remote peers.
 
 #### **`const stream = store.replicate(options|stream)`**
 
@@ -80,7 +80,7 @@ Corestore replicates in an 'all-to-all' fashion, meaning that when replication b
 
 If the remote side dynamically adds a new Hypercore to the replication stream (by opening that core with a `get` on their Corestore, for example), Corestore will load and replicate that core if possible.
 
-Using [hyperswarm.md](../building-blocks/hyperswarm.md "mention") one can replicate Corestores as follows:
+Using [hyperswarm.md](../building-blocks/hyperswarm.md) one can replicate Corestores as follows:
 
 ```javascript
 const swarm = new Hyperswarm()
@@ -112,7 +112,7 @@ const core1 = ns1.get({ name: 'main' }) // These will load different Hypercores
 const core2 = ns2.get({ name: 'main' })
 ```
 
-Namespacing is particularly useful if your application needs to create many different data structures, such as [hyperdrive.md](../building-blocks/hyperdrive.md "mention")s, that all share a common storage location:
+Namespacing is particularly useful if an application needs to create many different data structures, such as [hyperdrive.md](../building-blocks/hyperdrive.md)s, that all share a common storage location:
 
 ```javascript
 const store = new Corestore('./my-storage-dir')
@@ -125,7 +125,7 @@ const drive2 = new Hyperdrive(store.namespace('drive-b'))
 
 #### `const session = store.session([options])`
 
-Creates a new Corestore that shares resources with the original, like cache, cores, replication streams, and storage, while optionally resetting the namespace, overriding `primaryKey`. Useful when an application wants to accept an optional Corestore, but needs to maintain a predictable key derivation.
+Creates a new Corestore that shares resources with the original, like cache, cores, replication streams, and storage, while optionally resetting the namespace, overriding `primaryKey`. Useful when an application needs to accept an optional Corestore, but needs to maintain a predictable key derivation.
 
 `options` are the same as the constructor options:
 

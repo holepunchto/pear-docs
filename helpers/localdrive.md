@@ -1,8 +1,8 @@
 # Localdrive
 
-A file system API that is similar to [hyperdrive.md](../building-blocks/hyperdrive.md "mention"). This tool comes in handy when mirroring files from user filesystem to a drive, and vice-versa.
+A file system API that is similar to [hyperdrive.md](../building-blocks/hyperdrive.md). This tool comes in handy when mirroring files from user filesystem to a drive, and vice-versa.
 
-> [Github (Localdrive)](https://github.com/holepunchto/localdrive)
+> [GitHub (Localdrive)](https://github.com/holepunchto/localdrive)
 
 * [Installation](localdrive.md#installation)
 * [Usage](localdrive.md#usage)
@@ -80,7 +80,7 @@ String with the resolved (absolute) drive path.
 
 Boolean that indicates if the drive handles or not metadata. Default `false`.
 
-If you pass `options.metadata` hooks then `supportsMetadata` becomes true.
+If `options.metadata` hooks are passed then `supportsMetadata` becomes `true`.
 
 **`await drive.put(key, buffer, [options])`**
 
@@ -146,7 +146,7 @@ Returns a stream of all subpaths of entries in drive stored at paths prefixed by
 
 **`const mirror = drive.mirror(out, [options])`**
 
-Mirrors this drive into another. Returns a [mirrordrive.md](../helpers/mirrordrive.md "mention") instance constructed with `options`.
+Mirrors this drive into another. Returns a [mirrordrive.md](../helpers/mirrordrive.md) instance constructed with `options`.
 
 Call [`await mirror.done()`](../helpers/mirrordrive.md#await-mirrordone) to wait for the mirroring to finish.
 

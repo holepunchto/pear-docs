@@ -4,7 +4,7 @@
 
 Hypercore is a secure, distributed append-only log built for sharing large datasets and streams of real-time data. It comes with a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
-> [Github (Hypercore)](https://github.com/holepunchto/hypercore)
+> [GitHub (Hypercore)](https://github.com/holepunchto/hypercore)
 
 * [Hypercore](../building-blocks/hypercore.md)
   * [Creating a new instance](hypercore.md#installation)
@@ -69,27 +69,27 @@ A Hypercore can only be modified by its creator; internally it signs updates wit
 
 Creates a new Hypercore instance.
 
-`storage` should be set to a directory where you want to store the data and core metadata.
+`storage` should be set to a directory where to store the data and core metadata.
 
 ```javascript
 const core = new Hypercore('./directory') // store data in ./directory
 ```
 
-> Alternatively, the user can pass a function instead that is called with every filename Hypercore needs to function and return your own [abstract-random-access](https://github.com/random-access-storage/abstract-random-access) instance that is used to store the data.
+> Alternatively, the user can pass a function instead that is called with every filename Hypercore needs to function and return a [abstract-random-access](https://github.com/random-access-storage/abstract-random-access) instance that is used to store the data.
 
 
 ```javascript
 const RAM = require('random-access-memory')
 const core = new Hypercore((filename) => {
   // Filename will be one of: data, bitfield, tree, signatures, key, secret_key
-  // The data file will contain all your data concatenated.
+  // The data file will contain all the data concatenated.
 
   // Store all files in ram by returning a random-access-memory instance
   return new RAM()
 })
 ```
 
-By default Hypercore uses [random-access-file](https://github.com/random-access-storage/random-access-file). This is also useful if users want to store specific files in other directories.
+By default Hypercore uses [random-access-file](https://github.com/random-access-storage/random-access-file). This is also useful for storing specific files in other directories.
 
 Hypercore will produce the following files:
 
@@ -102,7 +102,7 @@ Hypercore will produce the following files:
 > `tree`, `data`, and `bitfield` are normally very sparse files.
 
 
-`key` can be set to a Hypercore public key. If you do not set this the public key will be loaded from storage. If no key exists a new key pair will be generated.
+`key` can be set to a Hypercore public key. When unset this the public key will be loaded from storage. If no key exists a new key pair will be generated.
 
 `options` include:
 
@@ -160,7 +160,7 @@ An object containing buffers of the core's public and secret key
 
 #### **`core.discoveryKey`**
 
-Buffer containing a key derived from the core's public key. In contrast to `core.key,` this key does not allow you to verify the data. It can be used to announce or look for peers that are sharing the same core, without leaking the core key.
+Buffer containing a key derived from the core's public key. In contrast to `core.key,` this key can not be used to verify the data. It can be used to announce or look for peers that are sharing the same core, without leaking the core key.
 
 > The above properties are populated after [`ready`](hypercore.md#await-core.ready) has been emitted. Will be `null` before the event.
 
@@ -338,11 +338,11 @@ Clears stored blocks between `start` and `end`, reclaiming storage when possible
 
 | Property          | Description                                                           | Type    | Default |
 | ----------------- | --------------------------------------------------------------------- | ------- | ------- |
-| **`diff`** | Returned `cleared` bytes object is null unless you enable this | Boolean | `false` |
+| **`diff`** | Returned `cleared` bytes object is null unless enabled   | Boolean | `false` |
 
 ```javascript
-await core.clear(4) // clear block 4 from your local cache
-await core.clear(0, 10) // clear block 0-10 from your local cache
+await core.clear(4) // clear block 4 from local cache
+await core.clear(0, 10) // clear block 0-10 from local cache
 ```
 
 The core will also 'gossip' with peers it is connected to, that is no longer has these blocks.
@@ -355,7 +355,7 @@ Per default, this will update the fork ID of the core to `+ 1`, but we can set t
 
 #### `await core.purge()`
 
-Purge the Hypercore from your storage, completely removing all data.
+Purge the Hypercore from storage, completely removing all data.
 
 #### **`const hash = await core.treeHash([length])`**
 
@@ -365,7 +365,7 @@ Get the Merkle Tree hash of the core at a given length, defaulting to the curren
 
 Download a range of data.
 
-You can await until the range has been fully downloaded by doing:
+We can await until the range has been fully downloaded by doing:
 
 ```javascript
 await range.done()
@@ -408,7 +408,7 @@ Creates a new Hypercore instance that shares the same underlying core. Options a
 
 `options` are the same as in the constructor.
 
-> You must close any session you make.
+> Be sure to close any sessions made. 
 
 #### **`const info = await core.info([options])`**
 
@@ -450,22 +450,22 @@ Waits for the core to open.
 
 After this has been called `core.length` and other properties have been set.
 
-> ℹ️ In general, you do not need to wait for `ready` unless you're checking a synchronous property (like `key` or `discoverykey`), as all async methods on the public API, will await this internally.
+> ℹ️ In general, waiting for `ready` is unnecessary unless there's a need to check a synchronous property (like `key` or `discoverykey`) before any other async API method has been called. All async methods on the public API, await `ready` internally.
 
 
 #### **`const stream = core.replicate(isInitiator|stream, options)`**
 
 Creates a replication stream. We should pipe this to another Hypercore instance.
 
-The `isInitiator` argument is a boolean indicating whether you are the initiator of the connection (ie the client) or if you are the passive part (i.e., the server).
+The `isInitiator` argument is a boolean indicating whether a peer is the initiator of the connection (ie the client) or the passive peer waiting for connections (i.e., the server).
 
-> If a P2P swarm like Hyperswarm is being used, you can know this by checking if the swarm connection is a client socket or a server socket. In Hyperswarm, a user can check that using the [client property on the peer details object](https://github.com/hyperswarm/hyperswarm#swarmonconnection-socket-details--).
+> If a P2P swarm like Hyperswarm is being used, whether a peer is an initiator can be determined by checking if the swarm connection is a client socket or a server socket. In Hyperswarm, a user can check that using the [client property on the peer details object](https://github.com/hyperswarm/hyperswarm#swarmonconnection-socket-details--).
 
 
 
 To multiplex the replication over an existing Hypercore replication stream, another stream instance can be passed instead of the `isInitiator` Boolean.
 
-To replicate a Hypercore using [hyperswarm.md](hyperswarm.md "mention"):
+To replicate a Hypercore using [hyperswarm.md](hyperswarm.md):
 
 ```javascript
 // assuming swarm is a Hyperswarm instance and core is a Hypercore
@@ -474,10 +474,10 @@ swarm.on('connection', conn => {
 })
 ```
 
-> If you want to replicate many Hypercores over a single Hyperswarm connection, you probably want to be using [corestore.md](../helpers/corestore.md "mention").
+> To replicate many Hypercores over a single Hyperswarm connection, see [corestore.md](../helpers/corestore.md).
 
 
-If not using [hyperswarm.md](hyperswarm.md "mention") or [corestore.md](../helpers/corestore.md "mention"), specify the `isInitiator` field, which will create a fresh protocol stream that can be piped over any transport you'd like:
+If not using [hyperswarm.md](hyperswarm.md) or [corestore.md](../helpers/corestore.md), specify the `isInitiator` field, which will create a fresh protocol stream that can be piped over any transport:
 
 ```javascript
 // assuming we have two cores, localCore + remoteCore, sharing the same key
@@ -492,7 +492,7 @@ const socket = net.connect(...)
 socket.pipe(localCore.replicate(true)).pipe(socket)
 ```
 
-> In almost all cases, the use of both Hyperswarm and Corestore Replication is advised and will meet all your needs.
+> In almost all cases, the use of both Hyperswarm and Corestore Replication is advised and will meet all needs.
 
 #### **`const done = core.findingPeers()`**
 
@@ -543,7 +543,7 @@ await session1.close() // will close the Hypercore
 
 #### **`core.snapshot([options])`**
 
-Returns a snapshot of the core at that particular time. This is useful if you want to ensure that multiple `get` operations are acting on a consistent view of the Hypercore (i.e., if the core forks in between two reads, the second should throw an error).
+Returns a snapshot of the core at that particular time. This is useful for ensuring that multiple `get` operations are acting on a consistent view of the Hypercore (i.e. if the core forks in between two reads, the second should throw an error).
 
 If [`core.update()`](hypercore.md#const-updated--await-coreupdateoptions) is explicitly called on the snapshot instance, it will no longer be locked to the previous data. Rather, it will get updated with the current state of the Hypercore instance.
 

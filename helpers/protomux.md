@@ -2,7 +2,7 @@
 
 Multiplex multiple message-oriented protocols over a stream
 
->[Github (Protomux)](https://github.com/mafintosh/protomux)
+>[GitHub (Protomux)](https://github.com/mafintosh/protomux)
 
 * [Installation](protomux.md#installation)
 * [Basic usage](protomux.md#basic-usage)
@@ -76,7 +76,7 @@ Makes a new instance. `stream` should be a framed stream, preserving the message
 
 ```javascript
 {
-  // Called when the muxer wants to allocate a message that is written, defaults to Buffer.allocUnsafe.
+  // Called when the muxer needs to allocate a message that is written, defaults to Buffer.allocUnsafe.
   alloc (size) {}
 }
 ```
@@ -99,7 +99,7 @@ Adds a new protocol channel.
   id: buffer,
   // Optional encoding for a handshake
   handshake: encoding,
-  // Optional array of message types you want to send/receive.
+  // Optional array of message types to send/receive.
   messages: [],
   // Called when the remote side adds this protocol.
   // Errors here are caught and forwarded to stream.destroy
@@ -180,4 +180,4 @@ Same as `channel.uncork` but on the muxer instance.
 
 #### **`for (const channel of muxer) { ... }`**
 
-The muxer instance is iterable, so you can iterate over all the channels.
+The muxer instance is iterable so all channels can be iterated.

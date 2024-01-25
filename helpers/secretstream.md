@@ -4,7 +4,7 @@ SecretStream is used to securely create connections between two peers in Hypersw
 
 The SecretStream instance is a Duplex stream that supports usability as a normal stream for standard read/write operations. Furthermore, its payloads are encrypted with libsodium's SecretStream for secure transmission.
 
->[Github (SecretStream)](https://github.com/holepunchto/hyperswarm-secret-stream)
+>[GitHub (SecretStream)](https://github.com/holepunchto/hyperswarm-secret-stream)
 
 * [SecretStream](secretstream.md#installation)
   * [Create a new instance](secretstream.md#const-s--new-secretstreamisinitiator-rawstream-options)
@@ -35,7 +35,7 @@ npm install @hyperswarm/secret-stream
 
 Makes a new stream.
 
-`isInitiator` is a boolean indicating whether you are the client or the server.
+`isInitiator` is a boolean indicating whether the process is a client or the server.
 
 `rawStream` can be set to an underlying transport stream to run the noise stream over.
 
@@ -43,12 +43,12 @@ Makes a new stream.
 
 |        Property       | Description                                                                | Type                                                  |
 | :-------------------: | -------------------------------------------------------------------------- | ----------------------------------------------------- |
-|     **`pattern`**     | Accept server connections for this topic by announcing yourself to the DHT | String                                                |
+|     **`pattern`**     | Accept server connections for this topic by announcing it to the DHT       | String                                                |
 | **`remotePublicKey`** | PublicKey of the other party                                               | String                                                |
 |     **`keyPair`**     | Combination of PublicKey and SecretKey                                     | { publicKey, secretKey }                              |
 |    **`handshake`**    | To use a handshake performed elsewhere, pass it here                       | { tx, rx, handshakeHash, publicKey, remotePublicKey } |
 
-The SecretStream returned is a Duplex stream that you use as a normal stream, to write/read data from, except its payloads are encrypted using the libsodium secretstream.
+The SecretStream returned is a Duplex stream to write data to and read data from, it's a normal stream with payloads that are encrypted using the libsodium secretstream.
 
 > By default, the above process uses ed25519 for the handshakes.
 

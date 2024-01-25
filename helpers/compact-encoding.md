@@ -2,7 +2,7 @@
 
 A series of binary encoders/decoders for building small and fast parsers and serializers.
 
-> [Github (Compact-Encoding)](https://github.com/compact-encoding/compact-encoding)
+> [GitHub (Compact-Encoding)](https://github.com/compact-encoding/compact-encoding)
 
 * [Compact-Encoding](compact-encoding.md#installation)
   * Methods
@@ -43,7 +43,7 @@ const state = cenc.state()
 
 #### **`enc.preencode(state, val)`**
 
-Performs a fast preencode dry-run that only sets `state.end`. Use this to figure out how big of a buffer you need.
+Performs a fast preencode dry-run that only sets `state.end`. Use this to figure out how big the buffer needs to be.
 
 ```javascript
 const cenc = require('compact-encoding')
@@ -84,7 +84,7 @@ cenc.string.decode(state) // 'hi'
 
 ### Helpers
 
-To encode to a buffer or decode from one, use the `encode` and `decode` helpers to reduce your boilerplate.
+To encode to a buffer or decode from one, use the `encode` and `decode` helpers to reduce boilerplate.
 
 ```javascript
 const buf = cenc.encode(cenc.bool, true)

@@ -7,7 +7,7 @@ Autobase is used to automatically rebase multiple causally-linked Hypercores int
 > Although Autobase is still under development, it finds application in many active projects. Keet rooms, for example, are powered by Autobase! This is a testament to the potential of Autobase, and we are excited to see what else it can achieve.
 
 
-> [Github (Autobase)](https://github.com/holepunchto/autobase) 
+> [GitHub (Autobase)](https://github.com/holepunchto/autobase) 
 
 - [Autobase](../building-blocks/autobase.md)
   - [Create a new instance](autobase.md#installation)
@@ -121,7 +121,7 @@ Generate a causal clock linking the latest entries of each input.
 
 `latest` will update the input Hypercores (`input.update()`) prior to returning the clock.
 
-You generally will not need to use this, and can instead just use [`append`](autobase.md#await-baseappendvalue-clock-input) with the default clock:
+This is unlikely to be needed generally, prefer to use [`append`](autobase.md#await-baseappendvalue-clock-input) with the default clock:
 
 ```javascript
 await base.append('hello world')
@@ -191,7 +191,7 @@ Similar to `Hypercore.createReadStream()`, this stream starts at the beginning o
 
 Generate a Readable stream of input blocks, from earliest to latest.
 
-Unlike `createCausalStream`, the ordering of `createReadStream` is not deterministic. The read stream only gives you the guarantee that every node it yields will **not** be causally-dependent on any node yielded later.
+Unlike `createCausalStream`, the ordering of `createReadStream` is not deterministic. The read stream only gives the guarantee that every node it yields will **not** be causally-dependent on any node yielded later.
 
 Read streams have a public property `checkpoint`, which can be used to create new read streams that resume from the checkpoint's position:
 
@@ -204,8 +204,8 @@ const stream2 = base.createReadStream({ checkpoint: stream1.checkpoint }) // Res
 `createReadStream` can be passed two custom async hooks:
 
 * `onresolve`: Called when an unsatisfied node (a node that links to an unknown input) is encountered. Can be used to add inputs to the Autobase dynamically.
-  * Returning `true` indicates that you added new inputs to the Autobase, and so the read stream should begin processing those inputs.
-  * Returning `false` indicates that you did not resolve the missing links, and so the node should be yielded immediately as is.
+  * Returning `true` indicates that new inputs were added to the Autobase, and so the read stream should begin processing those inputs.
+  * Returning `false` indicates that the missing links were not resolved, and so the node should be yielded immediately as is.
 * `onwait`: Called after each node is yielded. Can be used to add inputs to the Autobase dynamically.
 
 `options` include:
@@ -226,9 +226,9 @@ Autobase is designed for computing and sharing linearized views over many input 
 
 These views, instances of the `LinearizedView` class, in many ways look and feel like normal Hypercores. They support `get`, `update`, and `length` operations.
 
-By default, a view is a persisted version of an Autobase's causal stream, saved into a Hypercore. But a lot more can be done with them: by passing a function into `linearize`'s `apply` option, you can define your own indexing strategies.
+By default, a view is a persisted version of an Autobase's causal stream, saved into a Hypercore. But a lot more can be done with them: by passing a function into `linearize`'s `apply` option, we can define our own indexing strategies.
 
-Linearized views are incredibly powerful as they can be persisted to a Hypercore using the new `truncate` API added in Hypercore 10. This means that peers querying a multiwriter data structure don't need to read in all changes and apply them themself. Instead, they can start from an existing view that's shared by another peer. If that view is missing indexing any data from inputs, Autobase will create a 'view over the remote view', applying only the changes necessary to bring the remote view up-to-date. The best thing is that this all happens automatically for you!
+Linearized views are incredibly powerful as they can be persisted to a Hypercore using the new `truncate` API added in Hypercore 10. This means that peers querying a multiwriter data structure don't need to read in all changes and apply them themself. Instead, they can start from an existing view that's shared by another peer. If that view is missing indexing any data from inputs, Autobase will create a 'view over the remote view', applying only the changes necessary to bring the remote view up-to-date. Best of all, is that this all happens automatically.
 
 #### Customizing Views with `apply`
 
@@ -256,11 +256,11 @@ More sophisticated indexing might require multiple appends per input node, or re
 
 #### **`base.start({ apply, unwrap } = {})`**
 
-Creates a new linearized view, and sets it on `base.view`. The view mirrors the Hypercore API wherever possible, meaning it can be used where ever you would normally use a Hypercore.
+Creates a new linearized view, and sets it on `base.view`. The view mirrors the Hypercore API wherever possible, meaning it can be used as a drop-in replacement for a Hypercore instance.
 
-You can either call `base.start` manually when you want to start using `base.view`, or pass either `apply` or `autostart` options to the Autobase constructor. If these constructor options are present, Autobase will start immediately.
+Either call `base.start` manually when to start using `base.view`, or pass either `apply` or `autostart` options to the Autobase constructor. If these constructor options are present, Autobase will start immediately.
 
-If you choose to call `base.start` manually, it must only be called once.
+When calling `base.start` manually, it must only be called once.
 
 `options` include:
 

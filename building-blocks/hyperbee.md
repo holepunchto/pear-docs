@@ -2,12 +2,12 @@
 
 <mark style="background-color:green;">**stable**</mark>
 
-Hyperbee is an append only B-tree based on [hypercore.md](hypercore.md "mention"). It provides a key/value-store API, with methods for inserting and getting key-value pairs, atomic batch insertions, and creating sorted iterators. It uses a single Hypercore for storage, using a technique called embedded indexing. It provides features like cache warmup extension, efficient diffing, version control, sorted iteration, and sparse downloading.
+Hyperbee is an append only B-tree based on [hypercore.md](hypercore.md). It provides a key/value-store API, with methods for inserting and getting key-value pairs, atomic batch insertions, and creating sorted iterators. It uses a single Hypercore for storage, using a technique called embedded indexing. It provides features like cache warmup extension, efficient diffing, version control, sorted iteration, and sparse downloading.
 
 > As with the Hypercore, a Hyperbee can only have a **single writer on a single machine**; the creator of the Hyperdrive is the only person who can modify it as they're the only one with the private key. That said, the writer can replicate to **many readers**, in a manner similar to BitTorrent.
 
 
-> [Github (Hyperbee)](https://github.com/holepunchto/hyperbee)
+> [GitHub (Hyperbee)](https://github.com/holepunchto/hyperbee)
 
 * [Hyperbee](../building-blocks/hyperbee.md):
   * [Create a new instance](hyperbee.md#installation):
@@ -58,7 +58,7 @@ npm install hyperbee
 
 #### **`const db = new Hyperbee(core, [options])`**
 
-Make a new Hyperbee instance. `core` should be a [hypercore.md](hypercore.md "mention").
+Make a new Hyperbee instance. `core` should be a [hypercore.md](hypercore.md).
 
 `options` include:
 
@@ -93,7 +93,7 @@ Buffer containing the public key identifying this bee.
 
 Buffer containing a key derived from `db.key`.
 
-> This discovery key does not allow you to verify the data, it's only to announce or look for peers that are sharing the same bee, without leaking the bee key.
+> This discovery key is not for verifying the data, it's only to announce or look for peers that are sharing the same bee, without leaking the bee key.
 
 
 #### **`db.writable`**
@@ -110,7 +110,7 @@ Boolean indicating if we can read from this bee. After closing the bee this will
 
 Waits until the internal state is loaded.
 
-Use it once before reading synchronous properties like `db.version`, unless you called any of the other APIs.
+Use it once before reading synchronous properties like `db.version`, unless any of the other APIs have been called first.
 
 #### **`await db.close()`**
 
@@ -120,7 +120,7 @@ Fully close this bee, including its core.
 
 Inserts a new key. Value can be optional.
 
-> If inserting a series of data atomically or want more performance then check the `db.batch` API.
+> If inserting a series of data atomically or high performance is needed then check the `db.batch` API.
 
 
 **`options`** includes:
@@ -151,7 +151,7 @@ await db.put('number', '456', { cas })
 console.log(await db.get('number')) // => { seq: 2, key: 'number', value: '456' }
 
 function cas (prev, next) {
-  // You can use same-data or same-object lib, depending on the value complexity
+  // can use same-data or same-object lib, depending on the value complexity
   return prev.value !== next.value
 }
 ```
@@ -264,7 +264,7 @@ A batch is atomic: it is either processed fully or not at all.
 
 A Hyperbee has a single write lock. A batch acquires this write lock with its first modifying operation (**`put`**, **`del`**), and releases it when it flushes. We can also explicitly acquire the lock with **`await batch.lock()`**. If using the batch only for read operations, the write lock is never acquired. Once the write lock is acquired, the batch must flush before any other writes to the Hyperbee can be processed.
 
-A batch's state snaps at creation time, so write operations applied outside of the batch are not taken into account when reading. Write operations within the batch do get taken into account, as is to be expected — if you first run **`await batch.put('myKey', 'newValue')`** and later run **`await batch.get('myKey')`**, you will observe **`'newValue'`**.
+A batch's state snaps at creation time, so write operations applied outside of the batch are not taken into account when reading. Write operations within the batch do get taken into account, as is to be expected — if we first run **`await batch.put('myKey', 'newValue')`** and later run **`await batch.get('myKey')`**, then  **`'newValue'`** should be observed.
 
 </details>
 
@@ -272,7 +272,7 @@ A batch's state snaps at creation time, so write operations applied outside of t
 
 Make a read stream. Sort order is based on the binary value of the keys. All entries in the stream are similar to the ones returned from **`db.get`**.
 
-`range` should specify the range you want to read and looks like this:
+`range` should specify the range to read and looks like this:
 
 ```javascript
 {
@@ -288,7 +288,7 @@ Make a read stream. Sort order is based on the binary value of the keys. All ent
 | Property      | Description                        | Type    | Default |
 | ------------- | ---------------------------------- | ------- | ------- |
 | **`reverse`** | determine order of the keys        | Boolean | `false` |
-| **`limit`**   | maximum number of entries you want     | Integer | `-1`    |
+| **`limit`**   | maximum number of entries needed   | Integer | `-1`    |
 
 #### **`const { seq, key, value } = await db.peek([range], [options])`**
 
@@ -308,7 +308,7 @@ Create a stream of all entries ever inserted or deleted from the `db`. Each entr
 | **`gte`**     | start with this seq (inclusive)                                          | Integer | `null`  |
 | **`lt`**      | stop before this index                                                   | Integer | `null`  |
 | **`lte`**     | stop after this index                                                    | Integer | `null`  |
-| **`limit`**   | maximum number of entries you want                                           | Integer | `-1`    |
+| **`limit`**   | maximum number of entries needed                                         | Integer | `-1`    |
 
 
 > If any of the gte, gt, lte, lt arguments are `< 0` then they'll implicitly be added with the version before starting so doing `{ gte: -1 }` makes a stream starting at the last index.
@@ -340,7 +340,7 @@ Returns a watcher which listens to changes on the given key.
 
 `entryWatcher.node` contains the current entry in the same format as the result of `bee.get(key)`, and will be updated as it changes.
 
-> By default, the node will have the bee's key encoding and value encoding, but you can overwrite it by setting the `keyEncoding` and `valueEncoding` options.
+> By default, the node will have the bee's key encoding and value encoding, but it can be overwritten by setting the `keyEncoding` and `valueEncoding` options.
 >
 >Listen to `entryWatcher.on('update')` to be notified when the value of node has changed.
 
@@ -374,11 +374,10 @@ Waits until the watcher is loaded and detects changes.
 
 `await watcher.destroy()`
 
-Stops the watcher. You could also stop it by using `break` inside the loop.
+Stops the watcher. Using `break` inside the `for await` loop will also destroy the watcher.
 
+> Do not attempt to manually close the snapshots. Since they're used internally, let them be auto-closed.
 
-> Do not attempt to close the snapshots yourself. Since they're used internally, let them be auto-closed.
->
 >  Watchers are not supported on subs and checkouts. Instead, use the `range` option to limit the scope.
 
 

@@ -123,4 +123,4 @@ Hypertele also provides support for the hyper-cmd system!
 
 Learn more about identity management and host resolution using hyper-cmd:
 
-> [Github (Hyper-cmd-docs)](https://github.com/prdn/hyper-cmd-docs)
+> [GitHub (Hyper-cmd-docs)](https://github.com/prdn/hyper-cmd-docs)
