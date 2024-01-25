@@ -76,7 +76,7 @@ hypertele-pub --help
 ```yaml
 options:
 
--l PORT : port of the local service user want to expose to the peers
+-l PORT : port of the local service to expose to the peers
 --seed SEED : seed (command-line)
 ```
 
