@@ -67,7 +67,7 @@ hyperbeam neznr3z3j44l7q7sgynbzpdrdlpausurbpcmqvwupmuoidolbopa
 
 Makes a new Hyperbeam duplex stream.
 
-This stream will auto-connect to another peer using the same key with an end-to-end encrypted tunnel. When the other peer writes it's emitted as `data` on this stream. Likewise, when user writes to this stream it's emitted as `data` on the other peer's stream.
+This stream will auto-connect to another peer using the same key with an end-to-end encrypted tunnel. When the other peer writes it's emitted as `data` on this stream. Likewise, writes to this stream stream are emitted as `data` on the other peer's stream.
 
 > If a `key` is not passed into the constructor (the passphrase), one will be generated and put on `stream.key`
 
