@@ -1,21 +1,20 @@
 # Making a Pear Desktop Application
 
-This guide demonstrates how to build a straightforward peer-to-peer chat application.
+This guide demonstrates how to build a peer-to-peer chat application.
 
-The following steps walkthrough the feature implementations of chat room creation, connecting between users and sending messages.
+It continues where [Starting a Pear Desktop Project](./starting-a-pear-desktop-project.md) left off.
 
 ## Step 1. HTML Structure and CSS Styles
 
-This guide follows on from [Starting a Pear Desktop Project](./starting-a-pear-desktop-project.md).
 
-We should have a project folder with the following files
+The project folder should contain:
 
 - `package.json`
 - `index.html`
 - `app.js`
 - `test/index.test.js`
 
-Since this is a small chat application, we'll keep styles and HTML in one file.
+Start by defining the app's layout in `index.html`:
 
 ``` html
 <!DOCTYPE html>
@@ -107,30 +106,31 @@ Since this is a small chat application, we'll keep styles and HTML in one file.
 </html>
 ```
 
-After running with `pear dev` it should look like this:
+Running `pear dev` should show
 
 ![Layout of the app](../assets/chat-app-3.png)
 
 
 ## Step 2. Module dependencies
 
-Our app is going to use these modules:
+**Note**: Close the app before installing dependencies. If dependencies are installed while the app is running, an error is thrown. 
 
-- [hyperswarm](https://www.npmjs.com/package/hyperswarm) - Find peers that share a "topic". An essential building block.
-- [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto) - A set of crypto functions.
-- [b4a](https://www.npmjs.com/package/b4a) - A set of functions for bridging the gap between the Node.js `Buffer` class and the `Uint8Array` class.
+The app uses these modules:
 
-The dependencies can be installed with the following command:
+- [hyperswarm](https://www.npmjs.com/package/hyperswarm) to connect peers on a "topic".
+- [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto) for basic cryptography.
+- [b4a](https://www.npmjs.com/package/b4a) to manipulate buffers.
+
+Install the dependencies with:
 
 ```
 npm i hyperswarm hypercore-crypto b4a
 ```
 
-**Note**: If the modules are installed while the app is running, an error is thrown similar to `Cannot find package 'hyperswarm' imported from /app.js`. When installing modules, close down the app before attempting dependency installation.
 
-## Step 3. Implement the program with JavaScript
+## Step 3. JavaScript
 
-Open `app.js` in a code editor and replace the contents with the following:
+Replace `app.js` with
 
 ``` js
 import { teardown } from 'pear'
@@ -206,51 +206,52 @@ function onMessageAdded (from, message) {
 }
 ```
 
-> Note that code in `app.js` imports from `pear` but no `pear` dependency has been installed. This is the [Pear API](../reference/api.md)
+> Note that the `pear` dependency is used, even though it was not installed. This is the [Pear API](../reference/api.md), available to any Pear project.
 
 
-## Step 5 Open two application instances
+## Step 5. Chat
 
-As there will be two apps running, open two terminals and in each of them run the following:
+Open two app instances by running `pear dev` in two terminals.
 
-```
-pear dev
-```
+In the first app, click on `Create chat room`. A random topic will appear at the top.
 
-In the first app, click on `Create chat room`. Once the app has started the topic can be found near the top. 
+Note that topics consist of 64 hexadecimal characters (32 bytes).
 
-Paste the topic from the first app into the input of the second app and then click on `Join chat room`.
+Paste the topic into the second app, then click on `Join chat room`.
 
 <p align="center">
   <img src="../assets/chat-app-4a.png" alt="The first app, with the topic"> <img src="../assets/chat-app-4b.png" alt="Second app, using topic from the first">
 </p>
 
-Once connected messages can be sent between the applications.
+Once connected, messages can be send between the applications.
 
 <p align="center">
   <img src="../assets/chat-app-5a.png" alt="View from the first app"> <img src="../assets/chat-app-5b.png" alt="View from the second app">
 </p>
 
-
 ### Discussion
 
-#### Whether two terminals or two machines, it's functionally the same
+#### Chatting With Another Machine
 
-Two application instances are running on the same machine, connecting over a Distributed Hash Table (DHT) via `hyperswarm`.
+The two application instances used Hyperswarm's distributed hash table (DHT) to connect with each other.
 
-The code could be copied to another machine and `pear dev` could be ran on two machines instead of two terminals. However [Sharing a Pear Application](./sharing-a-pear-app.md) covers sharing the application itself over the same DHT. So then instead of manually copying files between machines, `pear` can be used to generate a topic for an app (the application key) and then that app on a peer machine by passing that key to the `pear` installation on that machine. See [Sharing a Pear Application](./sharing-a-pear-app.md) for details.
+The DHT enables connections across different machines, so chatting with other people is also possible, as long as they run the same application.
 
-#### Peers joining topics versus clients joining servers
+One option is to copy the code, but it is also possible to distribute the application itself over the DHT. This is the topic of [Sharing a Pear Application](./sharing-a-pear-app.md).
 
-In a traditional client-server setup the server is hosted at an IP address (or hostname) and a port, e.g. `http://localhost:3000`. This is what clients use to connect to the server.
+#### Joining Topics VS Joining Servers
 
-The code in `app.js` contains the line `swarm.join(topicBuffer, { client: true, server: true })`. Here `topicBuffer` is a 32 byte string. The creator of a chat room will generate a random byte string which acts as a room invinitation. Any peers with this invite (the topic) can use it to message all other peers with the invite. Note also that both applications behave the same way, neither is only a client and neither is only a server.
+In a traditional client-server setup, the server is hosted at an IP address (or hostname) and a port, e.g. `http://localhost:3000`. This is what clients use to connect to the server.
 
-Applications join and leave topics, so if the peer who created the topic/invite goes offline or even leaves the topic this has no effect on functionality.
+The code in `app.js` contains the line `swarm.join(topicBuffer, { client: true, server: true })`.
+
+`topicBuffer` is the invitation: anyone who knows this topic can join the room and message the other members.
+
+Note that all members are equal: there is no separate client or server. If the room creator goes offline, or even deletes the room from their machine, the other members can continue chatting.
 
 #### Frontend Frameworks
 
-No frameworks were used to build this application but any frontend framework can be used with Pear.
+Any frontend framework can be used with Pear.
 
 ## Next
 
