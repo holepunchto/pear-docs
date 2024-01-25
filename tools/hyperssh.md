@@ -42,7 +42,7 @@ hyperssh -s ab01f... -u maf -i keypair.json
 There is no need to remember hostnames any more.
 
 
-> Under the hood, Hyperswarm performs UDP holepunching. So, user server should be accessible even if it is located on a home network. Refer to identity management for more information.
+> Under the hood, Hyperswarm performs UDP holepunching. So the server should be accessible even if it is located on a home network. Refer to identity management for more information.
 
 
 ### Windows RDP
