@@ -27,7 +27,7 @@ a passphrase
 const beam = new Hyperbeam()
 
 // Use the following constructor with ('neznr3z3j44l7q7sgynbzpdrdlpausurbpcmqvwupmuoidolbopa') a 32-byte unique passphrase
-// to find the other side of the user pipe.
+// to find the other side of the pipe.
 // const beam = new Hyperbeam('neznr3z3j44l7q7sgynbzpdrdlpausurbpcmqvwupmuoidolbopa')
 
 // beam.key gives the passphrase
