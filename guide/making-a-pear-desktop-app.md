@@ -14,7 +14,7 @@ The project folder should contain:
 - `app.js`
 - `test/index.test.js`
 
-We start by defining the app's layout in `index.html`:
+Start by defining the app's layout in `index.html`:
 
 ``` html
 <!DOCTYPE html>
@@ -115,7 +115,7 @@ Running `pear dev` should show
 
 **Note**: Close the app before installing dependencies. If dependencies are installed while the app is running, an error is thrown. 
 
-Our app uses these modules:
+The app uses these modules:
 
 - [hyperswarm](https://www.npmjs.com/package/hyperswarm) to connect peers on a "topic".
 - [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto) for basic cryptography.
@@ -206,7 +206,7 @@ function onMessageAdded (from, message) {
 }
 ```
 
-> Note that we use the `pear` dependency, even though it was not installed. This is the [Pear API](../reference/api.md), available to any Pear project.
+> Note that the `pear` dependency is used, even though it was not installed. This is the [Pear API](../reference/api.md), available to any Pear project.
 
 
 ## Step 5. Chat
@@ -235,7 +235,7 @@ Once connected, messages can be send between the applications.
 
 The two application instances used Hyperswarm's distributed hash table (DHT) to connect with each other.
 
-The DHT can easily connect across different machines, so we can also chat with other people, as long as they run our application.
+The DHT enables connections across different machines, so chatting with other people is also possible, as long as they run the same application.
 
 One option is to copy the code, but it is also possible to distribute the application itself over the DHT. This is the topic of [Sharing a Pear Application](./sharing-a-pear-app.md).
 
