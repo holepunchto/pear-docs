@@ -49,7 +49,7 @@ There is no need to remember hostnames any more.
 
 Hyperssh can also be used with Windows RDP to remotely log in to Windows machines over Hyperswarm.
 
-**On the computer (ensure RDP is enabled) and user want to login to (server), run:**
+**Ensure RDP is enabled on the computer that is going to be logged into (the server), and on that computer run:**
 
 ```bash
 hypertele-server --seed SEED -l 3389
