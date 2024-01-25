@@ -47,7 +47,7 @@ There is no need to remember hostnames any more.
 
 ### Windows RDP
 
-Hyperssh can also be used with Windows RDP to remotely log in to user windows machines over Hyperswarm.
+Hyperssh can also be used with Windows RDP to remotely log in to Windows machines over Hyperswarm.
 
 **On the computer (ensure RDP is enabled) and user want to login to (server), run:**
 
