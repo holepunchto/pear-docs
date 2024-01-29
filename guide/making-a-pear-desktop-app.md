@@ -133,10 +133,11 @@ npm i hyperswarm hypercore-crypto b4a
 Replace `app.js` with
 
 ``` js
-import { teardown } from 'pear'
+/* global Pear */
 import Hyperswarm from 'hyperswarm'
 import crypto from 'hypercore-crypto'
 import b4a from 'b4a'
+const { teardown } = Pear
 
 const swarm = new Hyperswarm()
 

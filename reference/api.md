@@ -7,54 +7,48 @@ Most application peer-to-peer functionality is provided by ecosystem modules rat
 Platform APIs are unchangable. Compatiblity cannot break. So the Pear API surface aims to be (and remain)
 as small as possible.
 
-## `import pear from 'pear'`
+## `global.Pear`
 
-To use the Pear Platform API: import `pear`.
+The Pear Platform API is made available globally as `Pear`. 
 
-```js
-import pear from 'pear'
-```
+The `Pear` API is designed to be small and immutable. 
 
-Import namespaces are also supported, for example:
+Any future changes to the `Pear` API will be non-breaking additions.
 
-```js
-import { config } from 'pear'
-```
-
-## `pear.config <Object>`
+## `Pear.config <Object>`
 
 Contains application configuration data.
 
-### `pear.config.key <Object|null>`
+### `Pear.config.key <Object|null>`
 
 The application key, `null` in development mode.
 The `config.key` object holds both Hexadecimal and Z-Base-32 encodings of the key, and is of the form `{ z32: <String>, hex: <String> }`,
 
-### `pear.config.dev <Boolean>`
+### `Pear.config.dev <Boolean>`
 
 Whether application is in development mode
 
-### `pear.config.tier <String>`
+### `Pear.config.tier <String>`
 
 Runtime scenario (dev, staging or production)
 
-### `pear.config.storage <String>`
+### `Pear.config.storage <String>`
 
 Application storage path
 
-### `pear.config.name <String>`
+### `Pear.config.name <String>`
 
 Application name
 
-### `pear.config.main <String>`
+### `Pear.config.main <String>`
 
 Application entry file
 
-### `pear.config.channel <String|null>`
+### `Pear.config.channel <String|null>`
 
 Application release/staging channel, `null` in development mode.
 
-### `pear.config.options <Object>`
+### `Pear.config.options <Object>`
 
 Configuration options.
 The `pear` configuration object as supplied via an applications `package.json` file.
@@ -63,35 +57,35 @@ The `pear` configuration object as supplied via an applications `package.json` f
 
 * [Configuration](./configuration.md)
 
-### `pear.config.env <Object>`
+### `Pear.config.env <Object>`
 
 The environment variables that an application was started with, as key-value pairs in an object.
 
-### `pear.config.cwd <String>`
+### `Pear.config.cwd <String>`
 
 The current working directory that an application was started from.
 
-### `pear.config.flags <Object>`
+### `Pear.config.flags <Object>`
 
 Parsed command-line flag values as supplied when an application was started.
 
-### `pear.config.tools <Boolean>`
+### `Pear.config.tools <Boolean>`
 
 Indicates whether or not Devtools is enabled.
 
-### `pear.config.watch <Boolean>`
+### `Pear.config.watch <Boolean>`
 
 Indicates whether or not Watch-Reload functionality is enabled.
 
-### `pear.config.storage <String>`
+### `Pear.config.storage <String>`
 
 Application storage path.
 
-### `pear.config.args <Array>`
+### `Pear.config.args <Array>`
 
 Command-line application arguments passed after double dash `--`.
 
-### `pear.config.release <Number>`
+### `Pear.config.release <Number>`
 
 The current release length as marked by the `pear release` command.
 
@@ -99,18 +93,18 @@ The current release length as marked by the `pear release` command.
 
 * [`pear release`](./cli.md)
 
-### `pear.config.link <String>`
+### `Pear.config.link <String>`
 
 The Pear link of an application. Takes the form `pear://<key>/<data>`.
 
 In development, `pear://dev/<data>`.
 
 **References**
-* [pear.config.link](#pearconfiglinkdata-string)
+* [Pear.config.link](#pearconfiglinkdata-string)
 * [`pear dev`](./cli.md)
 * [`pear launch`](./cli.md)
 
-### `pear.config.linkData <String>`
+### `Pear.config.linkData <String>`
 
 Holds just the data portion of a Pear link.
 
@@ -120,46 +114,46 @@ In development, `pear://dev/<data>`.
 
 **References**
 
-* [pear.config.link](#pearconfiglink-string)
+* [Pear.config.link](#pearconfiglink-string)
 * [`pear dev`](./cli.md)
 * [`pear launch`](./cli.md)
 
 
-### `pear.config.checkpoint <Any>`
+### `Pear.config.checkpoint <Any>`
 
-Holds state as set by `pear.checkpoint()`. When an application restarts it will hold the most recent value passed to `pear.checkpoint()`.
+Holds state as set by `Pear.checkpoint()`. When an application restarts it will hold the most recent value passed to `Pear.checkpoint()`.
 
-Stores state that will be available as `pear.config.checkpoint` next time the application starts.
+Stores state that will be available as `Pear.config.checkpoint` next time the application starts.
 
-The `pear.config.checkpoint` property immediately reflects the latest checkpoint.
+The `Pear.config.checkpoint` property immediately reflects the latest checkpoint.
 
 The returned `Promise` will resolve once the checkpoint has been successfully stored.
 
 **References**
 
-* [pear.checkpoint()](#pear-checkpoint-any)
+* [Pear.checkpoint()](#pear-checkpoint-any)
 
-### `pear.config.release <Integer>`
+### `Pear.config.release <Integer>`
 
 Application release sequence integer, `null` in development mode.
 
-### `pear.config.flags <Object>`
+### `Pear.config.flags <Object>`
 
 Parsed runtime flags. For internal/advanced use.
 
-## `pear.checkpoint(<Any>) => Promise`
+## `Pear.checkpoint(<Any>) => Promise`
 
-Stores state that will be available as `pear.config.checkpoint` next time the application starts.
+Stores state that will be available as `Pear.config.checkpoint` next time the application starts.
 
-The `pear.config.checkpoint` property immediately reflects the latest checkpoint.
+The `Pear.config.checkpoint` property immediately reflects the latest checkpoint.
 
 The returned `Promise` will resolve once the checkpoint has been successfully stored.
 
 **References**
 
-* [pear.config.checkpoint()](#pear--config-checkpoint-any)
+* [Pear.config.checkpoint()](#pear--config-checkpoint-any)
 
-## pear.messages([ pattern ], [ listener ]) -> Iterable
+## Pear.messages([ pattern ], [ listener ]) -> Iterable
 
 A function which accepts a pattern object and returns an [`Iambus`](https://github.com/holepunchto/iambus) subscriber (which inherits from [`streamx`](https://github.com/mafintosh/streamx) `Readable`) which emits message objects matching a provided pattern object.
 
@@ -174,7 +168,7 @@ A message object may have any properties. Platform-generated messages are given 
 Listen for an internal platform message using a pattern object and listener function:
 
 ```js
-import { messages } from 'pear'
+const { messages } = Pear
 
 messages({ type: 'pear/wakeup' }, ({ data, link }) => {
   console.log('pear/wakeup', data, link)
@@ -184,7 +178,7 @@ messages({ type: 'pear/wakeup' }, ({ data, link }) => {
 Tiny utility module which logs all messages using `for await`:
 
 ```js
-import { messages } from 'pear'
+const { messages } = Pear
 
 for await (const message of messages()) {
   if (global.LOGBUS) console.log('BUS:', message)
@@ -194,7 +188,7 @@ for await (const message of messages()) {
 Use `message` to create an application message:
 
 ```js
-import { message, messages } from 'pear'
+const { message, messages } = Pear
 
 const ctaClicks = message({ type: 'my-app/user-cta' })
 
@@ -206,12 +200,12 @@ onUserClickCta((event, data) => {
 })
 ```
 
-## `await pear.message(<Object>)`
+## `await Pear.message(<Object>)`
 
 Send a message which will be:
 
 ```js
-import { message, messages } from 'pear'
+const { message, messages } = Pear
 
 async function logMessages () {
   for await (const message of messages()) console.log(message)
@@ -226,35 +220,35 @@ do {
 } while (count++ < 1000)
 ```
 
-## `pear.preferences <Function|Object>`
+## `Pear.preferences <Function|Object>`
 
 User preferences management.
 
-### `for await (const [operation, key, value] of pear.preferences())`
+### `for await (const [operation, key, value] of Pear.preferences())`
 
 An async iterable that yields arrays containing `operation <String>`, `key <String>` and `value <any>`.
 
 Watch for application updates. The `operation` may be `set` or `del`. In the case of `del`, `value` is always `null`.
 
-### `for await (const [key, value] of pear.preferences.list())`
+### `for await (const [key, value] of Pear.preferences.list())`
 
 Iterate through all available application preferences.
 
-### `const success = await pear.preferences.set(key, value)`
+### `const success = await Pear.preferences.set(key, value)`
 
 Set a preference. The promise resolves to a boolean indicating success when the operation is complete.
 
-### `const value = await pear.preferences.get(key)`
+### `const value = await Pear.preferences.get(key)`
 
 Get a preference. The promise resolves with the value.
 
-### `const success = await pear.preferences.del(key)`
+### `const success = await Pear.preferences.del(key)`
 
 Delete a preference. The promise resolves to a boolean indicating success when the operation is complete.
 
 
 ```js
-import { preferences } from 'pear'
+const { preferences } = Pear
 
 async function logPrefUpdates () {
   for await (const [ operation, key, value ] of preferences()) console.table({ update: { operation, key, value }})
@@ -263,11 +257,11 @@ async function logPrefUpdates () {
 logPrefUpdates().catch(console.error)
 ```
 
-## `pear.media <Object>`
+## `Pear.media <Object>`
 
 Media interface
 
-### `const status = await pear.media.status.microphone()`
+### `const status = await Pear.media.status.microphone()`
 
 Resolves to: `<String>`.
 
@@ -275,7 +269,7 @@ If access to the microphone is available, resolved value will be `'granted'`.
 
 Any other string indicates lack of permission. Possible values are `'granted'`, `'not-determined'`, `'denied'`, `'restricted'`, `'unknown'`.
 
-### `const status = await pear.media.status.camera()`
+### `const status = await Pear.media.status.camera()`
 
 Resolves to: `<String>`.
 
@@ -283,7 +277,7 @@ If access to the camera is available, resolved value will be `'granted'`.
 
 Any other string indicates lack of permission. Possible values are `'granted'`, `'not-determined'`, `'denied'`, `'restricted'`, `'unknown'`.
 
-### `const status = await pear.media.status.screen()`
+### `const status = await Pear.media.status.screen()`
 
 Resolves to: `<String>`
 
@@ -291,25 +285,25 @@ If access to the screen is available, resolved value will be `'granted'`.
 
 Any other string indicates lack of permission. Possible values are `'granted'`, `'not-determined'`, `'denied'`, `'restricted'`, `'unknown'`.
 
-### `const success = await pear.media.access.microphone()`
+### `const success = await Pear.media.access.microphone()`
 
 Resolves to: `<Boolean>`
 
 Request access to the microphone. Resolves to `true` if permission is granted.
 
-### `const success = await pear.media.access.camera()`
+### `const success = await Pear.media.access.camera()`
 
 Resolves to: `<Boolean>`
 
 Request access to the camera. Resolves to `true` if permission is granted.
 
-### `const success = await pear.media.access.screen()`
+### `const success = await Pear.media.access.screen()`
 
 Resolves to: `<Boolean>`
 
 Request access to screen sharing. Resolves to `true` if permission is granted.
 
-### `const sources = await pear.media.desktopSources(options <Object>)`
+### `const sources = await Pear.media.desktopSources(options <Object>)`
 
 Captures available desktop sources. Resolves to an array of objects with shape `{ id <String>, name <String>, thumbnail <NativeImage>, display_id <String>, appIcon <NativeImage> }`. The `id` is the window or screen identifier. The `name` is the window title or `'Screen <index>'` in multiscreen scenarios or else `Entire Screen`. The `display_id` identifies the screen. The thumbnail is a scaled down screen capture of the window/screen.
 
@@ -329,7 +323,7 @@ Captures available desktop sources. Resolves to an array of objects with shape `
 * https://www.electronjs.org/docs/latest/api/structures/desktop-capturer-source
 * [`<NativeImage>`](https://www.electronjs.org/docs/latest/api/native-image)
 
-### `pear.versions <Object>`
+### `Pear.versions <Object>`
 
 Versions object. Pear versions are objects with the shape `{ fork <Integer>, length <Integer>, key <Buffer> }`.
 
@@ -337,20 +331,20 @@ The `key` is a Buffer of the launch key. The `length` is the size of the relevan
 
 These three properties together are a unique identifier for the entire state of both applications and the Pear platform.
 
-### `pear.versions.platform { fork <Integer>, length <Integer>, key <Buffer> }`
+### `Pear.versions.platform { fork <Integer>, length <Integer>, key <Buffer> }`
 
 The platform version.
 
-### `pear.versions.application { fork <Integer>, length <Integer>, key <Buffer> }`
+### `Pear.versions.application { fork <Integer>, length <Integer>, key <Buffer> }`
 
 The application version.
 
 **References**
 
-* [pear.config.key](#pearconfigkey-objectnull)
+* [Pear.config.key](#pearconfigkey-objectnull)
 
 
-### `pear.teardown(fn <Async Function|Function>)`
+### `Pear.teardown(fn <Async Function|Function>)`
 
 Register application clean-up handlers to be called when an application begins to unload.
 
@@ -360,11 +354,11 @@ Functions supplied to teardown will be executed in order of registration when
 an application begins to unload. Any promise returned from each supplied function
 will be waited upon until resolution before calling the next teardown handler.
 
-### `pear.restart()`
+### `Pear.restart()`
 
 Restart the application.
 
-### `pear.updates(listener <Async Function|Function>)`
+### `Pear.updates(listener <Async Function|Function>)`
 
 The `listener` function is called for every incoming update with an `update` object of the form:
 
@@ -382,7 +376,9 @@ The `listener` function is called for every incoming update with an `update` obj
 * `diff` is an array of file paths from the application root (drive keys) that were updated
 
 
-### `const win = new pear.Window(entry <String>, options <Object>)`
+### `const win = new Pear.Window(entry <String>, options <Object>)`
+
+Desktop Applications only.
 
 Create a new `Window` instance.
 
@@ -514,11 +510,11 @@ Send arguments to the window. They will be serialized with `JSON.stringify`.
 
 Resolves to: `<String>`
 
-Correlates to the `id` property of objects in the array returned from [pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options).
+Correlates to the `id` property of objects in the array returned from [Pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options).
 
 **References**
 
-* [pear.media.desktopSources](#const-sources--await-appmediadesktopsourcesoptions-object)
+* [Pear.media.desktopSources](#const-sources--await-appmediadesktopsourcesoptions-object)
 * https://www.electronjs.org/docs/latest/api/browser-window#wingetmediasourceid
 
 ### `const dimensions = await win.dimensions()`
@@ -538,8 +534,7 @@ If the window is closed this will resolve to `null`.
 ### `await win.dimensions(options <Object>)`
 
 ```js
-import { Window } from 'pear'
-const win = new Window('./some.html', {
+const win = new Pear.Window('./some.html', {
   x: 10,
   y: 450,
   width: 300,
@@ -605,7 +600,9 @@ Resolves to: `<Boolean>`
 
 Whether the window is closed.
 
-### `const view = new pear.View(options <Object>)`
+### `const view = new Pear.View(options <Object>)`
+
+Desktop Applications only.
 
 Create a new `View` instance. Views provide isolated content views. Frameless, chromeless windows that can be embedded inside other windows and views.
 
@@ -685,11 +682,11 @@ Send arguments to the view. They will be serialized with `JSON.stringify`.
 
 Resolves to: `<String>`
 
-Supplies the `id` property of objects in the array returned from [pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options).
+Supplies the `id` property of objects in the array returned from [Pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options).
 
 **References**
 
-* [pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options)
+* [Pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options)
 * https://www.electronjs.org/docs/latest/api/browser-window#wingetmediasourceid
 
 ### `const dimensions = await view.dimensions()`
@@ -709,8 +706,7 @@ If the Window is closed this will resolve to `null`.
 ### `await view.dimensions(options <Object>)`
 
 ```js
-import { View } from 'pear'
-const view = new View('./some.html', {
+const view = new Pear.View('./some.html', {
   x: 10,
   y: 450,
   width: 300,
@@ -754,7 +750,7 @@ Resolves to: `<Boolean>`
 
 Whether the view is closed.
 
-### `const { self } = pear.Window`  `const { self } = pear.View`
+### `const { self } = Pear.Window`  `const { self } = Pear.View`
 
 ### `const success = await self.focus()`
 
@@ -839,7 +835,7 @@ Resolves to: `<Boolean>`
 
 Whether the current window is minmized. Throws a `TypeError` if `self` is a view.
 
-### `const { parent } = pear.Window`  `const { parent } = pear.View`
+### `const { parent } = Pear.Window`  `const { parent } = Pear.View`
 
 ### `parent.on[ce]('message', (...args) => { })`
 ### `for await (const [ ...args ] of parent)`
@@ -945,7 +941,7 @@ The [`window.open`](https://developer.mozilla.org/en-US/docs/Web/API/Window/open
 
 In browsers, `window.open` opens a new browser window. The opened window belongs to the same browser from which `window.open` is called.
 
-In Pear, `window.open` loads the URL in the **default system browser**. It does *not* create a new application window (use `pear.Window` to create application windows).
+In Pear, `window.open` loads the URL in the **default system browser**. It does *not* create a new application window (use `Pear.Window` to create application windows).
 
 Therefore Pear's `window.open` only supports a single url argument. The `target` and `windowFeatures` parameters that browsers support are discarded.
 
@@ -958,7 +954,3 @@ Like browsers, there is support for native EcmaScript Modules (ESM). A JavaScrip
 Use `<script type="module" src="path/to/my-file.js">` to load a JavaScript Module.
 
 Use `<script src="path/to/my-file.js">` to load a JavaScript Script.
-
-## Development Global
-
-The Pear API is exposed as `global.pear` for the explicit purpose of easy API experimentation in the Devtools Console. It is *only* exposed globally in development mode. Any module that uses the Pear API must be sure to import `pear`, relying on `global.pear` will cause production breakage.
