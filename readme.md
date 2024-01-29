@@ -26,7 +26,7 @@ Welcome to the Internet of Peers
 * [Starting a Pear Terminal Project](./guide/starting-a-pear-terminal-project.md)
 * [Making a Pear Terminal Application](./guide/making-a-pear-terminal-app.md)
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
-* [Marking a Release](./guide/releasing-a-pear-app.md)
+* [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
 
 ### How-tos
 
