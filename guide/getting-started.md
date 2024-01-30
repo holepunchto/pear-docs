@@ -35,10 +35,10 @@ If not, the first run of `pear` will fetch the platform from peers, after which 
 To check that Pear is fully working, try the following command:
 
 ```
-pear launch keet
+pear run keet
 ```
 
-Pear loads applications from peers, so this command should launch [Keet](https://keet.io) whether or not it was downloaded and installed beforehand.
+Pear loads applications from peers, so this command should open [Keet](https://keet.io) whether or not it was downloaded and installed beforehand.
 
 
 ## Next

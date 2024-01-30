@@ -102,7 +102,7 @@ In development, `pear://dev/<data>`.
 **References**
 * [Pear.config.link](#pearconfiglinkdata-string)
 * [`pear dev`](./cli.md)
-* [`pear launch`](./cli.md)
+* [`pear run`](./cli.md)
 
 ### `Pear.config.linkData <String>`
 
@@ -116,7 +116,7 @@ In development, `pear://dev/<data>`.
 
 * [Pear.config.link](#pearconfiglink-string)
 * [`pear dev`](./cli.md)
-* [`pear launch`](./cli.md)
+* [`pear run`](./cli.md)
 
 
 ### `Pear.config.checkpoint <Any>`
@@ -327,7 +327,7 @@ Captures available desktop sources. Resolves to an array of objects with shape `
 
 Versions object. Pear versions are objects with the shape `{ fork <Integer>, length <Integer>, key <Buffer> }`.
 
-The `key` is a Buffer of the launch key. The `length` is the size of the relevant Hypercore. The `fork` property is determined by data truncation.
+The `key` is a Buffer of the run key. The `length` is the size of the relevant Hypercore. The `fork` property is determined by data truncation.
 
 These three properties together are a unique identifier for the entire state of both applications and the Pear platform.
 

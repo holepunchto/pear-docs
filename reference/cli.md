@@ -24,11 +24,11 @@ A Pear link takes the form: `pear://<key>/<data>`.
 The `<data>` portion of the link is available as `pear.config.linkData`.
 
 ```
-  --no-watch       Disable watch-reload
-  --launch=key     Launch an app in dev mode
-  --link=url       Simulate deep-link click open
-  --store|-s=path  Set the Application Storage path
-  --tmp-store|-t   Use a temporary Application Storage path
+--link=url       Simulate deep-link click open
+--run=key        Run app from key in dev mode
+--link=url       Simulate deep-link click open
+--store|-s=path  Set the Application Storage path
+--tmp-store|-t   Use a temporary Application Storage path
 ```  
 ## pear stage <channel|key> [dir]
 
