@@ -21,10 +21,47 @@ Start by defining the app's layout in `index.html`:
 <html>
   <head>
     <style>
+      pear-ctrl {
+        margin-top: 9px;
+        margin-left: 9px;
+        position: absolute;
+      }
+      pear-ctrl[data-platform="darwin"] { float: left; margin-top: 4px; }
+
+      pear-ctrl:after {
+        content: '';
+        display: block;
+        height: 1.8rem;
+        position: fixed;
+        z-index: -1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background-color: #B0D94413;
+        filter: drop-shadow(2px 10px 6px #888);
+      }
+
+      button, input {
+        all: unset;
+        border: 1px ridge #B0D944;
+        background: #000;
+        color: #B0D944;
+        padding: .45rem;
+        font-family: monospace;
+        font-size: 1rem;
+        line-height: 1rem;
+      }
+
       body {
+        background-color: #001601;
+        font-family: monospace;
+        margin: 0;
+        padding: 0;
+      }
+
+      main {
         display: flex;
         height: 100vh;
-        background-color: #3592C3;
         color: white;
         justify-content: center;
         margin: 0;
@@ -33,6 +70,10 @@ Start by defining the app's layout in `index.html`:
 
       .hidden {
         display: none !important;
+      }
+
+      #or {
+        margin: 1.5rem auto;
       }
 
       #setup {
@@ -50,9 +91,15 @@ Start by defining the app's layout in `index.html`:
         display: flex;
         flex-direction: column;
         width: 100vw;
+        padding: .75rem;
       }
 
       #header {
+        margin-top: 2.2rem;
+        margin-bottom: 0.75rem;
+      }
+
+      #details {
         display: flex;
         justify-content: space-between;
       }
@@ -74,35 +121,40 @@ Start by defining the app's layout in `index.html`:
     <script type='module' src='./app.js'></script>
   </head>
   <body>
-    <div id="setup">
-      <div>
-        <button id="create-chat-room">Create chat room</button>
+    <pear-ctrl></pear-ctrl>
+    <main>
+      <div id="setup">
+        <div>
+          <button id="create-chat-room">Create</button>
+        </div>
+        <div id="or">
+          - or -
+        </div>
+        <form id="join-form">
+          <button type="submit" id="join-chat-room">Join</button>
+          <input required id="join-chat-room-topic" type="text" placeholder="Chat room Topic" />
+        </form>
       </div>
-      <div>
-        - or -
-      </div>
-      <div>
-        <button id="join-chat-room">Join chat room</button>
-        <input id="join-chat-room-topic" type="text" placeholder="Topic for chat room" />
+      <div id="loading" class="hidden">Loading ...</div>
+      <div id="chat" class="hidden">
+        <div id="header">
+          <div id="details">
+            <div>
+              Topic: <span id="chat-room-topic"></span>
+            </div>
+            <div>
+              Peers: <span id="peers-count">0</span>
+            </div>
+          </div>
+        </div>
+        <div id="messages"></div>
+        <form id="message-form">
+          <input id="message" type="text" />
+          <input type="submit" value="Send" />
+        </form>
       </div>
     </div>
-    <div id="loading" class="hidden">Loading ...</div>
-    <div id="chat" class="hidden">
-      <div id="header">
-        <div>
-          Topic: <span id="chat-room-topic"></span>
-        </div>
-        <div>
-          Peers: <span id="peers-count">0</span>
-        </div>
-      </div>
-      <div id="messages"></div>
-      <form id="message-form">
-        <input id="message" type="text" />
-        <input type="submit" value="Send" />
-      </form>
-    </div>
-  </body>
+  </main>
 </html>
 ```
 
@@ -124,7 +176,7 @@ The app uses these modules:
 Install the dependencies with:
 
 ```
-npm i hyperswarm hypercore-crypto b4a
+npm install hyperswarm hypercore-crypto b4a
 ```
 
 
@@ -158,7 +210,7 @@ swarm.on('update', () => {
 })
 
 document.querySelector('#create-chat-room').addEventListener('click', createChatRoom)
-document.querySelector('#join-chat-room').addEventListener('click', joinChatRoom)
+document.querySelector('#join-form').addEventListener('submit', joinChatRoom)
 document.querySelector('#message-form').addEventListener('submit', sendMessage)
 
 async function createChatRoom() {
@@ -167,7 +219,8 @@ async function createChatRoom() {
   joinSwarm(topicBuffer)
 }
 
-async function joinChatRoom () {
+async function joinChatRoom (e) {
+  e.preventDefault()
   const topicStr = document.querySelector('#join-chat-room-topic').value
   const topicBuffer = b4a.from(topicStr, 'hex')
   joinSwarm(topicBuffer)
@@ -214,17 +267,21 @@ function onMessageAdded (from, message) {
 
 Open two app instances by running `pear dev` in two terminals.
 
-In the first app, click on `Create chat room`. A random topic will appear at the top.
+In the first app, click on `Create`. A random topic will appear at the top.
 
 Note that topics consist of 64 hexadecimal characters (32 bytes).
 
-Paste the topic into the second app, then click on `Join chat room`.
-
 <p align="center">
-  <img src="../assets/chat-app-4a.png" alt="The first app, with the topic"> <img src="../assets/chat-app-4b.png" alt="Second app, using topic from the first">
+  <img src="../assets/chat-app-4a.png" alt="The first app, with the topic">
 </p>
 
-Once connected, messages can be send between the applications.
+Paste the topic into the second app, then click on `Join`.
+
+<p align="center">
+  <img src="../assets/chat-app-4b.png" alt="Second app, using topic from the first">
+</p>
+
+Once connected, messages can be sent between each chat application.
 
 <p align="center">
   <img src="../assets/chat-app-5a.png" alt="View from the first app"> <img src="../assets/chat-app-5b.png" alt="View from the second app">

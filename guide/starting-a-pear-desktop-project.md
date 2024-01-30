@@ -56,7 +56,7 @@ Open `package.json` and update it to:
   ...
   "pear": {
     "gui": {
-      "backgroundColor": "#3592C3",
+      "backgroundColor": "#012a02",
       "height": 400,
       "width": 700
     }
