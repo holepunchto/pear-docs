@@ -23,7 +23,7 @@ pear init -y -t terminal
 npm install hypercore hyperswarm b4a
 ```
 
-Alter the generated `writer-app/index.js` to the following:
+Alter the generated `writer-app/index.js` file to the following:
 
 ```javascript
 import Hyperswarm from 'hyperswarm'
@@ -60,7 +60,7 @@ pear init -y -t terminal
 npm install hypercore hyperswarm
 ```
 
-Alter the generated `reader-app/index.js` to the following:
+Alter the generated `reader-app/index.js` file to the following:
 
 
 ```javascript

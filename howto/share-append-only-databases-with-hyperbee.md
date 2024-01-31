@@ -3,28 +3,37 @@
 
 [Hyperbee](../building-blocks/hyperbee.md) is an append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
 
-The example consists of three files: `writer.js` , `bee-reader.js` and `core-reader.js`.
+This How-to consists of three applications: `bee-writer-app` , `bee-reader-app` and `core-reader-app`.
 
-`writer.js` stores 100k entries from a given dictionary file into a Hyperbee instance. The Corestore instance used to create the Hyperbee instance is replicated using Hyperswarm. This enables other peers to replicate their Corestore instance and download the dictionary data into their local Hyperbee instances.
+The `bee-writer-app` stores 100k entries from a given dictionary file into a Hyperbee instance. The Corestore instance used to create the Hyperbee instance is replicated using Hyperswarm. This enables other peers to replicate their Corestore instance and sparsely (on-demand) download the dictionary data into their local Hyperbee instances.
 
-> Download the `dict.json.gz` compressed file from the [GitHub repository](https://github.com/holepunchto/examples/blob/main/quick-start/hyperbee/dict.json.gz) to the folder where the `writer.js`is present. The compressed file contains 100K dictionary words.
+Start the `bee-writer-app` project with the following commands:
+
+```
+mkdir bee-writer-app
+cd bee-writer-app
+pear init -y -t terminal
+npm install corestore hyperswarm hyperbee b4a
+```
+
+[Click here to save `dict.json`](./assets/dict.json).
+
+Save it into `bee-writer-app` directory. The `dict.json` file contains 100K dictionary words.
+
+Alter the generated `bee-writer-app/index.js` file to the following
 
 ```javascript
-//writer.js
-import fs from 'fs'
-import zlib from 'zlib'
-
+import fsp from 'fs/promises'
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
-import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
 
 // create a corestore instance with the given location
-const store = new Corestore('./writer-storage')
+const store = new Corestore(Pear.config.storage)
 
 const swarm = new Hyperswarm()
-goodbye(() => swarm.destroy())
+Pear.teardown(() => swarm.destroy())
 
 // replication of corestore instance
 swarm.on('connection', conn => store.replicate(conn))
@@ -53,7 +62,7 @@ discovery.flushed().then(() => {
 // The first block will always be the Hyperbee header block
 if (core.length <= 1) {
   console.log('importing dictionary...')
-  const dict = await loadDictionary()
+  const dict = JSON.parse(await fsp.readFile('./dict.json'))
   const batch = bee.batch()
   for (const { key, value } of dict) {
     await batch.put(key, value)
@@ -63,43 +72,51 @@ if (core.length <= 1) {
   // Otherwise just seed the previously-imported dictionary
   console.log('seeding dictionary...')
 }
-
-async function loadDictionary() {
-  const compressed = await fs.promises.readFile('./dict.json.gz')
-  return new Promise((resolve, reject) => {
-  // unzip the compressed file and return the content
-    zlib.unzip(compressed, (err, dict) => {
-      if (err) return reject(err)
-      return resolve(JSON.parse(b4a.toString(dict)))
-    })
-  })
-}
 ```
 
+Open the app with `pear dev`:
 
-`bee-reader.js` creates a Corestore instance and replicates it using the Hyperswarm instance to the same topic as `writer.js`. On every word entered in the command line, it will download the respective data to the local Hyperbee instance.
+```
+cd bee-writer-app
+pear dev
+```
 
-Try looking at disk space the `reader-storage` directory is using after each query. notice that it's significantly smaller than `writer-storage`! This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature we call **sparse downloading.**
+Start the `bee-reader-app` project with the following commands:
+
+```
+mkdir bee-reader-app
+cd bee-reader-app
+pear init -y -t terminal
+npm install corestore hyperswarm hyperbee b4a
+```
+
+The `bee-reader-app` creates a `Corestore` instance and replicates it using the `Hyperswarm` instance to the same topic as `bee-writer-app`. On every word entered in the command line, it will download the respective data to the local `Hyperbee` instance.
+
+
+Alter the generated `bee-reader-app/index.js` file to the following
+
 
 ```javascript
-bee-reader.js
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
-import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
 
+const key = Pear.config.args[0]
+
+if (!key) throw new Error('provide a key')
+
 // creation of a corestore instance 
-const store = new Corestore('./reader-storage')
+const store = new Corestore(Pear.config.storage)
 
 const swarm = new Hyperswarm()
-goodbye(() => swarm.destroy())
+Pear.teardown(() => swarm.destroy())
 
 // replication of the corestore instance on connection with other peers
-swarm.on('connection', conn => store.replicate(conn))
+swarm.on('connection', (conn) => store.replicate(conn))
 
 // create or get the hypercore using the public key supplied as command-line argument
-const core = store.get({ key: b4a.from(process.argv[2], 'hex') })
+const core = store.get({ key: b4a.from(key, 'hex') })
 
 // create a hyperbee instance using the hypercore instance
 const bee = new Hyperbee(core, {
@@ -116,10 +133,7 @@ console.log('core key here is:', core.key.toString('hex'))
 // Attempt to connect to peers
 swarm.join(core.discoveryKey)
 
-// Do a single Hyperbee.get for every line of stdin data
-// Each `get` will only download the blocks necessary to satisfy the query
-process.stdin.setEncoding('utf-8')
-process.stdin.on('data', data => {
+Pear.stio.in.on('data', data => {
   const word = data.trim()
   if (!word.length) return
   bee.get(word).then(node => {
@@ -129,17 +143,34 @@ process.stdin.on('data', data => {
 })
 ```
 
-Importantly, a Hyperbee is **just** a Hypercore, where the tree nodes are stored as Hypercore blocks. Now examine the Hyperbee as if it were just a Hypercore and log out a few blocks.
+Open the `bee-reader-app` and pass it the core key:
 
-`core-reader.js` will continually download and log the last block of the Hypercore containing the Hyperbee data. Note that these blocks are encoded using Hyperbee's Node encoding, which we can easily import and use.
+```
+cd bee-reader-app
+pear dev -- <SUPPLY KEY HERE>
+```
 
+Query the database by entering a key to lookup into the `bee-reader-app` terminal and hitting return.
+
+Each application has dedicated storage at `Pear.config.storage`. Try logging out `Pear.config.storage` for the `bee-reader-app` and then look at the disk space for that storage path after each query. notice that it's significantly smaller than `writer-storage`! This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature we call **sparse downloading.**
+
+Importantly, a Hyperbee is **just** a Hypercore, where the tree nodes are stored as Hypercore blocks.
+
+Finally create a `core-reader-app` project:
+
+```
+mkdir core-reader-app
+cd core-reader-app
+pear init -y -t terminal
+npm install corestore hyperswarm b4a
+```
+
+
+Alter the generated `core-reader-app/index.js` file to the following
 
 ```javascript
-core-reader.js
-import Hypercore from 'hypercore'
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
-import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
 
 import { Node } from 'hyperbee/lib/messages.js'
@@ -148,7 +179,7 @@ import { Node } from 'hyperbee/lib/messages.js'
 const store = new Corestore('./reader-storage')
 
 const swarm = new Hyperswarm()
-goodbye(() => swarm.destroy())
+Pear.teardown(() => swarm.destroy())
 
 // replication of the corestore instance on connection with other peers
 swarm.on('connection', conn => store.replicate(conn))
@@ -173,3 +204,14 @@ const lastBlock = await core.get(core.length - 1)
 console.log(`Raw Block ${seq}:`, lastBlock)
 console.log(`Decoded Block ${seq}`, Node.decode(lastBlock))
 ```
+
+Open the `core-reader-app` with `pear dev`, passing the core key to it:
+
+```
+cd core-reader-app
+pear dev -- <SUPPLY KEY HERE>
+```
+
+Now we can examine the Hyperbee as if it were just a Hypercore.
+
+The `core-reader-app` will continually download and log the last block of the Hypercore containing the Hyperbee data. Note that these blocks are encoded using Hyperbee's `Node` encoding, which has been imported directly from `Hyperbee` here for the purposes of explanation.

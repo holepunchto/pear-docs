@@ -16,7 +16,7 @@ pear init -y -t terminal
 npm install corestore hyperswarm b4a
 ```
 
-Alter the generated `multicore-writer-app/index.js` to the following
+Alter the generated `multicore-writer-app/index.js` file to the following
 
 ```javascript
 import Hyperswarm from 'hyperswarm'
@@ -73,10 +73,9 @@ mkdir multicore-reader-app
 cd multicore-reader-app
 pear init -y -t terminal
 npm install corestore hyperswarm b4a
-
 ```
 
-Alter the generated `multicore-reader-app/index.js` to the following
+Alter the generated `multicore-reader-app/index.js` file to the following
 
 ```javascript
 import Corestore from 'corestore'
@@ -128,7 +127,6 @@ for (const key of otherKeys) {
   })
 }
 ```
-
 
 In one terminal, open `multicore-writer-app` with `pear dev`.
 
