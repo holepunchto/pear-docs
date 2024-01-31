@@ -1,16 +1,7 @@
 
 # How to share Append-Only Databases with Hyperbee
 
-Get setup by creating a project folder and installing dependencies:
-
-```bash
-mkdir connect-two-peers
-cd connect-two-peers
-pear init -y -t terminal
-npm install hyperdht b4a graceful-goodbye
-```
-
-[hyperbee.md](../building-blocks/hyperbee.md) is an append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
+[Hyperbee](../building-blocks/hyperbee.md) is an append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
 
 The example consists of three files: `writer.js` , `bee-reader.js` and `core-reader.js`.
 

@@ -1,34 +1,31 @@
 
 # How to work with many Hypercores using Corestore
 
-Get setup by creating a project folder and installing dependencies:
-
-```bash
-mkdir many-cores
-cd many-cores
-pear init -y -t terminal
-npm install corestore hyperswarm b4a graceful-goodbye
-```
-
 An append-only log is powerful on its own, but it's most useful as a building block for constructing larger data structures, such as databases or filesystems. Building these data structures often requires many cores, each with different responsibilities. For example, Hyperdrive uses one core to store file metadata and another to store file contents.
 
-[corestore.md](../helpers/corestore.md) is a Hypercore factory that makes it easier to manage large collections of named Hypercores. A simple example below demonstrates a pattern often in use: co-replicating many cores using Corestore, where several 'internal cores' are linked to from a primary core. Only the primary core is announced on the swarm -- the keys for the others are recorded inside of that core.
+[`Corestore`](../helpers/corestore.md) is a Hypercore factory that makes it easier to manage large collections of named Hypercores. This how-to demonstrates a pattern often in use: co-replicating many cores using Corestore, where several 'internal cores' are linked to from a primary core. Only the primary core is announced on the swarm -- the keys for the others are recorded inside of that core.
 
-This example consists of two files: `writer.js` and `reader.js`. In the previous example, we replicated only a single Hypercore instance. But in this example, we will replicate a single Corestore instance, which will internally manage the replication of a collection of Hypercores.
+In [How to replicate and persist with Hypercore](./replicate-and-persist-with-hypercore.md), only single Hypercore instance was replicated. But in this how-to, we will replicate a single Corestore instance, which will internally manage the replication of a collection of Hypercores. We will achieve this with two Pear Terminal Applications: `multicore-writer-app` and `multicore-reader-app`. 
 
-The file `writer.js` uses a Corestore instance to create three Hypercores, which are then replicated with other peers using Hyperswarm. The keys for the second and third cores are stored in the first core (the first core 'bootstraps' the system). Messages entered into the command line are written into the second and third cores, depending on the length of the message. To execute `reader.js`, copy the main core key logged into the command line.
+Create the `multicore-writer-app` project with these commands:
 
+```
+mkdir multicore-writer-app
+cd multicore-writer-app
+pear init -y -t terminal
+npm install corestore hyperswarm b4a
+```
+
+Alter the generated `multicore-writer-app/index.js` to the following
 
 ```javascript
-//writer.js
-import Corestore from 'corestore'
 import Hyperswarm from 'hyperswarm'
-import goodbye from 'graceful-goodbye'
+import Corestore from 'corestore'
 import b4a from 'b4a'
 
-const store = new Corestore('./writer-storage')
+const store = new Corestore(Pear.config.storage)
 const swarm = new Hyperswarm()
-goodbye(() => swarm.destroy())
+Pear.teardown(() => swarm.destroy())
 
 // A name is a purely-local, and maps to a key pair. It's not visible to readers.
 // Since a name always corresponds to a key pair, these are all writable
@@ -45,18 +42,18 @@ swarm.join(core1.discoveryKey)
 
 // Corestore replication internally manages to replicate every loaded core
 // Corestore *does not* exchange keys (read capabilities) during replication.
-swarm.on('connection', conn => store.replicate(conn))
+swarm.on('connection', (conn) => store.replicate(conn))
 
 // Since Corestore does not exchange keys, they need to be exchanged elsewhere.
 // Here, we'll record the other keys in the first block of core1.
 if (core1.length === 0) {
   await core1.append({
-    otherKeys: [core2, core3].map(core => b4a.toString(core.key, 'hex'))
+    otherKeys: [core2, core3].map((core) => b4a.toString(core.key, 'hex'))
   })
 }
 
 // Record all short messages in core2, and all long ones in core3
-process.stdin.on('data', data => {
+Pear.stdio.in.on('data', (data) => {
   if (data.length < 5) {
     console.log('appending short data to core2')
     core2.append(data)
@@ -67,36 +64,46 @@ process.stdin.on('data', data => {
 })
 ```
 
-`reader.js` connects to the previous peer with Hyperswarm and replicates the local Corestore instance to receive the data from it. This requires the copied key to be supplied as an argument when executing the file, which will then be used to create a core with the same public key as the other peer (i.e., the same discovery key for both the reader and writer peers).
+The `multicore-writer-app` uses a Corestore instance to create three Hypercores, which are then replicated with other peers using `Hyperswarm`. The keys for the second and third cores are stored in the first core (the first core bootstraps the system). Messages entered into the command line are written into the second and third cores, depending on the length of the message. The main core key logged into the command line so that it can be passed to the `multicore-reader-app`.
 
+The `multicore-reader-app` connects to the previous peer with `Hyperswarm` and replicates the local `Corestore` instance to receive the data from it. This requires the copied key to be supplied as an argument when executing the file, which will then be used to create a core with the same public key as the other peer (i.e., the same discovery key for both the reader and writer peers).
+
+```
+mkdir multicore-reader-app
+cd multicore-reader-app
+pear init -y -t terminal
+npm install corestore hyperswarm b4a
+
+```
+
+Alter the generated `multicore-reader-app/index.js` to the following
 
 ```javascript
-//reader.js
 import Corestore from 'corestore'
 import Hyperswarm from 'hyperswarm'
-import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
 
-// pass the key as a command line argument
-const key = b4a.from(process.argv[2], 'hex')
+if (!Pear.config.args[0]) throw new Error('provide a key')
 
-// creation of a Corestore instance
-const store = new Corestore('./reader-storage')
+const key = b4a.from(Pear.config.args[0], 'hex')
+
+const store = new Corestore(Pear.config.storage)
+await store.ready()
 
 const swarm = new Hyperswarm()
-goodbye(() => swarm.destroy())
+Pear.teardown(() => swarm.destroy())
 
 // replication of corestore instance on every connection
-swarm.on('connection', conn => store.replicate(conn))
+swarm.on('connection', (conn) => store.replicate(conn))
 
 // creation/getting of a hypercore instance using the key passed
 const core = store.get({ key, valueEncoding: 'json' })
 // wait till all the properties of the hypercore instance are initialized
 await core.ready()
 
-const foundPeers = store.findingPeers()
-// join a topic
+const foundPeers = core.findingPeers()
 swarm.join(core.discoveryKey)
+swarm.on('connection', conn => core.replicate(conn))
 swarm.flush().then(() => foundPeers())
 
 // update the meta-data of the hypercore instance
@@ -121,3 +128,22 @@ for (const key of otherKeys) {
   })
 }
 ```
+
+
+In one terminal, open `multicore-writer-app` with `pear dev`.
+
+```
+cd  mutlicore-writer-app
+pear dev
+```
+
+The `multicore-writer-app` will output the main core key.
+
+In another terminal, open the `multicore-reader-app` and pass it the key:
+
+```
+cd reader-app
+pear dev -- <SUPPLY THE KEY HERE>
+```
+
+As inputs are made to the terminal running the writer application, outputs should be shown in the terminal running the reader application.
