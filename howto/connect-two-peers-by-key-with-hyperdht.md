@@ -18,15 +18,25 @@ In the HyperDHT, peers are identified by a public key, not by an IP address. Wit
 
 > For example, Keet implements its relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
 
-Use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. This example consists of two files: `client.js` and `server.js`.
+Use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. 
 
-`server.js` will create a key pair and then start a server that will listen on the generated key pair. The public key is logged into the console. Copy it for instantiating the client.
+This example consists of two applications: `client-app` and `server-app`.
 
+The `server-app` will create a key pair and then start a server that will listen on the generated key pair. The public key is logged into the console. Copy it for instantiating the client.
+
+Create the `server-app` project with the following commands:
+
+```
+mkdir server-app
+cd server-app
+pear init -y -t terminal
+npm install hyperdht b4a
+```
+
+Alter `server-app/index.js` to the following:
 
 ```javascript
-//server.js
 import DHT from 'hyperdht'
-import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
 
 const dht = new DHT()
@@ -45,15 +55,21 @@ server.listen(keyPair).then(() => {
 
 // Unnannounce the public key before exiting the process
 // (This is not a requirement, but it helps avoid DHT pollution)
-goodbye(() => server.close())
+Pear.teardown(() => server.close())
 ```
 
-`client.js` will spin up a client, and the public key copied earlier must be supplied as a command line argument for connecting to the server. The client process will log `got connection` into the console when it connects to the server.
+Open the `server-app` with `pear dev`.
 
-Once it's connected, try typing in both terminals!
+Create the `client-app` project with the following commands:
+
+```
+mkdir client-app
+cd client-app
+pear init -y -t terminal
+npm install hyperdht b4a
+```
 
 ``` javascript
-//client.js
 import DHT from 'hyperdht'
 import b4a from 'b4a'
 
@@ -67,3 +83,13 @@ conn.once('open', () => console.log('got connection!'))
 process.stdin.pipe(conn).pipe(process.stdout)
 ```
 
+Pass the key to the client:
+
+```
+cd client-app
+pear dev -- <SUPPLY KEY HERE>
+```
+
+The `client-app` will spin up a client, and the public key copied earlier must be supplied as a command line argument for connecting to the server. The client process will log `got connection` into the console when it connects to the server.
+
+Once it's connected, try typing in both terminals.
