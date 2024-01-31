@@ -1,6 +1,6 @@
 # MirrorDrive
 
-Mirrors a [hyperdrive.md](../building-blocks/hyperdrive.md) or a [localdrive.md](../helpers/localdrive.md) into another one.
+Mirrors a [`Hyperdrive`](../building-blocks/hyperdrive.md) or a [`LocalDrive`](../helpers/localdrive.md) into another one.
 
 > [GitHub (Mirrordrive)](https://github.com/holepunchto/mirror-drive)
 

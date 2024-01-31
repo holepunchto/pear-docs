@@ -2,7 +2,7 @@
 
 <mark style="background-color:green;">**stable**</mark>
 
-Corestore is a Hypercore factory that makes it easier to manage large collections of named Hypercores. It is designed to efficiently store and replicate multiple sets of interlinked [hypercore.md](../building-blocks/hypercore.md)(s), such as those used by [hyperdrive.md](../building-blocks/hyperdrive.md), removing the responsibility of managing custom storage/replication code from these higher-level modules.
+Corestore is a Hypercore factory that makes it easier to manage large collections of named Hypercores. It is designed to efficiently store and replicate multiple sets of interlinked [`Hypercore`](../building-blocks/hypercore.md)(s), such as those used by [`Hyperdrive`](../building-blocks/hyperdrive.md), removing the responsibility of managing custom storage/replication code from these higher-level modules.
 
 > [GitHub (Corestore)](https://github.com/holepunchto/corestore)
 
@@ -80,7 +80,7 @@ Corestore replicates in an 'all-to-all' fashion, meaning that when replication b
 
 If the remote side dynamically adds a new Hypercore to the replication stream (by opening that core with a `get` on their Corestore, for example), Corestore will load and replicate that core if possible.
 
-Using [hyperswarm.md](../building-blocks/hyperswarm.md) one can replicate Corestores as follows:
+Using [`Hyperswarm`](../building-blocks/hyperswarm.md) one can replicate Corestores as follows:
 
 ```javascript
 const swarm = new Hyperswarm()
@@ -112,7 +112,7 @@ const core1 = ns1.get({ name: 'main' }) // These will load different Hypercores
 const core2 = ns2.get({ name: 'main' })
 ```
 
-Namespacing is particularly useful if an application needs to create many different data structures, such as [hyperdrive.md](../building-blocks/hyperdrive.md)s, that all share a common storage location:
+Namespacing is particularly useful if an application needs to create many different data structures, such as [`Hyperdrive`](../building-blocks/hyperdrive.md)s, that all share a common storage location:
 
 ```javascript
 const store = new Corestore('./my-storage-dir')

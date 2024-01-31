@@ -65,7 +65,7 @@ npm install hyperdrive
 
 #### **`const drive = new Hyperdrive(store, [key])`**
 
-Creates a new Hyperdrive instance. `store` must be an instance of [corestore.md](../helpers/corestore.md).
+Creates a new Hyperdrive instance. `store` must be an instance of [`Corestore`](../helpers/corestore.md).
 
 By default, it uses the core at `{ name: 'db' }` from `store`, unless the public `key` is set.
 
@@ -255,7 +255,7 @@ Returns a read stream of entries in the drive.
 
 #### **`const mirror = drive.mirror(out, [options])`**
 
-Mirrors this drive into another. Returns a [mirrordrive.md](../helpers/mirrordrive.md) instance constructed with `options`.
+Mirrors this drive into another. Returns a [`MirrorDrive`](../helpers/mirrordrive.md) instance constructed with `options`.
 
 Call `await mirror.done()` to wait for the mirroring to finish.
 

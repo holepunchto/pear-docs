@@ -465,7 +465,7 @@ The `isInitiator` argument is a boolean indicating whether a peer is the initiat
 
 To multiplex the replication over an existing Hypercore replication stream, another stream instance can be passed instead of the `isInitiator` Boolean.
 
-To replicate a Hypercore using [hyperswarm.md](hyperswarm.md):
+To replicate a Hypercore using [`Hyperswarm`](hyperswarm.md):
 
 ```javascript
 // assuming swarm is a Hyperswarm instance and core is a Hypercore
@@ -474,10 +474,10 @@ swarm.on('connection', conn => {
 })
 ```
 
-> To replicate many Hypercores over a single Hyperswarm connection, see [corestore.md](../helpers/corestore.md).
+> To replicate many Hypercores over a single Hyperswarm connection, see [`Corestore`](../helpers/corestore.md).
 
 
-If not using [hyperswarm.md](hyperswarm.md) or [corestore.md](../helpers/corestore.md), specify the `isInitiator` field, which will create a fresh protocol stream that can be piped over any transport:
+If not using [`Hyperswarm`](hyperswarm.md) or [`Corestore`](../helpers/corestore.md), specify the `isInitiator` field, which will create a fresh protocol stream that can be piped over any transport:
 
 ```javascript
 // assuming we have two cores, localCore + remoteCore, sharing the same key

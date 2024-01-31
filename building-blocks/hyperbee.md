@@ -2,7 +2,7 @@
 
 <mark style="background-color:green;">**stable**</mark>
 
-Hyperbee is an append only B-tree based on [hypercore.md](hypercore.md). It provides a key/value-store API, with methods for inserting and getting key-value pairs, atomic batch insertions, and creating sorted iterators. It uses a single Hypercore for storage, using a technique called embedded indexing. It provides features like cache warmup extension, efficient diffing, version control, sorted iteration, and sparse downloading.
+Hyperbee is an append only B-tree based on [`Hypercore`](hypercore.md). It provides a key/value-store API, with methods for inserting and getting key-value pairs, atomic batch insertions, and creating sorted iterators. It uses a single Hypercore for storage, using a technique called embedded indexing. It provides features like cache warmup extension, efficient diffing, version control, sorted iteration, and sparse downloading.
 
 > As with the Hypercore, a Hyperbee can only have a **single writer on a single machine**; the creator of the Hyperdrive is the only person who can modify it as they're the only one with the private key. That said, the writer can replicate to **many readers**, in a manner similar to BitTorrent.
 
@@ -58,7 +58,7 @@ npm install hyperbee
 
 #### **`const db = new Hyperbee(core, [options])`**
 
-Make a new Hyperbee instance. `core` should be a [hypercore.md](hypercore.md).
+Make a new Hyperbee instance. `core` should be a [`Hypercore`](hypercore.md).
 
 `options` include:
 
