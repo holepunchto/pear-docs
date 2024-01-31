@@ -1,33 +1,31 @@
 # How to connect to many peers by topic with Hyperswarm
 
-Get setup by creating a project folder and installing dependencies:
-
-```bash
-mkdir connect-two-peers
-cd connect-two-peers
-pear init -y -t terminal
-npm install hyperswarm b4a graceful-goodbye hypercore-crypto
-```
-
 In the former example, two peers connected directly using the first peer's public key. Hyperswarm helps to discover peers swarming a common topic, and connect to as many of them as possible. This will become clearer in the Hypercore example, but it's the best way to distribute peer-to-peer data structures.
 
 The [Hyperswarm](../building-blocks/hyperswarm.md) module provides a higher-level interface over the underlying DHT, abstracting away the mechanics of establishing and maintaining connections. Instead, 'join' topics, and the swarm discovers peers automatically. It also handles reconnections in the event of failures.
 
-In the previous example, we needed to explicitly indicate which peer was the server and which was the client. By using Hyperswarm, we create two peers, have them join a common topic, and let the swarm deal with connections.
+In the [How to connect two Peers by key with Hyperdht](./connect-two-peers-by-key-with-hyperdht.md), we needed to explicitly indicate which peer was the server and which was the client. By using Hyperswarm, we create two peers, have them join a common topic, and let the swarm deal with connections.
 
-This example consists of a single file, `peer.js`. In one terminal, type `node peer.js`, it will display the topic. Copy/paste that topic into N additional terminals with `node peer.js (topic)`. Each peer will log information about the other connected peers.
+This How-to consists of a single application, `peer-app`. 
 
-Start typing into any terminal, and it will be broadcast to all connected peers.
+Create the `peer-app` project with the following commands:
+
+```
+mkdir peer-app
+cd peer-app
+pear init -y -t terminal
+npm install hyperswarm hypercore-crypto b4a
+```
+
+Alter the peer-app/index.js file to the following:
 
 ```javascript
-//peer.js
 import Hyperswarm from 'hyperswarm'
-import goodbye from 'graceful-goodbye'
 import crypto from 'hypercore-crypto'
 import b4a from 'b4a'
 
 const swarm = new Hyperswarm()
-goodbye(() => swarm.destroy())
+Pear.teardown(() => swarm.destroy())
 
 // Keep track of all connections and console.log incoming data
 const conns = []
@@ -55,3 +53,14 @@ discovery.flushed().then(() => {
   console.log('joined topic:', b4a.toString(topic, 'hex'))
 })
 ```
+
+In one terminal, open `peer-app` with `pear dev`
+
+```
+cd peer-app
+pear dev
+```
+
+This will display the topic. Copy/paste that topic into as many additional terminals as desired with `pear dev -- <SUPPLY TOPIC HERE>` (assuming that the current working directory of each terminal is the `peer-app` folder). Each peer will log information about the other connected peers.
+
+Start typing into any terminal, and it will be broadcast to all connected peers.
