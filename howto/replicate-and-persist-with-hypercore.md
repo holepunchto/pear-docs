@@ -1,46 +1,46 @@
 # How to replicate and persist with Hypercore
 
-Get setup by creating a project folder and installing dependencies:
+In the HyperDHT How-to ([Connect Two Peers](./connect-two-peers-by-key-with-hyperdht.md)) and the Hyperswarm How-to ([Connect Many Peers](./connect-to-many-peers-by-topic-with-hyperswarm.md)), peers can exchange chat messages so long as both are online at the same time and directly connected. The application is ephemeral, the messages are not persisted - they will be lost if the recipient is offline. Hypercore provides the persistence.
 
-```bash
-mkdir hypercore-basics
-cd hypercore-basics
-pear init -y -t terminal
-npm install hyperswarm hypercore b4a graceful-goodbye
-```
-
-In the Hyperswarm examples, peers can exchange chat messages so long as both are online at the same time and directly connected, and those messages are not persistent (they will be lost if the recipient is offline). Hypercore fixes all of these problems.
-
-[hypercore.md](../building-blocks/hypercore.md) is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
+[Hypercore](../building-blocks/hypercore.md) is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
 Now extend the ephemeral chat example above but using Hypercore to add many significant new features:
 
-1. **Persistence**: The owner of the Hypercore can add messages at any time, and they'll be persisted to disk. Whenever they come online, readers can replicate these messages over Hyperswarm.
-2. **Many Readers:** New messages added to the Hypercore will be broadcast to interested readers. The owner gives each reader a reading capability (`core.key`) and a corresponding discovery key (`core.discoveryKey`). The former is used to authorize the reader, ensuring that they have permission to read messages, and the latter is used to discover the owner (and other readers) on the swarm.
+* **Persistence**: The owner of the Hypercore can add messages at any time, and they'll be persisted to disk. Whenever they come online, readers can replicate these messages over Hyperswarm.
+* **Many Readers:** New messages added to the Hypercore will be broadcast to interested readers. The owner gives each reader a reading capability (`core.key`) and a corresponding discovery key (`core.discoveryKey`). The former is used to authorize the reader, ensuring that they have permission to read messages, and the latter is used to discover the owner (and other readers) on the swarm.
 
-The following example consists of two files: `reader.js` and `writer.js`. When these two files are executed (run using node), two peers are created and connected. A Hypercore is used to store the data entered into the command line.
+The following example consists of two Pear Terminal Applications: `reader-app` and `writer-app`. When these two applications are opened, two peers are created and connected to each other. A Hypercore is used to store the data entered into the command line.
 
-The `writer.js` code stores the data entered into the command line to the Hypercore instance. The Hypercore instance is replicated with other peers using Hyperswarm.
+The `writer-app` code stores the data entered into the command line to the Hypercore instance. The Hypercore instance is replicated with other peers using Hyperswarm.
 
+
+Create the `writer-app` project with these commands:
+
+```
+mkdir writer-app
+cd writer-app
+pear init -y -t terminal
+```
+
+Alter the generated `writer-app/index.js` to the following:
 
 ```javascript
-//writer.js
+import path from 'path'
 import Hyperswarm from 'hyperswarm'
 import Hypercore from 'hypercore'
-import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
 
 const swarm = new Hyperswarm()
-goodbye(() => swarm.destroy())
+Pear.teardown(() => swarm.destroy())
 
-const core = new Hypercore('./writer-storage')
+const core = new Hypercore(path.join(Pear.config.storage, 'writer-storage'))
 
 // core.key and core.discoveryKey will only be set after core.ready resolves
 await core.ready()
 console.log('hypercore key:', b4a.toString(core.key, 'hex'))
 
 // Append all stdin data as separate blocks to the core
-process.stdin.on('data', data => core.append(data))
+Pear.stdio.in.on('data', (data) => core.append(data))
 
 // core.discoveryKey is *not* a read capability for the core
 // It's only used to discover other peers who *might* have the core
@@ -49,10 +49,20 @@ swarm.on('connection', conn => core.replicate(conn))
 ```
 
 
-`reader.js` uses Hyperswarm to connect to the previously initiated peer and synchronize the local Hypercore instance with the Hypercore instance of the writer.
+The `reader-app` uses Hyperswarm to connect to the previously initiated peer and synchronize the local Hypercore instance with the Hypercore instance of the writer.
+
+Create the `reader-app` project with these commands:
+
+```
+mkdir reader-app
+cd reader-app
+pear init -y -t terminal
+```
+
+Alter the generated `reader-app/index.js` to the following:
+
 
 ```javascript
-//reader.js
 import Hyperswarm from 'hyperswarm'
 import Hypercore from 'hypercore'
 import goodbye from 'graceful-goodbye'
@@ -84,3 +94,22 @@ for await (const block of core.createReadStream({ start: core.length, live: true
 }
 ```
 
+There should now be two folders, `writer-app` and `reader-app`.
+
+In one terminal run:
+
+```
+pear dev ./writer-app
+```
+
+If the `writer-app` is not in the current dir, adjust the path to point to `writer-app`.
+
+In another terminal run
+
+```
+pear dev ./reader-app
+```
+
+Again if the `reader-app` is not in the current dir, adjust the path to point to `reader-app`.
+
+As inputs are made to the terminal running the writer application, outputs should be shown in the terminal running the reader application.

@@ -101,12 +101,12 @@ Notable features include:
 
 Helper modules can be used together with the building blocks to create cutting-edge P2P tools and applications.
 
-*. [`corestore`](./helpers/corestore.md): A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.
-*. [`localdrive`](./helpers/localdrive.md): A file system interoperable with Hyperdrive.
-*. [`mirrordrive`](./helpers/mirrordrive.md): Mirror a [`hyperdrive`](./building-blocks/hyperdrive.md) or a [`localdrive`](./helpers/localdrive.md) into another one.
-*. [`secretstream`](./helpers/secretstream.md): SecretStream is used to securely create connections between two peers in Hyperswarm.
-*. [compact-`encoding`](./helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.
-*. [`protomux`](./helpers/protomux.md): Multiplex multiple message oriented protocols over a stream.
+* [`corestore`](./helpers/corestore.md): A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.
+* [`localdrive`](./helpers/localdrive.md): A file system interoperable with Hyperdrive.
+* [`mirrordrive`](./helpers/mirrordrive.md): Mirror a [`hyperdrive`](./building-blocks/hyperdrive.md) or a [`localdrive`](./helpers/localdrive.md) into another one.
+* [`secretstream`](./helpers/secretstream.md): SecretStream is used to securely create connections between two peers in Hyperswarm.
+* [compact-`encoding`](./helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.
+* [`protomux`](./helpers/protomux.md): Multiplex multiple message oriented protocols over a stream.
 
 ## Tools
 
