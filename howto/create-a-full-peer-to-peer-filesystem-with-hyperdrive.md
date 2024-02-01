@@ -1,37 +1,35 @@
 # How to create a full peer-to-peer filesystem with Hyperdrive
 
-Get setup by creating a project folder and installing dependencies:
-
-```bash
-mkdir p2p-filesystem
-cd p2p-filesystem
-pear init -y -t terminal
-npm install hyperswarm hyperdrive localdrive corestore debounceify b4a graceful-goodbye
-```
-
 [`Hyperdrive`](../building-blocks/hyperdrive.md) is a secure, real-time distributed file system designed for easy peer-to-peer file sharing. In the same way that a Hyperbee is just a wrapper around a Hypercore, a Hyperdrive is a wrapper around two Hypercores: one is a Hyperbee index for storing file metadata, and the other is used to store file contents.
 
-Now mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, use two additional tools: [`MirrorDrive`](../helpers/mirrordrive.md) and [`LocalDrive`](../helpers/localdrive.md), which handle all interactions between Hyperdrives and the local filesystem.
+This How-to consists of three applications: `drive-writer-app`, `drive-reader-app` and `bee-reader-app`.
 
-This example consists of three files: `writer.js`, `drive-reader.js` and `bee-reader.js`.
+Now let's mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, we'll use two additional tools: [`MirrorDrive`](../helpers/mirrordrive.md) and [`LocalDrive`](../helpers/localdrive.md), which handle all interactions between Hyperdrives and the local filesystem.
 
-`writer.js` creates a local drive instance for a local directory and then mirrors the local drive into the Hyperdrive instance. The store used to create the Hyperdrive instance is replicated using Hyperswarm to make the data of Hyperdrive accessible to other peers. Copy the drive key logged into the command line for the `reader.js` execution.
+Start by creating the `drive-writer-app` project with these commands:
 
+```
+mkdir drive-writer-app
+cd drive-writer-app
+pear init -y -t terminal
+npm install corestore localdrive hyperswarm hyperdrive debounceify b4a pear-stdio
+```
+
+Alter `driver-writer-app/index.js` to the following:
 
 ```javascript
-writer.js
 import Hyperswarm from 'hyperswarm'
 import Hyperdrive from 'hyperdrive'
 import Localdrive from 'localdrive'
 import Corestore from 'corestore'
-import goodbye from 'graceful-goodbye'
 import debounce from 'debounceify'
 import b4a from 'b4a'
+import stdio from 'pear-stdio'
 
 // create a Corestore instance 
-const store = new Corestore('./writer-storage')
+const store = new Corestore(Pear.config.stroage)
 const swarm = new Hyperswarm()
-goodbye(() => swarm.destroy())
+Pear.teardown(() => swarm.destroy())
 
 // replication of the corestore instance on connection with other peers
 swarm.on('connection', conn => store.replicate(conn))
@@ -56,8 +54,8 @@ console.log('drive key:', b4a.toString(drive.key, 'hex'))
 
 // start the mirroring process (i.e copying) of content from writer-dir to the drive
 // whenever something is entered (other than '/n' or Enter )in the command-line
-process.stdin.setEncoding('utf-8')
-process.stdin.on('data', (d) => {
+stdio.in.setEncoding('utf-8')
+stdio.in.on('data', (d) => {
   if (!d.match('\n')) return
   mirror()
 })
@@ -71,26 +69,43 @@ async function mirrorDrive () {
 }
 ```
 
-`drive-reader.js` creates a local drive instance for a local directory and then mirrors the contents of the local Hyperdrive instance into the local drive instance (which will write the contents to the local directory).
+Open the `drive-writer-app` with `pear dev`:
 
-Try running `node drive-reader.js (key-from-above)`, then add/remove/modify files inside `writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). Observe that all new changes mirror into `reader-dir`.
+```
+cd drive-writer-app
+pear dev
+```
 
+The `drive-writer-app` creates a `LocalDrive` instance for a local directory and then mirrors the `LocalDrive` into the Hyperdrive instance. 
+
+The store used to create the Hyperdrive instance is replicated using Hyperswarm to make the data of Hyperdrive accessible to other peers. 
+
+It outputs a key which will be passed to `drive-reader-app` upon execution.
+
+Leave the `driver-writer-app` running and in a new terminal create the `drive-reader-app` project with these commands:
+
+```
+mkdir drive-reader-app
+cd drive-reader-app
+pear init -y -t terminal
+npm install corestore localdrive hyperswarm hyperdrive debounceify b4a
+```
+
+Adjust the `drive-reader-app/index.js` file to:
 
 ```javascript
-drive-reader.js
 import Hyperswarm from 'hyperswarm'
 import Hyperdrive from 'hyperdrive'
 import Localdrive from 'localdrive'
 import Corestore from 'corestore'
-import goodbye from 'graceful-goodbye'
 import debounce from 'debounceify'
 import b4a from 'b4a'
 
 // create a Corestore instance
-const store = new Corestore('./reader-storage')
+const store = new Corestore(Pear.config.storage)
 
 const swarm = new Hyperswarm()
-goodbye(() => swarm.destroy())
+Pear.teardown(() => swarm.destroy())
 
 // replication of store on connection with other peers
 swarm.on('connection', conn => store.replicate(conn))
@@ -127,20 +142,34 @@ async function mirrorDrive () {
 }
 ```
 
+The `drive-reader-app` creates a `LocalDrive` instance for a local directory and then mirrors the contents of the local Hyperdrive instance into the `LocalDrive` instance (which will write the contents to the local directory).
 
-Just as a Hyperbee is **just** a Hypercore, a Hyperdrive is **just** a Hyperbee (which is **just** a Hypercore). Now inspect the Hyperdrive as though it were a Hyperbee, and log out some file metadata.
+In a new terminal, execute the `drive-reader-app` with `pear dev`, passing the key that `driver-writer-app` output:
 
-`bee-reader.js` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.
+```
+cd drive-reader-app
+pear dev -- <SUPPLY_KEY_HERE>
+```
 
-Try adding or removing a few files from the writer's data directory, then pressing `Enter` in the writer's terminal to mirror the changes.
+Add/remove/modify files inside `writer-app/writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). Observe that all new changes mirror into `reader-app/reader-dir`.
 
+Just as a Hyperbee is **just** a Hypercore, a Hyperdrive is **just** a Hyperbee - which is **just** a Hypercore.
+
+In a new terminal, create the `bee-reader-app` project with these commands:
+
+```
+mkdir bee-reader-app
+cd bee-reader-app
+pear init -y -t terminal
+npm install corestore hyperswarm hyperdrive debounceify b4a
+```
+
+Adjust the `bee-reader-app/index.js` file to:
 
 ```javascript
-bee-reader.js
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
-import goodbye from 'graceful-goodbye'
 import debounce from 'debounceify'
 import b4a from 'b4a'
 
@@ -148,7 +177,7 @@ import b4a from 'b4a'
 const store = new Corestore('./reader-storage')
 
 const swarm = new Hyperswarm()
-goodbye(() => swarm.destroy())
+Pear.teardown(() => swarm.destroy())
 
 // replicate corestore instance on connection with other peers
 swarm.on('connection', conn => store.replicate(conn))
@@ -184,3 +213,15 @@ async function listBee () {
 }
 ```
 
+Now the Hyperdrive can be inspected as though it were a Hyperbee, and log out some file metadata.
+
+Execute the `bee-reader-app` with `pear dev`, passing it the key output by the `driver-writer-app`:
+
+```
+cd bee-reader-app
+pear dev
+```
+
+The `bee-reader-app` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.
+
+Try adding or removing a few files from the writer's data directory, then pressing `Enter` in the writer's terminal to mirror the changes.
