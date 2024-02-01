@@ -27,7 +27,7 @@ import b4a from 'b4a'
 import stdio from 'pear-stdio'
 
 // create a Corestore instance 
-const store = new Corestore(Pear.config.stroage)
+const store = new Corestore(Pear.config.storage)
 const swarm = new Hyperswarm()
 Pear.teardown(() => swarm.destroy())
 
@@ -55,8 +55,8 @@ console.log('drive key:', b4a.toString(drive.key, 'hex'))
 // start the mirroring process (i.e copying) of content from writer-dir to the drive
 // whenever something is entered (other than '/n' or Enter )in the command-line
 stdio.in.setEncoding('utf-8')
-stdio.in.on('data', (d) => {
-  if (!d.match('\n')) return
+stdio.in.on('data', (data) => {
+  if (!data.match('\n')) return
   mirror()
 })
 
@@ -101,6 +101,10 @@ import Corestore from 'corestore'
 import debounce from 'debounceify'
 import b4a from 'b4a'
 
+const key = Pear.config.args[0]
+
+if (!key) throw new Error('provide a key')
+
 // create a Corestore instance
 const store = new Corestore(Pear.config.storage)
 
@@ -114,7 +118,7 @@ swarm.on('connection', conn => store.replicate(conn))
 const local = new Localdrive('./reader-dir')
 
 // create a hyperdrive using the public key passed as a command-line argument
-const drive = new Hyperdrive(store, b4a.from(process.argv[2], 'hex'))
+const drive = new Hyperdrive(store, b4a.from(key, 'hex'))
 
 // wait till all the properties of the drive are initialized
 await drive.ready()
@@ -144,14 +148,14 @@ async function mirrorDrive () {
 
 The `drive-reader-app` creates a `LocalDrive` instance for a local directory and then mirrors the contents of the local Hyperdrive instance into the `LocalDrive` instance (which will write the contents to the local directory).
 
-In a new terminal, execute the `drive-reader-app` with `pear dev`, passing the key that `driver-writer-app` output:
+In a new terminal, execute the `drive-reader-app` with `pear dev`, passing the key that the `drive-writer-app` already output:
 
 ```
 cd drive-reader-app
 pear dev -- <SUPPLY_KEY_HERE>
 ```
 
-Add/remove/modify files inside `writer-app/writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). Observe that all new changes mirror into `reader-app/reader-dir`.
+`LocalDrive` does not create the directory passed to it until something has been written, so create the `drive-writer-app/writer-dir` (`mkdir writer-dir`) and then add/remove/modify files inside `drive-writer-app/writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). Observe that all new changes mirror into `reader-app/reader-dir`.
 
 Just as a Hyperbee is **just** a Hypercore, a Hyperdrive is **just** a Hyperbee - which is **just** a Hypercore.
 
@@ -174,7 +178,7 @@ import debounce from 'debounceify'
 import b4a from 'b4a'
 
 // create a Corestore instance 
-const store = new Corestore('./reader-storage')
+const store = new Corestore(Pear.config.storage)
 
 const swarm = new Hyperswarm()
 Pear.teardown(() => swarm.destroy())
