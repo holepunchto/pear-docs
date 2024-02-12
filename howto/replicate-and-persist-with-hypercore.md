@@ -4,7 +4,9 @@ In the HyperDHT How-to ([Connect Two Peers](./connect-two-peers-by-key-with-hype
 
 [`Hypercore`](../building-blocks/hypercore.md) is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
-Now extend the ephemeral chat example above but using Hypercore to add many significant new features:
+> [Build with Pear - Episode 06: Replication and Persistence](https://www.youtube.com/watch?v=MxykB79LhR4&t)
+
+In this guide we'll extend the ephemeral chat example in [Connect Many Peers](./connect-to-many-peers-by-topic-with-hyperswarm.md) but using Hypercore to add many significant new features:
 
 * **Persistence**: The owner of the Hypercore can add messages at any time, and they'll be persisted to disk. Whenever they come online, readers can replicate these messages over Hyperswarm.
 * **Many Readers:** New messages added to the Hypercore will be broadcast to interested readers. The owner gives each reader a reading capability (`core.key`) and a corresponding discovery key (`core.discoveryKey`). The former is used to authorize the reader, ensuring that they have permission to read messages, and the latter is used to discover the owner (and other readers) on the swarm.

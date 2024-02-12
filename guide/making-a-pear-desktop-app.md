@@ -4,8 +4,9 @@ This guide demonstrates how to build a peer-to-peer chat application.
 
 It continues where [Starting a Pear Desktop Project](./starting-a-pear-desktop-project.md) left off.
 
-## Step 1. HTML Structure and CSS Styles
+> [Build with Pear - Episode 01: Developing with Pear](https://www.youtube.com/watch?v=y2G97xz78gU)
 
+## Step 1. HTML Structure and CSS Styles
 
 The project folder should contain:
 
@@ -263,7 +264,7 @@ function onMessageAdded (from, message) {
 > Note that the `pear` dependency is used, even though it was not installed. This is the [Pear API](../reference/api.md), available to any Pear project.
 
 
-## Step 5. Chat
+## Step 4. Chat
 
 Open two app instances by running `pear dev` in two terminals.
 
