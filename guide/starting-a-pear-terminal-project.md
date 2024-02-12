@@ -1,5 +1,7 @@
 # Starting a Pear Terminal Project
 
+> [Build with Pear - Episode 04: Pear Terminal Applications]https://www.youtube.com/watch?v=73KVE0wocTE
+
 ## Step 1. Init
 
 First create a new project using `pear init`.
