@@ -1,5 +1,7 @@
 # Making a Pear Terminal Application
 
+> [Build with Pear - Episode 04: Pear Terminal Applications]https://www.youtube.com/watch?v=73KVE0wocTE
+
 ## Step 1. Install modules
 
 This app uses these modules: `hyperswarm`, `hypercore-crypto`, and `b4a`.

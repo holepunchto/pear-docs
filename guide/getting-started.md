@@ -1,5 +1,11 @@
 # Getting Started with Pear
 
+Pear Runtime can be installed from the [pears.com](pears.com) or via [npm](https://www.npmjs.com/).
+
+Since `npm` (or equivalent package manager) is needed to install application dependencies this guide will walk through installing `pear` with `npm`.
+
+> [Build with Pear - Episode 01: Developing with Pear](https://www.youtube.com/watch?v=y2G97xz78gU)
+
 ## Requirements
 
 Pear runs on Windows, Mac and Linux.
@@ -35,7 +41,7 @@ If not, the first run of `pear` will fetch the platform from peers, after which 
 To check that Pear is fully working, try the following command:
 
 ```
-pear run keet
+pear run pear://keet
 ```
 
 Pear loads applications from peers, so this command should open [Keet](https://keet.io) whether or not it was downloaded and installed beforehand.

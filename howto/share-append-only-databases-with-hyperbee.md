@@ -3,6 +3,9 @@
 
 [Hyperbee](../building-blocks/hyperbee.md) is an append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
 
+
+> [Build with Pear - Episode 07: Peer-to-Peer Databases](https://www.youtube.com/watch?v=E7ysAVa_V-s)
+
 This How-to consists of three applications: `bee-writer-app` , `bee-reader-app` and `core-reader-app`.
 
 The `bee-writer-app` stores 100k entries from a given dictionary file into a Hyperbee instance. The Corestore instance used to create the Hyperbee instance is replicated using Hyperswarm. This enables other peers to replicate their Corestore instance and sparsely (on-demand) download the dictionary data into their local Hyperbee instances.

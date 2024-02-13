@@ -1,72 +1,90 @@
 # Releasing a Pear Application
 
-Pear Applications are stored in an append-only log ([hypercore](../building-blocks/hypercore.md)) and the log has a length.
+Pear applications are stored in an append-only log ([hypercore](../building-blocks/hypercore.md)).
 
-Pear versions takes the form `<fork>.<length>.<key>`. The version length of a Pear application is the length of its append-only log.
+Each version is identified by `<fork>.<length>.<key>`. The length corresponds to the length of the application's append-only log at the time.
 
-When an application has not been marked with a release, `pear run <key>` opens the the application at its latest version length. This is excellent in development, both locally and for other peers to preview prereleased work.
+> [Build with Pear - Episode 03: Releasing Pear Applications](https://www.youtube.com/watch?v=UuzTlzEET4o)
 
-However, once a release has been marked `pear run <key>` will only open the latest marked release.
+`pear run <key>` opens the application.
+
+Before a release has been marked, the latest version is used. This is useful during development, to test the app locally and to share a preview with other peers.
+
+Once a release has been marked, `pear run <key>` opens the latest marked release.
 
 ## Step 1: Staging Production
 
-The `pear stage` command derives an application key from the application name as defined in the project `package.json` file and the specified `channel` name. The `pear stage dev` convention for development can be complemented with a `production` channel name for production. Running the following command in a Pear Project folder will output an application key.
+`pear stage <channel name>` derives an application key from the channel name and the application name (as defined in the project's `package.json`).
+
+For example, a `pear stage dev` release channel used during development can be complemented with a `production` channel:
 
 ```sh
 pear stage production
 ```
 
-Using separate channels for development and production means there's an application key for trusted peers and an application key for public peers. The development key can remain unreleased so that `pear run <key>` loads the latest staged changes by default while releases can be marked on the production key so that `pear run <key>` loads the latest stable release by default for production.
+Running this command in a Pear project folder outputs an application key.
+
+Using separate channels for development and production means there is an application key for trusted peers and one for public peers.
+
+The development key can remain unreleased, so that `pear run <dev key>` loads the latest staged changes by default.
+
+The production key's releases can be marked, so that `pear run <production key>` loads the latest stable release by default.
 
 ## Step 2: Marking a Release
 
-Changes to an application can only propagate to peers if the application is being seeded:
-
-```
-pear seed production
-```
-
-To view the help for the `pear release` command run `pear release help`.
-
-To indicate the latest staged changes on the production channel is at a release point run:
+Create a new release point with the latest staged changes on the production channel by running.
 
 ```
 pear release production
 ```
 
+
+Run `pear release help` for more info on the command.
+
+
+Keep in mind that changes to an application can only propagate to peers when the application is being seeded:
+
+```
+pear seed production
+```
+
 ## Step 3: Running staged from a released app
 
-After marking a release, make a trivial change to the project (e.g. add a console.log somewhere), check it works with the `pear dev` command and then stage it with `pear stage production`.
+After marking a release, make a trivial change to the project (e.g. add a `console.log(...)` somewhere).
 
-Opening the application with `pear run <key>` will **not** result in the log being output because `pear run` will load the latest marked release before the added log was staged.
+First verify that it works by running `pear dev`.
 
-The latest staged changes on a released application can be previewed using the `--checkout` flag:
+Now stage the change with `pear stage production`.
+
+Opening the application with `pear run <key>` will **not** output the log, because it loads the latest **marked** release.
+
+The latest staged changes of a released application can be previewed with the `--checkout` flag:
 
 ```
 pear run <key> --checkout=staged
 ```
 
-The value of the `--checkout` flag may be `staged`, `released` (default) or a number representing the specific version length to checkout.
+The value of the `--checkout` flag may be `staged`, `released` (the default) or a number referring to a specific version length.
 
 ## Discussion
 
 ### The dump-stage-release strategy
 
-A development application key can be shared among trusted peers - at which point it could be referred to as an internal application key (internal to that group of peers who have the key).
+A development application key can be shared among trusted peers. At that point, it could be referred to as an internal application key (internal to the group of peers who have the key).
 
-While using different channel names by convention makes good sense, using `pear stage dev` and `pear stage production`  on the same machine can have practical limitations.
+While using different channel names is sensible, using `pear stage dev` and `pear stage production` on the same machine has practical implications.
 
-A dump-stage-release strategy can be employed to futher seperate the concerns between development and production and enable different machines to own internal vs production keys.
+A dump-stage-release strategy seperates the concerns between development and production, by using a different machine for each.
 
-The machine that will hold the production key can run:
+On the machine that holds the production key, run:
 
 ```
 pear dump <internal-key> <path-to-app-production-dir>
 ```
 
-This will synchronize the application files to disk. It's a reverse stage.
+This is a reverse stage: it synchronizes the application files to disk.
 
-Once complete the project can be staged from the production machine with:
+Once complete, the project can be staged from the production machine with:
 
 ```
 pear stage production
@@ -78,13 +96,11 @@ Then released with:
 pear release production
 ```
 
-A `pear seed production` process would also need to be running for other peers to access the application.
-
-The same three commands in order, `pear dump`, `pear stage` and `pear release`, can be used to carve a release from an internal key to a production key across different machines at any time.
+To allow other peers access to the new release, run `pear seed production`.
 
 ### Distribution Packages
 
-Asset-building of Distribution Packages (.dmg, .msi, .appimage) is currently not featured by Pear but is a feature for the future.
+Asset building of distribution packages (.dmg, .msi, .appimage) is not yet possible with Pear, but will be supported in the future.
 
 ## Next
 
