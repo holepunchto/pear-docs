@@ -22,32 +22,34 @@ Create the `writer-app` project with these commands:
 mkdir writer-app
 cd writer-app
 pear init -y -t terminal
-npm install hypercore hyperswarm b4a
+npm install bare-path bare-process hypercore hyperswarm b4a
 ```
 
 Alter the generated `writer-app/index.js` file to the following:
 
 ```javascript
-import Hyperswarm from 'hyperswarm'
-import Hypercore from 'hypercore'
-import b4a from 'b4a'
+  import path from 'bare-path'
+  import process from 'bare-process'
+  import Hyperswarm from 'hyperswarm'
+  import Hypercore from 'hypercore'
+  import b4a from 'b4a'
 
-const swarm = new Hyperswarm()
-Pear.teardown(() => swarm.destroy())
+  const swarm = new Hyperswarm()
+  Pear.teardown(() => swarm.destroy())
 
-const core = new Hypercore(Pear.config.storage)
+  const core = new Hypercore(path.join(Pear.config.storage, 'writer-storage'))
 
-// core.key and core.discoveryKey will only be set after core.ready resolves
-await core.ready()
-console.log('hypercore key:', b4a.toString(core.key, 'hex'))
+  // core.key and core.discoveryKey will only be set after core.ready resolves
+  await core.ready()
+  console.log('hypercore key:', b4a.toString(core.key, 'hex'))
 
-// Append all stdin data as separate blocks to the core
-Pear.stdio.in.on('data', (data) => core.append(data))
+  // Append all stdin data as separate blocks to the core
+  process.stdin.on('data', (data) => core.append(data))
 
-// core.discoveryKey is *not* a read capability for the core
-// It's only used to discover other peers who *might* have the core
-swarm.join(core.discoveryKey)
-swarm.on('connection', conn => core.replicate(conn))
+  // core.discoveryKey is *not* a read capability for the core
+  // It's only used to discover other peers who *might* have the core
+  swarm.join(core.discoveryKey)
+  swarm.on('connection', conn => core.replicate(conn))
 ```
 
 
@@ -59,20 +61,21 @@ Create the `reader-app` project with these commands:
 mkdir reader-app
 cd reader-app
 pear init -y -t terminal
-npm install hypercore hyperswarm
+npm install bare-path hypercore hyperswarm
 ```
 
 Alter the generated `reader-app/index.js` file to the following:
 
 
 ```javascript
+import path from 'bare-path'
 import Hyperswarm from 'hyperswarm'
 import Hypercore from 'hypercore'
 
 const swarm = new Hyperswarm()
 Pear.teardown(() => swarm.destroy())
 
-const core = new Hypercore(Pear.config.storage, process.argv[2])
+const core = new Hypercore(path.join(Pear.config.storage, 'reader-storage'), Pear.config.args[0])
 await core.ready()
 
 const foundPeers = core.findingPeers()
