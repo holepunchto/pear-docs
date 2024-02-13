@@ -1,6 +1,6 @@
 # Table of contents
 
-* [Pear by Holepunch](./README.md)
+* [Pear by Holepunch](./readme.md)
 
 ### Reference
 
