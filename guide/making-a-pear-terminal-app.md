@@ -109,7 +109,7 @@ The app will output:
 [info] Joined chat room
 ```
 
-Type something in one app, and see that the two apps are now connected and can talk!
+Type something in one of the applications. Two Terminal Applications are now connected peer-to-peer.
 
 ## Next
 
