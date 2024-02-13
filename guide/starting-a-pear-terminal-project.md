@@ -27,7 +27,7 @@ pear dev
 
 The app will now run. Note that it will keep running until you exit with `ctrl + c`.
 
-That's all there is to it!
+That's all there is to getting a Pear Terminal project started.
 
 
 ## Next
