@@ -10,7 +10,7 @@ It continues where [Starting a Pear Terminal Project](./starting-a-pear-terminal
 
 For the chat part of the app, the same modules are needed as in [Making a Pear Desktop Application](./making-a-pear-desktop-app.md), `hyperswarm`, `b4a`, `hypercore-crypto`.
 
-To read input we will want to use `readline`, but it's important that Pear does not run on Node.js. Instead it runs on `Bare`. Bare is a lightweight javascript runtime which means it does not include a lot of the standard library modules as Node.js does. To use the `bare` equivalent the modules `bare-readline` and `bare-tty` are needed
+Pear runs on [`Bare`](https://github.com/holepunchto/bare), a lightweight JavaScript runtime which is similar to Node.js but comes with very few internal modules. Almost all Bare functionality comes from dependencies. Pear Terminal Applications are Bare applications so we will need `bare-readline` and `bare-tty` to read user input.
 
 
 ```
