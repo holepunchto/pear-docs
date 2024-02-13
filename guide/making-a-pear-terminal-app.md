@@ -1,19 +1,116 @@
 # Making a Pear Terminal Application
 
+This guide demonstrates how to build a peer-to-peer chat application.
+
+It continues where [Starting a Pear Terminal Project](./starting-a-pear-terminal-project.md) left off.
+
 > [Build with Pear - Episode 04: Pear Terminal Applications]https://www.youtube.com/watch?v=73KVE0wocTE
 
 ## Step 1. Install modules
 
-This app uses these modules: `hyperswarm`, `hypercore-crypto`, and `b4a`.
+For the chat part of the app, the same modules are needed as in [Making a Pear Desktop Application](./making-a-pear-desktop-app.md), `hyperswarm`, `b4a`, `hypercore-crypto`.
+
+To read input we will want to use `readline`, but it's important that Pear does not run on Node.js. Instead it runs on `Bare`. Bare is a lightweight javascript runtime which means it does not include a lot of the standard library modules as Node.js does. To use the `bare` equivalent the modules `bare-readline` and `bare-tty` are needed
+
 
 ```
-npm i hyperswarm hypercore-crypto b4a
+npm i bare-readline bare-tty hyperswarm b4a hypercore-crypto
 ```
 
-**Note**: If the modules are installed while the app is running an error is thrown similar to `Cannot find package 'hyperswarm' imported from /app.js`. When installing modules, close down the app, before they can be installed.
+## Step 2. JavaScript
 
-- [hyperswarm](https://www.npmjs.com/package/hyperswarm). One of the main building blocks. Find peers that share a "topic".
-- [hypercore-crypto](https://www.npmjs.com/package/hypercore-crypto). A set of crypto function used in Pear.
-- [b4a](https://www.npmjs.com/package/b4a). A set of functions for bridging the gap between the Node.js `Buffer` class and the `Uint8Array` class.
+Replace `index.js` with
 
-## Step 2. 
+``` js
+import Hyperswarm from 'hyperswarm'
+import b4a from 'b4a'
+import crypto from 'hypercore-crypto'
+import readline from 'bare-readline'
+import tty from 'bare-tty'
+
+const { teardown, config } = Pear
+const key = config.args.pop()
+const shouldCreateSwarm = !key
+const swarm = new Hyperswarm()
+const log = console.log
+const rl = readline.createInterface({
+  input: new tty.ReadStream(0),
+  output: new tty.WriteStream(1)
+})
+
+swarm.on('connection', peer => {
+  const name = b4a.toString(peer.remotePublicKey, 'hex').substr(0, 6)
+  console.log(`[info] New peer joined, ${name}`)
+  peer.on('data', message => appendMessage({ name, message }))
+})
+swarm.on('update', () => {
+  console.log(`[info] Number of connections is now ${swarm.connections.size}`)
+})
+
+if (shouldCreateSwarm) {
+  await createChatRoom()
+} else {
+  await joinChatRoom(key)
+}
+
+rl.input.setMode(tty.constants.MODE_RAW)
+rl.on('data', line => {
+  sendMessage(line)
+  rl.prompt()
+})
+rl.prompt()
+
+async function createChatRoom () {
+  const topicBuffer = crypto.randomBytes(32)
+  await joinSwarm(topicBuffer)
+  const topic = b4a.toString(topicBuffer, 'hex')
+  console.log(`[info] Created new chat room: ${topic}`)
+}
+
+async function joinChatRoom (topicStr) {
+  const topicBuffer = b4a.from(topicStr, 'hex')
+  await joinSwarm(topicBuffer)
+  console.log(`[info] Joined chat room`)
+}
+
+async function joinSwarm (topicBuffer) {
+  const discovery = swarm.join(topicBuffer, { client: true, server: true })
+  await discovery.flushed()
+}
+
+function sendMessage (message) {
+  const peers = [...swarm.connections]
+  for (const peer of peers) peer.write(message)
+}
+
+function appendMessage ({ name, message }) {
+  console.log(`[${name}] ${message}`)
+}
+```
+
+## Step 3. Run in dev mode
+
+To test this chat app, in one terminal run `pear dev .`.
+
+The app will output something similar to:
+
+```
+[info] Created new chat room: a1b2c35fbeb452bc900c5a1c00306e52319a3159317312f54fe5a246d634f51a
+```
+
+In another terminal use this key as input, `pear dev . a1b2c35fbeb452bc900c5a1c00306e52319a3159317312f54fe5a246d634f51a`.
+
+The app will output:
+
+```
+[info] Number of connections is now 0
+[info] New peer joined, 6193ec
+[info] Number of connections is now 1
+[info] Joined chat room
+```
+
+Type something in one app, and see that the two apps are now connected and can talk!
+
+## Next
+
+* [Sharing a Pear Application](./sharing-a-pear-app.md)

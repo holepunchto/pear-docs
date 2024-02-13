@@ -166,7 +166,7 @@ Running `pear dev` should show
 
 ## Step 2. Module dependencies
 
-**Note**: Close the app before installing dependencies. If dependencies are installed while the app is running, an error is thrown. 
+**Note**: Close the app before installing dependencies. If dependencies are installed while the app is running, an error is thrown.
 
 The app uses these modules:
 
