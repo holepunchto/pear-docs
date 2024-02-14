@@ -41,12 +41,12 @@ Welcome to the Internet of Peers
 
 |  Module                                         |                           Stability                          |
 | ------------------------------------------------| :----------------------------------------------------------: |
-| [`hypercore`](./building-blocks/hypercore.md)   |    <mark style="background-color:green;">**stable**</mark>   |
-| [`hyperbee`](./building-blocks/hyperbee.md)     |    <mark style="background-color:green;">**stable**</mark>   |
-| [`hyperdrive`](./building-blocks/hyperdrive.md) |    <mark style="background-color:green;">**stable**</mark>   |
-| [`autobase`](./building-blocks/autobase.md)     | <mark style="background-color:blue;">**experimental**</mark> |
-| [`hyperswarm`](./building-blocks/hyperswarm.md) |    <mark style="background-color:green;">**stable**</mark>   |
-| [`hyperdht`](./building-blocks/hyperdht.md)     |    <mark style="background-color:green;">**stable**</mark>   |
+| [`hypercore`](./building-blocks/hypercore.md)   |    <mark style="background-color: #80ff80;">**stable**</mark>   |
+| [`hyperbee`](./building-blocks/hyperbee.md)     |    <mark style="background-color: #80ff80;">**stable**</mark>   |
+| [`hyperdrive`](./building-blocks/hyperdrive.md) |    <mark style="background-color: #80ff80;">**stable**</mark>   |
+| [`autobase`](./building-blocks/autobase.md)     | <mark style="background-color: #8484ff;">**experimental**</mark> |
+| [`hyperswarm`](./building-blocks/hyperswarm.md) |    <mark style="background-color: #80ff80;">**stable**</mark>   |
+| [`hyperdht`](./building-blocks/hyperdht.md)     |    <mark style="background-color: #80ff80;">**stable**</mark>   |
 
 ### Hypercore
 
@@ -129,8 +129,8 @@ The following stability indices have been used:
 
 |                           Stability                          |                         Description                         |
 | :----------------------------------------------------------: | :---------------------------------------------------------: |
-|    <mark style="background-color:green;">**stable**</mark>   | Unlikely to change or be removed in the foreseeable future. |
-| <mark style="background-color:blue;">**experimental**</mark> |             New, untested, or have known issues.            |
-| <mark style="background-color:yellow;">**deprecated**</mark> |           Being removed or replaced in the future.          |
-|    <mark style="background-color:red;">**unstable**</mark>   |          May change or be removed without warning.          |
+|    <mark style="background-color: #80ff80;">**stable**</mark>   | Unlikely to change or be removed in the foreseeable future. |
+| <mark style="background-color: #8484ff;">**experimental**</mark> |             New, untested, or have known issues.            |
+| <mark style="background-color: #ffffa2;">**deprecated**</mark> |           Being removed or replaced in the future.          |
+|    <mark style="background-color: #ff4242;">**unstable**</mark>   |          May change or be removed without warning.          |
 
