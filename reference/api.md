@@ -91,7 +91,7 @@ The current release length as marked by the `pear release` command.
 
 **References**
 
-* [`pear release`](./cli.md)
+* [`pear release`](./cli.md#pear-release-channelkey-dir)
 
 ### `Pear.config.link <String>`
 
@@ -100,9 +100,10 @@ The Pear link of an application. Takes the form `pear://<key>/<data>`.
 In development, `pear://dev/<data>`.
 
 **References**
-* [Pear.config.link](#pearconfiglinkdata-string)
-* [`pear dev`](./cli.md)
-* [`pear run`](./cli.md)
+
+* [Pear.config.link](#pearconfiglink-string)
+* [`pear dev`](./cli.md#pear-dev-dir----args)
+* [`pear run`](./cli.md#pear-run----args)
 
 ### `Pear.config.linkData <String>`
 
@@ -115,8 +116,8 @@ In development, `pear://dev/<data>`.
 **References**
 
 * [Pear.config.link](#pearconfiglink-string)
-* [`pear dev`](./cli.md)
-* [`pear run`](./cli.md)
+* [`pear dev`](./cli.md#pear-dev-dir----args)
+* [`pear run`](./cli.md#pear-run----args)
 
 
 ### `Pear.config.checkpoint <Any>`
@@ -131,7 +132,7 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 **References**
 
-* [Pear.checkpoint()](#pear-checkpoint-any)
+* [Pear.checkpoint()](#pearcheckpointany--promise)
 
 ### `Pear.config.release <Integer>`
 
@@ -151,7 +152,7 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 **References**
 
-* [Pear.config.checkpoint()](#pear--config-checkpoint-any)
+* [Pear.config.checkpoint()](#pearconfigcheckpoint-any)
 
 ## Pear.messages([ pattern ], [ listener ]) -> Iterable
 
@@ -510,11 +511,11 @@ Send arguments to the window. They will be serialized with `JSON.stringify`.
 
 Resolves to: `<String>`
 
-Correlates to the `id` property of objects in the array returned from [Pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options).
+Correlates to the `id` property of objects in the array returned from [Pear.media.desktopSources](#const-sources--await-pearmediadesktopsourcesoptions-object).
 
 **References**
 
-* [Pear.media.desktopSources](#const-sources--await-appmediadesktopsourcesoptions-object)
+* [Pear.media.desktopSources](#const-sources--await-pearmediadesktopsourcesoptions-object)
 * https://www.electronjs.org/docs/latest/api/browser-window#wingetmediasourceid
 
 ### `const dimensions = await win.dimensions()`
@@ -567,7 +568,7 @@ Sets the dimensions of the window.
 
 **References**
 
-* [const dimensions = await win.dimensions()](#const-dimensions-await-windimensions)
+* [const dimensions = await win.dimensions()](#const-dimensions--await-windimensions)
 
 
 ### `const visible = await win.isVisible()`
@@ -682,11 +683,11 @@ Send arguments to the view. They will be serialized with `JSON.stringify`.
 
 Resolves to: `<String>`
 
-Supplies the `id` property of objects in the array returned from [Pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options).
+Supplies the `id` property of objects in the array returned from [Pear.media.desktopSources](#const-sources--await-pearmediadesktopsourcesoptions-object).
 
 **References**
 
-* [Pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options)
+* [Pear.media.desktopSources](#const-sources--await-pearmediadesktopsourcesoptions-object)
 * https://www.electronjs.org/docs/latest/api/browser-window#wingetmediasourceid
 
 ### `const dimensions = await view.dimensions()`
@@ -782,7 +783,7 @@ Get the sourceId of the current window or view.
 
 **References**
 
-* [win.getMediaSourceId()](const-sourceId--await-wingetMediaSourceId)
+* [win.getMediaSourceId()](#const-sourceid--await-wingetmediasourceid)
 
 
 ### `const success = await self.minimize()`
@@ -877,7 +878,7 @@ Get the sourceId of the parent window or view.
 
 **References**
 
-* [win.getMediaSourceId()](#const-sourceId--await-wingetMediaSourceId)
+* [win.getMediaSourceId()](#const-sourceid--await-wingetmediasourceid)
 
 
 ### `const success = await parent.minimize()`
