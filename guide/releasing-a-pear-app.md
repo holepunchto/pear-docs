@@ -4,7 +4,7 @@ Pear applications are stored in an append-only log ([hypercore](../building-bloc
 
 Each version is identified by `<fork>.<length>.<key>`. The length corresponds to the length of the application's append-only log at the time.
 
-> [Build with Pear - Episode 03: Releasing Pear Applications](https://www.youtube.com/watch?v=UuzTlzEET4o)
+{% embed url="https://www.youtube.com/watch?v=OTwY_avUPyI" %} Build with Pear - Episode 03: Releasing Pear Applications {% endembed %}
 
 `pear run <key>` opens the application.
 

@@ -2,7 +2,7 @@
 
 This section shows how to generate, configure, and develop a Pear desktop project, in preparation for [Making a Pear Desktop Application](./making-a-pear-desktop-app.md).
 
-> [Build with Pear - Episode 01: Developing with Pear](https://www.youtube.com/watch?v=y2G97xz78gU)
+{% embed url="https://www.youtube.com/watch?v=y2G97xz78gU" %} Build with Pear - Episode 01: Developing with Pear {% endembed %}
 
 ## Step 1. Initialization
 

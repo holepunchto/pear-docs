@@ -4,7 +4,7 @@ In the HyperDHT How-to ([Connect Two Peers](./connect-two-peers-by-key-with-hype
 
 [`Hypercore`](../building-blocks/hypercore.md) is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
-> [Build with Pear - Episode 06: Replication and Persistence](https://www.youtube.com/watch?v=MxykB79LhR4&t)
+{% embed url="https://www.youtube.com/watch?v=5t2mOi0BeDg" %} Build with Pear - Episode 05: Replication and Persistence {% endembed %}
 
 In this guide we'll extend the ephemeral chat example in [Connect Many Peers](./connect-to-many-peers-by-topic-with-hyperswarm.md) but using Hypercore to add many significant new features:
 
