@@ -9,9 +9,9 @@ as small as possible.
 
 ## `global.Pear`
 
-The Pear Platform API is made available globally as `Pear`. 
+The Pear Platform API is made available globally as `Pear`.
 
-The `Pear` API is designed to be small and immutable. 
+The `Pear` API is designed to be small and immutable.
 
 Any future changes to the `Pear` API will be non-breaking additions.
 
@@ -83,7 +83,7 @@ Application storage path.
 
 ### `Pear.config.args <Array>`
 
-Command-line application arguments passed after double dash `--`.
+Command-line application arguments passed like `pear dev . --some arg`.
 
 ### `Pear.config.release <Number>`
 
@@ -363,9 +363,9 @@ Restart the application.
 The `listener` function is called for every incoming update with an `update` object of the form:
 
 ```js
-{ 
-  type: 'pear/updates', 
-  version: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null, 
+{
+  type: 'pear/updates',
+  version: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null,
   app <Boolean>,
   diff <Array <String> >,
 }
