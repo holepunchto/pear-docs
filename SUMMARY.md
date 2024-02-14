@@ -17,6 +17,8 @@
 * [Making a Pear Terminal Application](./guide/making-a-pear-terminal-app.md)
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Marking a Release](./guide/releasing-a-pear-app.md)
+* [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md.md)
+* [Debugging a Pear Mobile Application](./guide/debugging-a-pear-mobile-app.md.md)
 
 ### How-tos
 
@@ -37,7 +39,7 @@
 * [Hyperswarm](./building-blocks/hyperswarm.md)
 
 
-## Helpers 
+## Helpers
 
 * [Corestore](./helpers/corestore.md)
 * [Localdrive](./helpers/localdrive.md)
