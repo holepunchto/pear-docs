@@ -1,6 +1,6 @@
 # Sharing a Pear Application
 
-Applications can be shared with peers by seeding them to the network from an efficient local data structure (a [hypercore](../building-blocks/hypercore.md)). We call the mirroring of a local file system into the Pear platform Application Storage "staging". Seeding is sharing an app from a machine over the Distributed Hash Table (DHT) (via [hyperswarm](../building-blocks/hyperswarm.md)) so that other peers can replicate, consume and reseed the application.
+Applications can be shared with peers by seeding them to the network from an efficient local data structure (a [hypercore](../building-blocks/hypercore.md)). We call the mirroring of a local file system into the Pear platform Application Storage as "staging". Seeding is sharing an app from a machine over the Distributed Hash Table (DHT) (via [hyperswarm](../building-blocks/hyperswarm.md)) so that other peers can replicate, consume and reseed the application.
 
 > [Build with Pear - Episode 02: Sharing Pear Applications](https://www.youtube.com/watch?v=BEadqmp7lA0)
 
@@ -80,7 +80,7 @@ This will output something similar to the following
 ^_^ announced
 ```
 
-As long as the process is running the application is being seeded. If other peers reseed the application the original process could be closed. Be sure to keep the terminal open this process running.
+As long as the process is running the application is being seeded. If other peers reseed the application the original process could be closed. Be sure to keep the terminal open while this process is running.
 
 
 ## Step 4. Run the app on another machine
@@ -134,7 +134,7 @@ When Pear loads an application from a peer the staged files are sparsely replica
 
 The command signature for `pear seed` is `pear seed <channel|key> [dir]`.
 
-If the application was staged on the machine, it will seed the appliction from the machine.
+If the application was staged on the machine, it will seed the application from the machine.
 
 Otherwise, passing an application key to `pear seed`  will reseed the application from that key.
 
