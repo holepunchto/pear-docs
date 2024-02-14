@@ -72,7 +72,7 @@ Notable features include:
 
 ### Hyperdrive
 
-The [`hyperdrive`](./building-blocks/hyperdrive.md) module is a secure, real-time distributed file system that simplifies P2P file sharing that provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
+The [`hyperdrive`](./building-blocks/hyperdrive.md) module is a secure, real-time distributed file system that simplifies P2P file sharing, it provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
 
 * Uses Hyperbee internally for storing file metadata
 * Major API simplification. Instead of mirroring POSIX APIs, the new API better captures the core requirements of P2P file transfer.
@@ -110,7 +110,7 @@ Helper modules can be used together with the building blocks to create cutting-e
 
 ## Tools
 
-The following tools are used extensively employed in the day-to-day development and operation of applications built on Pear
+The following tools are extensively employed in the day-to-day development and operation of applications built on Pear.
 
 |                           Tools                           |                         Description                         |
 | :----------------------------------------------------------: | :---------------------------------------------------------: |
