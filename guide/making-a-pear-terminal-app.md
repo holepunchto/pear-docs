@@ -4,7 +4,7 @@ This guide demonstrates how to build a peer-to-peer chat application.
 
 It continues where [Starting a Pear Terminal Project](./starting-a-pear-terminal-project.md) left off.
 
-> [Build with Pear - Episode 04: Pear Terminal Applications]https://www.youtube.com/watch?v=73KVE0wocTE
+> [Build with Pear - Episode 04: Pear Terminal Applications](https://www.youtube.com/watch?v=UoGJ7PtAwtI)
 
 ## Step 1. Install modules
 

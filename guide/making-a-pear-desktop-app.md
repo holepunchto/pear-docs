@@ -4,7 +4,7 @@ This guide demonstrates how to build a peer-to-peer chat application.
 
 It continues where [Starting a Pear Desktop Project](./starting-a-pear-desktop-project.md) left off.
 
-> [Build with Pear - Episode 01: Developing with Pear](https://www.youtube.com/watch?v=y2G97xz78gU)
+> [Build with Pear - Episode 02: Sharing Pear Applications](https://www.youtube.com/watch?v=BEadqmp7lA0)
 
 ## Step 1. HTML Structure and CSS Styles
 
