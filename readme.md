@@ -114,11 +114,11 @@ The following tools are used extensively employed in the day-to-day development 
 
 |                           Tools                           |                         Description                         |
 | :----------------------------------------------------------: | :---------------------------------------------------------: |
-|    <mark>**[Hypershell](./tools/hypershell)**</mark>   | A CLI to create and connect to P2P E2E encrypted shells.. |
-| <mark>**[Hypertele](./tools/hypertele)**</mark> | A swiss-knife proxy powered by [HyperDHT](./building-blocks/hyperdht).            |
-| <mark>**[Hyperbeam](./tools/hyperbeam)**</mark> | A one-to-one and end-to-end encrypted internet pipe.          |
-|    <mark>**[Hyperssh](./tools/hyperssh)**</mark>   | A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht).          |
-|    <mark>**[Drives](./tools/drives)**</mark>   | CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive) or a [localdrive](./helpers/localdrive).          |
+|    <mark>**[Hypershell](./tools/hypershell.md)**</mark>   | A CLI to create and connect to P2P E2E encrypted shells.. |
+| <mark>**[Hypertele](./tools/hypertele.md)**</mark> | A swiss-knife proxy powered by [HyperDHT](./building-blocks/hyperdht.md).            |
+| <mark>**[Hyperbeam](./tools/hyperbeam.md)**</mark> | A one-to-one and end-to-end encrypted internet pipe.          |
+|    <mark>**[Hyperssh](./tools/hyperssh.md)**</mark>   | A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht.md).          |
+|    <mark>**[Drives](./tools/drives.md)**</mark>   | CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive.md) or a [localdrive](./helpers/localdrive.md).          |
 
 
 ## Stability indexing
