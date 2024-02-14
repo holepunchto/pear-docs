@@ -13,7 +13,7 @@ Create the `multicore-writer-app` project with these commands:
 mkdir multicore-writer-app
 cd multicore-writer-app
 pear init -y -t terminal
-npm install corestore hyperswarm b4a
+npm install bare-process corestore hyperswarm b4a
 ```
 
 Alter the generated `multicore-writer-app/index.js` file to the following
@@ -22,6 +22,7 @@ Alter the generated `multicore-writer-app/index.js` file to the following
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import b4a from 'b4a'
+import process from 'bare-process'
 
 const store = new Corestore(Pear.config.storage)
 const swarm = new Hyperswarm()
@@ -53,7 +54,7 @@ if (core1.length === 0) {
 }
 
 // Record all short messages in core2, and all long ones in core3
-Pear.stdio.in.on('data', (data) => {
+process.stdin.on('data', (data) => {
   if (data.length < 5) {
     console.log('appending short data to core2')
     core2.append(data)
@@ -109,8 +110,7 @@ swarm.flush().then(() => foundPeers())
 await core.update()
 
 if (core.length === 0) {
-  console.log('Could not connect to the writer peer')
-  process.exit(1)
+  throw new Error('Could not connect to the writer peer')
 }
 
 // getting cores using the keys stored in the first block of main core
@@ -140,8 +140,8 @@ The `multicore-writer-app` will output the main core key.
 In another terminal, open the `multicore-reader-app` and pass it the key:
 
 ```
-cd reader-app
-pear dev -- <SUPPLY THE KEY HERE>
+cd multicore-reader-app
+pear dev . <SUPPLY THE KEY HERE>
 ```
 
 As inputs are made to the terminal running the writer application, outputs should be shown in the terminal running the reader application.
