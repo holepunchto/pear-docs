@@ -1,6 +1,6 @@
 # Getting Started with Pear
 
-Pear Desktop can be installed from the [pears.com](pears.com) or via [npm](https://www.npmjs.com/).
+Pear Runtime can be installed from the [pears.com](pears.com) or via [npm](https://www.npmjs.com/).
 
 Since `npm` (or equivalent package manager) is needed to install application dependencies this guide will walk through installing `pear` with `npm`.
 
@@ -18,7 +18,7 @@ On MacOS and Linux, we recommend installing `node` using [`nvm`](https://github.
 
 On Windows we recommend installing `node` with [`nvs`](https://github.com/jasongin/nvs#setup).
 
-> The Pear Desktop does not rely on `node`, `node` is only needed to install and run the `npm` package manager.
+> The Pear Runtime does not rely on `node`, `node` is only needed to install and run the `npm` package manager.
 
 ## Setup
 
