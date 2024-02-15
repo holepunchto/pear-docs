@@ -109,7 +109,7 @@ The public key of the [Hyperblobs](https://github.com/holepunchto/hyperblobs) in
 
 #### **`drive.version`**
 
-The number that indicates how many modifications were made, is useful as a version identifier.
+The number that indicates how many modifications were made, it is useful as a version identifier.
 
 #### **`drive.supportsMetadata`**
 
