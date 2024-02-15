@@ -32,7 +32,7 @@ An object with the keys`{ start, end, buffer, cache }`.
 | `start`  | Byte offset to start encoding/decoding at.    |
 | `end`    | Byte offset indicating the end of the buffer. |
 | `buffer` | Either a Node.js Buffer or Uint8Array.        |
-| `cache`  | Used internally be codecs, starts as `null`.  |
+| `cache`  | Used internally by codecs, starts as `null`.  |
 
 > Users can also get a blank state object using`cenc.state()`.
 
