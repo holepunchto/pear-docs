@@ -176,7 +176,7 @@ const encryptedSocket = node.connect(remotePublicKey)
 | Property      | Description                                              | Type   | Default               |
 | ------------- | -------------------------------------------------------- | ------ | --------------------- |
 | **`nodes`**   | optional array of close dht nodes to speed up connecting | Array  | `[]`                  |
-| **`keyPair`** | optional key pair to use when connection                 | Object | `node.defaultKeyPair` |
+| **`keyPair`** | optional key pair to use when connecting                | Object | `node.defaultKeyPair` |
 
 #### Properties
 
