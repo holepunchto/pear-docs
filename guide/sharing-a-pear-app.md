@@ -80,7 +80,7 @@ This will output something similar to the following
 ^_^ announced
 ```
 
-As long as the process is running the application is being seeded. If other peers reseed the application the original process could be closed. Be sure to keep the terminal open this process running.
+As long as the process is running the application is being seeded. If other peers reseed the application the original process could be closed. Be sure to keep the terminal open while this process is running.
 
 
 ## Step 4. Run the app on another machine
