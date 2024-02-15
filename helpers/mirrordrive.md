@@ -71,7 +71,7 @@ console.log(mirror.count) // => { files: 0, add: 0, remove: 0, change: 0 }
 
 #### **`await mirror.done()`**
 
-It starts processing all the diffing until is done.
+It starts processing all the diffing until it is done.
 
 ```javascript
 const mirror = new MirrorDrive(src, dst)
