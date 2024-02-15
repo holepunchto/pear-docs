@@ -203,7 +203,7 @@ Ban or unban the peer. Banning will prevent any future reconnection attempts, bu
 
 ### Peer Discovery
 
-`swarm.join` returns a `PeerDiscovery` instance which allows for both the controlling of discovery behavior and responding to lifesycle changes during discovery.
+`swarm.join` returns a `PeerDiscovery` instance which allows for both controlling discovery behavior and responding to lifecycle changes during discovery.
 
 #### Methods
 
