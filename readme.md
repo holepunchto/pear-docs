@@ -37,18 +37,24 @@ Welcome to the Internet of Peers
 * [How to share append-only databases with Hyperbee](./howto/share-append-only-databases-with-hyperbee.md)
 * [How to create a full peer-to-peer filesystem with Hyperdrive](./howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive.md)
 
+
+## Stability indexing
+
+Throughout the documentation, indications of stability are provided. Some modules are well-established and used widely, making them highly unlikely to ever change. Other modules may be new, experimental, or known to have risks associated with their use.
+
+The following stability indices have been used:
+
+|                           Stability                          |                         Description                         |
+| :----------------------------------------------------------: | :---------------------------------------------------------: |
+|    <mark style="background-color: #80ff80;">**stable**</mark>   | Unlikely to change or be removed in the foreseeable future. |
+| <mark style="background-color: #8484ff;">**experimental**</mark> |             New, untested, or have known issues.            |
+| <mark style="background-color: #ffffa2;">**deprecated**</mark> |           Being removed or replaced in the future.          |
+|    <mark style="background-color: #ff4242;">**unstable**</mark>   |          May change or be removed without warning.          |
+
+
 ## Building blocks
 
-|  Module                                         |                           Stability                          |
-| ------------------------------------------------| :----------------------------------------------------------: |
-| [`hypercore`](./building-blocks/hypercore.md)   |    <mark style="background-color: #80ff80;">**stable**</mark>   |
-| [`hyperbee`](./building-blocks/hyperbee.md)     |    <mark style="background-color: #80ff80;">**stable**</mark>   |
-| [`hyperdrive`](./building-blocks/hyperdrive.md) |    <mark style="background-color: #80ff80;">**stable**</mark>   |
-| [`autobase`](./building-blocks/autobase.md)     | <mark style="background-color: #8484ff;">**experimental**</mark> |
-| [`hyperswarm`](./building-blocks/hyperswarm.md) |    <mark style="background-color: #80ff80;">**stable**</mark>   |
-| [`hyperdht`](./building-blocks/hyperdht.md)     |    <mark style="background-color: #80ff80;">**stable**</mark>   |
-
-### Hypercore
+### Hypercore <mark style="background-color: #80ff80;">**stable**</mark>
 
 The [`hypercore`](./building-blocks/hypercore.md) module is a distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely peer-to-peer.
 
@@ -60,7 +66,7 @@ Notable features include:
 * The [`session`](./building-blocks/hypercore.md#core.session-options) and [`snapshot`](./building-blocks/hypercore.md#core.snapshot-options) methods for providing multiple views over the same underlying Hypercore, which simplifies resource management.
 * A [`truncate`](./building-blocks/hypercore.md#await-core.truncate-newlength-forkid) method for intentionally creating a new fork, starting at a given length. We use this method extensively in [`autobase`](./building-blocks/autobase.md).
 
-### Hyperswarm
+### Hyperswarm <mark style="background-color: #80ff80;">**stable**</mark>
 
 The [`hyperswarm`](./building-blocks/hyperswarm.md) module is a high-level API for finding and connecting to peers who are interested in a "topic."
 
@@ -70,7 +76,7 @@ Notable features include:
 * A custom-built transport protocol, [UDX](https://github.com/hyperswarm/libudx), that takes advantage of the holepunching algorithm to avoid unnecessary overhead (it doesn't include handshaking since holepunching takes care of that, for example). It's blazing fast.
 * A simplified DHT API that closely resembles NodeJS's `net` module, but using public keys instead of IP addresses.
 
-### Hyperdrive
+### Hyperdrive <mark style="background-color: #80ff80;">**stable**</mark>
 
 The [`hyperdrive`](./building-blocks/hyperdrive.md) module is a secure, real-time distributed file system that simplifies P2P file sharing that provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
 
@@ -78,7 +84,7 @@ The [`hyperdrive`](./building-blocks/hyperdrive.md) module is a secure, real-tim
 * Major API simplification. Instead of mirroring POSIX APIs, the new API better captures the core requirements of P2P file transfer.
 * Auxiliary tools, [`localdrive`](./helpers/localdrive.md) and [`mirrordrive`](./helpers/mirrordrive.md), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem.
 
-### Autobase (experimental)
+### Autobase <mark style="background-color: #8484ff;">**experimental**</mark>
 
 The [`autobase`](./building-blocks/autobase.md) experimental module provides a "virtual Hypercore" layer over many Hypercores owned by many different peers. 
 
@@ -89,7 +95,7 @@ Notable features include:
 
 > Autobase is still experimental and is likely to change significantly in the near future.
 
-### Hyperdht
+### Hyperdht <mark style="background-color: #80ff80;">**stable**</mark>
 
 The `hyperdht` module is the Distributed Hash Table (DHT) powering Hyperswarm. Through this DHT, each server is bound to a unique key pair, with the client connecting to the server using the server's public key.
 
@@ -119,18 +125,3 @@ The following tools are used extensively employed in the day-to-day development 
 | <mark>**[Hyperbeam](./tools/hyperbeam.md)**</mark> | A one-to-one and end-to-end encrypted internet pipe.          |
 |    <mark>**[Hyperssh](./tools/hyperssh.md)**</mark>   | A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht.md).          |
 |    <mark>**[Drives](./tools/drives.md)**</mark>   | CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive.md) or a [localdrive](./helpers/localdrive.md).          |
-
-
-## Stability indexing
-
-Throughout the documentation, indications of stability are provided. Some modules are well-established and used widely, making them highly unlikely to ever change. Other modules may be new, experimental, or known to have risks associated with their use.
-
-The following stability indices have been used:
-
-|                           Stability                          |                         Description                         |
-| :----------------------------------------------------------: | :---------------------------------------------------------: |
-|    <mark style="background-color: #80ff80;">**stable**</mark>   | Unlikely to change or be removed in the foreseeable future. |
-| <mark style="background-color: #8484ff;">**experimental**</mark> |             New, untested, or have known issues.            |
-| <mark style="background-color: #ffffa2;">**deprecated**</mark> |           Being removed or replaced in the future.          |
-|    <mark style="background-color: #ff4242;">**unstable**</mark>   |          May change or be removed without warning.          |
-
