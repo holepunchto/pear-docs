@@ -266,7 +266,11 @@ function onMessageAdded (from, message) {
 
 ## Step 4. Chat
 
-Open two app instances by running `pear dev` in two terminals.
+Open two app instances by running `pear dev` in two terminals. For now, you will need to specify a different storage directory for the second `pear` instance to allow for two instances to run simultaneously:
+
+```
+pear dev -s /tmp/tmp_pear_instance
+```
 
 In the first app, click on `Create`. A random topic will appear at the top.
 
