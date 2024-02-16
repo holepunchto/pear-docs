@@ -14,7 +14,7 @@ Any other fields (such as `dependencies`) may also be present in the `package.js
 
 The `package.json` `pear` object contains application configuration and is exposed via the API as `pear.config.options`.
 
-Pear versioning is automatic. The `package.json` file does **not** require a version field, the version field will be ignored..
+Pear versioning is automatic. The `package.json` file does **not** require a version field, the version field will be ignored.
 
 ## The `package.json` `pear` field.
 

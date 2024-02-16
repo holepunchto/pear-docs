@@ -345,7 +345,7 @@ await core.clear(4) // clear block 4 from local cache
 await core.clear(0, 10) // clear block 0-10 from local cache
 ```
 
-The core will also 'gossip' with peers it is connected to, that is no longer has these blocks.
+The core will also 'gossip' with peers it is connected to, that no longer have these blocks.
 
 #### **`await core.truncate(newLength, [forkId])`**
 
@@ -385,7 +385,7 @@ A range can have the following properties:
 To download the full core continuously (often referred to as non-sparse mode):
 
 ```javascript
-// Note that this will never be consider downloaded as the range
+// Note that this will never be considered downloaded as the range
 // will keep waiting for new blocks to be appended.
 core.download({ start: 0, end: -1 })
 ```
@@ -567,7 +567,7 @@ Emitted after the core has initially opened all its internal state.
 
 #### **`core.on('close')`**
 
-Emitted when the core has been fully closed
+Emitted when the core has been fully closed.
 
 #### **`core.on('peer-add')`**
 

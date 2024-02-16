@@ -68,7 +68,7 @@ Notable features include:
 
 ### Hyperswarm <mark style="background-color: #80ff80;">**stable**</mark>
 
-The [`hyperswarm`](./building-blocks/hyperswarm.md) module is a high-level API for finding and connecting to peers who are interested in a "topic."
+The [`hyperswarm`](./building-blocks/hyperswarm.md) module is a high-level API for finding and connecting to peers who are interested in a "topic".
 
 Notable features include:
 
@@ -78,7 +78,7 @@ Notable features include:
 
 ### Hyperdrive <mark style="background-color: #80ff80;">**stable**</mark>
 
-The [`hyperdrive`](./building-blocks/hyperdrive.md) module is a secure, real-time distributed file system that simplifies P2P file sharing that provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
+The [`hyperdrive`](./building-blocks/hyperdrive.md) module is a secure, real-time distributed file system that simplifies P2P file sharing. It provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
 
 * Uses Hyperbee internally for storing file metadata
 * Major API simplification. Instead of mirroring POSIX APIs, the new API better captures the core requirements of P2P file transfer.
@@ -90,8 +90,8 @@ The [`autobase`](./building-blocks/autobase.md) experimental module provides a "
 
 Notable features include:
 
-* automatic rebasing of multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration
-* low-friction integration into higher-level modules like Hyperbee and Hyperdrive: Autobase's output shares the familiar Hypercore API so peer-to-peer multi-user collaboration is achievable with little additional implementation effort.
+* Automatic rebasing of multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration.
+* Low-friction integration into higher-level modules like Hyperbee and Hyperdrive: Autobase's output shares the familiar Hypercore API so peer-to-peer multi-user collaboration is achievable with little additional implementation effort.
 
 > Autobase is still experimental and is likely to change significantly in the near future.
 
@@ -101,7 +101,7 @@ The `hyperdht` module is the Distributed Hash Table (DHT) powering Hyperswarm. T
 
 Notable features include:
 
-* lower-level module provides direct access to the DHT for connecting peers using key pairs
+* Lower-level module provides direct access to the DHT for connecting peers using key pairs.
 
 ## Helpers
 
@@ -116,7 +116,7 @@ Helper modules can be used together with the building blocks to create cutting-e
 
 ## Tools
 
-The following tools are used extensively employed in the day-to-day development and operation of applications built on Pear
+The following tools are used extensively, employed in the day-to-day development and operation of applications built on Pear.
 
 |                           Tools                           |                         Description                         |
 | :----------------------------------------------------------: | :---------------------------------------------------------: |

@@ -78,7 +78,7 @@ String with the resolved (absolute) drive path.
 
 **`drive.supportsMetadata`**
 
-Boolean that indicates if the drive handles or not metadata. Default `false`.
+Boolean indicating whether the drive handles metadata. Default `false`.
 
 If `options.metadata` hooks are passed then `supportsMetadata` becomes `true`.
 
