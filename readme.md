@@ -62,7 +62,7 @@ Notable features include:
 
 ### Hyperswarm
 
-The [`hyperswarm`](./building-blocks/hyperswarm.md) module is a high-level API for finding and connecting to peers who are interested in a "topic."
+The [`hyperswarm`](./building-blocks/hyperswarm.md) module is a high-level API for finding and connecting to peers who are interested in a "topic".
 
 Notable features include:
 
@@ -84,8 +84,8 @@ The [`autobase`](./building-blocks/autobase.md) experimental module provides a "
 
 Notable features include:
 
-* automatic rebasing of multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration
-* low-friction integration into higher-level modules like Hyperbee and Hyperdrive: Autobase's output shares the familiar Hypercore API so peer-to-peer multi-user collaboration is achievable with little additional implementation effort.
+* Automatic rebasing of multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration.
+* Low-friction integration into higher-level modules like Hyperbee and Hyperdrive: Autobase's output shares the familiar Hypercore API so peer-to-peer multi-user collaboration is achievable with little additional implementation effort.
 
 > Autobase is still experimental and is likely to change significantly in the near future.
 
@@ -95,7 +95,7 @@ The `hyperdht` module is the Distributed Hash Table (DHT) powering Hyperswarm. T
 
 Notable features include:
 
-* lower-level module provides direct access to the DHT for connecting peers using key pairs
+* Lower-level module provides direct access to the DHT for connecting peers using key pairs.
 
 ## Helpers
 

@@ -90,7 +90,7 @@ function appendMessage ({ name, message }) {
 
 ## Step 3. Run in dev mode
 
-To test this chat app, in one terminal run `pear dev .`.
+To test this chat app, in one terminal run `pear dev .`
 
 The app will output something similar to:
 
@@ -98,7 +98,7 @@ The app will output something similar to:
 [info] Created new chat room: a1b2c35fbeb452bc900c5a1c00306e52319a3159317312f54fe5a246d634f51a
 ```
 
-In another terminal use this key as input, `pear dev . a1b2c35fbeb452bc900c5a1c00306e52319a3159317312f54fe5a246d634f51a`.
+In another terminal use this key as input, `pear dev . a1b2c35fbeb452bc900c5a1c00306e52319a3159317312f54fe5a246d634f51a`
 
 The app will output:
 

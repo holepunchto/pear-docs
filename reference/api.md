@@ -263,7 +263,7 @@ Media interface
 
 ### `const status = await Pear.media.status.microphone()`
 
-Resolves to: `<String>`.
+Resolves to: `<String>`
 
 If access to the microphone is available, resolved value will be `'granted'`.
 
@@ -271,7 +271,7 @@ Any other string indicates lack of permission. Possible values are `'granted'`, 
 
 ### `const status = await Pear.media.status.camera()`
 
-Resolves to: `<String>`.
+Resolves to: `<String>`
 
 If access to the camera is available, resolved value will be `'granted'`.
 
