@@ -1,4 +1,4 @@
-# Application Programming Interface (API)
+# Application Programming Interface (API) <mark style="background-color: #8484ff;">**experimental**</mark>
 
 The Pear API enables applications to interact with Pear platform features.
 
