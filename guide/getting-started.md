@@ -10,7 +10,7 @@ Since `npm` (or equivalent package manager) is needed to install application dep
 
 Pear runs on Windows, Mac and Linux.
 
-The `pear` CLI can be installed from [npm](https://www.npmjs.com/), which comes with [`node`](https://nodejs.org/en/about). 
+The `pear` CLI can be installed from [npm](https://www.npmjs.com/), which comes with [`node`](https://nodejs.org/en/about).
 
 The `npm` package manager can also be used to install application dependencies later on.
 
@@ -35,7 +35,7 @@ pear
 ```
 
 If a Pear application, such as [Keet](https://keet.io), is already installed then the Pear platform is already available. In this case, running `pear` should show help output.
- 
+
 If not, the first run of `pear` will fetch the platform from peers, after which running `pear` again should output help information.
 
 To check that Pear is fully working, try the following command:

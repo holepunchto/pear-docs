@@ -32,7 +32,6 @@ const { teardown, config } = Pear
 const key = config.args.pop()
 const shouldCreateSwarm = !key
 const swarm = new Hyperswarm()
-const log = console.log
 const rl = readline.createInterface({
   input: new tty.ReadStream(0),
   output: new tty.WriteStream(1)
