@@ -1,8 +1,8 @@
 # Debugging A Pear Terminal Application
 
-It is easy to debug Pear Desktop Applications because it comes included with devtools. That is not the case with a Terminal Application so some steps are needed.
+Debugging Pear Terminal Applications is different than debugging Desktop Applications because they do not come with a UI. Instead a few steps are needed.
 
-Use [Pear Inspect](https://github.com/holepunchto/pear-inspect) together with Pear Desktop and use any DevTools-supporting
+Use [Pear Inspect](https://github.com/holepunchto/pear-inspect) together with the Pear Runtime Desktop and use any tool that supports DevTools like Chrome.
 
 ## Step 1. Install pear-inspect
 
@@ -39,7 +39,7 @@ The application will output something similar to:
 Debug with pear://runtime/devtools/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
 ```
 
-## Step 4. Add to Pear Desktop
+## Step 4. Add to Pear Runtime Desktop
 
 In Pear Desktop go to `Developer Tooling` and paste in the key.
 
