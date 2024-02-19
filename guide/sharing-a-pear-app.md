@@ -16,7 +16,7 @@ If starting from [Making a Pear Desktop Application](./making-a-pear-desktop-app
 
 ## Step 1. Stage the app
 
-To view the help for the `pear stage` command run `pear stage help`.
+To view the help for the `pear stage` command run `pear help stage`.
 
 The command signature for `pear stage` is `pear stage <channel|key> [dir]`.
 
