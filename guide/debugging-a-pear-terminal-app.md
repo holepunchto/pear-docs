@@ -19,8 +19,8 @@ This code should run as the first thing in the application:
 ``` js
 if (Pear.config.dev) {
   const { Inspector } = await import('pear-inspect')
-  const inpector = await new Inspector()
-  const key = await inpector.enable()
+  const inspector = await new Inspector()
+  const key = await inspector.enable()
   console.log(`Debug with pear://runtime/devtools/${key.toString('hex')}`)
 }
 ```
