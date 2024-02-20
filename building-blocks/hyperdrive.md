@@ -4,6 +4,12 @@
 
 Hyperdrive is a secure, real-time distributed file system designed for easy P2P file sharing. We use it extensively inside Holepunch; apps like Keet are distributed to users as Hyperdrives, as is the Holepunch platform itself.
 
+Notable features include:
+
+* Uses Hyperbee internally for storing file metadata
+* Major API simplification. Instead of mirroring POSIX APIs, the new API better captures the core requirements of P2P file transfer.
+* Auxiliary tools, [`localdrive`](./helpers/localdrive.md) and [`mirrordrive`](./helpers/mirrordrive.md), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem.
+
 > [GitHub (Hyperdrive)](https://github.com/holepunchto/hyperdrive)
 
 * [Hyperdrive](../building-blocks/hyperdrive.md)

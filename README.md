@@ -12,13 +12,17 @@ Welcome to the Internet of Peers
 
 ## Table of Contents
 
-### Reference
+### Pear runtime
+
+References for utilizing the Pear runtime.
 
 * [Command-Line-Interface (CLI)](./reference/cli.md)
 * [Application-Programming-Interface (API)](./reference/api.md)
 * [Application Configuration](./reference/configuration.md)
 
 ### Guides
+
+Guides on using the pear runtime to build and share P2P applications.
 
 * [Getting Started](./guide/getting-started.md)
 * [Starting a Pear Desktop Project](./guide/starting-a-pear-desktop-project.md)
@@ -28,16 +32,9 @@ Welcome to the Internet of Peers
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
 
-### How-tos
-
-* [How to connect two peers by key with HyperDHT](./howto/connect-two-peers-by-key-with-hyperdht.md)
-* [How to connect to many peers by topic with Hyperswarm](./howto/connect-to-many-peers-by-topic-with-hyperswarm.md)
-* [How to replicate and persist with Hypercore](./howto/replicate-and-persist-with-hypercore.md)
-* [How to work with many Hypercores using Corestore](./howto/work-with-many-hypercores-using-corestore.md)
-* [How to share append-only databases with Hyperbee](./howto/share-append-only-databases-with-hyperbee.md)
-* [How to create a full peer-to-peer filesystem with Hyperdrive](./howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive.md)
-
 ## Building blocks
+
+The essential building blocks for building powerful P2P applications using Pear.
 
 |  Module                                         |                           Stability                          |
 | ------------------------------------------------| :----------------------------------------------------------: |
@@ -48,54 +45,16 @@ Welcome to the Internet of Peers
 | [`hyperswarm`](./building-blocks/hyperswarm.md) |    <mark style="background-color: #80ff80;">**stable**</mark>   |
 | [`hyperdht`](./building-blocks/hyperdht.md)     |    <mark style="background-color: #80ff80;">**stable**</mark>   |
 
-### Hypercore
+## How-tos
 
-The [`hypercore`](./building-blocks/hypercore.md) module is a distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely peer-to-peer.
+Simple How-tos on using the essential builing blocks in P2P applications using.
 
-Notable features include:
-
-* Improved fork detection in the replication protocol, to improve resilience.
-* Optional on-disk encryption for blocks (in addition to the existing transport encryption).
-* A write-ahead log in the storage layer to ensure that power loss or unexpected shutdown cannot lead to data corruption.
-* The [`session`](./building-blocks/hypercore.md#core.session-options) and [`snapshot`](./building-blocks/hypercore.md#core.snapshot-options) methods for providing multiple views over the same underlying Hypercore, which simplifies resource management.
-* A [`truncate`](./building-blocks/hypercore.md#await-core.truncate-newlength-forkid) method for intentionally creating a new fork, starting at a given length. We use this method extensively in [`autobase`](./building-blocks/autobase.md).
-
-### Hyperswarm
-
-The [`hyperswarm`](./building-blocks/hyperswarm.md) module is a high-level API for finding and connecting to peers who are interested in a "topic."
-
-Notable features include:
-
-* An improved UDP holepunching algorithm that uses arbitrary DHT nodes (optionally selected by the connecting peers) to proxy necessary metadata while being maximally privacy-preserving.
-* A custom-built transport protocol, [UDX](https://github.com/hyperswarm/libudx), that takes advantage of the holepunching algorithm to avoid unnecessary overhead (it doesn't include handshaking since holepunching takes care of that, for example). It's blazing fast.
-* A simplified DHT API that closely resembles NodeJS's `net` module, but using public keys instead of IP addresses.
-
-### Hyperdrive
-
-The [`hyperdrive`](./building-blocks/hyperdrive.md) module is a secure, real-time distributed file system that simplifies P2P file sharing that provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
-
-* Uses Hyperbee internally for storing file metadata
-* Major API simplification. Instead of mirroring POSIX APIs, the new API better captures the core requirements of P2P file transfer.
-* Auxiliary tools, [`localdrive`](./helpers/localdrive.md) and [`mirrordrive`](./helpers/mirrordrive.md), that streamline import/export flows and make it easy to mirror drives to and from the local filesystem.
-
-### Autobase (experimental)
-
-The [`autobase`](./building-blocks/autobase.md) experimental module provides a "virtual Hypercore" layer over many Hypercores owned by many different peers. 
-
-Notable features include:
-
-* automatic rebasing of multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration
-* low-friction integration into higher-level modules like Hyperbee and Hyperdrive: Autobase's output shares the familiar Hypercore API so peer-to-peer multi-user collaboration is achievable with little additional implementation effort.
-
-> Autobase is still experimental and is likely to change significantly in the near future.
-
-### Hyperdht
-
-The `hyperdht` module is the Distributed Hash Table (DHT) powering Hyperswarm. Through this DHT, each server is bound to a unique key pair, with the client connecting to the server using the server's public key.
-
-Notable features include:
-
-* lower-level module provides direct access to the DHT for connecting peers using key pairs
+* [How to connect two peers by key with HyperDHT](./howto/connect-two-peers-by-key-with-hyperdht.md)
+* [How to connect to many peers by topic with Hyperswarm](./howto/connect-to-many-peers-by-topic-with-hyperswarm.md)
+* [How to replicate and persist with Hypercore](./howto/replicate-and-persist-with-hypercore.md)
+* [How to work with many Hypercores using Corestore](./howto/work-with-many-hypercores-using-corestore.md)
+* [How to share append-only databases with Hyperbee](./howto/share-append-only-databases-with-hyperbee.md)
+* [How to create a full peer-to-peer filesystem with Hyperdrive](./howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive.md)
 
 ## Helpers
 
@@ -110,7 +69,7 @@ Helper modules can be used together with the building blocks to create cutting-e
 
 ## Tools
 
-The following tools are used extensively employed in the day-to-day development and operation of applications built on Pear
+The following tools are used extensively employed in the day-to-day development and operation of applications built on Pear.
 
 |                           Tools                           |                         Description                         |
 | :----------------------------------------------------------: | :---------------------------------------------------------: |
@@ -120,6 +79,11 @@ The following tools are used extensively employed in the day-to-day development 
 |    <mark>**[Hyperssh](./tools/hyperssh.md)**</mark>   | A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht.md).          |
 |    <mark>**[Drives](./tools/drives.md)**</mark>   | CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive.md) or a [localdrive](./helpers/localdrive.md).          |
 
+## Apps
+
+Applications built using Pear. 
+
+- [Keet](./apps/keet.md) - A peer-to-peer chat and video-conferencing application with end-to-end encryption.
 
 ## Stability indexing
 

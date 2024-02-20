@@ -4,6 +4,14 @@
 
 Hypercore is a secure, distributed append-only log built for sharing large datasets and streams of real-time data. It comes with a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
+Notable features include:
+
+* Improved fork detection in the replication protocol, to improve resilience.
+* Optional on-disk encryption for blocks (in addition to the existing transport encryption).
+* A write-ahead log in the storage layer to ensure that power loss or unexpected shutdown cannot lead to data corruption.
+* The [`session`](#core.session-options) and [`snapshot`](#core.snapshot-options) methods for providing multiple views over the same underlying Hypercore, which simplifies resource management.
+* A [`truncate`](#await-core.truncate-newlength-forkid) method for intentionally creating a new fork, starting at a given length. We use this method extensively in [`autobase`](../building-blocks/autobase.md).
+
 > [GitHub (Hypercore)](https://github.com/holepunchto/hypercore)
 
 * [Hypercore](../building-blocks/hypercore.md)

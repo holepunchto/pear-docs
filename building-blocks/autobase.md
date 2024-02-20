@@ -6,6 +6,10 @@ Autobase is used to automatically rebase multiple causally-linked Hypercores int
 
 > Although Autobase is still under development, it finds application in many active projects. Keet rooms, for example, are powered by Autobase! This is a testament to the potential of Autobase, and we are excited to see what else it can achieve.
 
+Notable features include:
+
+* automatic rebasing of multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration
+* low-friction integration into higher-level modules like Hyperbee and Hyperdrive: Autobase's output shares the familiar Hypercore API so peer-to-peer multi-user collaboration is achievable with little additional implementation effort.
 
 > [GitHub (Autobase)](https://github.com/holepunchto/autobase) 
 

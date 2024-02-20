@@ -6,6 +6,10 @@ The DHT powering Hyperswarm and built on top of [dht-rpc](https://github.com/maf
 
 In the HyperDHT, peers are identified by a public key, not by an IP address. A public key can be connected regardless of where the peers are located, even if they move between different networks.
 
+Notable features include:
+
+* lower-level module provides direct access to the DHT for connecting peers using key pairs
+
 > [GitHub (Hyperdht)](https://github.com/holepunchto/hyperdht)
 
 * [HyperDHT](../building-blocks/hyperdht.md)

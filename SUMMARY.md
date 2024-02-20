@@ -2,7 +2,7 @@
 
 * [Pear by Holepunch](./readme.md)
 
-### Reference
+### Pear runtime
 
 * [Command-Line-Interface (CLI)](./reference/cli.md)
 * [Application-Programming-Interface (API)](./reference/api.md)
@@ -19,15 +19,6 @@
 * [Marking a Release](./guide/releasing-a-pear-app.md)
 * [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
 
-### How-tos
-
-* [Connect two peers](./howto/connect-two-peers-by-key-with-hyperdht.md)
-* [Connect many peers](./howto/connect-to-many-peers-by-topic-with-hyperswarm.md)
-* [Replicate & persist](./howto/replicate-and-persist-with-hypercore.md)
-* [Manage multiple Hypercores](./howto/work-with-many-hypercores-using-corestore.md)
-* [Share append-only databases](./howto/share-append-only-databases-with-hyperbee.md)
-* [Create a p2p filesystem](./howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive.md)
-
 ## Building blocks
 
 * [Hypercore](./building-blocks/hypercore.md)
@@ -37,6 +28,14 @@
 * [HyperDHT](./building-blocks/hyperdht.md)
 * [Hyperswarm](./building-blocks/hyperswarm.md)
 
+### How-tos
+
+* [Connect two peers](./howto/connect-two-peers-by-key-with-hyperdht.md)
+* [Connect many peers](./howto/connect-to-many-peers-by-topic-with-hyperswarm.md)
+* [Replicate & persist](./howto/replicate-and-persist-with-hypercore.md)
+* [Manage multiple Hypercores](./howto/work-with-many-hypercores-using-corestore.md)
+* [Share append-only databases](./howto/share-append-only-databases-with-hyperbee.md)
+* [Create a p2p filesystem](./howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive.md)
 
 ## Helpers
 
@@ -55,4 +54,6 @@
 * [Hyperssh](tools/hyperssh.md)
 * [Drives](tools/drives.md)
 
+## Apps
 
+* [Keet](apps/keet.md)
