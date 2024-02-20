@@ -19,7 +19,7 @@
 * [Marking a Release](./guide/releasing-a-pear-app.md)
 * [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
 
-## Building blocks
+### Building blocks
 
 * [Hypercore](./building-blocks/hypercore.md)
 * [Hyperbee](./building-blocks/hyperbee.md)
@@ -37,7 +37,7 @@
 * [Share append-only databases](./howto/share-append-only-databases-with-hyperbee.md)
 * [Create a p2p filesystem](./howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive.md)
 
-## Helpers
+### Helpers
 
 * [Corestore](./helpers/corestore.md)
 * [Localdrive](./helpers/localdrive.md)
@@ -46,7 +46,7 @@
 * [Compact encoding](./helpers/compact-encoding.md)
 * [Protomux](./helpers/protomux.md)
 
-## Tools
+### Tools
 
 * [Hypershell](tools/hypershell.md)
 * [Hypertele](tools/hypertele.md)
@@ -54,6 +54,6 @@
 * [Hyperssh](tools/hyperssh.md)
 * [Drives](tools/drives.md)
 
-## Apps
+### Apps
 
 * [Keet](apps/keet.md)
