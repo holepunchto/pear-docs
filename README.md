@@ -32,7 +32,7 @@ Guides on using the pear runtime to build and share P2P applications.
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
 
-## Building blocks
+### Building blocks
 
 The essential building blocks for building powerful P2P applications using Pear.
 
@@ -45,7 +45,7 @@ The essential building blocks for building powerful P2P applications using Pear.
 | [`hyperswarm`](./building-blocks/hyperswarm.md) |    <mark style="background-color: #80ff80;">**stable**</mark>   |
 | [`hyperdht`](./building-blocks/hyperdht.md)     |    <mark style="background-color: #80ff80;">**stable**</mark>   |
 
-## How-tos
+### How-tos
 
 Simple How-tos on using the essential builing blocks in P2P applications using.
 
@@ -56,7 +56,7 @@ Simple How-tos on using the essential builing blocks in P2P applications using.
 * [How to share append-only databases with Hyperbee](./howto/share-append-only-databases-with-hyperbee.md)
 * [How to create a full peer-to-peer filesystem with Hyperdrive](./howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive.md)
 
-## Helpers
+### Helpers
 
 Helper modules can be used together with the building blocks to create cutting-edge P2P tools and applications.
 
@@ -67,7 +67,7 @@ Helper modules can be used together with the building blocks to create cutting-e
 * [`compact-encoding`](./helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.
 * [`protomux`](./helpers/protomux.md): Multiplex multiple message oriented protocols over a stream.
 
-## Tools
+### Tools
 
 The following tools are used extensively employed in the day-to-day development and operation of applications built on Pear.
 
@@ -79,7 +79,7 @@ The following tools are used extensively employed in the day-to-day development 
 |    <mark>**[Hyperssh](./tools/hyperssh.md)**</mark>   | A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht.md).          |
 |    <mark>**[Drives](./tools/drives.md)**</mark>   | CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive.md) or a [localdrive](./helpers/localdrive.md).          |
 
-## Apps
+### Apps
 
 Applications built using Pear. 
 
