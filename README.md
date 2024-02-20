@@ -36,14 +36,12 @@ Guides on using the pear runtime to build and share P2P applications.
 
 The essential building blocks for building powerful P2P applications using Pear.
 
-|  Module                                         |                           Stability                          |
-| ------------------------------------------------| :----------------------------------------------------------: |
-| [`hypercore`](./building-blocks/hypercore.md)   |    <mark style="background-color: #80ff80;">**stable**</mark>   |
-| [`hyperbee`](./building-blocks/hyperbee.md)     |    <mark style="background-color: #80ff80;">**stable**</mark>   |
-| [`hyperdrive`](./building-blocks/hyperdrive.md) |    <mark style="background-color: #80ff80;">**stable**</mark>   |
-| [`autobase`](./building-blocks/autobase.md)     | <mark style="background-color: #8484ff;">**experimental**</mark> |
-| [`hyperswarm`](./building-blocks/hyperswarm.md) |    <mark style="background-color: #80ff80;">**stable**</mark>   |
-| [`hyperdht`](./building-blocks/hyperdht.md)     |    <mark style="background-color: #80ff80;">**stable**</mark>   |
+* [`hypercore`](./building-blocks/hypercore.md): A distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely P2P.
+* [`hyperbee`](./building-blocks/hyperbee.md): An append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
+* [`hyperdrive`](./building-blocks/hyperdrive.md): A secure, real-time distributed file system that simplifies P2P file sharing that provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
+* [`autobase`](./building-blocks/autobase.md): A "virtual Hypercore" layer over many Hypercores owned by many different peers.
+* [`hyperdht`](./building-blocks/hyperdht.md): The Distributed Hash Table (DHT) powering Hyperswarm. Through this DHT, each server is bound to a unique key pair, with the client connecting to the server using the server's public key.
+* [`hyperswarm`](./building-blocks/hyperswarm.md): A high-level API for finding and connecting to peers who are interested in a "topic".
 
 ### How-tos
 
