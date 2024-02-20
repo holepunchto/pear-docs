@@ -45,7 +45,7 @@ The essential building blocks for building powerful P2P applications using Pear.
 
 ### How-tos
 
-Simple How-tos on using the essential builing blocks in P2P applications using.
+Simple How-tos on using the essential builing blocks in Pear applications.
 
 * [How to connect two peers by key with HyperDHT](./howto/connect-two-peers-by-key-with-hyperdht.md)
 * [How to connect to many peers by topic with Hyperswarm](./howto/connect-to-many-peers-by-topic-with-hyperswarm.md)
@@ -69,19 +69,17 @@ Helper modules can be used together with the building blocks to create cutting-e
 
 The following tools are used extensively employed in the day-to-day development and operation of applications built on Pear.
 
-|                           Tools                           |                         Description                         |
-| :----------------------------------------------------------: | :---------------------------------------------------------: |
-|    <mark>**[Hypershell](./tools/hypershell.md)**</mark>   | A CLI to create and connect to P2P E2E encrypted shells.. |
-| <mark>**[Hypertele](./tools/hypertele.md)**</mark> | A swiss-knife proxy powered by [HyperDHT](./building-blocks/hyperdht.md).            |
-| <mark>**[Hyperbeam](./tools/hyperbeam.md)**</mark> | A one-to-one and end-to-end encrypted internet pipe.          |
-|    <mark>**[Hyperssh](./tools/hyperssh.md)**</mark>   | A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht.md).          |
-|    <mark>**[Drives](./tools/drives.md)**</mark>   | CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive.md) or a [localdrive](./helpers/localdrive.md).          |
+* [Hypershell](./tools/hypershell.md):  A CLI to create and connect to P2P E2E encrypted shells.
+* [Hypertele](./tools/hypertele.md): A swiss-knife proxy powered by [HyperDHT](./building-blocks/hyperdht.md).
+* [Hyperbeam](./tools/hyperbeam.md): A one-to-one and end-to-end encrypted internet pipe.
+* [Hyperssh](./tools/hyperssh.md): A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht.md).
+* [Drives](./tools/drives.md): CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive.md) or a [localdrive](./helpers/localdrive.md).
 
 ### Apps
 
 Applications built using Pear. 
 
-- [Keet](./apps/keet.md) - A peer-to-peer chat and video-conferencing application with end-to-end encryption.
+- [Keet](./apps/keet.md): A peer-to-peer chat and video-conferencing application with end-to-end encryption.
 
 ## Stability indexing
 
@@ -95,4 +93,3 @@ The following stability indices have been used:
 | <mark style="background-color: #8484ff;">**experimental**</mark> |             New, untested, or have known issues.            |
 | <mark style="background-color: #ffffa2;">**deprecated**</mark> |           Being removed or replaced in the future.          |
 |    <mark style="background-color: #ff4242;">**unstable**</mark>   |          May change or be removed without warning.          |
-
