@@ -6,6 +6,12 @@ Hyperswarm helps to find and connect to peers announcing a common 'topic' that c
 
 Hyperswarm offers a simple interface to abstract away the complexities of underlying modules such as [HyperDHT](hyperdht.md) and [SecretStream](../helpers/secretstream.md). These modules can also be used independently for specialized tasks.
 
+Notable features include:
+
+* An improved UDP holepunching algorithm that uses arbitrary DHT nodes (optionally selected by the connecting peers) to proxy necessary metadata while being maximally privacy-preserving.
+* A custom-built transport protocol, [UDX](https://github.com/hyperswarm/libudx), that takes advantage of the holepunching algorithm to avoid unnecessary overhead (it doesn't include handshaking since holepunching takes care of that, for example). It's blazing fast.
+* A simplified DHT API that closely resembles NodeJS's `net` module, but using public keys instead of IP addresses.
+
 > [GitHub (Hyperswarm)](https://github.com/hyperswarm/hyperswarm)
 
 * [Hyperswarm](../building-blocks/hyperswarm.md)

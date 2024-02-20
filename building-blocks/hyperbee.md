@@ -6,7 +6,6 @@ Hyperbee is an append only B-tree based on [`Hypercore`](hypercore.md). It provi
 
 > As with the Hypercore, a Hyperbee can only have a **single writer on a single machine**; the creator of the Hyperdrive is the only person who can modify it as they're the only one with the private key. That said, the writer can replicate to **many readers**, in a manner similar to BitTorrent.
 
-
 > [GitHub (Hyperbee)](https://github.com/holepunchto/hyperbee)
 
 * [Hyperbee](../building-blocks/hyperbee.md):
