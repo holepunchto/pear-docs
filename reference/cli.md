@@ -7,28 +7,22 @@ The Command Line Interface is the primary interface for Pear Development.
 Create initial project files.
 
 ```
-  --yes|-y      Autoselect all defaults
+--yes|-y         Autoselect all defaults
+--type|-t=type   Project type: desktop (default) or terminal
+--force|-f       Force overwrite existing files
+--with|-w=name   Additional functionality. Available: node
 ```
   
-## pear dev [dir] -- [...args]
+## pear dev [dir] [...args]
 
-Start a project in development mode.
+Run a project in development mode from disk.
 
-Edit project files on disk.
-
-Arguments supplied after a double-dash (`--`) are passed as `pear.config.args`.
-
-Using `--link` instead of arguments allows for application invite links.
-
-A Pear link takes the form: `pear://<key>/<data>`.
-The `<data>` portion of the link is available as `pear.config.linkData`.
+Alias for: `pear run --dev <dir>`
 
 ```
---link=url       Simulate deep-link click open
---run=key        Run app from key in dev mode
---link=url       Simulate deep-link click open
---store|-s=path  Set the Application Storage path
---tmp-store|-t   Use a temporary Application Storage path
+--link=url                 Simulate deep-link click open
+--store|-s=path            Set the Application Storage path
+--tmp-store|-t             Automatic new tmp folder as store path
 ```  
 ## pear stage <channel|key> [dir]
 
@@ -62,25 +56,40 @@ Specify a remote key to reseed.
   --verbose|-v  Additional output
 ```
   
-## pear run <key> -- [...args]
+## pear run <key|dir|alias> [...args]
 
-Run an application from a key.
+Run an application from a key or dir.
 
-The key argument may also be a a Pear Link containing the key.
+|       |                                                   |
+|-------|---------------------------------------------------|
+| key   | `pear://<key>`                            |
+| dir   | `file://<absolute-path>` \| `<absolute-path>` \| `<relative-path>` |
+| alias | `pear://<alias>`                          |
 
-A Pear Link takes the form: `pear://<key>/<data>`.
-
-The `<data>` portion of the link is available as `pear.config.linkData`.
-
-Arguments supplied after a double-dash (`--`) are passed as `pear.config.args`.
 
 ```
   --dev                      Run the app in dev mode
+  --link=url                 Simulate deep-link click open
   --store|-s=path            Set the Application Storage path
   --tmp-store|-t             Automatic new tmp folder as store path
   --checkout=n               Run a checkout, n is version length
   --checkout=release         Run checkout from marked released length
   --checkout=staged          Run checkout from latest version length
+```
+
+### Examples 
+
+```
+pear run pear://u6c6it1hhb5serppr3tghdm96j1gprtesygejzhmhnk5xsse8kmy
+```
+```
+pear run pear://keet
+```
+```
+pear run file://path/to/an-app-folder
+```
+```
+pear run path/to/an-app-folder --some args
 ```
   
 ## pear release <channel|key> [dir]
@@ -96,9 +105,13 @@ Use this to indicate production release points.
   --checkout=n|current     Set a custom release length (version)
 ```
   
-## pear info <key>
+## pear info [key]
 
-Get metadata for a key.
+Read project information.
+
+Supply a key to view application info
+
+Without a key pear info shows Pear info
 
 ```
   --json          Newline delimited JSON output
@@ -131,10 +144,6 @@ and then becomes the sidecar.
 Connect to a Read-Eval-Print-Loop session with sidecar.
 
 A key is printed out, use with repl-swarm module to connect.
-  
-## pear use <key>
-
-Switch to a different platform release-line.
 
 ## pear versions
 
