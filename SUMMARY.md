@@ -57,3 +57,8 @@
 ### Apps
 
 * [Keet](apps/keet.md)
+
+### Examples
+
+* [Bare on Mobile](examples/bare-on-mobile.md)
+* [React App using Pear](examples/react-app-using-pear.md)
