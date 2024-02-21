@@ -5,6 +5,6 @@ The following examples can be used as references for building mobile application
 - [Bare Android](https://github.com/holepunchto/bare-android)
 - [Bare iOS](https://github.com/holepunchto/bare-ios)
 
-> The Bare JavaScript runtime runs equally well on both mobile and desktop.
+> The Bare JavaScript runtime runs equally well on both mobile and desktop environments.
 
 For further reference on using Bare, please refer to [GitHub (Bare)](https://github.com/holepunchto/bare)
