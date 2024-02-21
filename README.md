@@ -51,31 +51,31 @@ The essential building blocks for building powerful P2P applications using Pear.
 
 | Name                                           | Description                                                                                                                         | Stability                                                        |
 |------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|
-| [`hypercore`](./building-blocks/hypercore.md)  | A distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely P2P.         | <mark style="background-color:#80ff80;">**stable**</mark>          |
-| [`hyperdrive`](./building-blocks/hyperdrive.md)| A secure, real-time distributed file system that simplifies P2P file sharing and provides an efficient way to store and access data.| <mark style="background-color:#80ff80;">**stable**</mark>          |
+| [`hypercore`](./building-blocks/hypercore.md)  | A distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely P2P.         | <mark style="background-color:#80ff80;">**stable**</mark>        |
+| [`hyperdrive`](./building-blocks/hyperdrive.md)| A secure, real-time distributed file system that simplifies P2P file sharing and provides an efficient way to store and access data.| <mark style="background-color:#80ff80;">**stable**</mark>        |
 | [`autobase`](./building-blocks/autobase.md)    | A "virtual Hypercore" layer over many Hypercores owned by many different peers.                                                     | <mark style="background-color: #8484ff;">**experimental**</mark> |
-| [`hyperdht`](./building-blocks/hyperdht.md)    | The Distributed Hash Table (DHT) powering Hyperswarm.                                                                               | <mark style="background-color:#80ff80;">**stable**</mark>          |
-| [`hyperswarm`](./building-blocks/hyperswarm.md)| A high-level API for finding and connecting to peers who are interested in a "topic".                                               | <mark style="background-color:#80ff80;">**stable**</mark>          |
+| [`hyperdht`](./building-blocks/hyperdht.md)    | The Distributed Hash Table (DHT) powering Hyperswarm.                                                                               | <mark style="background-color:#80ff80;">**stable**</mark>        |
+| [`hyperswarm`](./building-blocks/hyperswarm.md)| A high-level API for finding and connecting to peers who are interested in a "topic".                                               | <mark style="background-color:#80ff80;">**stable**</mark>        |
 
 ### Helpers
 
 Helper modules can be used together with the building blocks to create cutting-edge P2P tools and applications.
 
-| Name                                               | Description                                                                                                                                                                 | Stability                                               |
-|----------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|
+| Name                                               | Description                                                                                                                                                                 | Stability                                                 |
+|----------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
 | [`corestore`](./helpers/corestore.md)              | A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.                                                                           | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [`localdrive`](./helpers/localdrive.md)            | A file system interoperable with Hyperdrive.                                                                                                                                | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [`mirrordrive`](./helpers/mirrordrive.md)          | Mirror a [`hyperdrive`](./building-blocks/hyperdrive.md) or a [`localdrive`](./helpers/localdrive.md) into another one.                                                     | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [`secretstream`](./helpers/secretstream.md)        | SecretStream is used to securely create connections between two peers in Hyperswarm.                                                                                        | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [`compact-encoding`](./helpers/compact-encoding.md)| A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.| <mark style="background-color:#80ff80;">**stable**</mark> |
-| [`protomux`](./helpers/protomux.md)                | Multiplex multiple message oriented protocols over a stream.                                                                                                                |                                                         |
+| [`protomux`](./helpers/protomux.md)                | Multiplex multiple message oriented protocols over a stream.                                                                                                                | <mark style="background-color:#80ff80;">**stable**</mark> |
 
 ### Tools
 
 The following tools are used extensively employed in the day-to-day development and operation of applications built on Pear.
 
-| Tool                               | Description                                                                                                                   | Stability                                               |
-|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|
+| Name                               | Description                                                                                                                   | Stability                                                 |
+|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
 | [Hypershell](./tools/hypershell.md)| A CLI to create and connect to P2P E2E encrypted shells.                                                                      | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [Hypertele](./tools/hypertele.md)  | A swiss-knife proxy powered by [HyperDHT](./building-blocks/hyperdht.md).                                                     | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [Hyperbeam](./tools/hyperbeam.md)  | A one-to-one and end-to-end encrypted internet pipe.                                                                          | <mark style="background-color:#80ff80;">**stable**</mark> |
