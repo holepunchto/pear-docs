@@ -9,9 +9,12 @@
 - Added note on Bare Runtime + cross platform app example.
 
 ### UX/UI Improvements
-- Improved system path setup UI and removed 'Automatic Setup Completion' button on Windows.
+- Improved system path setup UI.
 - Various typo fixes.
 - Language improvements.
+
+### Fixes
+- Windows - System Path Setup is manual only for now.
 
 ## v1.0.0
 
