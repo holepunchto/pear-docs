@@ -15,6 +15,7 @@
 
 ### Fixes
 - Windows - System Path Setup is manual only for now.
+- Fixed navigation after Pear installation.
 
 ## v1.0.0
 
