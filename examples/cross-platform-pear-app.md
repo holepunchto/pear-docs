@@ -6,4 +6,4 @@ A "Hello World" example of a cross-platform Pear application for Android and iOS
 
 > This above example is still a work in progress, please expect further improvements.
 
-Note that on mobile, the React Native UI runs on one thread and the Bare local backend run on another thread and they both communicate via an IPC API.
+Note that on mobile, the React Native UI runs on one thread and the Bare local backend runs on another thread and they both communicate via an IPC API.
