@@ -20,6 +20,8 @@ References for utilizing the Pear runtime.
 * [Application-Programming-Interface (API)](./reference/api.md)
 * [Application Configuration](./reference/configuration.md)
 
+> The Pear runtime uses [Bare](https://github.com/holepunchto/bare) JavaScript runtime, which is a small and modular JavaScript runtime for desktop and mobile. 
+
 ### Guides
 
 Guides on using the pear runtime to build and share P2P applications.
@@ -84,9 +86,9 @@ Applications built using Pear.
 ### Examples
 
 Collection of example applications that can be used as reference during development.
-
-- [Bare on Mobile](./examples/bare-on-mobile.md)
-- [React App using Pear](./examples/react-app-using-pear.md)
+- [Cross-platform Pear App](./examples/cross-platform-pear-app.md): Cross-platform "Hello World" Pear application for Android and iOS.
+- [Bare on Mobile](./examples/bare-on-mobile.md): Reference applications for using Bare runtime on Android and iOS.
+- [React App using Pear](./examples/react-app-using-pear.md): Example application for building Pear applications using React framework.
 
 ## Stability indexing
 
