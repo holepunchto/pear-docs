@@ -86,8 +86,8 @@ Applications built using Pear.
 ### Examples
 
 Collection of example applications that can be used as reference during development.
-
-- [Bare on Mobile](./examples/bare-on-mobile.md): Example applications for using Bare runtime on Android and iOS.
+- [Cross-platform Pear App](./examples/cross-platform-pear-app.md): Cross-platform "Hello world" Pear application for Android and iOS.
+- [Bare on Mobile](./examples/bare-on-mobile.md): Reference applications for using Bare runtime on Android and iOS.
 - [React App using Pear](./examples/react-app-using-pear.md): Example application for building Pear applications using React framework.
 
 ## Stability indexing

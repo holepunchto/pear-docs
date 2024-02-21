@@ -60,5 +60,6 @@
 
 ### Examples
 
+* [Cross-platform Pear App](examples/cross-platform-pear-app.md)
 * [Bare on Mobile](examples/bare-on-mobile.md)
 * [React App using Pear](examples/react-app-using-pear.md)
