@@ -34,17 +34,6 @@ Guides on using the pear runtime to build and share P2P applications.
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
 
-### Building blocks
-
-The essential building blocks for building powerful P2P applications using Pear.
-
-* [`hypercore`](./building-blocks/hypercore.md): A distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely P2P.
-* [`hyperbee`](./building-blocks/hyperbee.md): An append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
-* [`hyperdrive`](./building-blocks/hyperdrive.md): A secure, real-time distributed file system that simplifies P2P file sharing that provides an efficient way to store and access data across multiple connected devices in a decentralized manner.
-* [`autobase`](./building-blocks/autobase.md): A "virtual Hypercore" layer over many Hypercores owned by many different peers.
-* [`hyperdht`](./building-blocks/hyperdht.md): The Distributed Hash Table (DHT) powering Hyperswarm. Through this DHT, each server is bound to a unique key pair, with the client connecting to the server using the server's public key.
-* [`hyperswarm`](./building-blocks/hyperswarm.md): A high-level API for finding and connecting to peers who are interested in a "topic".
-
 ### How-tos
 
 Simple How-tos on using the essential builing blocks in Pear applications.
@@ -56,26 +45,42 @@ Simple How-tos on using the essential builing blocks in Pear applications.
 * [How to share append-only databases with Hyperbee](./howto/share-append-only-databases-with-hyperbee.md)
 * [How to create a full peer-to-peer filesystem with Hyperdrive](./howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive.md)
 
+### Building blocks
+
+The essential building blocks for building powerful P2P applications using Pear.
+
+| Name                                           | Description                                                                                                                         | Stability                                                        |
+|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|
+| [`hypercore`](./building-blocks/hypercore.md)  | A distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely P2P.         | <mark style="background-color:#80ff80;">**stable**</mark>          |
+| [`hyperdrive`](./building-blocks/hyperdrive.md)| A secure, real-time distributed file system that simplifies P2P file sharing and provides an efficient way to store and access data.| <mark style="background-color:#80ff80;">**stable**</mark>          |
+| [`autobase`](./building-blocks/autobase.md)    | A "virtual Hypercore" layer over many Hypercores owned by many different peers.                                                     | <mark style="background-color: #8484ff;">**experimental**</mark> |
+| [`hyperdht`](./building-blocks/hyperdht.md)    | The Distributed Hash Table (DHT) powering Hyperswarm.                                                                               | <mark style="background-color:#80ff80;">**stable**</mark>          |
+| [`hyperswarm`](./building-blocks/hyperswarm.md)| A high-level API for finding and connecting to peers who are interested in a "topic".                                               | <mark style="background-color:#80ff80;">**stable**</mark>          |
+
 ### Helpers
 
 Helper modules can be used together with the building blocks to create cutting-edge P2P tools and applications.
 
-* [`corestore`](./helpers/corestore.md): A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.
-* [`localdrive`](./helpers/localdrive.md): A file system interoperable with Hyperdrive.
-* [`mirrordrive`](./helpers/mirrordrive.md): Mirror a [`hyperdrive`](./building-blocks/hyperdrive.md) or a [`localdrive`](./helpers/localdrive.md) into another one.
-* [`secretstream`](./helpers/secretstream.md): SecretStream is used to securely create connections between two peers in Hyperswarm.
-* [`compact-encoding`](./helpers/compact-encoding.md): A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.
-* [`protomux`](./helpers/protomux.md): Multiplex multiple message oriented protocols over a stream.
+| Name                                               | Description                                                                                                                                                                 | Stability                                               |
+|----------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|
+| [`corestore`](./helpers/corestore.md)              | A Hypercore factory designed to facilitate the management of sizable named Hypercore collections.                                                                           | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [`localdrive`](./helpers/localdrive.md)            | A file system interoperable with Hyperdrive.                                                                                                                                | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [`mirrordrive`](./helpers/mirrordrive.md)          | Mirror a [`hyperdrive`](./building-blocks/hyperdrive.md) or a [`localdrive`](./helpers/localdrive.md) into another one.                                                     | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [`secretstream`](./helpers/secretstream.md)        | SecretStream is used to securely create connections between two peers in Hyperswarm.                                                                                        | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [`compact-encoding`](./helpers/compact-encoding.md)| A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.| <mark style="background-color:#80ff80;">**stable**</mark> |
+| [`protomux`](./helpers/protomux.md)                | Multiplex multiple message oriented protocols over a stream.                                                                                                                |                                                         |
 
 ### Tools
 
 The following tools are used extensively employed in the day-to-day development and operation of applications built on Pear.
 
-* [Hypershell](./tools/hypershell.md):  A CLI to create and connect to P2P E2E encrypted shells.
-* [Hypertele](./tools/hypertele.md): A swiss-knife proxy powered by [HyperDHT](./building-blocks/hyperdht.md).
-* [Hyperbeam](./tools/hyperbeam.md): A one-to-one and end-to-end encrypted internet pipe.
-* [Hyperssh](./tools/hyperssh.md): A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht.md).
-* [Drives](./tools/drives.md): CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive.md) or a [localdrive](./helpers/localdrive.md).
+| Tool                               | Description                                                                                                                   | Stability                                               |
+|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------|
+| [Hypershell](./tools/hypershell.md)| A CLI to create and connect to P2P E2E encrypted shells.                                                                      | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [Hypertele](./tools/hypertele.md)  | A swiss-knife proxy powered by [HyperDHT](./building-blocks/hyperdht.md).                                                     | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [Hyperbeam](./tools/hyperbeam.md)  | A one-to-one and end-to-end encrypted internet pipe.                                                                          | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [Hyperssh](./tools/hyperssh.md)    | A CLI to run SSH over the [HyperDHT](./building-blocks/hyperdht.md).                                                          | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [Drives](./tools/drives.md)        | CLI to download, seed, and mirror a [hyperdrive](./building-blocks/hyperdrive.md) or a [localdrive](./helpers/localdrive.md). | <mark style="background-color:#80ff80;">**stable**</mark> |
 
 ### Apps
 
