@@ -81,6 +81,13 @@ Applications built using Pear.
 
 - [Keet](./apps/keet.md): A peer-to-peer chat and video-conferencing application with end-to-end encryption.
 
+### Examples
+
+Collection of example applications that can be used as reference during development.
+
+- [Bare on Mobile](./examples/bare-on-mobile.md)
+- [React App using Pear](./examples/react-app-using-pear.md)
+
 ## Stability indexing
 
 Throughout the documentation, indications of stability are provided. Some modules are well-established and used widely, making them highly unlikely to ever change. Other modules may be new, experimental, or known to have risks associated with their use.
