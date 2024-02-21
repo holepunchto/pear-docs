@@ -1,6 +1,6 @@
 # Pear React Application
 
-Below is an example of a Filesharing application built on the React framework using Pear.
+The following is an example of a filesharing application built with the React framework using Pear.
 
 - [Filesharing React App Example](https://github.com/holepunchto/filesharing-react-app-example)
 
