@@ -1,6 +1,6 @@
 # Cross-platform Pear App
 
-A "hello world" example of a cross-platform Pear application for Android and iOS using [Bare](https://github.com/holepunchto/bare) and [Expo SDK](https://expo.dev/).
+A "Hello World" example of a cross-platform Pear application for Android and iOS using [Bare](https://github.com/holepunchto/bare) and [Expo SDK](https://expo.dev/).
 
 - [Pear Expo Hello World](https://github.com/holepunchto/pear-expo-hello-world?tab=readme-ov-file)
 
