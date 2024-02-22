@@ -1,7 +1,5 @@
 # Hyperswarm
 
-<mark style="background-color:green;">**stable**</mark>
-
 Hyperswarm helps to find and connect to peers announcing a common 'topic' that can be anything. Using Hyperswarm, discover and connect peers with a shared interest over a distributed network. For example, we often use Hypercore's discovery key as the swarm topic for discovering peers to replicate with.
 
 Hyperswarm offers a simple interface to abstract away the complexities of underlying modules such as [HyperDHT](hyperdht.md) and [SecretStream](../helpers/secretstream.md). These modules can also be used independently for specialized tasks.

@@ -1,7 +1,5 @@
 # Hypercore
 
-<mark style="background-color:green;">**stable**</mark>
-
 Hypercore is a secure, distributed append-only log built for sharing large datasets and streams of real-time data. It comes with a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
 Notable features include:
