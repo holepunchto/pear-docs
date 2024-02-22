@@ -1,7 +1,5 @@
 # Hyperdrive
 
-<mark style="background-color:green;">**stable**</mark>
-
 Hyperdrive is a secure, real-time distributed file system designed for easy P2P file sharing. We use it extensively inside Holepunch; apps like Keet are distributed to users as Hyperdrives, as is the Holepunch platform itself.
 
 Notable features include:

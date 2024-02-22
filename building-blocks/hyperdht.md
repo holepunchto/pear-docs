@@ -1,7 +1,5 @@
 # HyperDHT
 
-<mark style="background-color:green;">**stable**</mark>
-
 The DHT powering Hyperswarm and built on top of [dht-rpc](https://github.com/mafintosh/dht-rpc). The HyperDHT uses a series of holepunching techniques to ensure connectivity works on most networks and is mainly used to facilitate finding and connecting to peers using end-to-end encrypted Noise streams.
 
 In the HyperDHT, peers are identified by a public key, not by an IP address. A public key can be connected regardless of where the peers are located, even if they move between different networks.

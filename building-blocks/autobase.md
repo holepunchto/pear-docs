@@ -1,7 +1,5 @@
 # Autobase
 
-<mark style="background-color:blue;">**experimental**</mark>
-
 Autobase is used to automatically rebase multiple causally-linked Hypercores into a single, linearized Hypercore. The output of an Autobase is 'just a Hypercore', which means it can be used to transform higher-level data structures (like Hyperbee) into multiwriter data structures with minimal additional work.
 
 > Although Autobase is still under development, it finds application in many active projects. Keet rooms, for example, are powered by Autobase! This is a testament to the potential of Autobase, and we are excited to see what else it can achieve.
