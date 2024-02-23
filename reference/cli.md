@@ -15,7 +15,7 @@ Create initial project files.
 --with|-w=name   Additional functionality. Available: node
 ```
   
-## pear dev [dir] [...args]
+## pear dev [flags] [dir] [...app-args]
 
 Run a project in development mode from disk.
 
@@ -58,7 +58,7 @@ Specify a remote key to reseed.
   --verbose|-v  Additional output
 ```
   
-## pear run <key|dir|alias> [...args]
+## pear run [flags] <key|dir|alias> [...app-args]
 
 Run an application from a key or dir.
 
@@ -77,6 +77,8 @@ Run an application from a key or dir.
   --checkout=n               Run a checkout, n is version length
   --checkout=release         Run checkout from marked released length
   --checkout=staged          Run checkout from latest version length
+  --no-ask-trust             Exit instead of asking to trust unknown keys
+  --detached                 Wakeup existing app or run detached
 ```
 
 ### Examples 
@@ -84,16 +86,19 @@ Run an application from a key or dir.
 ```
 pear run pear://u6c6it1hhb5serppr3tghdm96j1gprtesygejzhmhnk5xsse8kmy
 ```
+
+```
+pear run -s /tmp/app-storage path/to/an-app-folder some --app args
+```
+
+```
+pear run -t file://path/to/an-app-folder --some app --args
+```
+
 ```
 pear run pear://keet
 ```
-```
-pear run file://path/to/an-app-folder
-```
-```
-pear run path/to/an-app-folder --some args
-```
-  
+
 ## pear release <channel|key> [dir]
 
 Set production release version.
