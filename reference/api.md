@@ -28,7 +28,9 @@ The `config.key` object holds both Hexadecimal and Z-Base-32 encodings of the ke
 
 ### `Pear.config.dev <Boolean>`
 
-Whether application is in development mode
+Application is local (loaded from disk).
+
+Equivalent to `pear.config.key === null`.
 
 ### `Pear.config.tier <String>`
 
