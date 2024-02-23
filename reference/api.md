@@ -1,4 +1,8 @@
-# Application Programming Interface (API) <img src="../assets/experimental.png" alt="experimental label">
+# Application Programming Interface (API) 
+
+<p align="left">
+  <img src="../assets/experimental.png" alt="experimental label">
+</p>
 
 The Pear API enables applications to interact with Pear platform features.
 
