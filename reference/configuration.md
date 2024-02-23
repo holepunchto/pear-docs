@@ -154,20 +154,3 @@ An array of entrypoints as staging start-points in addition to (deduped) main en
 #### `pear.stage.ignore <Array>`
 
 An array of file paths to ignore relative to `package.json` file.
-
-### `pear.watch`
-
-File watching configuration options.
-
-#### `pear.watch.reload.page <String>` (default: `"refresh"`)
-
-String may be:
-
-* `"refresh"`
-* `"live"`
-
-When set to refresh, a file change leads to the entire application refreshing.
-
-When set to `live` HTML, CSS and media are dynamically reloaded. JS modules can be dynamically
-reloaded and passed to the `pear.updates` API listener for hot-reloading.
-
