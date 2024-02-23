@@ -375,7 +375,9 @@ The `listener` function is called for every incoming update with an `update` obj
 
 * `version` is a Pear version object holding incoming version information
 * `app` indicates whether the update represents an application (`true`) or platform (`false`) update
-* `diff` is an array of file paths from the application root (drive keys) that were updated
+* `diff` requires `--update-diffs` flag (else `null`). An array of objects of form `{ type, key}`.
+  * `type` `<String>` - Operation type `update` or `delete`
+  * `key` `<String>` - Drive key for a given updated file e.g. `/path/to/file.txt`
 
 
 ### `const win = new Pear.Window(entry <String>, options <Object>)`
