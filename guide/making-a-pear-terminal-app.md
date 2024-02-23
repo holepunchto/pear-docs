@@ -41,6 +41,7 @@ swarm.on('connection', peer => {
   const name = b4a.toString(peer.remotePublicKey, 'hex').substr(0, 6)
   console.log(`[info] New peer joined, ${name}`)
   peer.on('data', message => appendMessage({ name, message }))
+  peer.on('error', e => console.log(`Connection error: ${e}`))
 })
 swarm.on('update', () => {
   console.log(`[info] Number of connections is now ${swarm.connections.size}`)

@@ -203,6 +203,7 @@ swarm.on('connection', (peer) => {
   // name incoming peers after first 6 chars of its public key as hex
   const name = b4a.toString(peer.remotePublicKey, 'hex').substr(0, 6)
   peer.on('data', message => onMessageAdded(name, message))
+  peer.on('error', e => console.log(`Connection error: ${e}`))
 })
 
 // When there's updates to the swarm, update the peers count
