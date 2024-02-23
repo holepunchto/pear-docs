@@ -70,7 +70,10 @@ Run an application from a key or dir.
 
 
 ```
-  --dev                      Run the app in dev mode
+  --dev                      Enable --devtools & --updates-diff
+  --devtools                 Open devtools with application [Desktop]
+  --updates-diff             Enable diff computation for Pear.updates
+  --no-updates               Disable updates firing via Pear.updates
   --link=url                 Simulate deep-link click open
   --store|-s=path            Set the Application Storage path
   --tmp-store|-t             Automatic new tmp folder as store path
