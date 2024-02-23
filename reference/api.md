@@ -1,6 +1,4 @@
-# Application Programming Interface (API) 
-
-<mark style="background-color: #8484ff;">**experimental**</mark>
+# Application Programming Interface (API) <img src="../assets/experimental.png" alt="experimental label">
 
 The Pear API enables applications to interact with Pear platform features.
 
