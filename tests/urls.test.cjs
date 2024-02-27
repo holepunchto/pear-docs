@@ -49,7 +49,7 @@ function checkUrl (url) {
   return new Promise((resolve, reject) => {
     try {
       https.get(url, (res) => {
-        if (res.statusCode >= 200 && res.statusCode <= 300) {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(true)
         } else {
           resolve(false)
