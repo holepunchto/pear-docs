@@ -7,6 +7,7 @@
 - Added guide on terminal debuging.
 - Added 'Apps' section and keet.md.
 - Added note on Bare Runtime + cross platform app example.
+- Added update button.
 
 ### UX/UI Improvements
 - Improved system path setup UI.
