@@ -465,7 +465,7 @@ Creates a replication stream. We should pipe this to another Hypercore instance.
 
 The `isInitiator` argument is a boolean indicating whether a peer is the initiator of the connection (ie the client) or the passive peer waiting for connections (i.e., the server).
 
-> If a P2P swarm like Hyperswarm is being used, whether a peer is an initiator can be determined by checking if the swarm connection is a client socket or a server socket. In Hyperswarm, a user can check that using the [client property on the peer details object](https://github.com/hyperswarm/hyperswarm#swarmonconnection-socket-details--).
+> If a P2P swarm like Hyperswarm is being used, whether a peer is an initiator can be determined by checking if the swarm connection is a client socket or a server socket. In Hyperswarm, a user can check that using the [client property on the peer details object](https://github.com/holepunchto/hyperswarm#swarmonconnection-socket-details).
 
 
 
