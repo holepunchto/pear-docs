@@ -24,29 +24,6 @@ Pear versioning is automatic. The `package.json` file does **not** require a ver
 
 The name of the application. Overrides `package.json` `name`.
 
-### `pear.builtinsMap <Object>` <small>Terminal Applications Only</small>
-
-Terminal Applications run on the [`bare`](https://github.com/holepunchto/bare) JavaScript runtime,
-which has a very small core so code with expects say, an `fs` module will throw MODULE_NOT_FOUND
-unless that namespace is mapped to an installed module.
-
-Provide an object that maps builtin dependency namespaces to installed modules.
-
-An example `package.json`:
-
-```json
-{
-  "name": "example",
-  "pear": {
-    "builtinsMap": {
-      "fs": "bare-fs"
-    }
-  }
-}
-```
-
-> In future this option may also apply to Desktop Applications.
-
 ### `pear.gui <Object>`
 
 Graphical User Interface configuration options.
