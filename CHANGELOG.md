@@ -8,6 +8,7 @@
 - Added 'Apps' section and keet.md.
 - Added note on Bare Runtime + cross platform app example.
 - Added update button.
+- Removed deprecated bultinMaps configuration from documentation.
 
 ### UX/UI Improvements
 - Improved system path setup UI.
