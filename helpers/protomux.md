@@ -2,7 +2,7 @@
 
 Multiplex multiple message-oriented protocols over a stream
 
->[GitHub (Protomux)](https://github.com/mafintosh/protomux)
+>[GitHub (Protomux)](https://github.com/holepunchto/protomux)
 
 * [Installation](protomux.md#installation)
 * [Basic usage](protomux.md#basic-usage)

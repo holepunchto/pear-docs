@@ -254,8 +254,6 @@ await base.view.update()
 console.log(base.view.length)
 ```
 
-More sophisticated indexing might require multiple appends per input node, or reading from the view during `apply` -- both are perfectly valid. The [multiwriter Hyperbee example](https://github.com/holepunchto/autobase/blob/master/examples/autobee-simple.js) shows how this `apply` pattern can be used to build Hypercore-based indexing data structures using this approach.
-
 #### View Creation
 
 #### **`base.start({ apply, unwrap } = {})`**

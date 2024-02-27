@@ -7,10 +7,10 @@ Hyperswarm offers a simple interface to abstract away the complexities of underl
 Notable features include:
 
 * An improved UDP holepunching algorithm that uses arbitrary DHT nodes (optionally selected by the connecting peers) to proxy necessary metadata while being maximally privacy-preserving.
-* A custom-built transport protocol, [UDX](https://github.com/hyperswarm/libudx), that takes advantage of the holepunching algorithm to avoid unnecessary overhead (it doesn't include handshaking since holepunching takes care of that, for example). It's blazing fast.
+* A custom-built transport protocol, [UDX](https://github.com/holepunchto/libudx), that takes advantage of the holepunching algorithm to avoid unnecessary overhead (it doesn't include handshaking since holepunching takes care of that, for example). It's blazing fast.
 * A simplified DHT API that closely resembles NodeJS's `net` module, but using public keys instead of IP addresses.
 
-> [GitHub (Hyperswarm)](https://github.com/hyperswarm/hyperswarm)
+> [GitHub (Hyperswarm)](https://github.com/holepunchto/hyperswarm)
 
 * [Hyperswarm](../building-blocks/hyperswarm.md)
   * [Create a new instance](hyperswarm.md#installation)
