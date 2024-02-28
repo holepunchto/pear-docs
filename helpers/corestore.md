@@ -10,10 +10,10 @@ Corestore is a Hypercore factory that makes it easier to manage large collection
   * [Create a new instance](corestore.md#const-store--new-corestorestorage-options)
   * Basic:
     * Methods:
-      * [store.get(key | { key, name, exclusive, \[options\] })](corestore.md#const-core--storegetkey---key-name-exclusive-options)
-      * [store.replicate(options|stream)](corestore.md#const-stream--storereplicateoptionsstream)
-      * [store.namespace(name)](corestore.md#const-store--storenamespacename)
-      * [store.session(\[options\])](corestore.md#const-session--storesessionoptions)
+      * [store.get(key | { key, name, exclusive, \[options\] })](corestore.md#const-core-store.get-key-or-key-name-exclusive-options)
+      * [store.replicate(options|stream)](corestore.md#const-stream-store.replicate-options-or-stream)
+      * [store.namespace(name)](corestore.md#const-store-store.namespace-name)
+      * [store.session(\[options\])](corestore.md#const-session-store.session-options)
 
 ### Installation
 

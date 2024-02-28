@@ -17,32 +17,32 @@ Notable features include:
   - [Create a new instance](autobase.md#installation)
   - Basic:
     - Properties:
-      - [base.inputs](autobase.md#baseinputs)
-      - [base.outputs](autobase.md#baseoutputs)
-      - [base.localInput](autobase.md#baselocalinput)
-      - [base.localOutput](autobase.md#baselocaloutput)
+      - [base.inputs](autobase.md#base.inputs)
+      - [base.outputs](autobase.md#base.outputs)
+      - [base.localInput](autobase.md#base.localinput)
+      - [base.localOutput](autobase.md#base.localoutput)
     - Methods:
-      - [base.clock()](autobase.md#const-clock--baseclock)
-      - [base.isAutobase(core)](autobase.md#await-autobaseisautobasecore)
-      - [base.append(value, [clock], [input])](autobase.md#await-baseappendvalue-clock-input)
-      - [base.latest([input1, input2, ...])](autobase.md#const-clock--await-baselatestinput1-input2)
-      - [base.addInput(input)](autobase.md#await-baseaddinputinput)
-      - [base.removeInput(input)](autobase.md#await-baseremoveinputinput)
-      - [base.addOutput(output)](autobase.md#await-baseaddoutputoutput)
-      - [base.removeOutput(output)](autobase.md#await-baseremoveoutputoutput)
+      - [base.clock()](autobase.md#const-clock-base.clock)
+      - [base.isAutobase(core)](autobase.md#await-autobase.isautobase-core)
+      - [base.append(value, [clock], [input])](autobase.md#await-base.append-value-clock-input)
+      - [base.latest([input1, input2, ...])](autobase.md#const-clock-await-base.latest-input1-input2)
+      - [base.addInput(input)](autobase.md#await-base.addinput-input)
+      - [base.removeInput(input)](autobase.md#await-base.removeinput-input)
+      - [base.addOutput(output)](autobase.md#await-base.addoutput-output)
+      - [base.removeOutput(output)](autobase.md#await-base.removeoutput-output)
     - Streams:
       - Methods:
-        - [base.createCausalStream()](autobase.md#const-stream--basecreatecausalstream)
-        - [base.createReadStream([options])](autobase.md#const-stream--basecreatereadstreamoptions)
+        - [base.createCausalStream()](autobase.md#const-stream-base.createcausalstream)
+        - [base.createReadStream([options])](autobase.md#const-stream-base.createreadstream-options)
     - Linearized Views:
       - Properties:
-        - [view.status](autobase.md#viewstatus)
-        - [view.length](autobase.md#viewlength)
+        - [view.status](autobase.md#view.status)
+        - [view.length](autobase.md#view.length)
       - Methods:
-        - [base.start({ apply, unwrap } = {})](autobase.md#basestart-apply-unwrap)
-        - [view.update()](autobase.md#await-viewupdate)
-        - [view.get(idx, [options])](autobase.md#const-entry--await-viewgetidx-options)
-        - [view.append([blocks])](autobase.md#await-viewappendblocks)
+        - [base.start({ apply, unwrap } = {})](autobase.md#base.start-apply-unwrap)
+        - [view.update()](autobase.md#await-view.update)
+        - [view.get(idx, [options])](autobase.md#const-entry-await-view.get-idx-options)
+        - [view.append([blocks])](autobase.md#await-view.append-blocks)
 
 
 ### Installation

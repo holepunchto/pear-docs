@@ -16,35 +16,35 @@ Notable features include:
   * [Create a new instance](hyperswarm.md#installation)
   * Basic:
     * Properties:
-      * [swarm.connecting](hyperswarm.md#swarmconnecting)
-      * [swarm.connections](hyperswarm.md#swarmconnections)
-      * [swarm.peers](hyperswarm.md#swarmpeers)
-      * [swarm.dht](hyperswarm.md#swarmdht)
+      * [swarm.connecting](hyperswarm.md#swarm.connecting)
+      * [swarm.connections](hyperswarm.md#swarm.connections)
+      * [swarm.peers](hyperswarm.md#swarm.peers)
+      * [swarm.dht](hyperswarm.md#swarm.dht)
     * Methods:
       * [swarm.join(topic, [options])](hyperswarm.md#const-discovery--swarmjointopic-options)
     * Events:
-      * [connection](hyperswarm.md#swarmonconnection-socket-peerinfo)
-      * [update](hyperswarm.md#swarmonupdate)
+      * [connection](hyperswarm.md#swarm.on-connection-socket-peerinfo-greater-than)
+      * [update](hyperswarm.md#swarm.on-update-greater-than)
     * [Clients and Servers:](hyperswarm.md#clients-and-servers)
       * Methods:
-        * [swarm.leave(topic)](hyperswarm.md#await-swarmleavetopic)
-        * [swarm.joinPeer(noisePublicKey)](hyperswarm.md#swarmjoinpeernoisepublickey)
-        * [swarm.leavePeer(noisePublicKey)](hyperswarm.md#swarmleavepeernoisepublickey)
-        * [swarm.status(topic)](hyperswarm.md#const-discovery--swarmstatustopic)
-        * [swarm.listen()](hyperswarm.md#await-swarmlisten)
-        * [swarm.flush()](hyperswarm.md#await-swarmflush)
+        * [swarm.leave(topic)](hyperswarm.md#await-swarm.leave-topic)
+        * [swarm.joinPeer(noisePublicKey)](hyperswarm.md#swarm.joinpeer-noisepublickey)
+        * [swarm.leavePeer(noisePublicKey)](hyperswarm.md#swarm.leavepeer-noisepublickey)
+        * [swarm.status(topic)](hyperswarm.md#const-discovery-swarm.status-topic)
+        * [swarm.listen()](hyperswarm.md#await-swarm.listen)
+        * [swarm.flush()](hyperswarm.md#await-swarm.flush)
     * [Peer info:](hyperswarm.md#peerinfo)
       * Properties:
-        * [peerInfo.publicKey](hyperswarm.md#peerinfopublickey)
-        * [peerInfo.topics](hyperswarm.md#peerinfotopics)
-        * [peerInfo.prioritized](hyperswarm.md#peerinfoprioritized)
+        * [peerInfo.publicKey](hyperswarm.md#peerinfo.publickey)
+        * [peerInfo.topics](hyperswarm.md#peerinfo.topics)
+        * [peerInfo.prioritized](hyperswarm.md#peerinfo.prioritized)
       * Methods:
-        * [peerInfo.ban(banStatus = false)](hyperswarm.md#peerinfobanbanstatus--false)
+        * [peerInfo.ban(banStatus = false)](hyperswarm.md#peerinfo.ban-banstatus-false)
     * [Peer Discovery:](hyperswarm.md#peer-discovery)
       * Methods:
-        * [discovery.flushed()](hyperswarm.md#await-discoveryflushed)
-        * [discovery.refresh({ client, server })](hyperswarm.md#await-discoveryrefresh-client-server)
-        * [discovery.destroy()](hyperswarm.md#await-discoverydestroy)
+        * [discovery.flushed()](hyperswarm.md#await-discovery.flushed)
+        * [discovery.refresh({ client, server })](hyperswarm.md#await-discovery.refresh-client-server)
+        * [discovery.destroy()](hyperswarm.md#await-discovery.destroy)
 
 ### Installation
 
