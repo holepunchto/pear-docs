@@ -59,6 +59,7 @@ cd client-app
 pear init -y -t terminal
 npm install hyperdht b4a
 ```
+Alter `client-app/index.js` to the following:
 
 ``` javascript
 import DHT from 'hyperdht'
