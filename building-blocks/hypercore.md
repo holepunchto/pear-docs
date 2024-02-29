@@ -579,6 +579,6 @@ Emitted when the core has been fully closed.
 
 Emitted when a new connection has been established with a peer.
 
-#### **`core.on('peer-remove')`** {#core.onpear-remove}
+#### **`core.on('peer-remove')`** {#core.onpeer-remove}
 
 Emitted when a peer's connection has been closed.
