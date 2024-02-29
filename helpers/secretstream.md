@@ -7,19 +7,19 @@ The SecretStream instance is a Duplex stream that supports usability as a normal
 >[GitHub (SecretStream)](https://github.com/holepunchto/hyperswarm-secret-stream)
 
 * [SecretStream](secretstream.md#installation)
-  * [Create a new instance](secretstream.md#const-s--new-secretstreamisinitiator-rawstream-options)
+  * [Create a new instance](secretstream.md#secretstream.new)
   * Basic:
     * Properties:
-      * [s.publicKey](secretstream.md#spublickey)
-      * [s.remotePublicKey](secretstream.md#sremotepublickey)
-      * [s.handshakeHash](secretstream.md#shandshakehash)
+      * [s.publicKey](secretstream.md#secretstream.publickey)
+      * [s.remotePublicKey](secretstream.md#secretstream.remotepublickey)
+      * [s.handshakeHash](secretstream.md#secretstream.handshakehash)
     * Methods:
-      * [s.start(rawStream, \[options\])](secretstream.md#sstartrawstream-options)
-      * [s.setTimeout(ms)](secretstream.md#ssettimeoutms)
-      * [s.setKeepAlive(ms)](secretstream.md#ssetkeepalivems)
-      * [SecretStream.keyPair(\[seed\])](secretstream.md#const-keypair--secretstreamkeypairseed)
+      * [s.start(rawStream, \[options\])](secretstream.md#secretstream.startrawstream)
+      * [s.setTimeout(ms)](secretstream.md#secretstream.settimeout)
+      * [s.setKeepAlive(ms)](secretstream.md#secretstream.setkeepalive)
+      * [SecretStream.keyPair(\[seed\])](secretstream.md#secretstream.keypair)
     * Events:
-      * [connect](secretstream.md#sonconnect-onconnecthandler)
+      * [connect](secretstream.md#secretstream.onconnect)
 
 ### Installation
 
@@ -31,7 +31,7 @@ npm install @hyperswarm/secret-stream
 
 ### API
 
-#### **`const s = new SecretStream(isInitiator, [rawStream], [options])`**
+#### **`const s = new SecretStream(isInitiator, [rawStream], [options])`**  {#secretstream.new}
 
 Makes a new stream.
 
@@ -56,21 +56,21 @@ To load the key pair asynchronously, the secret stream also supports passing in 
 
 #### Properties
 
-#### **`s.publicKey`**
+#### **`s.publicKey`** {#secretstream.publicKey}
 
 Gets the local public key.
 
-#### **`s.remotePublicKey`**
+#### **`s.remotePublicKey`** {#secretstream.remotepublickey}
 
 Gets the remote's public key. Populated after `open` is emitted.
 
-#### **`s.handshakeHash`**
+#### **`s.handshakeHash`** {#secretstream.handshakehash}
 
 Gets the unique hash of this handshake. Populated after `open` is emitted.
 
 #### Methods
 
-#### **`s.start(rawStream, [options])`**
+#### **`s.start(rawStream, [options])`** {#secretstream.start}
 
 Starts a SecretStream from a rawStream asynchronously.
 
@@ -86,20 +86,20 @@ s.start(rawStream, {
 })
 ```
 
-#### **`s.setTimeout(ms)`**
+#### **`s.setTimeout(ms)`** {#secretstream.settimeout}
 
 Sets the stream timeout. If no data is received within a `ms` window, the stream is auto-destroyed.
 
-#### **`s.setKeepAlive(ms)`**
+#### **`s.setKeepAlive(ms)`** {#secretstream.keepalive}
 
 Sends a heartbeat (empty message) every time the socket is idle for `ms` milliseconds.
 
-#### **`const keyPair = SecretStream.keyPair([seed])`**
+#### **`const keyPair = SecretStream.keyPair([seed])`** {#secretstream.keypair}
 
 Generates an ed25519 key pair.
 
 #### Events
 
-#### **`s.on('connect', onConnectHandler)`**
+#### **`s.on('connect', onConnectHandler)`**  {#secretstream.onconnect}
 
 Emitted when the handshake is fully done. It is safe to write to the stream immediately though, as data is buffered internally before the handshake has been completed.

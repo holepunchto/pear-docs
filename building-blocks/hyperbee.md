@@ -10,38 +10,38 @@ Hyperbee is an append only B-tree based on [`Hypercore`](hypercore.md). It provi
   * [Create a new instance](hyperbee.md#installation):
   * Basic:
     * Properties:
-      * [db.core](./hyperbee.md#dbcore)
-      * [db.version](./hyperbee.md#dbversion)
-      * [db.id](./hyperbee.md#dbid)
-      * [db.key](./hyperbee.md#dbkey)
-      * [db.discoveryKey](./hyperbee.md#dbdiscoverykey)
-      * [db.writable](./hyperbee.md#dbwritable)
-      * [db.readable](./hyperbee.md#dbreadable)
+      * [db.core](./hyperbee.md#db.core)
+      * [db.version](./hyperbee.md#db.version)
+      * [db.id](./hyperbee.md#db.id)
+      * [db.key](./hyperbee.md#db.key)
+      * [db.discoveryKey](./hyperbee.md#db.discoverykey)
+      * [db.writable](./hyperbee.md#db.writable)
+      * [db.readable](./hyperbee.md#db.readable)
     * Methods:
-      * [db.ready()](hyperbee.md#await-dbready)
-      * [db.close()](hyperbee.md#await-dbclose)
-      * [db.put(key, \[value\], \[options\])](hyperbee.md#await-dbputkey-value-options)
-      * [db.get(key, \[options\])](hyperbee.md#const--seq-key-value---await-dbgetkey-options)
-      * [db.del(key, \[options\])](hyperbee.md#await-dbdelkey-options)
-      * [db.getBySeq(seq, \[options\])](hyperbee.md#const--key-value---await-dbgetbyseqseq-options)
-      * [db.replicate(isInitiatorOrStream)](hyperbee.md#const-stream--dbreplicateisinitiatororstream)
-      * [db.batch()](hyperbee.md#const-batch--dbbatch)
-        * [batch.put(key, \[value\], \[options\])](hyperbee.md#await-batchputkey-value-options)
-        * [batch.get(key, \[options\])](hyperbee.md#const--seq-key-value---await-batchgetkey-options)
-        * [batch.del(key, \[options\])](hyperbee.md#await-batchdelkey-options)
-        * [batch.flush()](hyperbee.md#await-batchflush)
-        * [batch.close()](hyperbee.md#await-batchclose)
-      * [db.createReadStream(\[range\], \[options\])](hyperbee.md#const-stream--dbcreatereadstreamrange-options)
-      * [db.peek(\[range\], \[options\])](hyperbee.md#const--seq-key-value---await-dbpeekrange-options)
-      * [db.createHistoryStream(\[options\])](hyperbee.md#const-stream--dbcreatehistorystreamoptions)
-      * [db.createDiffStream(otherVersion, \[options\])](hyperbee.md#const-stream--dbcreatediffstreamotherversion-options)
-      * [db.getAndWatch(key, \[options\])](hyperbee.md#const-entrywatcher--await-dbgetandwatchkey-options)
-      * [db.watch(\[range\])](hyperbee.md#const-watcher--dbwatchrange)
-      * [db.checkout(version)](hyperbee.md#const-snapshot--dbcheckoutversion)
-      * [db.snapshot()](hyperbee.md#const-snapshot--dbsnapshot)
-      * [db.sub('sub-prefix', \[options\])](hyperbee.md#const-sub--dbsubsub-prefix-optionss)
-      * [db.getHeader(\[options\])](hyperbee.md#const-header--await-dbgetheaderoptions)
-      * [Hyperbee.isHyperbee(core, \[options\])](hyperbee.md#const-ishyperbee--await-hyperbeeishyperbeecore-options)
+      * [db.ready()](hyperbee.md#db.ready)
+      * [db.close()](hyperbee.md#db.close)
+      * [db.put(key, \[value\], \[options\])](hyperbee.md#db.put)
+      * [db.get(key, \[options\])](hyperbee.md#db.get)
+      * [db.del(key, \[options\])](hyperbee.md#db.del)
+      * [db.getBySeq(seq, \[options\])](hyperbee.md#db.getbyseq)
+      * [db.replicate(isInitiatorOrStream)](hyperbee.md#db.replicate)
+      * [db.batch()](hyperbee.md#db.batch)
+        * [batch.put(key, \[value\], \[options\])](hyperbee.md#batch.put)
+        * [batch.get(key, \[options\])](hyperbee.md#batch.get)
+        * [batch.del(key, \[options\])](hyperbee.md#batch.del)
+        * [batch.flush()](hyperbee.md#batch.flush)
+        * [batch.close()](hyperbee.md#batch.close)
+      * [db.createReadStream(\[range\], \[options\])](hyperbee.md#db.createreadstream)
+      * [db.peek(\[range\], \[options\])](hyperbee.md#db.peek)
+      * [db.createHistoryStream(\[options\])](hyperbee.md#db.createhistorystream)
+      * [db.createDiffStream(otherVersion, \[options\])](hyperbee.md#db.creatediffstream)
+      * [db.getAndWatch(key, \[options\])](hyperbee.md#db.getandwatch)
+      * [db.watch(\[range\])](hyperbee.md#db.watch)
+      * [db.checkout(version)](hyperbee.md#db.checkout)
+      * [db.snapshot()](hyperbee.md#db.snapshot)
+      * [db.sub('sub-prefix', \[options\])](hyperbee.md#db.sub)
+      * [db.getHeader(\[options\])](hyperbee.md#db.getheader)
+      * [Hyperbee.isHyperbee(core, \[options\])](hyperbee.md#db.ishyperbee)
 
 ### Installation
 
@@ -70,50 +70,50 @@ Make a new Hyperbee instance. `core` should be a [`Hypercore`](hypercore.md).
 
 #### Properties
 
-#### **`db.core`**
+#### **`db.core`** {#db.core} 
 
 The underlying [Hypercore](hypercore.md) backing this bee.
 
-#### **`db.version`**
+#### **`db.version`** {#db.version}
 
 A number that indicates how many modifications were made, is useful as a version identifier.
 
-#### **`db.id`**
+#### **`db.id`** {#db.id}
 
 String containing the ID (z-base-32 of the public key) identifying this bee.
 
-#### **`db.key`**
+#### **`db.key`** {#db.key}
 
 Buffer containing the public key identifying this bee.
 
-#### **`db.discoveryKey`**
+#### **`db.discoveryKey`** {#db.discoverykey}
 
 Buffer containing a key derived from `db.key`.
 
 > This discovery key is not for verifying the data, it's only to announce or look for peers that are sharing the same bee, without leaking the bee key.
 
 
-#### **`db.writable`**
+#### **`db.writable`** {#db.writable}
 
 Boolean indicating to put or delete data in this bee.
 
-#### **`db.readable`**
+#### **`db.readable`** {#db.readable}
 
 Boolean indicating if we can read from this bee. After closing the bee this will be `false`.
 
 #### **Methods**
 
-#### **`await db.ready()`**
+#### **`await db.ready()`** {#db.ready}
 
 Waits until the internal state is loaded.
 
 Use it once before reading synchronous properties like `db.version`, unless any of the other APIs have been called first.
 
-#### **`await db.close()`**
+#### **`await db.close()`** {#db.close}
 
 Fully close this bee, including its core.
 
-#### **`await db.put(key, [value], [options])`**
+#### **`await db.put(key, [value], [options])`** {#db.put}
 
 Inserts a new key. Value can be optional.
 
@@ -153,7 +153,7 @@ function cas (prev, next) {
 }
 ```
 
-#### **`const { seq, key, value } = await db.get(key, [options])`**
+#### **`const { seq, key, value } = await db.get(key, [options])`** {#db.get}
 
 Gets a key's value. Returns `null` if the key doesn't exist.
 
@@ -172,7 +172,7 @@ Gets a key's value. Returns `null` if the key doesn't exist.
 > `db.get(key, [options])` uses the state at the time of initiating the read, so the write operations that complete after `get` is initiated and before it is resolved are ignored.
 
 
-#### **`await db.del(key, [options])`**
+#### **`await db.del(key, [options])`** {#db.del}
 
 Delete a key.
 
@@ -207,17 +207,17 @@ function cas (prev) {
   return prev.value === 'can-be-deleted'
 }
 ```
-#### **`const { key, value } = await db.getBySeq(seq, [options])`**
+#### **`const { key, value } = await db.getBySeq(seq, [options])`** {#db.getbyseq}
 
 Gets the key and value from a block number.
 
 `seq` is the Hypercore index. Returns `null` if block doesn't exists.
 
-#### **`const stream = db.replicate(isInitiatorOrStream)`**
+#### **`const stream = db.replicate(isInitiatorOrStream)`** {#db.replicate}
 
 See more about how replicate works at [core.replicate](hypercore.md#const-stream-core.replicate-isinitiatororreplicationstream).
 
-#### **`const batch = db.batch()`**
+#### **`const batch = db.batch()`** {#db.batch}
 
 Makes a new atomic batch that is either fully processed or not processed at all.
 
@@ -225,29 +225,29 @@ Makes a new atomic batch that is either fully processed or not processed at all.
 > If there are several inserts and deletions then a batch can be much faster.
 
 
-#### **`await batch.put(key, [value], [options])`**
+#### **`await batch.put(key, [value], [options])`** {#db.put}
 
 Inserts a key into a batch.
 
 `options` are the same as **`db.put`** method.
 
-#### **`const { seq, key, value } = await batch.get(key, [options])`**
+#### **`const { seq, key, value } = await batch.get(key, [options])`** {#batch.get}
 
 Gets a key, and value out of a batch.
 
 `options` are the same as **`db.get`** method.
 
-#### **`await batch.del(key, [options])`**
+#### **`await batch.del(key, [options])`** {#batch.del}
 
 Deletes a key into the batch.
 
 `options` are the same as **`db.del`** method.
 
-#### **`await batch.flush()`**
+#### **`await batch.flush()`** {#batch.flush}
 
 Commits the batch to the database, and releases any locks it has acquired.
 
-#### **`await batch.close()`**
+#### **`await batch.close()`** {#batch.close}
 
 Destroys a batch, and releases any locks it has acquired on the `db`.
 
@@ -265,7 +265,7 @@ A batch's state snaps at creation time, so write operations applied outside of t
 
 </details>
 
-#### **`const stream = db.createReadStream([range], [options])`**
+#### **`const stream = db.createReadStream([range], [options])`** {#db.createreadstream}
 
 Make a read stream. Sort order is based on the binary value of the keys. All entries in the stream are similar to the ones returned from **`db.get`**.
 
@@ -287,11 +287,11 @@ Make a read stream. Sort order is based on the binary value of the keys. All ent
 | **`reverse`** | determine order of the keys        | Boolean | `false` |
 | **`limit`**   | maximum number of entries needed   | Integer | `-1`    |
 
-#### **`const { seq, key, value } = await db.peek([range], [options])`**
+#### **`const { seq, key, value } = await db.peek([range], [options])`** {#db.peek}
 
 Similar to doing a read stream and returning the first value, but a bit faster than that.
 
-#### **`const stream = db.createHistoryStream([options])`**
+#### **`const stream = db.createHistoryStream([options])`** {#db.createhistorystream}
 
 Create a stream of all entries ever inserted or deleted from the `db`. Each entry has an additional `type` property indicating if it was a `put` or `del` operation.
 
@@ -311,7 +311,7 @@ Create a stream of all entries ever inserted or deleted from the `db`. Each entr
 > If any of the gte, gt, lte, lt arguments are `< 0` then they'll implicitly be added with the version before starting so doing `{ gte: -1 }` makes a stream starting at the last index.
 
 
-#### **`const stream = db.createDiffStream(otherVersion, [options])`**
+#### **`const stream = db.createDiffStream(otherVersion, [options])`** {#db.creatediffstream}
 
 Creates a stream of shallow changes between two versions of the `db`.
 
@@ -331,7 +331,7 @@ Each entry is sorted by key and looks like this:
 > If the entries are causally equal (i.e., they have the identical seq), they are not returned, only the diff.
 
 
-#### `const entryWatcher = await db.getAndWatch(key, [options])`
+#### `const entryWatcher = await db.getAndWatch(key, [options])` {#db.getandwatch}
 
 Returns a watcher which listens to changes on the given key.
 
@@ -344,7 +344,7 @@ Returns a watcher which listens to changes on the given key.
 
 Call `await watcher.close()` to stop the watcher.
 
-#### **`const watcher = db.watch([range])`**
+#### **`const watcher = db.watch([range])`** {#db.watch}
 
 Listens to changes that are on the optional `range`.
 
@@ -378,15 +378,15 @@ Stops the watcher. Using `break` inside the `for await` loop will also destroy t
 >  Watchers are not supported on subs and checkouts. Instead, use the `range` option to limit the scope.
 
 
-#### **`const snapshot = db.checkout(version)`**
+#### **`const snapshot = db.checkout(version)`** {#db.checkout}
 
 Get a read-only snapshot of a previous version.
 
-#### **`const snapshot = db.snapshot()`**
+#### **`const snapshot = db.snapshot()`** {#db.snapshot}
 
 Shorthand for getting a checkout for the current version.
 
-#### **`const sub = db.sub('sub-prefix', options = {})`**
+#### **`const sub = db.sub('sub-prefix', options = {})`** {#db.sub}
 
 Create a sub-database where a given value will prefix all entries.
 
@@ -413,13 +413,13 @@ await sub.put('b', 'hello')
 await sub.get('b')
 ```
 
-#### **`const header = await db.getHeader([options])`**
+#### **`const header = await db.getHeader([options])`** {#db.getheader}
 
 Returns the header contained in the first block. Throws an error if undecodable.
 
 `options` are the same as the `core.get` method.
 
-#### **`const isHyperbee = await Hyperbee.isHyperbee(core, [options])`**
+#### **`const isHyperbee = await Hyperbee.isHyperbee(core, [options])`** {#db.ishyperbee}
 
 Returns `true` if the core contains a Hyperbee, `false` otherwise.
 

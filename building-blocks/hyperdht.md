@@ -14,38 +14,38 @@ Notable features include:
   * [Create a new instance](hyperdht.md#installation)
   * Basic:
     * Methods:
-      * [DHT.keyPair(\[seed\])](hyperdht.md#keypair--dhtkeypairseed)
-      * [DHT.bootstrapper(port, host, \[options\])](hyperdht.md#node--dhtbootstrapperport-host-options)
-      * [node.destroy(\[options\])](hyperdht.md#await-nodedestroyoptions)
+      * [DHT.keyPair(\[seed\])](hyperdht.md#dht.keypair)
+      * [DHT.bootstrapper(port, host, \[options\])](hyperdht.md#dht.bootstrapper)
+      * [node.destroy(\[options\])](hyperdht.md#node.destroy)
     * [Creating P2P servers:](hyperdht.md#creating-p2p-servers)
       * [node.createServer(\[options\], \[onconnection\])](hyperdht.md#const-server--nodecreateserveroptions-onconnection)
       * Methods:
-        * [server.listen(keyPair)](hyperdht.md#await-serverlistenkeypair)
-        * [server.refresh()](hyperdht.md#serverrefresh)
-        * [server.address()](hyperdht.md#serveraddress)
-        * [server.close()](hyperdht.md#await-serverclose)
+        * [server.listen(keyPair)](hyperdht.md#server.listen)
+        * [server.refresh()](hyperdht.md#server.refresh)
+        * [server.address()](hyperdht.md#server.address)
+        * [server.close()](hyperdht.md#server.close)
       * Events:
-        * [connection](hyperdht.md#serveronconnection-socket)
-        * [listening](hyperdht.md#serveronlistening)
-        * [close](hyperdht.md#serveronclose)
+        * [connection](hyperdht.md#server.onconnection)
+        * [listening](hyperdht.md#server.onlistening)
+        * [close](hyperdht.md#server.onclose)
     * [Connecting to P2P servers](hyperdht.md#connecting-to-p2p-servers):
-      * [node.connect(remotePublicKey, \[options\])](hyperdht.md#const-socket--nodeconnectremotepublickey-options)
+      * [node.connect(remotePublicKey, \[options\])](hyperdht.md#node.connect)
       * Properties:
-        * [socket.remotePublicKey](hyperdht.md#socketremotepublickey)
-        * [socket.publicKey](hyperdht.md#socketpublickey)
+        * [socket.remotePublicKey](hyperdht.md#socket.remotepublickey)
+        * [socket.publicKey](hyperdht.md#socket.publickey)
       * Events:
         * [open](hyperdht.md#socketonopen)
     * [Additional Peer Discovery](hyperdht.md#additional-peer-discovery):
       * Methods:
-        * [node.lookup(topic, \[options\])](hyperdht.md#const-stream--nodelookuptopic-options)
-        * [node.announce(topic, keyPair, \[relayAddresses\], \[options\])](hyperdht.md#const-stream--nodeannouncetopic-keypair-relayaddresses-options)
-        * [node.unannounce(topic, keyPair, \[options\])](hyperdht.md#await-nodeunannouncetopic-keypair-options)
-  * [Mutable/immutable records:](hyperdht.md#mutableimmutable-records)
+        * [node.lookup(topic, \[options\])](hyperdht.md#node.lookup)
+        * [node.announce(topic, keyPair, \[relayAddresses\], \[options\])](hyperdht.md#node.announce)
+        * [node.unannounce(topic, keyPair, \[options\])](hyperdht.md#node.unannounce)
+  * [Mutable/immutable records:](hyperdht.md#mutable-immutable-records)
     * Methods:
-      * [node.immutablePut(value, \[options\])](hyperdht.md#const--hash-closestnodes---await-nodeimmutableputvalue-options)
-      * [node.immutableGet(hash, \[options\])](hyperdht.md#const--value-from---await-nodeimmutablegethash-options)
-      * [node.mutablePut(keyPair, value, \[options\])](hyperdht.md#const--publickey-closestnodes-seq-signature---await-nodemutableputkeypair-value-options)
-      * [node.mutableGet(publicKey, \[options\])](hyperdht.md#const--value-from-seq-signature---await-nodemutablegetpublickey-options)
+      * [node.immutablePut(value, \[options\])](hyperdht.md#node.inmutableput)
+      * [node.immutableGet(hash, \[options\])](hyperdht.md#node.inmutableget)
+      * [node.mutablePut(keyPair, value, \[options\])](hyperdht.md#node.mutableput)
+      * [node.mutableGet(publicKey, \[options\])](hyperdht.md#node.mutableget)
 
 ### Installation
 
@@ -74,7 +74,7 @@ See [dht-rpc](https://github.com/holepunchto/dht-rpc) for more options as HyperD
 
 #### Methods
 
-#### **`keyPair = DHT.keyPair([seed])`**
+#### **`keyPair = DHT.keyPair([seed])`** {#dht.keypair}
 
 Generates the required key pair for DHT operations.
 
@@ -82,11 +82,11 @@ Returns an object with `{publicKey, secretKey}`. `publicKey` holds a public key 
 
 Any options passed are forwarded to dht-rpc.
 
-#### `node = DHT.bootstrapper(port, host, [options])`
+#### `node = DHT.bootstrapper(port, host, [options])` {#dht.bootstrapper}
 
 Use this method to create a bootstrap node for in order to run a Hyperswarm network.
 
-#### **`await node.destroy([options])`**
+#### **`await node.destroy([options])`** {#dht.destroy}
 
 Fully destroy this DHT node.
 
@@ -94,7 +94,7 @@ Fully destroy this DHT node.
 
 ### Creating P2P Servers
 
-#### **`const server = node.createServer([options], [onconnection])`**
+#### **`const server = node.createServer([options], [onconnection])`** {#server.createserver}
 
 Creates a new server for accepting incoming encrypted P2P connections.
 
@@ -116,15 +116,15 @@ Creates a new server for accepting incoming encrypted P2P connections.
 
 #### Methods
 
-#### **`await server.listen(keyPair)`**
+#### **`await server.listen(keyPair)`** {#server.listen}
 
 Makes the server listen on a keyPair. To connect to this server use `keyPair.publicKey` as the connect address.
 
-#### **`server.refresh()`**
+#### **`server.refresh()`** {#server.refresh}
 
 Refreshes the server, causing it to reannounce its address. This is automatically called on network changes.
 
-#### **`server.address()`**
+#### **`server.address()`** {#server.address}
 
 Returns an object containing the address of the server:
 
@@ -138,13 +138,13 @@ Returns an object containing the address of the server:
 
 Information can also be retrieved from `node.remoteAddress()` minus the public key.
 
-#### **`await server.close()`**
+#### **`await server.close()`** {#server.close}
 
 Stops listening.
 
 #### Events
 
-#### **`server.on('connection', socket)`**
+#### **`server.on('connection', socket)`** {#server.onconnection}
 
 Emitted when a new encrypted connection has passed the firewall check.
 
@@ -152,17 +152,17 @@ Emitted when a new encrypted connection has passed the firewall check.
 
 User connections are identifiable by `socket.remotePublicKey` and `socket.handshakeHash` contains a unique hash representing this crypto session (same on both sides).
 
-#### **`server.on('listening')`**
+#### **`server.on('listening')`** {#server.onlistening}
 
 Emitted when the server is fully listening on a keyPair.
 
-#### **`server.on('close')`**
+#### **`server.on('close')`** {#server.onclose}
 
 Emitted when the server is fully closed.
 
 ### Connecting to P2P Servers
 
-#### **`const socket = node.connect(remotePublicKey, [options])`**
+#### **`const socket = node.connect(remotePublicKey, [options])`** {#node.connect}
 
 Connect to a remote server. Similar to `createServer` this performs UDP hole punching for P2P connectivity.
 
@@ -182,17 +182,17 @@ const encryptedSocket = node.connect(remotePublicKey)
 
 #### Properties
 
-#### **`socket.remotePublicKey`**
+#### **`socket.remotePublicKey`** {#socket.remotepublickey}
 
 The public key of the remote peer.
 
-#### **`socket.publicKey`**
+#### **`socket.publicKey`** {#socket.publickey}
 
-The public key of the connection.
+The public key of the connection. 
 
 #### Events
 
-#### **`socket.on('open')`**
+#### **`socket.on('open')`** {#socket.onopen}
 
 Emitted when the encrypted connection has been fully established with the server.
 
@@ -202,9 +202,9 @@ encryptedSocket.on('open', function () {
 })
 ```
 
-### Additional Peer Discovery
+### Additional Peer Discovery {#additional-peer-discovery}
 
-#### **`const stream = node.lookup(topic, [options])`**
+#### **`const stream = node.lookup(topic, [options])`** {#node.lookup}
 
 Look for peers in the DHT on the given topic. The topic should be a 32-byte buffer (normally a hash of something).
 
@@ -227,7 +227,7 @@ Any passed options are forwarded to dht-rpc.
 
 #### Methods
 
-#### **`const stream = node.announce(topic, keyPair, [relayAddresses], [options])`**
+#### **`const stream = node.announce(topic, keyPair, [relayAddresses], [options])`** {#node.announce}
 
 Announces that users are listening on a key pair to the DHT under a specific topic. An announce does a parallel lookup so the stream returned that looks like the lookup stream.
 
@@ -237,35 +237,35 @@ Any passed options are forwarded to `dht-rpc`.
 >
 > Creating a server using `dht.createServer` automatically announces itself periodically on the key pair it is listening on. When announcing the server under a specific topic, access the nodes it is close to using `server.nodes`.
 
-#### **`await node.unannounce(topic, keyPair, [options])`**
+#### **`await node.unannounce(topic, keyPair, [options])`** {#node.unannounce}
 
 Unannounces a key pair.
 
 Any passed options are forwarded to dht-rpc.
 
-### Mutable/Immutable Records
+### Mutable/Immutable Records {#mutable-inmutable-records}
 
 #### Methods
 
-#### **`const { hash, closestNodes } = await node.immutablePut(value, [options])`**
+#### **`const { hash, closestNodes } = await node.immutablePut(value, [options])`** {#node.inmutableput}
 
 Stores an immutable value in the DHT. When successful, the hash of the value is returned.
 
 Any passed options are forwarded to dht-rpc.
 
-#### **`const { value, from } = await node.immutableGet(hash, [options])`**
+#### **`const { value, from } = await node.immutableGet(hash, [options])`** {#node.inmutableget}
 
 Fetch an immutable value from the DHT. When successful, it returns the value corresponding to the hash.
 
 Any passed options are forwarded to dht-rpc.
 
-#### **`const { publicKey, closestNodes, seq, signature } = await node.mutablePut(keyPair, value, [options])`**
+#### **`const { publicKey, closestNodes, seq, signature } = await node.mutablePut(keyPair, value, [options])`** {#node.mutableput}
 
 Stores a mutable value in the DHT.
 
 Any passed options are forwarded to dht-rpc.
 
-#### **`const { value, from, seq, signature } = await node.mutableGet(publicKey, [options])`**
+#### **`const { value, from, seq, signature } = await node.mutableGet(publicKey, [options])`** {#node.mutableget}
 
 Fetches a mutable value from the DHT.
 

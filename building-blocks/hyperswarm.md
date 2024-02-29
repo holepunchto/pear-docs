@@ -16,35 +16,35 @@ Notable features include:
   * [Create a new instance](hyperswarm.md#installation)
   * Basic:
     * Properties:
-      * [swarm.connecting](hyperswarm.md#swarmconnecting)
-      * [swarm.connections](hyperswarm.md#swarmconnections)
-      * [swarm.peers](hyperswarm.md#swarmpeers)
-      * [swarm.dht](hyperswarm.md#swarmdht)
+      * [swarm.connecting](hyperswarm.md#swarm.connecting)
+      * [swarm.connections](hyperswarm.md#swarm.connections)
+      * [swarm.peers](hyperswarm.md#swarm.peers)
+      * [swarm.dht](hyperswarm.md#swarm.dht)
     * Methods:
       * [swarm.join(topic, [options])](hyperswarm.md#const-discovery--swarmjointopic-options)
     * Events:
-      * [connection](hyperswarm.md#swarmonconnection-socket-peerinfo)
-      * [update](hyperswarm.md#swarmonupdate)
+      * [connection](hyperswarm.md#swarm.onconnection)
+      * [update](hyperswarm.md#swarm.onupdate)
     * [Clients and Servers:](hyperswarm.md#clients-and-servers)
       * Methods:
-        * [swarm.leave(topic)](hyperswarm.md#await-swarmleavetopic)
-        * [swarm.joinPeer(noisePublicKey)](hyperswarm.md#swarmjoinpeernoisepublickey)
-        * [swarm.leavePeer(noisePublicKey)](hyperswarm.md#swarmleavepeernoisepublickey)
-        * [swarm.status(topic)](hyperswarm.md#const-discovery--swarmstatustopic)
-        * [swarm.listen()](hyperswarm.md#await-swarmlisten)
-        * [swarm.flush()](hyperswarm.md#await-swarmflush)
+        * [swarm.leave(topic)](hyperswarm.md#swarm.leave)
+        * [swarm.joinPeer(noisePublicKey)](hyperswarm.md#swarm.joinpeer)
+        * [swarm.leavePeer(noisePublicKey)](hyperswarm.md#swarm.leavepeer)
+        * [swarm.status(topic)](hyperswarm.md#swarm.status)
+        * [swarm.listen()](hyperswarm.md#swarm.listen)
+        * [swarm.flush()](hyperswarm.md#swarm.flush)
     * [Peer info:](hyperswarm.md#peerinfo)
       * Properties:
-        * [peerInfo.publicKey](hyperswarm.md#peerinfopublickey)
-        * [peerInfo.topics](hyperswarm.md#peerinfotopics)
-        * [peerInfo.prioritized](hyperswarm.md#peerinfoprioritized)
+        * [peerInfo.publicKey](hyperswarm.md#peerinfo.publickey)
+        * [peerInfo.topics](hyperswarm.md#peerinfo.topics)
+        * [peerInfo.prioritized](hyperswarm.md#peerinfo.prioritized)
       * Methods:
-        * [peerInfo.ban(banStatus = false)](hyperswarm.md#peerinfobanbanstatus--false)
+        * [peerInfo.ban(banStatus = false)](hyperswarm.md#peerinfo.ban)
     * [Peer Discovery:](hyperswarm.md#peer-discovery)
       * Methods:
-        * [discovery.flushed()](hyperswarm.md#await-discoveryflushed)
-        * [discovery.refresh({ client, server })](hyperswarm.md#await-discoveryrefresh-client-server)
-        * [discovery.destroy()](hyperswarm.md#await-discoverydestroy)
+        * [discovery.flushed()](hyperswarm.md#discovery.flushed)
+        * [discovery.refresh({ client, server })](hyperswarm.md#discovery.destroy)
+        * [discovery.destroy()](hyperswarm.md#discovery.destroy)
 
 ### Installation
 
@@ -72,27 +72,27 @@ The following table describes the properties of the optional `options` object.
 
 #### **Properties:**
 
-#### **`swarm.connecting`**
+#### **`swarm.connecting`** {#swarm.connecting}
 
 A number that indicates connections in progress.
 
-#### **`swarm.connections`**
+#### **`swarm.connections`** {#swarm.connections}
 
 A set of all active client/server connections.
 
-#### **`swarm.peers`**
+#### **`swarm.peers`** {#swarm.peers}
 
 A Map containing all connected peers, of the form: `(Noise public key hex string) -> PeerInfo object`
 
 See the [`PeerInfo`](hyperswarm.md#peerinfo) API for more details.
 
-#### **`swarm.dht`**
+#### **`swarm.dht`** {#swarm.dht}
 
 A [`HyperDHT`](./hyperdht.md) instance. Useful for lower-level control over Hyperswarm's networking.
 
 #### Methods
 
-#### **`const discovery = swarm.join(topic, [options])`**
+#### **`const discovery = swarm.join(topic, [options])`** {#swarm.join}
 
 Returns a [`PeerDiscovery`](hyperswarm.md#peer-discovery) object.
 
@@ -111,7 +111,7 @@ Start discovering and connecting to peers sharing a common topic. As new peers a
 
 #### Events
 
-#### **`swarm.on('connection', (socket, peerInfo) => {})`**
+#### **`swarm.on('connection', (socket, peerInfo) => {})`** {#swarm.onconnection}
 
 Emitted whenever the swarm connects to a new peer.
 
@@ -119,13 +119,13 @@ Emitted whenever the swarm connects to a new peer.
 
 `peerInfo` is a [`PeerInfo`](hyperswarm.md#peerinfo) instance.
 
-#### `swarm.on('update', () => {})`
+#### `swarm.on('update', () => {})` {#swarm.onupdate}
 
 Emitted when internal values are changed, useful for user interfaces.
 
 > For instance, the 'update' event is emitted when `swarm.connecting` or `swarm.connections` changes.
 
-### **Clients and Servers**
+### **Clients and Servers** {#clients-and-servers}
 
 In Hyperswarm, there are two ways for peers to join the swarm: client mode and server mode. Previously in Hyperswarm v2, these were called 'lookup' and 'announce', but we now think 'client' and 'server' are more descriptive.
 
@@ -135,7 +135,7 @@ When user joins a topic as a client, the swarm will do a query to discover avail
 
 #### Methods
 
-#### **`await swarm.leave(topic)`**
+#### **`await swarm.leave(topic)`** {#swarm.leave}
 
 Stop discovering peers for the given topic.
 
@@ -147,7 +147,7 @@ Stop discovering peers for the given topic.
 
 `leave` will **not** close any existing connections.
 
-#### **`swarm.joinPeer(noisePublicKey)`**
+#### **`swarm.joinPeer(noisePublicKey)`** {#swarm.joinpeer}
 
 Establish a direct connection to a known peer.
 
@@ -155,7 +155,7 @@ Establish a direct connection to a known peer.
 
 As with the standard `join` method, `joinPeer` will ensure that peer connections are reestablished in the event of failures.
 
-#### **`swarm.leavePeer(noisePublicKey)`**
+#### **`swarm.leavePeer(noisePublicKey)`** {#swarm.leavepeer}
 
 Stops attempting direct connections to a known peer.
 
@@ -163,15 +163,15 @@ Stops attempting direct connections to a known peer.
 
 > If a direct connection is already established, that connection will **not** be destroyed by `leavePeer`.
 
-#### **`const discovery = swarm.status(topic)`**
+#### **`const discovery = swarm.status(topic)`** {#swarm.status}
 
 Gets the `PeerDiscovery` object associated with the topic, if it exists.
 
-#### **`await swarm.listen()`**
+#### **`await swarm.listen()`** {#swarm.listen}
 
 Explicitly starts listening for incoming connections. This will be called internally after the first `join`, so it rarely needs to be called manually.
 
-#### **`await swarm.flush()`**
+#### **`await swarm.flush()`** {#swarm.flush}
 
 Waits for any pending DHT announcements, and for the swarm to connect to any pending peers (peers that have been discovered, but are still in the queue awaiting processing).
 
@@ -179,7 +179,7 @@ Once a `flush()` has completed, the swarm will have connected to every peer it c
 
 > `flush()` is not topic-specific, so it will wait for every pending DHT operation and connection to be processed -- it's quite heavyweight, so it could take a while. In most cases, it's not necessary, as connections are emitted by `swarm.on('connection')` immediately after they're opened.
 
-### PeerInfo
+### PeerInfo {#peerinfo}
 
 `swarm.on('connection', ...)` emits a `PeerInfo` instance whenever a new connection is established.
 
@@ -187,21 +187,21 @@ There is a one-to-one relationship between connections and `PeerInfo` objects --
 
 #### **Properties:**
 
-#### **`peerInfo.publicKey`**
+#### **`peerInfo.publicKey`** {#peerinfo.publickey}
 
 The peer's Noise public key.
 
-#### **`peerInfo.topics`**
+#### **`peerInfo.topics`** {#peerinfo.topics}
 
 An Array of topics that this Peer is associated with -- `topics` will only be updated when the Peer is in client mode.
 
-#### **`peerInfo.prioritized`**
+#### **`peerInfo.prioritized`** {#peerinfo.prioritized}
 
 If true, the swarm will rapidly attempt to reconnect to this peer.
 
 #### **Methods:**
 
-#### **`peerInfo.ban(banStatus = false)`**
+#### **`peerInfo.ban(banStatus = false)`** {#peerinfo.ban}
 
 Ban or unban the peer. Banning will prevent any future reconnection attempts, but it will **not** close any existing connections.
 
@@ -211,15 +211,15 @@ Ban or unban the peer. Banning will prevent any future reconnection attempts, bu
 
 #### Methods
 
-#### **`await discovery.flushed()`**
+#### **`await discovery.flushed()`** {#discovery.flushed}
 
 Waits until the topic has been fully announced to the DHT. This method is only relevant in server mode. When `flushed()` has completed, the server will be available to the network.
 
-#### **`await discovery.refresh({ client, server })`**
+#### **`await discovery.refresh({ client, server })`** {#discovery.refresh}
 
 Updates the `PeerDiscovery` configuration, optionally toggling client and server modes. This will also trigger an immediate re-announce of the topic when the `PeerDiscovery` is in server mode.
 
-#### **`await discovery.destroy()`**
+#### **`await discovery.destroy()`** {#discovery.destroy}
 
 Stops discovering peers for the given topic.
 

@@ -7,9 +7,9 @@ A series of binary encoders/decoders for building small and fast parsers and ser
 * [Compact-Encoding](compact-encoding.md#installation)
   * Methods
     * [state()](compact-encoding.md#state)
-      * [enc.preencode(state, val)](compact-encoding.md#encencodestate-val)
-      * [enc.encode(state, val)](compact-encoding.md#encpreencodestate-val)
-      * [enc.decode(state)](compact-encoding.md#val--encdecodestate)
+      * [enc.preencode(state, val)](compact-encoding.md#enc.preencode)
+      * [enc.encode(state, val)](compact-encoding.md#enc.encode)
+      * [enc.decode(state)](compact-encoding.md#enc.decode)
   * [Helpers](compact-encoding.md#helpers)
   * [Bundled Encodings](compact-encoding.md#bundled-encodings)
 
@@ -23,7 +23,7 @@ npm install compact-encoding
 
 ### Encoder API
 
-#### **`state()`**
+#### **`state()`** {#state}
 
 An object with the keys`{ start, end, buffer, cache }`.
 
@@ -41,7 +41,7 @@ const cenc = require('compact-encoding')
 const state = cenc.state()
 ```
 
-#### **`enc.preencode(state, val)`**
+#### **`enc.preencode(state, val)`** {#enc.preencode}
 
 Performs a fast preencode dry-run that only sets `state.end`. Use this to figure out how big the buffer needs to be.
 
@@ -57,7 +57,7 @@ cenc.string.preencode(state, 'hi')
 console.log(state) // { start: 0, end: 4, buffer: null, cache: null }
 ```
 
-#### **`enc.encode(state, val)`**
+#### **`enc.encode(state, val)`** {#enc.encode}
 
 Encodes `val` into `state.buffer` at position `state.start` and updates `state.start` to point after the encoded value when done.
 
@@ -69,7 +69,7 @@ cenc.uint.encode(state, 42)
 cenc.string.encode(state, 'hi')
 ```
 
-#### **`val = enc.decode(state)`**
+#### **`val = enc.decode(state)`** {#enc.decode}
 
 Decodes a value from `state.buffer` as position `state.start`and updates `state.start` to point after the decoded value when done in the buffer.
 
@@ -82,7 +82,7 @@ cenc.string.decode(state) // 'hi'
 
 ```
 
-### Helpers
+### Helpers {#helpers}
 
 To encode to a buffer or decode from one, use the `encode` and `decode` helpers to reduce boilerplate.
 
@@ -91,7 +91,7 @@ const buf = cenc.encode(cenc.bool, true)
 const bool = cenc.decode(cenc.bool, buf)
 ```
 
-### Bundled encodings
+### Bundled encodings {#bundled-encoding}
 
 The following encodings are bundled as they are primitives that can be used to build others on top.
 
