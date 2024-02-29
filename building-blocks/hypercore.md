@@ -175,7 +175,7 @@ Buffer containing a key derived from the core's public key. In contrast to `core
 
 Buffer containing the optional block encryption key of this core. Will be `null` unless block encryption is enabled.
 
-#### **`core.writable`**
+#### **`core.writable`** {#writable-header}
 
 Can we append to this core?
 
