@@ -9,6 +9,7 @@
 - Added note on Bare Runtime + cross platform app example.
 - Added update button.
 - Removed deprecated bultinMaps configuration from documentation.
+- Implemented anchor auto scroll on navigation.
 
 ### UX/UI Improvements
 - Improved system path setup UI.
@@ -19,6 +20,7 @@
 - Windows - System Path Setup is manual only for now.
 - Fixed navigation after Pear installation.
 - Path text is selectable in installation screen.
+- Fixed indexes for Gitbook and Pear-Desktop app.
 
 ## v1.0.0
 
