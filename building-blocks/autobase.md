@@ -17,32 +17,32 @@ Notable features include:
   - [Create a new instance](autobase.md#installation)
   - Basic:
     - Properties:
-      - [base.inputs](autobase.md#baseinputs)
-      - [base.outputs](autobase.md#baseoutputs)
-      - [base.localInput](autobase.md#baselocalinput)
-      - [base.localOutput](autobase.md#baselocaloutput)
+      - [base.inputs](autobase.md#base.inputs)
+      - [base.outputs](autobase.md#base.outputs)
+      - [base.localInput](autobase.md#base.localinput)
+      - [base.localOutput](autobase.md#base.localoutput)
     - Methods:
-      - [base.clock()](autobase.md#const-clock--baseclock)
-      - [base.isAutobase(core)](autobase.md#await-autobaseisautobasecore)
-      - [base.append(value, [clock], [input])](autobase.md#await-baseappendvalue-clock-input)
-      - [base.latest([input1, input2, ...])](autobase.md#const-clock--await-baselatestinput1-input2)
-      - [base.addInput(input)](autobase.md#await-baseaddinputinput)
-      - [base.removeInput(input)](autobase.md#await-baseremoveinputinput)
-      - [base.addOutput(output)](autobase.md#await-baseaddoutputoutput)
-      - [base.removeOutput(output)](autobase.md#await-baseremoveoutputoutput)
+      - [base.clock()](autobase.md#base.clock)
+      - [base.isAutobase(core)](autobase.md#base.isautobase)
+      - [base.append(value, [clock], [input])](autobase.md#base.append)
+      - [base.latest([input1, input2, ...])](autobase.md#base.latest)
+      - [base.addInput(input)](autobase.md#base.addinput)
+      - [base.removeInput(input)](autobase.md#base.removeinput)
+      - [base.addOutput(output)](autobase.md#base.addoutput)
+      - [base.removeOutput(output)](autobase.md#base.removeoutput)
     - Streams:
       - Methods:
-        - [base.createCausalStream()](autobase.md#const-stream--basecreatecausalstream)
-        - [base.createReadStream([options])](autobase.md#const-stream--basecreatereadstreamoptions)
+        - [base.createCausalStream()](autobase.md#base.createcasualstream)
+        - [base.createReadStream([options])](autobase.md#base.createreadstream)
     - Linearized Views:
       - Properties:
-        - [view.status](autobase.md#viewstatus)
-        - [view.length](autobase.md#viewlength)
+        - [view.status](autobase.md#view.status)
+        - [view.length](autobase.md#view.length)
       - Methods:
-        - [base.start({ apply, unwrap } = {})](autobase.md#basestart-apply-unwrap)
-        - [view.update()](autobase.md#await-viewupdate)
-        - [view.get(idx, [options])](autobase.md#const-entry--await-viewgetidx-options)
-        - [view.append([blocks])](autobase.md#await-viewappendblocks)
+        - [base.start({ apply, unwrap } = {})](autobase.md#base.start)
+        - [view.update()](autobase.md#view.update)
+        - [view.get(idx, [options])](autobase.md#view.get)
+        - [view.append([blocks])](autobase.md#view.append)
 
 
 ### Installation
@@ -76,23 +76,23 @@ The following table describes the properties of the optional `options` object.
 
 #### Properties
 
-#### **`base.inputs`**
+#### **`base.inputs`** {#base.inputs}
 
 The list of input Hypercores.
 
-#### **`base.outputs`**
+#### **`base.outputs`** {#base.outputs}
 
 The list of output Hypercores containing persisted linearized views.
 
-#### **`base.localInput`**
+#### **`base.localInput`** {#base.localInput}
 
-If non-null, this Hypercore will be appended to in [base.append](autobase.md#await-baseappendvalue-clock-input) operations.
+If non-null, this Hypercore will be appended to in [base.append](autobase.md#base.append) operations.
 
-#### **`base.localOutput`**
+#### **`base.localOutput`** {#base.localoutput}
 
 If non-null `base.view` will be persisted into this Hypercore.
 
-#### **`base.started`**
+#### **`base.started`** {#base.started}
 
 A Boolean indicating if `base.view` has been created.
 
@@ -103,23 +103,23 @@ See the [linearized views section](autobase.md#linearized-views) for details abo
 
 #### Methods
 
-#### **`const clock = base.clock()`**
+#### **`const clock = base.clock()`** {#base.clock}
 
 Returns a Map containing the latest lengths for all Autobase inputs.
 
 The Map has the form: `(hex-encoded-key) -> (Hypercore length)`
 
-#### **`await Autobase.isAutobase(core)`**
+#### **`await Autobase.isAutobase(core)`** {#base.isautobase}
 
 Returns `true` if `core` is an Autobase input or an output.
 
-#### **`await base.append(value, [clock], [input])`**
+#### **`await base.append(value, [clock], [input])`** {#base.append}
 
 Append a new value to the autobase.
 
 * `clock`: The causal clock defaults to base.latest.
 
-#### **`const clock = await base.latest([input1, input2, ...])`**
+#### **`const clock = await base.latest([input1, input2, ...])`** {#base.latest}
 
 Generate a causal clock linking the latest entries of each input.
 
@@ -131,13 +131,13 @@ This is unlikely to be needed generally, prefer to use [`append`](autobase.md#aw
 await base.append('hello world')
 ```
 
-#### **`await base.addInput(input)`**
+#### **`await base.addInput(input)`** {#base.addinput}
 
 Adds a new input Hypercore.
 
 * `input` must either be a fresh Hypercore, or a Hypercore that has previously been used as an Autobase input.
 
-#### **`await base.removeInput(input)`**
+#### **`await base.removeInput(input)`** {#base.removeinput}
 
 Removes an input Hypercore.
 
@@ -149,7 +149,7 @@ Removing an input, and then subsequently linearizing the Autobase into an existi
 Future releases will see the addition of 'soft removal', which will freeze an input at a specific length, and no process blocks past that length, while still preserving that input's history in linearized views. For most applications, soft removal matches the intuition behind 'removing a user'.
 {% endhint %}
 
-#### **`await base.addOutput(output)`**
+#### **`await base.addOutput(output)`** {#base.addoutput}
 
 Adds a new output Hypercore.
 
@@ -157,7 +157,7 @@ Adds a new output Hypercore.
 
 If `base.outputs` is not empty, Autobase will do 'remote linearizing': `base.view.update()` will treat these outputs as the 'trunk', minimizing the amount of local re-processing they need to do during updates.
 
-#### **`await base.removeOutput(output)`**
+#### **`await base.removeOutput(output)`** {#base.removeoutput}
 
 Removes an output Hypercore. `output` can be either a Hypercore or a Hypercore key.
 
@@ -179,7 +179,7 @@ They should fail in the presence of unavailable nodes -- the deterministic order
 
 The simplest kind of linearized view (`const view = base.linearize()`), is just a Hypercore containing the results of a causal stream in reversed order (block N in the index will not be causally dependent on block N+1).
 
-#### **`const stream = base.createCausalStream()`**
+#### **`const stream = base.createCausalStream()`** {#base.createcasualstream}
 
 Generate a Readable stream of input blocks with deterministic, causal ordering.
 
@@ -191,7 +191,7 @@ If an input node is causally-dependent on another node that is not available, th
 
 Similar to `Hypercore.createReadStream()`, this stream starts at the beginning of each input, and does not guarantee the same deterministic ordering as the causal stream. Unlike causal streams, which are used mainly for indexing, read streams can be used to observe updates. And as they move forward in time, they can be live.
 
-#### **`const stream = base.createReadStream([options])`**
+#### **`const stream = base.createReadStream([options])`** {#base.createreadstream}
 
 Generate a Readable stream of input blocks, from earliest to latest.
 
@@ -256,7 +256,7 @@ console.log(base.view.length)
 
 #### View Creation
 
-#### **`base.start({ apply, unwrap } = {})`**
+#### **`base.start({ apply, unwrap } = {})`** {#base.start}
 
 Creates a new linearized view, and sets it on `base.view`. The view mirrors the Hypercore API wherever possible, meaning it can be used as a drop-in replacement for a Hypercore instance.
 
@@ -271,7 +271,7 @@ When calling `base.start` manually, it must only be called once.
 | **`unwrap`** | Set this to auto unwrap the gets to only return .value | Boolean  | `false`         |
 | **`apply`**  | The apply function described above                     | Function | `(batch) => {}` |
 
-#### **`view.status`**
+#### **`view.status`** {#view.status}
 
 The status of the last linearize operation.
 
@@ -280,15 +280,15 @@ Returns an object of the form `{ added: N, removed: M }` where:
 * `added` indicates how many nodes were appended to the output during the linearization
 * `removed` indicates how many nodes were truncated from the output during the linearization
 
-#### **`view.length`**
+#### **`view.length`** {#view.length}
 
 The length of the view. Similar to `hypercore.length`.
 
-#### **`await view.update()`**
+#### **`await view.update()`** {#view.update}
 
 Ensures the view is up-to-date.
 
-#### **`const entry = await view.get(idx, [options])`**
+#### **`const entry = await view.get(idx, [options])`** {#view.get}
 
 Gets an entry from the view. If set `unwrap` to true, it returns `entry.value`. Otherwise, it returns an entry similar to this:
 
@@ -299,6 +299,6 @@ Gets an entry from the view. If set `unwrap` to true, it returns `entry.value`. 
 }
 ```
 
-#### **`await view.append([blocks])`**
+#### **`await view.append([blocks])`** {#view.append}
 
 This operation can only be performed inside the `apply` function.

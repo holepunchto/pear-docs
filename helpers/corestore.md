@@ -7,13 +7,13 @@ Corestore is a Hypercore factory that makes it easier to manage large collection
 > [GitHub (Corestore)](https://github.com/holepunchto/corestore)
 
 * [Corestore](corestore.md#installation)
-  * [Create a new instance](corestore.md#const-store--new-corestorestorage-options)
+  * [Create a new instance](corestore.md#store-new)
   * Basic:
     * Methods:
-      * [store.get(key | { key, name, exclusive, \[options\] })](corestore.md#const-core--storegetkey---key-name-exclusive-options)
-      * [store.replicate(options|stream)](corestore.md#const-stream--storereplicateoptionsstream)
-      * [store.namespace(name)](corestore.md#const-store--storenamespacename)
-      * [store.session(\[options\])](corestore.md#const-session--storesessionoptions)
+      * [store.get(key | { key, name, exclusive, \[options\] })](corestore.md#store.get)
+      * [store.replicate(options|stream)](corestore.md#store.replicate)
+      * [store.namespace(name)](corestore.md#store.namespace)
+      * [store.session(\[options\])](corestore.md#store.sesssion)
 
 ### Installation
 
@@ -25,7 +25,7 @@ npm install corestore
 
 ### API
 
-#### **`const store = new Corestore(storage, [options])`**
+#### **`const store = new Corestore(storage, [options])`** {#store-new}
 
 Creates a new Corestore instance.
 
@@ -42,7 +42,7 @@ const store = new Corestore('./my-storage')
 | ---------------- | -------------------------------------------------------- | ------ | --------------------------------------------------------- |
 | **`primaryKey`** | The primary key used to generate new Hypercore key pairs | Buffer | Randomly generated and persisted in the storage directory |
 
-#### **`const core = store.get(key | { key, name, exclusive, [options] })`**
+#### **`const core = store.get(key | { key, name, exclusive, [options] })`** {#store.get}
 
 Loads a Hypercore, either by name (if the `name` option is provided), or from the provided key (if the first argument is a Buffer or String with hex/z32 key, or if the `key` option is set).
 
@@ -70,7 +70,7 @@ const core5 = store.get(otherKey)
 
 > The names provided are only relevant **locally**, in that they are used to deterministically generate key pairs. Whenever a core is loaded by name, that core will be writable. Names are not shared with remote peers.
 
-#### **`const stream = store.replicate(options|stream)`**
+#### **`const stream = store.replicate(options|stream)`** {#store.replicate}
 
 Creates a replication stream that's capable of replicating all Hypercores that are managed by the Corestore, assuming the remote peer has the correct capabilities.
 
@@ -99,7 +99,7 @@ const s2 = store2.replicate(false)
 s1.pipe(s2).pipe(s1)
 ```
 
-#### **`const store = store.namespace(name)`**
+#### **`const store = store.namespace(name)`** {#store.namespace}
 
 Creates a new namespaced Corestore. Namespacing is useful for sharing a single Corestore instance between many applications or components, as it prevents name collisions.
 
@@ -123,7 +123,7 @@ const drive1 = new Hyperdrive(store.namespace('drive-a'))
 const drive2 = new Hyperdrive(store.namespace('drive-b'))
 ```
 
-#### `const session = store.session([options])`
+#### `const session = store.session([options])` {#store.session}
 
 Creates a new Corestore that shares resources with the original, like cache, cores, replication streams, and storage, while optionally resetting the namespace, overriding `primaryKey`. Useful when an application needs to accept an optional Corestore, but needs to maintain a predictable key derivation.
 

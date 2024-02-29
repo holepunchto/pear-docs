@@ -14,48 +14,48 @@ Notable features include:
   * [Create a new instance](hyperdrive.md#installation)
   * Basic:
     * Properties:
-      * [drive.corestore](hyperdrive.md#drivecorestore)
-      * [drive.db](hyperdrive.md#drivedb)
-      * [drive.core](hyperdrive.md#drivecore)
-      * [drive.id](hyperdrive.md#driveid)
-      * [drive.key](hyperdrive.md#drivekey)
-      * [drive.writable](hyperdrive.md#drivewritable)
-      * [drive.readable](hyperdrive.md#drivereadable)
-      * [drive.discoveryKey](hyperdrive.md#drivediscoverykey)
-      * [drive.contentKey](hyperdrive.md#drivecontentkey)
-      * [drive.version](hyperdrive.md#driveversion)
-      * [drive.supportsMetadata](hyperdrive.md#drivesupportsmetadata)
+      * [drive.corestore](hyperdrive.md#drive.corestore)
+      * [drive.db](hyperdrive.md#drive.db)
+      * [drive.core](hyperdrive.md#drive.core)
+      * [drive.id](hyperdrive.md#drive.id)
+      * [drive.key](hyperdrive.md#drive.key)
+      * [drive.writable](hyperdrive.md#drive.writable)
+      * [drive.readable](hyperdrive.md#drive.readable)
+      * [drive.discoveryKey](hyperdrive.md#drive.discoverykey)
+      * [drive.contentKey](hyperdrive.md#drive.contentkey)
+      * [drive.version](hyperdrive.md#drive.version)
+      * [drive.supportsMetadata](hyperdrive.md#drive.supportsmetadata)
     * Methods:
-      * [drive.ready()](hyperdrive.md#await-driveready)
-      * [drive.close()](hyperdrive.md#await-driveclose)
-      * [drive.put(path, buffer, \[options\])](hyperdrive.md#await-driveputpath-buffer-options)
-      * [drive.get(path, \[options\])](hyperdrive.md#const-buffer--await-drivegetpath-options)
-      * [drive.entry(path, \[options\])](hyperdrive.md#const-entry--await-driveentrypath-options)
-      * [drive.exists(path)](hyperdrive.md#const-exists--await-driveexistspath)
-      * [drive.del(path)](hyperdrive.md#await-drivedelpath)
-      * [drive.compare(entryA, entryB)](hyperdrive.md#const-comparison--drivecompareentrya-entryb)
-      * [drive.clear(path, \[options\])](hyperdrive.md#const-cleared--await-driveclearpath-options)
-      * [drive.clearAll(\[options\])](hyperdrive.md#const-cleared--await-driveclearalloptions)
-      * [drive.purge()](hyperdrive.md#await-drivepurge)
-      * [drive.symlink(path, linkname)](hyperdrive.md#await-drivesymlinkpath-linkname)
-      * [drive.batch()](hyperdrive.md#const-batch--drivebatch)
-        * [batch.flush()](hyperdrive.md#await-batchflush)
-      * [drive.list(folder, \[options\])](hyperdrive.md#const-stream--drivelistfolder-options)
-      * [drive.readdir(folder)](hyperdrive.md#const-stream--drivereaddirfolder)
-      * [drive.entries(\[range\], \[options\])](hyperdrive.md#const-stream--await-driveentriesrange-options)
-      * [drive.mirror(out, \[options\])](hyperdrive.md#const-mirror--drivemirrorout-options)
-      * [drive.watch(\[folder\])](hyperdrive.md#const-watcher--drivewatchfolder)
-      * [drive.createReadStream(path, \[options\])](hyperdrive.md#const-rs--drivecreatereadstreampath-options)
-      * [drive.createWriteStream(path, \[options\])](hyperdrive.md#const-ws--drivecreatewritestreampath-options)
-      * [drive.download(folder, \[options\])](hyperdrive.md#await-drivedownloadfolder-options)
-      * [drive.checkout(version)](hyperdrive.md#const-snapshot--drivecheckoutversion)
-      * [drive.diff(version, folder, \[options\])](hyperdrive.md#await-drivedownloaddiffversion-folder-options)
-      * [drive.downloadDiff(version, folder, \[options\])](hyperdrive.md#await-drivedownloaddiffversion-folder-options)
-      * [drive.downloadRange(dbRanges, blobRanges)](hyperdrive.md#await-drivedownloadrangedbranges-blobranges)
-      * [drive.findingPeers()](hyperdrive.md#const-done--drivefindingpeers)
-      * [drive.replicate(isInitiatorOrStream)](hyperdrive.md#const-stream--drivereplicateisinitiatororstream)
-      * [drive.update(\[options\])](hyperdrive.md#const-updated--await-driveupdateoptions)
-      * [drive.getBlobs()](hyperdrive.md#const-blobs--await-drivegetblobs)
+      * [drive.ready()](hyperdrive.md#drive.ready)
+      * [drive.close()](hyperdrive.md#drive.close)
+      * [drive.put(path, buffer, \[options\])](hyperdrive.md#drive.put)
+      * [drive.get(path, \[options\])](hyperdrive.md#drive.get)
+      * [drive.entry(path, \[options\])](hyperdrive.md#drive.entry)
+      * [drive.exists(path)](hyperdrive.md#drive.exists)
+      * [drive.del(path)](hyperdrive.md#drive.del)
+      * [drive.compare(entryA, entryB)](hyperdrive.md#drive.compare)
+      * [drive.clear(path, \[options\])](hyperdrive.md#drive.clear)
+      * [drive.clearAll(\[options\])](hyperdrive.md#drive.clearall)
+      * [drive.purge()](hyperdrive.md#drive.purge)
+      * [drive.symlink(path, linkname)](hyperdrive.md#drive.symlink)
+      * [drive.batch()](hyperdrive.md#drive.batch)
+        * [batch.flush()](hyperdrive.md#drive.batch)
+      * [drive.list(folder, \[options\])](hyperdrive.md#drive.list)
+      * [drive.readdir(folder)](hyperdrive.md#drive.readdir)
+      * [drive.entries(\[range\], \[options\])](hyperdrive.md#drive.entries)
+      * [drive.mirror(out, \[options\])](hyperdrive.md#drive.mirror)
+      * [drive.watch(\[folder\])](hyperdrive.md#drive.watch)
+      * [drive.createReadStream(path, \[options\])](hyperdrive.md#drive.createreadstream)
+      * [drive.createWriteStream(path, \[options\])](hyperdrive.md#drive.createwritestream)
+      * [drive.download(folder, \[options\])](hyperdrive.md#drive.download)
+      * [drive.checkout(version)](hyperdrive.md#drive.checkout)
+      * [drive.diff(version, folder, \[options\])](hyperdrive.md#drive.diff)
+      * [drive.downloadDiff(version, folder, \[options\])](hyperdrive.md#drive.downloaddiff)
+      * [drive.downloadRange(dbRanges, blobRanges)](hyperdrive.md#drive.downloadrange)
+      * [drive.findingPeers()](hyperdrive.md#drive.findingpeers)
+      * [drive.replicate(isInitiatorOrStream)](hyperdrive.md#drive.replicate)
+      * [drive.update(\[options\])](hyperdrive.md#drive.update)
+      * [drive.getBlobs()](hyperdrive.md#drive.getblobs)
 
 ### Installation
 
@@ -75,53 +75,53 @@ By default, it uses the core at `{ name: 'db' }` from `store`, unless the public
 
 #### Properties
 
-#### **`drive.corestore`**
+#### **`drive.corestore`** {#drive.corestore}
 
 The Corestore instance used as storage.
 
-#### **`drive.db`**
+#### **`drive.db`** {#drive.db}
 
 The underlying Hyperbee backing the drive file structure.
 
-#### **`drive.core`**
+#### **`drive.core`** {#drive.core}
 
 The Hypercore used for `drive.db`.
 
-#### **`drive.id`**
+#### **`drive.id`** {#drive.id}
 
 String containing the id (z-base-32 of the public key) identifying this drive.
 
-#### **`drive.key`**
+#### **`drive.key`** {#drive.key}
 
 The public key of the Hypercore backing the drive.
 
-#### **`drive.writable`**
+#### **`drive.writable`** {#drive.writable}
 
 Boolean indicating if we can write or delete data in this drive.
 
-#### **`drive.readable`**
+#### **`drive.readable`** {#drive.readable}
 
 Boolean indicating if we can read from this drive. After closing the drive this will be `false`.
 
-#### **`drive.discoveryKey`**
+#### **`drive.discoveryKey`** {#drive.discoverykey}
 
 The hash of the public key of the Hypercore backing the drive. It can be used as a `topic` to seed the drive using Hyperswarm.
 
-#### **`drive.contentKey`**
+#### **`drive.contentKey`** {#drive.contentkey}
 
 The public key of the [Hyperblobs](https://github.com/holepunchto/hyperblobs) instance holding blobs associated with entries in the drive.
 
-#### **`drive.version`**
+#### **`drive.version`** {#drive.version}
 
 The number that indicates how many modifications were made, it is useful as a version identifier.
 
-#### **`drive.supportsMetadata`**
+#### **`drive.supportsMetadata`** {#drive.supportsmetadata}
 
 Boolean indicating if the drive handles or not metadata. Always `true`.
 
 #### Methods
 
-#### **`await drive.ready()`**
+#### **`await drive.ready()`** {#drive.ready}
 
 Waits until the internal state is loaded.
 
@@ -129,15 +129,15 @@ Use it once before reading synchronous properties like `drive.discoveryKey`.
 If any of the other APIs are called first they will wait for readiness so this is only needed to lookup
 synchronous properties before any API call.
 
-#### **`await drive.close()`**
+#### **`await drive.close()`** {#drive.close}
 
 Fully close this drive, including its underlying Hypercore backed data structures.
 
-#### **`await drive.put(path, buffer, [options])`**
+#### **`await drive.put(path, buffer, [options])`** {#drive.put}
 
 Creates a file at `path` in the drive. `options` are the same as in `createWriteStream`.
 
-#### **`const buffer = await drive.get(path, [options])`**
+#### **`const buffer = await drive.get(path, [options])`** {#drive.get}
 
 Returns the blob at `path` in the drive. If no blob exists, returns `null`.
 
@@ -153,7 +153,7 @@ It also returns `null` for symbolic links.
 }
 ```
 
-#### **`const entry = await drive.entry(path, [options])`**
+#### **`const entry = await drive.entry(path, [options])`** {#drive.entry}
 
 Returns the entry at `path` in the drive. It looks like this:
 
@@ -185,21 +185,21 @@ Returns the entry at `path` in the drive. It looks like this:
 }
 ```
 
-#### `const exists = await drive.exists(path)`
+#### `const exists = await drive.exists(path)` {#drive.exists}
 
 Returns `true` if the entry at `path` does exists, otherwise `false`.
 
-#### **`await drive.del(path)`**
+#### **`await drive.del(path)`** {#drive.del}
 
 Deletes the file at `path` from the drive.
 
 > ℹ️ The underlying blob is not deleted, only the reference in the file structure.
 
-#### **`const comparison = drive.compare(entryA, entryB)`**
+#### **`const comparison = drive.compare(entryA, entryB)`** {#drive.compare}
 
 Returns `0` if entries are the same, `1` if `entryA` is older, and `-1` if `entryB` is older.
 
-#### **`const cleared = await drive.clear(path, [options])`**
+#### **`const cleared = await drive.clear(path, [options])`** {#drive.clear}
 
 Deletes the blob from storage to free up space, but the file structure reference is kept.
 
@@ -209,7 +209,7 @@ Deletes the blob from storage to free up space, but the file structure reference
 | ----------------- | --------------------------------------------------------------------- | ------- | ------- |
 | **`diff`** | Returned `cleared` bytes object is null unless enabled | Boolean | `false` |
 
-#### `const cleared = await drive.clearAll([options])`
+#### `const cleared = await drive.clearAll([options])` {#drive.clearall}
 
 Deletes all the blobs from storage to free up space, similar to how `drive.clear()` works.
 
@@ -219,25 +219,25 @@ Deletes all the blobs from storage to free up space, similar to how `drive.clear
 | ----------------- | --------------------------------------------------------------------- | ------- | ------- |
 | **`diff`** | Returned `cleared` bytes object is null unless enabled | Boolean | `false` |
 
-#### `await drive.purge()`
+#### `await drive.purge()` {#drive.purge}
 
 Purges both cores (db and blobs) from storage, completely removing all the drive's data.
 
-#### **`await drive.symlink(path, linkname)`**
+#### **`await drive.symlink(path, linkname)`** {#drive.symlink}
 
 Creates an entry in drive at `path` that points to the entry at `linkname`.
 
 If a blob entry currently exists at `path` then it will get overwritten and `drive.get(key)` will return `null`, while `drive.entry(key)` will return the entry with symlink information.
 
-#### **`const batch = drive.batch()`**
+#### **`const batch = drive.batch()`** {#drive.batch}
 
 Useful for atomically mutating the drive, has the same interface as Hyperdrive.
 
-#### **`await batch.flush()`**
+#### **`await batch.flush()`** {#drive.flush}
 
 Commit a batch of mutations to the underlying drive.
 
-#### **`const stream = drive.list(folder, [options])`**
+#### **`const stream = drive.list(folder, [options])`** {#drive.list}
 
 Returns a stream of all entries in the drive at paths prefixed with `folder`.
 
@@ -247,23 +247,23 @@ Returns a stream of all entries in the drive at paths prefixed with `folder`.
 | --------------- | --------------------------------------------- | ------- | ------- |
 | **`recursive`** | whether to descend into all subfolders or not | Boolean | `true`  |
 
-#### **`const stream = drive.readdir(folder)`**
+#### **`const stream = drive.readdir(folder)`** {#drive.readdir}
 
 Returns a stream of all subpaths of entries in the drive stored at paths prefixed by `folder`.
 
-#### **`const stream = await drive.entries([range], [options])`**
+#### **`const stream = await drive.entries([range], [options])`** {#drive.entries}
 
 Returns a read stream of entries in the drive.
 
 `options` are the same as `Hyperbee().createReadStream([range], [options])`.
 
-#### **`const mirror = drive.mirror(out, [options])`**
+#### **`const mirror = drive.mirror(out, [options])`** {#drive.mirror}
 
 Mirrors this drive into another. Returns a [`MirrorDrive`](../helpers/mirrordrive.md) instance constructed with `options`.
 
 Call `await mirror.done()` to wait for the mirroring to finish.
 
-#### **`const watcher = drive.watch([folder])`**
+#### **`const watcher = drive.watch([folder])`** {#drive.watch}
 
 Returns an iterator that listens on `folder` to yield changes, by default on `/`.
 
@@ -291,7 +291,7 @@ Waits until the watcher is loaded and detecting changes.
 
 Stops the watcher. I can also be stopped by using `break` in the `for await` loop.
 
-#### **`const rs = drive.createReadStream(path, [options])`**
+#### **`const rs = drive.createReadStream(path, [options])`** {#drive.createreadstream}
 
 Returns a stream to read out the blob stored in the drive at `path`.
 
@@ -307,7 +307,7 @@ Returns a stream to read out the blob stored in the drive at `path`.
 }
 ```
 
-#### **`const ws = drive.createWriteStream(path, [options])`**
+#### **`const ws = drive.createWriteStream(path, [options])`** {#drive.createwritestream}
 
 Stream a blob into the drive at `path`.
 
@@ -318,17 +318,17 @@ Stream a blob into the drive at `path`.
 | **`executable`** | whether the blob is executable or not                | Boolean | `true`  |
 | **`metadata`**   | Extended file information i.e., arbitrary JSON value | Object  | `null`  |
 
-#### **`await drive.download(folder, [options])`**
+#### **`await drive.download(folder, [options])`** {#drive.download}
 
 Downloads the blobs corresponding to all entries in the drive at paths prefixed with `folder`.
 
 `options` are the same as those for `drive.list(folder, [options])`.
 
-#### **`const snapshot = drive.checkout(version)`**
+#### **`const snapshot = drive.checkout(version)`** {#drive.checkout}
 
 Gets a read-only snapshot of a previous version.
 
-#### **`const stream = drive.diff(version, folder, [options])`**
+#### **`const stream = drive.diff(version, folder, [options])`** {#drive.diff}
 
 Creates a stream of shallow changes to `folder` between `version` and `drive.version`.
 
@@ -343,23 +343,23 @@ Each entry is sorted by key and looks like this:
 
 > ℹ️ If an entry exists in `drive.version` of the `folder` but not in `version`, then `left` is set and `right` will be `null`, and vice versa.
 
-#### **`await drive.downloadDiff(version, folder, [options])`**
+#### **`await drive.downloadDiff(version, folder, [options])`** {#drive.downloaddiff}
 
 Downloads all the blobs in `folder` corresponding to entries in `drive.checkout(version)` that are not in `drive.version`.
 
 In other words, downloads all the blobs added to `folder` up to `version` of the drive.
 
-#### **`await drive.downloadRange(dbRanges, blobRanges)`**
+#### **`await drive.downloadRange(dbRanges, blobRanges)`** {#drive.downloadrange}
 
 Downloads the entries and blobs stored in the [ranges](https://github.com/holepunchto/hypercore#const-range--coredownloadrange) `dbRanges` and `blobRanges`.
 
-#### **`const done = drive.findingPeers()`**
+#### **`const done = drive.findingPeers()`** {#drive.findingpeers}
 
 Indicates to Hyperdrive that users are finding peers in the background, requests will be on hold until this is done.
 
 Call `done()` when the current discovery iteration is done, i.e., after `swarm.flush()` finishes.
 
-#### **`const stream = drive.replicate(isInitiatorOrStream)`**
+#### **`const stream = drive.replicate(isInitiatorOrStream)`** {#drive.replicate}
 
 Usage example:
 
@@ -373,7 +373,7 @@ swarm.flush().then(done, done)
 
 Learn more about how replicate works at [corestore.replicate](https://github.com/holepunchto/corestore#const-stream--storereplicateoptsorstream).
 
-#### **`const updated = await drive.update([options])`**
+#### **`const updated = await drive.update([options])`** {#drive.update}
 
 Waits for initial proof of the new drive version until all `findingPeers` are done.
 
@@ -387,7 +387,7 @@ Waits for initial proof of the new drive version until all `findingPeers` are do
 
 Use `drive.findingPeers()` or `{ wait: true }` to make await `drive.update()` blocking.
 
-#### **`const blobs = await drive.getBlobs()`**
+#### **`const blobs = await drive.getBlobs()`** {#drive.getblobs}
 
 Returns the [Hyperblobs](https://github.com/holepunchto/hyperblobs) instance storing the blobs indexed by drive entries.
 

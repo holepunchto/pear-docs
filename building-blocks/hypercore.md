@@ -16,45 +16,45 @@ Notable features include:
   * [Creating a new instance](hypercore.md#installation)
   * Basic:
     * Properties:
-      * [core.writable](hypercore.md#corewritable)
-      * [core.readable](hypercore.md#corereadable)
-      * [core.id](hypercore.md#coreid)
-      * [core.key](hypercore.md#corekey)
-      * [core.keyPair](hypercore.md#corekeypair)
-      * [core.discoveryKey](hypercore.md#corediscoverykey)
-      * [core.encryptionKey](hypercore.md#coreencryptionkey)
-      * [core.length](hypercore.md#corelength)
-      * [core.contiguousLength](hypercore.md#corecontiguouslength)
-      * [core.fork](hypercore.md#corefork)
-      * [core.padding](hypercore.md#corepadding)
+      * [core.writable](hypercore.md#core.writable)
+      * [core.readable](hypercore.md#core.readable)
+      * [core.id](hypercore.md#core.id)
+      * [core.key](hypercore.md#core.key)
+      * [core.keyPair](hypercore.md#core.keypair)
+      * [core.discoveryKey](hypercore.md#core.discoverykey)
+      * [core.encryptionKey](hypercore.md#core.encryptionkey)
+      * [core.length](hypercore.md#core.length)
+      * [core.contiguousLength](hypercore.md#core.contiguouslength)
+      * [core.fork](hypercore.md#core.fork)
+      * [core.padding](hypercore.md#core.padding)
     * Methods:
-      * [core.append(block)](hypercore.md#const--length-bytelength---await-coreappendblock)
-      * [core.get(index, \[options\])](hypercore.md#const-block--await-coregetindex-options)
-      * [core.has(start, \[end\])](hypercore.md#const-has--await-corehasstart-end)
-      * [core.update()](hypercore.md#const-updated--await-coreupdateoptions)
-      * [core.seek(byteOffset)](hypercore.md#const-index-relativeoffset--await-coreseekbyteoffset-options)
-      * [core.createReadStream(\[options\])](hypercore.md#const-stream--corecreatereadstreamoptions)
-      * [core.createByteStream(\[options\])](hypercore.md#const-stream--corecreatereadstreamoptions)
-      * [core.clear(start, \[end\], \[options\])](hypercore.md#const-cleared--await-coreclearstart-end-options)
-      * [core.truncate(newLength, \[forkId\])](hypercore.md#await-coretruncatenewlength-forkid)
-      * [core.purge()](hypercore.md#await-corepurge)
-      * [core.treeHash(\[length\])](hypercore.md#const-hash--await-coretreehashlength)
-      * [core.download(\[range\])](hypercore.md#const-range--coredownloadrange)
-      * [core.session(\[options\])](hypercore.md#const-session--await-coresessionoptions)
-      * [core.info(\[options\])](hypercore.md#const-info--await-coreinfooptions)
-      * [core.close()](hypercore.md#await-coreclose)
-      * [core.ready()](hypercore.md#await-coreready)
-      * [core.replicate(isInitiatorOrReplicationStream, \[options\])](hypercore.md#const-stream--corereplicateisinitiatorstream-options)
-      * [core.findingPeers()](hypercore.md#const-done--corefindingpeers)
-      * [core.session(\[options\])](hypercore.md#coresessionoptions)
-      * [core.snapshot(\[options\])](hypercore.md#coresnapshotoptions)
+      * [core.append(block)](hypercore.md#core.append)
+      * [core.get(index, \[options\])](hypercore.md#core.get)
+      * [core.has(start, \[end\])](hypercore.md#core.has)
+      * [core.update()](hypercore.md#core.update)
+      * [core.seek(byteOffset)](hypercore.md#core.seek)
+      * [core.createReadStream(\[options\])](hypercore.md#core.createreadstream)
+      * [core.createByteStream(\[options\])](hypercore.md#core.createbytestream)
+      * [core.clear(start, \[end\], \[options\])](hypercore.md#core.clear)
+      * [core.truncate(newLength, \[forkId\])](hypercore.md#core.truncate)
+      * [core.purge()](hypercore.md#core.purge)
+      * [core.treeHash(\[length\])](hypercore.md#core.treehash)
+      * [core.download(\[range\])](hypercore.md#core.download)
+      * [core.session(\[options\])](hypercore.md#core.session)
+      * [core.info(\[options\])](hypercore.md#core.info)
+      * [core.close()](hypercore.md#core.close)
+      * [core.ready()](hypercore.md#core.ready)
+      * [core.replicate(isInitiatorOrReplicationStream, \[options\])](hypercore.md#core.replicate)
+      * [core.findingPeers()](hypercore.md#core.findingpeers)
+      * [core.session(\[options\])](hypercore.md#core.session)
+      * [core.snapshot(\[options\])](hypercore.md#core.snapshot)
     * Events:
-      * [append](hypercore.md#coreonappend)
-      * [truncate](hypercore.md#coreontruncate-ancestors-forkid)
-      * [ready](hypercore.md#coreonready)
-      * [close](hypercore.md#coreonclose)
-      * [peer-add](hypercore.md#coreonpeer-add)
-      * [peer-remove](hypercore.md#coreonpeer-remove)
+      * [append](hypercore.md#core.onappend)
+      * [truncate](hypercore.md#core.ontruncate)
+      * [ready](hypercore.md#core.onready)
+      * [close](hypercore.md#core.onclose)
+      * [peer-add](hypercore.md#core.onpeer-add)
+      * [peer-remove](hypercore.md#core.onpeer-remove)
 
 ### Installation
 
@@ -136,15 +136,15 @@ valueEncodings will be applied to individual blocks, even if we append batches. 
 
 #### Properties
 
-#### **`core.readable`**
+#### **`core.readable`** {#core.readable}
 
 Can we read from this core? After [closing](hypercore.md#await-coreclose) the core this will be `false`.
 
-#### **`core.id`**
+#### **`core.id`** {#core.id}
 
 A string containing the ID (z-base-32 of the public key) that identifies this core.
 
-#### **`core.key`**
+#### **`core.key`** {#core.key}
 
 Buffer containing the public key identifying this core.
 
@@ -160,50 +160,50 @@ Since the public key is also a read capability, it can't be used to discover oth
 
 </details>
 
-#### **`core.keyPair`**
+#### **`core.keyPair`** {#core.keyPair}
 
 An object containing buffers of the core's public and secret key
 
-#### **`core.discoveryKey`**
+#### **`core.discoveryKey`** {#core.discoveryKey}
 
 Buffer containing a key derived from the core's public key. In contrast to `core.key,` this key can not be used to verify the data. It can be used to announce or look for peers that are sharing the same core, without leaking the core key.
 
 > The above properties are populated after [`ready`](hypercore.md#await-core.ready) has been emitted. Will be `null` before the event.
 
 
-#### **`core.encryptionKey`**
+#### **`core.encryptionKey`** {#core.encryptionKey}
 
 Buffer containing the optional block encryption key of this core. Will be `null` unless block encryption is enabled.
 
-#### **`core.writable`**
+#### **`core.writable`** {#core.writable}
 
 Can we append to this core?
 
 > Populated after [`ready`](hypercore.md#await-core.ready) has been emitted. Will be `false` before the event.
 
 
-#### **`core.length`**
+#### **`core.length`** {#core.length}
 
 The number of blocks of data available on this core. If `sparse: false`, this will equal `core.contiguousLength`.
 
-#### **`core.contiguousLength`**
+#### **`core.contiguousLength`** {#core.contiguousLength}
 
 The number of blocks contiguously available starting from the first block of this core.
 
-#### **`core.fork`**
+#### **`core.fork`** {#core.fork}
 
 The current fork id of this core
 
 > The above properties are populated after [`ready`](hypercore.md#await-core.ready) has been emitted. Will be `0` before the event.
 
 
-#### **`core.padding`**
+#### **`core.padding`** {#core.padding}
 
 The amount of padding applied to each block of this core. Will be `0` unless block encryption is enabled.
 
 #### Methods
 
-#### **`const { length, byteLength } = await core.append(block)`**
+#### **`const { length, byteLength } = await core.append(block)`**  {#core.append}
 
 Append a block of data (or an array of blocks) to the core. Returns the new length and byte length of the core.
 
@@ -218,7 +218,7 @@ await core.append(Buffer.from('I am a block of data'))
 await core.append([Buffer.from('batch block 1'), Buffer.from('batch block 2')])
 ```
 
-#### **`const block = await core.get(index, [options])`**
+#### **`const block = await core.get(index, [options])`** {#core.get}
 
 Get a block of data. If the data is not available locally this method will prioritize and wait for the data to be downloaded.
 
@@ -243,11 +243,11 @@ const blockLocal = await core.get(44, { wait: false })
 | **`valueEncoding`** | One of 'json', 'utf-8', or 'binary'                    | String  | core's valueEncoding |
 |    **`decrypt`**    | Automatically decrypts the block if encrypted          | Boolean | `true`               |
 
-#### **`const has = await core.has(start, [end])`**
+#### **`const has = await core.has(start, [end])`** {#core.has}
 
 Check if the core has all blocks between `start` and `end`.
 
-#### **`const updated = await core.update([options])`**
+#### **`const updated = await core.update([options])`** {#core.update}
 
 Wait for the core to try and find a signed update to its length. Does not download any data from peers except for proof of the new core length.
 
@@ -262,7 +262,7 @@ console.log('core was updated?', updated, 'length is', core.length)
 | :--------: | ------------------------------------------------- | ------- | ------- |
 | **`wait`** | Wait for the meta-data of hypercore to be updated | Boolean | `replicator.findingPeers > 0`  |
 
-#### **`const [index, relativeOffset] = await core.seek(byteOffset, [options])`**
+#### **`const [index, relativeOffset] = await core.seek(byteOffset, [options])`** {#core.seek}
 
 Seek a byte offset.
 
@@ -283,7 +283,7 @@ const third = await core.seek(5) // returns [2, 1]
 | **`wait`**    | wait for data to be downloaded | Boolean | `true` |
 | **`timeout`** | wait for given milliseconds    | Integer | `core.timeout`                |
 
-#### **`const stream = core.createReadStream([options])`**
+#### **`const stream = core.createReadStream([options])`** {#core.readstream}
 
 Make a read stream to read a range of data out at once.
 
@@ -311,7 +311,7 @@ for await (const data of fullStream) {
 | **`live`**     | Allow realtime data replication                                | Boolean | `false`       |
 | **`snapshot`** | Auto set end to core.length on open or update it on every read | Boolean | `true`        |
 
-#### `const bs = core.createByteStream([options])`
+#### `const bs = core.createByteStream([options])` {#core.createbytestream}
 
 Make a byte stream to read a range of bytes.
 
@@ -336,7 +336,7 @@ partialStream.pipe(process.stdout)
 | **`byteLength`** |  Number of bytes that will be read | Integer | `core.byteLength - options.byteOffset`                |
 | **`prefetch`** |  Controls the number of blocks to preload    | Integer | `32`                |
 
-#### **`const cleared = await core.clear(start, [end], [options])`**
+#### **`const cleared = await core.clear(start, [end], [options])`** {#core.clear}
 
 Clears stored blocks between `start` and `end`, reclaiming storage when possible.
 
@@ -353,21 +353,21 @@ await core.clear(0, 10) // clear block 0-10 from local cache
 
 The core will also 'gossip' with peers it is connected to, that no longer have these blocks.
 
-#### **`await core.truncate(newLength, [forkId])`**
+#### **`await core.truncate(newLength, [forkId])`** {#core.truncate}
 
 Truncates the core to a smaller length.
 
 Per default, this will update the fork ID of the core to `+ 1`, but we can set the preferred fork ID with the option. Note that the fork ID should be incremented in a monotone manner.
 
-#### `await core.purge()`
+#### `await core.purge()` {#core.purge}
 
 Purge the Hypercore from storage, completely removing all data.
 
-#### **`const hash = await core.treeHash([length])`**
+#### **`const hash = await core.treeHash([length])`** {#core.purge}
 
 Get the Merkle Tree hash of the core at a given length, defaulting to the current length of the core.
 
-#### **`const range = core.download([range])`**
+#### **`const range = core.download([range])`** {#core.download}
 
 Download a range of data.
 
@@ -408,7 +408,7 @@ To cancel downloading a range, simply destroy the range instance:
 // will stop downloading now
 range.destroy()
 ```
-#### **`const session = await core.session([options])`**
+#### **`const session = await core.session([options])`** {#core.session}
 
 Creates a new Hypercore instance that shares the same underlying core. Options are inherited from the parent instance, unless they are re-set.
 
@@ -416,7 +416,7 @@ Creates a new Hypercore instance that shares the same underlying core. Options a
 
 > Be sure to close any sessions made. 
 
-#### **`const info = await core.info([options])`**
+#### **`const info = await core.info([options])`** {#core.info}
 
 Get information about this core, such as its total size in bytes.
 
@@ -446,11 +446,11 @@ Info {
 | --------- | ------------------------------ | ------- | ------- |
 | `storage` | get storage estimates in bytes | Boolean | `false` |
 
-#### **`await core.close()`**
+#### **`await core.close()`** {#core.close}
 
 Close this core and release any underlying resources.
 
-#### **`await core.ready()`**
+#### **`await core.ready()`** {#core.ready}
 
 Waits for the core to open.
 
@@ -459,7 +459,7 @@ After this has been called `core.length` and other properties have been set.
 > ℹ️ In general, waiting for `ready` is unnecessary unless there's a need to check a synchronous property (like `key` or `discoverykey`) before any other async API method has been called. All async methods on the public API, await `ready` internally.
 
 
-#### **`const stream = core.replicate(isInitiator|stream, options)`**
+#### **`const stream = core.replicate(isInitiator|stream, options)`** {#core.replicate}
 
 Creates a replication stream. We should pipe this to another Hypercore instance.
 
@@ -500,7 +500,7 @@ socket.pipe(localCore.replicate(true)).pipe(socket)
 
 > In almost all cases, the use of both Hyperswarm and Corestore Replication is advised and will meet all needs.
 
-#### **`const done = core.findingPeers()`**
+#### **`const done = core.findingPeers()`** {#core.findingpeers}
 
 Create a hook that tells Hypercore users are finding peers for this core in the background. Call `done` when user current discovery iteration is done. If using Hyperswarm, call this after a `swarm.flush()` finishes.
 
@@ -522,7 +522,7 @@ swarm.flush().then(() => done())
 await core.get(0)
 ```
 
-#### **`core.session([options])`**
+#### **`core.session([options])`** 
 
 Returns a new session for the Hypercore.
 
@@ -547,7 +547,7 @@ await core.close()     // will not close the underlying Hypercore
 await session1.close() // will close the Hypercore
 ```
 
-#### **`core.snapshot([options])`**
+#### **`core.snapshot([options])`** {#core.snapshot} 
 
 Returns a snapshot of the core at that particular time. This is useful for ensuring that multiple `get` operations are acting on a consistent view of the Hypercore (i.e. if the core forks in between two reads, the second should throw an error).
 
@@ -559,26 +559,26 @@ If [`core.update()`](hypercore.md#const-updated--await-coreupdateoptions) is exp
 
 #### Events
 
-#### **`core.on('append')`**
+#### **`core.on('append')`** {#core.onappend}
 
 Emitted when the core has been appended to (i.e., has a new length/byte length), either locally or remotely.
 
-#### **`core.on('truncate', ancestors, forkId)`**
+#### **`core.on('truncate', ancestors, forkId)`** {#core.ontruncate}
 
 Emitted when the core has been truncated, either locally or remotely.
 
-#### **`core.on('ready')`**
+#### **`core.on('ready')`** {#core.onready}
 
 Emitted after the core has initially opened all its internal state.
 
-#### **`core.on('close')`**
+#### **`core.on('close')`** {#core.onclose}
 
 Emitted when the core has been fully closed.
 
-#### **`core.on('peer-add')`**
+#### **`core.on('peer-add')`** {#core.onpeer-add}
 
 Emitted when a new connection has been established with a peer.
 
-#### **`core.on('peer-remove')`**
+#### **`core.on('peer-remove')`** {#core.onpeer-remove}
 
 Emitted when a peer's connection has been closed.
