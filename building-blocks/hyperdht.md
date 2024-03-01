@@ -18,7 +18,7 @@ Notable features include:
       * [DHT.bootstrapper(port, host, \[options\])](hyperdht.md#dht.bootstrapper)
       * [node.destroy(\[options\])](hyperdht.md#node.destroy)
     * [Creating P2P servers:](hyperdht.md#creating-p2p-servers)
-      * [node.createServer(\[options\], \[onconnection\])](hyperdht.md#const-server--nodecreateserveroptions-onconnection)
+      * [node.createServer(\[options\], \[onconnection\])](hyperdht.md#node.createserver)
       * Methods:
         * [server.listen(keyPair)](hyperdht.md#server.listen)
         * [server.refresh()](hyperdht.md#server.refresh)
@@ -34,7 +34,7 @@ Notable features include:
         * [socket.remotePublicKey](hyperdht.md#socket.remotepublickey)
         * [socket.publicKey](hyperdht.md#socket.publickey)
       * Events:
-        * [open](hyperdht.md#socketonopen)
+        * [open](hyperdht.md#socket.onopen)
     * [Additional Peer Discovery](hyperdht.md#additional-peer-discovery):
       * Methods:
         * [node.lookup(topic, \[options\])](hyperdht.md#node.lookup)
@@ -86,7 +86,7 @@ Any options passed are forwarded to dht-rpc.
 
 Use this method to create a bootstrap node for in order to run a Hyperswarm network.
 
-#### **`await node.destroy([options])`** {#dht.destroy}
+#### **`await node.destroy([options])`** {#node.destroy}
 
 Fully destroy this DHT node.
 
@@ -94,7 +94,7 @@ Fully destroy this DHT node.
 
 ### Creating P2P Servers
 
-#### **`const server = node.createServer([options], [onconnection])`** {#server.createserver}
+#### **`const server = node.createServer([options], [onconnection])`** {#node.createserver}
 
 Creates a new server for accepting incoming encrypted P2P connections.
 
