@@ -1,6 +1,6 @@
 # Configuration
 
-<mark style="background-color:blue;">**experimental**</mark>
+<mark style="background-color: #8484ff;">**experimental**</mark>
 
 ## The `package.json` file
 
