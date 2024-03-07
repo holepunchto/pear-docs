@@ -104,7 +104,7 @@ The Pear link of an application. Takes the form `pear://<key>/<data>`.
 In development, `pear://dev/<data>`.
 
 **References**
-* [Pear.config.link](#pearconfiglinkdata-string)
+* [Pear.config.linkData](#pearconfiglinkdata-string)
 * [`pear dev`](./cli.md)
 * [`pear run`](./cli.md)
 
@@ -362,7 +362,7 @@ will be waited upon until resolution before calling the next teardown handler.
 
 Restart the application.
 
-### `Pear.updates(listener <Async Function|Function>)`
+### `Pear.updates(listener <Async Function|Function>) => streamx.Readable`
 
 The `listener` function is called for every incoming update with an `update` object of the form:
 
@@ -380,6 +380,32 @@ The `listener` function is called for every incoming update with an `update` obj
 * `diff` requires `--update-diffs` flag (else `null`). An array of objects of form `{ type, key}`.
   * `type` `<String>` - Operation type `update` or `delete`
   * `key` `<String>` - Drive key for a given updated file e.g. `/path/to/file.txt`
+
+Also returns a [`streamx`](https://github.com/mafintosh/streamx) `Readable`) stream.
+
+### `Pear.wakeups(listener <Async Function|Function>) => streamx.Readable`
+
+A wakeup occurs in the following cases:
+
+* when a trusted `pear://` link is clicked and the application for that link is already open
+* when used with `pear run --detached pear://<key>[/data]`
+
+The `listener` function is called for every incoming wakeup with a `wakeup` object of the form:
+
+```js
+{
+  type: 'pear/wakeup',
+  link: <String>,
+  data: <String>
+}
+```
+
+* `link` is the `pear://` link for the application receiving the wakeup
+* `data` is everything after the key in the `pear://` link - this would be `pathname` of a [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL/URL) object but without the leading slash (`/`). Given `pear://8ts9yz9dtucxzwbxafygnjasqe9ti3dt3w7rm6sbiu8prmidacao/some/more/stuff` the `data` string would hold `some/more/stuff`.
+
+Also returns a [`streamx`](https://github.com/mafintosh/streamx) `Readable`) stream.
+
+
 
 
 ### `const win = new Pear.Window(entry <String>, options <Object>)`
