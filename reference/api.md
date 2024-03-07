@@ -405,9 +405,6 @@ The `listener` function is called for every incoming wakeup with a `wakeup` obje
 
 Also returns a [`streamx`](https://github.com/mafintosh/streamx) `Readable`) stream.
 
-
-
-
 ### `const win = new Pear.Window(entry <String>, options <Object>)`
 
 Desktop Applications only.
