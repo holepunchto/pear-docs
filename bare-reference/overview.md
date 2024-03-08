@@ -16,7 +16,7 @@ npm i -g bare-runtime
 bare [-e, --eval <script>] [-p, --print <script>] [<filename>]
 ```
 
-The specified `<script>` or `<filename>` is run using `Module.load()`. For more information on the module system and the supported formats, see [Bare Module](https://github.com/holepunchto/bare-module).
+The specified `<script>` or `<filename>` is run using `Module.load()`. For more information on the module system and the supported formats, see [Bare Modules](./bare-modules.md).
 
 ## Architecture
 
@@ -33,35 +33,8 @@ Find the Bare API specs [here](./api.md).
 
 ### Modules
 
-Bare provides no standard library beyond the core JavaScript API available through the `Bare` namespace. Instead, there is a comprehensive collection of external modules built specifically for Bare:
+Bare provides no standard library beyond the core JavaScript API available through the `Bare` namespace. Instead, there is a comprehensive collection of external modules built specifically for Bare, see [Bare Modules](./bare-modules.md#external-modules-for-bare)
 
-Modules |
-:--- |
-<https://github.com/holepunchto/bare-abort>
-<https://github.com/holepunchto/bare-assert>
-<https://github.com/holepunchto/bare-atomics>
-<https://github.com/holepunchto/bare-buffer>
-<https://github.com/holepunchto/bare-bundle>
-<https://github.com/holepunchto/bare-channel>
-<https://github.com/holepunchto/bare-console>
-<https://github.com/holepunchto/bare-env>
-<https://github.com/holepunchto/bare-events>
-<https://github.com/holepunchto/bare-fs>
-<https://github.com/holepunchto/bare-hrtime>
-<https://github.com/holepunchto/bare-http1>
-<https://github.com/holepunchto/bare-inspect>
-<https://github.com/holepunchto/bare-module>
-<https://github.com/holepunchto/bare-os>
-<https://github.com/holepunchto/bare-path>
-<https://github.com/holepunchto/bare-pipe>
-<https://github.com/holepunchto/bare-process>
-<https://github.com/holepunchto/bare-readline>
-<https://github.com/holepunchto/bare-repl>
-<https://github.com/holepunchto/bare-signals>
-<https://github.com/holepunchto/bare-subprocess>
-<https://github.com/holepunchto/bare-timers>
-<https://github.com/holepunchto/bare-tty>
-<https://github.com/holepunchto/bare-url>
 
 ### Embedding
 
