@@ -8,7 +8,7 @@
 * [Application-Programming-Interface (API)](./reference/api.md)
 * [Application Configuration](./reference/configuration.md)
 
-### Bare Reference
+### Bare reference
 * [Overview](./bare-reference/overview.md)
 * [Application-Programming-Interface (API)](./bare-reference/api.md)
 * [Node.js Compatibility with Bare](./bare-reference/nodejs-compatibility-with-bare.md)
