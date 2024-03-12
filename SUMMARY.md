@@ -12,7 +12,7 @@
 * [Overview](./bare-reference/overview.md)
 * [Application-Programming-Interface (API)](./bare-reference/api.md)
 * [Node.js Compatibility with Bare](./bare-reference/nodejs-compatibility-with-bare.md)
-* [Bare Module](./bare-reference/bare-module.md)
+* [Bare Modules](./bare-reference/bare-modules.md)
 
 ### Guides
 

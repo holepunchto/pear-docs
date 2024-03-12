@@ -34,7 +34,7 @@ Bare makes it easy to craft applications that can run effectively across a broad
 
 ### Modules
 
-Bare provides no standard library beyond the core JavaScript API available through the `Bare` namespace. Instead, there is a comprehensive collection of external modules built specifically for Bare, see [Bare Modules](./bare-modules.md#external-modules-for-bare)
+Bare provides no standard library beyond the core JavaScript API available through the `Bare` namespace. Instead, there is a comprehensive collection of external modules built specifically for Bare, see [Bare Modules](./bare-modules.md)
 
 
 ### Embedding
