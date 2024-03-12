@@ -1,6 +1,6 @@
 # Bare Modules
 
-Module support for JavaScript.
+Bare modules provide a robust system for managing code dependencies within Bare applications. This section delves into the details of Bare's module system.
 
 ```
 npm i bare-module
