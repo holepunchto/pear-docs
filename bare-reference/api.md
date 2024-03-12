@@ -1,5 +1,7 @@
 # API
 
+This documentation serves as the comprehensive guide to the Bare API, the core JavaScript functionality offered by the Bare runtime environment. 
+
 ## `Bare`
 
 The core JavaScript API of Bare is available through the global `Bare` namespace.

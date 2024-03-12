@@ -29,7 +29,8 @@ Bare is built on top of [libjs](https://github.com/holepunchto/libjs), which pro
 Everything else if left to userland modules to be implemented using these primitives, keeping the runtime itself succinct and _bare_.
 
 ## API
-Find the Bare API specs [here](./api.md).
+
+Bare makes it easy to craft applications that can run effectively across a broad spectrum of devices. To get started, find the Bare API specs [here](./api.md).
 
 ### Modules
 
