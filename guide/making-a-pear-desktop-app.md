@@ -190,7 +190,7 @@ Replace `app.js` with
 import Hyperswarm from 'hyperswarm'   // Module for P2P networking and connecting peers
 import crypto from 'hypercore-crypto' // Cryptographic functions for generating the key in app
 import b4a from 'b4a'                 // Module for buffer-to-string and vice-versa conversions 
-const { teardown } = Pear             // cleanup function
+const { teardown } = Pear             // Cleanup function
 
 const swarm = new Hyperswarm()
 
