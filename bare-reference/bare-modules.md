@@ -152,11 +152,11 @@ The following conditions are supported, listed in order from most specific to le
 
 Condition | Description
 :-- | :--
-`"bare"` |
-`"node"` |
-`"import"` |
-`"require"` |
-`"default"` |
+`"bare"` | This applies when the module is being imported from another Bare module. 
+`"node"` | This applies when the module is being imported within a Node.js environment.
+`"import"` | This applies when the module is being imported using an ES module import statement.
+`"require"` | This applies when the module is being imported using the CommonJS require() function.
+`"default"` | This serves as a fallback export if none of the more specific conditions (bare, node, import, require) are met.
 
 ##### Self-referencing
 
