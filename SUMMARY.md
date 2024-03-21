@@ -4,15 +4,15 @@
 
 ### Pear runtime
 
-* [Command-Line-Interface (CLI)](./reference/cli.md)
-* [Application-Programming-Interface (API)](./reference/api.md)
-* [Application Configuration](./reference/configuration.md)
+* [Command-Line-Interface (CLI)](./reference/pear/cli.md)
+* [Application-Programming-Interface (API)](./reference/pear/api.md)
+* [Application Configuration](./reference/pear/configuration.md)
 
 ### Bare reference
-* [Overview](./bare-reference/overview.md)
-* [Application-Programming-Interface (API)](./bare-reference/api.md)
-* [Node.js Compatibility with Bare](./bare-reference/nodejs-compatibility-with-bare.md)
-* [Bare Modules](./bare-reference/bare-modules.md)
+* [Overview](./reference/bare/overview.md)
+* [Application-Programming-Interface (API)](./reference/bare/api.md)
+* [Node.js Compatibility with Bare](./reference/bare/nodejs-compatibility-with-bare.md)
+* [Bare Modules](./reference/bare/bare-modules.md)
 
 ### Guides
 

@@ -16,11 +16,11 @@ Welcome to the Internet of Peers
 
 References for utilizing the Pear runtime.
 
-* [Command-Line-Interface (CLI)](./reference/cli.md)
-* [Application-Programming-Interface (API)](./reference/api.md)
-* [Application Configuration](./reference/configuration.md)
+* [Command-Line-Interface (CLI)](./reference/pear/cli.md)
+* [Application-Programming-Interface (API)](./reference/pear/api.md)
+* [Application Configuration](./reference/pear/configuration.md)
 
-> The Pear runtime uses [Bare](https://github.com/holepunchto/bare) JavaScript runtime, which is a small and modular JavaScript runtime for desktop and mobile. To learn more, see [Bare Reference](./bare-reference/overview.md).
+> The Pear runtime uses [Bare](https://github.com/holepunchto/bare) JavaScript runtime, which is a small and modular JavaScript runtime for desktop and mobile. To learn more, see [Bare Reference](./reference/bare/overview.md).
 
 ### Guides
 
