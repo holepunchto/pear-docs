@@ -13,7 +13,7 @@ Start the `bee-writer-app` project with the following commands:
 mkdir bee-writer-app
 cd bee-writer-app
 pear init -y -t terminal
-npm install corestore hyperswarm hyperbee b4a
+npm install corestore hyperswarm hyperbee b4a bare-fs
 ```
 
 [Click here to save `dict.json`](../assets/dict.json).
@@ -23,12 +23,11 @@ Save it into `bee-writer-app` directory. The `dict.json` file contains 100K dict
 Alter the generated `bee-writer-app/index.js` file to the following
 
 ```javascript
-import fsp from 'fs/promises'
+import fsp from 'bare-fs/promises'
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
-
 // create a corestore instance with the given location
 const store = new Corestore(Pear.config.storage)
 
@@ -87,7 +86,7 @@ Start the `bee-reader-app` project with the following commands:
 mkdir bee-reader-app
 cd bee-reader-app
 pear init -y -t terminal
-npm install corestore hyperswarm hyperbee b4a
+npm install corestore hyperswarm hyperbee b4a bare-pipe
 ```
 
 The `bee-reader-app` creates a `Corestore` instance and replicates it using the `Hyperswarm` instance to the same topic as `bee-writer-app`. On every word entered in the command line, it will download the respective data to the local `Hyperbee` instance.
@@ -95,11 +94,11 @@ The `bee-reader-app` creates a `Corestore` instance and replicates it using the 
 
 Alter the generated `bee-reader-app/index.js` file to the following
 
-
 ```javascript
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
+import Pipe from 'bare-pipe'
 import b4a from 'b4a'
 
 const key = Pear.config.args[0]
@@ -133,13 +132,16 @@ console.log('core key here is:', core.key.toString('hex'))
 // Attempt to connect to peers
 swarm.join(core.discoveryKey)
 
-Pear.stio.in.on('data', data => {
-  const word = data.trim()
+const stdin = new Pipe(0)
+
+stdin.on('data', (data) => {
+  const word = data.toString().trim()
   if (!word.length) return
   bee.get(word).then(node => {
-    if (!node || !node.value) console.log(`No dictionary entry for ${data}`)
-    else console.log(`${data} -> ${node.value}`)
-  }, err => console.error(err))
+    if (!node || !node.value) console.log(`No dictionary entry for ${word}`)
+    else console.log(`${word} -> ${node.value}`)
+    setImmediate(console.log) // flush hack
+  }, console.error)
 })
 ```
 
@@ -162,7 +164,7 @@ Finally create a `core-reader-app` project:
 mkdir core-reader-app
 cd core-reader-app
 pear init -y -t terminal
-npm install corestore hyperswarm b4a
+npm install corestore hyperswarm hyperbee b4a
 ```
 
 
