@@ -262,7 +262,7 @@ function onMessageAdded (from, message) {
 }
 ```
 
-> Note that the `pear` dependency is used, even though it was not installed. This is the [Pear API](../reference/api.md), available to any Pear project.
+> Note that the `pear` dependency is used, even though it was not installed. This is the [Pear API](../reference/pear/api.md), available to any Pear project.
 
 
 ## Step 4. Chat
