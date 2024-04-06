@@ -154,8 +154,8 @@ Start by defining the app's layout in `index.html`:
           <input type="submit" value="Send" />
         </form>
       </div>
-    </div>
-  </main>
+    </main>
+  </body>
 </html>
 ```
 
