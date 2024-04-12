@@ -162,5 +162,17 @@ Output version information.
 ```
 --json        Single JSON object
 ```
-  
+
+## pear shift <src-key> <dst-key> [--force]
+
+Move user application storage between applications.
+
+```
+--force     Overwrite existing application storage if present
+--json      Newline delimited JSON output
+```
+
+
+
+
   
