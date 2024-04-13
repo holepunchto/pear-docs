@@ -69,6 +69,8 @@ Helper modules can be used together with the building blocks to create cutting-e
 | [Secretstream](./helpers/secretstream.md)        | SecretStream is used to securely create connections between two peers in Hyperswarm.                                                                                        | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [Compact-encoding](./helpers/compact-encoding.md)| A series of binary encoding schemes for building fast and small parsers and serializers. We use this in Keet to store chat messages and in Hypercore's replication protocol.| <mark style="background-color:#80ff80;">**stable**</mark> |
 | [Protomux](./helpers/protomux.md)                | Multiplex multiple message oriented protocols over a stream.                                                                                                                | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [Agreeable-peer](./helpers/agreeable-peer.md)    | Easy, high level, type checked remote function calls (rpc) between peers. Runs over jsonrpc-mux.                                                                            | <mark style="background-color:#8484ff;">**experimental**</mark> |
+| [Jsonrpc-mux](./helpers/jsonrpc-mux.md)          | JSONRPC 2.0 over protomux                                                                                                                                                   |  <mark style="background-color:#80ff80;">**stable**</mark> |
 
 ### Tools
 
