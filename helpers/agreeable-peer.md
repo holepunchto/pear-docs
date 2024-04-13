@@ -2,13 +2,18 @@
 
 <mark style="background-color:#8484ff;">**experimental**</mark>
 
-This project makes it easy to create and consume remote services over a hyperdht network. 
-It is built over strong foundations of HyperDHT, protomux and jsonrpc-mux, but makes using them very easy, and should help web developers convert over to p2p.
+Agreeable Peer is a project that simplifies the creation and consumption of remote services over a hyperdht network. 
+It is built on top of robust foundations such as HyperDHT, protomux, and jsonrpc-mux, but provides an easy-to-use interface, 
+making it accessible for web developers transitioning to p2p technologies.
 
 >[GitHub (Agreeable-peer)](https://github.com/ryanramage/agreeable-peer)
 
 * [Installation](agreeable-peer.md#installation)
 * [Basic usage](agreeable-peer.md#basic-usage)
+  * [Defining the Agreement](agreeable-peer.md#defining-the-agreement)
+  * [Hosting the Agreement](agreeable-peer.md#hosting-the-agreement)
+  * [Fetching the Agreement](agreeable-peer.md#fetching-the-agreement)
+  * [Coding a Client](agreeable-peer.md#coding-a-client)
 * [API](agreeable-peer.md#api)
 
 ### Installation
@@ -23,8 +28,8 @@ npm install agreeable-peer agreeable
 
 #### Define the agreemement
 
-Here is a simple example of an agreeable compatable agreement. [Zod](https://zod.dev/) functions have been carefully chosen to provide the 
-best programmatic descriptive power with strong jsdoc infer compatablility. 
+Here's a simple example of an agreeable-compatible agreement. 
+Zod functions have been carefully chosen to provide the best programmatic descriptive power with strong JSDoc infer compatibility.
 
 agreement.mjs
 
@@ -61,8 +66,9 @@ export default api
 
 #### Host the agreement
 
-Here we provide in implementation of the agreement. Notice the type checking we get from jsdocs that will provide compile time
-information using zod infer and jsdoc types. At runtime any params coming into the implementation will also be rejected back to the client
+Here we provide in implementation of the agreement. Notice the type checking we get from JSDoc that will provide compile time
+information using zod infer and JSDoc types. 
+At runtime any params coming into the implementation will also be rejected back to the client
 if they dont match the agreement.
 
 index.mjs
@@ -96,24 +102,28 @@ listening on: 3e32bb2d191316d952ae77439f7ec00a5c4fea8a01953b84d1b4eee36173e1ca
 
 #### Fetch the agreement
 
-The peer does have to give you the public key. In the future we will provide a registry lookup up services. But for now its up to you to obtain.
-You must also get the agreement.mjs file. They can send it to you on another channel, or you can use the agreeable-ui to fetch it
+The peer must provide you with the public key. 
+In the future, we will provide a registry lookup service. 
+For now, it's up to you to obtain the public key.
+
+You must also get the agreement.mjs file. 
+The peer can send it to you on another channel, or you can use the agreeable-ui to fetch it.
 
 Agreeable-UI
 
 ```bash
 pear run pear://qrxbzxyqup1egwjnrmp7fcikk31nekecn43xerq65iq3gjxiaury
 ```
-or visit the github [agreeable-ui](https://github.com/ryanramage/agreeable-ui) and pear dev it
 
 
-and then paste the public key of the service into the UI. Once it connects, you can download the agreement.mjs file that way from your peer
+Alternatively, visit the github [agreeable-ui](https://github.com/ryanramage/agreeable-ui) and pear dev it
+Then paste the public key of the service into the UI. Once it connects, you can download the agreement.mjs file from your peer
 
 
 #### Code a client  
 
-This small example, the client uses the type checking of the agreement. Again this is balanced to use the zod infer into jsdocs, and agreeable check the types
-going to and from the host.
+In this small example, the client uses the type checking of the agreement. 
+Again this is balanced to use zod infer for JSDocs, and Agreeable check the types going to and from the host.
 
 
 client.mjs
@@ -142,7 +152,7 @@ caller.destroy()
 
 ```
 
-Note: The @ts-expect-error annotation is to remove one small compile time error with the destructring the proxy assignment. 
+Note: The @ts-expect-error annotation is to remove a small compile time error with the destructring the proxy assignment. 
 It is shown here for completeness as a way to have no warnings in your editor. 
 
 Now we run the client, passing in the host public key to connect to. 
@@ -152,8 +162,6 @@ node client.mjs 3e32bb2d191316d952ae77439f7ec00a5c4fea8a01953b84d1b4eee36173e1ca
 3
 silly steve
 ```
-
-
 
 
 ### API
