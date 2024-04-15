@@ -187,14 +187,14 @@ Replace `app.js` with
 
 ``` js
 /* global Pear */
-import Hyperswarm from 'hyperswarm'
-import crypto from 'hypercore-crypto'
-import b4a from 'b4a'
-const { teardown } = Pear
+import Hyperswarm from 'hyperswarm'   // Module for P2P networking and connecting peers
+import crypto from 'hypercore-crypto' // Cryptographic functions for generating the key in app
+import b4a from 'b4a'                 // Module for buffer-to-string and vice-versa conversions 
+const { teardown } = Pear             // Cleanup function
 
 const swarm = new Hyperswarm()
 
-// Unnannounce the public key before exiting the process
+// Unannounce the public key before exiting the process
 // (This is not a requirement, but it helps avoid DHT pollution)
 teardown(() => swarm.destroy())
 
