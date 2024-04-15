@@ -4,7 +4,7 @@
 
 The Command Line Interface is the primary interface for Pear Development.
 
-## pear init [dir]
+## `pear init [dir]`
 
 Create initial project files.
 
@@ -15,7 +15,7 @@ Create initial project files.
 --with|-w=name   Additional functionality. Available: node
 ```
   
-## pear dev [flags] [dir] [...app-args]
+## `pear dev [flags] [dir] [...app-args]`
 
 Run a project in development mode from disk.
 
@@ -26,7 +26,7 @@ Alias for: `pear run --dev <dir>`
 --store|-s=path            Set the Application Storage path
 --tmp-store|-t             Automatic new tmp folder as store path
 ```  
-## pear stage <channel|key> [dir]
+## `pear stage <channel|key> [dir]`
 
 Synchronize local changes to key.
 
@@ -43,7 +43,7 @@ Outputs diff information and project key.
   --name         Advanced. Override app name
 ```
   
-## pear seed <channel|key> [dir]
+## `pear seed <channel|key> [dir]`
 
 Seed project or reseed key.
 
@@ -58,7 +58,7 @@ Specify a remote key to reseed.
   --verbose|-v  Additional output
 ```
   
-## pear run [flags] <key|dir|alias> [...app-args]
+## `pear run [flags] <key|dir|alias> [...app-args]`
 
 Run an application from a key or dir.
 
@@ -102,7 +102,7 @@ pear run -t file://path/to/an-app-folder --some app --args
 pear run pear://keet
 ```
 
-## pear release <channel|key> [dir]
+## `pear release <channel|key> [dir]`
 
 Set production release version.
 
@@ -115,7 +115,7 @@ Use this to indicate production release points.
   --checkout=n|current     Set a custom release length (version)
 ```
   
-## pear info [key]
+## `pear info [key]`
 
 Read project information.
 
@@ -127,7 +127,7 @@ Without a key pear info shows Pear info
   --json          Newline delimited JSON output
 ```
   
-## pear dump <key> <dir>
+## `pear dump <key> [dir]`
 
 Synchronize files from key to dir.
 
@@ -136,7 +136,7 @@ Synchronize files from key to dir.
   --checkout=n    Dump from a custom release length (version)
 ```
   
-## pear sidecar
+## `pear sidecar`
 
 The Pear Sidecar is a local-running HTTP and IPC server which
 provides access to corestores.
@@ -149,18 +149,30 @@ and then becomes the sidecar.
   --attach-boot-io   include initial sidecar I/O (if applicable)
 ```
   
-## pear repl
+## `pear repl`
 
 Connect to a Read-Eval-Print-Loop session with sidecar.
 
 A key is printed out, use with repl-swarm module to connect.
 
-## pear versions
+## `pear versions`
 
 Output version information.
 
 ```
 --json        Single JSON object
 ```
-  
+
+## `pear shift <src-key> <dst-key> [--force]`
+
+Move user application storage between applications.
+
+```
+--force     Overwrite existing application storage if present
+--json      Newline delimited JSON output
+```
+
+
+
+
   
