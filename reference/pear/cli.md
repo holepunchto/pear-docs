@@ -115,16 +115,20 @@ Use this to indicate production release points.
   --checkout=n|current     Set a custom release length (version)
 ```
   
-## `pear info [key]`
+## `pear info [channel|key]`
 
 Read project information.
 
-Supply a key to view application info
+Supply a key or channel to view application information.
 
-Without a key pear info shows Pear info
+Supply no argument to view platform information.
 
 ```
-  --json          Newline delimited JSON output
+  --changelog       View changelog only
+  --full-changelog  Full record of changes
+  --metadata        View metadata only
+  --key             View key only
+  --json            Newline delimited JSON output
 ```
   
 ## `pear dump <key> [dir]`
