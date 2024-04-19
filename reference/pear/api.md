@@ -157,6 +157,10 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 * [Pear.config.checkpoint()](#pear--config-checkpoint-any)
 
+## Pear.message(msg)
+
+Sends IPC message while monitoring internal references for streamlined internal communication within the platform.
+
 ## Pear.messages([ pattern ], [ listener ]) -> Iterable
 
 A function which accepts a pattern object and returns an [`Iambus`](https://github.com/holepunchto/iambus) subscriber (which inherits from [`streamx`](https://github.com/mafintosh/streamx) `Readable`) which emits message objects matching a provided pattern object.
