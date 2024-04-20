@@ -51,6 +51,8 @@
 * [Secretstream](./helpers/secretstream.md)
 * [Compact encoding](./helpers/compact-encoding.md)
 * [Protomux](./helpers/protomux.md)
+* [Agreeable Peer](./helpers/agreeable-peer.md)
+* [Jsonrpc-mux](./helpers/jsonrpc-mux.md)
 
 ### Tools
 

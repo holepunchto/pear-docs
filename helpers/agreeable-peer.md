@@ -3,7 +3,7 @@
 <mark style="background-color:#8484ff;">**experimental**</mark>
 
 Agreeable Peer is a project that simplifies the creation and consumption of remote services over a hyperdht network. 
-It is built on top of robust foundations such as HyperDHT, protomux, and jsonrpc-mux, but provides an easy-to-use interface, 
+It is built on top of robust foundations such as [HyperDHT](../building-blocks/hyperdht.md), [protomux](./protomux.md), and [jsonrpc-mux](./jsonrpx-mux), but provides an easy-to-use interface, 
 making it accessible for web developers transitioning to p2p technologies.
 
 >[github (agreeable-peer)](https://github.com/ryanramage/agreeable-peer)
@@ -11,10 +11,10 @@ making it accessible for web developers transitioning to p2p technologies.
 
 * [Installation](agreeable-peer.md#installation)
 * [Basic usage](agreeable-peer.md#basic-usage)
-  * [Defining the Agreement](agreeable-peer.md#define-the-agreement)
-  * [Hosting the Agreement](agreeable-peer.md#host-the-agreement)
-  * [Fetching the Agreement](agreeable-peer.md#fetch-the-agreement)
-  * [Coding a Client](agreeable-peer.md#code-a-client)
+  * [Define the Agreement](agreeable-peer.md#define-the-agreement)
+  * [Host the Agreement](agreeable-peer.md#host-the-agreement)
+  * [Fetch the Agreement](agreeable-peer.md#fetch-the-agreement)
+  * [Code a Client](agreeable-peer.md#code-a-client)
 * [Agreeable API](agreeable-peer.md#agreeable-api)
 * [Agreeable Peer API](agreeable-peer.md#agreeable-peer-api)
 
