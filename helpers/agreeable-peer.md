@@ -1,9 +1,9 @@
-# Agreeable Peer 
+# Agreeable Peer
 
 <mark style="background-color:#8484ff;">**experimental**</mark>
 
-Agreeable Peer is a project that simplifies the creation and consumption of remote services over a hyperdht network. 
-It is built on top of robust foundations such as [HyperDHT](../building-blocks/hyperdht.md), [protomux](./protomux.md), and [jsonrpc-mux](./jsonrpx-mux), but provides an easy-to-use interface, 
+Agreeable Peer is a project that simplifies the creation and consumption of remote services over a hyperdht network.
+It is built on top of robust foundations such as [HyperDHT](../building-blocks/hyperdht.md), [protomux](./protomux.md), and [jsonrpc-mux](./jsonrpx-mux), but provides an easy-to-use interface,
 making it accessible for web developers transitioning to p2p technologies.
 
 >[github (agreeable-peer)](https://github.com/ryanramage/agreeable-peer)
@@ -30,7 +30,7 @@ npm install agreeable-peer agreeable
 
 #### Define the agreemement
 
-Here's a simple example of an agreeable-compatible agreement. 
+Here's a simple example of an agreeable-compatible agreement.
 Zod functions have been carefully chosen to provide the best programmatic descriptive power with strong JSDoc infer compatibility.
 
 agreement.mjs
@@ -69,7 +69,7 @@ export default api
 #### Host the agreement
 
 Here we provide in implementation of the agreement. Notice the type checking we get from JSDoc that will provide compile time
-information using zod infer and JSDoc types. 
+information using zod infer and JSDoc types.
 At runtime any params coming into the implementation will also be rejected back to the client
 if they dont match the agreement.
 
@@ -104,11 +104,11 @@ listening on: 3e32bb2d191316d952ae77439f7ec00a5c4fea8a01953b84d1b4eee36173e1ca
 
 #### Fetch the agreement
 
-The peer must provide you with the public key. 
-In the future, we will provide a registry lookup service. 
+The peer must provide you with the public key.
+In the future, we will provide a registry lookup service.
 For now, it's up to you to obtain the public key.
 
-You must also get the agreement.mjs file. 
+You must also get the agreement.mjs file.
 The peer can send it to you on another channel, or you can use the agreeable-ui to fetch it.
 
 Agreeable-UI
@@ -117,16 +117,13 @@ Agreeable-UI
 pear run pear://qrxbzxyqup1egwjnrmp7fcikk31nekecn43xerq65iq3gjxiaury
 ```
 
-
 Alternatively, visit the github [agreeable-ui](https://github.com/ryanramage/agreeable-ui) and pear dev it
 Then paste the public key of the service into the UI. Once it connects, you can download the agreement.mjs file from your peer
 
-
 #### Code a client  
 
-In this small example, the client uses the type checking of the agreement. 
+In this small example, the client uses the type checking of the agreement.
 Again this is balanced to use zod infer for JSDocs, and Agreeable check the types going to and from the host.
-
 
 client.mjs
 
@@ -154,17 +151,16 @@ caller.destroy()
 
 ```
 
-Note: The @ts-expect-error annotation is to remove a small compile time error with the destructring the proxy assignment. 
-It is shown here for completeness as a way to have no warnings in your editor. 
+Note: The @ts-expect-error annotation is to remove a small compile time error with the destructring the proxy assignment.
+It is shown here for completeness as a way to have no warnings in your editor.
 
-Now we run the client, passing in the host public key to connect to. 
+Now we run the client, passing in the host public key to connect to.
 
 ```bash
 node client.mjs 3e32bb2d191316d952ae77439f7ec00a5c4fea8a01953b84d1b4eee36173e1ca
 3
 silly steve
 ```
-
 
 ### Agreeable API
 
@@ -178,61 +174,62 @@ z is [zod](https://zod.dev/), used to define the function schema
 
 #### **`route = addRoute(zodFunction)`**
 
-Define a route using a [zod function](https://zod.dev/?id=functions). Returns a fluent object that allows you to define headers 
+Define a route using a [zod function](https://zod.dev/?id=functions). Returns a fluent object that allows you to define headers
 
 ```
 route.headers(zodObject)
 ```
+
 Define the shape of the headers/meta info that will be passed from the client to the server. Uses a [zod object](https://zod.dev/?id=objects) to define the shape.
 If you define a headers object, the client can pass in credentials and other meta information.
 
-
 ### Agreeable Peer API
 
-Imports 
+Imports
 
 ```import { z, loadAgreement, host, Caller }  from 'agreeable-peer'```
 
- - z is [zod](https://zod.dev/), used to to type check using z.infer
- - the **server** will typically use loadAgreement and host 
- - the **client** will typically use Caller
+* z is [zod](https://zod.dev/), used to to type check using z.infer
+* the **server** will typically use loadAgreement and host
+* the **client** will typically use Caller
 
 #### **`agreement = loadAgreement(path, import.meta.url)`**
 
-Loads the agreement from a path on the filesystem. 
+Loads the agreement from a path on the filesystem.
 
-- **path** string, location of the agreement file 
-- **import.meta.url** ES6 helper to help resolve the file
+* **path** string, location of the agreement file
+* **import.meta.url** ES6 helper to help resolve the file
 
 In the future support for loading the agreement from other locations outside the filesystem may be possible
 
-#### **`{ dht, keyPair, server } = host(agreement, implementations, [options]) `**
+#### **`{ dht, keyPair, server } = host(agreement, implementations, [options])`**
 
-Host the agreement by mapping the agreement file, to implemenations of the agreement. 
+Host the agreement by mapping the agreement file, to implemenations of the agreement.
 
- - **agreement**  the agreement file
- - **implementation** object with keys that match the routes object from the agreement. The values are functions that implement the schema defined in the agreement. 
- - **options** optional object with configuration options
-   - **options.dhtOpts** passed to the dht constructor, eg `const dht = new DHT(opts.dhtOpts)`
-   - **options.seed** a hex string that is a seed for creating the keyPair. Used to create a stable service public key, eg `keyPair = DHT.keyPair(b4a.from(opts.seed, 'hex'))` 
-   - **options.validator** a validator function use to allow access when a headers is defined on the function schema. 
+* **agreement**  the agreement file
+* **implementation** object with keys that match the routes object from the agreement. The values are functions that implement the schema defined in the agreement.
+* **options** optional object with configuration options
+  * **options.dhtOpts** passed to the dht constructor, eg `const dht = new DHT(opts.dhtOpts)`
+  * **options.seed** a hex string that is a seed for creating the keyPair. Used to create a stable service public key, eg `keyPair = DHT.keyPair(b4a.from(opts.seed, 'hex'))`
+  * **options.validator** a validator function use to allow access when a headers is defined on the function schema.
 
     The return value is a object with:
- 
- - **dht** - the created [dht node](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#const-node--new-dhtoptions). See options.dhtOptions for configuration
- - **keyPair** - the created [keyPair](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#keypair--dhtkeypairseed). See options.seed for configuration 
- - **server** - the created [server](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#const-server--nodecreateserveroptions-onconnection)
+
+* **dht** - the created [dht node](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#const-node--new-dhtoptions). See options.dhtOptions for configuration
+* **keyPair** - the created [keyPair](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#keypair--dhtkeypairseed). See options.seed for configuration
+* **server** - the created [server](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#const-server--nodecreateserveroptions-onconnection)
 
 #### **`caller = new Caller(peerKey, [setHeaders])`**
 
-Create a caller used to proxy api calls to the server. 
+Create a caller used to proxy api calls to the server.
 
- - **peerKey** the hex string of the server, used internally as `new DHT().node.connect(b4a.from(peerKey, 'hex'))`
- - **setHeaders** optional function used to setHeaders when requered in the function schema
+* **peerKey** the hex string of the server, used internally as `new DHT().node.connect(b4a.from(peerKey, 'hex'))`
+* **setHeaders** optional function used to setHeaders when requered in the function schema
 
 #### **`proxy = caller.proxy(agreement)`**
 
 create a proxy object to call functions on the server. The keys are matched to the routes and the values are functions that match the schema. Here is an example of typing, destructuring and using:
+
 ```
 /** @type{{ 
  *   addTwo: z.infer<AddTwo> 
@@ -248,4 +245,3 @@ const results = await addTwo({ a: 1, b: 2 })
 #### **`caller.destroy`**
 
 A conveience way to destroy the dht node. Internally calls [dhtNode.destroy](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#await-nodedestroyoptions)
-
