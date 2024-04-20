@@ -213,7 +213,8 @@ Host the agreement by mapping the agreement file, to implemenations of the agree
   * **options.seed** a hex string that is a seed for creating the keyPair. Used to create a stable service public key, eg `keyPair = DHT.keyPair(b4a.from(opts.seed, 'hex'))`
   * **options.validator** a validator function use to allow access when a headers is defined on the function schema.
 
-    The return value is a object with:
+
+The return value is a object with:
 
 * **dht** - the created [dht node](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#const-node--new-dhtoptions). See options.dhtOptions for configuration
 * **keyPair** - the created [keyPair](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#keypair--dhtkeypairseed). See options.seed for configuration
