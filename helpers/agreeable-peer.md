@@ -3,7 +3,7 @@
 <mark style="background-color:#8484ff;">**experimental**</mark>
 
 Agreeable Peer is a project that simplifies the creation and consumption of remote services over a hyperdht network.
-It is built on top of robust foundations such as [HyperDHT](../building-blocks/hyperdht.md), [protomux](./protomux.md), and [jsonrpc-mux](./jsonrpx-mux), but provides an easy-to-use interface,
+It is built on top of robust foundations such as [HyperDHT](../building-blocks/hyperdht.md), [protomux](./protomux.md), and [jsonrpc-mux](./jsonrpc-mux.md), but provides an easy-to-use interface,
 making it accessible for web developers transitioning to p2p technologies.
 
 >[github (agreeable-peer)](https://github.com/ryanramage/agreeable-peer)
