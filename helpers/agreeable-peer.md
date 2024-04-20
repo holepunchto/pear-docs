@@ -14,7 +14,8 @@ making it accessible for web developers transitioning to p2p technologies.
   * [Hosting the Agreement](agreeable-peer.md#hosting-the-agreement)
   * [Fetching the Agreement](agreeable-peer.md#fetching-the-agreement)
   * [Coding a Client](agreeable-peer.md#coding-a-client)
-* [API](agreeable-peer.md#api)
+* [Agreeable API](agreeable-peer.md#agreeable-api)
+* [Agreeable Peer API](agreeable-peer.md#agreeable-peer-api)
 
 ### Installation
 
@@ -164,14 +165,86 @@ silly steve
 ```
 
 
-### API
+### Agreeable API
 
-#### **`mux = new Protomux(stream, [options])`**
+Imports
+
+```
+import { z, addRoute } from agreeable
+```
+
+z is [zod](https://zod.dev/), used to define the function schema
+
+#### **`route = addRoute(zodFunction)`**
+
+Define a route using a [zod function](https://zod.dev/?id=functions). Returns a fluent object that allows you to define headers 
+
+```
+route.headers(zodObject)
+```
+Define the shape of the headers/meta info that will be passed from the client to the server. Uses a [zod object](https://zod.dev/?id=objects) to define the shape.
+If you define a headers object, the client can pass in credentials and other meta information.
 
 
-#### **`mux = Protomux.from(stream | muxer, [options])`**
+### Agreeable Peer API
 
-Helper to accept either an existing muxer instance or a stream (which creates a new one).
+Imports 
 
-**`const channel = mux.createChannel([options])`**
+```import { z, loadAgreement, host, Caller }  from 'agreeable-peer'```
+
+ - z is [zod](https://zod.dev/), used to to type check using z.infer
+ - the **server** will typically use loadAgreement and host 
+ - the **client** will typically use Caller
+
+#### **`agreement = loadAgreement(path, import.meta.url)`**
+
+Loads the agreement from a path on the filesystem. 
+
+- **path** string, location of the agreement file 
+- **import.meta.url** ES6 helper to help resolve the file
+
+In the future support for loading the agreement from other locations outside the filesystem may be possible
+
+#### **`{ dht, keyPair, server } = host(agreement, implementations, [options]) `**
+
+Host the agreement by mapping the agreement file, to implemenations of the agreement. 
+
+ - **agreement**  the agreement file
+ - **implementation** object with keys that match the routes object from the agreement. The values are functions that implement the schema defined in the agreement. 
+ - **options** optional object with configuration options
+   - **options.dhtOpts** passed to the dht constructor, eg `const dht = new DHT(opts.dhtOpts)`
+   - **options.seed** a hex string that is a seed for creating the keyPair. Used to create a stable service public key, eg `keyPair = DHT.keyPair(b4a.from(opts.seed, 'hex'))` 
+   - **options.validator** a validator function use to allow access when a headers is defined on the function schema. 
+
+    The return value is a object with:
+ 
+ - **dht** - the created [dht node](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#const-node--new-dhtoptions). See options.dhtOptions for configuration
+ - **keyPair** - the created [keyPair](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#keypair--dhtkeypairseed). See options.seed for configuration 
+ - **server** - the created [server](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#const-server--nodecreateserveroptions-onconnection)
+
+#### **`caller = new Caller(peerKey, [setHeaders])`**
+
+Create a caller used to proxy api calls to the server. 
+
+ - **peerKey** the hex string of the server, used internally as `new DHT().node.connect(b4a.from(peerKey, 'hex'))`
+ - **setHeaders** optional function used to setHeaders when requered in the function schema
+
+#### **`proxy = caller.proxy(agreement)`**
+
+create a proxy object to call functions on the server. The keys are matched to the routes and the values are functions that match the schema. Here is an example of typing, destructuring and using:
+```
+/** @type{{ 
+ *   addTwo: z.infer<AddTwo> 
+ *   ping: z.infer<Ping>
+ *   generateNickname: z.infer<GenerateNickname>
+ * }} */
+// @ts-expect-error
+const { addTwo, ping, generateNickname } = caller.proxy(agreement)
+const results = await addTwo({ a: 1, b: 2 })
+
+```
+
+#### **`caller.destroy`**
+
+A conveience way to destroy the dht node. Internally calls [dhtNode.destroy](https://github.com/holepunchto/hyperdht?tab=readme-ov-file#await-nodedestroyoptions)
 
