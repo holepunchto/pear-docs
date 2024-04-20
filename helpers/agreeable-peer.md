@@ -6,14 +6,15 @@ Agreeable Peer is a project that simplifies the creation and consumption of remo
 It is built on top of robust foundations such as HyperDHT, protomux, and jsonrpc-mux, but provides an easy-to-use interface, 
 making it accessible for web developers transitioning to p2p technologies.
 
->[GitHub (Agreeable-peer)](https://github.com/ryanramage/agreeable-peer)
+>[github (agreeable-peer)](https://github.com/ryanramage/agreeable-peer)
+>[github (agreeable)](https://github.com/ryanramage/agreeable)
 
 * [Installation](agreeable-peer.md#installation)
 * [Basic usage](agreeable-peer.md#basic-usage)
-  * [Defining the Agreement](agreeable-peer.md#defining-the-agreement)
-  * [Hosting the Agreement](agreeable-peer.md#hosting-the-agreement)
-  * [Fetching the Agreement](agreeable-peer.md#fetching-the-agreement)
-  * [Coding a Client](agreeable-peer.md#coding-a-client)
+  * [Defining the Agreement](agreeable-peer.md#define-the-agreement)
+  * [Hosting the Agreement](agreeable-peer.md#host-the-agreement)
+  * [Fetching the Agreement](agreeable-peer.md#fetch-the-agreement)
+  * [Coding a Client](agreeable-peer.md#code-a-client)
 * [Agreeable API](agreeable-peer.md#agreeable-api)
 * [Agreeable Peer API](agreeable-peer.md#agreeable-peer-api)
 
