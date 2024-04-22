@@ -95,9 +95,7 @@ pear run pear://nykmkrpwgadcd8m9x5khhh43j9izj123eguzqg3ygta7yn1s379o
 
 When `pear run` is executed on the peer machine there will be a security prompt to add the key to a list of trusted applications by typing 'TRUST'.
 
-The trust dialog is a security mechanism in Pear that appears when the user tries to run an application from an unknown or untrusted key for the first time. In case that the app is run in detached mode, for example, when clicking on a pear link in the browser, the trust dialog is a GUI (Graphical User Interface). 
-
-> During development with `pear dev`, applications are automatically trusted, as they are assumed to be safe for testing purposes. Trust dialog can be avoided by using the `--no-ask-trust` flag with `pear run`. However, this is not recommended unless application's safety is guaranteed.
+When running a terminal application using an untrusted key for the first time the prompt would be:
 
 ```
 pear run pear://nykmkrpwgadcd8m9x5khhh43j9izj123eguzqg3ygta7yn1s379o
@@ -109,8 +107,13 @@ Type "TRUST" to allow execution or anything else to exit
 
 Trust application? 
 ```
+The trust dialog is a security mechanism in Pear that appears when the user tries to run an application from an unknown or untrusted key for the first time. In case that the app is run in detached mode, for example, when clicking on a pear link in the browser, the trust dialog is a GUI (Graphical User Interface). 
 
-If the application is being opened for the first time on the peer it has no state at all, so the application may show a loader until it's ready to reveal.
+![Trust dialog](../assets/trust-dialog.png)
+
+> During development with `pear dev`, applications are automatically trusted, as they are assumed to be safe for testing purposes. Trust dialog can be avoided by using the `--no-ask-trust` flag with `pear run`. However, this is not recommended unless application's safety is guaranteed.
+
+The application has no state when it's opened for the first time, so the application may show a loader until it's ready to reveal.
 
 The application staging machine that is running the seeding process should show output similar to:
 
