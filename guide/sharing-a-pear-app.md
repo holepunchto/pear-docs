@@ -111,7 +111,7 @@ The trust dialog is a security mechanism in Pear that appears when the user trie
 
 ![Trust dialog](../assets/trust-dialog.png)
 
-> During development with `pear dev`, applications are automatically trusted, as they are assumed to be safe for testing purposes. Trust dialog can be avoided by using the `--no-ask-trust` flag with `pear run`. However, this is not recommended unless application's safety is guaranteed.
+> During development with `pear dev`, applications are automatically trusted, as they are assumed to be safe for testing purposes. Trust dialog can be suppressed using the  `--no-ask-trust` flag with `pear run` in which case the application will automatically decline unknown keys.
 
 The application has no state when it's opened for the first time, so the application may show a loader until it's ready to reveal.
 
