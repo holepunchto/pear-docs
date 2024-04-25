@@ -152,12 +152,6 @@ and then becomes the sidecar.
   --mem              memory mode: RAM corestore
   --attach-boot-io   include initial sidecar I/O (if applicable)
 ```
-  
-## `pear repl`
-
-Connect to a Read-Eval-Print-Loop session with sidecar.
-
-A key is printed out, use with repl-swarm module to connect.
 
 ## `pear versions`
 
