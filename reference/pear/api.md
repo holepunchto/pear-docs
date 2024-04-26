@@ -157,6 +157,10 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 * [Pear.config.checkpoint()](#pear--config-checkpoint-any)
 
+## Pear.message(msg)
+
+Sends a message and automatically manages the IPC connection to keep it active only when needed.
+
 ## Pear.messages([ pattern ], [ listener ]) -> Iterable
 
 A function which accepts a pattern object and returns an [`Iambus`](https://github.com/holepunchto/iambus) subscriber (which inherits from [`streamx`](https://github.com/mafintosh/streamx) `Readable`) which emits message objects matching a provided pattern object.
@@ -361,6 +365,10 @@ will be waited upon until resolution before calling the next teardown handler.
 ### `Pear.restart()`
 
 Restart the application.
+
+### `Pear.exit(code)`
+
+Exits the process with the provided exit code.
 
 ### `Pear.updates(listener <Async Function|Function>) => streamx.Readable`
 
