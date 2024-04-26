@@ -265,6 +265,18 @@ logPrefUpdates().catch(console.error)
 
 Media interface
 
+### `const status = await Pear.media.getMediaAccessStatus(mediaType)`
+
+Resolves to: `<String>`
+
+Check if access is granted for the specified mediaType.
+
+The mediaType can have the values `microphone`, `camera` or `screen`.
+
+If access to the mediaType is available, resolved value will be `'granted'`.
+
+Any other string indicates lack of permission. Possible values are `'granted'`, `'not-determined'`, `'denied'`, `'restricted'`, `'unknown'`.
+
 ### `const status = await Pear.media.status.microphone()`
 
 Resolves to: `<String>`
@@ -288,6 +300,16 @@ Resolves to: `<String>`
 If access to the screen is available, resolved value will be `'granted'`.
 
 Any other string indicates lack of permission. Possible values are `'granted'`, `'not-determined'`, `'denied'`, `'restricted'`, `'unknown'`.
+
+### `const success = await Pear.media.askForMediaAccess(mediaType)`
+
+Resolves to: `<Boolean>`
+
+Request access to the specified mediaType. Resolves to `true` if permission is granted. 
+
+The mediaType can have the values `microphone` and `camera`. To leverage this API extra options need to be set which can be found in references.
+
+> There is no explicit `'screen'` option for this function unlike `Pear.getMediaAccessStatus`, as screen access is handled through [Electron's Screen Recording API](https://www.electronjs.org/docs/latest/api/desktop-capturer). This API calls the built-in Screen Recording API of macOS which prompts the user to manually grant access to the screen.
 
 ### `const success = await Pear.media.access.microphone()`
 
@@ -326,6 +348,8 @@ Captures available desktop sources. Resolves to an array of objects with shape `
 * https://www.electronjs.org/docs/latest/api/desktop-capturer#desktopcapturergetsourcesoptions
 * https://www.electronjs.org/docs/latest/api/structures/desktop-capturer-source
 * [`<NativeImage>`](https://www.electronjs.org/docs/latest/api/native-image)
+* https://www.electronjs.org/docs/latest/api/system-preferences#systempreferencesgetmediaaccessstatusmediatype-windows-macos
+* https://www.electronjs.org/docs/latest/api/system-preferences#systempreferencesaskformediaaccessmediatype-macos
 
 ### `Pear.versions <Object>`
 
@@ -418,7 +442,7 @@ Create a new `Window` instance.
 * `y <Integer>` - vertical window position (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. MacOS only, ignored on other OS's.
+* `animate <Boolean>` Default: `false` - animate the dimensional change. macOS only, ignored on other OS's.
 * `center <Boolean` - center the window upon opening
 * `minWidth <Integer>` - window minimum width (pixels)
 * `minHeight <Integer>` - window minimum height (pixels)
@@ -461,7 +485,7 @@ Open the window.
 * `y <Integer>` - vertical window position (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. MacOS only, ignored on other OS's.
+* `animate <Boolean>` Default: `false` - animate the dimensional change. macOS only, ignored on other OS's.
 * `center <Boolean` - center the window upon opening
 * `minWidth <Integer>` - window minimum width (pixels)
 * `minHeight <Integer>` - window minimum height (pixels)
@@ -591,7 +615,7 @@ Sets the dimensions of the window.
 * `y <Integer>` - the vertical position of the top of the window (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. MacOS only, ignored on other OS's.
+* `animate <Boolean>` Default: `false` - animate the dimensional change. macOS only, ignored on other OS's.
 * `position <String>` - may be `'center'` to set the window in the center of the screen or else `undefined`.
 
 **References**
