@@ -307,7 +307,9 @@ Resolves to: `<Boolean>`
 
 Request access to the specified mediaType. Resolves to `true` if permission is granted. 
 
-The mediaType can have the values `microphone` and `camera`. To leverage this API extra options need to be set which can be found in references.
+The mediaType can have the values `microphone` and `camera`. 
+
+To leverage this API properly, extra options must be set in the app's `Info.plist` file to populate the permission dialogs when requesting access. More information regarding this can be found in the references.
 
 > There is no explicit `'screen'` option for this function unlike `Pear.getMediaAccessStatus`, as screen access is handled through [Electron's Screen Recording API](https://www.electronjs.org/docs/latest/api/desktop-capturer). This API calls the built-in Screen Recording API of macOS which prompts the user to manually grant access to the screen.
 
@@ -442,7 +444,7 @@ Create a new `Window` instance.
 * `y <Integer>` - vertical window position (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. macOS only, ignored on other OS's.
+* `animate <Boolean>` Default: `false` - animate the dimensional change. macOS only, ignored on other OSes.
 * `center <Boolean` - center the window upon opening
 * `minWidth <Integer>` - window minimum width (pixels)
 * `minHeight <Integer>` - window minimum height (pixels)
@@ -485,7 +487,7 @@ Open the window.
 * `y <Integer>` - vertical window position (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. macOS only, ignored on other OS's.
+* `animate <Boolean>` Default: `false` - animate the dimensional change. macOS only, ignored on other OSes.
 * `center <Boolean` - center the window upon opening
 * `minWidth <Integer>` - window minimum width (pixels)
 * `minHeight <Integer>` - window minimum height (pixels)
@@ -615,7 +617,7 @@ Sets the dimensions of the window.
 * `y <Integer>` - the vertical position of the top of the window (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. macOS only, ignored on other OS's.
+* `animate <Boolean>` Default: `false` - animate the dimensional change. macOS only, ignored on other OSes.
 * `position <String>` - may be `'center'` to set the window in the center of the screen or else `undefined`.
 
 **References**
