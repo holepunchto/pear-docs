@@ -309,9 +309,9 @@ Request access to the specified mediaType. Resolves to `true` if permission is g
 
 The mediaType can have the values `microphone` and `camera`. 
 
-To leverage this API properly, extra options must be set in the app's `Info.plist` file to populate the permission dialogs when requesting access. More information regarding this can be found in the references.
+To leverage this API correctly, additional options must be set in the app's `Info.plist` file to populate the permission dialogs when requesting access. More information regarding this can be found in the references.
 
-> There is no explicit `'screen'` option for this function unlike `Pear.getMediaAccessStatus`, as screen access is handled through [Electron's Screen Recording API](https://www.electronjs.org/docs/latest/api/desktop-capturer). This API calls the built-in Screen Recording API of macOS which prompts the user to manually grant access to the screen.
+> Screen share permission is available by default on most platforms. On recent macOS versions, screen access is handled through [Electron's Screen Recording API](https://www.electronjs.org/docs/latest/api/desktop-capturer).
 
 ### `const success = await Pear.media.access.microphone()`
 
