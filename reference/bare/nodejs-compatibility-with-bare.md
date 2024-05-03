@@ -1,5 +1,5 @@
 # Node.js Compatibility with Bare
-Bare offers seamless compatibility with Node.js counterparts.
+Bare offers great compatibility with Node.js counterparts.
 Most of the modules and APIs used by developers are covered and supported.
 
 ## Currently supported modules
