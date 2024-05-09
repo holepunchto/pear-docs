@@ -362,6 +362,10 @@ will be waited upon until resolution before calling the next teardown handler.
 
 Restart the application.
 
+### `Pear.exit(code)`
+
+Exits the process with the provided exit code.
+
 ### `Pear.updates(listener <Async Function|Function>) => streamx.Readable`
 
 The `listener` function is called for every incoming update with an `update` object of the form:
