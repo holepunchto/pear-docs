@@ -12,9 +12,9 @@ Welcome to the Internet of Peers
 
 ## Table of Contents
 
-### Pear runtime
+### Pear Runtime
 
-References for utilizing the Pear runtime.
+References for Pear Runtime.
 
 * [Command-Line-Interface (CLI)](./reference/pear/cli.md)
 * [Application-Programming-Interface (API)](./reference/pear/api.md)
