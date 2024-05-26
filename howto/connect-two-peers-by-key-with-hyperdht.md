@@ -21,7 +21,7 @@ Create the `server-app` project with the following commands:
 mkdir server-app
 cd server-app
 pear init -y -t terminal
-npm install hyperdht b4a
+npm install hyperdht b4a bare-process
 ```
 
 Alter `server-app/index.js` to the following:
@@ -29,6 +29,7 @@ Alter `server-app/index.js` to the following:
 ```javascript
 import DHT from 'hyperdht'
 import b4a from 'b4a'
+import process from 'bare-process'
 
 const dht = new DHT()
 
@@ -57,13 +58,14 @@ Create the `client-app` project with the following commands:
 mkdir client-app
 cd client-app
 pear init -y -t terminal
-npm install hyperdht b4a
+npm install hyperdht b4a bare-process
 ```
 Alter `client-app/index.js` to the following:
 
 ``` javascript
 import DHT from 'hyperdht'
 import b4a from 'b4a'
+import process from 'bare-process'
 
 console.log('Connecting to:', process.argv[2])
 const publicKey = b4a.from(process.argv[2], 'hex')
