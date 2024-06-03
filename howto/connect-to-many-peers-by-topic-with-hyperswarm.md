@@ -48,7 +48,7 @@ process.stdin.on('data', d => {
 })
 
 // Join a common topic
-const topic = process.argv[2] ? b4a.from(process.argv[2], 'hex') : crypto.randomBytes(32)
+const topic = process.argv[3] ? b4a.from(process.argv[3], 'hex') : crypto.randomBytes(32)
 const discovery = swarm.join(topic, { client: true, server: true })
 
 // The flushed promise will resolve when the topic has been fully announced to the DHT
@@ -61,9 +61,9 @@ In one terminal, open `peer-app` with `pear dev`
 
 ```
 cd peer-app
-pear dev
+pear dev .
 ```
 
-This will display the topic. Copy/paste that topic into as many additional terminals as desired with `pear dev -- <SUPPLY TOPIC HERE>` (assuming that the current working directory of each terminal is the `peer-app` folder). Each peer will log information about the other connected peers.
+This will display the topic. Copy/paste that topic into as many additional terminals as desired with `pear dev . <SUPPLY TOPIC HERE>` (assuming that the current working directory of each terminal is the `peer-app` folder). Each peer will log information about the other connected peers.
 
 Start typing into any terminal, and it will be broadcast to all connected peers.
