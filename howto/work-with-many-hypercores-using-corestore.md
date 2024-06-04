@@ -37,7 +37,7 @@ await Promise.all([core1.ready(), core2.ready(), core3.ready()])
 console.log('main core key:', b4a.toString(core1.key, 'hex'))
 
 // Here we'll only join the swarm with the core1's discovery key
-// We don't need to announce core2 and core3, because they'll replicated with core1
+// We don't need to announce core2 and core3, because they'll be replicated with core1
 swarm.join(core1.discoveryKey)
 
 // Corestore replication internally manages to replicate every loaded core
