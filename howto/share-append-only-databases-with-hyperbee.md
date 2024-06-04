@@ -164,7 +164,7 @@ Finally create a `core-reader-app` project:
 mkdir core-reader-app
 cd core-reader-app
 pear init -y -t terminal
-npm install corestore hyperswarm hyperbee b4a
+npm install corestore hyperswarm hyperbee b4a bare-process
 ```
 
 
@@ -174,6 +174,7 @@ Alter the generated `core-reader-app/index.js` file to the following
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import b4a from 'b4a'
+import process from 'bare-process'
 
 import { Node } from 'hyperbee/lib/messages.js'
 
