@@ -16,7 +16,7 @@ Create the `peer-app` project with the following commands:
 mkdir peer-app
 cd peer-app
 pear init -y -t terminal
-npm install hyperswarm hypercore-crypto b4a
+npm install hyperswarm hypercore-crypto b4a bare-process
 ```
 
 Alter the peer-app/index.js file to the following:
@@ -25,6 +25,7 @@ Alter the peer-app/index.js file to the following:
 import Hyperswarm from 'hyperswarm'
 import crypto from 'hypercore-crypto'
 import b4a from 'b4a'
+import process from 'bare-process'
 
 const swarm = new Hyperswarm()
 Pear.teardown(() => swarm.destroy())
