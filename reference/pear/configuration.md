@@ -131,3 +131,11 @@ An array of entrypoints as staging start-points in addition to (deduped) main en
 #### `pear.stage.ignore <Array>`
 
 An array of file paths to ignore relative to `package.json` file.
+
+### `pear.previewFor <String>`
+
+Allows a Pear application to use a different Pear application's storage by referring to it's key. This can be useful for testing production storage with test versions of the application.
+
+
+
+
