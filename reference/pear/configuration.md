@@ -120,6 +120,14 @@ Enable transparency. Must be set for opacity to work.
 
 Background color (Hex, RGB, RGBA, HSL, HSLA, CSS color).
 
+###  `pear.links <Object>` 
+
+Mapping of names to Pear application keys.
+
+#### `pear.links.worker <String>`
+
+Represents the key of the Pear application that contains the worker script.
+
 ### `pear.stage <Object>`
 
 Staging configuration options.
