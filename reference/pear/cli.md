@@ -170,7 +170,19 @@ Move user application storage between applications.
 --json      Newline delimited JSON output
 ```
 
+## `pear gc [flags] [command]`
 
+Garbage Collection. Remove unused resources.
+
+| Commands      |           Description                                        |
+|-------|---------------------------------------------------|
+| release   | Clear inactive releases                       |
+| sidecar   |  Clear running sidecars                       |
+
+```
+  --json      Newline delimited JSON output
+  --help|-h   Show help
+```
 
 
   
