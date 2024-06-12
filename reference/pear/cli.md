@@ -172,12 +172,12 @@ Move user application storage between applications.
 
 ## `pear gc [flags] [command]`
 
-Garbage Collection. Remove unused resources.
+Perform garbage collection and remove unused resources.
 
 | Commands      |           Description                                        |
 |-------|---------------------------------------------------|
-| release   | Clear inactive releases                       |
-| sidecar   |  Clear running sidecars                       |
+| releases   | Clear inactive releases                       |
+| sidecars   |  Clear running sidecars                       |
 
 ```
   --json      Newline delimited JSON output
