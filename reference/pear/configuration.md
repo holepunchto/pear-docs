@@ -120,6 +120,14 @@ Enable transparency. Must be set for opacity to work.
 
 Background color (Hex, RGB, RGBA, HSL, HSLA, CSS color).
 
+###  `pear.links <Object|Array>` 
+
+An array or object containing trusted Pear application keys.
+
+#### `pear.links.worker <String>`
+
+The key of the Pear application that contains the worker script. For more info, please check the [terminal](https://github.com/holepunchto/pear/blob/main/examples/terminal/index.js#L21) and [desktop](https://github.com/holepunchto/pear/blob/main/examples/desktop/app.js#L27) examples.
+
 ### `pear.stage <Object>`
 
 Staging configuration options.
