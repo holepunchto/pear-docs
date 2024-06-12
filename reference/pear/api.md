@@ -273,11 +273,11 @@ Reference counting is handled automatically to manage the sidecar lifecycle.
 
 ### `const pipe = Pear.worker.run(key <String>)`
 
-Spawns a new process by using the specified key as the entry point. Resolves to a `Duplex` stream object representing a pipe.
+Spawns a new process with the specified key as the entry point. Resolves to a `Duplex` stream object representing a pipe.
 
 ### `const pipe = Pear.worker.pipe()`
 
-Used within the worker process to get the communication pipe which is also returned by the `Pear.worker.run(key <String>)` function. Resolves to a `Duplex` stream object representing a pipe.
+Returns the communication pipe created to the worker process. Resolves to a `Duplex` stream object representing a pipe.
 
 ## `Pear.media <Object>`
 
