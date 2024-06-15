@@ -36,7 +36,7 @@ Guides on using the Pear Runtime to build and share P2P applications.
 
 ### How-tos
 
-Simple How-tos on using the essential builing blocks in Pear applications.
+Simple How-tos on using the essential building blocks in Pear applications.
 
 * [How to connect two peers by key with HyperDHT](./howto/connect-two-peers-by-key-with-hyperdht.md)
 * [How to connect to many peers by topic with Hyperswarm](./howto/connect-to-many-peers-by-topic-with-hyperswarm.md)
