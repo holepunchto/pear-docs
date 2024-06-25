@@ -188,7 +188,7 @@ Pear.teardown(() => swarm.destroy())
 swarm.on('connection', conn => store.replicate(conn))
 
 // create or get the hypercore using the public key supplied as command-line argument
-const core = store.get({ key: b4a.from(process.argv[2], 'hex') })
+const core = store.get({ key: b4a.from(process.argv[3], 'hex') })
 // wait till the properties of the hypercore instance are initialized
 await core.ready()
 

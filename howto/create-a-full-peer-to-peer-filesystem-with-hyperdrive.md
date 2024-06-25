@@ -188,7 +188,7 @@ Pear.teardown(() => swarm.destroy())
 swarm.on('connection', conn => store.replicate(conn))
 
 // create/get the hypercore instance using the public key supplied as command-line arg
-const core = store.get({ key: b4a.from(process.argv[2], 'hex') })
+const core = store.get({ key: b4a.from(process.argv[3], 'hex') })
 
 // create a hyperbee instance using the hypercore instance
 const bee = new Hyperbee(core, {
