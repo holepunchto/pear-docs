@@ -70,13 +70,17 @@ Run an application from a key or dir.
 
 
 ```
-  --dev                      Enable --devtools & --updates-diff
+  --dev|-d                   Enable --devtools & --updates-diff
   --devtools                 Open devtools with application [Desktop]
   --updates-diff             Enable diff computation for Pear.updates
   --no-updates               Disable updates firing via Pear.updates
   --link=url                 Simulate deep-link click open
   --store|-s=path            Set the Application Storage path
   --tmp-store|-t             Automatic new tmp folder as store path
+  --chrome-webrtc-internals  Enable chrome://webrtc-internals
+  --unsafe-clear-app-storage Clear app storage
+  --unsafe-clear-preferences Clear preferences (such as trustlist)
+  --appling=path             Set application shell path
   --checkout=n               Run a checkout, n is version length
   --checkout=release         Run checkout from marked released length
   --checkout=staged          Run checkout from latest version length
