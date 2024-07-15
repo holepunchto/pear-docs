@@ -40,7 +40,7 @@ Notable features include:
         * [node.lookup(topic, \[options\])](hyperdht.md#node.lookup)
         * [node.announce(topic, keyPair, \[relayAddresses\], \[options\])](hyperdht.md#node.announce)
         * [node.unannounce(topic, keyPair, \[options\])](hyperdht.md#node.unannounce)
-  * [Mutable/immutable records:](hyperdht.md#mutable-immutable-records)
+  * [Mutable/immutable records:](hyperdht.md#mutable-inmutable-records)
     * Methods:
       * [node.immutablePut(value, \[options\])](hyperdht.md#node.inmutableput)
       * [node.immutableGet(hash, \[options\])](hyperdht.md#node.inmutableget)
