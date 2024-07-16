@@ -261,6 +261,24 @@ async function logPrefUpdates () {
 logPrefUpdates().catch(console.error)
 ```
 
+## `Pear.worker <Object>`
+
+Pear Worker is used to spawn processes and facilitate communication between the parent and child processes in the Pear Runtime.
+
+The spawned worker process inherits standard input, output, and error from the parent process.
+
+A bidirectional pipe is also created which enables communication between the parent and worker process.
+
+Reference counting is handled automatically to manage the sidecar lifecycle.
+
+### `const pipe = Pear.worker.run(key <String>)`
+
+Spawns a new process with the specified key as the entry point. Resolves to a `Duplex` stream object representing a pipe.
+
+### `const pipe = Pear.worker.pipe()`
+
+Returns the communication pipe created to the worker process. Resolves to a `Duplex` stream object representing a pipe.
+
 ## `Pear.media <Object>`
 
 Media interface
@@ -361,6 +379,10 @@ will be waited upon until resolution before calling the next teardown handler.
 ### `Pear.restart()`
 
 Restart the application.
+
+### `Pear.exit(code)`
+
+Exits the process with the provided exit code.
 
 ### `Pear.updates(listener <Async Function|Function>) => streamx.Readable`
 

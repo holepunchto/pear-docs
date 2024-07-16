@@ -70,13 +70,17 @@ Run an application from a key or dir.
 
 
 ```
-  --dev                      Enable --devtools & --updates-diff
+  --dev|-d                   Enable --devtools & --updates-diff
   --devtools                 Open devtools with application [Desktop]
   --updates-diff             Enable diff computation for Pear.updates
   --no-updates               Disable updates firing via Pear.updates
   --link=url                 Simulate deep-link click open
   --store|-s=path            Set the Application Storage path
   --tmp-store|-t             Automatic new tmp folder as store path
+  --chrome-webrtc-internals  Enable chrome://webrtc-internals
+  --unsafe-clear-app-storage Clear app storage
+  --unsafe-clear-preferences Clear preferences (such as trustlist)
+  --appling=path             Set application shell path
   --checkout=n               Run a checkout, n is version length
   --checkout=release         Run checkout from marked released length
   --checkout=staged          Run checkout from latest version length
@@ -115,16 +119,20 @@ Use this to indicate production release points.
   --checkout=n|current     Set a custom release length (version)
 ```
   
-## `pear info [key]`
+## `pear info [channel|key]`
 
 Read project information.
 
-Supply a key to view application info
+Supply a key or channel to view application information.
 
-Without a key pear info shows Pear info
+Supply no argument to view platform information.
 
 ```
-  --json          Newline delimited JSON output
+  --changelog       View changelog only
+  --full-changelog  Full record of changes
+  --metadata        View metadata only
+  --key             View key only
+  --json            Newline delimited JSON output
 ```
   
 ## `pear dump <key> [dir]`
@@ -148,12 +156,6 @@ and then becomes the sidecar.
   --mem              memory mode: RAM corestore
   --attach-boot-io   include initial sidecar I/O (if applicable)
 ```
-  
-## `pear repl`
-
-Connect to a Read-Eval-Print-Loop session with sidecar.
-
-A key is printed out, use with repl-swarm module to connect.
 
 ## `pear versions`
 
@@ -172,7 +174,19 @@ Move user application storage between applications.
 --json      Newline delimited JSON output
 ```
 
+## `pear gc [flags] [command]`
 
+Perform garbage collection and remove unused resources.
+
+| Commands      |           Description                                        |
+|-------|---------------------------------------------------|
+| releases   | Clear inactive releases                       |
+| sidecars   |  Clear running sidecars                       |
+
+```
+  --json      Newline delimited JSON output
+  --help|-h   Show help
+```
 
 
   
