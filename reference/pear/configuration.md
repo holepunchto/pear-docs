@@ -122,11 +122,30 @@ Background color (Hex, RGB, RGBA, HSL, HSLA, CSS color).
 
 ###  `pear.links <Object|Array>` 
 
-An array or object containing trusted Pear application keys.
+Storing and managing Pear application links and domains.
 
-#### `pear.links.worker <String>`
+`links` can be an object or an array. If it's an object, naming the key makes it easy to reference from [`Pear.config.links`](./api.md#pearconfiglinks-objectarray)
 
-The key of the Pear application that contains the worker script. For more info, please check the [terminal](https://github.com/holepunchto/pear/blob/main/examples/terminal/index.js#L21) and [desktop](https://github.com/holepunchto/pear/blob/main/examples/desktop/app.js#L27) examples.
+The links and domains inside need to be trusted. Any pear links that the app trusts to run (eg as a worker) must be added and any http(s) domains that the app wants to access must also be added, including localhost.
+
+```json
+{
+  // ...
+  "pear": {
+    // accessed at runtime using Pear.config.links[index] eg. Pear.config.links[0] for pear://somePearKey
+    "links": [ 
+      "pear://somePearKey", 
+      "https://example.com" 
+    ]
+    // OR
+    // accessed at runtime using Pear.config.links.name eg. Pear.config.links.myWorker for myWorker
+    "links": {
+      "myWorker": "pear://somePearKey",
+      "host": "https://example.com"
+    }
+  }
+}
+```
 
 ### `pear.stage <Object>`
 

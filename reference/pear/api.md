@@ -108,6 +108,15 @@ In development, `pear://dev/<data>`.
 * [`pear dev`](./cli.md)
 * [`pear run`](./cli.md)
 
+### `Pear.config.links <Object|Array>`
+
+Holds trusted Pear application links and domains as specified in the `links` field inside `package.json`.
+
+**References**
+* [pear.links](./configuration.md#pearlinks-objectarray)
+* [`pear dev`](./cli.md)
+* [`pear run`](./cli.md)
+
 ### `Pear.config.linkData <String>`
 
 Holds just the data portion of a Pear link.
