@@ -1,6 +1,6 @@
 # Getting Started with Pear
 
-Pear Runtime can be installed from the [pears.com](pears.com) or via [npm](https://www.npmjs.com/).
+Pear Runtime can be installed via [npm](https://www.npmjs.com/).
 
 Since `npm` (or equivalent package manager) is needed to install application dependencies this guide will walk through installing `pear` with `npm`.
 
