@@ -70,12 +70,12 @@ rl.on('data', line => {
 })
 rl.prompt()
 
-rl.on('close', async () => {
-  console.log('[info] Exiting chat room');
-  rl.input.setMode(tty.constants.MODE_NORMAL); // Reset the terminal to normal mode
-  rl.input.destroy();
+rl.on('close', () => {
+  console.log('[info] Exiting chat room')
+  rl.input.setMode(tty.constants.MODE_NORMAL) // Reset the terminal to normal mode
+  rl.input.destroy()
 
-  await swarm.destroy();
+  swarm.destroy()
 });
 
 async function createChatRoom () {
