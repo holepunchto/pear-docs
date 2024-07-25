@@ -126,7 +126,11 @@ Storing and managing Pear application links and domains.
 
 `links` can be an object or an array. If it's an object, naming the key makes it easy to reference from [`Pear.config.links`](./api.md#pearconfiglinks-objectarray)
 
-The links and domains inside need to be trusted. Any pear links that the app trusts to run (eg as a worker) must be added and any http(s) domains that the app wants to access must also be added, including localhost.
+By default in Pear apps, only requests to the sidecar host (127.0.0.1:9342) are allowed. Additional hosts and trusted keys must be added in `pear.links` to allow access.
+
+Any Pear links that the app trusts to run (eg as a worker) must be added and any http(s) domains that the app wants to access must also be added, including localhost.
+
+Note that this is only for requests that the Pear app makes itself such as loading assets.
 
 ```json
 {
