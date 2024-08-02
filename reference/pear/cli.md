@@ -4,15 +4,18 @@
 
 The Command Line Interface is the primary interface for Pear Development.
 
-## `pear init [dir]`
+## `pear init [flags] <link|type=desktop> [dir]`
 
 Create initial project files.
 
+Template Types: desktop, terminal, terminal-node
+
 ```
 --yes|-y         Autoselect all defaults
---type|-t=type   Project type: desktop (default) or terminal
+--type|-t=type   Template type. Overrides <link|type>
 --force|-f       Force overwrite existing files
 --with|-w=name   Additional functionality. Available: node
+--help|-h        Show help
 ```
   
 ## `pear dev [flags] [dir] [...app-args]`
