@@ -21,7 +21,7 @@ Notable features include:
       * [swarm.peers](hyperswarm.md#swarm.peers)
       * [swarm.dht](hyperswarm.md#swarm.dht)
     * Methods:
-      * [swarm.join(topic, [options])](hyperswarm.md#const-discovery--swarmjointopic-options)
+      * [swarm.join(topic, [options])](hyperswarm.md#swarm.join)
     * Events:
       * [connection](hyperswarm.md#swarm.onconnection)
       * [update](hyperswarm.md#swarm.onupdate)
