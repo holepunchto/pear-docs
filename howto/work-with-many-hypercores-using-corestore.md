@@ -130,7 +130,7 @@ for (const key of otherKeys) {
 In one terminal, open `multicore-writer-app` with `pear dev`.
 
 ```
-cd  mutlicore-writer-app
+cd  multicore-writer-app
 pear dev
 ```
 
