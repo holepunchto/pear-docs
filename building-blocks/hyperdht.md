@@ -42,8 +42,8 @@ Notable features include:
         * [node.unannounce(topic, keyPair, \[options\])](hyperdht.md#node.unannounce)
   * [Mutable/immutable records:](hyperdht.md#mutable-immutable-records)
     * Methods:
-      * [node.immutablePut(value, \[options\])](hyperdht.md#node.inmutableput)
-      * [node.immutableGet(hash, \[options\])](hyperdht.md#node.inmutableget)
+      * [node.immutablePut(value, \[options\])](hyperdht.md#node.immutableput)
+      * [node.immutableGet(hash, \[options\])](hyperdht.md#node.immutableget)
       * [node.mutablePut(keyPair, value, \[options\])](hyperdht.md#node.mutableput)
       * [node.mutableGet(publicKey, \[options\])](hyperdht.md#node.mutableget)
 
@@ -243,17 +243,17 @@ Unannounces a key pair.
 
 Any passed options are forwarded to dht-rpc.
 
-### Mutable/Immutable Records {#mutable-inmutable-records}
+### Mutable/Immutable Records {#mutable-immutable-records}
 
 #### Methods
 
-#### **`const { hash, closestNodes } = await node.immutablePut(value, [options])`** {#node.inmutableput}
+#### **`const { hash, closestNodes } = await node.immutablePut(value, [options])`** {#node.immutableput}
 
 Stores an immutable value in the DHT. When successful, the hash of the value is returned.
 
 Any passed options are forwarded to dht-rpc.
 
-#### **`const { value, from } = await node.immutableGet(hash, [options])`** {#node.inmutableget}
+#### **`const { value, from } = await node.immutableGet(hash, [options])`** {#node.immutableget}
 
 Fetch an immutable value from the DHT. When successful, it returns the value corresponding to the hash.
 
