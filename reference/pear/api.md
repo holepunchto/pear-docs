@@ -280,9 +280,9 @@ A bidirectional pipe is also created which enables communication between the par
 
 Reference counting is handled automatically to manage the sidecar lifecycle.
 
-### `const pipe = Pear.worker.run(key <String>)`
+### `const pipe = Pear.worker.run(link <String>, args <Array<String>>)`
 
-Spawns a new process with the specified key as the entry point. Resolves to a `Duplex` stream object representing a pipe.
+Runs a Pear Worker by spawning a Pear Terminal Application process from the specified `link` parameter. The Worker uses the flags of the parent application but any application arguments must be passed using the `args` parameter. Returns a pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) for Worker communication. 
 
 ### `const pipe = Pear.worker.pipe()`
 
