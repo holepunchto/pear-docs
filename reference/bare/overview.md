@@ -26,7 +26,7 @@ Bare is built on top of [libjs](https://github.com/holepunchto/libjs), which pro
 2. A native addon system supporting both statically and dynamically linked addons.
 3. Light-weight thread support with synchronous joins and shared array buffer support.
 
-Everything else if left to userland modules to be implemented using these primitives, keeping the runtime itself succinct and _bare_.
+Everything else is left to userland modules to be implemented using these primitives, keeping the runtime itself succinct and _bare_.
 
 ## API
 
