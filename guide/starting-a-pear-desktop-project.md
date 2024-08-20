@@ -17,7 +17,7 @@ pear init --yes
 This creates the base project structure.
 
 - `package.json`. App configuration. Notice the `pear` property.
-- `index.js`. App entrypoint.
+- `index.html`. App entrypoint.
 - `app.js`. Main code.
 - `test/index.test.js`. Test skeleton.
 
