@@ -435,12 +435,16 @@ The `listener` function is called for every incoming wakeup with a `wakeup` obje
 {
   type: 'pear/wakeup',
   link: <String>,
-  data: <String>
+  linkData: <String>,
+  fragment: <String>,
+  entrypoint: <String>
 }
 ```
 
 * `link` is the `pear://` link for the application receiving the wakeup
-* `data` is everything after the key in the `pear://` link - this would be `pathname` of a [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL/URL) object but without the leading slash (`/`). Given `pear://8ts9yz9dtucxzwbxafygnjasqe9ti3dt3w7rm6sbiu8prmidacao/some/more/stuff` the `data` string would hold `some/more/stuff`.
+* `linkData` is everything after the key in the `pear://` link - this would be `pathname` of a [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL/URL) object but without the leading slash (`/`). Given `pear://8ts9yz9dtucxzwbxafygnjasqe9ti3dt3w7rm6sbiu8prmidacao/some/more/stuff` the `data` string would hold `some/more/stuff`.
+* `fragment` is the `fragment` part of `pear://link#fragment` (location hash without the `#` prefix).
+* `entrypoint` includes `entrypoint` of `pear://link/some/entry/point` (URL pathname).
 
 Also returns a [`streamx`](https://github.com/mafintosh/streamx) `Readable`) stream.
 
