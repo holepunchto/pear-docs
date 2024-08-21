@@ -372,7 +372,7 @@ The application version.
 
 ### `Pear.versions.runtimes { bare <Integer>, electron <Integer>, pear <Integer> }`
 
-The versions for various runtimes.
+The versions of runtimes.
 
 **References**
 

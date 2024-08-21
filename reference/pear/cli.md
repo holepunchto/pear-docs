@@ -141,7 +141,7 @@ Supply no argument to view platform information.
   
 ## `pear dump [flags] <link> <dir>`
 
-Synchronize files from link to dir.
+Synchronize files from key to dir.
 
 ```
   --checkout=n    Dump from specified checkout, n is version length
