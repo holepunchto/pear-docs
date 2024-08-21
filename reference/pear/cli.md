@@ -61,15 +61,14 @@ Specify a remote key to reseed.
   --verbose|-v  Additional output
 ```
   
-## `pear run [flags] <key|dir|alias> [...app-args]`
+## `pear run [flags] <link|dir> [...app-args]`
 
 Run an application from a key or dir.
 
 |       |                                                   |
 |-------|---------------------------------------------------|
-| key   | `pear://<key>`                            |
+| link  | `pear://<key>`  \| `pear://<alias>`                |
 | dir   | `file://<absolute-path>` \| `<absolute-path>` \| `<relative-path>` |
-| alias | `pear://<alias>`                          |
 
 
 ```
@@ -80,6 +79,7 @@ Run an application from a key or dir.
   --link=url                 Simulate deep-link click open
   --store|-s=path            Set the Application Storage path
   --tmp-store|-t             Automatic new tmp folder as store path
+  --links <kvs>              Override configured links with comma-separated key-values
   --chrome-webrtc-internals  Enable chrome://webrtc-internals
   --unsafe-clear-app-storage Clear app storage
   --unsafe-clear-preferences Clear preferences (such as trustlist)
@@ -89,6 +89,7 @@ Run an application from a key or dir.
   --checkout=staged          Run checkout from latest version length
   --no-ask-trust             Exit instead of asking to trust unknown keys
   --detached                 Wakeup existing app or run detached
+  --help|-h                  Show help
 ```
 
 ### Examples 
