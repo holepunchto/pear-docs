@@ -282,7 +282,7 @@ Reference counting is handled automatically to manage the sidecar lifecycle.
 
 ### `const pipe = Pear.worker.run(link <String>, args <Array<String>>)`
 
-Runs a Pear Worker by spawning a Pear Terminal Application process from the specified `link` parameter. The Worker uses the flags of the parent application but any application arguments must be passed using the `args` parameter. The `args` parameter sets `Pear.config.args` and returns a pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) for Worker communication. 
+Runs a Pear Worker by spawning a Pear Terminal Application process from the specified `link` parameter. The Worker uses the flags of the parent application but any application arguments must be passed using the `args` parameter, the `args` parameter also sets `Pear.config.args`. Returns a pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) for Worker communication. 
 
 ### `const pipe = Pear.worker.pipe()`
 
