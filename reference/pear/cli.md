@@ -138,13 +138,14 @@ Supply no argument to view platform information.
   --json            Newline delimited JSON output
 ```
   
-## `pear dump <key> [dir]`
+## `pear dump [flags] <link> <dir>`
 
-Synchronize files from key to dir.
+Synchronize files from link to dir.
 
 ```
+  --checkout=n    Dump from specified checkout, n is version length
   --json          Newline delimited JSON output
-  --checkout=n    Dump from a custom release length (version)
+  --help|-h       Show help
 ```
   
 ## `pear sidecar`
