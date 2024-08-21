@@ -366,9 +366,13 @@ These three properties together are a unique identifier for the entire state of 
 
 The platform version.
 
-### `Pear.versions.application { fork <Integer>, length <Integer>, key <Buffer> }`
+### `Pear.versions.app { fork <Integer>, length <Integer>, key <Buffer> }`
 
 The application version.
+
+### `Pear.versions.runtimes { bare <Integer>, electron <Integer>, pear <Integer> }`
+
+The versions for various runtimes.
 
 **References**
 
