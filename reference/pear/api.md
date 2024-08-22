@@ -282,7 +282,7 @@ Reference counting is handled automatically to manage the sidecar lifecycle.
 
 ### `const pipe = Pear.worker.run(link <String>, args <Array<String>>)`
 
-Runs a Pear Worker by spawning a Pear Terminal Application process from the specified `link` parameter. The Worker uses the flags of the parent application but any application arguments must be passed using the `args` parameter. Returns a pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) for Worker communication. 
+Runs a Pear Worker by spawning a Pear Terminal Application process from the specified `link` parameter. The Worker uses the flags of the parent application but any application arguments must be passed using the `args` parameter, the `args` parameter also sets `Pear.config.args`. Returns a pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) for Worker communication. 
 
 ### `const pipe = Pear.worker.pipe()`
 
@@ -354,9 +354,9 @@ Captures available desktop sources. Resolves to an array of objects with shape `
 * https://www.electronjs.org/docs/latest/api/structures/desktop-capturer-source
 * [`<NativeImage>`](https://www.electronjs.org/docs/latest/api/native-image)
 
-### `Pear.versions <Object>`
+### `Pear.versions <Async Function>`
 
-Versions object. Pear versions are objects with the shape `{ fork <Integer>, length <Integer>, key <Buffer> }`.
+Function that returns a promise which resolves to a Pear versions object with the shape `{ fork <Integer>, length <Integer>, key <Buffer> }`.
 
 The `key` is a Buffer of the run key. The `length` is the size of the relevant Hypercore. The `fork` property is determined by data truncation.
 
@@ -366,9 +366,13 @@ These three properties together are a unique identifier for the entire state of 
 
 The platform version.
 
-### `Pear.versions.application { fork <Integer>, length <Integer>, key <Buffer> }`
+### `Pear.versions.app { fork <Integer>, length <Integer>, key <Buffer> }`
 
 The application version.
+
+### `Pear.versions.runtimes { bare <Integer>, electron <Integer>, pear <Integer> }`
+
+The versions of runtimes.
 
 **References**
 
@@ -384,6 +388,10 @@ May be called multiple times to register multiple teardown handlers.
 Functions supplied to teardown will be executed in order of registration when
 an application begins to unload. Any promise returned from each supplied function
 will be waited upon until resolution before calling the next teardown handler.
+
+### Pear.reload()
+
+Soft-restart Terminal applications (keeps I/O), refresh application in Desktop applications.
 
 ### `Pear.restart()`
 
@@ -427,12 +435,16 @@ The `listener` function is called for every incoming wakeup with a `wakeup` obje
 {
   type: 'pear/wakeup',
   link: <String>,
-  data: <String>
+  linkData: <String>,
+  fragment: <String>,
+  entrypoint: <String>
 }
 ```
 
 * `link` is the `pear://` link for the application receiving the wakeup
-* `data` is everything after the key in the `pear://` link - this would be `pathname` of a [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL/URL) object but without the leading slash (`/`). Given `pear://8ts9yz9dtucxzwbxafygnjasqe9ti3dt3w7rm6sbiu8prmidacao/some/more/stuff` the `data` string would hold `some/more/stuff`.
+* `linkData` is everything after the key in the `pear://` link - this would be `pathname` of a [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL/URL) object but without the leading slash (`/`). Given `pear://8ts9yz9dtucxzwbxafygnjasqe9ti3dt3w7rm6sbiu8prmidacao/some/more/stuff` the `data` string would hold `some/more/stuff`.
+* `fragment` is the `fragment` part of `pear://link#fragment` (location hash without the `#` prefix).
+* `entrypoint` includes `entrypoint` of `pear://link/some/entry/point` (URL pathname).
 
 Also returns a [`streamx`](https://github.com/mafintosh/streamx) `Readable`) stream.
 
