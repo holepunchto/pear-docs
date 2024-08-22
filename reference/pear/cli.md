@@ -4,15 +4,22 @@
 
 The Command Line Interface is the primary interface for Pear Development.
 
-## `pear init [dir]`
+## `pear init [flags] <link|type=desktop> [dir]`
 
 Create initial project files.
 
+Template Types: desktop, terminal, terminal-node
+
+> Default Project directory path is `.`
+
+Template can also be initialized from a pear:// link, the template should contain a `_template.json` file. This file defines the prompts which are converted to locals that are injected into the template.
+
 ```
 --yes|-y         Autoselect all defaults
---type|-t=type   Project type: desktop (default) or terminal
+--type|-t=type   Template type. Overrides <link|type>
 --force|-f       Force overwrite existing files
 --with|-w=name   Additional functionality. Available: node
+--help|-h        Show help
 ```
   
 ## `pear dev [flags] [dir] [...app-args]`
@@ -58,15 +65,14 @@ Specify a remote key to reseed.
   --verbose|-v  Additional output
 ```
   
-## `pear run [flags] <key|dir|alias> [...app-args]`
+## `pear run [flags] <link|dir> [...app-args]`
 
 Run an application from a key or dir.
 
 |       |                                                   |
 |-------|---------------------------------------------------|
-| key   | `pear://<key>`                            |
+| link  | `pear://<key>`  \| `pear://<alias>`                |
 | dir   | `file://<absolute-path>` \| `<absolute-path>` \| `<relative-path>` |
-| alias | `pear://<alias>`                          |
 
 
 ```
@@ -77,6 +83,7 @@ Run an application from a key or dir.
   --link=url                 Simulate deep-link click open
   --store|-s=path            Set the Application Storage path
   --tmp-store|-t             Automatic new tmp folder as store path
+  --links <kvs>              Override configured links with comma-separated key-values
   --chrome-webrtc-internals  Enable chrome://webrtc-internals
   --unsafe-clear-app-storage Clear app storage
   --unsafe-clear-preferences Clear preferences (such as trustlist)
@@ -86,6 +93,7 @@ Run an application from a key or dir.
   --checkout=staged          Run checkout from latest version length
   --no-ask-trust             Exit instead of asking to trust unknown keys
   --detached                 Wakeup existing app or run detached
+  --help|-h                  Show help
 ```
 
 ### Examples 
@@ -135,13 +143,16 @@ Supply no argument to view platform information.
   --json            Newline delimited JSON output
 ```
   
-## `pear dump <key> [dir]`
+## `pear dump [flags] <link> <dir>`
 
 Synchronize files from key to dir.
 
+> To dump to stdout use `-` in place of `<dir>`
+
 ```
+  --checkout=n    Dump from specified checkout, n is version length
   --json          Newline delimited JSON output
-  --checkout=n    Dump from a custom release length (version)
+  --help|-h       Show help
 ```
   
 ## `pear sidecar`
