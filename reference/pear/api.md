@@ -354,9 +354,9 @@ Captures available desktop sources. Resolves to an array of objects with shape `
 * https://www.electronjs.org/docs/latest/api/structures/desktop-capturer-source
 * [`<NativeImage>`](https://www.electronjs.org/docs/latest/api/native-image)
 
-### `Pear.versions <Object>`
+### `Pear.versions <Async Function>`
 
-Versions object. Pear versions are objects with the shape `{ fork <Integer>, length <Integer>, key <Buffer> }`.
+Function that returns a promise which resolves to a Pear versions object with the shape `{ fork <Integer>, length <Integer>, key <Buffer> }`.
 
 The `key` is a Buffer of the run key. The `length` is the size of the relevant Hypercore. The `fork` property is determined by data truncation.
 
