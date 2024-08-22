@@ -10,6 +10,10 @@ Create initial project files.
 
 Template Types: desktop, terminal, terminal-node
 
+> Default Project directory path is `.`
+
+Template can also be initialized from a pear:// link, the template should contain a `_template.json` file. This file defines the prompts which are converted to locals that are injected into the template.
+
 ```
 --yes|-y         Autoselect all defaults
 --type|-t=type   Template type. Overrides <link|type>
@@ -142,6 +146,8 @@ Supply no argument to view platform information.
 ## `pear dump [flags] <link> <dir>`
 
 Synchronize files from key to dir.
+
+> To dump to stdout use `-` in place of `<dir>`
 
 ```
   --checkout=n    Dump from specified checkout, n is version length
