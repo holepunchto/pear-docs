@@ -23,21 +23,35 @@ This creates the base project structure.
 
 ## Step 2. Verify Everything Works
 
-Use `pear dev` to verify everything works as expected.
+Use `pear run` to verify everything works as expected.
 
 ```
-pear dev
+pear run --dev .
 ```
 
-The app should open in development mode. By default, developer tools are also opened.
+> A directory or link needs to be specified with `pear run`, here `.` denotes the current Project directory.
 
-![Running pear dev](../assets/chat-app-1.png)
+The app should open in development mode. In this mode developer tools are also opened.
+
+![Running pear run --dev .](../assets/chat-app-1.png)
 
 ## Step 3. Automatic Reload
 
-Pear watches project files. When they change, the app is automatically reloaded.
+To enable automatic reloading, add the following lines to `app.js` :
 
-While keeping the `pear dev` command running, open `index.html` in an editor.
+```js
+Pear.updates(() => Pear.reload())
+```
+
+Run the app again using:
+
+```js
+pear run --dev .
+```
+
+Now Pear watches project files. When they change, the app is automatically reloaded.
+
+While keeping the `pear run --dev .` command running, open `index.html` in an editor.
 
 Change `<h1>chat</h1>` to `<h1>Hello world</h1>`.
 
@@ -58,7 +72,6 @@ Open `package.json` and update it to:
   ...
   "pear": {
     "gui": {
-      "backgroundColor": "#012a02",
       "height": 400,
       "width": 700
     }
@@ -67,7 +80,7 @@ Open `package.json` and update it to:
 }
 ```
 
-Close the app and re-run `pear dev` to see the changes:  the background is now light blue, and the initial window size is different.
+Close the app and re-run `pear run --dev .` to see the changes, the initial window size is different now.
 
 See the [Configuration Documentation](../reference/pear/configuration.md) for all options.
 
