@@ -14,7 +14,7 @@ Pear runs on [`Bare`](https://github.com/holepunchto/bare), a lightweight JavaSc
 
 
 ```
-npm i bare-readline bare-tty hyperswarm b4a hypercore-crypto
+npm i bare-readline bare-tty bare-process hyperswarm b4a hypercore-crypto
 ```
 
 ## Step 2. JavaScript
@@ -28,6 +28,7 @@ import b4a from 'b4a'                 // Module for buffer-to-string and vice-ve
 import crypto from 'hypercore-crypto' // Cryptographic functions for generating the key in app
 import readline from 'bare-readline'  // Module for reading user input in terminal
 import tty from 'bare-tty'            // Module to control terminal behavior
+import process from 'bare-process'    // Process control for Bare
 
 
 const { teardown, config, updates } = Pear    // Import configuration options, updates and cleanup functions from Pear
@@ -73,6 +74,10 @@ rl.on('data', line => {
   rl.prompt()
 })
 rl.prompt()
+
+rl.on('close', () => {
+  process.kill()
+})
 
 async function createChatRoom () {
   // Generate a new random topic (32 byte string)
