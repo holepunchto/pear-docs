@@ -30,7 +30,7 @@ import readline from 'bare-readline'  // Module for reading user input in termin
 import tty from 'bare-tty'            // Module to control terminal behavior
 
 
-const { teardown, config } = Pear    // Import configuration options and cleanup functions from Pear
+const { teardown, config, updates } = Pear    // Import configuration options, updates and cleanup functions from Pear
 const key = config.args.pop()       // Retrieve a potential chat room key from command-line arguments
 const shouldCreateSwarm = !key      // Flag to determine if a new chat room should be created
 const swarm = new Hyperswarm()
@@ -38,6 +38,10 @@ const swarm = new Hyperswarm()
 // Unannounce the public key before exiting the process
 // (This is not a requirement, but it helps avoid DHT pollution)
 teardown(() => swarm.destroy())
+
+// Enable automatic reloading for the app
+// This is optional but helpful during production
+updates(() => Pear.reload())
 
 const rl = readline.createInterface({
   input: new tty.ReadStream(0),
@@ -86,7 +90,7 @@ async function joinChatRoom (topicStr) {
 }
 
 async function joinSwarm (topicBuffer) {
-    // Join the swarm with the topic. Setting both client/server to true means that this app can act as both.
+  // Join the swarm with the topic. Setting both client/server to true means that this app can act as both.
   const discovery = swarm.join(topicBuffer, { client: true, server: true })
   await discovery.flushed()
 }
@@ -105,7 +109,7 @@ function appendMessage ({ name, message }) {
 
 ## Step 3. Run in dev mode
 
-To test this chat app, in one terminal run `pear dev .`
+To test this chat app, in one terminal run `pear run --dev .`
 
 The app will output something similar to:
 
@@ -113,7 +117,7 @@ The app will output something similar to:
 [info] Created new chat room: a1b2c35fbeb452bc900c5a1c00306e52319a3159317312f54fe5a246d634f51a
 ```
 
-In another terminal use this key as input, `pear dev . a1b2c35fbeb452bc900c5a1c00306e52319a3159317312f54fe5a246d634f51a`
+In another terminal use this key as input, `pear run --dev . a1b2c35fbeb452bc900c5a1c00306e52319a3159317312f54fe5a246d634f51a`
 
 The app will output:
 
