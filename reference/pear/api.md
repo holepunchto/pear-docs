@@ -286,7 +286,7 @@ Runs a Pear Worker by spawning a Pear Terminal Application process from the spec
 
 ### `const pipe = Pear.worker.pipe()`
 
-Returns the communication pipe created to the worker process. Resolves to a `Duplex` stream object representing a pipe.
+Returns the pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) created to the worker process.
 
 ## `Pear.media <Object>`
 
