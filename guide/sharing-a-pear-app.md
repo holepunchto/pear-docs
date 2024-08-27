@@ -12,7 +12,7 @@ cd staging-example
 pear init -y
 ```
 
-If starting from [Making a Pear Desktop Application](./making-a-pear-desktop-app.md) or [Making a Pear Terminal Application](./making-a-pear-terminal-app.md) ensure that the comamnd-line current working directory is set to the project folder of the application.
+If starting from [Making a Pear Desktop Application](./making-a-pear-desktop-app.md) or [Making a Pear Terminal Application](./making-a-pear-terminal-app.md) ensure that the command-line current working directory is set to the project folder of the application.
 
 ## Step 1. Stage the app
 
@@ -50,7 +50,7 @@ Copy the application key that was output when the application was staged in the 
 pear run pear://nykmkrpwgadcd8m9x5khhh43j9izj123eguzqg3ygta7yn1s379o
 ```
 
-Where `pear dev` opens an application from the filesystem, `pear run`  opens the application from Pear's application storage. So far the application has remained local, in order to share it with other peers it must be seeded.
+`pear run`  opens the application from Pear's application storage. So far the application has remained local, in order to share it with other peers it must be seeded.
 
 ## Step 3. Seed the app
 
@@ -111,7 +111,7 @@ The trust dialog is a security mechanism in Pear that appears when the user trie
 
 ![Trust dialog](../assets/trust-dialog.png)
 
-> During development with `pear dev`, applications are automatically trusted, as they are assumed to be safe for testing purposes. Trust dialog can be suppressed using the  `--no-ask-trust` flag with `pear run` in which case the application will automatically decline unknown keys.
+> During development with `pear run --dev`, applications are automatically trusted, as they are assumed to be safe for testing purposes. Trust dialog can be suppressed using the  `--no-ask-trust` flag with `pear run` in which case the application will automatically decline unknown keys.
 
 The application has no state when it's opened for the first time, so the application may show a loader until it's ready to reveal.
 

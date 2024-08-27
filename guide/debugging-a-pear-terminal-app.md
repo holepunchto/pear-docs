@@ -30,7 +30,7 @@ if (Pear.config.dev) {
 As the code specifies, `pear-inspect` is only running when in dev mode, so start the app:
 
 ```
-pear dev .
+pear run --dev .
 ```
 
 The application will output something similar to:

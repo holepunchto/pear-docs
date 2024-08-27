@@ -159,7 +159,7 @@ Start by defining the app's layout in `index.html`:
 </html>
 ```
 
-Running `pear dev` should show
+Running `pear run --dev .` should show
 
 ![Layout of the app](../assets/chat-app-3.png)
 
@@ -190,13 +190,17 @@ Replace `app.js` with
 import Hyperswarm from 'hyperswarm'   // Module for P2P networking and connecting peers
 import crypto from 'hypercore-crypto' // Cryptographic functions for generating the key in app
 import b4a from 'b4a'                 // Module for buffer-to-string and vice-versa conversions 
-const { teardown } = Pear             // Cleanup function
+const { teardown, updates } = Pear             // Cleanup and updates function
 
 const swarm = new Hyperswarm()
 
 // Unannounce the public key before exiting the process
 // (This is not a requirement, but it helps avoid DHT pollution)
 teardown(() => swarm.destroy())
+
+// Enable automatic reloading for the app
+// This is optional but helpful during production
+updates(() => Pear.reload())
 
 // When there's a new connection, listen for new messages, and add them to the UI
 swarm.on('connection', (peer) => {
@@ -267,11 +271,7 @@ function onMessageAdded (from, message) {
 
 ## Step 4. Chat
 
-Open two app instances by running `pear dev` in two terminals. For now, you will need to specify a different storage directory for the second `pear` instance to allow for two instances to run simultaneously:
-
-```
-pear dev -s /tmp/tmp_pear_instance
-```
+Open two app instances by running `pear run --dev .` in two terminals. 
 
 In the first app, click on `Create`. A random topic will appear at the top.
 

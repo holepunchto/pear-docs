@@ -19,11 +19,13 @@ This creates the base project structure.
 
 ## Step 2. Verify Everything Works
 
-Use `pear dev` to see that it works.
+Use `pear run` to see that it works.
 
 ```
-pear dev
+pear run --dev .
 ```
+
+> A directory or link needs to be specified with `pear run`, here `.` denotes the current Project directory.
 
 The app will now run. Note that it will keep running until you exit with `ctrl + c`.
 

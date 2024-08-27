@@ -52,7 +52,7 @@ pear seed production
 
 After marking a release, make a trivial change to the project (e.g. add a `console.log(...)` somewhere).
 
-First verify that it works by running `pear dev`.
+First verify that it works by running `pear run --dev .`
 
 Now stage the change with `pear stage production`.
 
