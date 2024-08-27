@@ -130,6 +130,8 @@ By default in Pear apps, only requests to the sidecar host (127.0.0.1:9342) are 
 
 Any Pear links that the app trusts to run (eg as a worker) must be added and any http(s) domains that the app wants to access must also be added, including localhost.
 
+Adding `"https://*"` or `"http://*"` will trust all domains based on their respective protocol.
+
 Note that this is only for requests that the Pear app makes itself such as loading assets.
 
 ```json
@@ -166,7 +168,3 @@ An array of file paths to ignore relative to `package.json` file.
 ### `pear.previewFor <String>`
 
 Allows a Pear application to use a different Pear application's storage by referring to it's key. This can be useful for testing production storage with test versions of the application.
-
-
-
-
