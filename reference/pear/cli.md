@@ -26,6 +26,8 @@ Template can also be initialized from a pear:// link, the template should contai
 
 Run a project in development mode from disk.
 
+> `pear dev` has been deprecated, use `pear run --dev` instead.
+
 Alias for: `pear run --dev <dir>`
 
 ```
