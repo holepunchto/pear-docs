@@ -76,7 +76,7 @@ rl.on('data', line => {
 rl.prompt()
 
 rl.on('close', () => {
-  process.kill()
+  process.kill(process.pid, 'SIGINT')
 })
 
 async function createChatRoom () {
