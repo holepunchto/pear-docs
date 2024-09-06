@@ -666,12 +666,6 @@ Resolves to: `<Boolean>`
 
 Whether the window is closed.
 
-### `const closed = await win.isClosed()`
-
-Resolves to: `<Boolean>`
-
-Whether the window is closed.
-
 ### `const view = new Pear.View(options <Object>)`
 
 Desktop Applications only.
