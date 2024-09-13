@@ -111,7 +111,7 @@ Creates a new server for accepting incoming encrypted P2P connections.
 }
 ```
 
-> Servers can be run on normal home computers, as the DHT will UDP holepunch connections are personal to users.
+> You can run servers on normal home computers, as the DHT will UDP holepunch connections for you.
 
 
 #### Methods
