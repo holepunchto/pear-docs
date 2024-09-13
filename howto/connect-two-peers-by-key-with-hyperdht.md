@@ -1,11 +1,11 @@
 
 # How to connect two Peers by key with Hyperdht
 
-[`Hyperswarm`](../building-blocks/hyperswarm.md) helps to find and connect to peers who are announcing a common 'topic'. The swarm topic can be anything. The HyperDHT uses a series of holepunching techniques to establish direct connections between peers, even if they're located on home networks with tricky NATs.
+[`HyperDHT`](../building-blocks/hyperdht.md) helps clients connect to a server peer with a known public key. HyperDHT uses a series of holepunching techniques to establish direct connections between the peers, even if they're located on home networks with tricky NATs.
 
-In the HyperDHT, peers are identified by a public key, not by an IP address. With the public key, users can connect to each other irrespective of their location, even if they move between different networks.
+In the HyperDHT, peers are identified by a public key, not by an IP address. The public key is looked up in a decentralized hash table, which maps the key to an IP address and port. This means users can connect to each other irrespective of their location, even if they move between different networks.
 
-> Hyperswarm's holepunching will fail if both the client peer and the server peer are on randomizing [NATs](https://en.wikipedia.org/wiki/Network_address_translation), in which case the connection must be relayed through a third peer. Hyperswarm does not do any relaying by default.
+> HyperDHT's holepunching will fail if both the client peer and the server peer are on randomizing [NATs](https://en.wikipedia.org/wiki/Network_address_translation), in which case the connection must be relayed through a third peer. HyperDHT does not do any relaying by default.
 
 > For example, Keet implements its relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
 
