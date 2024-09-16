@@ -19,6 +19,7 @@ Template can also be initialized from a pear:// link, the template should contai
 --type|-t=type   Template type. Overrides <link|type>
 --force|-f       Force overwrite existing files
 --with|-w=name   Additional functionality. Available: node
+--no-ask         Suppress permissions dialogs
 --help|-h        Show help
 ```
   
@@ -50,6 +51,8 @@ Outputs diff information and project key.
   --bare|-b      File data only, no warmup optimization
   --ignore       Comma separated file path ignore list
   --name         Advanced. Override app name
+  --no-ask       Suppress permissions dialogs
+  --help|-h      Show help
 ```
   
 ## `pear seed <channel|key> [dir]`
@@ -65,6 +68,7 @@ Specify a remote key to reseed.
   --seeders|-s  Additional public keys to seed from
   --name        Advanced. Override app name
   --verbose|-v  Additional output
+  --help|-h     Show help
 ```
   
 ## `pear run [flags] <link|dir> [...app-args]`
@@ -95,6 +99,7 @@ Run an application from a key or dir.
   --checkout=staged          Run checkout from latest version length
   --no-ask-trust             Exit instead of asking to trust unknown keys
   --detached                 Wakeup existing app or run detached
+  --no-ask                   Suppress permissions dialogs
   --help|-h                  Show help
 ```
 
@@ -127,6 +132,7 @@ Use this to indicate production release points.
 ```
   --json                   Newline delimited JSON output
   --checkout=n|current     Set a custom release length (version)
+  --help|-h                Show help
 ```
   
 ## `pear info [channel|key]`
@@ -143,6 +149,8 @@ Supply no argument to view platform information.
   --metadata        View metadata only
   --key             View key only
   --json            Newline delimited JSON output
+  --no-ask          Suppress permissions dialogs
+  --help|-h         Show help
 ```
   
 ## `pear dump [flags] <link> <dir>`
@@ -154,6 +162,7 @@ Synchronize files from key to dir.
 ```
   --checkout=n    Dump from specified checkout, n is version length
   --json          Newline delimited JSON output
+  --no-ask        Suppress permissions dialogs
   --help|-h       Show help
 ```
   
@@ -166,8 +175,10 @@ This command instructs any existing sidecar process to shutdown
 and then becomes the sidecar.
 
 ```
+  --verbose|-v       Additional output
   --mem              memory mode: RAM corestore
-  --attach-boot-io   include initial sidecar I/O (if applicable)
+  --key <key>        Advanced. Switch release lines
+  --help|-h          Show help
 ```
 
 ## `pear versions`
@@ -176,6 +187,7 @@ Output version information.
 
 ```
 --json        Single JSON object
+--help|-h     Show help
 ```
 
 ## `pear shift <src-key> <dst-key> [--force]`
