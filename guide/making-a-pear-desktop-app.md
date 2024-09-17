@@ -32,6 +32,7 @@ Start by defining the app's layout in `index.html`:
       pear-ctrl:after {
         content: '';
         display: block;
+        -webkit-app-region: drag; 
         height: 1.8rem;
         position: fixed;
         z-index: -1;
@@ -158,6 +159,12 @@ Start by defining the app's layout in `index.html`:
   </body>
 </html>
 ```
+
+**Note**: To make the `<pear-ctrl>` element draggable in Pear applications, add the following property to it's CSS : 
+```css
+-webkit-app-region : drag;
+``` 
+This non-standard CSS property tells the application that this element should act as a draggable region for the entire window.
 
 Running `pear run --dev .` should show
 
