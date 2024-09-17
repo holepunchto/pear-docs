@@ -22,23 +22,15 @@ Start by defining the app's layout in `index.html`:
 <html>
   <head>
     <style>
-      pear-ctrl {
-        margin-top: 9px;
-        margin-left: 9px;
-        position: absolute;
-      }
       pear-ctrl[data-platform="darwin"] { float: left; margin-top: 4px; }
 
-      pear-ctrl:after {
-        content: '';
-        display: block;
-        -webkit-app-region: drag; 
-        height: 1.8rem;
+      #titlebar {
+        -webkit-app-region: drag;
+        height: 30px;
+        width: 100%;
         position: fixed;
-        z-index: -1;
         left: 0;
         top: 0;
-        width: 100%;
         background-color: #B0D94413;
         filter: drop-shadow(2px 10px 6px #888);
       }
@@ -123,7 +115,9 @@ Start by defining the app's layout in `index.html`:
     <script type='module' src='./app.js'></script>
   </head>
   <body>
-    <pear-ctrl></pear-ctrl>
+    <div id="titlebar">
+      <pear-ctrl></pear-ctrl>
+    </div>
     <main>
       <div id="setup">
         <div>
@@ -160,7 +154,7 @@ Start by defining the app's layout in `index.html`:
 </html>
 ```
 
-**Note**: To make the `<pear-ctrl>` element draggable in Pear applications, add the following property to it's CSS : 
+**Note**: To make the `<pear-ctrl>` element draggable in Pear applications, wrap it in another element that uses the following CSS property: 
 ```css
 -webkit-app-region : drag;
 ``` 
