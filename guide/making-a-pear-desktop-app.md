@@ -22,7 +22,7 @@ Start by defining the app's layout in `index.html`:
 <html>
   <head>
     <style>
-      pear-ctrl[data-platform="darwin"] { float: left; margin-top: 4px; }
+      pear-ctrl[data-platform="darwin"] { margin-top: 12px; margin-left: 10px; }
 
       #titlebar {
         -webkit-app-region: drag;
