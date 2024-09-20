@@ -6,19 +6,18 @@ This guides describes how to create a [`pear init`](../reference/pear/cli.md#pea
 
 A template can be initialized from a local directory or P2P (Peer-to-Peer) using a `pear://` link.
 
-A local template folder should contain : 
-* a `__main__` file which will populate the contents of the file specified in the main prompt. 
+A template folder should contain : 
 * a `_template.json` file which describes the prompt structure.
 * a `package.json` file which contains config parameters to be populated from the prompts.
 
-For P2P the Pear application used for initialization should contain a `_template.json` file.
+> Note that optionally, if the `package.json` of the parent contains a `main` field it should specify a `__main__` file and a `main` parameter in the `_template.json` file. 
 
 Create a template folder called `example` in the project directory, inside the folder create the new files. 
 
 ```bash
 mkdir example
 cd example
-touch __main__ package.json _template.json
+touch index.html package.json _template.json
 ```
 
 ## Template Structure 
@@ -41,7 +40,6 @@ Each parameter object in the `params` array defines a specific input parameter.
 }
 ```
 
-
 Here are the possible fields for a parameter object:
 
 ### Required Fields
@@ -54,8 +52,6 @@ Here are the possible fields for a parameter object:
 - `default` (any): The default value for the parameter if no input is provided.
 - `validation` (string): A JavaScript function as a string that validates the input. It should return `true` for valid input and `false` for invalid input.
 - `msg` (string): An error message to display if the validation fails.
-
-
 
 ### Example
 
@@ -117,7 +113,7 @@ Replace the contents of `_template.json` with
 
 ## App Content
 
-Change the contents of `__main__` file with :
+Replace the contents of `index.html` file with :
 
 ```html
 <!DOCTYPE html>
@@ -178,7 +174,6 @@ pear run --dev .
 
 ![Layout of the app](../assets/pear-init.png)
 
-
 ## Config file
 
 Replace the contents of `package.json` with :
@@ -186,7 +181,6 @@ Replace the contents of `package.json` with :
 ```json
 {
   "name": "__name__",
-  "main": "__main__",
   "pear": {
     "name": "__name__",
     "type": "desktop",
