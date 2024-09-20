@@ -186,8 +186,8 @@ Replace the contents of `package.json` with :
     "type": "desktop",
     "gui": {
       "backgroundColor": "#1F2430",
-      "height": __height__,
-      "width": __width__
+      "height": "__height__",
+      "width": "__width__"
     }
   },
   "type": "module",
