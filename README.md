@@ -33,6 +33,7 @@ Guides on using the Pear Runtime to build and share P2P applications.
 * [Making a Pear Terminal Application](./guide/making-a-pear-terminal-app.md)
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
+* [Creating a Pear Init Template](./guide/creating-a-pear-init-template.md)
 
 ### How-tos
 

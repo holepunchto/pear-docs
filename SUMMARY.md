@@ -24,6 +24,7 @@
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Marking a Release](./guide/releasing-a-pear-app.md)
 * [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
+* [Creating a Pear Init Template](./guide/creating-a-pear-init-template.md)
 
 ### Building blocks
 
