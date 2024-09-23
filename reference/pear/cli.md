@@ -15,11 +15,13 @@ Template Types: desktop, terminal, terminal-node
 Template can also be initialized from a pear:// link, the template should contain a `_template.json` file. This file defines the prompts which are converted to locals that are injected into the template.
 
 ```
---yes|-y         Autoselect all defaults
---type|-t=type   Template type. Overrides <link|type>
---force|-f       Force overwrite existing files
---with|-w=name   Additional functionality. Available: node
---help|-h        Show help
+--yes|-y                  Autoselect all defaults
+--type|-t=type            Template type. Overrides <link|type>
+--force|-f                Force overwrite existing files
+--with|-w=name            Additional functionality. Available: node
+--encryption-key=name     Application encryption key
+--no-ask                  Suppress permissions dialogs
+--help|-h                 Show help
 ```
   
 ## `pear dev [flags] [dir] [...app-args]`
@@ -31,9 +33,9 @@ Run a project in development mode from disk.
 Alias for: `pear run --dev <dir>`
 
 ```
---link=url                 Simulate deep-link click open
---store|-s=path            Set the Application Storage path
---tmp-store|-t             Automatic new tmp folder as store path
+--link=url          Simulate deep-link click open
+--store|-s=path     Set the Application Storage path
+--tmp-store|-t      Automatic new tmp folder as store path
 ```  
 ## `pear stage <channel|key> [dir]`
 
@@ -45,11 +47,14 @@ in order to generate the initial key.
 Outputs diff information and project key.
 
 ```
-  --json         Newline delimited JSON output
-  --dry-run|-d   Execute a stage without writing
-  --bare|-b      File data only, no warmup optimization
-  --ignore       Comma separated file path ignore list
-  --name         Advanced. Override app name
+  --json                      Newline delimited JSON output
+  --dry-run|-d                Execute a stage without writing
+  --bare|-b                   File data only, no warmup optimization
+  --ignore                    Comma separated file path ignore list
+  --name                      Advanced. Override app name
+  --encryption-key=name       Application encryption key
+  --no-ask                    Suppress permissions dialogs
+  --help|-h                   Show help
 ```
   
 ## `pear seed <channel|key> [dir]`
@@ -61,10 +66,13 @@ Specify channel or key to seed a project.
 Specify a remote key to reseed.
 
 ```
-  --json        Newline delimited JSON output
-  --seeders|-s  Additional public keys to seed from
-  --name        Advanced. Override app name
-  --verbose|-v  Additional output
+  --json                    Newline delimited JSON output
+  --seeders|-s              Additional public keys to seed from
+  --name                    Advanced. Override app name
+  --verbose|-v              Additional output
+  --encryption-key=name     Application encryption key
+  --no-ask                  Suppress permissions dialogs
+  --help|-h                 Show help
 ```
   
 ## `pear run [flags] <link|dir> [...app-args]`
@@ -78,24 +86,26 @@ Run an application from a key or dir.
 
 
 ```
-  --dev|-d                   Enable --devtools & --updates-diff
-  --devtools                 Open devtools with application [Desktop]
-  --updates-diff             Enable diff computation for Pear.updates
-  --no-updates               Disable updates firing via Pear.updates
-  --link=url                 Simulate deep-link click open
-  --store|-s=path            Set the Application Storage path
-  --tmp-store|-t             Automatic new tmp folder as store path
-  --links <kvs>              Override configured links with comma-separated key-values
-  --chrome-webrtc-internals  Enable chrome://webrtc-internals
-  --unsafe-clear-app-storage Clear app storage
-  --unsafe-clear-preferences Clear preferences (such as trustlist)
-  --appling=path             Set application shell path
-  --checkout=n               Run a checkout, n is version length
-  --checkout=release         Run checkout from marked released length
-  --checkout=staged          Run checkout from latest version length
-  --no-ask-trust             Exit instead of asking to trust unknown keys
-  --detached                 Wakeup existing app or run detached
-  --help|-h                  Show help
+  --dev|-d                       Enable --devtools & --updates-diff
+  --devtools                     Open devtools with application [Desktop]
+  --updates-diff                 Enable diff computation for Pear.updates
+  --no-updates                   Disable updates firing via Pear.updates
+  --link=url                     Simulate deep-link click open
+  --store|-s=path                Set the Application Storage path
+  --tmp-store|-t                 Automatic new tmp folder as store path
+  --links <kvs>                  Override configured links with comma-separated key-values
+  --chrome-webrtc-internals      Enable chrome://webrtc-internals
+  --unsafe-clear-app-storage     Clear app storage
+  --unsafe-clear-preferences     Clear preferences (such as trustlist)
+  --appling=path                 Set application shell path
+  --checkout=n                   Run a checkout, n is version length
+  --checkout=release             Run checkout from marked released length
+  --checkout=staged              Run checkout from latest version length
+  --no-ask-trust                 Exit instead of asking to trust unknown keys
+  --detached                     Wakeup existing app or run detached
+  --encryption-key=name          Application encryption key
+  --no-ask                       Suppress permissions dialogs
+  --help|-h                      Show help
 ```
 
 ### Examples 
@@ -127,6 +137,7 @@ Use this to indicate production release points.
 ```
   --json                   Newline delimited JSON output
   --checkout=n|current     Set a custom release length (version)
+  --help|-h                Show help
 ```
   
 ## `pear info [channel|key]`
@@ -138,11 +149,14 @@ Supply a key or channel to view application information.
 Supply no argument to view platform information.
 
 ```
-  --changelog       View changelog only
-  --full-changelog  Full record of changes
-  --metadata        View metadata only
-  --key             View key only
-  --json            Newline delimited JSON output
+  --changelog               View changelog only
+  --full-changelog          Full record of changes
+  --metadata                View metadata only
+  --key                     View key only
+  --json                    Newline delimited JSON output
+  --encryption-key=name     Application encryption key
+  --no-ask                  Suppress permissions dialogs
+  --help|-h                 Show help
 ```
   
 ## `pear dump [flags] <link> <dir>`
@@ -152,9 +166,11 @@ Synchronize files from key to dir.
 > To dump to stdout use `-` in place of `<dir>`
 
 ```
-  --checkout=n    Dump from specified checkout, n is version length
-  --json          Newline delimited JSON output
-  --help|-h       Show help
+  --checkout=n              Dump from specified checkout, n is version length
+  --json                    Newline delimited JSON output
+  --encryption-key=name     Application encryption key
+  --no-ask                  Suppress permissions dialogs
+  --help|-h                 Show help
 ```
   
 ## `pear sidecar`
@@ -166,8 +182,10 @@ This command instructs any existing sidecar process to shutdown
 and then becomes the sidecar.
 
 ```
-  --mem              memory mode: RAM corestore
-  --attach-boot-io   include initial sidecar I/O (if applicable)
+  --verbose|-v     Additional output
+  --mem            memory mode: RAM corestore
+  --key=key        Advanced. Switch release lines
+  --help|-h        Show help
 ```
 
 ## `pear versions`
@@ -176,6 +194,7 @@ Output version information.
 
 ```
 --json        Single JSON object
+--help|-h     Show help
 ```
 
 ## `pear shift <src-key> <dst-key> [--force]`
@@ -197,8 +216,8 @@ Perform garbage collection and remove unused resources.
 | sidecars   |  Clear running sidecars                       |
 
 ```
-  --json      Newline delimited JSON output
-  --help|-h   Show help
+  --json        Newline delimited JSON output
+  --help|-h     Show help
 ```
 
 
