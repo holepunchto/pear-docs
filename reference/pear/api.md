@@ -151,20 +151,20 @@ Application release sequence integer, `null` in development mode.
 
 Parsed runtime flags. For internal/advanced use.
 
-## `Pear.config.appLink <String>`
+### `Pear.config.applink <String>`
 
 Pear application link. May be a `pear://` link or a local directory.
 Can also include entrypoint and fragment eg. `pear://link#fragment`.
 
-## `Pear.config.dependencies <Object>`
+### `Pear.config.dependencies <Object>`
 
 Application dependencies.
 
-## `Pear.config.dir <String>`
+### `Pear.config.dir <String>`
 
 Root directory of project.
 
-## `Pear.config.pearDir <String>`
+### `Pear.config.pearDir <String>`
 
 Directory for Pear runtime.
 
