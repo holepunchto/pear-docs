@@ -87,7 +87,7 @@ Application storage path.
 
 ### `Pear.config.args <Array>`
 
-Command-line application arguments passed like `pear dev . --some arg`.
+Command-line application arguments passed like `pear run --dev . --some arg`.
 
 ### `Pear.config.release <Number>`
 
@@ -105,7 +105,6 @@ Can include a fragment link eg. `pear://link#fragment`.
 
 **References**
 * [Pear.config.linkData](#pearconfiglinkdata-string)
-* [`pear dev`](./cli.md)
 * [`pear run`](./cli.md)
 
 ### `Pear.config.links <Object|Array>`
@@ -114,7 +113,6 @@ Holds trusted Pear application links and domains as specified in the `links` fie
 
 **References**
 * [pear.links](./configuration.md#pearlinks-objectarray)
-* [`pear dev`](./cli.md)
 * [`pear run`](./cli.md)
 
 ### `Pear.config.linkData <String>`
@@ -128,7 +126,6 @@ In development, `pear://dev/<data>`.
 **References**
 
 * [Pear.config.link](#pearconfiglink-string)
-* [`pear dev`](./cli.md)
 * [`pear run`](./cli.md)
 
 
@@ -154,14 +151,6 @@ Application release sequence integer, `null` in development mode.
 
 Parsed runtime flags. For internal/advanced use.
 
-## `Pear.checkpoint(<Any>) => Promise`
-
-Stores state that will be available as `Pear.config.checkpoint` next time the application starts.
-
-The `Pear.config.checkpoint` property immediately reflects the latest checkpoint.
-
-The returned `Promise` will resolve once the checkpoint has been successfully stored.
-
 ## `Pear.config.appLink <String>`
 
 Pear application link. May be a `pear://` link or a local directory.
@@ -179,9 +168,18 @@ Root directory of project.
 
 Directory for Pear runtime.
 
+## `Pear.checkpoint(<Any>) => Promise`
+
+Stores state that will be available as `Pear.config.checkpoint` next time the application starts.
+
+The `Pear.config.checkpoint` property immediately reflects the latest checkpoint.
+
+The returned `Promise` will resolve once the checkpoint has been successfully stored.
+
 **References**
 
 * [Pear.config.checkpoint()](#pear--config-checkpoint-any)
+
 
 ## Pear.messages([ pattern ], [ listener ]) -> Iterable
 
