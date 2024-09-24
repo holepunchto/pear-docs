@@ -99,9 +99,9 @@ The current release length as marked by the `pear release` command.
 
 ### `Pear.config.link <String>`
 
-The Pear link of an application. Takes the form `pear://<key>/<data>`.
+Pear application link. Can be a `pear://` link or a local directory.
 
-In development, `pear://dev/<data>`.
+Can include a fragment link eg. `pear://link#fragment`.
 
 **References**
 * [Pear.config.linkData](#pearconfiglinkdata-string)
@@ -161,6 +161,23 @@ Stores state that will be available as `Pear.config.checkpoint` next time the ap
 The `Pear.config.checkpoint` property immediately reflects the latest checkpoint.
 
 The returned `Promise` will resolve once the checkpoint has been successfully stored.
+
+## `Pear.config.appLink <String>`
+
+Pear application link. May be a `pear://` link or a local directory.
+Can also include entrypoint and fragment eg. `pear://link#fragment`.
+
+## `Pear.config.dependencies <Object>`
+
+Application dependencies.
+
+## `Pear.config.dir <String>`
+
+Root directory of project.
+
+## `Pear.config.pearDir <String>`
+
+Directory for Pear runtime.
 
 **References**
 
