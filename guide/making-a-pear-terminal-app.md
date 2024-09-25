@@ -8,6 +8,14 @@ It continues where [Starting a Pear Terminal Project](./starting-a-pear-terminal
 
 ## Step 1. Install modules
 
+Install the development dependencies using :
+```
+npm install
+```
+This will install the following : 
+- [pear-interface](https://github.com/holepunchto/pear-interface) for documentation and auto-completion inside editors.
+- [brittle](https://github.com/holepunchto/brittle) a TAP framework for testing.
+
 For the chat part of the app, the same modules are needed as in [Making a Pear Desktop Application](./making-a-pear-desktop-app.md), `hyperswarm`, `b4a` and  `hypercore-crypto`.
 
 Pear runs on [`Bare`](https://github.com/holepunchto/bare), a lightweight JavaScript runtime which is similar to Node.js but comes with very few internal modules. Almost all Bare functionality comes from dependencies. Pear Terminal Applications are Bare applications so we will need `bare-readline` and `bare-tty` to read user input.
@@ -22,6 +30,10 @@ npm i bare-readline bare-tty bare-process hyperswarm b4a hypercore-crypto
 Replace `index.js` with
 
 ``` js
+
+// For interactive documentation and code auto-completion in editor
+/** @typedef {import('pear-interface')} */ 
+
 /* global Pear */
 import Hyperswarm from 'hyperswarm'   // Module for P2P networking and connecting peers
 import b4a from 'b4a'                 // Module for buffer-to-string and vice-versa conversions 

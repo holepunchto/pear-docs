@@ -169,6 +169,14 @@ Running `pear run --dev .` should show
 
 **Note**: Close the app before installing dependencies. If dependencies are installed while the app is running, an error is thrown.
 
+Install the development dependencies using :
+```
+npm install
+```
+This will install the following : 
+- [pear-interface](https://github.com/holepunchto/pear-interface) for documentation and auto-completion inside editor.
+- [brittle](https://github.com/holepunchto/brittle) a TAP framework for testing.
+
 The app uses these modules:
 
 - [hyperswarm](https://www.npmjs.com/package/hyperswarm) to connect peers on a "topic".
@@ -187,11 +195,15 @@ npm install hyperswarm hypercore-crypto b4a
 Replace `app.js` with
 
 ``` js
+
+// For interactive documentation and code auto-completion in editor
+/** @typedef {import('pear-interface')} */ 
+
 /* global Pear */
 import Hyperswarm from 'hyperswarm'   // Module for P2P networking and connecting peers
 import crypto from 'hypercore-crypto' // Cryptographic functions for generating the key in app
 import b4a from 'b4a'                 // Module for buffer-to-string and vice-versa conversions 
-const { teardown, updates } = Pear             // Cleanup and updates function
+const { teardown, updates } = Pear    // Functions for cleanup and updates
 
 const swarm = new Hyperswarm()
 
