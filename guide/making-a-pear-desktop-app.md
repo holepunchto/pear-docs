@@ -169,11 +169,11 @@ Running `pear run --dev .` should show
 
 **Note**: Close the app before installing dependencies. If dependencies are installed while the app is running, an error is thrown.
 
-Install the development dependencies using :
+Install the development dependencies using:
 ```
 npm install
 ```
-This will install the following : 
+This will install the following: 
 - [pear-interface](https://github.com/holepunchto/pear-interface) for documentation and auto-completion inside editor.
 - [brittle](https://github.com/holepunchto/brittle) a TAP framework for testing.
 

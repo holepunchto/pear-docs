@@ -8,11 +8,11 @@ It continues where [Starting a Pear Terminal Project](./starting-a-pear-terminal
 
 ## Step 1. Install modules
 
-Install the development dependencies using :
+Install the development dependencies using:
 ```
 npm install
 ```
-This will install the following : 
+This will install the following: 
 - [pear-interface](https://github.com/holepunchto/pear-interface) for documentation and auto-completion inside editors.
 - [brittle](https://github.com/holepunchto/brittle) a TAP framework for testing.
 
