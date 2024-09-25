@@ -87,7 +87,7 @@ Application storage path.
 
 ### `Pear.config.args <Array>`
 
-Command-line application arguments passed like `pear dev . --some arg`.
+Command-line application arguments passed like `pear run --dev . --some arg`.
 
 ### `Pear.config.release <Number>`
 
@@ -99,13 +99,12 @@ The current release length as marked by the `pear release` command.
 
 ### `Pear.config.link <String>`
 
-The Pear link of an application. Takes the form `pear://<key>/<data>`.
+Pear application link. Can be a `pear://` link or a local directory.
 
-In development, `pear://dev/<data>`.
+Can include a fragment link eg. `pear://link#fragment`.
 
 **References**
 * [Pear.config.linkData](#pearconfiglinkdata-string)
-* [`pear dev`](./cli.md)
 * [`pear run`](./cli.md)
 
 ### `Pear.config.links <Object|Array>`
@@ -114,7 +113,6 @@ Holds trusted Pear application links and domains as specified in the `links` fie
 
 **References**
 * [pear.links](./configuration.md#pearlinks-objectarray)
-* [`pear dev`](./cli.md)
 * [`pear run`](./cli.md)
 
 ### `Pear.config.linkData <String>`
@@ -128,7 +126,6 @@ In development, `pear://dev/<data>`.
 **References**
 
 * [Pear.config.link](#pearconfiglink-string)
-* [`pear dev`](./cli.md)
 * [`pear run`](./cli.md)
 
 
@@ -154,6 +151,23 @@ Application release sequence integer, `null` in development mode.
 
 Parsed runtime flags. For internal/advanced use.
 
+### `Pear.config.applink <String>`
+
+Pear application link. May be a `pear://` link or a local directory.
+Can also include entrypoint and fragment eg. `pear://link#fragment`.
+
+### `Pear.config.dependencies <Object>`
+
+Application dependencies.
+
+### `Pear.config.dir <String>`
+
+Root directory of project.
+
+### `Pear.config.pearDir <String>`
+
+Directory for Pear runtime.
+
 ## `Pear.checkpoint(<Any>) => Promise`
 
 Stores state that will be available as `Pear.config.checkpoint` next time the application starts.
@@ -165,6 +179,7 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 **References**
 
 * [Pear.config.checkpoint()](#pear--config-checkpoint-any)
+
 
 ## Pear.messages([ pattern ], [ listener ]) -> Iterable
 
