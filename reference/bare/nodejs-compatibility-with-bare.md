@@ -215,6 +215,24 @@ When writing a module that uses `fs` the mapping can be specified directly in th
 
 For example [Localdrive](https://github.com/holepunchto/localdrive) uses `fs` and to work in both Bare and Node.js it adds the following import map to the `package.json` file.
 
+```json
+{
+  "imports": {
+    "fs": {
+      "bare": "bare-fs",
+      "default": "fs"
+    },
+    "fs/*": {
+      "bare": "bare-fs/*",
+      "default": "fs/*"
+    }
+  },
+  "optionalDependencies": {
+    "bare-fs": "^2.1.5"
+  }
+}
+```
+
 Let's take the `fs` example and use import maps instead of aliases.
 
 ### Example of using `fs` in a project using import maps
@@ -227,7 +245,7 @@ cd test-fs
 pear init --yes --type=terminal
 ```
 
-Replace contents of `index.js` with the code from the NPM aliases [example](./nodejs-compatibility-with-bare.md#consuming-dependencies-using-npm-aliases).
+Replace contents of `index.js` with the code from the NPM aliases [example](./nodejs-compatibility-with-bare.md#example-of-using-fs-in-a-project-using-aliases).
 
 Change the import statement at the top:
 
@@ -244,10 +262,6 @@ Add the following fields to the `package.json`:
     "fs": {
       "bare": "bare-fs",
       "default": "fs"
-    },
-    "fs/*": {
-      "bare": "bare-fs/*",
-      "default": "fs/*"
     }
   },
   "optionalDependencies": {
@@ -291,8 +305,6 @@ Test successful!
 This way the module is in full control of exactly which version of `fs` is bound to Bare.
 
 This is the best option, as it provides the best of both worlds. Node.js compatibility, but with full control of the dependencies.
-
-Run the example using Node:
 
 
 
