@@ -88,7 +88,11 @@ To get the full Node.js compatible layer that Bare currently supports add the fo
 ```
 ## Consuming dependencies that use core Node.js modules
 
-If your project depends on a module that uses a core [Node.js](https://nodejs.org/en/download) module, use NPM aliases to consume the Bare version of the module. 
+If your project depends on a module that uses a core [Node.js](https://nodejs.org/en/download) module, use [NPM aliases](./nodejs-compatibility-with-bare.md#consuming-dependencies-using-npm-aliases) or [import maps](./nodejs-compatibility-with-bare.md#consuming-dependencies-using-import-maps)  to consume the Bare version of the module. 
+
+
+
+### Consuming dependencies using NPM Aliases
 
 NPM aliasing is a feature that allows developers to define custom names, or aliases, for their dependencies. This enables them to use a more intuitive or project-specific naming convention instead of relying on the package’s official name.
 
@@ -114,7 +118,7 @@ Then, in the code import the aliased package:
 const myPackage = require('my-package');
 ```
 
-### Example of using 'fs' in a project
+### Example of using `fs` in a project using aliases
 
 > Make sure [Node.js](https://nodejs.org/en/download) is installed on your system. This can be checked by running `node -v` in your terminal.
 
@@ -205,12 +209,34 @@ File content: Hello Bare
 Test successful!
 ```
 
-## Using import maps
+### Consuming dependencies using Import Maps
 
 When writing a module that uses `fs` the mapping can be specified directly in the module instead of relying on the compatible. This can be achieved using an 'import map'.
 
-For example [Localdrive](https://github.com/holepunchto/localdrive) uses `fs` and to work in both Bare and Node.js it adds the following import map
-to the package.json file.
+For example [Localdrive](https://github.com/holepunchto/localdrive) uses `fs` and to work in both Bare and Node.js it adds the following import map to the `package.json` file.
+
+Let's take the `fs` example and use import maps instead of aliases.
+
+### Example of using `fs` in a project using import maps
+
+Start a new terminal project
+
+```bash
+mkdir test-fs
+cd test-fs
+pear init --yes --type=terminal
+```
+
+Replace contents of `index.js` with the code from the NPM aliases [example](./nodejs-compatibility-with-bare.md#consuming-dependencies-using-npm-aliases).
+
+Change the import statement at the top:
+
+```js
+import * as fs from 'fs';
+```
+
+Add the following fields to the `package.json`:
+
 
 ```json
 {
@@ -230,7 +256,43 @@ to the package.json file.
 }
 ```
 
+Install the dependencies:
+
+```bash
+npm install
+```
+
+Now run the file using Node.js.
+
+```bash
+node index.js
+```
+
+This should output the following.
+
+```bash
+File content: Hello Node 
+Test successful!
+```
+
+Run the same file using Bare
+
+```bash
+bare index.js
+```
+
+It should log the following output:
+```bash
+File content: Hello Bare 
+Test successful!
+```
+
+
 This way the module is in full control of exactly which version of `fs` is bound to Bare.
 
 This is the best option, as it provides the best of both worlds. Node.js compatibility, but with full control of the dependencies.
+
+Run the example using Node:
+
+
 
