@@ -173,6 +173,19 @@ Synchronize files from key to dir.
   --help|-h                 Show help
 ```
   
+## `pear touch [flags] [channel]`
+
+Create Pear link
+
+Creates a Pear Link using channel name if provided or else a randomly generated channel name.
+
+This command is useful for creating links for automations that use `pear stage <link>` or `pear release <link>`.
+
+```
+  --json      Newline delimited JSON output
+  --help|-h   Show help
+```
+
 ## `pear sidecar`
 
 The Pear Sidecar is a local-running HTTP and IPC server which
