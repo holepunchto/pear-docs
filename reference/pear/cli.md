@@ -19,7 +19,6 @@ Template can also be initialized from a pear:// link, the template should contai
 --type|-t=type            Template type. Overrides <link|type>
 --force|-f                Force overwrite existing files
 --with|-w=name            Additional functionality. Available: node
---encryption-key=name     Application encryption key
 --no-ask                  Suppress permissions dialogs
 --help|-h                 Show help
 ```
@@ -52,7 +51,6 @@ Outputs diff information and project key.
   --bare|-b                   File data only, no warmup optimization
   --ignore                    Comma separated file path ignore list
   --name                      Advanced. Override app name
-  --encryption-key=name       Application encryption key
   --no-ask                    Suppress permissions dialogs
   --help|-h                   Show help
 ```
@@ -70,7 +68,6 @@ Specify a remote key to reseed.
   --seeders|-s              Additional public keys to seed from
   --name                    Advanced. Override app name
   --verbose|-v              Additional output
-  --encryption-key=name     Application encryption key
   --no-ask                  Suppress permissions dialogs
   --help|-h                 Show help
 ```
@@ -103,7 +100,6 @@ Run an application from a key or dir.
   --checkout=staged              Run checkout from latest version length
   --no-ask-trust                 Exit instead of asking to trust unknown keys
   --detached                     Wakeup existing app or run detached
-  --encryption-key=name          Application encryption key
   --no-ask                       Suppress permissions dialogs
   --help|-h                      Show help
 ```
@@ -154,7 +150,6 @@ Supply no argument to view platform information.
   --metadata                View metadata only
   --key                     View key only
   --json                    Newline delimited JSON output
-  --encryption-key=name     Application encryption key
   --no-ask                  Suppress permissions dialogs
   --help|-h                 Show help
 ```
@@ -168,7 +163,6 @@ Synchronize files from key to dir.
 ```
   --checkout=n              Dump from specified checkout, n is version length
   --json                    Newline delimited JSON output
-  --encryption-key=name     Application encryption key
   --no-ask                  Suppress permissions dialogs
   --help|-h                 Show help
 ```
