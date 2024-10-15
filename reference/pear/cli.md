@@ -179,7 +179,7 @@ Create Pear link
 
 Creates a Pear Link using channel name if provided or else a randomly generated channel name.
 
-This command is useful for creating links for automations that use `pear stage <link>` or `pear release <link>`.
+This command is useful for creating links for automations that use `pear stage <link>`, `pear release <link>` or `pear seed <link>`.
 
 ```
   --json      Newline delimited JSON output
