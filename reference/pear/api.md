@@ -248,43 +248,6 @@ do {
 } while (count++ < 1000)
 ```
 
-## `Pear.preferences <Function|Object>`
-
-User preferences management.
-
-### `for await (const [operation, key, value] of Pear.preferences())`
-
-An async iterable that yields arrays containing `operation <String>`, `key <String>` and `value <any>`.
-
-Watch for application updates. The `operation` may be `set` or `del`. In the case of `del`, `value` is always `null`.
-
-### `for await (const [key, value] of Pear.preferences.list())`
-
-Iterate through all available application preferences.
-
-### `const success = await Pear.preferences.set(key, value)`
-
-Set a preference. The promise resolves to a boolean indicating success when the operation is complete.
-
-### `const value = await Pear.preferences.get(key)`
-
-Get a preference. The promise resolves with the value.
-
-### `const success = await Pear.preferences.del(key)`
-
-Delete a preference. The promise resolves to a boolean indicating success when the operation is complete.
-
-
-```js
-const { preferences } = Pear
-
-async function logPrefUpdates () {
-  for await (const [ operation, key, value ] of preferences()) console.table({ update: { operation, key, value }})
-}
-
-logPrefUpdates().catch(console.error)
-```
-
 ## `Pear.worker <Object>`
 
 Pear Worker is used to spawn processes and facilitate communication between the parent and child processes in the Pear Runtime.
