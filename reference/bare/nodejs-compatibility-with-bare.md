@@ -104,6 +104,7 @@ In your project’s `package.json` file, use the `alias` field to specify packag
   "dependencies": {
     "my-package": "npm:actual-package@1.0.0"
   }
+}
 ```
 
 After defining aliases, install the dependencies as usual:
