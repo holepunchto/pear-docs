@@ -88,7 +88,8 @@ To get the full Node.js compatible layer that Bare currently supports add the fo
 ```
 ## Consuming dependencies that use core Node.js modules
 
-If your project depends on a module that uses a core [Node.js](https://nodejs.org/en/download) module, use [NPM aliases](./nodejs-compatibility-with-bare.md#consuming-dependencies-using-npm-aliases) or [import maps](./nodejs-compatibility-with-bare.md#consuming-dependencies-using-import-maps)  to consume the Bare version of the module. 
+If the project dependencies use core [Node.js](https://nodejs.org/en/download) modules, use [NPM aliases](./nodejs-compatibility-with-bare.md#consuming-dependencies-using-npm-aliases) or [import maps](./nodejs-compatibility-with-bare.md#consuming-dependencies-using-import-maps)  to consume the Bare version of those modules. 
+
 
 
 
@@ -120,7 +121,7 @@ const myPackage = require('my-package');
 
 ### Example of using `fs` in a project using aliases
 
-> Make sure [Node.js](https://nodejs.org/en/download) is installed on your system. This can be checked by running `node -v` in your terminal.
+> Make sure [Node.js](https://nodejs.org/en/download) is installed on your system. This can be checked by running `node -v` in the terminal.
 
 #### Start a new project
 
@@ -132,9 +133,7 @@ cd test-fs
 pear init --yes --type=terminal
 ```
 
-Replace the contents of `index.js` with the following.
-
-This will create a file called `test.txt` and write a string to it. It will then read the file and log the content to the console.
+Replace the contents of `index.js` with the following:
 
 ```js
 import * as fs from 'node:fs';
@@ -153,6 +152,9 @@ async function test() {
 
 test();
 ```
+
+This will create a file called `test.txt` and write a string to it. It will then read the file and log the content to the console.
+
 
 Now run the file using Node.js.
 
