@@ -36,14 +36,14 @@ Alias for: `pear run --dev <dir>`
 --store|-s=path     Set the Application Storage path
 --tmp-store|-t      Automatic new tmp folder as store path
 ```  
-## `pear stage <channel|key> [dir]`
+## `pear stage <channel|link> [dir]`
 
-Synchronize local changes to key.
+Synchronize local changes to channel or key.
 
 Channel name must be specified on first stage,
 in order to generate the initial key.
 
-Outputs diff information and project key.
+Outputs diff information and project link.
 
 ```
   --json                      Newline delimited JSON output
@@ -55,13 +55,11 @@ Outputs diff information and project key.
   --help|-h                   Show help
 ```
   
-## `pear seed <channel|key> [dir]`
+## `pear seed <channel|link> [dir]`
 
 Seed project or reseed key.
 
-Specify channel or key to seed a project.
-
-Specify a remote key to reseed.
+Specify channel or link to seed a project or a remote link to reseed.
 
 ```
   --json                    Newline delimited JSON output
@@ -74,7 +72,7 @@ Specify a remote key to reseed.
   
 ## `pear run [flags] <link|dir> [...app-args]`
 
-Run an application from a key or dir.
+Run an application from a link or dir.
 
 |       |                                                   |
 |-------|---------------------------------------------------|
@@ -122,7 +120,7 @@ pear run -t file://path/to/an-app-folder --some app --args
 pear run pear://keet
 ```
 
-## `pear release <channel|key> [dir]`
+## `pear release <channel|link> [dir]`
 
 Set production release version.
 
@@ -136,11 +134,11 @@ Use this to indicate production release points.
   --help|-h                Show help
 ```
   
-## `pear info [channel|key]`
+## `pear info [link|channel]`
 
 Read project information.
 
-Supply a key or channel to view application information.
+Supply a link or channel to view application information.
 
 Supply no argument to view platform information.
 
@@ -148,7 +146,7 @@ Supply no argument to view platform information.
   --changelog               View changelog only
   --full-changelog          Full record of changes
   --metadata                View metadata only
-  --key                     View key only
+  --key                     View link only
   --json                    Newline delimited JSON output
   --no-ask                  Suppress permissions dialogs
   --help|-h                 Show help
@@ -156,7 +154,7 @@ Supply no argument to view platform information.
   
 ## `pear dump [flags] <link> <dir>`
 
-Synchronize files from key to dir.
+Synchronize files from link to dir.
 
 > To dump to stdout use `-` in place of `<dir>`
 
@@ -204,9 +202,11 @@ Output version information.
 --help|-h     Show help
 ```
 
-## `pear shift <src-key> <dst-key> [--force]`
+## `pear shift [flags] <source> <destination>`
 
 Move user application storage between applications.
+
+`<source>` and `<destination>` are links.
 
 ```
 --force     Overwrite existing application storage if present

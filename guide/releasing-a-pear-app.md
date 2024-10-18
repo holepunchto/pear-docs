@@ -6,11 +6,11 @@ Each version is identified by `<fork>.<length>.<key>`. The length corresponds to
 
 {% embed url="https://www.youtube.com/watch?v=OTwY_avUPyI" %} Build with Pear - Episode 03: Releasing Pear Applications {% embeded %}
 
-`pear run <key>` opens the application.
+`pear run <link>` opens the application.
 
 Before a release has been marked, the latest version is used. This is useful during development, to test the app locally and to share a preview with other peers.
 
-Once a release has been marked, `pear run <key>` opens the latest marked release.
+Once a release has been marked, `pear run <link>` opens the latest marked release.
 
 ## Step 1: Staging Production
 
@@ -22,13 +22,13 @@ For example, a `pear stage dev` release channel used during development can be c
 pear stage production
 ```
 
-Running this command in a Pear project folder outputs an application key.
+Running this command in a Pear project folder outputs an application link.
 
-Using separate channels for development and production means there is an application key for trusted peers and one for public peers.
+Using separate channels for development and production means there is an application link for trusted peers and one for public peers.
 
-The development key can remain unreleased, so that `pear run <dev key>` loads the latest staged changes by default.
+The development link can remain unreleased, so that `pear run <dev link>` loads the latest staged changes by default.
 
-The production key's releases can be marked, so that `pear run <production key>` loads the latest stable release by default.
+The production link's releases can be marked, so that `pear run <production link>` loads the latest stable release by default.
 
 ## Step 2: Marking a Release
 
@@ -56,12 +56,12 @@ First verify that it works by running `pear run --dev .`
 
 Now stage the change with `pear stage production`.
 
-Opening the application with `pear run <key>` will **not** output the log, because it loads the latest **marked** release.
+Opening the application with `pear run <link>` will **not** output the log, because it loads the latest **marked** release.
 
 The latest staged changes of a released application can be previewed with the `--checkout` flag:
 
 ```
-pear run <key> --checkout=staged
+pear run <link> --checkout=staged
 ```
 
 The value of the `--checkout` flag may be `staged`, `released` (the default) or a number referring to a specific version length.
@@ -70,16 +70,16 @@ The value of the `--checkout` flag may be `staged`, `released` (the default) or 
 
 ### The dump-stage-release strategy
 
-A development application key can be shared among trusted peers. At that point, it could be referred to as an internal application key (internal to the group of peers who have the key).
+A development application link can be shared among trusted peers. At that point, it could be referred to as an internal application link (internal to the group of peers who have the link).
 
 While using different channel names is sensible, using `pear stage dev` and `pear stage production` on the same machine has practical implications.
 
 A dump-stage-release strategy seperates the concerns between development and production, by using a different machine for each.
 
-On the machine that holds the production key, run:
+On the machine that holds the production link, run:
 
 ```
-pear dump <internal-key> <path-to-app-production-dir>
+pear dump <internal-link> <path-to-app-production-dir>
 ```
 
 This is a reverse stage: it synchronizes the application files to disk.
