@@ -58,13 +58,13 @@ discovery.flushed().then(() => {
 })
 ```
 
-In one terminal, open `peer-app` with `pear dev`
+In one terminal, open `peer-app` with `pear run --dev .`
 
 ```
 cd peer-app
-pear dev .
+pear run --dev .
 ```
 
-This will display the topic. Copy/paste that topic into as many additional terminals as desired with `pear dev . <SUPPLY TOPIC HERE>` (assuming that the current working directory of each terminal is the `peer-app` folder). Each peer will log information about the other connected peers.
+This will display the topic. Copy/paste that topic into as many additional terminals as desired with `pear run --dev . <SUPPLY TOPIC HERE>` (assuming that the current working directory of each terminal is the `peer-app` folder). Each peer will log information about the other connected peers.
 
 Start typing into any terminal, and it will be broadcast to all connected peers.

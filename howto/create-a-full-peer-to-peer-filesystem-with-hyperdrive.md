@@ -69,11 +69,11 @@ async function mirrorDrive () {
 }
 ```
 
-Open the `drive-writer-app` with `pear dev`:
+Open the `drive-writer-app` with `pear run --dev .`:
 
 ```
 cd drive-writer-app
-pear dev
+pear run --dev .
 ```
 
 The `drive-writer-app` creates a `LocalDrive` instance for a local directory and then mirrors the `LocalDrive` into the Hyperdrive instance. 
@@ -148,11 +148,11 @@ async function mirrorDrive () {
 
 The `drive-reader-app` creates a `LocalDrive` instance for a local directory and then mirrors the contents of the local Hyperdrive instance into the `LocalDrive` instance (which will write the contents to the local directory).
 
-In a new terminal, execute the `drive-reader-app` with `pear dev`, passing the key that the `drive-writer-app` already output:
+In a new terminal, execute the `drive-reader-app` with `pear run --dev .`, passing the key that the `drive-writer-app` already output:
 
 ```
 cd drive-reader-app
-pear dev -- <SUPPLY_KEY_HERE>
+pear run --dev . -- <SUPPLY_KEY_HERE>
 ```
 
 `LocalDrive` does not create the directory passed to it until something has been written, so create the `drive-writer-app/writer-dir` (`mkdir writer-dir`) and then add/remove/modify files inside `drive-writer-app/writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). Observe that all new changes mirror into `reader-app/reader-dir`.
@@ -219,11 +219,11 @@ async function listBee () {
 
 Now the Hyperdrive can be inspected as though it were a Hyperbee, and log out some file metadata.
 
-Execute the `bee-reader-app` with `pear dev`, passing it the key output by the `driver-writer-app`:
+Execute the `bee-reader-app` with `pear run --dev .`, passing it the key output by the `driver-writer-app`:
 
 ```
 cd bee-reader-app
-pear dev
+pear run --dev .
 ```
 
 The `bee-reader-app` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.
