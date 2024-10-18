@@ -73,11 +73,11 @@ if (core.length <= 1) {
 }
 ```
 
-Open the app with `pear dev`:
+Open the app with `pear run --dev .`:
 
 ```
 cd bee-writer-app
-pear dev
+pear run --dev .
 ```
 
 Start the `bee-reader-app` project with the following commands:
@@ -149,7 +149,7 @@ Open the `bee-reader-app` and pass it the core key:
 
 ```
 cd bee-reader-app
-pear dev -- <SUPPLY KEY HERE>
+pear run --dev . -- <SUPPLY KEY HERE>
 ```
 
 Query the database by entering a key to lookup into the `bee-reader-app` terminal and hitting return.
@@ -208,11 +208,11 @@ console.log(`Raw Block ${seq}:`, lastBlock)
 console.log(`Decoded Block ${seq}`, Node.decode(lastBlock))
 ```
 
-Open the `core-reader-app` with `pear dev`, passing the core key to it:
+Open the `core-reader-app` with `pear run --dev .`, passing the core key to it:
 
 ```
 cd core-reader-app
-pear dev -- <SUPPLY KEY HERE>
+pear run --dev . -- <SUPPLY KEY HERE>
 ```
 
 Now we can examine the Hyperbee as if it were just a Hypercore.
