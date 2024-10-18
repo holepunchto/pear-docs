@@ -74,7 +74,7 @@ A development application key can be shared among trusted peers. At that point, 
 
 While using different channel names is sensible, using `pear stage dev` and `pear stage production` on the same machine has practical implications.
 
-A dump-stage-release strategy seperates the concerns between development and production, by using a different machine for each.
+A dump-stage-release strategy separates the concerns between development and production, by using a different machine for each.
 
 On the machine that holds the production key, run:
 
