@@ -218,7 +218,7 @@ Use `message` to create an application message:
 ```js
 const { message, messages } = Pear
 
-const ctaClicks = message({ type: 'my-app/user-cta' })
+const ctaClicks = messages({ type: 'my-app/user-cta' })
 
 ctaClicks.on('data', (msg) => { console.log('cta click', msg) })
 
