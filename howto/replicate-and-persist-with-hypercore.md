@@ -99,11 +99,11 @@ for await (const block of core.createReadStream({ start: core.length, live: true
 }
 ```
 
-In one terminal, open `writer-app` with `pear dev`.
+In one terminal, open `writer-app` with `pear run --dev .`.
 
 ```
 cd writer-app
-pear dev
+pear run --dev .
 ```
 
 The `writer-app` will output the Hypercore key.
@@ -112,7 +112,7 @@ In another terminal, open the `reader-app` and pass it the key:
 
 ```
 cd reader-app
-pear dev -- <SUPPLY THE KEY HERE>
+pear run --dev . -- <SUPPLY THE KEY HERE>
 ```
 
 As inputs are made to the terminal running the writer application, outputs should be shown in the terminal running the reader application.
