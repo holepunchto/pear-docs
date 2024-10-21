@@ -161,6 +161,7 @@ Synchronize files from link to dir.
 ```
   --checkout=n              Dump from specified checkout, n is version length
   --json                    Newline delimited JSON output
+  --force|-f                Force overwrite existing files
   --no-ask                  Suppress permissions dialogs
   --help|-h                 Show help
 ```
