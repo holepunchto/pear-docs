@@ -154,7 +154,7 @@ When Pear loads an application from a peer the staged files are sparsely replica
 
 The command signature for `pear seed` is `pear seed <channel|link> [dir]`.
 
-If the application was staged on the machine, it will seed the appliction from the machine.
+If the application was staged on the machine, it will seed the application from the machine.
 
 Otherwise, passing an application link to `pear seed`  will reseed the application from that link.
 

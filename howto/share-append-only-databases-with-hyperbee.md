@@ -123,7 +123,7 @@ const bee = new Hyperbee(core, {
   valueEncoding: 'utf-8'
 })
 
-// wait till the hypercore properties to be intialized
+// wait till the hypercore properties to be initialized
 await core.ready()
 
 // logging the public key of the hypercore instance
@@ -154,7 +154,7 @@ pear run --dev . -- <SUPPLY KEY HERE>
 
 Query the database by entering a key to lookup into the `bee-reader-app` terminal and hitting return.
 
-Each application has dedicated storage at `Pear.config.storage`. Try logging out `Pear.config.storage` for the `bee-reader-app` and then look at the disk space for that storage path after each query. notice that it's significantly smaller than `writer-storage`! This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature we call **sparse downloading.**
+Each application has dedicated storage at `Pear.config.storage`. Try logging out `Pear.config.storage` for the `bee-reader-app` and then look at the disk space for that storage path after each query. Notice that it's significantly smaller than `writer-storage`! This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature we call **sparse downloading.**
 
 Importantly, a Hyperbee is **just** a Hypercore, where the tree nodes are stored as Hypercore blocks.
 
