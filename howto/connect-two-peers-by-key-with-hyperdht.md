@@ -67,8 +67,11 @@ import DHT from 'hyperdht'
 import b4a from 'b4a'
 import process from 'bare-process'
 
-console.log('Connecting to:', process.argv[3])
-const publicKey = b4a.from(process.argv[3], 'hex')
+const key = Pear.config.args[0]
+if (!key) throw new Error('provide a key')
+
+console.log('Connecting to:', key)
+const publicKey = b4a.from(key, 'hex')
 
 const dht = new DHT()
 const conn = dht.connect(publicKey)

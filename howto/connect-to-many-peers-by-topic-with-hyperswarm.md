@@ -49,7 +49,7 @@ process.stdin.on('data', d => {
 })
 
 // Join a common topic
-const topic = process.argv[3] ? b4a.from(process.argv[3], 'hex') : crypto.randomBytes(32)
+const topic = Pear.config.args[0] ? b4a.from(Pear.config.args[0], 'hex') : crypto.randomBytes(32)
 const discovery = swarm.join(topic, { client: true, server: true })
 
 // The flushed promise will resolve when the topic has been fully announced to the DHT

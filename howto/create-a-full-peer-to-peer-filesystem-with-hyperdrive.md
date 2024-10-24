@@ -165,7 +165,7 @@ In a new terminal, create the `bee-reader-app` project with these commands:
 mkdir bee-reader-app
 cd bee-reader-app
 pear init -y -t terminal
-npm install corestore hyperswarm hyperdrive hyperbee b4a bare-process
+npm install corestore hyperswarm hyperdrive hyperbee b4a
 ```
 
 Adjust the `bee-reader-app/index.js` file to:
@@ -175,7 +175,9 @@ import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
-import process from 'bare-process'
+
+const key = Pear.config.args[0]
+if (!key) throw new Error('provide a key')
 
 // create a Corestore instance 
 const store = new Corestore(Pear.config.storage)
@@ -187,7 +189,7 @@ Pear.teardown(() => swarm.destroy())
 swarm.on('connection', conn => store.replicate(conn))
 
 // create/get the hypercore instance using the public key supplied as command-line arg
-const core = store.get({ key: b4a.from(process.argv[3], 'hex') })
+const core = store.get({ key: b4a.from(key, 'hex') })
 
 // create a hyperbee instance using the hypercore instance
 const bee = new Hyperbee(core, {

@@ -164,7 +164,7 @@ Finally create a `core-reader-app` project:
 mkdir core-reader-app
 cd core-reader-app
 pear init -y -t terminal
-npm install corestore hyperswarm hyperbee b4a bare-process
+npm install corestore hyperswarm hyperbee b4a
 ```
 
 
@@ -174,9 +174,11 @@ Alter the generated `core-reader-app/index.js` file to the following
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import b4a from 'b4a'
-import process from 'bare-process'
 
 import { Node } from 'hyperbee/lib/messages.js'
+
+const key = Pear.config.args[0]
+if (!key) throw new Error('provide a key')
 
 // creation of a corestore instance 
 const store = new Corestore('./reader-storage')
@@ -188,7 +190,7 @@ Pear.teardown(() => swarm.destroy())
 swarm.on('connection', conn => store.replicate(conn))
 
 // create or get the hypercore using the public key supplied as command-line argument
-const core = store.get({ key: b4a.from(process.argv[3], 'hex') })
+const core = store.get({ key: b4a.from(key, 'hex') })
 // wait till the properties of the hypercore instance are initialized
 await core.ready()
 
