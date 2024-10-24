@@ -152,7 +152,7 @@ In a new terminal, execute the `drive-reader-app` with `pear run --dev .`, passi
 
 ```
 cd drive-reader-app
-pear run --dev . -- <SUPPLY_KEY_HERE>
+pear run --dev . <SUPPLY_KEY_HERE>
 ```
 
 `LocalDrive` does not create the directory passed to it until something has been written, so create the `drive-writer-app/writer-dir` (`mkdir writer-dir`) and then add/remove/modify files inside `drive-writer-app/writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). Observe that all new changes mirror into `reader-app/reader-dir`.

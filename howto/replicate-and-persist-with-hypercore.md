@@ -112,7 +112,7 @@ In another terminal, open the `reader-app` and pass it the key:
 
 ```
 cd reader-app
-pear run --dev . -- <SUPPLY THE KEY HERE>
+pear run --dev . <SUPPLY THE KEY HERE>
 ```
 
 As inputs are made to the terminal running the writer application, outputs should be shown in the terminal running the reader application.

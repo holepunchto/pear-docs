@@ -149,7 +149,7 @@ Open the `bee-reader-app` and pass it the core key:
 
 ```
 cd bee-reader-app
-pear run --dev . -- <SUPPLY KEY HERE>
+pear run --dev . <SUPPLY KEY HERE>
 ```
 
 Query the database by entering a key to lookup into the `bee-reader-app` terminal and hitting return.
@@ -212,7 +212,7 @@ Open the `core-reader-app` with `pear run --dev .`, passing the core key to it:
 
 ```
 cd core-reader-app
-pear run --dev . -- <SUPPLY KEY HERE>
+pear run --dev . <SUPPLY KEY HERE>
 ```
 
 Now we can examine the Hyperbee as if it were just a Hypercore.

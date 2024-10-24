@@ -81,7 +81,7 @@ Pass the key to the client:
 
 ```
 cd client-app
-pear run --dev . -- <SUPPLY KEY HERE>
+pear run --dev . <SUPPLY KEY HERE>
 ```
 
 The `client-app` will spin up a client, and the public key copied earlier must be supplied as a command line argument for connecting to the server. The client process will log `got connection` into the console when it connects to the server.
