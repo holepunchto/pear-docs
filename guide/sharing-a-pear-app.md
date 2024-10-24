@@ -85,7 +85,7 @@ As long as the process is running the application is being seeded. If other peer
 
 ## Step 4. Run the app on another machine
 
-It's important that the application seeding process from the former step is up and running otherwise peers will not be able to reach connect and replicate state.
+It's important that the application seeding process from the former step is up and running otherwise peers will not be able to connect and replicate state.
 
 With another machine or friend that has `pear` installed execute the `pear run <link>` command to load the application directly peer-to-peer. So with the same example application link it would be:
 
@@ -111,7 +111,7 @@ The trust dialog is a security mechanism in Pear that appears when the user trie
 
 ![Trust dialog](../assets/trust-dialog.png)
 
-> During development with `pear run --dev`, applications are automatically trusted, as they are assumed to be safe for testing purposes. Trust dialog can be suppressed using the  `--no-ask-trust` flag with `pear run` in which case the application will automatically decline unknown keys.
+> During development with `pear run --dev`, applications are automatically trusted, as they are assumed to be safe for testing purposes. Trust dialog can be suppressed using the  `--no-ask` flag with `pear run` in which case the application will automatically decline unknown keys.
 
 The application has no state when it's opened for the first time, so the application may show a loader until it's ready to reveal.
 

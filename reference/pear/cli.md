@@ -96,7 +96,6 @@ Run an application from a link or dir.
   --checkout=n                   Run a checkout, n is version length
   --checkout=release             Run checkout from marked released length
   --checkout=staged              Run checkout from latest version length
-  --no-ask-trust                 Exit instead of asking to trust unknown keys
   --detached                     Wakeup existing app or run detached
   --no-ask                       Suppress permissions dialogs
   --help|-h                      Show help
