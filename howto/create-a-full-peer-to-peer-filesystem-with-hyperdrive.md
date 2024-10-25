@@ -2,7 +2,7 @@
 
 [`Hyperdrive`](../building-blocks/hyperdrive.md) is a secure, real-time distributed file system designed for easy peer-to-peer file sharing. In the same way that a Hyperbee is just a wrapper around a Hypercore, a Hyperdrive is a wrapper around two Hypercores: one is a Hyperbee index for storing file metadata, and the other is used to store file contents.
 
-This How-to consists of three applications: `drive-writer-app`, `drive-reader-app` and `bee-reader-app`.
+This How-to consists of three applications: `drive-writer-app`, `drive-reader-app` and `drive-bee-reader-app`.
 
 Now let's mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, we'll use two additional tools: [`MirrorDrive`](../helpers/mirrordrive.md) and [`LocalDrive`](../helpers/localdrive.md), which handle all interactions between Hyperdrives and the local filesystem.
 
@@ -159,16 +159,16 @@ pear run --dev . <SUPPLY_KEY_HERE>
 
 Just as a Hyperbee is **just** a Hypercore, a Hyperdrive is **just** a Hyperbee - which is **just** a Hypercore.
 
-In a new terminal, create the `bee-reader-app` project with these commands:
+In a new terminal, create the `drive-bee-reader-app` project with these commands:
 
 ```
-mkdir bee-reader-app
-cd bee-reader-app
+mkdir drive-bee-reader-app
+cd drive-bee-reader-app
 pear init -y -t terminal
 npm install corestore hyperswarm hyperdrive hyperbee b4a
 ```
 
-Adjust the `bee-reader-app/index.js` file to:
+Adjust the `drive-bee-reader-app/index.js` file to:
 
 ```javascript
 import Hyperswarm from 'hyperswarm'
@@ -221,13 +221,13 @@ async function listBee () {
 
 Now the Hyperdrive can be inspected as though it were a Hyperbee, and log out some file metadata.
 
-Execute the `bee-reader-app` with `pear run --dev .`, passing it the key output by the `driver-writer-app`:
+Execute the `drive-bee-reader-app` with `pear run --dev .`, passing it the key output by the `driver-writer-app`:
 
 ```
-cd bee-reader-app
+cd drive-bee-reader-app
 pear run --dev .
 ```
 
-The `bee-reader-app` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.
+The `drive-bee-reader-app` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.
 
 Try adding or removing a few files from the writer's data directory, then pressing `Enter` in the writer's terminal to mirror the changes.
