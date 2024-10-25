@@ -166,6 +166,21 @@ Replace the contents of `index.html` file with :
 </html>
 ```
 
+Temporarily set the contents of `package.json` to:
+
+```json
+{
+  "pear": {
+    "name": "pear-init-template-tutorial",
+    "type": "desktop"
+  }
+}
+```
+
+This is the minimal requirements for a pear application `package.json` to run.
+This will allow us to test the template's `index.hmtl` as a pear desktop
+app.
+
 Run the application using:
 
 ```bash
