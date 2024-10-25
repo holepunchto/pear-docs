@@ -16,6 +16,7 @@ This creates the base project structure.
 
 - `package.json`. App configuration. Notice the `pear` property.
 - `index.js`. App entrypoint.
+- `test/index.test.js`. Test skeleton.
 
 ## Step 2. Verify Everything Works
 
