@@ -39,7 +39,7 @@ pear release production
 ```
 
 
-Run `pear release help` for more info on the command.
+Run `pear help release` for more info on the command.
 
 
 Keep in mind that changes to an application can only propagate to peers when the application is being seeded:
@@ -61,7 +61,7 @@ Opening the application with `pear run <link>` will **not** output the log, beca
 The latest staged changes of a released application can be previewed with the `--checkout` flag:
 
 ```
-pear run <link> --checkout=staged
+pear run --checkout=staged <link>
 ```
 
 The value of the `--checkout` flag may be `staged`, `released` (the default) or a number referring to a specific version length.
