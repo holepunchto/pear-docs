@@ -188,10 +188,14 @@ This command instructs any existing sidecar process to shutdown
 and then becomes the sidecar.
 
 ```
-  --verbose|-v     Additional output
-  --mem            memory mode: RAM corestore
-  --key=key        Advanced. Switch release lines
-  --help|-h        Show help
+  --mem                 memory mode: RAM corestore
+  --log-level <level>   Level to log at. 0,1,2,3 (OFF,ERR,INF,TRC)
+  --log-labels <list>   Labels to log (internal, always logged)
+  --log-fields <list>   Show/hide: date,time,h:level,h:label,h:delta
+  --log-stacks          Add a stack trace to each log message
+  --log                 Label:sidecar Level:2 Fields: h:level,h:label
+  --key <key>           Advanced. Switch release lines
+  --help|-h             Show help
 ```
 
 ## `pear versions`
