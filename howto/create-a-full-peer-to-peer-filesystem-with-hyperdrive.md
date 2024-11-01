@@ -2,7 +2,7 @@
 
 [`Hyperdrive`](../building-blocks/hyperdrive.md) is a secure, real-time distributed file system designed for easy peer-to-peer file sharing. In the same way that a Hyperbee is just a wrapper around a Hypercore, a Hyperdrive is a wrapper around two Hypercores: one is a Hyperbee index for storing file metadata, and the other is used to store file contents.
 
-This How-to consists of three applications: `drive-writer-app`, `drive-reader-app` and `bee-reader-app`.
+This How-to consists of three applications: `drive-writer-app`, `drive-reader-app` and `drive-bee-reader-app`.
 
 Now let's mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, we'll use two additional tools: [`MirrorDrive`](../helpers/mirrordrive.md) and [`LocalDrive`](../helpers/localdrive.md), which handle all interactions between Hyperdrives and the local filesystem.
 
@@ -152,30 +152,32 @@ In a new terminal, execute the `drive-reader-app` with `pear run --dev .`, passi
 
 ```
 cd drive-reader-app
-pear run --dev . -- <SUPPLY_KEY_HERE>
+pear run --dev . <SUPPLY_KEY_HERE>
 ```
 
 `LocalDrive` does not create the directory passed to it until something has been written, so create the `drive-writer-app/writer-dir` (`mkdir writer-dir`) and then add/remove/modify files inside `drive-writer-app/writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). Observe that all new changes mirror into `reader-app/reader-dir`.
 
 Just as a Hyperbee is **just** a Hypercore, a Hyperdrive is **just** a Hyperbee - which is **just** a Hypercore.
 
-In a new terminal, create the `bee-reader-app` project with these commands:
+In a new terminal, create the `drive-bee-reader-app` project with these commands:
 
 ```
-mkdir bee-reader-app
-cd bee-reader-app
+mkdir drive-bee-reader-app
+cd drive-bee-reader-app
 pear init -y -t terminal
-npm install corestore hyperswarm hyperdrive hyperbee b4a bare-process
+npm install corestore hyperswarm hyperdrive hyperbee b4a
 ```
 
-Adjust the `bee-reader-app/index.js` file to:
+Adjust the `drive-bee-reader-app/index.js` file to:
 
 ```javascript
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
-import process from 'bare-process'
+
+const key = Pear.config.args[0]
+if (!key) throw new Error('provide a key')
 
 // create a Corestore instance 
 const store = new Corestore(Pear.config.storage)
@@ -187,7 +189,7 @@ Pear.teardown(() => swarm.destroy())
 swarm.on('connection', conn => store.replicate(conn))
 
 // create/get the hypercore instance using the public key supplied as command-line arg
-const core = store.get({ key: b4a.from(process.argv[3], 'hex') })
+const core = store.get({ key: b4a.from(key, 'hex') })
 
 // create a hyperbee instance using the hypercore instance
 const bee = new Hyperbee(core, {
@@ -219,13 +221,13 @@ async function listBee () {
 
 Now the Hyperdrive can be inspected as though it were a Hyperbee, and log out some file metadata.
 
-Execute the `bee-reader-app` with `pear run --dev .`, passing it the key output by the `driver-writer-app`:
+Execute the `drive-bee-reader-app` with `pear run --dev .`, passing it the key output by the `driver-writer-app`:
 
 ```
-cd bee-reader-app
+cd drive-bee-reader-app
 pear run --dev .
 ```
 
-The `bee-reader-app` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.
+The `drive-bee-reader-app` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.
 
 Try adding or removing a few files from the writer's data directory, then pressing `Enter` in the writer's terminal to mirror the changes.

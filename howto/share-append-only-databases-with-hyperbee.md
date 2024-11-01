@@ -149,12 +149,12 @@ Open the `bee-reader-app` and pass it the core key:
 
 ```
 cd bee-reader-app
-pear run --dev . -- <SUPPLY KEY HERE>
+pear run --dev . <SUPPLY KEY HERE>
 ```
 
 Query the database by entering a key to lookup into the `bee-reader-app` terminal and hitting return.
 
-Each application has dedicated storage at `Pear.config.storage`. Try logging out `Pear.config.storage` for the `bee-reader-app` and then look at the disk space for that storage path after each query. Notice that it's significantly smaller than `writer-storage`! This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature we call **sparse downloading.**
+Each application has dedicated storage at `Pear.config.storage`. Try logging out `Pear.config.storage` for the `bee-reader-app` and then look at the disk space for that storage path after each query. Notice that it's significantly smaller than `bee-writer-app`! This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature we call **sparse downloading.**
 
 Importantly, a Hyperbee is **just** a Hypercore, where the tree nodes are stored as Hypercore blocks.
 
@@ -164,7 +164,7 @@ Finally create a `core-reader-app` project:
 mkdir core-reader-app
 cd core-reader-app
 pear init -y -t terminal
-npm install corestore hyperswarm hyperbee b4a bare-process
+npm install corestore hyperswarm hyperbee b4a
 ```
 
 
@@ -174,9 +174,11 @@ Alter the generated `core-reader-app/index.js` file to the following
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import b4a from 'b4a'
-import process from 'bare-process'
 
 import { Node } from 'hyperbee/lib/messages.js'
+
+const key = Pear.config.args[0]
+if (!key) throw new Error('provide a key')
 
 // creation of a corestore instance 
 const store = new Corestore('./reader-storage')
@@ -188,7 +190,7 @@ Pear.teardown(() => swarm.destroy())
 swarm.on('connection', conn => store.replicate(conn))
 
 // create or get the hypercore using the public key supplied as command-line argument
-const core = store.get({ key: b4a.from(process.argv[3], 'hex') })
+const core = store.get({ key: b4a.from(key, 'hex') })
 // wait till the properties of the hypercore instance are initialized
 await core.ready()
 
@@ -212,7 +214,7 @@ Open the `core-reader-app` with `pear run --dev .`, passing the core key to it:
 
 ```
 cd core-reader-app
-pear run --dev . -- <SUPPLY KEY HERE>
+pear run --dev . <SUPPLY KEY HERE>
 ```
 
 Now we can examine the Hyperbee as if it were just a Hypercore.
