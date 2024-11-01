@@ -178,7 +178,7 @@ Temporarily set the contents of `package.json` to:
 ```
 
 This is the minimal requirements for a Pear Application `package.json` to run.
-This will allow us to test the template's `index.hmtl` as a pear desktop
+This will allow us to test the template's `index.html` as a pear desktop
 app.
 
 Run the application using:
