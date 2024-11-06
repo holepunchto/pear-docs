@@ -78,37 +78,37 @@ Replace the contents of `_template.json` with
 
 ```json
 {
-    "params": [
-      {
-        "name": "name",
-        "prompt": "name"
-      },
-      {
-        "name": "main",
-        "default": "index.html",
-        "prompt": "main",
-        "validation": "(value) => value.endsWith('.html')",
-        "msg": "must have an .html file extension"
-      },
-      {
-        "name": "height",
-        "validation": "(value) => Number.isInteger(+value)",
-        "prompt": "height",
-        "msg": "must be an integer"
-      },
-      {
-        "name": "width",
-        "validation": "(value) => Number.isInteger(+value)",
-        "prompt": "width",
-        "msg": "must be an integer"
-      },
-      {
-        "name": "license",
-        "default": "Apache-2.0",
-        "prompt": "license"
-      }
-    ]
-  }
+  "params": [
+    {
+      "name": "name",
+      "prompt": "name"
+    },
+    {
+      "name": "main",
+      "default": "index.html",
+      "prompt": "main",
+      "validation": "(value) => value.endsWith('.html')",
+      "msg": "must have an .html file extension"
+    },
+    {
+      "name": "height",
+      "validation": "(value) => Number.isInteger(+value)",
+      "prompt": "height",
+      "msg": "must be an integer"
+    },
+    {
+      "name": "width",
+      "validation": "(value) => Number.isInteger(+value)",
+      "prompt": "width",
+      "msg": "must be an integer"
+    },
+    {
+      "name": "license",
+      "default": "Apache-2.0",
+      "prompt": "license"
+    }
+  ]
+}
 ```
 
 ## App Content
@@ -165,6 +165,21 @@ Replace the contents of `index.html` file with :
 </body>
 </html>
 ```
+
+Temporarily set the contents of `package.json` to:
+
+```json
+{
+  "pear": {
+    "name": "pear-init-template-tutorial",
+    "type": "desktop"
+  }
+}
+```
+
+This is the minimal requirements for a Pear Application `package.json` to run.
+This will allow us to test the template's `index.html` as a pear desktop
+app.
 
 Run the application using:
 

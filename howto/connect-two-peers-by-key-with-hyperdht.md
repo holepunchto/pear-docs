@@ -50,7 +50,7 @@ server.listen(keyPair).then(() => {
 Pear.teardown(() => server.close())
 ```
 
-Open the `server-app` with `pear dev`.
+Open the `server-app` with `pear run --dev .`.
 
 Create the `client-app` project with the following commands:
 
@@ -67,8 +67,11 @@ import DHT from 'hyperdht'
 import b4a from 'b4a'
 import process from 'bare-process'
 
-console.log('Connecting to:', process.argv[3])
-const publicKey = b4a.from(process.argv[3], 'hex')
+const key = Pear.config.args[0]
+if (!key) throw new Error('provide a key')
+
+console.log('Connecting to:', key)
+const publicKey = b4a.from(key, 'hex')
 
 const dht = new DHT()
 const conn = dht.connect(publicKey)
@@ -81,7 +84,7 @@ Pass the key to the client:
 
 ```
 cd client-app
-pear dev -- <SUPPLY KEY HERE>
+pear run --dev . <SUPPLY KEY HERE>
 ```
 
 The `client-app` will spin up a client, and the public key copied earlier must be supplied as a command line argument for connecting to the server. The client process will log `got connection` into the console when it connects to the server.

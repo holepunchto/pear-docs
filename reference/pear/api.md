@@ -6,7 +6,7 @@ The Pear API enables applications to interact with Pear platform features.
 
 Most application peer-to-peer functionality is provided by ecosystem modules rather than the API.
 
-Platform APIs are unchangable. Compatiblity cannot break. So the Pear API surface aims to be (and remain)
+Platform APIs are unchangeable. Compatibility cannot break. So the Pear API surface aims to be (and remain)
 as small as possible.
 
 ## `global.Pear`
@@ -187,7 +187,7 @@ A function which accepts a pattern object and returns an [`Iambus`](https://gith
 
 If no pattern object or an empty pattern object is provided all messages will be emitted. A pattern object is an object (typically) containing a subset of matching values for a given target object. Message objects can be user generated or platform generated.
 
-The subscriber stream has a `data` event which can be listened to, it can also be consumed with `for await` and an listener function can be passed in addition to pattern (`message(pattern, listener)`) or as a single argument (`messages(listener)`) (indicateding a catch-all pattern).
+The subscriber stream has a `data` event which can be listened to, it can also be consumed with `for await` and an listener function can be passed in addition to pattern (`message(pattern, listener)`) or as a single argument (`messages(listener)`) (indicating a catch-all pattern).
 
 A message object may have any properties. Platform-generated messages are given a `type` property.
 
@@ -218,7 +218,7 @@ Use `message` to create an application message:
 ```js
 const { message, messages } = Pear
 
-const ctaClicks = message({ type: 'my-app/user-cta' })
+const ctaClicks = messages({ type: 'my-app/user-cta' })
 
 ctaClicks.on('data', (msg) => { console.log('cta click', msg) })
 
@@ -246,43 +246,6 @@ do {
   await message({ type: 'tick', count })
   await new Promise((resolve) => setTimeout(resolve, 1000))
 } while (count++ < 1000)
-```
-
-## `Pear.preferences <Function|Object>`
-
-User preferences management.
-
-### `for await (const [operation, key, value] of Pear.preferences())`
-
-An async iterable that yields arrays containing `operation <String>`, `key <String>` and `value <any>`.
-
-Watch for application updates. The `operation` may be `set` or `del`. In the case of `del`, `value` is always `null`.
-
-### `for await (const [key, value] of Pear.preferences.list())`
-
-Iterate through all available application preferences.
-
-### `const success = await Pear.preferences.set(key, value)`
-
-Set a preference. The promise resolves to a boolean indicating success when the operation is complete.
-
-### `const value = await Pear.preferences.get(key)`
-
-Get a preference. The promise resolves with the value.
-
-### `const success = await Pear.preferences.del(key)`
-
-Delete a preference. The promise resolves to a boolean indicating success when the operation is complete.
-
-
-```js
-const { preferences } = Pear
-
-async function logPrefUpdates () {
-  for await (const [ operation, key, value ] of preferences()) console.table({ update: { operation, key, value }})
-}
-
-logPrefUpdates().catch(console.error)
 ```
 
 ## `Pear.worker <Object>`
@@ -610,7 +573,7 @@ Resolves to: `{x <Integer>, y <Integer>, width <Integer>, height <Integer>} | nu
 
 The height, width, horizontal (`x`), vertical (`y`) position of the window relative to the screen.
 
-All units ar (pixels)
+All units are (pixels)
 
 If the window is closed this will resolve to `null`.
 
@@ -776,7 +739,7 @@ Resolves to: `{x <Integer>, y <Integer>, width <Integer>, height <Integer>} | nu
 
 The height, width, horizontal (`x`), vertical (`y`) position of the window relative to the screen.
 
-All units ar (pixels)
+All units are (pixels)
 
 If the Window is closed this will resolve to `null`.
 
@@ -914,7 +877,7 @@ Whether the current window is maximized. Throws a `TypeError` if `self` is a vie
 
 Resolves to: `<Boolean>`
 
-Whether the current window is minmized. Throws a `TypeError` if `self` is a view.
+Whether the current window is minimized. Throws a `TypeError` if `self` is a view.
 
 ### `const { parent } = Pear.Window`  `const { parent } = Pear.View`
 
@@ -1007,7 +970,7 @@ Whether the parent window is maximized. Throws a `TypeError` if `parent` is a vi
 
 Resolves to: `<Boolean>`
 
-Whether the parent window is minmized. Throws a `TypeError` if `parent` is a view.
+Whether the parent window is minimized. Throws a `TypeError` if `parent` is a view.
 
 
 ## Web APIs
@@ -1024,7 +987,7 @@ In browsers, `window.open` opens a new browser window. The opened window belongs
 
 In Pear, `window.open` loads the URL in the **default system browser**. It does *not* create a new application window (use `Pear.Window` to create application windows).
 
-Therefore Pear's `window.open` only supports a single url argument. The `target` and `windowFeatures` parameters that browsers support are discarded.
+Therefore Pear's `window.open` only supports a single URL argument. The `target` and `windowFeatures` parameters that browsers support are discarded.
 
 ### Scripts and Modules
 

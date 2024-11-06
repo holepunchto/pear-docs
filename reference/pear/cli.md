@@ -19,7 +19,6 @@ Template can also be initialized from a pear:// link, the template should contai
 --type|-t=type            Template type. Overrides <link|type>
 --force|-f                Force overwrite existing files
 --with|-w=name            Additional functionality. Available: node
---encryption-key=name     Application encryption key
 --no-ask                  Suppress permissions dialogs
 --help|-h                 Show help
 ```
@@ -37,14 +36,14 @@ Alias for: `pear run --dev <dir>`
 --store|-s=path     Set the Application Storage path
 --tmp-store|-t      Automatic new tmp folder as store path
 ```  
-## `pear stage <channel|key> [dir]`
+## `pear stage <channel|link> [dir]`
 
-Synchronize local changes to key.
+Synchronize local changes to channel or key.
 
 Channel name must be specified on first stage,
 in order to generate the initial key.
 
-Outputs diff information and project key.
+Outputs diff information and project link.
 
 ```
   --json                      Newline delimited JSON output
@@ -52,32 +51,28 @@ Outputs diff information and project key.
   --bare|-b                   File data only, no warmup optimization
   --ignore                    Comma separated file path ignore list
   --name                      Advanced. Override app name
-  --encryption-key=name       Application encryption key
   --no-ask                    Suppress permissions dialogs
   --help|-h                   Show help
 ```
   
-## `pear seed <channel|key> [dir]`
+## `pear seed <channel|link> [dir]`
 
 Seed project or reseed key.
 
-Specify channel or key to seed a project.
-
-Specify a remote key to reseed.
+Specify channel or link to seed a project or a remote link to reseed.
 
 ```
   --json                    Newline delimited JSON output
   --seeders|-s              Additional public keys to seed from
   --name                    Advanced. Override app name
   --verbose|-v              Additional output
-  --encryption-key=name     Application encryption key
   --no-ask                  Suppress permissions dialogs
   --help|-h                 Show help
 ```
   
 ## `pear run [flags] <link|dir> [...app-args]`
 
-Run an application from a key or dir.
+Run an application from a link or dir.
 
 |       |                                                   |
 |-------|---------------------------------------------------|
@@ -101,9 +96,7 @@ Run an application from a key or dir.
   --checkout=n                   Run a checkout, n is version length
   --checkout=release             Run checkout from marked released length
   --checkout=staged              Run checkout from latest version length
-  --no-ask-trust                 Exit instead of asking to trust unknown keys
   --detached                     Wakeup existing app or run detached
-  --encryption-key=name          Application encryption key
   --no-ask                       Suppress permissions dialogs
   --help|-h                      Show help
 ```
@@ -126,7 +119,7 @@ pear run -t file://path/to/an-app-folder --some app --args
 pear run pear://keet
 ```
 
-## `pear release <channel|key> [dir]`
+## `pear release <channel|link> [dir]`
 
 Set production release version.
 
@@ -140,11 +133,11 @@ Use this to indicate production release points.
   --help|-h                Show help
 ```
   
-## `pear info [channel|key]`
+## `pear info [link|channel]`
 
 Read project information.
 
-Supply a key or channel to view application information.
+Supply a link or channel to view application information.
 
 Supply no argument to view platform information.
 
@@ -152,27 +145,39 @@ Supply no argument to view platform information.
   --changelog               View changelog only
   --full-changelog          Full record of changes
   --metadata                View metadata only
-  --key                     View key only
+  --key                     View link only
   --json                    Newline delimited JSON output
-  --encryption-key=name     Application encryption key
   --no-ask                  Suppress permissions dialogs
   --help|-h                 Show help
 ```
   
 ## `pear dump [flags] <link> <dir>`
 
-Synchronize files from key to dir.
+Synchronize files from link to dir.
 
 > To dump to stdout use `-` in place of `<dir>`
 
 ```
   --checkout=n              Dump from specified checkout, n is version length
   --json                    Newline delimited JSON output
-  --encryption-key=name     Application encryption key
+  --force|-f                Force overwrite existing files
   --no-ask                  Suppress permissions dialogs
   --help|-h                 Show help
 ```
   
+## `pear touch [flags] [channel]`
+
+Create Pear link
+
+Creates a Pear Link using channel name if provided or else a randomly generated channel name.
+
+This command is useful for creating links for automations that use `pear stage <link>`, `pear release <link>` or `pear seed <link>`.
+
+```
+  --json      Newline delimited JSON output
+  --help|-h   Show help
+```
+
 ## `pear sidecar`
 
 The Pear Sidecar is a local-running HTTP and IPC server which
@@ -197,9 +202,11 @@ Output version information.
 --help|-h     Show help
 ```
 
-## `pear shift <src-key> <dst-key> [--force]`
+## `pear shift [flags] <source> <destination>`
 
 Move user application storage between applications.
+
+`<source>` and `<destination>` are links.
 
 ```
 --force     Overwrite existing application storage if present

@@ -16,6 +16,7 @@ This creates the base project structure.
 
 - `package.json`. App configuration. Notice the `pear` property.
 - `index.js`. App entrypoint.
+- `test/index.test.js`. Test skeleton.
 
 ## Step 2. Verify Everything Works
 
@@ -27,9 +28,7 @@ pear run --dev .
 
 > A directory or link needs to be specified with `pear run`, here `.` denotes the current Project directory.
 
-The app will now run. Note that it will keep running until you exit with `ctrl + c`.
-
-That's all there is to getting a Pear Terminal project started.
+The app will now run. That's all there is to getting a Pear Terminal project started.
 
 
 ## Next

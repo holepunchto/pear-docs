@@ -53,7 +53,7 @@ Now Pear watches project files. When they change, the app is automatically reloa
 
 While keeping the `pear run --dev .` command running, open `index.html` in an editor.
 
-Change `<h1>chat</h1>` to `<h1>Hello world</h1>`.
+Change `<h1>desktop</h1>` to `<h1>Hello world</h1>`.
 
 The app should now show:
 
