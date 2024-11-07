@@ -6,7 +6,7 @@ To get started with embedding [Bare](../reference/bare/overview.md) into an [Exp
 
 [^1]: This term was chosen to avoid ambiguity with worker threads as implemented by <https://github.com/holepunchto/bare-worker>.
 
-The following examples can be used as references for building more deeply mobile applications using the Bare runtime:
+For deeper integration with a mobile application, the following examples can be used as references:
 
 - [Bare Android](https://github.com/holepunchto/bare-android)
 - [Bare iOS](https://github.com/holepunchto/bare-ios)
