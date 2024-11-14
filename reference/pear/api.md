@@ -168,6 +168,16 @@ Root directory of project.
 
 Directory for Pear runtime.
 
+### `Pear.config.dht.nodes <Array<Object>>`
+
+A list of known [DHT](../../building-blocks/hyperdht.md) nodes of the form `{ host: <String>, port: <Number> }`. The nodes are set when the Pear application is started.
+
+Unless started with a custom set of bootstrap nodes, Pear caches known nodes to speed up connecting to the swarm and to make it more resilient.
+
+### `Pear.config.dht.bootstrap <Array<Object>>`
+
+A list of custom bootstrap nodes Pear is started with of the form `{ host: <String>, port: <Number> }`.
+
 ## `Pear.checkpoint(<Any>) => Promise`
 
 Stores state that will be available as `Pear.config.checkpoint` next time the application starts.
