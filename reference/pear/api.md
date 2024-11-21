@@ -334,10 +334,6 @@ Captures available desktop sources. Resolves to an array of objects with shape `
 
 **References**
 
-* [win.getMediaSourceId()](#const-sourceid--await-wingetmediasourceid)
-* [view.getMediaSourceId()](#const-sourceid--await-viewgetmediasourceid)
-* [self.getMediaSourceId()](#const-sourceid--await-selfgetmediasourceid)
-* [parent.getMediaSourceId()](#const-sourceid--await-parentgetmediasourceid)
 * https://www.electronjs.org/docs/latest/api/desktop-capturer#desktopcapturergetsourcesoptions
 * https://www.electronjs.org/docs/latest/api/structures/desktop-capturer-source
 * [`<NativeImage>`](https://www.electronjs.org/docs/latest/api/native-image)
@@ -566,17 +562,6 @@ Unmaximize/unminimize the window if it is currently maximized/minimized.
 Send arguments to the window. They will be serialized with `JSON.stringify`.
 
 
-### `const sourceId = await win.getMediaSourceId()`
-
-Resolves to: `<String>`
-
-Correlates to the `id` property of objects in the array returned from [Pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options).
-
-**References**
-
-* [Pear.media.desktopSources](#const-sources--await-appmediadesktopsourcesoptions-object)
-* https://www.electronjs.org/docs/latest/api/browser-window#wingetmediasourceid
-
 ### `const dimensions = await win.dimensions()`
 
 Resolves to: `{x <Integer>, y <Integer>, width <Integer>, height <Integer>} | null`.
@@ -732,17 +717,6 @@ Blur the view.
 
 Send arguments to the view. They will be serialized with `JSON.stringify`.
 
-### `const sourceId = await view.getMediaSourceId()`
-
-Resolves to: `<String>`
-
-Supplies the `id` property of objects in the array returned from [Pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options).
-
-**References**
-
-* [Pear.media.desktopSources](#const-sources---await-appmediadesktopsources-options)
-* https://www.electronjs.org/docs/latest/api/browser-window#wingetmediasourceid
-
 ### `const dimensions = await view.dimensions()`
 
 Resolves to: `{x <Integer>, y <Integer>, width <Integer>, height <Integer>} | null`.
@@ -830,15 +804,6 @@ Resolves to: `<Boolean>`
 
 Hide current view or window.
 
-### `const sourceId = await self.getMediaSourceId()`
-
-Get the sourceId of the current window or view.
-
-**References**
-
-* [win.getMediaSourceId()](const-sourceId--await-wingetMediaSourceId)
-
-
 ### `const success = await self.minimize()`
 
 Resolves to: `<Boolean>`
@@ -924,15 +889,6 @@ Show parent view or window.
 Resolves to: `<Boolean>`
 
 Hide parent view or window.
-
-### `const sourceId = await parent.getMediaSourceId()`
-
-Get the sourceId of the parent window or view.
-
-**References**
-
-* [win.getMediaSourceId()](#const-sourceId--await-wingetMediaSourceId)
-
 
 ### `const success = await parent.minimize()`
 
