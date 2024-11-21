@@ -375,11 +375,12 @@ will be waited upon until resolution before calling the next teardown handler.
 
 ### Pear.reload()
 
-Soft-restart Terminal applications (keeps I/O), refresh application in Desktop applications.
+Refresh application in Desktop applications. Not available in terminal
+applications.
 
 ### `Pear.restart()`
 
-Restart the application.
+Restart the application. Desktop Applications only.
 
 ### `Pear.exit(code)`
 
