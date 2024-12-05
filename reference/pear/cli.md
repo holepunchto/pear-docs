@@ -158,6 +158,7 @@ Synchronize files from link to dir.
 > To dump to stdout use `-` in place of `<dir>`
 
 ```
+  --dry-run|-d              Execute a dump without writing
   --checkout=n              Dump from specified checkout, n is version length
   --json                    Newline delimited JSON output
   --force|-f                Force overwrite existing files
