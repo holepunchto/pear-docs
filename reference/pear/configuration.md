@@ -153,6 +153,10 @@ Note that this is only for requests that the Pear app makes itself such as loadi
 }
 ```
 
+### `pear.userAgent <string>` (default: `Pear ${Pear.#state.id}`)
+
+User Agent to use when Pear makes web requests. Desktop Applications only.
+
 ### `pear.stage <Object>`
 
 Staging configuration options.
