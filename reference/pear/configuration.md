@@ -155,7 +155,9 @@ Note that this is only for requests that the Pear app makes itself such as loadi
 
 ### `pear.userAgent <string>` (default: `Pear ${Pear.#state.id}`)
 
-User Agent to use when Pear makes web requests. Desktop Applications only.
+User Agent to use when Pear makes web requests. Pear will use the default `userAgent` when making requests to the Sidecar.
+
+Desktop Applications only.
 
 ### `pear.stage <Object>`
 
