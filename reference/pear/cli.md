@@ -48,7 +48,6 @@ Outputs diff information and project link.
 ```
   --json                      Newline delimited JSON output
   --dry-run|-d                Execute a stage without writing
-  --bare|-b                   File data only, no warmup optimization
   --ignore                    Comma separated file path ignore list
   --name                      Advanced. Override app name
   --no-ask                    Suppress permissions dialogs
