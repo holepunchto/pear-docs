@@ -433,6 +433,14 @@ The `listener` function is called for every incoming wakeup with a `wakeup` obje
 
 Also returns a [`streamx`](https://github.com/mafintosh/streamx) `Readable`) stream.
 
+### `Pear.badge(count <Integer|null>) => Promise<Boolean>`
+
+Set the badge number for the application on desktop for Linux & MacOS. Setting the `count` to `0` will hide the badge while `null` will display a plain dot on MacOS only.
+
+Returns a `Boolean` promise for whether the call succeeded.
+
+Desktop Applications only.
+
 ### `const win = new Pear.Window(entry <String>, options <Object>)`
 
 Desktop Applications only.

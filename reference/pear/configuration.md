@@ -153,13 +153,23 @@ Note that this is only for requests that the Pear app makes itself such as loadi
 }
 ```
 
+### `pear.userAgent <string>` (default: `Pear ${Pear.#state.id}`)
+
+User Agent to use when Pear makes web requests. Pear will use the default `userAgent` when making requests to the Sidecar.
+
+Desktop Applications only.
+
 ### `pear.stage <Object>`
 
 Staging configuration options.
 
 #### `pear.stage.entrypoints <Array>`
 
-An array of entrypoints as staging start-points in addition to (deduped) main entry point.
+An array of entrypoint paths as staging start-points in addition to (deduped) main entry point.
+
+#### `pear.stage.prefetch <Array>`
+
+An array of file paths to the warmup during staging in addition to all entry points. This is useful for loading assets needed to start the application quickly.
 
 #### `pear.stage.ignore <Array>`
 
