@@ -34,7 +34,7 @@ The channel name can be any valid name. Using `dev` for local development checks
 
 Stage will output a diff of changes - the first time will all be additions of course - and then it will output the application link.
 
-If the application is a desktop application there will also be a warmup step where the application is opened in the background and analyzed for initialization-to-loaded critical-path. This metadata is stored along with the application into an application-dedicated hypercore inside Pear. This helps the desktop application load faster. All state is local and by default only the original machine that stages an application can write to this application-dedicated hypercore.
+There will be a warmup step where the application is analyzed for initialization-to-loaded critical-path. This metadata is stored along with the application into an application-dedicated hypercore inside Pear. This helps the application load faster. All state is local and by default only the original machine that stages an application can write to this application-dedicated hypercore.
 
 > Some frontend frameworks will load different assets based on whether the `NODE_ENV` environment variable is set to `production`. If the application has this need, use `NODE_ENV=production pear stage dev` in order to stage the production library code so that when Stage Warmup occurs the captured critical-path consists of production assets.
 
