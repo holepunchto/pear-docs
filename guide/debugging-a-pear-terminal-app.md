@@ -41,7 +41,7 @@ Debug with pear://runtime/devtools/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e
 
 ## Step 4. Add to Pear Runtime Desktop
 
-Open the Pear Runtime Desktop app by running `pear run pear://runtime` and go to `Developer Tooling` and paste in the key.
+Open the Pear Runtime Desktop app by running `pear run pear://runtime`. Then go to `Developer Tooling` and paste in the key.
 
 Note that the key can also be sent to someone else and they can debug the app remotely.
 
