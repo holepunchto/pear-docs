@@ -338,6 +338,16 @@ Captures available desktop sources. Resolves to an array of objects with shape `
 * https://www.electronjs.org/docs/latest/api/structures/desktop-capturer-source
 * [`<NativeImage>`](https://www.electronjs.org/docs/latest/api/native-image)
 
+### `const path = Pear.media.getPathForFile(file <File>)`
+
+Accepts a web [`File`](https://developer.mozilla.org/en-US/docs/Web/API/File/File) object and returns the file system path for that file as a `String`. In cases where the `file` argument is not a `File` object an exception is thrown. In the case that the `file` is constructed in JS and is not backed by a file on disk an empty string is returned.
+
+Available in Desktop Applications only.
+
+**References**
+
+* https://www.electronjs.org/docs/latest/api/web-utils#webutilsgetpathforfilefile
+
 ### `Pear.versions <Async Function>`
 
 Function that returns a promise which resolves to a Pear versions object with the shape `{ fork <Integer>, length <Integer>, key <Buffer> }`.
