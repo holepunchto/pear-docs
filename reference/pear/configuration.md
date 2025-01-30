@@ -116,6 +116,10 @@ Set window opacity (0.0 - 1.0) (Windows, macOS).
 
 Enable transparency. Must be set for opacity to work.
 
+#### `pear.gui.hideable <Boolean>` (default: `false`)
+
+Keep app running when all windows are closed.
+
 #### `pear.gui.backgroundColor <String>` (default: "#000" non-transparent, "#00000000" transparent)
 
 Background color (Hex, RGB, RGBA, HSL, HSLA, CSS color).
