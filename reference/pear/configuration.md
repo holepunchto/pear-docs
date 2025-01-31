@@ -45,7 +45,7 @@ For example the following sets the macOS version to not be resizable:
 }
 ```
 
-The following platform specifiers are supported:
+The following `platform`s are supported:
 
 - `aix`
 - `darwin`
