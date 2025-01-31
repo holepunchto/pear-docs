@@ -30,8 +30,7 @@ Graphical User Interface configuration options.
 
 #### `pear.gui[platform] <Object>`
 
-Platform specific options can be set by nesting options under the platform name.
-For example the following sets the macOS version to not be resizable:
+Platform specific options can be set by nesting options under the platform name. For example the following sets the macOS version to not be resizable:
 
 ```json
 {
