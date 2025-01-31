@@ -46,12 +46,8 @@ Platform specific options can be set by nesting options under the platform name.
 
 The following `platform`s are supported:
 
-- `aix`
 - `darwin`
-- `freebsd`
 - `linux`
-- `openbsd`
-- `sunos`
 - `win32`
 
 #### `pear.gui.width <Number>`
