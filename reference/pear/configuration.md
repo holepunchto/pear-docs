@@ -28,6 +28,28 @@ The name of the application. Overrides `package.json` `name`.
 
 Graphical User Interface configuration options.
 
+#### `pear.gui[platform] <Object>`
+
+Platform specific options can be set by nesting options under the platform name. For example the following sets the macOS version to not be resizable:
+
+```json
+{
+  "pear": {
+    "gui": {
+      "darwin": {
+        "resizable": false
+      }
+    }
+  }
+}
+```
+
+The following `platform`s are supported:
+
+- `darwin`
+- `linux`
+- `win32`
+
 #### `pear.gui.width <Number>`
 
 Window width (pixels).
@@ -115,6 +137,10 @@ Set window opacity (0.0 - 1.0) (Windows, macOS).
 #### `pear.gui.transparent <Boolean>` (default: `false`)
 
 Enable transparency. Must be set for opacity to work.
+
+#### `pear.gui.hideable <Boolean>` (default: `false`)
+
+Keep app running when all windows are closed.
 
 #### `pear.gui.backgroundColor <String>` (default: "#000" non-transparent, "#00000000" transparent)
 
