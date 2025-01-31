@@ -28,6 +28,33 @@ The name of the application. Overrides `package.json` `name`.
 
 Graphical User Interface configuration options.
 
+#### `pear.gui[platform] <Object>`
+
+Platform specific options can be set by nesting options under the platform name.
+For example the following sets the macOS version to not be resizable:
+
+```json
+{
+  "pear": {
+    "gui": {
+      "darwin": {
+        "resizable": false
+      }
+    }
+  }
+}
+```
+
+The following platform specifiers are supported:
+
+- `aix`
+- `darwin`
+- `freebsd`
+- `linux`
+- `openbsd`
+- `sunos`
+- `win32`
+
 #### `pear.gui.width <Number>`
 
 Window width (pixels).
