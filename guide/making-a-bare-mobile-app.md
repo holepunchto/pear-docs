@@ -27,7 +27,7 @@ cd autopass-mobile-example
 And install the dependencies we will need:
 
 ```bash
-npm i b4a bare-fs bare-rpc corestore autopass @react-native-clipboard/clipboard
+npm i b4a bare-fs bare-rpc corestore autopass@1 @react-native-clipboard/clipboard
 ```
 
 ```bash
