@@ -120,7 +120,7 @@ Hypercore will produce the following files:
 |  **`valueEncoding`**  | one of 'json', 'utf-8', or 'binary'                                                     | String   | `'binary'`         |
 |   **`encodeBatch`**   | optionally apply an encoding to complete batches                                        | Function | `batch => { ... }` |
 |     **`keyPair`**     | optionally pass the public key and secret key as a key pair                             | Object   | `null`             |
-|  **`encryptionKey`**  | optionally pass an encryption key to enable block encryption                            | String   | `null`             |
+|  **`encryptionKey`**  | optionally pass an encryption key to enable block encryption                            | Buffer   | `null`             |
 |      **`onwait`**     | hook that is called if gets are waiting for download                                    | Function | `() => {}`         |
 |     **`timeout`**     | constructor timeout                                                                     | integer  | `0`                  |
 |     **`writable`**     |  disable appends and truncates                                                                     | Boolean  | `true`                |
