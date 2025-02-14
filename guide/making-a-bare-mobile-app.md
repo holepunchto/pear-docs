@@ -1,4 +1,4 @@
-# Making a Bare Mobile App
+# Making a Bare Mobile Application
 
 This guide demonstrates how to build and run a mobile application using [Bare and Expo](https://github.com/holepunchto/bare-expo).
 
