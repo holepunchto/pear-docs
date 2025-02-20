@@ -232,5 +232,27 @@ Perform garbage collection and remove unused resources.
   --help|-h     Show help
 ```
 
+## `pear data [flags] [command]`
+
+View database contents.
+
+The database contains metadata stored on this device used by the Pear runtime.
+
+| Commands   | Description                |
+| ---------- | -------------------------- |
+| apps       | Installed apps             |
+| dht        | DHT known-nodes cache      |
+| gc         | Garbage collection records |
+
+```
+  --secrets   Show sensitive information, i.e. encryption-keys
+  --json      Newline delimited JSON output
+  --help|-h   Show help
+```
+
+### `pear data apps [flags] [link]`
+
+List installed apps, filtered by `[link]` if provided.
+
 
   
