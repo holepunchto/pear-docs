@@ -256,9 +256,9 @@ The database contains metadata stored on this device used by the Pear runtime.
 | gc         | Garbage collection records |
 
 ```
-  --secrets   Show sensitive information, i.e. encryption-keys
-  --json      Newline delimited JSON output
-  --help|-h   Show help
+--secrets   Show sensitive information, i.e. encryption-keys
+--json      Newline delimited JSON output
+--help|-h   Show help
 ```
 
 ### `pear data apps [flags] [link]`
