@@ -218,6 +218,17 @@ Move user application storage between applications.
 --json      Newline delimited JSON output
 ```
 
+## `pear reset [flags] <link>`
+
+Advanced. Reset an application to initial state
+
+Clears application storage for given application link. Will ask for confirmation to reset as the storage will be deleted permanently and cannot be recovered. Use with caution.
+
+```
+--json      Newline delimited JSON output
+--help|-h   Show help
+```
+
 ## `pear gc [flags] [command]`
 
 Perform garbage collection and remove unused resources.
