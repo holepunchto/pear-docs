@@ -91,7 +91,6 @@ Run an application from a link or dir.
   --links <kvs>                  Override configured links with comma-separated key-values
   --chrome-webrtc-internals      Enable chrome://webrtc-internals
   --unsafe-clear-app-storage     Clear app storage
-  --unsafe-clear-preferences     Clear preferences (such as trustlist)
   --appling=path                 Set application shell path
   --checkout=n                   Run a checkout, n is version length
   --checkout=release             Run checkout from marked released length
