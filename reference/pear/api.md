@@ -465,7 +465,7 @@ Desktop Applications only.
 **Options**
 
 * `icon <String>` Default: The Pear icon - The path for icon for the tray
-  relative to the project root.
+  relative to the project root. Supported formats: PNG & JPEG
 * `menu <Object>` Default: `{ show: `Show ${Pear.config.name}`, quit: 'Quit' }` - The
   tray menu items. Each property of the object is the `key` passed to the
   `listener` and whose value is the text displayed in the menu.
