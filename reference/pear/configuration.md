@@ -50,6 +50,10 @@ The following `platform`s are supported:
 - `linux`
 - `win32`
 
+### `pear.gui.name <String>`
+
+Override the app name which defaults to [name](#pear.name-less-than-string-greater-than).
+
 #### `pear.gui.width <Number>`
 
 Window width (pixels).
