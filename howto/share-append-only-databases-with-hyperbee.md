@@ -73,14 +73,13 @@ if (core.length <= 1) {
 }
 ```
 
-Open the app with `pear run --dev .`:
+Run the app with:
 
 ```
-cd bee-writer-app
 pear run --dev .
 ```
 
-Start the `bee-reader-app` project with the following commands:
+Start the `bee-reader-app` project in a new terminal with the following commands:
 
 ```
 mkdir bee-reader-app
@@ -148,7 +147,6 @@ stdin.on('data', (data) => {
 Open the `bee-reader-app` and pass it the core key:
 
 ```
-cd bee-reader-app
 pear run --dev . <SUPPLY KEY HERE>
 ```
 
@@ -213,7 +211,6 @@ console.log(`Decoded Block ${seq}`, Node.decode(lastBlock))
 Open the `core-reader-app` with `pear run --dev .`, passing the core key to it:
 
 ```
-cd core-reader-app
 pear run --dev . <SUPPLY KEY HERE>
 ```
 
