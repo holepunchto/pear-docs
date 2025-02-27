@@ -225,7 +225,7 @@ Execute the `drive-bee-reader-app` with `pear run --dev .`, passing it the key o
 
 ```
 cd drive-bee-reader-app
-pear run --dev .
+pear run --dev . <SUPPLY_KEY_HERE>
 ```
 
 The `drive-bee-reader-app` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.
