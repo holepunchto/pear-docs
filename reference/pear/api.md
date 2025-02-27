@@ -453,7 +453,7 @@ Desktop Applications only.
 
 ### `Pear.tray(options <Object>, listener <Async Function|Function>) => Promise<untray()>`
 
-Configure a tray icon for the application. This method will return a promise which resolve to a `untray()` method for removing the tray.
+Configure a tray icon for the application. This method will return a promise which resolves as a `untray()` method for removing the tray.
 
 The `listener` function is triggered whenever a menu item or the tray icon is clicked. It receives a single argument `key` that represents the menu item `key` that was clicked or the special value of `'click'` for when the menu icon itself was clicked. If no `listener` function is provided, a default listener will show the application window when triggered with `'click'` or `'show'` and quits with `'quit'`.
 
@@ -466,7 +466,7 @@ Desktop Applications only.
 
 * `icon <String>` Default: The Pear icon - The path for icon for the tray
   relative to the project root. Supported formats: PNG & JPEG
-* `menu <Object>` Default: `{ show: `Show ${Pear.config.name}`, quit: 'Quit' }` - The
+* `menu <Object>` Default: ``{ show: `Show ${Pear.config.name}`, quit: 'Quit' }`` - The
   tray menu items. Each property of the object is the `key` passed to the
   `listener` and whose value is the text displayed in the menu.
 * `os <Object>` Default: `{ win32: true, linux: true, darwin: true  }` - which
