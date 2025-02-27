@@ -52,7 +52,7 @@ The following `platform`s are supported:
 
 ### `pear.gui.name <String>`
 
-Override the app name which defaults to [name](#pear.name-less-than-string-greater-than).
+Override the app name which otherwise defaults to [name](#pear.name-less-than-string-greater-than).
 
 #### `pear.gui.width <Number>`
 
