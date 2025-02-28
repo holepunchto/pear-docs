@@ -52,7 +52,7 @@ Pear.teardown(() => server.close())
 
 Open the `server-app` with `pear run --dev .`.
 
-Create the `client-app` project with the following commands:
+In another terminal create the `client-app` project with the following commands:
 
 ```
 mkdir client-app
@@ -80,10 +80,9 @@ conn.once('open', () => console.log('got connection!'))
 process.stdin.pipe(conn).pipe(process.stdout)
 ```
 
-Pass the key to the client:
+Run the client passing it the key from the server:
 
 ```
-cd client-app
 pear run --dev . <SUPPLY KEY HERE>
 ```
 
