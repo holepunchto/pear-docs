@@ -156,7 +156,7 @@ Synchronize files from link to dir.
 
 > To dump to stdout use `-` in place of `<dir>`
 
-`<link>` can contain a path portion to dump a subset of the files for the Pear application. For example, if you wanted to dump only the `CHANGELOG.md` from Keet into a `dump-dir` directory, you would run:
+`<link>` can contain a path portion to dump a subset of the files for the Pear application. For example, to dump only the `CHANGELOG.md` from Keet into a `dump-dir` directory run:
 
 ```
 pear dump pear://keet/CHANGELOG.md dump-dir/
