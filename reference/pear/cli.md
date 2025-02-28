@@ -227,7 +227,9 @@ Move user application storage between applications.
 
 Advanced. Reset an application to initial state
 
-Clears application storage for a given application link. You will ask for confirmation to reset as the storage will be deleted permanently and cannot be recovered. Use with caution.
+Clears application storage for a given application link.
+
+WARNING: Confirmation will be requested as the storage will be deleted permanently and cannot be recovered. Use with caution.
 
 ```
 --json      Newline delimited JSON output
