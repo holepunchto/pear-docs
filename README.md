@@ -19,6 +19,7 @@ References for Pear Runtime.
 * [Command-Line-Interface (CLI)](./reference/pear/cli.md)
 * [Application-Programming-Interface (API)](./reference/pear/api.md)
 * [Application Configuration](./reference/pear/configuration.md)
+* [Migration](./migration.md)
 
 > The Pear Runtime uses [Bare](https://github.com/holepunchto/bare) JavaScript runtime, which is a small and modular JavaScript runtime for desktop and mobile. To learn more, see [Bare Reference](./reference/bare/overview.md).
 
@@ -34,6 +35,7 @@ Guides on using the Pear Runtime to build and share P2P applications.
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
 * [Creating a Pear Init Template](./guide/creating-a-pear-init-template.md)
+
 
 ### How-tos
 
