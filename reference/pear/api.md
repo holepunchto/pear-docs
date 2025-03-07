@@ -457,8 +457,9 @@ Configure a tray icon for the application. This method will return a promise whi
 
 The `listener` function is triggered whenever a menu item or the tray icon is clicked. It receives a single argument `key` that represents the menu item `key` that was clicked or the special value of `'click'` for when the menu icon itself was clicked. If no `listener` function is provided, a default listener will show the application window when triggered with `'click'` or `'show'` and quits with `'quit'`.
 
-A Pear application must be `hideable` to support adding a tray (see
-[`pear.gui.hideable`](./configuration.md#pear.gui.hideable-less-than-boolean-greater-than-default-false)).
+A Pear application must be `hideable` to support adding a tray (see [`pear.gui.hideable`](./configuration.md#pear.gui.hideable-less-than-boolean-greater-than-default-false)).
+
+WARNING: Linux tray support varies which can cause scenarios where the application's tray doesn't work and closing the app will be hidden and inaccessible. Using a tray and `hideable` on Linux is not recommended.
 
 Desktop Applications only.
 

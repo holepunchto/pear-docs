@@ -146,6 +146,8 @@ Enable transparency. Must be set for opacity to work.
 
 Keep app running when all windows are closed.
 
+WARNING: Linux tray support varies which can cause scenarios where the application's tray doesn't work and closing the app will be hidden and inaccessible. Using a tray and `hideable` on Linux is not recommended.
+
 #### `pear.gui.backgroundColor <String>` (default: "#000" non-transparent, "#00000000" transparent)
 
 Background color (Hex, RGB, RGBA, HSL, HSLA, CSS color).
