@@ -50,6 +50,10 @@ The following `platform`s are supported:
 - `linux`
 - `win32`
 
+### `pear.gui.name <String>`
+
+Override the app name which otherwise defaults to [name](#pear.name-less-than-string-greater-than).
+
 #### `pear.gui.width <Number>`
 
 Window width (pixels).
@@ -141,6 +145,8 @@ Enable transparency. Must be set for opacity to work.
 #### `pear.gui.hideable <Boolean>` (default: `false`)
 
 Keep app running when all windows are closed.
+
+WARNING: Linux tray support varies which can cause scenarios where the application's tray doesn't work and closing the app will be hidden and inaccessible. Using a tray and `hideable` on Linux is not recommended.
 
 #### `pear.gui.backgroundColor <String>` (default: "#000" non-transparent, "#00000000" transparent)
 
