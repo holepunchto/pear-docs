@@ -91,7 +91,6 @@ Run an application from a link or dir.
   --links <kvs>                  Override configured links with comma-separated key-values
   --chrome-webrtc-internals      Enable chrome://webrtc-internals
   --unsafe-clear-app-storage     Clear app storage
-  --unsafe-clear-preferences     Clear preferences (such as trustlist)
   --appling=path                 Set application shell path
   --checkout=n                   Run a checkout, n is version length
   --checkout=release             Run checkout from marked released length
@@ -157,6 +156,12 @@ Synchronize files from link to dir.
 
 > To dump to stdout use `-` in place of `<dir>`
 
+`<link>` can contain a path portion to dump a subset of the files for the Pear application. For example, to dump only the `CHANGELOG.md` from Keet into a `dump-dir` directory run:
+
+```
+pear dump pear://keet/CHANGELOG.md dump-dir/
+```
+
 ```
   --dry-run|-d              Execute a dump without writing
   --checkout=n              Dump from specified checkout, n is version length
@@ -218,6 +223,19 @@ Move user application storage between applications.
 --json      Newline delimited JSON output
 ```
 
+## `pear reset [flags] <link>`
+
+Advanced. Reset an application to initial state
+
+Clears application storage for a given application link.
+
+WARNING: Confirmation will be requested as the storage will be deleted permanently and cannot be recovered. Use with caution.
+
+```
+--json      Newline delimited JSON output
+--help|-h   Show help
+```
+
 ## `pear gc [flags] [command]`
 
 Perform garbage collection and remove unused resources.
@@ -231,6 +249,28 @@ Perform garbage collection and remove unused resources.
   --json        Newline delimited JSON output
   --help|-h     Show help
 ```
+
+## `pear data [flags] [command]`
+
+View database contents.
+
+The database contains metadata stored on this device used by the Pear runtime.
+
+| Commands   | Description                |
+| ---------- | -------------------------- |
+| apps       | Installed apps             |
+| dht        | DHT known-nodes cache      |
+| gc         | Garbage collection records |
+
+```
+--secrets   Show sensitive information, i.e. encryption-keys
+--json      Newline delimited JSON output
+--help|-h   Show help
+```
+
+### `pear data apps [flags] [link]`
+
+List installed apps, filtered by `[link]` if provided.
 
 
   

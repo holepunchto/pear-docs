@@ -451,6 +451,29 @@ Returns a `Boolean` promise for whether the call succeeded.
 
 Desktop Applications only.
 
+### `Pear.tray(options <Object>, listener <Async Function|Function>) => Promise<untray()>`
+
+Configure a tray icon for the application. This method will return a promise which resolves to an `untray()` function for removing the tray.
+
+The `listener` function is triggered whenever a menu item or the tray icon is clicked. It receives a single argument `key` that represents the menu item `key` that was clicked or the special value of `'click'` for when the menu icon itself was clicked. If no `listener` function is provided, a default listener will show the application window when triggered with `'click'` or `'show'` and quits with `'quit'`.
+
+A Pear application must be `hideable` to support adding a tray (see [`pear.gui.hideable`](./configuration.md#pear.gui.hideable-less-than-boolean-greater-than-default-false)).
+
+WARNING: Linux tray support varies which can cause scenarios where the application's tray doesn't work and closing the app will be hidden and inaccessible. Using a tray and `hideable` on Linux is not recommended.
+
+Desktop Applications only.
+
+**Options**
+
+* `icon <String>` Default: The Pear icon - The path for icon for the tray
+  relative to the project root. Supported formats: PNG & JPEG
+* `menu <Object>` Default: ``{ show: `Show ${Pear.config.name}`, quit: 'Quit' }`` - The
+  tray menu items. Each property of the object is the `key` passed to the
+  `listener` and whose value is the text displayed in the menu.
+* `os <Object>` Default: `{ win32: true, linux: true, darwin: true  }` - which
+  platforms support using the tray menu. The platform is checked via the
+  `process.platform` value.
+
 ### `const win = new Pear.Window(entry <String>, options <Object>)`
 
 Desktop Applications only.
