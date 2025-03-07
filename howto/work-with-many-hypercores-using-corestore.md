@@ -102,7 +102,6 @@ await core.ready()
 
 const foundPeers = core.findingPeers()
 swarm.join(core.discoveryKey)
-swarm.on('connection', conn => core.replicate(conn))
 swarm.flush().then(() => foundPeers())
 
 // update the meta-data of the hypercore instance
