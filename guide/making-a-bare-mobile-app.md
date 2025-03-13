@@ -27,7 +27,7 @@ cd autopass-mobile-example
 And install the dependencies we will need:
 
 ```bash
-npm i b4a bare-fs bare-rpc corestore autopass@1 @react-native-clipboard/clipboard
+npm i b4a bare-fs bare-rpc corestore autopass @react-native-clipboard/clipboard
 ```
 
 ```bash
@@ -93,31 +93,28 @@ export default function App() {
     const worklet = new Worklet()
 
     // Correctly passing the args to worklet.start
-    worklet
-      .start('/app.bundle', bundle, [Platform.OS, pairingInvite])
-      .then(() => {
-        const { IPC } = worklet
-        // Initialise RPC
-        const rpc = new RPC(IPC, (req) => {
-          // Handle incoming RPC requests
+    worklet.start('/app.bundle', bundle, [Platform.OS, pairingInvite])
+    const { IPC } = worklet
+    // Initialise RPC
+    new RPC(IPC, (req) => {
+      // Handle incoming RPC requests
 
-          if (req.command === 'message') {
-            const data = b4a.toString(req.data)
-            const parsedData = JSON.parse(data) // Assuming data is a JSON string
-            const entry: PasswordEntry = {
-              username: parsedData[1],
-              password: parsedData[2],
-              website: parsedData[3]
-            }
-            // Update the dataList with the received entry
-            setDataList((prevDataList) => [...prevDataList, entry])
-          }
+      if (req.command === 'message') {
+        const data = b4a.toString(req.data)
+        const parsedData = JSON.parse(data) // Assuming data is a JSON string
+        const entry: PasswordEntry = {
+          username: parsedData[1],
+          password: parsedData[2],
+          website: parsedData[3]
+        }
+        // Update the dataList with the received entry
+        setDataList((prevDataList) => [...prevDataList, entry])
+      }
 
-          if (req.command === 'reset') {
-            setDataList(() => [])
-          }
-        })
-      })
+      if (req.command === 'reset') {
+        setDataList(() => [])
+      }
+    })
 
     setIsWorkletStarted(true) // Mark worklet as started
   }
@@ -228,11 +225,10 @@ if (fs.existsSync(path)) {
 }
 
 fs.mkdirSync(path)
-
 const invite = Bare.argv[1]
 const pair = Autopass.pair(new Corestore(path), invite)
-
 const pass = await pair.finished()
+
 await pass.ready()
 
 pass.on('update', async (e) => {
@@ -240,9 +236,11 @@ pass.on('update', async (e) => {
   req.send('data')
 
   for await (const data of pass.list()) {
-    if (data.value[0] === 'password') {
+    const value = JSON.parse(data.value)
+
+    if (value[0] === 'password') {
       const req = rpc.request('message')
-      req.send(JSON.stringify(data.value))
+      req.send(JSON.stringify(value))
     }
   }
 })
@@ -330,11 +328,7 @@ const worklet = new Worklet()
 Creates a new `worklet` object, ideally we should only create a single worklet.
 
 ```typescript
-worklet
-  .start('/app.bundle', bundle, [Platform.OS, pairingInvite])
-  .then(() => {
-    // Worklet has started! We can talk to it now.
-  })
+worklet.start('/app.bundle', bundle, [Platform.OS, pairingInvite])
 ```
 
 Here we start our worklet with the bundle we imported in the previous step. The `'/app.bundle'` is the filename for the bundle, `bundle` is the bundled source that we imported and `[Platform.OS, pairingInvite]` are the arguments to be passed to the Bare runtime. These arguments will be available to the Bare process as soon as it starts in `Bare.argv[]`.
@@ -346,8 +340,8 @@ const { IPC } = worklet
 Once the worklet has started, we can use its IPC stream to communicate between the UI and Pear-end, but using an RPC on top of the IPC is often easier.
 
 ```typescript
-const rpc = new RPC(IPC, (req) => {
-  // Handle RPC requests here
+new RPC(IPC, (req) => {
+  // Handle incoming RPC requests
 })
 ```
 
