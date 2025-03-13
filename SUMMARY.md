@@ -23,6 +23,7 @@
 * [Making a Pear Terminal Application](./guide/making-a-pear-terminal-app.md)
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Marking a Release](./guide/releasing-a-pear-app.md)
+* [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
 * [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
 * [Creating a Pear Init Template](./guide/creating-a-pear-init-template.md)
 
@@ -67,6 +68,5 @@
 
 ### Examples
 
-* [Cross-platform Pear App](examples/cross-platform-pear-app.md)
 * [Bare on Mobile](examples/bare-on-mobile.md)
 * [React App using Pear](examples/react-app-using-pear.md)
