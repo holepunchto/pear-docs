@@ -78,18 +78,12 @@ Pear.teardown(() => swarm.destroy())
 const core = new Hypercore(path.join(Pear.config.storage, 'reader-storage'), Pear.config.args[0])
 await core.ready()
 
-const foundPeers = core.findingPeers()
 swarm.join(core.discoveryKey)
 swarm.on('connection', conn => core.replicate(conn))
 
 // swarm.flush() will wait until *all* discoverable peers have been connected to
-// It might take a while, so don't await it
-// Instead, use core.findingPeers() to mark when the discovery process is completed
-swarm.flush().then(() => foundPeers())
+await swarm.flush()
 
-// This won't resolve until either
-//    a) the first peer is found
-// or b) no peers could be found
 await core.update()
 
 let position = core.length
