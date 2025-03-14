@@ -16,6 +16,12 @@ The `npm` package manager can also be used to install application dependencies l
 
 On MacOS and Linux, we recommend installing `node` using [`nvm`](https://github.com/nvm-sh/nvm#installing-and-updating)
 
+For Ubuntu, install the following:
+
+```console
+sudo apt install libatomic1
+```
+
 On Windows we recommend installing `node` with [`nvs`](https://github.com/jasongin/nvs#setup).
 
 > The Pear Runtime does not rely on `node`, `node` is only needed to install and run the `npm` package manager.
