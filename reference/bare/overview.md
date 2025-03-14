@@ -60,7 +60,7 @@ If `source` is `NULL`, the contents of `filename` will instead be read at runtim
 
 Bare provides a mechanism for implementing process suspension, which is needed for platforms with strict application lifecycle constraints, such as mobile platforms. When suspended, a `suspend` event will be emitted on the `Bare` namespace. Then, when the loop has no work left and would otherwise exit, an `idle` event will be emitted and the loop blocked, keeping it from exiting. When the process is later resumed, a `resume` event will be emitted and the loop unblocked, allowing it to exit when no work is left.
 
-The suspension API is available through `bare_suspend()` and `bare_resume()` from C and `Bare.suspend()` and `Bare.resume()` from JavaScript. See [`example/suspend.js`](https://github.com/holepunchto/bare/blob/main/example/suspend.js) for an example of using the suspension API from JavaScript.
+The suspension API is available through `bare_suspend()` and `bare_resume()` from C and `Bare.suspend()` and `Bare.resume()` from JavaScript. See [`test/suspend-resume.js`](https://github.com/holepunchto/bare/blob/main/test/suspend-resume.js) for an example of using the suspension API from JavaScript.
 
 ## Building
 
