@@ -33,6 +33,7 @@ Guides on using the Pear Runtime to build and share P2P applications.
 * [Making a Pear Terminal Application](./guide/making-a-pear-terminal-app.md)
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
+* [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
 * [Creating a Pear Init Template](./guide/creating-a-pear-init-template.md)
 
 ### How-tos
@@ -93,7 +94,6 @@ Applications built using Pear.
 ### Examples
 
 Collection of example applications that can be used as reference during development.
-- [Cross-platform Pear App](./examples/cross-platform-pear-app.md): Cross-platform "Hello World" Pear application for Android and iOS.
 - [Bare on Mobile](./examples/bare-on-mobile.md): Reference applications for using Bare runtime on Android and iOS.
 - [React App using Pear](./examples/react-app-using-pear.md): Example application for building Pear applications using React framework.
 
