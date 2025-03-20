@@ -1,304 +1,320 @@
 # Autobase
 
-<mark style="background-color:blue;">**experimental**</mark>
-
-Autobase is used to automatically rebase multiple causally-linked Hypercores into a single, linearized Hypercore. The output of an Autobase is 'just a Hypercore', which means it can be used to transform higher-level data structures (like Hyperbee) into multiwriter data structures with minimal additional work.
-
-> Although Autobase is still under development, it finds application in many active projects. Keet rooms, for example, are powered by Autobase! This is a testament to the potential of Autobase, and we are excited to see what else it can achieve.
-
-Notable features include:
-
-* automatic rebasing of multiple causally-linked Hypercores into a single, linearized Hypercore for multi-user collaboration
-* low-friction integration into higher-level modules like Hyperbee and Hyperdrive: Autobase's output shares the familiar Hypercore API so peer-to-peer multi-user collaboration is achievable with little additional implementation effort.
+A multiwriter data structure for combining multiple writer cores into a view of the system. Using the event sourcing pattern, writers append blocks which are linearized into an eventually consistent order for building a view of the system, combining their inputs.
 
 > [GitHub (Autobase)](https://github.com/holepunchto/autobase) 
 
-- [Autobase](../building-blocks/autobase.md)
-  - [Create a new instance](autobase.md#installation)
-  - Basic:
-    - Properties:
-      - [base.inputs](autobase.md#base.inputs)
-      - [base.outputs](autobase.md#base.outputs)
-      - [base.localInput](autobase.md#base.localinput)
-      - [base.localOutput](autobase.md#base.localoutput)
-    - Methods:
-      - [base.clock()](autobase.md#base.clock)
-      - [base.isAutobase(core)](autobase.md#base.isautobase)
-      - [base.append(value, [clock], [input])](autobase.md#base.append)
-      - [base.latest([input1, input2, ...])](autobase.md#base.latest)
-      - [base.addInput(input)](autobase.md#base.addinput)
-      - [base.removeInput(input)](autobase.md#base.removeinput)
-      - [base.addOutput(output)](autobase.md#base.addoutput)
-      - [base.removeOutput(output)](autobase.md#base.removeoutput)
-    - Streams:
-      - Methods:
-        - [base.createCausalStream()](autobase.md#base.createcasualstream)
-        - [base.createReadStream([options])](autobase.md#base.createreadstream)
-    - Linearized Views:
-      - Properties:
-        - [view.status](autobase.md#view.status)
-        - [view.length](autobase.md#view.length)
-      - Methods:
-        - [base.start({ apply, unwrap } = {})](autobase.md#base.start)
-        - [view.update()](autobase.md#view.update)
-        - [view.get(idx, [options])](autobase.md#view.get)
-        - [view.append([blocks])](autobase.md#view.append)
+## Install
 
+`npm i autobase`
 
-### Installation
+## Usage
 
-Install with [npm](https://www.npmjs.com/):
+```js
+const Corestore = require('corestore')
+const Autobase = require('autobase')
 
-```bash
-npm install autobase
-```
+const store = new Corestore('./some-dir')
+const local = new Autobase(store, remote.key, { apply, open })
+await local.ready()
 
->  Autobase is constructed from a known set of trusted input Hypercores. Authorizing these inputs is outside of the scope of Autobase -- this module is unopinionated about trust and assumes it comes from another channel.
+// on remote base
+// remote.append({ addWriter: local.local.key })
 
+await local.append('local 0')
 
-### API
+// remote.append('remote 0')
+// remote.append('remote 1')
 
-#### **`const base = new Autobase([options])`**
+await local.update()
+await local.append('local 1')
 
-Creates a new Autobase from a set of input/output Hypercores.
+for (let i = 0; i < local.view.length; i++) {
+  console.log(await local.view.get(i))
 
-The following table describes the properties of the optional `options` object.
+  /*
+  local 0
+  remote 0
+  remote 1
+  local 1
+  */
+}
 
-|      Property     | Description                                                                | Type      | Default |
-| :---------------: | -------------------------------------------------------------------------- | --------- | ------- |
-|    **`inputs`**   | The list of Hypercores for Autobase to linearize                           | Array     | `[]`    |
-|   **`outputs`**   | An optional list of output Hypercores containing linearized views          | Array     | `[]`    |
-|  **`localInput`** | The Hypercore that will be written to in base.append operations            | Hypercore | `null`  |
-| **`localOutput`** | A writable Hypercore that linearized views will be persisted into          | Hypercore | `null`  |
-|  **`autostart`**  | Creates a linearized view (base.view) immediately                           | Boolean   | `false` |
-|    **`apply`**    | Creates a linearized view (base.view) immediately using this apply function | Function  | `null`  |
-|    **`unwrap`**   | base.view.get calls will return node values only instead of full nodes     | Boolean   | `false` |
+// create the view
+function open (store) {
+  return store.get('test')
+}
 
-#### Properties
+// use apply to handle to updates
+async function apply (nodes, view, host) {
+  for (const { value } of nodes) {
+    if (value.addWriter) {
+      await host.addWriter(value.addWriter, { indexer: true })
+      continue
+    }
 
-#### **`base.inputs`** {#base.inputs}
-
-The list of input Hypercores.
-
-#### **`base.outputs`** {#base.outputs}
-
-The list of output Hypercores containing persisted linearized views.
-
-#### **`base.localInput`** {#base.localInput}
-
-If non-null, this Hypercore will be appended to in [base.append](autobase.md#base.append) operations.
-
-#### **`base.localOutput`** {#base.localoutput}
-
-If non-null `base.view` will be persisted into this Hypercore.
-
-#### **`base.started`** {#base.started}
-
-A Boolean indicating if `base.view` has been created.
-
-See the [linearized views section](autobase.md#linearized-views) for details about the `apply` option.
-
-> ℹ️ Prior to calling `base.start()`, `base.view` will be `null`.
-
-
-#### Methods
-
-#### **`const clock = base.clock()`** {#base.clock}
-
-Returns a Map containing the latest lengths for all Autobase inputs.
-
-The Map has the form: `(hex-encoded-key) -> (Hypercore length)`
-
-#### **`await Autobase.isAutobase(core)`** {#base.isautobase}
-
-Returns `true` if `core` is an Autobase input or an output.
-
-#### **`await base.append(value, [clock], [input])`** {#base.append}
-
-Append a new value to the autobase.
-
-* `clock`: The causal clock defaults to base.latest.
-
-#### **`const clock = await base.latest([input1, input2, ...])`** {#base.latest}
-
-Generate a causal clock linking the latest entries of each input.
-
-`latest` will update the input Hypercores (`input.update()`) prior to returning the clock.
-
-This is unlikely to be needed generally, prefer to use [`append`](autobase.md#await-baseappendvalue-clock-input) with the default clock:
-
-```javascript
-await base.append('hello world')
-```
-
-#### **`await base.addInput(input)`** {#base.addinput}
-
-Adds a new input Hypercore.
-
-* `input` must either be a fresh Hypercore, or a Hypercore that has previously been used as an Autobase input.
-
-#### **`await base.removeInput(input)`** {#base.removeinput}
-
-Removes an input Hypercore.
-
-* `input` must be a Hypercore that is currently an input.
-
-{% hint style="info" %}
-Removing an input, and then subsequently linearizing the Autobase into an existing output, could result in a large truncation operation on that output -- this is effectively 'purging' that input entirely.
-
-Future releases will see the addition of 'soft removal', which will freeze an input at a specific length, and no process blocks past that length, while still preserving that input's history in linearized views. For most applications, soft removal matches the intuition behind 'removing a user'.
-{% endhint %}
-
-#### **`await base.addOutput(output)`** {#base.addoutput}
-
-Adds a new output Hypercore.
-
-* `output` must be either a fresh Hypercore or a Hypercore that was previously used as an Autobase output.
-
-If `base.outputs` is not empty, Autobase will do 'remote linearizing': `base.view.update()` will treat these outputs as the 'trunk', minimizing the amount of local re-processing they need to do during updates.
-
-#### **`await base.removeOutput(output)`** {#base.removeoutput}
-
-Removes an output Hypercore. `output` can be either a Hypercore or a Hypercore key.
-
-* `output` must be a Hypercore, or a Hypercore key, that is currently an output (in `base.outputs`).
-
-### Streams
-
-In order to generate shareable linearized views, Autobase must first be able to generate a deterministic, causal ordering over all the operations in its input Hypercores.
-
-Every input node contains embedded causal information (a vector clock) linking it to previous nodes. By default, when a node is appended without additional options (i.e., `base.append('hello')`), Autobase will embed a clock containing the latest known lengths of all other inputs.
-
-Using the vector clocks in the input nodes, Autobase can generate two types of streams:
-
-#### Causal Streams
-
-Causal streams start at the heads (the last blocks) of all inputs, walk backward, and yield nodes with a deterministic ordering (based on both the clock and the input key) such that anybody who regenerates this stream will observe the same ordering, given the same inputs.
-
-They should fail in the presence of unavailable nodes -- the deterministic ordering ensures that any indexer will process input nodes in the same order.
-
-The simplest kind of linearized view (`const view = base.linearize()`), is just a Hypercore containing the results of a causal stream in reversed order (block N in the index will not be causally dependent on block N+1).
-
-#### **`const stream = base.createCausalStream()`** {#base.createcasualstream}
-
-Generate a Readable stream of input blocks with deterministic, causal ordering.
-
-Any two users who create an Autobase with the same set of inputs, and the same lengths (i.e., both users have the same initial states), and will produce identical causal streams.
-
-If an input node is causally-dependent on another node that is not available, the causal stream will not proceed past that node, as this would produce inconsistent output.
-
-#### Read Streams
-
-Similar to `Hypercore.createReadStream()`, this stream starts at the beginning of each input, and does not guarantee the same deterministic ordering as the causal stream. Unlike causal streams, which are used mainly for indexing, read streams can be used to observe updates. And as they move forward in time, they can be live.
-
-#### **`const stream = base.createReadStream([options])`** {#base.createreadstream}
-
-Generate a Readable stream of input blocks, from earliest to latest.
-
-Unlike `createCausalStream`, the ordering of `createReadStream` is not deterministic. The read stream only gives the guarantee that every node it yields will **not** be causally-dependent on any node yielded later.
-
-Read streams have a public property `checkpoint`, which can be used to create new read streams that resume from the checkpoint's position:
-
-```javascript
-const stream1 = base.createReadStream()
-// Do something with stream1 here
-const stream2 = base.createReadStream({ checkpoint: stream1.checkpoint }) // Resume from stream1.checkpoint
-```
-
-`createReadStream` can be passed two custom async hooks:
-
-* `onresolve`: Called when an unsatisfied node (a node that links to an unknown input) is encountered. Can be used to add inputs to the Autobase dynamically.
-  * Returning `true` indicates that new inputs were added to the Autobase, and so the read stream should begin processing those inputs.
-  * Returning `false` indicates that the missing links were not resolved, and so the node should be yielded immediately as is.
-* `onwait`: Called after each node is yielded. Can be used to add inputs to the Autobase dynamically.
-
-`options` include:
-
-| Property         | Description                                                                 | Type       | Default                         |
-| ---------------- | --------------------------------------------------------------------------- | ---------- | ------------------------------- |
-| **`live`**       | Enables live mode (the stream will continuously yield new nodes)             | Boolean    | `false`                         |
-| **`tail`**       | When in live mode, starts at the latest clock instead of the earliest        | Boolean    | `false`                         |
-| **`map`**        | A sync map function                                                         | Function   | `(node) => node`                |
-| **`checkpoint`** | Resumes from where a previous read stream left off (`readStream.checkpoint`) | Readstream | `null`                          |
-| **`wait`**       | If false, the read stream will only yield previously-downloaded blocks      | Boolean    | `true`                          |
-| **`onresolve`**  | A resolve hook (described above)                                            | Function   | `async (node) => true \| false` |
-| **`onwait`**     | A wait hook (described above)                                               | Function   | `async (node) => undefined`     |
-
-### Linearized Views
-
-Autobase is designed for computing and sharing linearized views over many input Hypercores. A linearized view is a 'merged' view over the inputs, giving a way of interacting with the N input Hypercores as though it were a single, combined Hypercore.
-
-These views, instances of the `LinearizedView` class, in many ways look and feel like normal Hypercores. They support `get`, `update`, and `length` operations.
-
-By default, a view is a persisted version of an Autobase's causal stream, saved into a Hypercore. But a lot more can be done with them: by passing a function into `linearize`'s `apply` option, we can define our own indexing strategies.
-
-Linearized views are incredibly powerful as they can be persisted to a Hypercore using the new `truncate` API added in Hypercore 10. This means that peers querying a multiwriter data structure don't need to read in all changes and apply them themself. Instead, they can start from an existing view that's shared by another peer. If that view is missing indexing any data from inputs, Autobase will create a 'view over the remote view', applying only the changes necessary to bring the remote view up-to-date. Best of all, is that this all happens automatically.
-
-#### Customizing Views with `apply`
-
-The default linearized view is just a persisted causal stream -- input nodes are recorded into an output Hypercore in causal order, with no further modifications. This minimally-processed view is useful on its own for applications that don't follow an event-sourcing pattern (i.e., chat), but most use cases involve processing operations in the inputs into indexed representations.
-
-To support indexing, `base.start` can be provided with an `apply` function that's passed batches of input nodes during rebasing, and can choose what to store in the output. Inside `apply`, the view can be directly mutated through the `view.append` method, and these mutations will be batched when the call exits.
-
-The simplest `apply` function is just a mapper, a function that modifies each input node and saves it into the view in a one-to-one fashion. Here's an example that uppercases String inputs, and saves the resulting view into an `output` Hypercore:
-
-```javascript
-base.start({
-  async apply (batch) {
-    batch = batch.map(({ value }) => Buffer.from(value.toString('utf-8').toUpperCase(), 'utf-8'))
-    await view.append(batch)
+    await view.append(value)
   }
-})
-// After base.start, the linearized view is available as a property on the Autobase
-await base.view.update()
-console.log(base.view.length)
-```
-
-#### View Creation
-
-#### **`base.start({ apply, unwrap } = {})`** {#base.start}
-
-Creates a new linearized view, and sets it on `base.view`. The view mirrors the Hypercore API wherever possible, meaning it can be used as a drop-in replacement for a Hypercore instance.
-
-Either call `base.start` manually when to start using `base.view`, or pass either `apply` or `autostart` options to the Autobase constructor. If these constructor options are present, Autobase will start immediately.
-
-When calling `base.start` manually, it must only be called once.
-
-`options` include:
-
-| Property     | Description                                            | Type     | Default         |
-| ------------ | ------------------------------------------------------ | -------- | --------------- |
-| **`unwrap`** | Set this to auto unwrap the gets to only return .value | Boolean  | `false`         |
-| **`apply`**  | The apply function described above                     | Function | `(batch) => {}` |
-
-#### **`view.status`** {#view.status}
-
-The status of the last linearize operation.
-
-Returns an object of the form `{ added: N, removed: M }` where:
-
-* `added` indicates how many nodes were appended to the output during the linearization
-* `removed` indicates how many nodes were truncated from the output during the linearization
-
-#### **`view.length`** {#view.length}
-
-The length of the view. Similar to `hypercore.length`.
-
-#### **`await view.update()`** {#view.update}
-
-Ensures the view is up-to-date.
-
-#### **`const entry = await view.get(idx, [options])`** {#view.get}
-
-Gets an entry from the view. If set `unwrap` to true, it returns `entry.value`. Otherwise, it returns an entry similar to this:
-
-```javascript
-{
-  clock, // the causal clock this entry was created at
-  value // the value that is stored here
 }
 ```
 
-#### **`await view.append([blocks])`** {#view.append}
+### Ordering
 
-This operation can only be performed inside the `apply` function.
+Autobase writer nodes explicitly reference previous nodes creating a causal directed acyclic graph (DAG). The nodes are linearized by analyzing the causal references so:
+
+1. Nodes never precede nodes they reference.
+2. Ordering is eventually consistent.
+
+### Reordering
+
+As new causal information comes in, existing nodes may be reordered when causal forks occur. Any changes to the view will be undone and reapplied on top of the new ordering.
+
+### Signed Length
+
+The linearizing algorithm is able to define checkpoints after which the ordering of the graph will never change. This point advances continually, so long as a majority set of indexers are writing messages. These checkpoints allow peers who are behind to catchup quickly and reduce the need to reorder nodes.
+
+### Views
+
+A view is one or more hypercores whose contents are created by deterministically applying the linearized nodes from writers. The view represents the combined history of all writers' inputs or the current state of the system as a whole.
+
+Autobase accepts an `open` function for creating views and an `apply` function that can be used to update the views based on the writer nodes.
+
+```js
+function open (store) {
+  return store.get('my-view')
+}
+```
+
+```js
+async function apply (nodes, view, host) {
+  for (const n of nodes) await view.append(n)
+}
+```
+
+*IMPORTANT*: Autobase messages may be reordered as new data becomes available. Updates will be undone and reapplied internally. So it is important that the `open` handler returns a data structure only derived from its `store` object argument and that while updating the view in the `apply` function, the `view` argument is the only data structure being update and that its fully deterministic. If any external data structures are used, these updates will not be correctly undone.
+
+## API
+
+### Autobase
+
+#### `const base = new Autobase(store, bootstrap, opts)`
+
+Instantiate an Autobase.
+
+If loading an existing Autobase then set `bootstrap` to `base.key`, otherwise pass `bootstrap` as null or omit.
+
+`opts` takes the following options:
+
+```js
+{
+  open: (store, host) => { ... }, // create the view
+  apply: async (nodes, view, host) => { ... }, // handle nodes to update view
+  optimistic: false, // Autobase supports optimistic appends
+  close: async view => { ... }, // close the view
+  valueEncoding, // encoding
+  ackInterval: 1000 // enable auto acking with the interval
+  encryptionKey: buffer, // Key to encrypt the base
+  encrypt: false, // Encrypt the base if unencrypted & no encryptionKey is set
+  encrypted: false, // Expect the base to be encrypted, will throw an error otherwise, defaults to true if encryptionKey is set
+  fastForward: true, // Enable fast forwarding. If passing { key: base.core.key }, they autobase will fastforward to that key first.
+  wakeup: new ProtomuxWakeup(), // Set a custom wakeup protocol for hinting which writers are active, see `protomux-wakeup` for protocol details
+}
+```
+
+An `ackInterval` may be set to enable automatic acknowledgements. When enabled, in cases where it would help the linearizer converge, the base shall eagerly append `null` values to merge causal forks.
+
+Setting an autobase to be `optimistic` means that writers can append an `optimistic` block even when they are not a writer. For a block to be optimistically applied to the view, the writer must be acknowledge via `host.ackWriter(key)`.
+
+_Note:_ Optimistic blocks should self verify in the `apply` handler to prevent unintended writers from appending blocks to exploit the system. If the `apply` handler does not have a way to verify optimistic blocks, any writer could append blocks even when not added to the system.
+
+```js
+const base = new Autobase(store, bootstrap, {
+  optimistic: true,
+  async apply (nodes, view, host) {
+    for (const node of nodes) {
+      const { value } = node
+      // Verify block
+      if (value.password !== 'secrets') continue
+
+      // Acknowledge only even numbers
+      if (value.num % 2 === 0) await host.ackWriter(node.from.key)
+
+      await view.append(value.num)
+    }
+  }
+})
+
+// Passing the password 'secrets' represents being verifiable
+await base.append({ num: 3, password: 'secrets' }, { optimistic: true }) // will not be applied because `ackWriter` isnt called
+await base.append({ num: 2, password: 'secrets' }, { optimistic: true }) // will be applied
+await base.append({ num: 4, password: 'incorrect' }, { optimistic: true }) // will not be applied because the block isn't verifiable
+```
+
+#### `base.key`
+
+The primary key of the autobase.
+
+#### `base.discoveryKey`
+
+The discovery key associated with the autobase.
+
+#### `base.isIndexer`
+
+Whether the instance is an indexer.
+
+#### `base.writable`
+
+Whether the instance is a writer for the autobase.
+
+#### `base.view`
+
+The view of the autobase derived from writer inputs. The view is created in the `open` handler and can have any shape. The most common `view` is a [hyperbee](https://github.com/holepunchto/hyperbee).
+
+#### `base.length`
+
+The length of the system core. This is neither the length of the local writer nor the length of the view. The system core tracks the autobase as a whole.
+
+#### `base.signedLength`
+
+The index of the system core that has been signed by a quorum of indexers. The system up until this point will not change.
+
+#### `base.paused`
+
+Returns `true` if the autobase is currently paused, otherwise returns `false`.
+
+#### `await base.append(value, opts)`
+
+Append a new entry to the autobase.
+
+Options include:
+
+```
+{
+  optimistic: false // Allow appending on an optimistic autobase while not a writer
+}
+```
+
+#### `await base.update()`
+
+Fetch all available data and update the linearizer.
+
+#### `await base.ack(bg = false)`
+
+Manually acknowledge the current state by appending a `null` node that references known head nodes. `null` nodes are ignored by the `apply` handler and only serve as a way to acknowledge the current linearized state. Only indexers can ack.
+
+If `bg` is set to `true`, the ack will not be appended immediately but will set the automatic ack timer to trigger as soon as possible.
+
+#### `const hash = await base.hash()`
+
+Returns the hash of the system core's merkle tree roots.
+
+#### `const stream = base.replicate(isInitiator || stream, opts)`
+
+Creates a replication stream for replicating the autobase. Arguments are the same as [corestores's `.replicate()`](https://github.com/holepunchto/corestore?tab=readme-ov-file#const-stream--storereplicateoptsorstream).
+
+```js
+const swarm = new Hyperswarm()
+
+// Join a topic
+swarm.join(base.discoveryKey)
+
+swarn.on('connection', (connection) => store.replicate(connection))
+```
+
+#### `const heads = base.heads()`
+
+Gets the current writer heads. A writer head is a node which has no causal dependents, aka it is the latest write. If there is more than one head, there is a causal fork which is pretty common.
+
+#### `await base.pause()`
+
+Pauses the autobase prevent the next apply from running.
+
+#### `await base.resume()`
+
+Resumes a paused autobase and will check for an update.
+
+#### `const core = Autobase.getLocalCore(store, handlers, encryptionKey)`
+
+Generate a local core to be used for an Autobase.
+
+`handlers` are any options passed to `store` to get the core.
+
+#### `const { referrer, view } = Autobase.getUserData(core)`
+
+Get user data associated with an autobase `core`. `referrer` is the `.key` of the autobase the `core` is from. `view` is the `name` of the view.
+
+#### `const isBase = Autobase.isAutobase(core, opts)`
+
+Returns whether the core is an autobase core. `opts` are the same options as [core.get(index, opts)](https://github.com/holepunchto/hypercore?tab=readme-ov-file#const-block--await-coregetindex-options).
+
+#### `base.on('update', () => { ... })`
+
+Triggered when the autobase view updates after `apply` has finished running.
+
+#### `base.on('interrupt', (reason) => { ... })`
+
+Triggered when `host.interrupt(reason)` is called in the `apply` handler. See [`host.interrupt(reason)`](#hostinterruptreason) for when interrupts are used.
+
+#### `base.on('fast-forward', (to, from) => { ... })`
+
+Triggered when the autobase fast forwards to a state already with a quorum. `to` and `from` are the `.signedLength` after and before the fast forward respectively.
+
+Fast forwarding speeds up an autobase catching up to peers.
+
+#### `base.on('is-indexer', () => { ... })`
+
+Triggered when the autobase instance is an indexer.
+
+#### `base.on('is-non-indexer', () => { ... })`
+
+Triggered when the autobase instance is not an indexer.
+
+#### `base.on('writable', () => { ... })`
+
+Triggered when the autobase instance is now a writer.
+
+#### `base.on('unwritable', () => { ... })`
+
+Triggered when the autobase instance is no longer a writer.
+
+#### `base.on('warning', (warning) => { ... })`
+
+Triggered when a warning is triggered.
+
+#### `base.on('error', (err) => { ... })`
+
+Triggered when an error is triggered while updating the autobase.
+
+### `AutoStore`
+
+Each autobase creates a `AutoStore` which is used to create views. The store is passed to the `open` function.
+
+#### `const core = store.get(name || { name, valueEncoding })`
+
+Load a `Hypercore` by name (passed as `name`). `name` should be passed as a string.
+
+### `AutobaseHostCalls`
+
+An instance of this is passed to `apply` and can be used to invoke the following side effects on the base itself.
+
+#### `await host.addWriter(key, { indexer = true })`
+
+Add a writer with the given `key` to the autobase allowing their local core to append. If `indexer` is `true`, it will be added as an indexer.
+
+#### `await host.removeWriter(key)`
+
+Remove a writer from the autobase. This will throw if the writer cannot be removed.
+
+#### `await host.ackWriter(key)`
+
+Acknowledge a writer even if they haven't been added before. This is most useful for applying `optimistic` blocks from writers that are not currently a writer.
+
+#### `host.interrupt(reason)`
+
+Interrupt the applying of writer blocks optionally giving a `reason`. This will emit an `interrupt` event passing the `reason` to the callback and close the autobase.
+
+Interrupts are an escape hatch to stop the apply function and resolve the issue by updating your apply function to handle it. A common scenario is adding a new block type that an older peer gets from a newer peer.
+
+#### `host.removeable(key)`
+
+Returns whether the writer for the given `key` can be removed. The last indexer cannot be removed.
