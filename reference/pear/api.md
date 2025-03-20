@@ -23,14 +23,11 @@ Contains application configuration data.
 
 ### `Pear.config.key <Object|null>`
 
-The application key, `null` in development mode.
 The `config.key` object holds both Hexadecimal and Z-Base-32 encodings of the key, and is of the form `{ z32: <String>, hex: <String> }`,
 
 ### `Pear.config.dev <Boolean>`
 
-Application is local (loaded from disk).
-
-Equivalent to `pear.config.key === null`.
+Whether the application is in development mode.
 
 ### `Pear.config.tier <String>`
 
@@ -50,7 +47,7 @@ Application entry file
 
 ### `Pear.config.channel <String|null>`
 
-Application release/staging channel, `null` in development mode.
+Application release/staging channel.
 
 ### `Pear.config.options <Object>`
 
@@ -145,7 +142,7 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 ### `Pear.config.release <Integer>`
 
-Application release sequence integer, `null` in development mode.
+Application release sequence integer.
 
 ### `Pear.config.flags <Object>`
 
