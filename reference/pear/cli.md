@@ -63,7 +63,6 @@ Specify channel or link to seed a project or a remote link to reseed.
 
 ```
   --json                    Newline delimited JSON output
-  --seeders|-s              Additional public keys to seed from
   --name                    Advanced. Override app name
   --verbose|-v              Additional output
   --no-ask                  Suppress permissions dialogs
