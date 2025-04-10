@@ -100,9 +100,8 @@ const core = store.get({ key, valueEncoding: 'json' })
 // wait till all the properties of the hypercore instance are initialized
 await core.ready()
 
-const foundPeers = core.findingPeers()
 swarm.join(core.discoveryKey)
-swarm.flush().then(() => foundPeers())
+await swarm.flush()
 
 // update the meta-data of the hypercore instance
 await core.update()

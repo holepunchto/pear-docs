@@ -128,11 +128,8 @@ const mirror = debounce(mirrorDrive)
 // to the Hypercore instance of the hyperdrive
 drive.core.on('append', mirror)
 
-const foundPeers = store.findingPeers()
-
 // join a topic
 swarm.join(drive.discoveryKey, { client: true, server: false })
-swarm.flush().then(() => foundPeers())
 
 // start the mirroring process (i.e copying the contents from remote drive to local dir)
 mirror()
@@ -198,9 +195,8 @@ const bee = new Hyperbee(core, {
 // wait till the properties of the hypercore instance are initialized
 await core.ready()
 
-const foundPeers = store.findingPeers()
 swarm.join(core.discoveryKey)
-swarm.flush().then(() => foundPeers())
+await swarm.flush()
 
 // execute the listBee function whenever the data is appended to the underlying hypercore
 core.on('append', listBee)

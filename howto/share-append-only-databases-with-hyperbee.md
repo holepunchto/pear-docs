@@ -192,10 +192,9 @@ const core = store.get({ key: b4a.from(key, 'hex') })
 // wait till the properties of the hypercore instance are initialized
 await core.ready()
 
-const foundPeers = store.findingPeers()
 // join a topic
 swarm.join(core.discoveryKey)
-swarm.flush().then(() => foundPeers())
+await swarm.flush()
 
 // update the meta-data information of the hypercore instance
 await core.update()
