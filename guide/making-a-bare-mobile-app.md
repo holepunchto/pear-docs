@@ -52,6 +52,13 @@ touch backend/backend.mjs
 
 Our React Native UI code will go in the existing `app/index.tsx` file.
 
+Finally we will use an RPC to communicate between React Native and the Pear-end.
+To define a common set of command ids we create a `rpc-commands.mjs`.
+
+```bash
+touch rpc-commands.mjs
+```
+
 ## Building the Application
 
 ### Building the UI
@@ -77,6 +84,7 @@ import { Worklet } from 'react-native-bare-kit'
 import bundle from './app.bundle'
 import RPC from 'bare-rpc'
 import b4a from 'b4a'
+import { RPC_RESET, RPC_MESSAGE } from '../rpc-commands.mjs'
 
 type PasswordEntry = {
   username: string
@@ -99,7 +107,7 @@ export default function App() {
     new RPC(IPC, (req) => {
       // Handle incoming RPC requests
 
-      if (req.command === 'message') {
+      if (req.command === RPC_MESSAGE) {
         const data = b4a.toString(req.data)
         const parsedData = JSON.parse(data) // Assuming data is a JSON string
         const entry: PasswordEntry = {
@@ -111,7 +119,7 @@ export default function App() {
         setDataList((prevDataList) => [...prevDataList, entry])
       }
 
-      if (req.command === 'reset') {
+      if (req.command === RPC_RESET) {
         setDataList(() => [])
       }
     })
@@ -202,6 +210,7 @@ Add the following code to `backend/backend.mjs`:
 
 import RPC from 'bare-rpc'
 import fs from 'bare-fs'
+import { RPC_RESET, RPC_MESSAGE } from '../rpc-commands.mjs'
 
 import Autopass from 'autopass'
 import Corestore from 'corestore'
@@ -232,18 +241,25 @@ const pass = await pair.finished()
 await pass.ready()
 
 pass.on('update', async (e) => {
-  const req = rpc.request('reset')
+  const req = rpc.request(RPC_RESET)
   req.send('data')
 
   for await (const data of pass.list()) {
     const value = JSON.parse(data.value)
 
     if (value[0] === 'password') {
-      const req = rpc.request('message')
+      const req = rpc.request(RPC_MESSAGE)
       req.send(JSON.stringify(value))
     }
   }
 })
+```
+
+Finally define the RPC command enums in `rpc-commands.mjs`:
+
+```js
+export const RPC_RESET = 0
+export const RPC_MESSAGE = 1
 ```
 
 ## Bundling the Pear-end
@@ -348,7 +364,7 @@ new RPC(IPC, (req) => {
 To that end, we create an RPC passing it the IPC stream and defining an `onrequest` callback for when a request is received from the other end.
 
 ```typescript
-if (req.command === 'message') {
+if (req.command === RPC_MESSAGE) {
   const data = b4a.toString(req.data)
   const parsedData = JSON.parse(data) // Assuming data is a JSON string
   // Use the parsedData...
@@ -383,7 +399,7 @@ const pair = Autopass.pair(new Corestore(path), invite)
 Start the pairing process with the other Autopass instance using the invite passed to the worklet. Checkout the `autopass` [README](https://github.com/holepunchto/autopass) to learn more.
 
 ```js
-const req = rpc.request('reset')
+const req = rpc.request(RPC_RESET)
 req.send('data')
 ```
 
