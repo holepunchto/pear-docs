@@ -40,10 +40,11 @@ Alias for: `pear run --dev <dir>`
 
 Synchronize local changes to channel or key.
 
-Channel name must be specified on first stage,
-in order to generate the initial key.
+Channel name must be specified on first stage, in order to generate the initial key. This key is unique to the combination of the application name, the channel name and the device's unique corestore key. This means the key does not change after the first time the channel is staged.
 
 Outputs diff information and project link.
+
+Each time new changes are staged, the length of the channel or key will update. This change can replicated to any peers who know the key and is connected. If they were to run `pear info <key>`, they will see the `length` update even if the application is not being seeded.
 
 ```
   --json                      Newline delimited JSON output
