@@ -133,7 +133,18 @@ Use this to indicate production release points. Once a channel or link has been 
   --checkout=n|current     Set a custom release length (version)
   --help|-h                Show help
 ```
-  
+
+Releases can be rolled back to a previous length using the `--checkout` flag. For example:
+
+- Release "A" for channel `production` was at length `500`
+- Release "B" for channel `production` was at length `505`
+
+The release can be rolled back to "A" (aka length `500`) via the following command:
+
+```console
+pear release --checkout 500 production
+```
+
 ## `pear info [link|channel]`
 
 Read project information.
