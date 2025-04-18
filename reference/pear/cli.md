@@ -44,7 +44,7 @@ Channel name must be specified on first stage, in order to generate the initial 
 
 Outputs diff information and project link.
 
-Each time new changes are staged, the length of the channel or key will update. This change can replicated to any peers who know the key and is connected. If they were to run `pear info <key>`, they will see the `length` update even if the application is not being seeded.
+Each time new changes are staged, the length for the channel / link will update. This change can be replicated to any peer who know the link and is connected. If they run `pear info <link>`, they will see the `length` update even if the application is not being seeded. Connections can potentially linger after seeding an application but will eventually close.
 
 ```
   --json                      Newline delimited JSON output
