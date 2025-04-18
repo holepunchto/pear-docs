@@ -126,7 +126,7 @@ Set production release version.
 
 Set the release pointer against a version (default latest).
 
-Use this to indicate production release points.
+Use this to indicate production release points. Once a channel or link has been released (setting a pointer for a given version) running the application (via `pear run <link>`) will load the application at the released version even if more changes were staged.
 
 ```
   --json                   Newline delimited JSON output
