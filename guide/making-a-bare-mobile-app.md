@@ -237,6 +237,7 @@ fs.mkdirSync(path)
 const invite = Bare.argv[1]
 const pair = Autopass.pair(new Corestore(path), invite)
 const pass = await pair.finished()
+Bare.on('teardown', () => pass.close())
 
 await pass.ready()
 
