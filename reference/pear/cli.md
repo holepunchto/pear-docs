@@ -134,7 +134,9 @@ Use this to indicate production release points. Once a channel or link has been 
   --help|-h                Show help
 ```
 
-Releases can be rolled back to a previous length using the `--checkout` flag. For example:
+### Release rollbacks
+
+Releases can generally be rolled back in one of two ways. First by updating the release pointer to a previous length using the `--checkout` flag. For example:
 
 - Release "A" for channel `production` was at length `500`
 - Release "B" for channel `production` was at length `505`
@@ -144,6 +146,10 @@ The release can be rolled back to "A" (aka length `500`) via the following comma
 ```console
 pear release --checkout 500 production
 ```
+
+This method doesn't add any file changes so will not show update diffs from the previous release version.
+
+The second approach is dumping the files from the previous version and staging and rereleasing the new version. This appends file changes so is heavier than just changing the release pointer, but shows update diffs and fits the [dump-stage-release strategy](../../guide/releasing-a-pear-app.md) approach since updates to the `production` channel are applied by dumping from another channel or link.
 
 ## `pear info [link|channel]`
 
