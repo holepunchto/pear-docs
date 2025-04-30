@@ -24,8 +24,12 @@ const bridge = new Bridge()
 await bridge.ready()
 
 const pipe = runtime.start({ bridge })
-Pear.teardown(() => pipe.end())
+// use pipe duplex stream for communication with ui
 ```
+
+On the UI the other side of the pipe can be accessed via `Pear.pipe`.
+Passing the `pipe` to an RPC library, such as `bare-rpc` allows for an architecture where application logic is in the Pearend (entrypoint app) with the UI containing only UI logic.
+
 
 ### Verify migration
 
