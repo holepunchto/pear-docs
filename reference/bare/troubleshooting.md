@@ -4,15 +4,15 @@ The article aims to help troubleshooting confusing scenarios while developing Ba
 
 ## Missing builtin Modules when Running with Bare
 
-Bare is minimal by design, so does not include all of the modules provided with Nodejs. Instead modules such as `process` can be imported as a Bare specific module, for example `bare-process`. For a list of Nodejs builtins and their Bare replacements, check out `bare-node`'s ["Modules" table](https://github.com/holepunchto/bare-node?tab=readme-ov-file#modules)
+Bare is minimal by design, so does not include all of the modules provided with Node.js. Instead modules such as `process` can be imported as a Bare specific module, for example `bare-process`. For a list of Node.js builtins and their Bare replacements, check out `bare-node`'s ["Modules" table](https://github.com/holepunchto/bare-node?tab=readme-ov-file#modules)
 
-### Writing a module with Support for Bare & Nodejs
+### Writing a module with Support for Bare & Node.js
 
-If writing a library that can be run in both the Bare and Nodejs runtimes, import maps should be used to support both the Bare version and the Nodejs version of builtin modules. Import maps only apply to the `package.json`'s module so does not modify dependencies of the module.
+If writing a library that can be run in both the Bare and Node.js runtimes, import maps should be used to support both the Bare version and the Node.js version of builtin modules. Import maps only apply to the `package.json`'s package so does not modify dependencies of the module.
 
 See [`bare-node`'s "Import maps"](https://github.com/holepunchto/bare-node?tab=readme-ov-file#import-maps) for more details.
 
-### Running 3rd Party Modules Written for Nodejs
+### Running 3rd Party Modules Written for Node.js
 
 To update dependencies to support only the Bare version of builtins, an alias can be used to set a builtin to a wrapper module. For example to use `bare-net` where ever `net` is used in dependencies, install it as an alias:
 

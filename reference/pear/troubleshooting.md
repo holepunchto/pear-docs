@@ -50,15 +50,15 @@ There can be many reasons but here are a few common reasons:
 
 ## Running Bare modules in Pear Desktop Applications
 
-For now this is not possible because Pear desktop applications run in Electron which uses Nodejs integration. Pear v2 will unify running Pear applications in Bare with Electron as a UI module. This way the main application will be defined as a "Pear-end" process that can be shared across different versions of the application such as CLI, GUI, mobile, etc.
+For now this is not possible because Pear desktop applications run in Electron which uses Node.js integration. Pear v2 will unify running Pear applications in Bare with Electron as a UI module. This way the main application will be defined as a "Pear-end" process that can be shared across different versions of the application such as CLI, GUI, mobile, etc.
 
 Running a Bare module will give you one of the following errors:
 
 - `Uncaught TypeError: require.addon is not a function`
 - `Uncaught ReferenceError: Bare is not defined`
 
-To support both Bare and Nodejs compatible modules, import maps can be defined
-so a module `fs` can be resolved to `bare-fs` on Bare and `fs` on Nodejs.
+To support both Bare and Node.js compatible modules, import maps can be defined
+so a module `fs` can be resolved to `bare-fs` on Bare and `fs` on Node.js.
 
 ```
 {
