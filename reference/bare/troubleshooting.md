@@ -20,6 +20,8 @@ To update dependencies to support only the Bare version of builtins, an alias ca
 npm i bare-net net@npm:bare-node-net
 ```
 
+See [Consuming dependencies using NPM Aliases](./nodejs-compatibility-with-bare#consuming-dependencies-using-npm-aliases) for more info.
+
 For compatibility and to support builtin globals, such as `process`, the corresponding `bare-*` module will include a `/global.js` submodule that sets the global variable to `global`. This is useful when importing modules that assume the global variable exists. It is not recommended to use global variables when writing new code as it is less flexible and a harder to upgrade piecemeal.
 
 Usage of a globals submodule looks like:
