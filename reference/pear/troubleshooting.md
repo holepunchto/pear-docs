@@ -19,3 +19,19 @@ If after debugging an application it seems the issue is happening in the Pear pl
    - For sidecar: `sidecar.crash.log`
    - For electron: `electron-main.crash.log`
    - For pear cli: `cli.crash.log`
+
+## You get a `Error: While lock File .. Resource temporarily unavailable`
+
+The Error:
+```
+Uncaught (in promise) Error: While lock file: ./pear/app-storage/by-random/.../db/LOCK: Resource temporarily unavailable
+    at Object.onopen (pear://dev/node_modules/rocksdb-native/lib/state.js:155:27)
+```
+
+Means the application is trying to open a RockDB instance on files currently
+locked by another process. This means either:
+
+- An application is trying to open the same storage twice.  
+  If using `Corestore`, it is recommended to only create only one instance and
+  reusing it.
+- There are multiple of processes running for the same application.
