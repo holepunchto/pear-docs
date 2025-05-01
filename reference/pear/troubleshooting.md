@@ -35,3 +35,16 @@ locked by another process. This means either:
   If using `Corestore`, it is recommended to only create only one instance and
   reusing it.
 - There are multiple of processes running for the same application.
+
+## Joining a Hyperswarm Topic takes a long time
+
+There can be many reasons but here are a few common reasons:
+
+- Random NAT networks take longer as another node needs to facility the
+  connection.
+- A firewall is blocking the traffic.  
+  Please let Holepunch know if this is the case.
+- Not destroying the hyperswarm instance in the `Pear.teardown()` callback so
+  Hyperswarm can unannounce and clean up the DHT.  
+  It's recommended to clean up the hyperswarm instance with `swarm.destroy()` before exiting the application. This prevents conflicting records in the DHT for the application's peer which cause it take longer to join a topic.
+
