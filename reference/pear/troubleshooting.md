@@ -48,3 +48,34 @@ There can be many reasons but here are a few common reasons:
   Hyperswarm can unannounce and clean up the DHT.  
   It's recommended to clean up the hyperswarm instance with `swarm.destroy()` before exiting the application. This prevents conflicting records in the DHT for the application's peer which cause it take longer to join a topic.
 
+## Running Bare modules in Pear Desktop Applications
+
+For now this is not possible because Pear desktop applications run in Electron which uses Nodejs integration. Pear v2 will unify running Pear applications in Bare with Electron as a UI module. This way the main application will be defined as a "Pear-end" process that can be shared across different versions of the application such as CLI, GUI, mobile, etc.
+
+Running a Bare module will give you one of the following errors:
+
+- `Uncaught TypeError: require.addon is not a function`
+- `Uncaught ReferenceError: Bare is not defined`
+
+To support both Bare and Nodejs compatible modules, import maps can be defined
+so a module `fs` can be resolved to `bare-fs` on Bare and `fs` on Nodejs.
+
+```
+{
+  "imports": {
+    "fs": {
+      "bare": "bare-fs",
+      "default": "fs"
+    },
+    "fs/*": {
+      "bare": "bare-fs/*",
+      "default": "fs/*"
+    }
+  },
+  "dependencies": {
+    "bare-fs": "^2.1.5"
+  }
+}
+```
+
+See [`bare-node`'s "Import maps"](https://github.com/holepunchto/bare-node?tab=readme-ov-file#import-maps) for more details.
