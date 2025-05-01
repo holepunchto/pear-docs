@@ -28,3 +28,45 @@ Usage of a globals submodule looks like:
 require('bare-process/global')
 console.log('platform', process.platform) // now prints
 ```
+
+## `bare-pack` with conditional module loading
+
+[`bare-pack`](https://github.com/holepunchto/bare-pack) does not evaluate your code but scans for imports. This means it cannot infer dynamic imports but assumes all imports will be loaded for the target platform. For example:
+
+```
+const { runtime } = require('which-runtime')
+
+let crypto
+if (runtime === 'bare') {
+  crypto = require('bare-crypto')
+} else {
+  crypto = require('node:crypto')
+}
+```
+
+Will thrown:
+
+```
+./node_modules/paparam/index.js:514
+    throw new Bail(bail.reason)
+          ^
+
+Bail: ModuleTraverseError: MODULE_NOT_FOUND: Cannot find module 'node:crypto' imported from 'file://./index.js'
+    at exports.imports (./node_modules/bare-module-traverse/index.js:331:24)
+    at exports.imports.next (<anonymous>)
+    at exports.module (./node_modules/bare-module-traverse/index.js:152:18)
+    at exports.module.next (<anonymous>)
+    at process (./node_modules/bare-pack/index.js:50:26)
+    at async pack (./node_modules/bare-pack/index.js:24:3)
+    at async Command._runner (./node_modules/bare-pack/bin.js:46:18)
+    at async runAsync (./node_modules/paparam/index.js:793:5)
+    at Command._bail (./node_modules/paparam/index.js:514:11)
+    at Command.bail (./node_modules/paparam/index.js:127:36)
+    at runAsync (./node_modules/paparam/index.js:795:7)
+```
+
+This is because it is trying to pack `node:crypto` for Bare which isn't possible.
+
+Instead of dynamic conditions based on runtime environment, modules should have an import map defined to use the correct module for the given runtime.
+
+See [`bare-node`'s "Import maps"](https://github.com/holepunchto/bare-node?tab=readme-ov-file#import-maps) for more details.
