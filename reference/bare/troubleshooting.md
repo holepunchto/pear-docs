@@ -38,7 +38,7 @@ As the error suggests, this is because the native addon cannot be found. This co
 A few reasons why an addon may be missing:
 
 - The addon is not available for the current platform and/or architecture.  
-  To see what platform and architecture Bare is running on, log `Bare.platform` and `Bare.arch`
+  To see what platform and architecture Bare is running on, log `Bare.platform` and `Bare.arch`.
 - The addon wasn't linked ahead of time.  
   Mobile applications require native code to be linked as part of compiling the application.
 
