@@ -31,6 +31,21 @@ require('bare-process/global')
 console.log('platform', process.platform) // now prints
 ```
 
+## `AddonError: ADDON_NOT_FOUND: Cannot find addon` when running Bare
+
+As the error suggests, this is because the native addon cannot be found. This could either be because the addon is missing or Bare is looking in a different place than expected.
+
+A few reasons why an addon may be missing:
+
+- The addon is not available for the current platform and/or architecture.  
+  To see what platform and architecture Bare is running on, log `Bare.platform` and `Bare.arch`
+- The addon wasn't linked ahead of time.  
+  Mobile applications require native code to be linked as part of compiling the application.
+
+  If developing with `react-native-bare-kit` (including using `bare-expo` as a template), check that the addon was loaded in `node_modules/react-native-bare-kit/ios/addons` for iOS and `node_modules/react-native-bare-kit/android/src/main/addons` for Android. This is where the libraries are linked from.
+
+  If other solutions are not working, it may be an issue with the build cache. Try clearing the cache and recompiling.
+
 ## `bare-pack` with conditional module loading
 
 [`bare-pack`](https://github.com/holepunchto/bare-pack) does not evaluate your code but scans for imports. This means it cannot infer dynamic imports but assumes all imports will be loaded for the target platform. For example:
