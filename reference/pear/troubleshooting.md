@@ -1,4 +1,4 @@
-# Troubleshooting
+# Troubleshooting Applications
 
 The article aims to help troubleshooting confusing scenarios while developing Pear applications.
 
