@@ -4,7 +4,7 @@ The article aims to help troubleshooting confusing scenarios while developing Pe
 
 ## `Pear.teardown` Callback Fires But Worker Keeps Running
 
-The Pear.teardown callback is triggered whenever the Pear app start to unload. If it is not exiting, then something is keeping the applications event loop running. A common cause of this is not cleaning up the [worker pipe](./api.md#const-pipe-pear.worker.pipe) by calling `pipe.end()` to gracefully end the writable part of the stream.
+The `Pear.teardown(cb)` callback is triggered whenever the Pear app start to unload. If it is not exiting, then something is keeping the applications event loop running. A common cause of this is not cleaning up the [worker pipe](./api.md#const-pipe-pear.worker.pipe) by calling `pipe.end()` to gracefully end the writable part of the stream.
 
 ## `pear run` Exits Without Running the Application
 
@@ -12,8 +12,8 @@ If after debugging an application it seems the issue is happening in the Pear pl
 
 1. Run pear app with logs enabled `pear --log run -d .`.
 2. If no helpful info, run sidecar with logs `pear sidecar --log-level 3`.  
-   If the `pear sidecar` stops after printing `Closing any current Sidecar clients...`, then the current Pear Sidecar process is hanging. Check the next steps for forensics that might explain why, but then kill existing Pear processes.
-   Note that this will close any running pear applications such as Keet.
+   If the `pear sidecar` stops after printing `Closing any current Sidecar clients...`, then the current Pear Sidecar process is hanging. Check the next steps for forensics that might explain why, but then kill existing Pear processes.  
+   _Note_ that this will close any running pear applications such as Keet.
 3. If still no helpful info, check that there are still pear processes running via `ps aux | grep pear` or equivalent method for finding processes by name.
 4. Finally check the crash logs in platform's `current` directory.
    - For sidecar: `sidecar.crash.log`
@@ -40,13 +40,21 @@ locked by another process. This means either:
 
 There can be many reasons but here are a few common reasons:
 
-- Random NAT networks take longer as another node needs to facility the
-  connection.
-- A firewall is blocking the traffic.  
-  Please let Holepunch know if this is the case.
+- Random NAT networks can take longer as another node may be needed to facility the connection.
 - Not destroying the hyperswarm instance in the `Pear.teardown()` callback so
   Hyperswarm can unannounce and clean up the DHT.  
-  It's recommended to clean up the hyperswarm instance with `swarm.destroy()` before exiting the application. This prevents conflicting records in the DHT for the application's peer which cause it take longer to join a topic.
+  It's recommended to clean up the hyperswarm instance with `swarm.destroy()` before exiting the application. This prevents conflicting records in the DHT for the application's peer which cause it take longer to join a topic.  
+
+  Example:
+  ```js
+  Pear.teardown(() => swarm.destroy())
+  ```
+
+  Make sure to unregister the teardown callback if the swarm is destroyed
+  prematurely.
+
+- A firewall is blocking the traffic.  
+  Please let Holepunch know if this is the case.
 
 ## Running Bare modules in Pear Desktop Applications
 
