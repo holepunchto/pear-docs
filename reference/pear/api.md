@@ -380,7 +380,7 @@ Functions supplied to teardown will be executed in order of registration when
 an application begins to unload. Any promise returned from each supplied function
 will be waited upon until resolution before calling the next teardown handler.
 
-### Pear.reload()
+### `Pear.reload()`
 
 Refresh application in Desktop applications. Not available in terminal
 applications.
