@@ -14,7 +14,7 @@ See [`bare-node`'s "Import maps"](https://github.com/holepunchto/bare-node?tab=r
 
 ### Running 3rd Party Modules Written for Node.js
 
-To update dependencies to support the Bare version of Node.js builtins (eg. `fs`, `os`, etc), an alias can be used to point to a wrapper module. For example to use `bare-net` where ever `net` is used in dependencies, install it as an alias:
+To support dependencies that rely on Node.js builtins (eg. `fs`, `os`, etc), an alias can be used to point to a wrapper module to use the Bare version. For example to use `bare-net` where ever `net` is used in dependencies, install it as an alias:
 
 ```
 npm i bare-net net@npm:bare-node-net
