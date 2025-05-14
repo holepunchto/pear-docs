@@ -10,7 +10,7 @@ The `Pear.teardown(cb)` callback is triggered whenever the Pear app start to unl
 
 If after debugging an application it seems the issue is happening in the Pear platform itself, try the following steps to debug the issue:
 
-1. Run pear app with logs enabled `pear --log run -d .`.
+1. Run pear app with logs enabled `pear --log run .`.
 2. If no helpful info, run sidecar with logs `pear sidecar --log-level 3`.  
    If the `pear sidecar` stops after printing `Closing any current Sidecar clients...`, then the current Pear Sidecar process is hanging. Check the next steps for forensics that might explain why, but then kill existing Pear processes.  
    _Note_ that this will close any running pear applications such as Keet.
