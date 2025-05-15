@@ -28,6 +28,7 @@
 * [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
 * [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
 * [Creating a Pear Init Template](./guide/creating-a-pear-init-template.md)
+* [Best Practices](./guide/best-practices.md)
 
 ### Building blocks
 
