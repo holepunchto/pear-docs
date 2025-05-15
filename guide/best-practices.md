@@ -7,11 +7,17 @@ developing Pear applications.
 
 Corestores are meant to manage many cores and their sessions efficiently. Having multiple Corestore instances can cause issues such as file locking errors when using the same storage and duplicate core storage if the same core is used by two Corestores with different storages.
 
+A single Corestore instance will:
+
+- Reduces open file handles.
+- Reduces storage space by deduping hypercore storage.
+- Requires only one replication stream per peer.
+
 If using `name`d cores that collide across different components of an app is an issue, use namespaces (`store.namepace('a')`) to create a namespaced version of a corestore. Note that retrieving cores by `key` are unaffected by namespacing.
 
 ## Use one hyperswarm instance per application
 
-Hyperswarm supports joining multiple topics on the same instance and will dedup peer connections shared between them. Having only one swarm instance will speed up connections and cap the total network connections.
+Hyperswarm supports joining multiple topics on the same instance and will dedup peer connections shared between them. Having only one swarm instance will speed up connections by reducing records in the DHT for the topic and simplify managing the max number of connections an app makes.
 
 ## Never load Javascript over http(s)
 
