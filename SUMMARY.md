@@ -7,12 +7,14 @@
 * [Command-Line-Interface (CLI)](./reference/pear/cli.md)
 * [Application-Programming-Interface (API)](./reference/pear/api.md)
 * [Application Configuration](./reference/pear/configuration.md)
+* [Troubleshooting Applications](./reference/pear/troubleshooting.md)
 
 ### Bare reference
 * [Overview](./reference/bare/overview.md)
 * [Application-Programming-Interface (API)](./reference/bare/api.md)
 * [Node.js Compatibility with Bare](./reference/bare/nodejs-compatibility-with-bare.md)
 * [Bare Modules](./reference/bare/bare-modules.md)
+* [Troubleshooting with Bare](./reference/bare/troubleshooting.md)
 
 ### Guides
 
