@@ -18,19 +18,19 @@ It will return a list like the following:
     storage: ./pear/app-storage/by-dkey/50f2c1326de970da319534164017f23101c6badd5497a99045f8d9ef13978995
 ```
 
-For more information about the `pear data apps` command, see the [cli docs](./pear-runtime/cli#pear-data-apps-flags-link).
+For more information about the `pear data apps` command, see the [cli docs](./cli.md#pear-data-apps-flags-link).
 
 ## How Do I Uninstall a Pear Application?
 
 Uninstalling Pear Applications is currently not supported. You can reset the storage for an application via the `pear reset <link>` command. This is a **destructive** command that will permanently delete the storage for the application loosing all data it contains. Use with caution.
 
-For more information about the `pear reset` command, see the [cli docs](./pear-runtime/cli#pear-reset-flags-less-than-link-greater-than).
+For more information about the `pear reset` command, see the [cli docs](./cli.md#pear-reset-flags-less-than-link-greater-than).
 
 ## Can Pear use with X language?
 
 Pear applications currently can only be written in JavaScript, but other languages and libraries can be integrated by adding bindings as a native addon. See the [`bare-addon`](https://github.com/holepunchto/bare-addon) for a template to get started creating a native addon for Bare runtime.
 
-For languages like TypeScript that compile to JavaScript, it is recommended to compile into JavaScript and then load it as the Javascript entrypoint either as the `main` property for a terminal application or as a `<script>` in the HTML entrypoint for a desktop application. For more information about configuring the entrypoint for Pear Application see [here](./pear-runtime/configuration#the-package.json-file).
+For languages like TypeScript that compile to JavaScript, it is recommended to compile into JavaScript and then load it as the Javascript entrypoint either as the `main` property for a terminal application or as a `<script>` in the HTML entrypoint for a desktop application. For more information about configuring the entrypoint for Pear Application see [here](./configuration.md#the-package.json-file).
 
 ## How Do I Write an Application Once So It Can Be Run on Desktop, Mobile, etc?
 
@@ -60,11 +60,11 @@ The Pear framework, applications and their storage are all within the `pear` dir
 | Linux   | `~/.config/pear`                     |
 | Windows | `%userprofile%\AppData\Roaming\pear` |
 
-This path can be accessed in a Pear application via [`Pear.config.pearDir`](./pear-runtime/api#pear.config.peardir-less-than-string-greater-than).
+This path can be accessed in a Pear application via [`Pear.config.pearDir`](./api.md#pear.config.peardir-less-than-string-greater-than).
 
-Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in the `corestores` directory, and Pear application storage (aka [`Pear.config.storage`](./pear-runtime/api#pear.config.storage-less-than-string-greater-than) for applications) are stored in `app-storage`.
+Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in the `corestores` directory, and Pear application storage (aka [`Pear.config.storage`](./api.md#pear.config.storage-less-than-string-greater-than) for applications) are stored in `app-storage`.
 
-Note that Pear applications and the Pear platform are stored in a [`corestore`](../../helpers/corestore) as [`hyperdrive`](../../building-blocks/hyperdrive)s so are not easily inspectable via a file explorer. To see the files distributed with an application use [`pear dump`](./pear-runtime/cli#pear-dump-flags-less-than-link-greater-than-less-than-dir-greater-than) to dump its contents as files.
+Note that Pear applications and the Pear platform are stored in a [`corestore`](../../helpers/corestore.md) as [`hyperdrive`](../../building-blocks/hyperdrive.md)s so are not easily inspectable via a file explorer. To see the files distributed with an application use [`pear dump`](./pear-runtime/cli#pear-dump-flags-less-than-link-greater-than-less-than-dir-greater-than) to dump its contents as files.
 
 ## Can Peers Know My IP Address When Using `hyperswarm` or Swarming a Pear Application?
 
