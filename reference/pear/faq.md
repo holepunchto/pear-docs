@@ -44,7 +44,7 @@ Pear applications are distributed via the swarm so that any peer with the applic
 
 ## Why Is NPM Used For Dependencies?
 
-NPM is a great package manager. Dependencies installed in your app should be staged with the Application and then are replicated via the swarm. It is recommended to do a dry run when staging to review the changes to the application. This will include all the changes to the dependencies and so can be used to audit them looking for unexpected updates.
+NPM is a great package manager! Dependencies installed in your app should be staged with the Application and then are replicated via the swarm. It is recommended to do a dry run when staging to review the changes to the application. This will include all the changes to the dependencies and so can be used to audit them looking for unexpected updates.
 
 ## How Do I Distribute a Binary Version of My Application?
 
