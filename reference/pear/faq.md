@@ -64,7 +64,7 @@ NPM is a great package manager! Dependencies installed in your app should be sta
 
 ## How Do I Distribute a Binary Version of My Application?
 
-You can make a Binary version of a Pear applications using the [`pear-appling`](https://github.com/holepunchto/pear-appling/) template repository. This repository can be configure in `CMakeLists.txt`, providing the metadata for your application, and compiled for MacOS, Linux and Windows. The compiled output is a small binary used to bootstrap the Pear platform and the application replicating the most recent version of them. This way you rarely, if ever, need to recompile your binary. Any future user can download it and will be able to run the most recent version of your application after replicating.
+You can make a binary version of a Pear applications using the [`pear-appling`](https://github.com/holepunchto/pear-appling/) template repository. This repository can be configure in `CMakeLists.txt`, providing the metadata for your application, and compiled for MacOS, Linux and Windows. The compiled output is a small binary used to bootstrap the Pear platform and the application replicating the most recent version of them. This way you rarely, if ever, need to recompile your binary. Any future user can download it and will be able to run the most recent version of your application after replicating.
 
 ## Can Peers Know My IP Address When Using `hyperswarm` or Swarming a Pear Application?
 
