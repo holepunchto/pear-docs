@@ -60,7 +60,7 @@ The Pear framework, applications and their storage are all within the `pear` dir
 | Linux   | `~/.config/pear`                     |
 | Windows | `%userprofile%\AppData\Roaming\pear` |
 
-You can get this value in your Pear application via [`Pear.config.pearDir`](./pear-runtime/api#pear.config.peardir-less-than-string-greater-than).
+This path can be accessed in a Pear application via [`Pear.config.pearDir`](./pear-runtime/api#pear.config.peardir-less-than-string-greater-than).
 
 Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in the `corestores` directory, and Pear application storage (aka [`Pear.config.storage`](./pear-runtime/api#pear.config.storage-less-than-string-greater-than) for applications) are stored in `app-storage`.
 
