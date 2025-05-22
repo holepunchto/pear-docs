@@ -26,6 +26,22 @@ Uninstalling Pear Applications is currently not supported. You can reset the sto
 
 For more information about the `pear reset` command, see the [cli docs](./cli.md#pear-reset-flags-less-than-link-greater-than).
 
+## Where is the Pear Application stored?
+
+The Pear framework, applications and their storage are all within the `pear` directory. The directory's path depends on the operating system:
+
+| OS      | Pear Path                            |
+| --      | ---------                            |
+| MacOs   | `~/Library/Application Support/pear` |
+| Linux   | `~/.config/pear`                     |
+| Windows | `%userprofile%\AppData\Roaming\pear` |
+
+This path can be accessed in a Pear application via [`Pear.config.pearDir`](./api.md#pear.config.peardir-less-than-string-greater-than).
+
+Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in the `corestores` directory, and Pear application storage (aka [`Pear.config.storage`](./api.md#pear.config.storage-less-than-string-greater-than) for applications) are stored in `app-storage`.
+
+Note that Pear applications and the Pear platform are stored in a [`corestore`](../../helpers/corestore.md) as [`hyperdrive`](../../building-blocks/hyperdrive.md)s so are not easily inspectable via a file explorer. To see the files distributed with an application use [`pear dump`](./cli.md#pear-dump-flags-less-than-link-greater-than-less-than-dir-greater-than) to dump its contents as files.
+
 ## Can Pear use with X language?
 
 Pear applications currently can only be written in JavaScript, but other languages and libraries can be integrated by adding bindings as a native addon. See the [`bare-addon`](https://github.com/holepunchto/bare-addon) for a template to get started creating a native addon for Bare runtime.
@@ -49,22 +65,6 @@ NPM is a great package manager! Dependencies installed in your app should be sta
 ## How Do I Distribute a Binary Version of My Application?
 
 You can make a Binary version of a Pear applications using the [`pear-appling`](https://github.com/holepunchto/pear-appling/) template repository. This repository can be configure in `CMakeLists.txt`, providing the metadata for your application, and compiled for MacOS, Linux and Windows. The compiled output is a small binary used to bootstrap the Pear platform and the application replicating the most recent version of them. This way you rarely, if ever, need to recompile your binary. Any future user can download it and will be able to run the most recent version of your application after replicating.
-
-## Where is the Pear Application stored?
-
-The Pear framework, applications and their storage are all within the `pear` directory. The directory's path depends on the operating system:
-
-| OS      | Pear Path                            |
-| --      | ---------                            |
-| MacOs   | `~/Library/Application Support/pear` |
-| Linux   | `~/.config/pear`                     |
-| Windows | `%userprofile%\AppData\Roaming\pear` |
-
-This path can be accessed in a Pear application via [`Pear.config.pearDir`](./api.md#pear.config.peardir-less-than-string-greater-than).
-
-Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in the `corestores` directory, and Pear application storage (aka [`Pear.config.storage`](./api.md#pear.config.storage-less-than-string-greater-than) for applications) are stored in `app-storage`.
-
-Note that Pear applications and the Pear platform are stored in a [`corestore`](../../helpers/corestore.md) as [`hyperdrive`](../../building-blocks/hyperdrive.md)s so are not easily inspectable via a file explorer. To see the files distributed with an application use [`pear dump`](./cli.md#pear-dump-flags-less-than-link-greater-than-less-than-dir-greater-than) to dump its contents as files.
 
 ## Can Peers Know My IP Address When Using `hyperswarm` or Swarming a Pear Application?
 
