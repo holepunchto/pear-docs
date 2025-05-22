@@ -65,3 +65,7 @@ You can get this value in your Pear application via [`Pear.config.pearDir`](./pe
 Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in the `corestores` directory, and Pear application storage (aka [`Pear.config.storage`](./pear-runtime/api#pear.config.storage-less-than-string-greater-than) for applications) are stored in `app-storage`.
 
 Note that Pear applications and the Pear platform are stored in a [`corestore`](../../helpers/corestore) as [`hyperdrive`](../../building-blocks/hyperdrive)s so are not easily inspectable via a file explorer. To see the files distributed with an application use [`pear dump`](./pear-runtime/cli#pear-dump-flags-less-than-link-greater-than-less-than-dir-greater-than) to dump its contents as files.
+
+## Can Peers Know My IP Address When Using `hyperswarm` or Swarming a Pear Application?
+
+Your IP is exchanged with peers so that they can connect to you. If you want to protect your IP, it is recommended to use a VPN.
