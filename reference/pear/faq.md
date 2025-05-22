@@ -52,8 +52,7 @@ You can make a Binary version of a Pear applications using the [`pear-appling`](
 
 ## Where is the Pear Application stored?
 
-The Pear framework, applications and their storage are all within the same
-`pear` directory. Here is the directory for each operating system:
+The Pear framework, applications and their storage are all within the `pear` directory. The directory's path depends on the operating system:
 
 | OS      | Pear Path                            |
 | --      | ---------                            |
@@ -61,8 +60,8 @@ The Pear framework, applications and their storage are all within the same
 | Linux   | `~/.config/pear`                     |
 | Windows | `%userprofile%\AppData\Roaming\pear` |
 
-You can get this value in your Pear application via `Pear.config.pearDir`.
+You can get this value in your Pear application via [`Pear.config.pearDir`](./pear-runtime/api#pear.config.peardir-less-than-string-greater-than).
 
-Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in `corestores`, Pear application storage (aka `Pear.config.storage` for applications) are stored in `app-storage`.
+Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in the `corestores` directory, and Pear application storage (aka [`Pear.config.storage`](./pear-runtime/api#pear.config.storage-less-than-string-greater-than) for applications) are stored in `app-storage`.
 
-Note that you will not be able to see plain file versions for Pear applications and the Pear platform as they are stored in `corestore`(s) as `hyperdrive`s. To see the files distributed with an application use `pear dump` to dump its contents as files.
+Note that Pear applications and the Pear platform are stored in a [`corestore`](../../helpers/corestore) as [`hyperdrive`](../../building-blocks/hyperdrive)s so are not easily inspectable via a file explorer. To see the files distributed with an application use [`pear dump`](./pear-runtime/cli#pear-dump-flags-less-than-link-greater-than-less-than-dir-greater-than) to dump its contents as files.
