@@ -49,3 +49,20 @@ NPM is a great package manager! Dependencies installed in your app should be sta
 ## How Do I Distribute a Binary Version of My Application?
 
 You can make a Binary version of a Pear applications using the [`pear-appling`](https://github.com/holepunchto/pear-appling/) template repository. This repository can be configure in `CMakeLists.txt`, providing the metadata for your application, and compiled for MacOS, Linux and Windows. The compiled output is a small binary used to bootstrap the Pear platform and the application replicating the most recent version of them. This way you rarely, if ever, need to recompile your binary. Any future user can download it and will be able to run the most recent version of your application after replicating.
+
+## Where is the Pear Application stored?
+
+The Pear framework, applications and their storage are all within the same
+`pear` directory. Here is the directory for each operating system:
+
+| OS      | Pear Path                            |
+| --      | ---------                            |
+| MacOs   | `~/Library/Application Support/pear` |
+| Linux   | `~/.config/pear`                     |
+| Windows | `%userprofile%\AppData\Roaming\pear` |
+
+You can get this value in your Pear application via `Pear.config.pearDir`.
+
+Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in `corestores`, Pear application storage (aka `Pear.config.storage` for applications) are stored in `app-storage`.
+
+Note that you will not be able to see plain file versions for Pear applications and the Pear platform as they are stored in `corestore`(s) as `hyperdrive`s. To see the files distributed with an application use `pear dump` to dump its contents as files.
