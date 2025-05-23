@@ -31,7 +31,7 @@ For more information about the `pear reset` command, see the [cli docs](./cli.md
 The Pear framework, applications and their storage are all within the `pear` directory. The directory's path depends on the operating system:
 
 | OS      | Pear Path                            |
-| --      | ---------                            |
+| ------- | ------------------------------------ |
 | MacOs   | `~/Library/Application Support/pear` |
 | Linux   | `~/.config/pear`                     |
 | Windows | `%userprofile%\AppData\Roaming\pear` |
