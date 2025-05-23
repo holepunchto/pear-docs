@@ -63,7 +63,9 @@ Pear applications are distributed via the swarm so that any peer with the applic
 
 ## Why Is NPM Used For Dependencies?
 
-NPM is a great package manager! Dependencies installed in your app should be staged with the Application and then are replicated via the swarm. It is recommended to do a dry run when staging to review the changes to the application. This will include all the changes to the dependencies and so can be used to audit them looking for unexpected updates.
+NPM is a great package manager, many JavaScript developers are already familiar with it and all Holepunch's packages are published on NPM. Dependencies installed in your app should be staged with the Application and then are replicated via the swarm. It is recommended to do a dry run when staging to review the changes to the application. This will include all the changes to the dependencies and so can be used to audit them looking for unexpected updates.
+
+After you install the `pear` via NPM and complete the setup, NPM and Node.js are no longer required to run Pear terminal applications. The `pear` package on NPM is only used to bootstrap the Pear platform. After the setup the `pear` command is using Bare to run the Pear application.
 
 ## How Do I Distribute a Binary Version of My Application?
 
