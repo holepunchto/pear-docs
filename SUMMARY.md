@@ -8,6 +8,7 @@
 * [Application-Programming-Interface (API)](./reference/pear/api.md)
 * [Application Configuration](./reference/pear/configuration.md)
 * [Troubleshooting Applications](./reference/pear/troubleshooting.md)
+* [Frequently Asked Questions](./reference/pear/faq.md)
 
 ### Bare reference
 * [Overview](./reference/bare/overview.md)
