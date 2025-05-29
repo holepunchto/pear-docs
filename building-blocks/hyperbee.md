@@ -215,7 +215,7 @@ Gets the key and value from a block number.
 
 #### **`const stream = db.replicate(isInitiatorOrStream)`** {#db.replicate}
 
-See more about how replicate works at [core.replicate](hypercore.md#const-stream-core.replicate-isinitiatororreplicationstream).
+See more about how replicate works at [core.replicate](hypercore.md#core.replicate).
 
 #### **`const batch = db.batch()`** {#db.batch}
 
