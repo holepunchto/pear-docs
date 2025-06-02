@@ -75,10 +75,10 @@ import {
   TextInput,
   Button,
   FlatList,
-  Platform,
   Alert,
   StyleSheet
 } from 'react-native'
+import { documentDirectory } from 'expo-file-system'
 import Clipboard from '@react-native-clipboard/clipboard'
 import { Worklet } from 'react-native-bare-kit'
 import bundle from './app.bundle'
@@ -101,7 +101,7 @@ export default function App() {
     const worklet = new Worklet()
 
     // Correctly passing the args to worklet.start
-    worklet.start('/app.bundle', bundle, [Platform.OS, pairingInvite])
+    worklet.start('/app.bundle', bundle, [String(documentDirectory), pairingInvite])
     const { IPC } = worklet
     // Initialise RPC
     new RPC(IPC, (req) => {
@@ -210,16 +210,15 @@ Add the following code to `backend/backend.mjs`:
 
 import RPC from 'bare-rpc'
 import fs from 'bare-fs'
+import URL from 'bare-url'
+import { join } from 'bare-path'
 import { RPC_RESET, RPC_MESSAGE } from '../rpc-commands.mjs'
 
 import Autopass from 'autopass'
 import Corestore from 'corestore'
 const { IPC } = BareKit
 
-const path =
-  Bare.argv[0] === 'android'
-    ? '/data/data/to.holepunch.bare.expo/autopass-example'
-    : './tmp/autopass-example/'
+const path = join(URL.fileURLToPath(Bare.argv[0]), 'autopass-example')
 
 const rpc = new RPC(IPC, (req, error) => {
   // Handle two way communication here
@@ -345,10 +344,10 @@ const worklet = new Worklet()
 Creates a new `worklet` object, ideally we should only create a single worklet.
 
 ```typescript
-worklet.start('/app.bundle', bundle, [Platform.OS, pairingInvite])
+worklet.start('/app.bundle', bundle, [String(documentDirectory), pairingInvite])
 ```
 
-Here we start our worklet with the bundle we imported in the previous step. The `'/app.bundle'` is the filename for the bundle, `bundle` is the bundled source that we imported and `[Platform.OS, pairingInvite]` are the arguments to be passed to the Bare runtime. These arguments will be available to the Bare process as soon as it starts in `Bare.argv[]`.
+Here we start our worklet with the bundle we imported in the previous step. The `'/app.bundle'` is the filename for the bundle, `bundle` is the bundled source that we imported and `[String(documentDirectory), pairingInvite]` are the arguments to be passed to the Bare runtime. These arguments will be available to the Bare process as soon as it starts in `Bare.argv[]`.
 
 ```typescript
 const { IPC } = worklet
