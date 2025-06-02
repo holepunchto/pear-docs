@@ -8,6 +8,7 @@
 * [Application-Programming-Interface (API)](./reference/pear/api.md)
 * [Application Configuration](./reference/pear/configuration.md)
 * [Troubleshooting Applications](./reference/pear/troubleshooting.md)
+* [Frequently Asked Questions](./reference/pear/faq.md)
 
 ### Bare reference
 * [Overview](./reference/bare/overview.md)
@@ -28,6 +29,7 @@
 * [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
 * [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
 * [Creating a Pear Init Template](./guide/creating-a-pear-init-template.md)
+* [Best Practices](./guide/best-practices.md)
 
 ### Building blocks
 

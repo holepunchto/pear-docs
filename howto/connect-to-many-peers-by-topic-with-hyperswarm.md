@@ -66,3 +66,5 @@ pear run --dev .
 This will display the topic. Copy/paste that topic into as many additional terminals as desired with `pear run --dev . <SUPPLY TOPIC HERE>` (assuming that the current working directory of each terminal is the `peer-app` folder). Each peer will log information about the other connected peers.
 
 Start typing into any terminal, and it will be broadcast to all connected peers.
+
+> It is best practice to only have one Hyperswarm instance per application. This will speed up connections by reducing number of entries per topic and connections.
