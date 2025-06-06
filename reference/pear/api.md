@@ -956,30 +956,3 @@ Whether the parent window is maximized. Throws a `TypeError` if `parent` is a vi
 Resolves to: `<Boolean>`
 
 Whether the parent window is minimized. Throws a `TypeError` if `parent` is a view.
-
-
-## Web APIs
-
-Most [Web APIs](https://developer.mozilla.org/en-US/docs/Web/API) will work as-is.
-
-This section details deviations in behavior from and notable aspects of Web APIs as they relate to Pear.
-
-### `window.open`
-
-The [`window.open`](https://developer.mozilla.org/en-US/docs/Web/API/Window/open) Web API function will ignore all arguments except for the URL parameter.
-
-In browsers, `window.open` opens a new browser window. The opened window belongs to the same browser from which `window.open` is called.
-
-In Pear, `window.open` loads the URL in the **default system browser**. It does *not* create a new application window (use `Pear.Window` to create application windows).
-
-Therefore Pear's `window.open` only supports a single URL argument. The `target` and `windowFeatures` parameters that browsers support are discarded.
-
-### Scripts and Modules
-
-Like browsers, there is no support for CommonJS (e.g. the `require` function as used by Node.js is not supported in Pear Applications).
-
-Like browsers, there is support for native EcmaScript Modules (ESM). A JavaScript Script has no module capabilities. A JavaScript Module has ESM capabilities.
-
-Use `<script type="module" src="path/to/my-file.js">` to load a JavaScript Module.
-
-Use `<script src="path/to/my-file.js">` to load a JavaScript Script.
