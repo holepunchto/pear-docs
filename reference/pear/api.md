@@ -484,7 +484,6 @@ Create a new `Window` instance.
 * `y <Integer>` - vertical window position (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. MacOS only, ignored on other OS's.
 * `center <Boolean` - center the window upon opening
 * `minWidth <Integer>` - window minimum width (pixels)
 * `minHeight <Integer>` - window minimum height (pixels)
@@ -527,7 +526,6 @@ Open the window.
 * `y <Integer>` - vertical window position (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. MacOS only, ignored on other OS's.
 * `center <Boolean` - center the window upon opening
 * `minWidth <Integer>` - window minimum width (pixels)
 * `minHeight <Integer>` - window minimum height (pixels)
@@ -633,7 +631,6 @@ await win.dimensions({
   y: 50,
   width: 550,
   height: 300,
-  animate: true // only has an effect on macOS
 })
 
 ```
@@ -646,7 +643,6 @@ Sets the dimensions of the window.
 * `y <Integer>` - the vertical position of the top of the window (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. MacOS only, ignored on other OS's.
 * `position <String>` - may be `'center'` to set the window in the center of the screen or else `undefined`.
 
 **References**
