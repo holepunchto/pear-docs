@@ -4,6 +4,18 @@
 
 The Command Line Interface is the primary interface for Pear Development.
 
+Legend:
+
+- `link`  
+  All `link` arguments can be a `pear://` link, a `file://` link or a file path.
+  See [Pear Link Specification](./link-specification.md) for more details on `pear://` links.
+- `dir`  
+  Refers to a file path. Usually this is the root directory of the project.
+- `<>`  
+  An argument wrapped in `<>`s is a required argument.
+- `[]`  
+  An argument wrapped in `[]`s is an optional argument.
+
 ## `pear init [flags] [link|name] [dir]`
 
 Create initial project files.
@@ -12,7 +24,7 @@ Names: default, ui, node-compat
 
 > Default Project directory path is `.`
 
-Template can also be initialized from a pear:// link, the template should contain a `_template.json` file. This file defines the prompts which are converted to locals that are injected into the template.
+Template can also be initialized from a [pear:// link](./link-specification.md), the template should contain a `_template.json` file. This file defines the prompts which are converted to locals that are injected into the template.
 
 ```
 --yes|-y                  Autoselect all defaults
@@ -75,7 +87,9 @@ Specify channel or link to seed a project or a remote link to reseed.
   
 ## `pear run [flags] <link|dir> [...app-args]`
 
-Run an application from a link or dir.
+Run an application from a `link` or `dir`.
+
+While developing an application, `link` will usually be a relative file path for the root directory (eg `.`).
 
 |       |                                                   |
 |-------|---------------------------------------------------|
