@@ -65,6 +65,12 @@ touch rpc-commands.mjs
 
 The `app/index.tsx` file that came with the `bare-expo` template serves as the entry point of the UI of the React Native app.
 
+Before proceeding, install the type definitions for b4a to ensure proper TypeScript support:
+
+```bash
+npm i @types/b4a --save-dev
+```
+
 Replace the contents of `app/index.tsx` with:
 
 ```typescript
@@ -81,7 +87,7 @@ import {
 import { documentDirectory } from 'expo-file-system'
 import Clipboard from '@react-native-clipboard/clipboard'
 import { Worklet } from 'react-native-bare-kit'
-import bundle from './app.bundle'
+import bundle from './app.bundle.mjs'
 import RPC from 'bare-rpc'
 import b4a from 'b4a'
 import { RPC_RESET, RPC_MESSAGE } from '../rpc-commands.mjs'
