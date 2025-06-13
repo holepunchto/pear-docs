@@ -31,7 +31,7 @@ npm i b4a bare-fs bare-rpc corestore autopass @react-native-clipboard/clipboard
 ```
 
 ```bash
-npm i bare-pack --save-dev
+npm i bare-pack @types/b4a --save-dev
 ```
 
 ## Directory Structure
@@ -64,12 +64,6 @@ touch rpc-commands.mjs
 ### Building the UI
 
 The `app/index.tsx` file that came with the `bare-expo` template serves as the entry point of the UI of the React Native app.
-
-Before proceeding, install the type definitions for b4a to ensure proper TypeScript support:
-
-```bash
-npm i @types/b4a --save-dev
-```
 
 Replace the contents of `app/index.tsx` with:
 
