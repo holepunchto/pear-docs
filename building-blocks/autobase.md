@@ -253,7 +253,7 @@ Triggered when the autobase view updates after `apply` has finished running.
 
 #### `base.on('interrupt', (reason) => { ... })`
 
-Triggered when `host.interrupt(reason)` is called in the `apply` handler. See [`host.interrupt(reason)`](#hostinterruptreason) for when interrupts are used.
+Triggered when `host.interrupt(reason)` is called in the `apply` handler. See [`host.interrupt(reason)`](#host.interrupt-reason) for when interrupts are used.
 
 #### `base.on('fast-forward', (to, from) => { ... })`
 

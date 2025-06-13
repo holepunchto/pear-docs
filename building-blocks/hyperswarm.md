@@ -96,7 +96,7 @@ A [`HyperDHT`](./hyperdht.md) instance. Useful for lower-level control over Hype
 
 Returns a [`PeerDiscovery`](hyperswarm.md#peer-discovery) object.
 
-Start discovering and connecting to peers sharing a common topic. As new peers are connected, they will be emitted from the swarm as [`connection`](hyperswarm.md#swarmonconnection-socket-peerinfo) events.
+Start discovering and connecting to peers sharing a common topic. As new peers are connected, they will be emitted from the swarm as [`connection`](hyperswarm.md#swarm.onconnection) events.
 
 `topic` must be a 32-byte Buffer and use a publicly sharable id, typically a Hypercore `discoveryKey` which we can then link to (join will leak the `topic` to DHT nodes).
 
