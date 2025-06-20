@@ -23,7 +23,7 @@ const runtime = new Runtime()
 const bridge = new Bridge()
 await bridge.ready()
 
-const pipe = runtime.start({ bridge })
+const pipe = await runtime.start({ bridge })
 // use pipe duplex stream for communication with ui
 ```
 
@@ -34,3 +34,12 @@ Passing the `pipe` to an RPC library, such as `bare-rpc` allows for an architect
 ### Verify migration
 
 * `pear run` the app
+
+## API Changes
+
+- `Pear.worker` & all its methods are deprecated. `Pear.worker` will be removed.  
+  - `Pear.worker.run()` is now `Pear.run()`
+  - `Pear.worker.pipe()` is now `Pear.pipe`
+- The following are moved to `pear-electron` so are only available in an
+  electron script: preload or renderer.  
+  - `Pear.media`

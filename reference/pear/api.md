@@ -258,95 +258,13 @@ do {
 } while (count++ < 1000)
 ```
 
-## `Pear.worker <Object>`
+### `const pipe = Pear.run(link <String>, args <Array<String>>)`
 
-Pear Worker is used to spawn processes and facilitate communication between the parent and child processes in the Pear Runtime.
+Runs a Pear Worker by spawning a Pear Application process from the specified `link` parameter. The Worker uses the flags of the parent application but any application arguments must be passed using the `args` parameter, the `args` parameter also sets `Pear.config.args`. Returns a pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) for Worker communication. 
 
-The spawned worker process inherits standard input, output, and error from the parent process.
-
-A bidirectional pipe is also created which enables communication between the parent and worker process.
-
-Reference counting is handled automatically to manage the sidecar lifecycle.
-
-### `const pipe = Pear.worker.run(link <String>, args <Array<String>>)`
-
-Runs a Pear Worker by spawning a Pear Terminal Application process from the specified `link` parameter. The Worker uses the flags of the parent application but any application arguments must be passed using the `args` parameter, the `args` parameter also sets `Pear.config.args`. Returns a pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) for Worker communication. 
-
-### `const pipe = Pear.worker.pipe()`
+### `const pipe = Pear.pipe()`
 
 Returns the pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) created to the worker process.
-
-## `Pear.media <Object>`
-
-Media interface
-
-### `const status = await Pear.media.status.microphone()`
-
-Resolves to: `<String>`
-
-If access to the microphone is available, resolved value will be `'granted'`.
-
-Any other string indicates lack of permission. Possible values are `'granted'`, `'not-determined'`, `'denied'`, `'restricted'`, `'unknown'`.
-
-### `const status = await Pear.media.status.camera()`
-
-Resolves to: `<String>`
-
-If access to the camera is available, resolved value will be `'granted'`.
-
-Any other string indicates lack of permission. Possible values are `'granted'`, `'not-determined'`, `'denied'`, `'restricted'`, `'unknown'`.
-
-### `const status = await Pear.media.status.screen()`
-
-Resolves to: `<String>`
-
-If access to the screen is available, resolved value will be `'granted'`.
-
-Any other string indicates lack of permission. Possible values are `'granted'`, `'not-determined'`, `'denied'`, `'restricted'`, `'unknown'`.
-
-### `const success = await Pear.media.access.microphone()`
-
-Resolves to: `<Boolean>`
-
-Request access to the microphone. Resolves to `true` if permission is granted.
-
-### `const success = await Pear.media.access.camera()`
-
-Resolves to: `<Boolean>`
-
-Request access to the camera. Resolves to `true` if permission is granted.
-
-### `const success = await Pear.media.access.screen()`
-
-Resolves to: `<Boolean>`
-
-Request access to screen sharing. Resolves to `true` if permission is granted.
-
-### `const sources = await Pear.media.desktopSources(options <Object>)`
-
-Captures available desktop sources. Resolves to an array of objects with shape `{ id <String>, name <String>, thumbnail <NativeImage>, display_id <String>, appIcon <NativeImage> }`. The `id` is the window or screen identifier. The `name` is the window title or `'Screen <index>'` in multiscreen scenarios or else `Entire Screen`. The `display_id` identifies the screen. The thumbnail is a scaled down screen capture of the window/screen.
-
-**Options**
-
-* `types <Array<String>>` - Default: `['screen', 'window']`. Filter by types. Types are `'screen'` and `'window'`.
-* `thumbnailSize <Object>` - Default: `{width: 150, height: 150}`. Set thumbnail scaling (pixels)
-* `fetchWindowIcons <Boolean>` - Default: `false`. Populate `appIcon` with Window icons, or else `null`.
-
-**References**
-
-* https://www.electronjs.org/docs/latest/api/desktop-capturer#desktopcapturergetsourcesoptions
-* https://www.electronjs.org/docs/latest/api/structures/desktop-capturer-source
-* [`<NativeImage>`](https://www.electronjs.org/docs/latest/api/native-image)
-
-### `const path = Pear.media.getPathForFile(file <File>)`
-
-Accepts a web [`File`](https://developer.mozilla.org/en-US/docs/Web/API/File/File) object and returns the file system path for that file as a `String`. In cases where the `file` argument is not a `File` object an exception is thrown. In the case that the `file` is constructed in JS and is not backed by a file on disk an empty string is returned.
-
-Available in Desktop Applications only.
-
-**References**
-
-* https://www.electronjs.org/docs/latest/api/web-utils#webutilsgetpathforfilefile
 
 ### `Pear.versions <Async Function>`
 
@@ -396,6 +314,181 @@ Restart the application. Desktop Applications only.
 
 Exits the process with the provided exit code.
 
+### `Pear.exitCode <Integer>`
+
+The current exit code. Initially set to `0`.
+
+### `Pear.argv <Array <String>>`
+
+Command-line arguments passed to pear like `pear run --dev . --some arg` which returns: `[ 'pear', 'run', '--dev', '.', '--some', 'arg' ]`.
+
+### `Pear.pid <Integer>`
+
+The ID of the current process.
+
+### `Pear.asset(link, opts <Object>) => streamx.Readable`
+
+Returns a stream of updates to mirror assets in the Pear link `link`. Stream chunks will contain objects of the following shape:
+
+```
+{ tag: <String>, data: <Object> }
+```
+
+Possible `tag`s are the following:
+
+- `stats-error` : An error occurred coming from the drive monitor.
+- `stats` : Reported stats from the drive monitor.
+- `dumping` : Signalling that assets are about to be mirrored to the file system.  
+  The `data` property will include two properties:
+    - `link` : The Pear link that is being mirrored.
+    - `dir` : The file path the assets are being mirrored into.
+- `dry` : This is a dry-run of mirroring the asset.
+- `byteDiff` : The byte difference updating a file.  
+  The `data` will have the following shape:
+  ```
+  {
+    type: <1|0|-1>, // 1 = added, 0 = changed, -1 = removed
+    sizes: Array<<Number>, // The bytes removed and/or added. In that order. `type = 1` only has bytes added
+    message: <String> // the file path
+  }
+  ```
+- `error` : An error occurred while mirroring.
+- `final` : The assets mirroring is finished.  
+  The `data` property will include two properties:
+    - `link` : The Pear link that is being mirrored.
+    - `dir` : The file path the assets are being mirrored into.
+    - `success` : Whether the mirroring was successful.
+
+Available options (`opts`):
+
+- `force <Boolean>` : Whether to force mirroring the asset even if it already exists.
+- `dryRun <Boolean>` : Enable to mirror asset without
+- `only <Array<String>|String>` : Set of file paths which should be mirrored. Can be an array of file paths or a comma delimited string of paths. Will disable `prune` option if `true`.
+- `prune <Boolean>` : Will remove any files that have been already mirrored but aren't in the current version.
+
+### `Pear.dump(link, opts <Object>) => streamx.Readable`
+
+Returns a stream of updates to dump the Pear link `link` into `opts`'s `dir` file path. Stream chunks will contain objects of the following shape:
+
+```
+{ tag: <String>, data: <Object> }
+```
+
+Possible `tag`s are the following:
+
+- `stats-error` : An error occurred coming from the drive monitor.
+- `stats` : Reported stats from the drive monitor.
+- `dumping` : Signalling that the contents of the link are about to be dumped to the file system.  
+  The `data` property will include two properties:
+    - `link` : The Pear link that is being dumped.
+    - `dir` : The file path where the contents are being dumped into.
+- `dry` : This is a dry-run of dumping the link's contents.
+- `byteDiff` : The byte difference updating a file.  
+  The `data` will have the following shape:
+  ```
+  {
+    type: <1|0|-1>, // 1 = added, 0 = changed, -1 = removed
+    sizes: Array<<Number>, // The bytes removed and/or added. In that order. `type = 1` only has bytes added
+    message: <String> // the file path
+  }
+  ```
+- `file` : A file record while in 'output-only' mode.  
+  The `data` property will include:
+    - `key` : The file path for the file
+    - `value` : The file contents. Disabled if `list` is `true`.
+- `error` : An error occurred while dumping.
+- `final` : The link dumping is finished. Only fired for a single file and with 'output-only' mode enabled.  
+  The `data` property will include two properties:
+    - `key` : The file path for the file. Only set if in 'output-only' mode.
+    - `value` : The file contents. Only set if in 'output-only' mode and `list` is `false`.
+    - `success` : Whether the dumping was successful.
+
+Available options (`opts`):
+
+- `dir <String>` : Where to dump `link`'s contents. **Required.** If set to `-`, contents will be dumped in 'output-only' mode.
+- `list <Boolean>` : Will list contents instead of dumping them. Overrides `dir` to be `-`.
+- `force <Boolean>` : Whether to force dumping the asset even if it already exists.
+- `dryRun <Boolean>` : Enable to dump asset without
+- `only <Array<String>|String>` : Set of file paths which should be dumped. Can be an array of file paths or a comma delimited string of paths. Will disable `prune` option if `true`.
+- `prune <Boolean>` : Will remove any files that have been already dumped but aren't in the current version.
+- `checkout <Number>` : The length to dump from of the underlying Hypercore.
+
+### `Pear.stage(link, opts <Object>) => streamx.Readable`
+
+Returns a stream output for staging into the Pear link `link` from `opts`'s `dir` file path. Stream chunks will contain objects of the following shape:
+
+```
+{ tag: <String>, data: <Object> }
+```
+
+Possible `tag`s are the following:
+
+- `stats-error` : An error occurred coming from the drive monitor.
+- `stats` : Reported stats from the drive monitor.
+- `staging` : Signalling the start of the staging process.  
+  The `data` property will include:
+    - `name` : The app name.
+    - `channel` : The channel name.
+    - `key` : The z32 encoded key for the target link.
+    - `link` : The z32 encoded key version of the target link.
+    - `current` : The current version or length.
+    - `release` : The release length, defaults to `0` if not set.
+    - `dir` : The file path where the contents are being staged from.
+- `dry` : This is a dry-run of staging the content.
+- `byteDiff` : The byte difference updating a file.  
+  The `data` will have the following shape:
+  ```
+  {
+    type: <1|0|-1>, // 1 = added, 0 = changed, -1 = removed
+    sizes: Array<<Number>, // The bytes removed and/or added. In that order. `type = 1` only has bytes added
+    message: <String> // the file path
+  }
+  ```
+- `summary` : The summary of the staging file changes.
+  The `data` property will include:
+    - `files` : The number of files processed.
+    - `add` : Total files added.
+    - `remove` : Total files removed.
+    - `change` : Total files changed.
+    - `length` : Length of underlying Hypercore.
+    - `byteLength` : Length of underlying Hypercore in bytes.
+    - `blobs` : The `fork`, `length` and `byteLength` of the underlying Hyperblobs.
+- `skipping` : A signal that the warmup process is being skipped.
+  The `data` property will include:
+    - `reason` : Why it is being skipped. Possible reasons are `dry-run`, `configured`, `template` & `no changes`.
+    - `success` : Whether the skip was successful. This is always `true`.
+- `warming` : A signal that the warmup process was completed.
+  The `data` property will include:
+    - `total` : The total length of both the underlying Hypercores.
+    - `blocks` : The total number of blocks that will be warmed up.
+    - `success` : Whether the skip was successful. This is always `true`.
+- `complete` : When the staging is completed.
+  The `data` property will include:
+    - `dryRun` : Whether it was a dry run.
+- `addendum` : Extra information about the staged result.
+  The `data` property will include:
+    - `channel` : The channel name.
+    - `key` : The z32 encoded key for the target link.
+    - `link` : The z32 encoded key version of the target link.
+    - `release` : The release length, defaults to `0` if not set.
+- `error` : An error occurred while staging.
+- `final` : Staging is finished.
+  The `data` property will include two properties:
+    - `success` : Whether the staging was successful.
+
+Available options (`opts`):
+
+- `dir <String>` : Where the application contents to stage are.
+- `channel <String>` : The channel to stage to.
+- `name <String>` : Application name. Advanced.
+- `key <String>` : The key to stage the `dir` to.
+- `truncate <Integer>` : The length to truncate the drive too. Advanced.
+- `dryRun <Boolean>` : Enable to simulate staging the application.
+- `purge <Boolean>` : Will remove all files (except ignored files) before staging.
+- `ignore <Array<String>|String>` : Set of file paths which should be ignored and not staged. Can be an array of file paths or a comma delimited string of paths.
+- `only <Array<String>|String>` : Set of file paths which should be staged. Can be an array of file paths or a comma delimited string of paths.
+- `pkg <Object>` : The `package.json` object representation for the application.
+
 ### `Pear.updates(listener <Async Function|Function>) => streamx.Readable`
 
 The `listener` function is called for every incoming update with an `update` object of the form:
@@ -405,7 +498,7 @@ The `listener` function is called for every incoming update with an `update` obj
   type: 'pear/updates',
   version: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null,
   app <Boolean>,
-  diff <Array <String> >,
+  diff <Array <{ type: string, key: string }> >,
 }
 ```
 
@@ -416,6 +509,24 @@ The `listener` function is called for every incoming update with an `update` obj
   * `key` `<String>` - Drive key for a given updated file e.g. `/path/to/file.txt`
 
 Also returns a [`streamx`](https://github.com/mafintosh/streamx) `Readable`) stream.
+
+### `Pear.updated()`
+
+Returns the current `update` object of the form:
+
+```js
+{
+  version: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null,
+  app <Boolean>,
+  diff <Array <String>>,
+}
+```
+
+* `version` is a Pear version object holding incoming version information
+* `app` indicates whether the update represents an application (`true`) or platform (`false`) update
+* `diff` requires `--update-diffs` flag (else `null`). An array of objects of form `{ type, key}`.
+  * `type` `<String>` - Operation type `update` or `delete`
+  * `key` `<String>` - Drive key for a given updated file e.g. `/path/to/file.txt`
 
 ### `Pear.wakeups(listener <Async Function|Function>) => streamx.Readable`
 
@@ -956,30 +1067,3 @@ Whether the parent window is maximized. Throws a `TypeError` if `parent` is a vi
 Resolves to: `<Boolean>`
 
 Whether the parent window is minimized. Throws a `TypeError` if `parent` is a view.
-
-
-## Web APIs
-
-Most [Web APIs](https://developer.mozilla.org/en-US/docs/Web/API) will work as-is.
-
-This section details deviations in behavior from and notable aspects of Web APIs as they relate to Pear.
-
-### `window.open`
-
-The [`window.open`](https://developer.mozilla.org/en-US/docs/Web/API/Window/open) Web API function will ignore all arguments except for the URL parameter.
-
-In browsers, `window.open` opens a new browser window. The opened window belongs to the same browser from which `window.open` is called.
-
-In Pear, `window.open` loads the URL in the **default system browser**. It does *not* create a new application window (use `Pear.Window` to create application windows).
-
-Therefore Pear's `window.open` only supports a single URL argument. The `target` and `windowFeatures` parameters that browsers support are discarded.
-
-### Scripts and Modules
-
-Like browsers, there is no support for CommonJS (e.g. the `require` function as used by Node.js is not supported in Pear Applications).
-
-Like browsers, there is support for native EcmaScript Modules (ESM). A JavaScript Script has no module capabilities. A JavaScript Module has ESM capabilities.
-
-Use `<script type="module" src="path/to/my-file.js">` to load a JavaScript Module.
-
-Use `<script src="path/to/my-file.js">` to load a JavaScript Script.
