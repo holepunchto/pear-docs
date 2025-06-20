@@ -318,6 +318,10 @@ Exits the process with the provided exit code.
 
 The current exit code. Initially set to `0`.
 
+### `Pear.argv <Array <String>>`
+
+Command-line arguments passed to pear like `pear run --dev . --some arg` which returns: `[ 'pear', 'run', '--dev', '.', '--some', 'arg' ]`.
+
 ### `Pear.updates(listener <Async Function|Function>) => streamx.Readable`
 
 The `listener` function is called for every incoming update with an `update` object of the form:
