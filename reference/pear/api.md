@@ -399,8 +399,8 @@ Possible `tag`s are the following:
 - `error` : An error occurred while dumping.
 - `final` : The link dumping is finished. Only fired for a single file and with 'output-only' mode enabled.  
   The `data` property will include two properties:
-    - `key` : The file path for the file
-    - `value` : The file contents. Disabled if `list` is `true`.
+    - `key` : The file path for the file. Only set if in 'output-only' mode.
+    - `value` : The file contents. Only set if in 'output-only' mode and `list` is `false`.
     - `success` : Whether the dumping was successful.
 
 Available options (`opts`):
