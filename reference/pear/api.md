@@ -314,6 +314,10 @@ Restart the application. Desktop Applications only.
 
 Exits the process with the provided exit code.
 
+### `Pear.exitCode <Integer>`
+
+The current exit code. Initially set to `0`.
+
 ### `Pear.updates(listener <Async Function|Function>) => streamx.Readable`
 
 The `listener` function is called for every incoming update with an `update` object of the form:
