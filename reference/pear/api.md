@@ -413,6 +413,82 @@ Available options (`opts`):
 - `prune <Boolean>` : Will remove any files that have been already dumped but aren't in the current version.
 - `checkout <Number>` : The length to dump from of the underlying Hypercore.
 
+### `Pear.stage(link, opts <Object>) => streamx.Readable`
+
+Returns a stream output for staging into the Pear link `link` from `opts`'s `dir` file path. Stream chunks will contain objects of the following shape:
+
+```
+{ tag: <String>, data: <Object> }
+```
+
+Possible `tag`s are the following:
+
+- `stats-error` : An error occurred coming from the drive monitor.
+- `stats` : Reported stats from the drive monitor.
+- `staging` : Signalling the start of the staging process.  
+  The `data` property will include:
+    - `name` : The app name.
+    - `channel` : The channel name.
+    - `key` : The z32 encoded key for the target link.
+    - `link` : The z32 encoded key version of the target link.
+    - `current` : The current version or length.
+    - `release` : The release length, defaults to `0` if not set.
+    - `dir` : The file path where the contents are being staged from.
+- `dry` : This is a dry-run of staging the content.
+- `byteDiff` : The byte difference updating a file.  
+  The `data` will have the following shape:
+  ```
+  {
+    type: <1|0|-1>, // 1 = added, 0 = changed, -1 = removed
+    sizes: Array<<Number>, // The bytes removed and/or added. In that order. `type = 1` only has bytes added
+    message: <String> // the file path
+  }
+  ```
+- `summary` : The summary of the staging file changes.
+  The `data` property will include:
+    - `files` : The number of files processed.
+    - `add` : Total files added.
+    - `remove` : Total files removed.
+    - `change` : Total files changed.
+    - `length` : Length of underlying Hypercore.
+    - `byteLength` : Length of underlying Hypercore in bytes.
+    - `blobs` : The `fork`, `length` and `byteLength` of the underlying Hyperblobs.
+- `skipping` : A signal that the warmup process is being skipped.
+  The `data` property will include:
+    - `reason` : Why it is being skipped. Possible reasons are `dry-run`, `configured`, `template` & `no changes`.
+    - `success` : Whether the skip was successful. This is always `true`.
+- `warming` : A signal that the warmup process was completed.
+  The `data` property will include:
+    - `total` : The total length of both the underlying Hypercores.
+    - `blocks` : The total number of blocks that will be warmed up.
+    - `success` : Whether the skip was successful. This is always `true`.
+- `complete` : When the staging is completed.
+  The `data` property will include:
+    - `dryRun` : Whether it was a dry run.
+- `addendum` : Extra information about the staged result.
+  The `data` property will include:
+    - `channel` : The channel name.
+    - `key` : The z32 encoded key for the target link.
+    - `link` : The z32 encoded key version of the target link.
+    - `release` : The release length, defaults to `0` if not set.
+- `error` : An error occurred while staging.
+- `final` : Staging is finished.
+  The `data` property will include two properties:
+    - `success` : Whether the staging was successful.
+
+Available options (`opts`):
+
+- `dir <String>` : Where the application contents to stage are.
+- `channel <String>` : The channel to stage to.
+- `name <String>` : Application name. Advanced.
+- `key <String>` : The key to stage the `dir` to.
+- `truncate <Integer>` : The length to truncate the drive too. Advanced.
+- `dryRun <Boolean>` : Enable to simulate staging the application.
+- `purge <Boolean>` : Will remove all files (except ignored files) before staging.
+- `ignore <Array<String>|String>` : Set of file paths which should be ignored and not staged. Can be an array of file paths or a comma delimited string of paths.
+- `only <Array<String>|String>` : Set of file paths which should be staged. Can be an array of file paths or a comma delimited string of paths.
+- `pkg <Object>` : The `package.json` object representation for the application.
+
 ### `Pear.updates(listener <Async Function|Function>) => streamx.Readable`
 
 The `listener` function is called for every incoming update with an `update` object of the form:
