@@ -322,6 +322,10 @@ The current exit code. Initially set to `0`.
 
 Command-line arguments passed to pear like `pear run --dev . --some arg` which returns: `[ 'pear', 'run', '--dev', '.', '--some', 'arg' ]`.
 
+### `Pear.pid <Integer>`
+
+The ID of the current process.
+
 ### `Pear.updates(listener <Async Function|Function>) => streamx.Readable`
 
 The `listener` function is called for every incoming update with an `update` object of the form:
