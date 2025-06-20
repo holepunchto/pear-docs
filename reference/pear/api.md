@@ -375,7 +375,7 @@ The `listener` function is called for every incoming update with an `update` obj
   type: 'pear/updates',
   version: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null,
   app <Boolean>,
-  diff <Array <String> >,
+  diff <Array <{ type: string, key: string }> >,
 }
 ```
 
@@ -386,6 +386,24 @@ The `listener` function is called for every incoming update with an `update` obj
   * `key` `<String>` - Drive key for a given updated file e.g. `/path/to/file.txt`
 
 Also returns a [`streamx`](https://github.com/mafintosh/streamx) `Readable`) stream.
+
+### `Pear.updated()`
+
+Returns the current `update` object of the form:
+
+```js
+{
+  version: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null,
+  app <Boolean>,
+  diff <Array <String>>,
+}
+```
+
+* `version` is a Pear version object holding incoming version information
+* `app` indicates whether the update represents an application (`true`) or platform (`false`) update
+* `diff` requires `--update-diffs` flag (else `null`). An array of objects of form `{ type, key}`.
+  * `type` `<String>` - Operation type `update` or `delete`
+  * `key` `<String>` - Drive key for a given updated file e.g. `/path/to/file.txt`
 
 ### `Pear.wakeups(listener <Async Function|Function>) => streamx.Readable`
 
