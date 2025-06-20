@@ -326,6 +326,46 @@ Command-line arguments passed to pear like `pear run --dev . --some arg` which r
 
 The ID of the current process.
 
+### `const stream = Pear.asset(link, opts = {})`
+
+Returns a stream of updates to mirror assets in the Pear link `link`. Stream chunks will contain objects of the following shape:
+
+```
+{ tag: <String>, data: <Object> }
+```
+
+Possible `tag`s are the following:
+
+- `stats-error` : An error occurred coming from the drive monitor.
+- `stats` : Reported stats from the drive monitor.
+- `dumping` : Signalling that assets are about to be mirrored to the file system.  
+  The `data` property will include two properties:
+    - `link` : The Pear link that is being mirrored.
+    - `dir` : The file path the assets are being mirrored into.
+- `dry` : This is a dry-run of mirroring the asset.
+- `byteDiff` : The byte difference updating a file.  
+  The `data` will have the following shape:
+  ```
+  {
+    type: <1|0|-1>, // 1 = added, 0 = changed, -1 = removed
+    sizes: Array<<Number>, // The bytes removed and/or added. In that order. `type = 1` only has bytes added
+    message: <String> // the file path
+  }
+  ```
+- `error` : An error occurred while mirroring.
+- `final` : The assets mirroring is finished.  
+  The `data` property will include two properties:
+    - `link` : The Pear link that is being mirrored.
+    - `dir` : The file path the assets are being mirrored into.
+    - `success` : Whether the mirroring was successful.
+
+Available options (`opts`):
+
+- `force <Boolean>` : Whether to force mirroring the asset even if it already exists.
+- `dryRun <Boolean>` : Enable to mirror asset without
+- `only <Array<String>|String>` : Set of file paths which should be mirrored. Can be an array of file paths or a comma delimited string of paths. Will disable `prune` option if `true`.
+- `prune <Boolean>` : Will remove any files that have been already mirrored but aren't in the current version.
+
 ### `Pear.updates(listener <Async Function|Function>) => streamx.Readable`
 
 The `listener` function is called for every incoming update with an `update` object of the form:
