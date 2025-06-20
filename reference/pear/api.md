@@ -326,7 +326,7 @@ Command-line arguments passed to pear like `pear run --dev . --some arg` which r
 
 The ID of the current process.
 
-### `const stream = Pear.asset(link, opts = {})`
+### `const stream = Pear.asset(link, opts <Object>)`
 
 Returns a stream of updates to mirror assets in the Pear link `link`. Stream chunks will contain objects of the following shape:
 
