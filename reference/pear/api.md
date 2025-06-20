@@ -366,6 +366,53 @@ Available options (`opts`):
 - `only <Array<String>|String>` : Set of file paths which should be mirrored. Can be an array of file paths or a comma delimited string of paths. Will disable `prune` option if `true`.
 - `prune <Boolean>` : Will remove any files that have been already mirrored but aren't in the current version.
 
+### `const stream = Pear.dump(link, opts <Object>)`
+
+Returns a stream of updates to dump the Pear link `link` into `opts`'s `dir` file path. Stream chunks will contain objects of the following shape:
+
+```
+{ tag: <String>, data: <Object> }
+```
+
+Possible `tag`s are the following:
+
+- `stats-error` : An error occurred coming from the drive monitor.
+- `stats` : Reported stats from the drive monitor.
+- `dumping` : Signalling that the contents of the link are about to be dumped to the file system.  
+  The `data` property will include two properties:
+    - `link` : The Pear link that is being dumped.
+    - `dir` : The file path where the contents are being dumped into.
+- `dry` : This is a dry-run of dumping the link's contents.
+- `byteDiff` : The byte difference updating a file.  
+  The `data` will have the following shape:
+  ```
+  {
+    type: <1|0|-1>, // 1 = added, 0 = changed, -1 = removed
+    sizes: Array<<Number>, // The bytes removed and/or added. In that order. `type = 1` only has bytes added
+    message: <String> // the file path
+  }
+  ```
+- `file` : A file record while in 'output-only' mode.  
+  The `data` property will include:
+    - `key` : The file path for the file
+    - `value` : The file contents. Disabled if `list` is `true`.
+- `error` : An error occurred while dumping.
+- `final` : The link dumping is finished. Only fired for a single file and with 'output-only' mode enabled.  
+  The `data` property will include two properties:
+    - `key` : The file path for the file
+    - `value` : The file contents. Disabled if `list` is `true`.
+    - `success` : Whether the dumping was successful.
+
+Available options (`opts`):
+
+- `dir <String>` : Where to dump `link`'s contents. **Required.** If set to `-`, contents will be dumped in 'output-only' mode.
+- `list <Boolean>` : Will list contents instead of dumping them. Overrides `dir` to be `-`.
+- `force <Boolean>` : Whether to force dumping the asset even if it already exists.
+- `dryRun <Boolean>` : Enable to dump asset without
+- `only <Array<String>|String>` : Set of file paths which should be dumped. Can be an array of file paths or a comma delimited string of paths. Will disable `prune` option if `true`.
+- `prune <Boolean>` : Will remove any files that have been already dumped but aren't in the current version.
+- `checkout <Number>` : The length to dump from of the underlying Hypercore.
+
 ### `Pear.updates(listener <Async Function|Function>) => streamx.Readable`
 
 The `listener` function is called for every incoming update with an `update` object of the form:
