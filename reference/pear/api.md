@@ -326,7 +326,7 @@ Command-line arguments passed to pear like `pear run --dev . --some arg` which r
 
 The ID of the current process.
 
-### `const stream = Pear.asset(link, opts <Object>)`
+### `Pear.asset(link, opts <Object>) => streamx.Readable`
 
 Returns a stream of updates to mirror assets in the Pear link `link`. Stream chunks will contain objects of the following shape:
 
@@ -366,7 +366,7 @@ Available options (`opts`):
 - `only <Array<String>|String>` : Set of file paths which should be mirrored. Can be an array of file paths or a comma delimited string of paths. Will disable `prune` option if `true`.
 - `prune <Boolean>` : Will remove any files that have been already mirrored but aren't in the current version.
 
-### `const stream = Pear.dump(link, opts <Object>)`
+### `Pear.dump(link, opts <Object>) => streamx.Readable`
 
 Returns a stream of updates to dump the Pear link `link` into `opts`'s `dir` file path. Stream chunks will contain objects of the following shape:
 
