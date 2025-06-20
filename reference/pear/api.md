@@ -258,21 +258,14 @@ do {
 } while (count++ < 1000)
 ```
 
-## `Pear.worker <Object>`
+### `const pipe = Pear.run(link <String>, args <Array<String>>)`
 
-Pear Worker is used to spawn processes and facilitate communication between the parent and child processes in the Pear Runtime.
+Runs a Pear Worker by spawning a Pear Application process from the specified `link` parameter. The Worker uses the flags of the parent application but any application arguments must be passed using the `args` parameter, the `args` parameter also sets `Pear.config.args`. Returns a pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) for Worker communication. 
 
-The spawned worker process inherits standard input, output, and error from the parent process.
+### `const pipe = Pear.pipe()`
 
-A bidirectional pipe is also created which enables communication between the parent and worker process.
+Returns the pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) created to the worker process.
 
-Reference counting is handled automatically to manage the sidecar lifecycle.
-
-### `const pipe = Pear.worker.run(link <String>, args <Array<String>>)`
-
-Runs a Pear Worker by spawning a Pear Terminal Application process from the specified `link` parameter. The Worker uses the flags of the parent application but any application arguments must be passed using the `args` parameter, the `args` parameter also sets `Pear.config.args`. Returns a pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) for Worker communication. 
-
-### `const pipe = Pear.worker.pipe()`
 
 Returns the pipe (a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream) created to the worker process.
 
