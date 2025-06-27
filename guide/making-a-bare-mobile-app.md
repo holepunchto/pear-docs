@@ -31,7 +31,7 @@ npm i b4a bare-fs bare-rpc corestore autopass @react-native-clipboard/clipboard
 ```
 
 ```bash
-npm i bare-pack --save-dev
+npm i bare-pack @types/b4a --save-dev
 ```
 
 ## Directory Structure
@@ -81,7 +81,7 @@ import {
 import { documentDirectory } from 'expo-file-system'
 import Clipboard from '@react-native-clipboard/clipboard'
 import { Worklet } from 'react-native-bare-kit'
-import bundle from './app.bundle'
+import bundle from './app.bundle.mjs'
 import RPC from 'bare-rpc'
 import b4a from 'b4a'
 import { RPC_RESET, RPC_MESSAGE } from '../rpc-commands.mjs'
