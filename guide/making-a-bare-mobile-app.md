@@ -288,9 +288,6 @@ npm run ios
 
 ### Android
 
-> [!IMPORTANT]  
-> You may experience problems running the app on an emulated Android device under QEMU due to https://github.com/holepunchto/libjs/issues/4. If you encounter crashes, try running the app on a real Android device instead.
-
 ```bash
 npm run android
 ```
