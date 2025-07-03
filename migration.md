@@ -40,7 +40,8 @@ import ui from `pear-electron`
 ```
 
 * `Pear.media` -> `ui.media`
-* `Pear.tray` -> `ui.tray`
+* `Pear.tray` -> `ui.app.tray`
+* `Pear.badge` -> `ui.app.badge`
 * `Pear.Window` -> `ui.Window`
 * `Pear.View` -> `ui.View`
 * `Pear.Window.self` / `Pear.View.self` -> `ui.app`
