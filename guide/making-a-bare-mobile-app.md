@@ -8,7 +8,7 @@ We will be building an application that syncs data from the [Pearpass desktop ap
 
 1. Gradle version 8.10.2
 2. Java 23
-3. Android SDK (>= 28), NDK
+3. Android SDK (>= 29), NDK
 
 ## Project Setup
 
