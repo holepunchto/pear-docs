@@ -62,3 +62,15 @@ Compat mode is a temporary transitioning utility, if usage can be avoided in fav
 Enable with `<script>Pear.constructor.COMPAT = true</script>` at the top of the `<head>` element in the HTML entrypoint and `Pear.constructor.COMPAT = true` at the top of worker or terminal app entrypoints.
 
 Compat mode isn't needed for premigration, only if time is needed for the application to transition to equivalent v2 APIs.
+
+## Config Migration
+
+Some configs of v2 change their position or are newly introduced due to architechtural changes.
+
+* `pear.userAgent -> pear.gui.userAgent`
+
+### Link Handling Migration
+
+In v2 routing is configured in the pear config. A string like `"routes": "."` can be used to set the apps root relative to the package.json. If an app starts subprocesses the `unrouted` config can be used in order to handle the paths seperatly (eg: `"unrouted": ["/workers"]`)
+
+* `pear.config.linkData -> pear.config.route`
