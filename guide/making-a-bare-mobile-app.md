@@ -8,7 +8,7 @@ We will be building an application that syncs data from the [Pearpass desktop ap
 
 1. Gradle version 8.10.2
 2. Java 23
-3. Android SDK (>= 28), NDK
+3. Android SDK (>= 29), NDK
 
 ## Project Setup
 
@@ -31,7 +31,7 @@ npm i b4a bare-fs bare-rpc corestore autopass @react-native-clipboard/clipboard
 ```
 
 ```bash
-npm i bare-pack --save-dev
+npm i bare-pack @types/b4a --save-dev
 ```
 
 ## Directory Structure
@@ -81,7 +81,7 @@ import {
 import { documentDirectory } from 'expo-file-system'
 import Clipboard from '@react-native-clipboard/clipboard'
 import { Worklet } from 'react-native-bare-kit'
-import bundle from './app.bundle'
+import bundle from './app.bundle.mjs'
 import RPC from 'bare-rpc'
 import b4a from 'b4a'
 import { RPC_RESET, RPC_MESSAGE } from '../rpc-commands.mjs'
@@ -287,9 +287,6 @@ npm run ios
 ```
 
 ### Android
-
-> [!IMPORTANT]  
-> You may experience problems running the app on an emulated Android device under QEMU due to https://github.com/holepunchto/libjs/issues/4. If you encounter crashes, try running the app on a real Android device instead.
 
 ```bash
 npm run android
