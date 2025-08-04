@@ -23,7 +23,7 @@ Hyperswarm supports joining multiple topics on the same instance and will dedup 
 
 Just like in web development, running code from an external source is dangerous. Running external code opens an application up to being exploited if the external source is nefarious or compromised. This is why http and https traffic is blocked by default in Pear applications, preventing unintentional loading of code that would make your application vulnerable to supply chain attacks. This is especially dangerous for applications, like Pear applications, that have access to native functionality (eg. the file system).
 
-## Exclude Development Dependencies from the staged Application 
+## Exclude Development Dependencies when staging applications
 
 When staging an application, all files in the root directory that are not explicitly ignored will be included in the application bundle. Development dependencies are not required at runtime and should therefore be excluded to reduce bundle size and improve performance. To remove them before staging, run:
 
