@@ -32,3 +32,7 @@ npm prune --omit=dev
 ```
 
 This ensures that only the necessary production dependencies are included in the final bundle.
+
+## Exclude the .git Directory
+
+The `.git` directory is excluded by default. However, if a custom `ignore` field is defined in the application's `stage` configuration, this overrides the default ignore rules. In such cases, you must explicitly include `.git` in the ignore list to ensure it remains excluded.
