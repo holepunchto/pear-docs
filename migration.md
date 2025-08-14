@@ -33,7 +33,7 @@ This strategy should work in both scenarios. After v2 is released however, `main
 
 ## API Migration
 
-The Pear v2 API deprecates all UI related methods as well as `Pear.worker.run()` and `Pear.worker.pipe()`. While these methods are v1 compatible upon release, they will be removed from v2 in the future.
+The Pear v2 API deprecates all UI related methods as well as `Pear.worker.run()` and `Pear.worker.pipe()`. While these methods are v1 compatible upon release, they will be removed in future.
 
 ### `Pear.config` -> `Pear.app`
 
