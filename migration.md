@@ -89,7 +89,7 @@ The `package.json` `pear` field supplies configuration information for Pear appl
 
 If applications are performing route handling, in v2 it is necessary for an application to opt-in to routing.
 
-In v1 when a `pear://` link is clicked outside of the application (eg in another app), or supplied to `pear run` the application is either opened, or sent a wakeup notification if already open.
+In v1 when a `pear://` link is clicked outside of the application (e.g. in another app), or supplied to `pear run` the application is either opened, or sent a wakeup notification if already open.
 
 When opened, `Pear.config.linkData` contains the pear:// link pathname with the leading `/` omitted. For example pear://runtime/pathname/to/some/where `linkData` would be `pathname/to/some/where`.
 
