@@ -87,11 +87,11 @@ The `package.json` `pear` field supplies configuration information for Pear appl
 
 ### Route-Handling Migration
 
-If applications are performing route handling, in v2 it is necessary for an application opt-in to route handling.
+If applications are performing route handling, in v2 they must explicitly opt into route handling.
 
 In v1 when a `pear://` link is clicked outside of the application (eg in another app), or supplied to `pear run` the application is either opened, or sent a wakeup notification if already open.
 
-When opened, `Pear.config.linkData` contains the pear:// link pathname with the leading `/` omitted. For example pear://runtime/pathname/to/some/where `linkData` would be `pathname/to/some/where`.
+When the application is opened, `Pear.config.linkData` contains the pathname portion of the `pear://` link, excluding the leading `/`. For example pear://runtime/pathname/to/some/where `linkData` would be `pathname/to/some/where`.
 
 When woken, `Pear.updates((wakeup) => {})` provides `wakeup.linkData`.
 
