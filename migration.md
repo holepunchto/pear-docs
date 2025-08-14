@@ -113,7 +113,7 @@ In v1 any link regardless of pathname ends up opening/waking the application. In
 }
 ```
 
-This configuration would route `pear://yourapp/from/pathname` to `pear://yourapp/foo.js` but it's `Pear.app.route` / `wakeup.route` would be `/from/pathname`.
+This configuration would route `pear://yourapp/from/pathname` to `pear://yourapp/foo.js` but its `Pear.app.route` / `wakeup.route` would be `/from/pathname`.
 
 To opt-in fully to v1 behaviour the catch-all can be used:
 
