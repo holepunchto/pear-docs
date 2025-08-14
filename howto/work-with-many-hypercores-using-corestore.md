@@ -6,6 +6,11 @@ An append-only log is powerful on its own, but it's most useful as a building bl
 
 In [How to replicate and persist with Hypercore](./replicate-and-persist-with-hypercore.md), only single Hypercore instance was replicated. But in this how-to, we will replicate a single Corestore instance, which will internally manage the replication of a collection of Hypercores. We will achieve this with two Pear Terminal Applications: `multicore-writer-app` and `multicore-reader-app`.
 
+> Only one Corestore per application is needed. This is the recommended best practices to make managing Hypercores efficient and to avoid pitfalls from having multiple Corestores. A single Corestore will:
+> - Manage multiple sessions for the same Hypercore.
+> - Requires only one replication stream per peer connection.
+> - Simplifies referring to Hypercores by a name.
+
 Create the `multicore-writer-app` project with these commands:
 
 ```
@@ -100,10 +105,8 @@ const core = store.get({ key, valueEncoding: 'json' })
 // wait till all the properties of the hypercore instance are initialized
 await core.ready()
 
-const foundPeers = core.findingPeers()
 swarm.join(core.discoveryKey)
-swarm.on('connection', conn => core.replicate(conn))
-swarm.flush().then(() => foundPeers())
+await swarm.flush()
 
 // update the meta-data of the hypercore instance
 await core.update()

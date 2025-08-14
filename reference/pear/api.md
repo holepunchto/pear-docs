@@ -23,14 +23,11 @@ Contains application configuration data.
 
 ### `Pear.config.key <Object|null>`
 
-The application key, `null` in development mode.
 The `config.key` object holds both Hexadecimal and Z-Base-32 encodings of the key, and is of the form `{ z32: <String>, hex: <String> }`,
 
 ### `Pear.config.dev <Boolean>`
 
-Application is local (loaded from disk).
-
-Equivalent to `pear.config.key === null`.
+Whether the application is in development mode.
 
 ### `Pear.config.tier <String>`
 
@@ -50,7 +47,7 @@ Application entry file
 
 ### `Pear.config.channel <String|null>`
 
-Application release/staging channel, `null` in development mode.
+Application release/staging channel.
 
 ### `Pear.config.options <Object>`
 
@@ -145,7 +142,7 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 ### `Pear.config.release <Integer>`
 
-Application release sequence integer, `null` in development mode.
+Application release sequence integer.
 
 ### `Pear.config.flags <Object>`
 
@@ -417,6 +414,26 @@ The `listener` function is called for every incoming update with an `update` obj
 
 Also returns a [`streamx`](https://github.com/mafintosh/streamx) `Readable`) stream.
 
+### `const update = await Pear.updated()`
+
+Returns the current `update` object of the form:
+
+```js
+{
+  version: { fork <Integer>, length <Integer>, key <String(hex)>,  } | null,
+  app <Boolean>,
+  diff <Array <String>>,
+} | undefined
+```
+
+* `version` is a Pear version object holding incoming version information
+* `app` indicates whether the update represents an application (`true`) or platform (`false`) update
+* `diff` requires `--update-diffs` flag (else `null`). An array of objects of form `{ type, key}`.
+  * `type` `<String>` - Operation type `update` or `delete`
+  * `key` `<String>` - Drive key for a given updated file e.g. `/path/to/file.txt`
+
+Returns `undefined` if the app hasn't updated since the application started.
+
 ### `Pear.wakeups(listener <Async Function|Function>) => streamx.Readable`
 
 A wakeup occurs in the following cases:
@@ -451,6 +468,29 @@ Returns a `Boolean` promise for whether the call succeeded.
 
 Desktop Applications only.
 
+### `Pear.tray(options <Object>, listener <Async Function|Function>) => Promise<untray()>`
+
+Configure a tray icon for the application. This method will return a promise which resolves to an `untray()` function for removing the tray.
+
+The `listener` function is triggered whenever a menu item or the tray icon is clicked. It receives a single argument `key` that represents the menu item `key` that was clicked or the special value of `'click'` for when the menu icon itself was clicked. If no `listener` function is provided, a default listener will show the application window when triggered with `'click'` or `'show'` and quits with `'quit'`.
+
+A Pear application must be `hideable` to support adding a tray (see [`pear.gui.hideable`](./configuration.md#pear.gui.hideable-less-than-boolean-greater-than-default-false)).
+
+WARNING: Linux tray support varies which can cause scenarios where the application's tray doesn't work and closing the app will be hidden and inaccessible. Using a tray and `hideable` on Linux is not recommended.
+
+Desktop Applications only.
+
+**Options**
+
+* `icon <String>` Default: The Pear icon - The path for icon for the tray
+  relative to the project root. Supported formats: PNG & JPEG
+* `menu <Object>` Default: ``{ show: `Show ${Pear.config.name}`, quit: 'Quit' }`` - The
+  tray menu items. Each property of the object is the `key` passed to the
+  `listener` and whose value is the text displayed in the menu.
+* `os <Object>` Default: `{ win32: true, linux: true, darwin: true  }` - which
+  platforms support using the tray menu. The platform is checked via the
+  `process.platform` value.
+
 ### `const win = new Pear.Window(entry <String>, options <Object>)`
 
 Desktop Applications only.
@@ -464,7 +504,6 @@ Create a new `Window` instance.
 * `y <Integer>` - vertical window position (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. MacOS only, ignored on other OS's.
 * `center <Boolean` - center the window upon opening
 * `minWidth <Integer>` - window minimum width (pixels)
 * `minHeight <Integer>` - window minimum height (pixels)
@@ -507,7 +546,6 @@ Open the window.
 * `y <Integer>` - vertical window position (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. MacOS only, ignored on other OS's.
 * `center <Boolean` - center the window upon opening
 * `minWidth <Integer>` - window minimum width (pixels)
 * `minHeight <Integer>` - window minimum height (pixels)
@@ -613,7 +651,6 @@ await win.dimensions({
   y: 50,
   width: 550,
   height: 300,
-  animate: true // only has an effect on macOS
 })
 
 ```
@@ -626,7 +663,6 @@ Sets the dimensions of the window.
 * `y <Integer>` - the vertical position of the top of the window (pixels)
 * `width <Integer>` - the width of the window (pixels)
 * `height <Integer>` - the height of the window (pixels)
-* `animate <Boolean>` Default: `false` - animate the dimensional change. MacOS only, ignored on other OS's.
 * `position <String>` - may be `'center'` to set the window in the center of the screen or else `undefined`.
 
 **References**

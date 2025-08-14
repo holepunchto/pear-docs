@@ -12,7 +12,11 @@ The identifier of the operating system for which Bare was compiled. The possible
 
 ### `Bare.arch`
 
-The identifier of the processor architecture for which Bare was compiled. The possible values are `arm`, `arm64`, `ia32`, and `x64`.
+The identifier of the processor architecture for which Bare was compiled. The possible values are `arm`, `arm64`, `ia32`, `mips`, `mipsel`, and `x64`.
+
+### `Bare.simulator`
+
+Whether or not Bare was compiled for a simulator.
 
 ### `Bare.argv`
 
@@ -46,9 +50,13 @@ An object containing the version strings of Bare and its dependencies.
 
 Immediately terminate the process or current thread with an exit status of `code` which defaults to `Bare.exitCode`.
 
-### `Bare.suspend()`
+### `Bare.suspend([linger])`
 
-Suspend the process and all threads. This will emit a `suspend` event signalling that all work should stop immediately. When all work has stopped and the process would otherwise exit, an `idle` event will be emitted. If the process is not resumed from an `idle` event listener and no additional work is scheduled, the loop will block until the process is resumed. If additional work is scheduled from an `idle` event, the `idle` event will be emitted again once all work has stopped unless the process was resumed.
+Suspend the process and all threads. This will emit a `suspend` event signalling that all work should stop immediately. When all work has stopped and the process would otherwise exit, an `idle` event will be emitted. If the process is not resumed from an `idle` event listener, the loop will block until the process is resumed.
+
+### `Bare.idle()`
+
+Immediately suspend the event loop and trigger the `idle` event.
 
 ### `Bare.resume()`
 
@@ -70,29 +78,29 @@ If the process is exited explicitly, such as by calling `Bare.exit()` or as the 
 
 ### `Bare.on('exit', code)`
 
-Emitted just before the process or current thread terminates. Additional work scheduled from an `exit` event listener will be given a chance to run after which the process will terminate. If the process is forcefully terminated from an `exit` event listener, the remaining listeners will not run.
-
-> [!IMPORTANT]
-> Only cleanup work may be scheduled from an `exit` event listener. All I/O, including timers, will be closed on `exit` and can therefore not be used.
+Emitted before the process or current thread terminates. Additional work must not be scheduled from an `exit` event listener. If the process is forcefully terminated from an `exit` event listener, the remaining listeners will not run.
 
 ### `Bare.on('teardown')`
 
-Emitted after the process or current thread has terminated and just before the JavaScript environment is torn down. Additional work must not be scheduled from a `teardown` event listener. Bare itself will register `teardown` event listeners to join dangling threads and unload native addons.
+Emitted after the process or current thread has terminated and before the JavaScript environment is torn down. Additional work must not be scheduled from a `teardown` event listener. Bare itself will register `teardown` event listeners to join dangling threads and unload native addons.
 
 > [!IMPORTANT]
-> `teardown` listeners should generally be prepended to have the listeners run in last in, first out order:
+>
+> ##### Teardown ordering
+>
+> `teardown` listeners **SHOULD** be prepended to have the listeners run in last in, first out order:
 >
 > ```js
 > Bare.prependListener('teardown', () => { ... })
 > ```
 
-### `Bare.on('suspend')`
+### `Bare.on('suspend', linger)`
 
-Emitted when the process or current thread is suspended. Any in-progress or outstanding work, such as network activity or file system access, should be deferred, cancelled, or paused when the `suspend` event is emitted and no additional work may be scheduled.
+Emitted when the process or current thread is suspended. Any in-progress or outstanding work, such as network activity or file system access, should be deferred, cancelled, or paused when the `suspend` event is emitted and no additional work should be scheduled.
 
 ### `Bare.on('idle')`
 
-Emitted when the process or current thread becomes idle after suspension. If no additional work is scheduled from this event, the loop will block and no additional work be performed until the process is resumed. An `idle` event listener may call `Bare.resume()` to cancel the suspension.
+Emitted when the process or current thread becomes idle after suspension. After all handlers have run, the event loop will block and no additional work be performed until the process is resumed. An `idle` event listener may call `Bare.resume()` to cancel the suspension.
 
 ### `Bare.on('resume')`
 
@@ -102,30 +110,23 @@ Emitted when the process or current thread resumes after suspension. Deferred an
 
 The `Bare.Addon` namespace provides support for loading native addons, which are typically written in C/C++ and distributed as shared libraries.
 
-### `const addon = Addon.load(url)`
+### `const addon = Addon.load(url[, options])`
 
 Load a static or dynamic native addon identified by `url`. If `url` is not a static native addon, Bare will instead look for a matching dynamic object library.
 
-### `const unloaded = Addon.unload(url)`
+Options are reserved.
+
+### `const unloaded = Addon.unload(url[, options])`
 
 Unload a dynamic native addon identified by `url`. If the function returns `true`, the addon was unloaded from memory. If it instead returns `false`, the addon is still in use by one or more threads and will only be unloaded from memory when those threads either exit or explicitly unload the addon.
+
+Options are reserved.
 
 ### `const url = Addon.resolve(specifier, parentURL[, options])`
 
 Resolve a native addon specifier by searching for a static native addon or dynamic object library matching `specifier` imported from `parentURL`.
 
-Options include:
-
-```js
-{
-  // The name of the addon. If `null`, it will instead be read from the
-  // resolved `package.json`.
-  name: null,
-  // The version of the addon. If `null`, it will instead be read from the
-  // resolved `package.json`.
-  version: null
-}
-```
+Options are reserved.
 
 ## `Bare.Thread`
 
@@ -152,7 +153,7 @@ Options include:
 ```js
 {
   // Optional data to pass to the thread
-  data: Buffer | ArrayBuffer | SharedArrayBuffer | External,
+  data: null,
   // Optional file source, will be read from `filename` if neither `source` nor `callback` are provided
   source: string | Buffer,
   // Optional source encoding if `source` is a string
@@ -173,3 +174,11 @@ Whether or not the thread has been joined with the current thread.
 ### `thread.join()`
 
 Block and wait for the thread to exit.
+
+### `thread.suspend([linger])`
+
+Suspend the thread. Equivalent to calling `Bare.suspend()` from within the thread.
+
+### `thread.resume()`
+
+Resume the thread. Equivalent to calling `Bare.resume()` from within the thread.

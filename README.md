@@ -20,6 +20,8 @@ References for Pear Runtime.
 * [Application-Programming-Interface (API)](./reference/pear/api.md)
 * [Application Configuration](./reference/pear/configuration.md)
 * [Migration](./migration.md)
+* [Troubleshooting Applications](./reference/pear/troubleshooting.md)
+* [Frequently Asked Questions](./reference/pear/faq.md)
 
 > The Pear Runtime uses [Bare](https://github.com/holepunchto/bare) JavaScript runtime, which is a small and modular JavaScript runtime for desktop and mobile. To learn more, see [Bare Reference](./reference/bare/overview.md).
 
@@ -34,7 +36,9 @@ Guides on using the Pear Runtime to build and share P2P applications.
 * [Making a Pear Terminal Application](./guide/making-a-pear-terminal-app.md)
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
+* [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
 * [Creating a Pear Init Template](./guide/creating-a-pear-init-template.md)
+* [Best Practices](./guide/best-practices.md)
 
 
 ### How-tos
@@ -52,14 +56,14 @@ Simple How-tos on using the essential building blocks in Pear applications.
 
 The essential building blocks for building powerful P2P applications using Pear.
 
-| Name                                           | Description                                                                                                                       | Stability                                                        |
-|------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|
-| [Hypercore](./building-blocks/hypercore.md)  | A distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely P2P.         | <mark style="background-color:#80ff80;">**stable**</mark>   |    
-| [Hyperbee](./building-blocks/hyperbee.md)| An append-only B-tree running on a Hypercore. Allows sorted iteration and more.| <mark style="background-color:#80ff80;">**stable**</mark>    |
-| [Hyperdrive](./building-blocks/hyperdrive.md)| A secure, real-time distributed file system that simplifies P2P file sharing and provides an efficient way to store and access data.| <mark style="background-color:#80ff80;">**stable**</mark>        |
-| [Autobase](./building-blocks/autobase.md)    | A "virtual Hypercore" layer over many Hypercores owned by many different peers.                                                     | <mark style="background-color: #8484ff;">**experimental**</mark> |
-| [Hyperdht](./building-blocks/hyperdht.md)    | The Distributed Hash Table (DHT) powering Hyperswarm.                                                                               | <mark style="background-color:#80ff80;">**stable**</mark>        |
-| [Hyperswarm](./building-blocks/hyperswarm.md)| A high-level API for finding and connecting to peers who are interested in a "topic".                                               | <mark style="background-color:#80ff80;">**stable**</mark>        |
+| Name                                           | Description                                                                                                                          | Stability                                                 |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| [Hypercore](./building-blocks/hypercore.md)    | A distributed, secure append-only log for creating fast and scalable applications without a backend, as it is entirely P2P.          | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [Hyperbee](./building-blocks/hyperbee.md)      | An append-only B-tree running on a Hypercore. Allows sorted iteration and more.                                                      | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [Hyperdrive](./building-blocks/hyperdrive.md)  | A secure, real-time distributed file system that simplifies P2P file sharing and provides an efficient way to store and access data. | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [Autobase](./building-blocks/autobase.md)      | A "virtual Hypercore" layer over many Hypercores owned by many different peers.                                                      | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [Hyperdht](./building-blocks/hyperdht.md)      | The Distributed Hash Table (DHT) powering Hyperswarm.                                                                                | <mark style="background-color:#80ff80;">**stable**</mark> |
+| [Hyperswarm](./building-blocks/hyperswarm.md)  | A high-level API for finding and connecting to peers who are interested in a "topic".                                                | <mark style="background-color:#80ff80;">**stable**</mark> |
 
 ### Helpers
 
@@ -95,7 +99,6 @@ Applications built using Pear.
 ### Examples
 
 Collection of example applications that can be used as reference during development.
-- [Cross-platform Pear App](./examples/cross-platform-pear-app.md): Cross-platform "Hello World" Pear application for Android and iOS.
 - [Bare on Mobile](./examples/bare-on-mobile.md): Reference applications for using Bare runtime on Android and iOS.
 - [React App using Pear](./examples/react-app-using-pear.md): Example application for building Pear applications using React framework.
 

@@ -7,12 +7,15 @@
 * [Command-Line-Interface (CLI)](./reference/pear/cli.md)
 * [Application-Programming-Interface (API)](./reference/pear/api.md)
 * [Application Configuration](./reference/pear/configuration.md)
+* [Troubleshooting Applications](./reference/pear/troubleshooting.md)
+* [Frequently Asked Questions](./reference/pear/faq.md)
 
 ### Bare reference
 * [Overview](./reference/bare/overview.md)
 * [Application-Programming-Interface (API)](./reference/bare/api.md)
 * [Node.js Compatibility with Bare](./reference/bare/nodejs-compatibility-with-bare.md)
 * [Bare Modules](./reference/bare/bare-modules.md)
+* [Troubleshooting with Bare](./reference/bare/troubleshooting.md)
 
 ### Guides
 
@@ -23,8 +26,10 @@
 * [Making a Pear Terminal Application](./guide/making-a-pear-terminal-app.md)
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Marking a Release](./guide/releasing-a-pear-app.md)
+* [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
 * [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
 * [Creating a Pear Init Template](./guide/creating-a-pear-init-template.md)
+* [Best Practices](./guide/best-practices.md)
 
 ### Building blocks
 
@@ -67,6 +72,5 @@
 
 ### Examples
 
-* [Cross-platform Pear App](examples/cross-platform-pear-app.md)
 * [Bare on Mobile](examples/bare-on-mobile.md)
 * [React App using Pear](examples/react-app-using-pear.md)

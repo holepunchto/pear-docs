@@ -69,10 +69,9 @@ async function mirrorDrive () {
 }
 ```
 
-Open the `drive-writer-app` with `pear run --dev .`:
+Open the `drive-writer-app` with:
 
 ```
-cd drive-writer-app
 pear run --dev .
 ```
 
@@ -129,11 +128,8 @@ const mirror = debounce(mirrorDrive)
 // to the Hypercore instance of the hyperdrive
 drive.core.on('append', mirror)
 
-const foundPeers = store.findingPeers()
-
 // join a topic
 swarm.join(drive.discoveryKey, { client: true, server: false })
-swarm.flush().then(() => foundPeers())
 
 // start the mirroring process (i.e copying the contents from remote drive to local dir)
 mirror()
@@ -148,10 +144,9 @@ async function mirrorDrive () {
 
 The `drive-reader-app` creates a `LocalDrive` instance for a local directory and then mirrors the contents of the local Hyperdrive instance into the `LocalDrive` instance (which will write the contents to the local directory).
 
-In a new terminal, execute the `drive-reader-app` with `pear run --dev .`, passing the key that the `drive-writer-app` already output:
+Run the `drive-reader-app` with `pear run --dev .`, passing the key that the `drive-writer-app` already output:
 
 ```
-cd drive-reader-app
 pear run --dev . <SUPPLY_KEY_HERE>
 ```
 
@@ -200,9 +195,8 @@ const bee = new Hyperbee(core, {
 // wait till the properties of the hypercore instance are initialized
 await core.ready()
 
-const foundPeers = store.findingPeers()
 swarm.join(core.discoveryKey)
-swarm.flush().then(() => foundPeers())
+await swarm.flush()
 
 // execute the listBee function whenever the data is appended to the underlying hypercore
 core.on('append', listBee)
@@ -224,8 +218,7 @@ Now the Hyperdrive can be inspected as though it were a Hyperbee, and log out so
 Execute the `drive-bee-reader-app` with `pear run --dev .`, passing it the key output by the `driver-writer-app`:
 
 ```
-cd drive-bee-reader-app
-pear run --dev .
+pear run --dev . <SUPPLY_KEY_HERE>
 ```
 
 The `drive-bee-reader-app` creates a Hyperbee instance using the Hypercore instance created with the copied public key. Every time the Hyperbee is updated (an `append` event is emitted on the underlying Hypercore), all file metadata nodes will be logged out.

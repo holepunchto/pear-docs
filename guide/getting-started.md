@@ -10,6 +10,38 @@ Since `npm` (or equivalent package manager) is needed to install application dep
 
 Pear runs on Windows, Mac and Linux.
 
+Linux requires the `libatomic` library which can be installed using:
+
+Debian/Ubuntu:
+
+```console
+sudo apt install libatomic1
+```
+
+RHEL/CentOS:
+
+```console
+sudo yum install libatomic
+```
+
+Fedora:
+
+```console
+sudo dnf install libatomic
+```
+
+Alpine Linux:
+
+```console
+sudo apk add libatomic
+```
+
+Arch Linux:
+
+```console
+sudo pacman -S libatomic_ops
+```
+
 The `pear` CLI can be installed from [npm](https://www.npmjs.com/), which comes with [`node`](https://nodejs.org/en/about).
 
 The `npm` package manager can also be used to install application dependencies later on.
