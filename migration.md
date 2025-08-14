@@ -1,8 +1,8 @@
 # Migration
 
-Pear v2 has an application entrypoint breaking change and API deprecations.
+Pear v2 introduces a breaking change to the application entrypoint and includes several API deprecations.
 
-Pear v1 supports HTML entrypoints, Pear v2 does not, it supports only JS entrypoints.
+Pear v1 supports HTML entrypoints, while Pear v2 supports only JavaScript entrypoints.
 
 ## Migration Strategy
 
