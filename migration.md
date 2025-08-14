@@ -62,3 +62,10 @@ Compat mode is a temporary transitioning utility, if usage can be avoided in fav
 Enable with `<script>Pear.constructor.COMPAT = true</script>` at the top of the `<head>` element in the HTML entrypoint and `Pear.constructor.COMPAT = true` at the top of worker or terminal app entrypoints.
 
 Compat mode isn't needed for premigration, only if time is needed for the application to transition to equivalent v2 APIs.
+
+## Config Migration
+
+The `package.json` `pear` field supplies configuration information for Pear applications.
+
+* `pear.userAgent` -> `pear.gui.userAgent`
+* `pear.gui.hideable` -> `pear.gui.closeHides`
