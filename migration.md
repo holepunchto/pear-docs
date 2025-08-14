@@ -65,12 +65,12 @@ Compat mode isn't needed for premigration, only if time is needed for the applic
 
 ## Config Migration
 
-Some configs of v2 change their position or are newly introduced due to architechtural changes.
+Some pear configs of v2 change their position in the `package.json` or are newly introduced due to architechtural changes.
 
 * `pear.userAgent -> pear.gui.userAgent`
 
 ## Routing
 
-* `Pear.config.linkData -> Pear.config.route`
+* `Pear.config.linkData -> Pear.app.route`
 
 In v2 routing is configured in the pear config. A string like `"routes": "."` can be used to set the apps root relative to the package.json. If an app starts subprocesses the `unrouted` config can be used in order to handle the paths seperatly (eg: `"unrouted": ["/workers"]`)
