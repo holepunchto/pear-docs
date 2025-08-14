@@ -56,7 +56,6 @@ import ui from `pear-electron`
 * `Pear.messages` -> [`pear-messages`](https://github.com/holepunchto/pear-messages)
 * `Pear.wakeups` -> [`pear-wakeups`](https://github.com/holepunchto/pear-wakeups)
 * `Pear.updates` -> [`pear-updates`](https://github.com/holepunchto/pear-updates)
-* `Pear.reload`` -> [`pear-`]
 
 ### `Pear`
 
