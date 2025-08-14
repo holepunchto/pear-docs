@@ -19,8 +19,8 @@ To prepare a Pear Desktop Application written for Pear v1 to seamlessly migrate 
 List numbers correspond as explanations for items in Pear v1 to Pear v2 Pre-transitional Migration Strategy.
 
 1. v1 supports `.html` `main` fields, v2 only supports `.js` fields. This approach relies on `index.html` (v1) and `index.js` (v2) `main` field defaults so that when the update occurs from v1 to v2 there's no validation issue on the `main` field and the entrypoint exists whichever version of Pear the app is running on.
-2. `pear-electron` is the UI library for v2, `pear-bridge` provides http-p2p functionality for electron, installing them into a v1 application makes it v2 ready pror to v2 release.
-3. `pear.pre` is a v2 feature that runs pre-run (from disk) and pre stage. pear-electron/pre is a script that autosets `pear.assets.ui` (which must be manually set prior to transition) and `pear.stage.entrypoints` (for html script tag entrypoint warmups)
+2. `pear-electron` is the UI library for v2, `pear-bridge` provides http-p2p functionality for electron, installing them into a v1 application makes it v2 ready prior to v2 release.
+3. `pear.pre` is a v2 feature that runs pre-run (from disk) and pre stage. pear-electron/pre is a script that autosets `pear.assets.ui` and `pear.stage.entrypoints` (for html script tag entrypoint warmups)
 4. v2 applications only run `.js` files. The `pear-electron` `index.js` template starts desktop application code in electron UI. `pear-bridge` `waypoint` option is a catch-all HTML file for unmatched pathnames - this allows for in-app UI routing, which overrides v2 default behaviour of opening specified routes as UI application paths.
 
 There are two migratory scenarios:
