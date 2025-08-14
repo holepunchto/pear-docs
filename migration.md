@@ -65,8 +65,6 @@ Compat mode isn't needed for premigration, only if time is needed for the applic
 
 ## Config Migration
 
-Some pear configs of v2 change their position in the `package.json` or are newly introduced due to architechtural changes.
-
 The `package.json` `pear` field supplies configuration information for Pear applications.
 
 * `pear.userAgent` -> `pear.gui.userAgent`
