@@ -91,7 +91,7 @@ If applications are performing route handling, in v2 it is necessary for an appl
 
 In v1 when a `pear://` link is clicked outside of the application (e.g. in another app), or supplied to `pear run` the application is either opened, or sent a wakeup notification if already open.
 
-When opened, `Pear.config.linkData` contains the pear:// link pathname with the leading `/` omitted. For example pear://runtime/pathname/to/some/where `linkData` would be `pathname/to/some/where`.
+When the application is opened, `Pear.config.linkData` contains the pathname of the `pear://` link, excluding the leading `/`. For example pear://runtime/pathname/to/some/where `linkData` would be `pathname/to/some/where`.
 
 When woken, `Pear.updates((wakeup) => {})` provides `wakeup.linkData`.
 
