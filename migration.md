@@ -125,7 +125,7 @@ To opt-in fully to v1 behaviour the catch-all can be used:
 }
 ```
 
-The configuration routes all pathnames to the application entrypoint.
+This configuration routes all pathnames to the application entrypoint.
 
 The `pear.unrouted` field may be used provide exceptions to the catch-all, for instance in order to run a sub-app (a "worker").
 
