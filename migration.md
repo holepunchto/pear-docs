@@ -95,7 +95,7 @@ When opened, `Pear.config.linkData` contains the pear:// link pathname with the 
 
 When woken, `Pear.updates((wakeup) => {})` provides `wakeup.linkData`.
 
-In v2 `linkData` is still available in both cases, but soft-deprecated in favour of v2 routing:
+In v2 `linkData` is still available in both cases, but soft-deprecated in favor of v2 routing:
 
 * `Pear.app.route` & `wakeup.route` - full pathname: pear://runtime/pathname/to/some/where -> `/pathname/to/some/where`.
 * `Pear.app.fragment` & `wakeup.fragment` - location hash without `#`: pear://runtime/pathname#something -> `something`
