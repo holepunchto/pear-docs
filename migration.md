@@ -87,7 +87,7 @@ The `package.json` `pear` field supplies configuration information for Pear appl
 
 ### Route-Handling Migration
 
-If applications are performing route handling, in v2 it is necessary for an application to opt-in to route handling.
+If applications are performing route handling, in v2 it is necessary for an application to opt-in to routing.
 
 In v1 when a `pear://` link is clicked outside of the application (eg in another app), or supplied to `pear run` the application is either opened, or sent a wakeup notification if already open.
 
