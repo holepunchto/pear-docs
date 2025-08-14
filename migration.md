@@ -33,16 +33,27 @@ This strategy should work in both scenarios. After v2 is released however, `main
 
 ## API Migration
 
-The Pear v2 API deprecates all UI related methods as well as `Pear.worker.run()` and `Pear.worker.pipe()`. While these methods are v1 compatible upon release, they will be removed from v2 in future and should be accessed modular.
+The Pear v2 API deprecates all UI related methods as well as `Pear.worker.run()` and `Pear.worker.pipe()`. While these methods are v1 compatible upon release, they will be removed from v2 in the future.
 
-* `Pear.media` -> `import media from 'pear-media'`
-* `Pear.tray` -> `import { tray } from 'pear-app'`
-* `Pear.badge` -> `import { badge } from 'pear-app'`
-* `Pear.Window` -> `import { Window } from 'pear-app'`
-* `Pear.View` -> `import { View } from 'pear-app'`
-* `Pear.Window.self` / `Pear.View.self` -> `import app from 'pear-app'`
-* `Pear.worker.run()` -> `import run from 'pear-run'`
-* `Pear.worker.pipe()` -> `import pipe from 'pear-pipe'`
+### `Pear.config` -> `Pear.app`
+
+### `Pear` -> `ui`
+
+```js
+import ui from `pear-electron`
+```
+
+* `Pear.media` -> `ui.media`
+* `Pear.tray` -> `ui.app.tray`
+* `Pear.badge` -> `ui.app.badge`
+* `Pear.Window` -> `ui.Window`
+* `Pear.View` -> `ui.View`
+* `Pear.Window.self` / `Pear.View.self` -> `ui.app`
+
+### `Pear` -> `pear-*`
+
+* `Pear.worker.run()` -> `import run from 'pear-run'` `run()`
+* `Pear.worker.pipe()` -> `import pipe from 'pear-pipe'` `pipe()`
 
 ### Compat Mode
 
