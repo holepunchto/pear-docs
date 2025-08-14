@@ -59,8 +59,8 @@ import ui from `pear-electron`
 
 ### `Pear`
 
- * `Pear.config` -> `Pear.app`
- * `Pear.reload` -> `location.reload`
+* `Pear.config` -> `Pear.app`
+* `Pear.reload` -> `location.reload`
 
 
 ### Compat Mode
@@ -84,3 +84,56 @@ The `package.json` `pear` field supplies configuration information for Pear appl
 
 * `pear.userAgent` -> `pear.gui.userAgent`
 * `pear.gui.hideable` -> `pear.gui.closeHides`
+
+### Route-Handling Migration
+
+If applications are performing route handling, in v2 it is necessary for an application opt-in to route handling.
+
+In v1 when a `pear://` link is clicked outside of the application (eg in another app), or supplied to `pear run` the application is either opened, or sent a wakeup notification if already open.
+
+When opened, `Pear.config.linkData` contains the pear:// link pathname with the leading `/` omitted. For example pear://runtime/pathname/to/some/where `linkData` would be `pathname/to/some/where`.
+
+When woken, `Pear.updates((wakeup) => {})` provides `wakeup.linkData`.
+
+In v2 `linkData` is still available in both cases, but soft-deprecated in favour of v2 routing:
+
+* `Pear.app.route` & `wakeup.route` - full pathname: pear://runtime/pathname/to/some/where -> `/pathname/to/some/where`.
+* `Pear.app.fragment` & `wakeup.fragment` - location hash without `#`: pear://runtime/pathname#something -> `something`
+* `Pear.app.query` & `wakeup.query` - query string without `?`. pear://runtime/pathname?some-query -> `some-query`
+
+In v1 any link regardless of pathname ends up opening/waking the application. In v2, by default, pathnames are treated as sub-apps. This means `pear run` and `pear-run` can execute any valid file staged to a Pear application. Therefore in v2, it is necessary to opt-in via route mapping using `package.json` `pear.routes`. For example:
+
+```json
+{
+  "pear": {
+    "routes": {
+      "/from/pathname/": "foo.js"
+    }
+  }
+}
+```
+
+This configuration would route `pear://yourapp/from/pathname` to `pear://yourapp/foo.js` but it's `Pear.app.route` / `wakeup.route` would be `/from/pathname`.
+
+To opt-in fully to v1 behaviour the catch-all can be used:
+
+```json
+{
+  "pear": {
+    "routes": "."
+  }
+}
+```
+
+The configuration routes all pathnames to the application entrypoint.
+
+The `pear.unrouted` field may be used provide exceptions to the catch-all, for instance in order to run a sub-app (a "worker").
+
+```json
+{
+  "pear": {
+    "routes": ".",
+    "unrouted": ["./bots"]
+  }
+}
+```
