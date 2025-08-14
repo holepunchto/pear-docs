@@ -65,7 +65,7 @@ import ui from `pear-electron`
 
 ### Compat Mode
 
-While v1 Pear APIs will continue to function (with deprecation messages), for projects that need a legacy-bridge during overlapping transitional periods, compat-mode can be opted into which will
+While v1 Pear APIs will continue to function with deprecation messages, for projects that need a legacy-bridge during overlapping transitional periods, compat-mode can be used to:
 
 * Silence deprecation warnings
 * Ensure legacy methods to continue to function after their removal for a longer time period
