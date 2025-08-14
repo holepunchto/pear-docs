@@ -33,9 +33,7 @@ This strategy should work in both scenarios. After v2 is released however, `main
 
 ## API Migration
 
-The Pear v2 API deprecates all UI related methods as well as `Pear.worker.run()` and `Pear.worker.pipe()`. While these methods are v1 compatible upon release, they will be removed in future.
-
-### `Pear.config` -> `Pear.app`
+The Pear v2 API deprecates all UI related methods now exported from `pear-electron` and a few others that have been moved to modules or renamed.
 
 ### `Pear` -> `ui`
 
@@ -52,8 +50,19 @@ import ui from `pear-electron`
 
 ### `Pear` -> `pear-*`
 
-* `Pear.worker.run()` -> `import run from 'pear-run'` `run()`
-* `Pear.worker.pipe()` -> `import pipe from 'pear-pipe'` `pipe()`
+* `Pear.worker.run` -> [`pear-run`](https://github.com/holepunchto/pear-run)
+* `Pear.worker.pipe` -> [`pear-pipe`](https://github.com/holepunchto/pear-pipe)
+* `Pear.message` -> [`pear-message`](https://github.com/holepunchto/pear-message)
+* `Pear.messages` -> [`pear-messages`](https://github.com/holepunchto/pear-messages)
+* `Pear.wakeups` -> [`pear-wakeups`](https://github.com/holepunchto/pear-wakeups)
+* `Pear.updates` -> [`pear-updates`](https://github.com/holepunchto/pear-updates)
+* `Pear.reload`` -> [`pear-`]
+
+### `Pear`
+
+ * `Pear.config` -> `Pear.app`
+ * `Pear.reload` -> `location.reload`
+
 
 ### Compat Mode
 
