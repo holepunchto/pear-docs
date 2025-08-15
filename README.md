@@ -19,6 +19,7 @@ References for Pear Runtime.
 * [Command-Line-Interface (CLI)](./reference/pear/cli.md)
 * [Application-Programming-Interface (API)](./reference/pear/api.md)
 * [Application Configuration](./reference/pear/configuration.md)
+* [Migration](./migration.md)
 * [Troubleshooting Applications](./reference/pear/troubleshooting.md)
 * [Frequently Asked Questions](./reference/pear/faq.md)
 
@@ -38,6 +39,7 @@ Guides on using the Pear Runtime to build and share P2P applications.
 * [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
 * [Creating a Pear Init Template](./guide/creating-a-pear-init-template.md)
 * [Best Practices](./guide/best-practices.md)
+
 
 ### How-tos
 
