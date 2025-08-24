@@ -148,7 +148,7 @@ Returns a stream of all subpaths of entries in drive stored at paths prefixed by
 
 Mirrors this drive into another. Returns a [`MirrorDrive`](../helpers/mirrordrive.md) instance constructed with `options`.
 
-Call [`await mirror.done()`](../helpers/mirrordrive.md#await-mirrordone) to wait for the mirroring to finish.
+Call [`await mirror.done()`](../helpers/mirrordrive.md#await-mirror.done) to wait for the mirroring to finish.
 
 **`const rs = drive.createReadStream(key, [options])`**
 
