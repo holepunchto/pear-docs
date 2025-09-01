@@ -140,3 +140,111 @@ The `pear.unrouted` field may be used provide exceptions to the catch-all, for i
   }
 }
 ```
+
+## Verifying Migration
+
+Verify in development with
+
+ ```sh
+ pear run -d .
+ ```
+ 
+Production equivalent verification:
+
+```sh
+pear stage check
+``` 
+
+Then per link output from stage command:
+
+```sh
+pear run <link>
+```
+
+If the application starts and operates correctly in any related areas where changes have been made, then migration is verified.
+
+If the SemVer printed by `pear -v` is 2.x.x then migration verification is complete.
+
+If the SemVer printed by `pear -v` is 1.x.x then these steps need to performed on v2 also. 
+
+Switch to v2 with:
+
+```sh
+pear sidecar --key dhpc5npmqkansx38uh18h3uwpdp6g9ukozrqyc4irbhwriedyeho
+```
+
+This will run the current sidecar in the terminal and switch to the v2 release line per the supplied key.
+
+The command should output something similar to:
+
+```sh
+- Closing any current Sidecar clients...
+- Shutting down current Sidecar...
+✔ Sidecar has shutdown
+- Rebooting current process as Sidecar
+  - [ pqbzjhqyonxprx8hghxexnmctw75mr91ewqw5dxe1zmntfyaddqy ]
+- Runtime: pear-runtime
+
+========================= INIT ===================================
+
+- Sidecar Booting [+0ms]
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+✔ Current process is now Sidecar
+- Version: {
+    "key": "pqbzjhqyonxprx8hghxexnmctw75mr91ewqw5dxe1zmntfyaddqy",
+    "length": 9195,
+    "fork": 0
+  }
+
+========================= RUN ====================================
+
+- Switching to key dhpc5npmqkansx38uh18h3uwpdp6g9ukozrqyc4irbhwriedyeho with length 3097... [+261.4711ms]
+Platform update Available. Restart to update to: [+367.2348ms]
+ v0.3097.dhpc5npmqkansx38uh18h3uwpdp6g9ukozrqyc4irbhwriedyeho [+0.0349ms]
+- DHT known-nodes read from database 100 nodes [+4631.6207ms]
+- Drive bundle dhpc5npmqkansx38uh18h3uwpdp6g9ukozrqyc4irbhwriedyeho core length: 3097 [+5.1877ms]
+- Sidecar swarm joining discovery key of dhpc5npmqkansx38uh18h3uwpdp6g9ukozrqyc4irbhwriedyeho [+0.0797ms]
+- Sidecar Booted [+1.1023ms]
+```
+
+Once the "Restart to update" message is observed, use ctrl+c to close the sidecar and then run `pear -v` to verify that the key is correct. If it isn't, try again. If it is, verify the application on v2.
+
+Verify in development with
+
+ ```sh
+ pear run -d .
+ ```
+ 
+Production equivalent verification:
+
+```sh
+pear stage check
+``` 
+
+Then per link output from stage command:
+
+```sh
+pear run <link>
+```
+
+If the application starts and operates correctly in any related areas where changes have been made, then migration is verified.
+
+Once verified, switch back to production:
+
+```sh
+pear sidecar --key pqbzjhqyonxprx8hghxexnmctw75mr91ewqw5dxe1zmntfyaddqy
+```
+
+If there's any problems switching back, make sure there are no `pear-runtime` processes running and run `npx pear`.
+
+> ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+>
+>  **WARNING:** Omitting to switch back to production Pear leaves the system on a release-line that will be ended. 
+>
+>  **In order to avoid any issues, be sure to switch back to production [ pqbzjhqyonx... ]**
+>
+> ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+
+
