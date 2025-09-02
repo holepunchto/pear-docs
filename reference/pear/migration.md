@@ -20,8 +20,31 @@ To prepare a Pear Desktop Application written for Pear v1 to seamlessly migrate 
 1. Ensure the project `package.json` `main` field is **unset** and ensure that the HTML entry file is named `index.html`.
 2. Install dependencies: `npm install pear-electron pear-bridge`
 3. Set `package.json` `pear.pre` field to `pear-electron/pre`
-4. Add an `index.js` file per `pear-electron` https://github.com/holepunchto/pear-electron/blob/main/template/index.js
-  * alter `waypoint` to `/index.html`: `const bridge = new Bridge({ waypoint: '/index.html' })`
+4. Add an `index.js` file that uses `pear-electron` and `pear-bridge`:
+
+```js
+import Runtime from 'pear-electron'
+import Bridge from 'pear-bridge'
+
+Pear.updates((update) => {
+  console.log('Application update available:', update)
+})
+
+const bridge = new Bridge({ waypoint: 'index.html' })
+await bridge.ready()
+
+const runtime = new Runtime()
+const pipe = await runtime.start({ bridge })
+pipe.on('close', () => Pear.exit())
+
+pipe.on('data', (data) => {
+  const cmd = Buffer.from(data).toString()
+  if (cmd === 'hello from ui') pipe.write('sweet bidirectionality')
+  console.log('PIPE DATA', data + '')
+})
+
+pipe.write('hello from app')
+```
 
 ### Explanation
 
