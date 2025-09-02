@@ -85,41 +85,12 @@ In v2 `linkData` is still available in both cases, but soft-deprecated in favor 
 * `Pear.app.fragment` & `wakeup.fragment` - location hash without `#`: pear://runtime/pathname#something -> `something`
 * `Pear.app.query` & `wakeup.query` - query string without `?`. pear://runtime/pathname?some-query -> `some-query`
 
-In v1 any link regardless of pathname ends up opening/waking the application. In v2, by default, pathnames are treated as sub-apps. This means `pear run` and `pear-run` can execute any valid file staged to a Pear application. Therefore in v2, it is necessary to opt-in via route mapping using `package.json` `pear.routes`. For example:
-
-```json
-{
-  "pear": {
-    "routes": {
-      "/from/pathname/": "foo.js"
-    }
-  }
-}
-```
-
-This configuration would route `pear://yourapp/from/pathname` to `pear://yourapp/foo.js` but its `Pear.app.route` / `wakeup.route` would be `/from/pathname`.
-
-To opt-in fully to v1 behaviour the catch-all can be used:
+To opt-in fully to v1 behavior the catch-all `routes` config can be used:
 
 ```json
 {
   "pear": {
     "routes": "."
-  }
-}
-```
-
-#### Workers with Catch-All Routes
-
-This configuration routes all pathnames to the application entrypoint.
-
-The `pear.unrouted` field may be used provide exceptions to the catch-all, for instance in order to run a sub-app (a worker).
-
-```json
-{
-  "pear": {
-    "routes": ".",
-    "unrouted": ["./bots"]
   }
 }
 ```
