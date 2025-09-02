@@ -34,59 +34,25 @@ List numbers correspond as explanations for items in Pear v1 to Pear v2 Pre-tran
 
 If after v2 release, the `main` field can be set to any JavaScript file and `pear-bridge` waypoint can be set to any HTML file.
 
-## API Migration
-
-The Pear v2 API deprecates all UI related methods now exported from `pear-electron` and a few others that have been moved to modules or renamed.
-
-### `Pear` -> `ui`
-
-```js
-import ui from `pear-electron`
-```
-
-* `Pear.media` -> `ui.media`
-* `Pear.tray` -> `ui.app.tray`
-* `Pear.badge` -> `ui.app.badge`
-* `Pear.Window` -> `ui.Window`
-* `Pear.View` -> `ui.View`
-* `Pear.Window.self` / `Pear.View.self` -> `ui.app`
-
-### `Pear` -> `pear-*`
-
-* `Pear.worker.run` -> [`pear-run`](https://github.com/holepunchto/pear-run)
-* `Pear.worker.pipe` -> [`pear-pipe`](https://github.com/holepunchto/pear-pipe)
-* `Pear.message` -> [`pear-message`](https://github.com/holepunchto/pear-message)
-* `Pear.messages` -> [`pear-messages`](https://github.com/holepunchto/pear-messages)
-* `Pear.wakeups` -> [`pear-wakeups`](https://github.com/holepunchto/pear-wakeups)
-* `Pear.updates` -> [`pear-updates`](https://github.com/holepunchto/pear-updates)
-
-### `Pear`
-
-* `Pear.config` -> `Pear.app`
-* `Pear.reload` -> `location.reload`
-
-
-### Compat Mode
-
-While v1 Pear APIs will continue to function with deprecation messages, for projects that need a legacy-bridge during overlapping transitional periods, compat-mode can be used to:
-
-* Silence deprecation warnings
-* Ensure legacy methods to continue to function after their removal for a longer time period
-* Limit ability to use new APIs in future
-* Eventually itself be deprecated & removed
-
-Compat mode is a temporary transitioning utility, if usage can be avoided in favour of moving to the equivalent methods this avoids potential for legacy lock-in.
-
-Enable with `<script>Pear.constructor.COMPAT = true</script>` at the top of the `<head>` element in the HTML entrypoint and `Pear.constructor.COMPAT = true` at the top of worker or terminal app entrypoints.
-
-Compat mode isn't needed for premigration, only if time is needed for the application to transition to equivalent v2 APIs.
-
 ## Config Migration
 
 The `package.json` `pear` field supplies configuration information for Pear applications.
 
 * `pear.userAgent` -> `pear.gui.userAgent`
 * `pear.gui.hideable` -> `pear.gui.closeHides`
+
+When preparing for v2 in advance, both fields must be present:
+
+```json
+"pear": {
+  "userAgent": "custom user agent",
+  "gui": {
+    "userAgent": "custom user agent",
+    "hideable": true,
+    "closesHides": true
+  }
+}
+```
 
 ### Route-Handling Migration
 
@@ -140,6 +106,52 @@ The `pear.unrouted` field may be used provide exceptions to the catch-all, for i
   }
 }
 ```
+
+## API Migration
+
+The Pear v2 API deprecates all UI related methods now exported from `pear-electron` and a few others that have been moved to modules or renamed.
+
+### `Pear` -> `ui`
+
+```js
+import ui from `pear-electron`
+```
+
+* `Pear.media` -> `ui.media`
+* `Pear.tray` -> `ui.app.tray`
+* `Pear.badge` -> `ui.app.badge`
+* `Pear.Window` -> `ui.Window`
+* `Pear.View` -> `ui.View`
+* `Pear.Window.self` / `Pear.View.self` -> `ui.app`
+
+### `Pear` -> `pear-*`
+
+* `Pear.worker.run` -> [`pear-run`](https://github.com/holepunchto/pear-run)
+* `Pear.worker.pipe` -> [`pear-pipe`](https://github.com/holepunchto/pear-pipe)
+* `Pear.message` -> [`pear-message`](https://github.com/holepunchto/pear-message)
+* `Pear.messages` -> [`pear-messages`](https://github.com/holepunchto/pear-messages)
+* `Pear.wakeups` -> [`pear-wakeups`](https://github.com/holepunchto/pear-wakeups)
+* `Pear.updates` -> [`pear-updates`](https://github.com/holepunchto/pear-updates)
+
+### `Pear`
+
+* `Pear.config` -> `Pear.app`
+* `Pear.reload` -> `location.reload`
+
+### Compat Mode
+
+While v1 Pear APIs will continue to function with deprecation messages, for projects that need a legacy-bridge during overlapping transitional periods, compat-mode can be used to:
+
+* Silence deprecation warnings
+* Ensure legacy methods to continue to function after their removal for a longer time period
+* Limit ability to use new APIs in future
+* Eventually itself be deprecated & removed
+
+Compat mode is a temporary transitioning utility, if usage can be avoided in favour of moving to the equivalent methods this avoids potential for legacy lock-in.
+
+Enable with `<script>Pear.constructor.COMPAT = true</script>` at the top of the `<head>` element in the HTML entrypoint and `Pear.constructor.COMPAT = true` at the top of worker or terminal app entrypoints.
+
+Compat mode isn't needed for premigration, only if time is needed for the application to transition to equivalent v2 APIs.
 
 ## Verifying Migration
 
