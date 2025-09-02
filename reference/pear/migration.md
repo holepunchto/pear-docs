@@ -34,6 +34,12 @@ const pipe = await runtime.start({ bridge })
 pipe.on('close', () => Pear.exit())
 ```
 
+Install the dependencies:
+
+```sh
+npm install pear-electron pear-bridge
+```
+
 ### Explanation
 
 List numbers correspond as explanations for items in Pear v1 to Pear v2 Pre-transitional Migration Strategy.
