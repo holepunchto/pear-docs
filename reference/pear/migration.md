@@ -149,21 +149,6 @@ import ui from `pear-electron`
 * `Pear.config` -> `Pear.app`
 * `Pear.reload` -> `location.reload`
 
-### Compat Mode
-
-While v1 Pear APIs will continue to function with deprecation messages, for projects that need a legacy-bridge during overlapping transitional periods, compat-mode can be used to:
-
-* Silence deprecation warnings
-* Ensure legacy methods to continue to function after their removal for a longer time period
-* Limit ability to use new APIs in future
-* Eventually itself be deprecated & removed
-
-Compat mode is a temporary transitioning utility, if usage can be avoided in favour of moving to the equivalent methods this avoids potential for legacy lock-in.
-
-Enable with `<script>Pear.constructor.COMPAT = true</script>` at the top of the `<head>` element in the HTML entrypoint and `Pear.constructor.COMPAT = true` at the top of worker or terminal app entrypoints.
-
-Compat mode isn't needed for premigration, only if time is needed for the application to transition to equivalent v2 APIs.
-
 ## Verifying Migration
 
 Verify in development with
@@ -270,4 +255,17 @@ If there's any problems switching back, make sure there are no `pear-runtime` pr
 >
 > ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
 
+## Compat Mode
 
+While v1 Pear APIs will continue to function with deprecation messages, for projects that need a legacy-bridge during overlapping transitional periods, compat-mode can be used to:
+
+* Silence deprecation warnings
+* Ensure legacy methods to continue to function after their removal for a longer time period
+* Limit ability to use new APIs in future
+* Eventually itself be deprecated & removed
+
+Compat mode is a temporary transitioning utility, if usage can be avoided in favour of moving to the equivalent methods this avoids potential for legacy lock-in.
+
+Enable with `<script>Pear.constructor.COMPAT = true</script>` at the top of the `<head>` element in the HTML entrypoint and `Pear.constructor.COMPAT = true` at the top of worker or terminal app entrypoints.
+
+Compat mode isn't needed for premigration, only if time is needed for the application to transition to equivalent v2 APIs.
