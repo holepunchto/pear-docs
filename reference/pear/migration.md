@@ -46,8 +46,8 @@ List numbers correspond as explanations for items in Pear v1 to Pear v2 Pre-tran
 
 1. v1 supports `.html` `main` fields, v2 only supports `.js` fields. This approach relies on `index.html` (v1) and `index.js` (v2) `main` field defaults so that when the update occurs from v1 to v2 there's no validation issue on the `main` field and the entrypoint exists whichever version of Pear the app is running on.
 2. `pear-electron` is the UI library for v2, `pear-bridge` provides http-p2p functionality for electron, installing them into a v1 application makes it v2 ready prior to v2 release.
-3. `pear.pre` is a v2 feature that runs pre-run (from disk) and pre-stage. pear-electron/pre is a script that autosets `pear.assets.ui` and `pear.stage.entrypoints` (for html script tag entrypoint warmups)
-4. v2 applications only run `.js` files. The `pear-electron` `index.js` template starts desktop application code in electron UI. `pear-bridge` `waypoint` option is a catch-all HTML file for unmatched pathnames - this allows for in-app UI routing, which overrides v2 default behaviour of opening specified routes as UI application paths.
+3. `pear.pre` is a v2 feature that runs pre-run (from disk) and pre-stage. `pear-electron/pre` is a script that autosets `pear.assets.ui` and `pear.stage.entrypoints` (for html script tag entrypoint warmups)
+4. v2 applications only run `.js` files. The `index.js` file starts desktop application code in electron UI. `pear-bridge` `waypoint` option is a catch-all HTML file for unmatched pathnames - this allows for in-app UI routing, which overrides v2 default behaviour of opening specified routes as UI application paths. If in-app routing isn't needed then there is no need to set `waypoint`.
 
 If after v2 release, the `main` field can be set to any JavaScript file and `pear-bridge` waypoint can be set to any HTML file.
 
