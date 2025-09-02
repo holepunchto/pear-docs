@@ -253,13 +253,10 @@ pear sidecar --key pqbzjhqyonxprx8hghxexnmctw75mr91ewqw5dxe1zmntfyaddqy
 
 If there's any problems switching back, make sure there are no `pear-runtime` processes running and run `npx pear`.
 
-> ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
->
->  **WARNING:** Omitting to switch back to production Pear leaves the system on a release-line that will be ended. 
+>  ⚠️ **WARNING:** Omitting to switch back to production Pear leaves the system on a release-line that will be ended. 
 >
 >  **In order to avoid any issues, be sure to switch back to production [ pqbzjhqyonx... ]**
 >
-> ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
 
 ## Compat Mode
 
