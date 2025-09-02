@@ -240,10 +240,10 @@ pear stage check
 Then per link output from stage command:
 
 ```sh
-pear run <link>
+pear run -d <link>
 ```
 
-If the application starts and operates correctly in any related areas where changes have been made, then migration is verified.
+If the application starts and operates correctly, then migration is verified.
 
 Once verified, switch back to production:
 
