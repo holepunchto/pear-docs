@@ -102,7 +102,7 @@ The Pear v2 API deprecates all UI related methods now exported from `pear-electr
 ### `Pear` -> `ui`
 
 ```js
-import ui from `pear-electron`
+import ui from 'pear-electron'
 ```
 
 * `Pear.media` -> `ui.media`
