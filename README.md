@@ -35,7 +35,7 @@ Welcome to the Internet of Peers
 
 Pear is a native point-to-point peer-to-peer capable platform that consists of a runtime binary, an API, userland modules, a command-line interface, an on-demand daemon and an application shell to provide the capabilities to develop & deploy production P2P applications. With JavaScript and beyond.
 
-Pear's runtime binary is built on [Bare](https://github.com/holepunchto/bare), a small and modular JavaScript runtime for desktop and mobile. Like Node.js, it provides an asynchronous, event-driven architecture for writing applications in the lingua franca of modern software. Unlike Node.js, it makes embedding and cross-device support core use cases, aiming to run just as well on your phone as on your laptop.
+Pear's runtime binary is built on [Bare](https://github.com/holepunchto/bare), a small and modular JavaScript runtime for desktop and mobile. Like Node.js, it provides an asynchronous, event-driven architecture for writing applications in the lingua franca of modern software. Unlike Node.js, embedding and cross-device are supported as core use cases, aiming to run just as well on mobile as desktop.
 
 * [Pear CLI](./reference/cli.md)
 * [Pear Configuration](./reference/configuration.md)
