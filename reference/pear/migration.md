@@ -81,7 +81,7 @@ When woken, `Pear.updates((wakeup) => {})` provides `wakeup.linkData`.
 
 In v2 `linkData` is still available in both cases, but soft-deprecated in favor of v2 routing:
 
-* `Pear.app.route` & `wakeup.route` - full pathname: pear://runtime/pathname/to/some/where -> `/pathname/to/some/where`.
+* `Pear.app.entrypoint` & `wakeup.entrypoint` - full pathname: pear://runtime/pathname/to/some/where -> `/pathname/to/some/where`. The `entrypoint` is mapped per `pear.routes` configuration.
 * `Pear.app.fragment` & `wakeup.fragment` - location hash without `#`: pear://runtime/pathname#something -> `something`
 * `Pear.app.query` & `wakeup.query` - query string without `?`. pear://runtime/pathname?some-query -> `some-query`
 
