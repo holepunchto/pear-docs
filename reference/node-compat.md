@@ -1,3 +1,4 @@
+<<<<<<< HEAD:reference/pear/node-compat.md
 # Node.js Compatibility with Bare
 Bare offers great compatibility with Node.js counterparts.
 Most of the modules and APIs used by developers are covered and supported.
@@ -217,10 +218,32 @@ Test successful!
 When writing a module that uses `fs` the mapping can be specified directly in the module instead of relying on the compatible. This can be achieved using an 'import map'.
 
 For example [Localdrive](https://github.com/holepunchto/localdrive) uses `fs` and to work in both Bare and Node.js it adds the following import map to the `package.json` file.
+=======
+# Node.js Compatibility
+
+Pear's native runtime is [Bare](https://github.com/holepunchto/bare).
+
+Pear, via Bare, offers compatibility with Node.js codebases.
+
+The majority of the Node.js API surface used by developers can be supported using `bare-*` modules and `package.json` import maps.
+
+## Import Maps
+
+For example, given a Node.js module using `fs`, the `package.json` `imports` field should look like so:
+>>>>>>> 858f999 (v2):reference/node-compat.md
 
 ```json
 {
   "imports": {
+<<<<<<< HEAD:reference/pear/node-compat.md
+=======
+    "node:fs": {
+      "fs": {
+        "bare": "bare-fs",
+        "default": "fs"
+      }
+    },
+>>>>>>> 858f999 (v2):reference/node-compat.md
     "fs": {
       "bare": "bare-fs",
       "default": "fs"
@@ -230,12 +253,17 @@ For example [Localdrive](https://github.com/holepunchto/localdrive) uses `fs` an
       "default": "fs/*"
     }
   },
+<<<<<<< HEAD:reference/pear/node-compat.md
   "optionalDependencies": {
+=======
+  "dependencies": {
+>>>>>>> 858f999 (v2):reference/node-compat.md
     "bare-fs": "^2.1.5"
   }
 }
 ```
 
+<<<<<<< HEAD:reference/pear/node-compat.md
 Let's take the `fs` example and use import maps instead of aliases.
 
 ### Example of using `fs` in a project using import maps
@@ -311,3 +339,34 @@ This is the best option, as it provides the best of both worlds. Node.js compati
 
 
 
+=======
+## Runtime Module Mapping using the `with.imports` pragma
+
+Import maps apply to the same scope as the `package.json` - that is, the module scope. It does not override any dependencies that may be using core Node.js modules. For example, the app had a dependency that was using `fs` and the `package.json` has an imports map that maps `fs` to `bare-fs`, the `with.imports` pragma can be used to apply the same import mappings at module loading time:
+
+```js
+import depThatUsesFs from 'dep-that-uses-fs' with { imports: './package.json' }
+```
+
+```js
+const depThatUsesFs = require('dep-that-uses-fs', { with:  { imports: './package.json' } })
+```
+
+This will override `fs` with `bare-fs` down the entire dependency tree from `dep-that-uses-fs`.
+
+This is useful for converting higher-level Node.js libraries and applications to Pear & Bare without having to modify every dependency in the tree using Node.js core APIs while declaring import maps in the package.json of modules is ideal for creating hybrid modules that support Node.js, Bare & Pear out of the gate.
+
+## Node.js Globals
+
+By design, Bare & Pear lack a `global.process` object.
+
+When creating a hybrid module, importing or requiring [`bare-process`](https://github.com/holepunchto/bare-process) and using it should be enough. But if a  module or application relies on a global process object then `bare-process/global` can be imported/required to set the process global.
+
+## Deviant Mappings
+
+Most Node.js core API modules names map to suffixes of [bare-* modules](../README.md#bare-modules) with a few exceptions:
+
+* `http` -> [`bare-http1`](https://github.com/holepunchto/bare-http1)
+* `child_process` -> [`bare-subprocess`](https://github.com/holepunchto/bare-subprocess)
+  * NOTE: If using `detached` option, use [`bare-daemon`](https://github.com/holepunchto/bare-daemon) instead
+>>>>>>> 858f999 (v2):reference/node-compat.md
