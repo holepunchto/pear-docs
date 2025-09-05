@@ -69,7 +69,7 @@
 
 * [Tool List](./README.md#tools)
 
-### Apps
+### Showcase
 
 * [Keet](apps/keet.md)
 
