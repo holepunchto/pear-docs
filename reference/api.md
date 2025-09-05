@@ -203,7 +203,7 @@ The code that will be returned once the process exits. If the process is exited 
 
 Exits the process with the provided exit code. Follows Pear teardown flow, whereas `Bare.exit()` does not.
 
-### `Pear.restart()`  <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.restart()`
 
 Deprecated. Use [`pear-restart`](https://github.com/holepunchto/pear-restart).
 
@@ -219,61 +219,61 @@ Deprecated. Use [`pear-restart`](https://github.com/holepunchto/pear-restart).
   static get COMPAT () { return COMPAT }
   static CUTOVER = true
 
-### `Pear.config <Object>` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.config <Object>`
 
 Deprecated. Use [`Pear.app`](#pear-app).
 
-### `Pear.messages([ pattern ], [ listener ]) -> Iterable` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.messages([ pattern ], [ listener ]) -> Iterable` 
 
 Deprecated. Use [`pear-messages`](https://github.com/holepunchto/pear-messages).
 
-### `await Pear.message(<Object>)` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `await Pear.message(<Object>)`
 
 Deprecated. Use [`pear-message`](https://github.com/holepunchto/pear-message).
 
-### `Pear.worker <Object>` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.worker <Object>`
 
 Deprecated. Use [`pear-run`](https://github.com/holepunchto/pear-run) & [`pear-pipe`](https://github.com/holepunchto/pear-pipe).
 
 Deprecated. Use [`pear-pipe`](https://github.com/holepunchto/pear-pipe).
 
-### `Pear.media <Object>` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.media <Object>`
 
 Deprecated. Use [`pear-electron ui.media`](https://github.com/holepunchto/pear-electron#uimedia-object).
 
-### `Pear.versions <Async Function>` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.versions <Async Function>`
 
 Deprecated. Use [`pear-versions`](https://github.com/holepunchto/pear-versions).
 
-### `Pear.reload()` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.reload()`
 
 Deprecated. Use `location.reload()` in Desktop apps. No reload in terminal apps.
 
-### `Pear.updates(listener <Async Function|Function>) => streamx.Readable` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.updates(listener <Async Function|Function>) =>streamx.Readable` 
 
 Deprecated. Use [`pear-updates`](https://github.com/holepunchto/pear-updates).
 
-### `const update = await Pear.updated()` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `const update = await Pear.updated()`
 
 Deprecated. No-op. Do not use.
 
-### `Pear.wakeups(listener <Async Function|Function>) => streamx.Readable` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.wakeups(listener <Async Function|Function>) =>streamx.Readable` 
 
 Deprecated. Use [`pear-updates`](https://github.com/holepunchto/pear-wakeups).
 
-### `Pear.badge(count <Integer|null>) => Promise<Boolean>` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.badge(count <Integer|null>) =>Promise<Boolean>` 
 
 Deprecated. Use [`pear-electron ui.app.badge()`](https://github.com/holepunchto/pear-electron#const-success--await-appbadgecount-integernull).
 
-### `Pear.tray(options <Object>, listener <Async Function|Function>) => Promise<untray()>` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.tray(options <Object>, listener <AsyncFunction|Function>) => Promise<untray()>` 
 
 Deprecated. Use [`pear-electron ui.app.tray()`](https://github.com/holepunchto/pear-electron#const-untray--await-apptrayoptions-object-listener-function).
 
-### `const win = new Pear.Window(entry <String>, options <Object>)` <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `const win = new Pear.Window(entry <String>, options<Object>)` 
 
 Deprecated. Use [`pear-electron ui.Window`](https://github.com/holepunchto/pear-electron#const-win--new-uiwindowentry-string-options-object).
 
-### `const view = new Pear.View(options <Object>)`  <mark style="background-color: #ffffa2;">**deprecated**</mark>
+### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `const view = new Pear.View(options <Object>)`
 
 Deprecated. Use [`pear-electron ui.View`](https://github.com/holepunchto/pear-electron#const-view--new-uiviewoptions-object).
 
