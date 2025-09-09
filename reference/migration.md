@@ -229,7 +229,7 @@ If there's any problems switching back, make sure there are no `pear-runtime` pr
 >  **In order to avoid any issues, be sure to switch back to production [ pqbzjhqyonx... ]**
 >
 
-## Compat Mode
+## Compat Mode <a name="compat-mode"></a>
 
 While v1 Pear APIs will continue to function with deprecation messages, for projects that need a legacy-bridge during overlapping transitional periods, compat-mode can be used to:
 

@@ -1,10 +1,10 @@
 # Command Line Interface (CLI) 
 
-<mark style="background-color: #8484ff;">**experimental**</mark>
+<mark style="background-color: #8484ff;">**stable**</mark>
 
 The Command Line Interface is the primary interface for Pear Development.
 
-## `pear init [flags] <link|type=desktop> [dir]`
+## `pear init [flags] <link|type=desktop> [dir]` <a name="pear-init"></a>
 
 Create initial project files.
 
@@ -23,7 +23,7 @@ Template can also be initialized from a pear:// link, the template should contai
 --help|-h                 Show help
 ```
   
-## `pear run [flags] <link|dir> [...app-args]`
+## `pear run [flags] <link|dir> [...app-args]` <a name="pear-run"></a>
 
 Run an application from a link or dir.
 
@@ -71,7 +71,7 @@ pear run -t file://path/to/an-app-folder --some app --args
 pear run pear://keet
 ```
  
-## `pear stage <channel|link> [dir]`
+## `pear stage <channel|link> [dir]` <a name="pear-stage"></a>
 
 Synchronize local changes to channel or key.
 
@@ -91,7 +91,7 @@ Each time new changes are staged, the length for the channel / link will update,
   --help|-h                   Show help
 ```
   
-## `pear seed <channel|link> [dir]`
+## `pear seed <channel|link> [dir]` <a name="pear-seed"></a>
 
 Seed project or reseed key.
 
@@ -107,7 +107,7 @@ Seeding will sparsely replicate the application. This means the entire history o
   --help|-h                 Show help
 ```
 
-## `pear release <channel|link> [dir]`
+## `pear release <channel|link> [dir]` <a name="pear-release"></a>
 
 Set production release version.
 
@@ -138,7 +138,8 @@ This method doesn't add any file changes so will not show update diffs from the 
 
 The second approach is dumping the files from the previous version and staging and rereleasing the new version. This appends file changes so is heavier than just changing the release pointer, but shows update diffs and fits the [dump-stage-release strategy](../../guide/releasing-a-pear-app.md) approach since updates to the `production` channel are applied by dumping from another channel or link.
 
-## `pear info [link|channel]`
+## `pear info [link|channel]` <a name="pear-info"></a>
+
 
 Read project information.
 
@@ -156,7 +157,7 @@ Supply no argument to view platform information.
   --help|-h                 Show help
 ```
   
-## `pear dump [flags] <link> <dir>`
+## `pear dump [flags] <link> <dir>` <a name="pear-dump"></a>
 
 Synchronize files from link to dir.
 
@@ -177,7 +178,8 @@ pear dump pear://keet/CHANGELOG.md dump-dir/
   --help|-h                 Show help
 ```
   
-## `pear touch [flags] [channel]`
+## `pear touch [flags] [channel]` <a name="pear-touch"></a>
+
 
 Create Pear link
 
@@ -190,7 +192,8 @@ This command is useful for creating links for automations that use `pear stage <
   --help|-h   Show help
 ```
 
-## `pear sidecar`
+## `pear sidecar` <a name="pear-sidecar"></a>
+
 
 The Pear Sidecar is a local-running HTTP and IPC server which
 provides access to corestores.
@@ -209,7 +212,7 @@ and then becomes the sidecar.
   --help|-h             Show help
 ```
 
-## `pear versions`
+## `pear versions` <a name="pear-versions"></a>
 
 Output version information.
 
@@ -218,7 +221,8 @@ Output version information.
 --help|-h     Show help
 ```
 
-## `pear shift [flags] <source> <destination>`
+## `pear shift [flags] <source> <destination>` <a name="pear-shift"></a>
+
 
 Move user application storage between applications.
 
@@ -229,20 +233,22 @@ Move user application storage between applications.
 --json      Newline delimited JSON output
 ```
 
-## `pear reset [flags] <link>`
+## `pear drop [flags] [command]` <a name="pear-drop"></a>
 
-Advanced. Reset an application to initial state
-
-Clears application storage for a given application link.
+Advanced. Permanent data deletion
 
 WARNING: Confirmation will be requested as the storage will be deleted permanently and cannot be recovered. Use with caution.
+
+| Commands |           Description                          |
+|----------|------------------------------------------------|
+| app      | Reset an application to initial state          |
 
 ```
 --json      Newline delimited JSON output
 --help|-h   Show help
 ```
 
-## `pear gc [flags] [command]`
+## `pear gc [flags] [command]` <a name="pear-gc"></a>
 
 Perform garbage collection and remove unused resources.
 
@@ -256,7 +262,7 @@ Perform garbage collection and remove unused resources.
   --help|-h     Show help
 ```
 
-## `pear data [flags] [command]`
+## `pear data [flags] [command]` <a name="pear-data"></a>
 
 View database contents.
 
@@ -273,10 +279,6 @@ The database contains metadata stored on this device used by the Pear runtime.
 --json      Newline delimited JSON output
 --help|-h   Show help
 ```
-
-### `pear data apps [flags] [link]`
-
-List installed apps, filtered by `[link]` if provided.
 
 
   
