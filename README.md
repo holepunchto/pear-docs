@@ -13,6 +13,7 @@ Welcome to the Internet of Peers
 ## Documentation
 
 * [Terms](#terms)
+* [Legend](#legend)
 * [Reference](#reference)
 * [Examples](#examples)
 * [Guides](#guides)
@@ -22,7 +23,6 @@ Welcome to the Internet of Peers
 * [Bare Modules](#bare-modules)
 * [Tools](#tools)
 * [Showcase](#showcase)
-* [Stability Legend](#stability-legend)
 
 ### Terms
 
@@ -30,6 +30,27 @@ Welcome to the Internet of Peers
 * CLI - Command-Line-Interface
 * link - a `pear://` link, a `file://` link or an absolute/relative dir path
 * P2P - Peer-to-Peer
+
+### Legend <a name="legend"></a>
+
+Throughout the documentation, indications of stability are provided. Some modules are well-established and used widely, making them highly unlikely to ever change. Other modules may be new, experimental, or known to have risks associated with their use.
+
+The following stability indices have been used:
+
+|                           Stability                                |                         Description                         |
+| ------------------------------------------------------------------ | ----------------------------------------------------------- |
+| <mark style="background-color: #80ff80;">**stable**</mark>       | Unlikely to change or be removed in the foreseeable future  |
+| <mark style="background-color: #8484ff;">**experimental**</mark> |             New, untested, or has known issues              |
+| <mark style="background-color: #ffffa2;">**deprecated**</mark>   |           Being removed or replaced in the future           |
+| <mark style="background-color: #ff4242;">**unstable**</mark>     |          May change or be removed without warning           |
+
+
+## Showcase <a name="showcase"></a>
+
+Peer-to-Peer applications built on, deployed with, running on Pear.
+
+- [Keet](./apps/keet.md): A peer-to-peer chat and video-conferencing application with end-to-end encryption.
+
 
 ### Reference <a name="reference"></a>
 
@@ -254,25 +275,6 @@ Beyond the [Pear CLI](./reference/cli.md) these ecosystem P2P CLI tools are addi
 | [Hyperbeam](https://github.com/holepunchto/hyperbeam)   | A one-to-one and end-to-end encrypted internet pipe      | ![Windows][1] ![MacOS][2] ![Linux][3]                       | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [Hyperssh](https://github.com/holepunchto/hyperssh)     | A CLI to run SSH over the DHT.                           | ![Windows][1] ![MacOS][2] ![Linux][3]                       | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [Drives](https://github.com/holepunchto/drives)         | CLI that interacts with `hyperdrive` & `localdrive`      | ![Windows][1] ![MacOS][2] ![Linux][3]                       | <mark style="background-color:#80ff80;">**stable**</mark> |
-
-## Showcase <a name="showcase"></a>
-
-Peer-to-Peer applications built on, deployed with, running on Pear.
-
-- [Keet](./apps/keet.md): A peer-to-peer chat and video-conferencing application with end-to-end encryption.
-
-### Stability Legend <a name="stability-legend"></a>
-
-Throughout the documentation, indications of stability are provided. Some modules are well-established and used widely, making them highly unlikely to ever change. Other modules may be new, experimental, or known to have risks associated with their use.
-
-The following stability indices have been used:
-
-|                           Stability                                |                         Description                         |
-| ------------------------------------------------------------------ | ----------------------------------------------------------- |
-| <mark style="background-color: #80ff80;">**stable**</mark>       | Unlikely to change or be removed in the foreseeable future  |
-| <mark style="background-color: #8484ff;">**experimental**</mark> |             New, untested, or has known issues              |
-| <mark style="background-color: #ffffa2;">**deprecated**</mark>   |           Being removed or replaced in the future           |
-| <mark style="background-color: #ff4242;">**unstable**</mark>     |          May change or be removed without warning           |
 
 
 [1]: assets/windows.svg

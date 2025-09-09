@@ -14,6 +14,10 @@
 * [Showcase](./README.md#showcase)
 * [Stability Legend](./README.md#stability-legend)
 
+### Showcase
+
+* [Keet](apps/keet.md)
+
 ### Reference
 
 * [Pear CLI](./reference/cli.md)
@@ -68,10 +72,6 @@
 ### Tools
 
 * [Tool List](./README.md#tools)
-
-### Showcase
-
-* [Keet](apps/keet.md)
 
 ### Examples <a name="examples"></a>
 
