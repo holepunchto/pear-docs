@@ -121,7 +121,7 @@ Pear modules related directly to application environment.
 | [pear-user-dirs](https://github.com/holepunchto/pear-user-dirs)               | Get the path of user-specific directories                            | ![Windows][1] ![MacOS][2] ![Linux][3]                         | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-versions](https://github.com/holepunchto/pear-versions)                 | Platform, Application and Runtime versions                           | ![Windows][1] ![MacOS][2] ![Linux][3]                         | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-wakeups](https://github.com/holepunchto/pear-wakeups)                   | Receive wakeup events, including link clicks external to app         | ![Windows][1] ![MacOS][2] ![Linux][3]                         | <mark style="background-color:#80ff80;">**stable**</mark>  |
-| 
+
 #### User Interface Libraries <a name="user-interface-libraries"></a>| 
 
 Pear modules that supply User Interface runtime capabilities.
