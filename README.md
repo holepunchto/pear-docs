@@ -110,7 +110,7 @@ Application & Integration libraries are supplied via installable modules prefixe
 
 Pear modules related directly to application environment.
 
-| Module                                                                        | Description                                                          | Systems                                                       | Stability                                                  |
+| Module                                                                        | Description                                                          | Systems                                                       | Stability                                                  |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
 | [pear-crasher](https://github.com/holepunchto/pear-crasher)                   | Uncaught exceptions & uncaught rejections crash logger               | ![Windows][1]![MacOS][2]![Linux][3]                           | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-message](https://github.com/holepunchto/pear-message)                   | Send inter-app pattern-matched object messages                       | ![Windows][1]![MacOS][2]![Linux][3]                           | <mark style="background-color:#80ff80;">**stable**</mark>  |
@@ -126,7 +126,7 @@ Pear modules related directly to application environment.
 
 Pear modules that supply User Interface runtime capabilities.
 
-| Module                                                                        | Description                                                          | Systems                                                       | Stability                                                  |
+| Module                                                                        | Description                                                          | Systems                                                       | Stability                                                  |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
 | [pear-electron](https://github.com/holepunchto/pear-electron)                 | Pear User-Interface Library for Electron"                            | ![Windows][1]![MacOS][2]![Linux][3]                           | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-bridge](https://github.com/holepunchto/pear-bridge)                     | Local HTTP bridge for pear-electron applications                     | ![Windows][1]![MacOS][2]![Linux][3]                           | <mark style="background-color:#80ff80;">**stable**</mark>  |
@@ -135,7 +135,7 @@ Pear modules that supply User Interface runtime capabilities.
 
 Pear modules for general usage, including applications per case.
 
-| Module                                                                        | Description                                                          | Systems                                                       | Stability                                                  |
+| Module                                                                        | Description                                                          | Systems                                                       | Stability                                                  |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
 | [pear-drop](https://github.com/holepunchto/pear-drop)                         | Drop data, including application reset                               | ![Windows][1]![MacOS][2]![Linux][3]                           | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-dump](https://github.com/holepunchto/pear-dump)                         | Synchronize files from link to dir peer-to-peer or from-disk         | ![Windows][1]![MacOS][2]![Linux][3]                           | <mark style="background-color:#80ff80;">**stable**</mark>  |
@@ -152,7 +152,7 @@ Pear modules for general usage, including applications per case.
 
 Pear modules to assist with developing & debugging
 
-| Module                                                                        | Description                                                          | Systems                                                         | Stability                                                  |
+| Module                                                                        | Description                                                          | Systems                                                         | Stability                                                  |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------- |
 | [pear-inspect](https://github.com/holepunchto/pear-inspect)                   | Securely enable remote debugging protocol over Hyperswarm            | ![Windows][1]![MacOS][2]![Linux][3]![Android][4]![iOS][5]       | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-hotmods](https://github.com/holepunchto/pear-hotmods)                   | For `pear-electron` UI apps. Frontend framework-agnostic live-reload | ![Windows][1]![MacOS][2]![Linux][3]                             | <mark style="background-color:#80ff80;">**stable**</mark>  |
@@ -161,8 +161,8 @@ Pear modules to assist with developing & debugging
 
 Pear modules for runtime integrations. Such as [pear-electron](https://github.com/holepunchto/pear-electron).
 
-| Module                                                                        | Description                                                          | Systems                                                  | Stability                                                  |
-| ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------- |
+| Module                                                                        | Description                                                          | Systems                                                  | Stability                                                  |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------- |
 | [pear-appdrive](https://github.com/holepunchto/pear-appdrive)                 | Read-only Hyperdrive API subset interface for application drives     | ![Windows][1]![MacOS][2]![Linux][3]                       | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-aliases](https://github.com/holepunchto/pear-aliases)                   | List of aliases for `pear://<alias>` links                           | ![Windows][1]![MacOS][2]![Linux][3]![Android][4]![iOS][5] | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-api](https://github.com/holepunchto/pear-api)                           | global.Pear API class                                                | ![Windows][1]![MacOS][2]![Linux][3]![Android][4]![iOS][5] | <mark style="background-color:#80ff80;">**stable**</mark>  |
@@ -186,7 +186,7 @@ Modules that supply point-to-point peer-to-peer connection and storage capabilit
 
 The essential building-blocks for building powerful P2P applications using Pear.
 
-| Name                                                     | Description                                                                         | Systems                                                       | Stability                                                 |
+| Name                                                     | Description                                                                         | Systems                                                       | Stability                                                 |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
 | [hypercore](https://github.com/holepunchto/hypercore)    | A distributed, secure append-only log for creating fast, scalable P2P applications  | ![Windows][1]![MacOS][2]![Linux][3]![Android][4]![iOS][5]     | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [hyperbee](https://github.com/holepunchto/hyperbee)      | An append-only B-tree running on a Hypercore. Allows sorted iteration and more      | ![Windows][1]![MacOS][2]![Linux][3]![Android][4]![iOS][5]     | <mark style="background-color:#80ff80;">**stable**</mark> |
@@ -199,7 +199,7 @@ The essential building-blocks for building powerful P2P applications using Pear.
 
 Helper modules can be used together with the building-blocks to create cutting-edge P2P tools and application-modules.
 
-| Name                                                                                | Description                                                         | Systems                                                         | Stability                                                 |
+| Name                                                                                | Description                                                         | Systems                                                         | Stability                                                 |
 |-------------------------------------------------------------------------------------|-------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------- |
 | [corestore](https://github.com/holepunchto/corestore)                               | A Hypercore factory that simplifiest managing Hypercore collections | ![Windows][1]![MacOS][2]![Linux][3]![Android][4]![iOS][5]       | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [localdrive](https://github.com/holepunchto/localdrive)                             | A file system interoperable with Hyperdrive                         | ![Windows][1]![MacOS][2]![Linux][3]![Android][4]![iOS][5]       | <mark style="background-color:#80ff80;">**stable**</mark> |
@@ -213,7 +213,7 @@ Helper modules can be used together with the building-blocks to create cutting-e
 Pear's native runtime is [Bare](https://github.com/holepunchto/bare). The `Bare` global API is minimal and not intended as a standard library. 
 Standard runtime functionality is provided via a installable modules. prefixed with `bare-`.
 
-| Module                                                                        | Description                                                          | Systems                                                       | Stability                                                  |
+| Module                                                                        | Description                                                          | Systems                                                       | Stability                                                  |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
 | [bare-abort](https://github.com/holepunchto/bare-abort)                       | Cause abnormal program termination and generate a crash report       | ![Windows][1]![MacOS][2]![Linux][3]![Android][4]![iOS][5]     |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-assert](https://github.com/holepunchto/bare-assert)                     | Assertion library for JavaScript                                     | ![Windows][1]![MacOS][2]![Linux][3]![Android][4]![iOS][5]     |  <mark style="background-color:#80ff80;">**stable**</mark> |
@@ -268,7 +268,7 @@ Standard runtime functionality is provided via a installable modules. prefixed w
 
 Beyond the [Pear CLI](./reference/cli.md) these ecosystem P2P CLI tools are additionally useful for day-to-day development and operations.
 
-| Name                                                    | Description                                              | Systems                                                     | Stability                                                 |
+| Name                                                    | Description                                              | Systems                                                     | Stability                                                 |
 |-------------------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------- |
 | [Hypershell](https://github.com/holepunchto/hypershell) | A CLI to create and connect to P2P E2E encrypted shells  | ![Windows][1]![MacOS][2]![Linux][3]                         | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [Hypertele](https://github.com/holepunchto/hypertele)   | A swiss-knife proxy powered by `hyperdht`                | ![Windows][1]![MacOS][2]![Linux][3]                         | <mark style="background-color:#80ff80;">**stable**</mark> |
