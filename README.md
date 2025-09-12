@@ -269,6 +269,8 @@ Standard runtime functionality is provided via a installable modules. prefixed w
 | [bare-zlib](https://github.com/holepunchto/bare-zlib)                         | Stream-based zlib bindings for JavaScript                            | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-zmq](https://github.com/holepunchto/bare-zmq)                           | Low-level ZeroMQ bindings for JavaScript                             | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
 
+Compatibility modules for Node.js builtins in Bare can be found in [bare-node](https://github.com/holepunchto/bare-node).
+
 ### Tools <a name="tools"></a>
 
 Beyond the [Pear CLI](./reference/cli.md) these ecosystem P2P CLI tools are additionally useful for day-to-day development and operations.
