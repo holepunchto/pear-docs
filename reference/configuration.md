@@ -45,6 +45,10 @@ Ensures warmup during staging in addition to all `stage.entrypoints` which can i
 When used with `pear stage --compact` command flag `pear.stage.includes` can be used to ensure any files that aren't recognized via JavaScript static analysis - which would be any non-JavaScript files, any files that aren't required/imported or any files that are imported/required using an expression in code - eg `require(getPkgName())` would mean
 whatever is required wouldn't be identified in static analysis so would need to be added to `pear.stage.includes`.
 
+#### `pear.stage.defer <Array>` <a name="pear-stage-defer"></a>
+
+An array of dependency specifiers, as used with `require` or `import`, to declare it as an uninstalled optional or peer dependency in the dependency tree. Some modules use the pattern: `try { require('a-dep') } catch { fallback() }`, in order to try to include an optional dependency if available. Adding such specifiers (`a-dep` in the example) to the `pear.stage.defer` configuration array let's the static-analysis steps during `pear stage` (compact and warmup phases) step over these cases. If there are a lot of cases like this in an applications dependency tree, it will slow the static-analysis phases down since by default it brute forces and grows a dynamic defers list until there's no MODULE_NOT_FOUND errors left. The `pear stage` command will print out skip hints for these dependencies - add any specifiers identified to `pear.stage.defer`.
+
 ### `pear.pre <String>` <a name="pear-pre"></a>
 
 A specifier such as `./path/to/pre.js` or `some-module`, or `pear-electron/pre`.
