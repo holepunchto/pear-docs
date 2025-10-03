@@ -372,7 +372,7 @@ The versions of runtimes.
 
 ### `Pear.teardown(fn <Async Function|Function>)`
 
-Register application clean-up handlers to be called when an application begins to unload.
+Register application clean-up handlers to be called when an application begins to unload. The returned promise resolves when the teardown callback is executed and containse the returned value. If no `fn` is provided, the promise for the last callback will be returned.
 
 May be called multiple times to register multiple teardown handlers.
 
@@ -380,7 +380,7 @@ Functions supplied to teardown will be executed in order of registration when
 an application begins to unload. Any promise returned from each supplied function
 will be waited upon until resolution before calling the next teardown handler.
 
-### Pear.reload()
+### `Pear.reload()`
 
 Refresh application in Desktop applications. Not available in terminal
 applications.
