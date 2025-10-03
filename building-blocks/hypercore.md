@@ -351,7 +351,7 @@ await core.clear(4) // clear block 4 from local cache
 await core.clear(0, 10) // clear block 0-10 from local cache
 ```
 
-The core will also 'gossip' with peers it is connected to, that no longer have these blocks.
+The core will also 'gossip' with peers it is connected to, that it no longer have these blocks.
 
 #### **`await core.truncate(newLength, [forkId])`** {#core.truncate}
 
