@@ -160,24 +160,28 @@ In both cases, autofill actions require biometric verification (Face ID, Touch I
 
 ### Onboarding
 <p>Open PearPass and learn about its features during the onboarding flow:</p>
-<div align="center"><video src="../assets/pearpass/1-Onboarding.mov" width="640" height="480" autoplay controls></video></div>
+
+![Onboarding](../assets/pearpass/Onboarding.gif)
 
 ### Set a master password
 <p>Set a secure master password to secure the access to your app and its content. Remember! This master password is only yours and we can't help you recover it if you lose it</p>
-<div align="center"><video src="../assets/pearpass/2-MasterPassword.mov" width="640" height="480" autoplay controls></video></div>
+
+![Master Password](../assets/pearpass/MasterPassword.gif)
 
 ### Add a vault
 <p>Create a new vault or load one from an existing device. Adding a password is optional to enhance the security even further</p>
-<div align="center"><video src="../assets/pearpass/3-CreateVault.mov" width="640" height="480" autoplay controls></video></div>
+
+![Add a vault](../assets/pearpass/CreateVault.gif)
 
 ### Add a device
 <p>Pairing PearPass between your devices is as simple as scanning a QR code or copying and pasting the pairing key.</p>
-<div align="center"><video src="../assets/pearpass/4-AddDevice.mov" width="640" height="480" autoplay controls></video></div>
 
-### Create a backup
+![Add a device](../assets/pearpass/AddDevice.gif)
+
+### Save a backup
 <p>The safest way to secure access to your items is by pairing your vaults in multiple devices. Additionally, you may also save a backup in csv or json format and store it safely in the location of your choice.</p>
-<div align="center"><video src="../assets/pearpass/5-Backup.mov" width="640" height="480" autoplay controls></video></div>
 
+![Create a backup](../assets/pearpass/Backup.gif)
 
 ## Start storing your passwords privately. Download PearPass.
 ### Desktop
