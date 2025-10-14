@@ -230,7 +230,7 @@ A list of custom bootstrap nodes Pear is started with of the form `{ host: <Stri
 
 #### `Pear.app.assets  <String>` <a name="pear-app-assets"></a>
 
-Advanced. Integration purposes.
+Advanced / integration purposes.
 
 Per [`pear-assets`](./configuration.md#pear-assets) configuration assets are fetched and stored to disk. Use `Pear.app.assets[namespace].path` to get the path that given asset is stored to.
 
@@ -323,7 +323,9 @@ The code that will be returned once the process exits. If the process is exited 
 
 Exits the process with the provided exit code. Follows Pear teardown flow, whereas `Bare.exit()` does not.
 
-### `Pear.constructor.CUTOVER` (Advanced|Integration)
+### `Pear.constructor.CUTOVER` (Integration)
+
+> NOTE: Integration APIs may change.
 
 For auto-cutover opt-out do `Pear.constructor.CUTOVER = false` in the first-tick.
 
@@ -333,13 +335,19 @@ This stops an internal `ipc.cutover` call to the sidecar, indicating that a manu
 
 ### `Pear.constructor.COMPAT` (Integration)
 
+> NOTE: Integration APIs may change.
+
 Compat-mode opt-in. See [./migration.md#compat-mode]
 
 ### `Pear.constructor.RTI` (Integration)
 
+> NOTE: Integration APIs may change.
+
 Runtime Information. Used by additional runtimes to bootstrap runtime state at boot. Used by [`pear-run`](https://github.com/holepunchto/pear-run).
 
 ### `Pear.constructor.IPC` (Integration)
+
+> NOTE: Integration APIs may change.
 
 Symbol for accessing built-in IPC client. Used by libraries and other integrations.
 
@@ -349,9 +357,13 @@ const ipc = Pear[Pear.constructor.IPC]
 
 ### `Pear.constructor.RUNTIME` (Integration)
 
+> NOTE: Integration APIs may change.
+
 The runtime binary to spawn when running. Used by [`pear-run`](https://github.com/holepunchto/pear-run). Useful for certain testing scenarios.
 
 ### `Pear.constructor.RUNTIME_ARGV` (Integration)
+
+> NOTE: Integration APIs may change.
 
 Used to modify argv passed spawn when running. Used by [`pear-run`](https://github.com/holepunchto/pear-run). Useful for certain testing scenarios.
 
