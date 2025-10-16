@@ -512,21 +512,10 @@ If the process is exited explicitly, such as by calling `Bare.exit()` or as the 
 
 ### `Bare.on('exit', code)` <a name="bare-on-exit"></a>
 
-Emitted before the process or current thread terminates. Additional work must not be scheduled from an `exit` event listener. If the process is forcefully terminated from an `exit` event listener, the remaining listeners will not run.
+Emitted when the process or current thread exits. If the process is forcefully terminated from an `exit` event listener, the remaining listeners will not run.
 
-### `Bare.on('teardown')` <a name="bare-on-teardown"></a>
-
-Emitted after the process or current thread has terminated and before the JavaScript environment is torn down. Additional work must not be scheduled from a `teardown` event listener. Bare itself will register `teardown` event listeners to join dangling threads and unload native addons.
-
-> [!IMPORTANT]
->
-> ##### Teardown ordering
->
-> `teardown` listeners **SHOULD** be prepended to have the listeners run in last in, first out order:
->
-> ```js
-> Bare.prependListener('teardown', () => { ... })
-> ```
+> [!CAUTION]
+> Additional work **MUST NOT** be scheduled from an `exit` event listener.
 
 ### `Bare.on('suspend', linger)` <a name="bare-on-suspend"></a>
 
