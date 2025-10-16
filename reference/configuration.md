@@ -63,7 +63,7 @@ When a `pre` script is executed, it has a `pipe` available which can be obtained
 
 ### `pear.routes <Object|String>` <a name="pear-routes"></a>
 
-By default, [`pear run`](./cli.md#pear-run) considers link pathnames to be entrypoints. This means `pear run` can execute any valid file staged to a Pear application. For example `pear run pear://<key>/some/path.js` would run some/path.js if it's valid. In that case [`Pear.app.route`](./api.md#pear-app-route) would contain `/some/path.js` and [`Pear.app.entrypoint`](./api.md#pear-app-entrypoint) would also contain `/some/path.js`.
+By default, [`pear run`](/reference/cli.md#pear-run) considers link pathnames to be entrypoints. This means `pear run` can execute any valid file staged to a Pear application. For example `pear run pear://<key>/some/path.js` would run some/path.js if it's valid. In that case [`Pear.app.route`](/reference/api.md#pear-app-route) would contain `/some/path.js` and [`Pear.app.entrypoint`](/reference/api.md#pear-app-entrypoint) would also contain `/some/path.js`.
 
 To opt-out, and only allow top-level running set `Pear.routes` to `.` or `/` (it means the same thing):
 
@@ -77,7 +77,7 @@ To opt-out, and only allow top-level running set `Pear.routes` to `.` or `/` (it
 
 This redirects all paths to the entrypoint.
 
-In this case `pear run pear://<key>/some/path.js` would run the application entrypoint, [`Pear.app.route`](./api.md#pear-app-route) would contain `/some/path.js` while [`Pear.app.entrypoint`](./api.md#pear-app-entrypoint) would also be `/` - because `Pear.app.route` holds the raw pathname whereas `Pear.app.entrypoint` holds the mapped pathname.
+In this case `pear run pear://<key>/some/path.js` would run the application entrypoint, [`Pear.app.route`](/reference/api.md#pear-app-route) would contain `/some/path.js` while [`Pear.app.entrypoint`](/reference/api.md#pear-app-entrypoint) would also be `/` - because `Pear.app.route` holds the raw pathname whereas `Pear.app.entrypoint` holds the mapped pathname.
 
 The `pear.routes` configuration can also be an object where the keys are pathnames to map from, and the values are pathnames to map to:
 
@@ -140,13 +140,13 @@ Initial assets are fetched by `pear run` on first-run but application installers
 
 While assets can be declared directly on the `pear.assets` as described but when used in combination with [`pear.pre`](#pear-pre), installable modules such as [`pear-electron`](https://github.com/holepunchto/pear-electron) can also automatically define assets (and other configuration) on behalf of the application.
 
-Assets are automatically stored in the platform folder. Use [`Pear.app.assets[namespace].path`](./api.md#pear-app-assets) within the application to get the path to the asset. For example, `Pear.assets.ui.path`.
+Assets are automatically stored in the platform folder. Use [`Pear.app.assets[namespace].path`](/reference/api.md#pear-app-assets) within the application to get the path to the asset. For example, `Pear.assets.ui.path`.
 
 ###  `pear.links <Object|Array>` <a name="pear-links"></a>
 
 Storing and managing Pear application links and domains.
 
-`links` can be an object or an array. If it's an object, naming the key makes it easy to reference from [`Pear.config.links`](./api.md#pearconfiglinks-objectarray)
+`links` can be an object or an array. If it's an object, naming the key makes it easy to reference from [`Pear.config.links`](/reference/api.md#pearconfiglinks-objectarray)
 
 By default in Pear apps, only requests to the sidecar host (127.0.0.1:9342) are allowed. Additional hosts and trusted keys must be added in `pear.links` to allow access.
 

@@ -4,7 +4,7 @@ In the former example, two peers connected directly using the first peer's publi
 
 The [Hyperswarm](../building-blocks/hyperswarm.md) module provides a higher-level interface over the underlying DHT, abstracting away the mechanics of establishing and maintaining connections. Instead, 'join' topics, and the swarm discovers peers automatically. It also handles reconnections in the event of failures.
 
-In the [How to connect two Peers by key with Hyperdht](./connect-two-peers-by-key-with-hyperdht.md), we needed to explicitly indicate which peer was the server and which was the client. By using Hyperswarm, we create two peers, have them join a common topic, and let the swarm deal with connections.
+In the [How to connect two Peers by key with Hyperdht](/howto/connect-two-peers-by-key-with-hyperdht.md), we needed to explicitly indicate which peer was the server and which was the client. By using Hyperswarm, we create two peers, have them join a common topic, and let the swarm deal with connections.
 
 This How-to consists of a single application, `peer-app`. 
 

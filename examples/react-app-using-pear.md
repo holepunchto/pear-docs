@@ -4,4 +4,4 @@ The following is an example of a filesharing application built with the React fr
 
 - [Filesharing React App Example](https://github.com/holepunchto/filesharing-react-app-example)
 
-For further reference on using the Pear Runtime, please refer to [Pear](../README.md#pear-runtime).
+For further reference on using the Pear Runtime, please refer to [Pear](/README.md#pear-runtime).

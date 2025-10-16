@@ -1,6 +1,6 @@
 # Creating a Pear Init Template
 
-This guides describes how to create a [`pear init`](../reference/pear/cli.md#pear-init-flags-linktypedesktop-dir) template which can be used to initialize a new Pear application. 
+This guides describes how to create a [`pear init`](/reference/cli.md#pear-init-flags-linktypedesktop-dir) template which can be used to initialize a new Pear application. 
 
 ## Folder Structure
 
@@ -187,7 +187,7 @@ Run the application using:
 pear run --dev .
 ```
 
-![Layout of the app](../assets/pear-init.png)
+![Layout of the app](/assets/pear-init.png)
 
 ## Config file
 

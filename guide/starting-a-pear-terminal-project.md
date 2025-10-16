@@ -33,4 +33,4 @@ The app will now run. That's all there is to getting a Pear Terminal project sta
 
 ## Next
 
-* [Making a Pear Terminal Application](./making-a-pear-terminal-app.md)
+* [Making a Pear Terminal Application](/guide/making-a-pear-terminal-app.md)

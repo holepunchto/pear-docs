@@ -1,12 +1,12 @@
 # How to replicate and persist with Hypercore
 
-In the HyperDHT How-to ([Connect Two Peers](./connect-two-peers-by-key-with-hyperdht.md)) and the Hyperswarm How-to ([Connect Many Peers](./connect-to-many-peers-by-topic-with-hyperswarm.md)), peers can exchange chat messages so long as both are online at the same time and directly connected. The application is ephemeral, the messages are not persisted - they will be lost if the recipient is offline. Hypercore provides the persistence.
+In the HyperDHT How-to ([Connect Two Peers](/howto/connect-two-peers-by-key-with-hyperdht.md)) and the Hyperswarm How-to ([Connect Many Peers](/howto/connect-to-many-peers-by-topic-with-hyperswarm.md)), peers can exchange chat messages so long as both are online at the same time and directly connected. The application is ephemeral, the messages are not persisted - they will be lost if the recipient is offline. Hypercore provides the persistence.
 
 [`Hypercore`](../building-blocks/hypercore.md) is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
 {% embed url="https://www.youtube.com/watch?v=5t2mOi0BeDg" %} Build with Pear - Episode 05: Replication and Persistence {% embeded %}
 
-In this guide we'll extend the ephemeral chat example in [Connect Many Peers](./connect-to-many-peers-by-topic-with-hyperswarm.md) but using Hypercore to add many significant new features:
+In this guide we'll extend the ephemeral chat example in [Connect Many Peers](/howto/connect-to-many-peers-by-topic-with-hyperswarm.md) but using Hypercore to add many significant new features:
 
 * **Persistence**: The owner of the Hypercore can add messages at any time, and they'll be persisted to disk. Whenever they come online, readers can replicate these messages over Hyperswarm.
 * **Many Readers:** New messages added to the Hypercore will be broadcast to interested readers. The owner gives each reader a reading capability (`core.key`) and a corresponding discovery key (`core.discoveryKey`). The former is used to authorize the reader, ensuring that they have permission to read messages, and the latter is used to discover the owner (and other readers) on the swarm.

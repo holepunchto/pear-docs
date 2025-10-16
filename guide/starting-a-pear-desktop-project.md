@@ -1,6 +1,6 @@
 # Starting a Pear Desktop Project
 
-This section shows how to generate, configure, and develop a Pear desktop project, in preparation for [Making a Pear Desktop Application](./making-a-pear-desktop-app.md).
+This section shows how to generate, configure, and develop a Pear desktop project, in preparation for [Making a Pear Desktop Application](/guide/making-a-pear-desktop-app.md).
 
 {% embed url="https://www.youtube.com/watch?v=y2G97xz78gU" %} Build with Pear - Episode 01: Developing with Pear {% embeded %}
 
@@ -33,7 +33,7 @@ pear run --dev .
 
 The app should open in development mode. In this mode developer tools are also opened.
 
-![Running pear run --dev .](../assets/chat-app-1.png)
+![Running pear run --dev .](/assets/chat-app-1.png)
 
 ## Step 3. Automatic Reload
 
@@ -57,9 +57,9 @@ Change `<h1>desktop</h1>` to `<h1>Hello world</h1>`.
 
 The app should now show:
 
-![Automatic reload](../assets/chat-app-2.png)
+![Automatic reload](/assets/chat-app-2.png)
 
-> Live reload with hot-module reloading is possible by using the `pear.watch` configuration and the [`pear.updates`](../reference/pear/api.md#pear.updates-listener-less-than-async-function-or-function-greater-than-greater-than-streamx.readabl) API. The [pear-hotmods](https://github.com/holepunchto/pear-hotmods) convenience module can also be used.
+> Live reload with hot-module reloading is possible by using the `pear.watch` configuration and the [`pear.updates`](/reference/api.md#pear.updates-listener-less-than-async-function-or-function-greater-than-greater-than-streamx.readabl) API. The [pear-hotmods](https://github.com/holepunchto/pear-hotmods) convenience module can also be used.
 
 ## Step 4. Configuration
 
@@ -82,9 +82,9 @@ Open `package.json` and update it to:
 
 Close the app and re-run `pear run --dev .` to see the changes, the initial window size is different now.
 
-See the [Configuration Documentation](../reference/pear/configuration.md) for all options.
+See the [Configuration Documentation](/reference/configuration.md) for all options.
 
 
 ## Next
 
-* [Making a Pear Desktop Application](./making-a-pear-desktop-app.md)
+* [Making a Pear Desktop Application](/guide/making-a-pear-desktop-app.md)

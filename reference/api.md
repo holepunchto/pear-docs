@@ -13,7 +13,7 @@ The Pear Platform API is made available globally as `Pear`.
 
 The `Pear` API is designed to be as minimal as possible. 
 
-The majority of capabilities are supplied via [Pear Modules](../README.md#pear-modules).
+The majority of capabilities are supplied via [Pear Modules](/README.md#pear-modules).
 
 ### `Pear.app <Object>` <a name="#pear-app"></a>
 
@@ -76,7 +76,7 @@ The `pear` configuration object as supplied via an applications `package.json` f
 
 **References**
 
-* [Configuration](./configuration.md)
+* [Configuration](/reference/configuration.md)
 
 #### `Pear.app.env <Object>` <a name="pear-app-env"></a>
 
@@ -88,12 +88,12 @@ Parsed command-line flag values as supplied when an application was started.
 
 #### `Pear.app.checkout <String>` <a name="pear-app-checkout"></a>
 
-The value of the [`pear run --checkout`](./cli.md#pear-run) flag. Same as [`Pear.app.flags.checkout`](#pear-app-checkout).
+The value of the [`pear run --checkout`](/reference/cli.md#pear-run) flag. Same as [`Pear.app.flags.checkout`](#pear-app-checkout).
 
 **References**
 
-* [`pear run`](./cli.md#pear-run)
-* [`Pear.app.flags`](./#pear-app-flags)
+* [`pear run`](/reference/cli.md#pear-run)
+* [`Pear.app.flags`](/reference/api.md#pear-app-flags)
 
 #### `Pear.app.storage <String>` <a name="pear-app-storage"></a>
 
@@ -109,7 +109,7 @@ The current release length as marked by the `pear release` command.
 
 **References**
 
-* [`pear release`](./cli.md#pear-release)
+* [`pear release`](/reference/cli.md#pear-release)
 
 #### `Pear.app.link <String>` <a name="pear-app-link"></a>
 
@@ -119,31 +119,31 @@ Includes any potential pathname, query or fragment.
 
 **References**
 
-* [`pear run`](./cli.md)
+* [`pear run`](/reference/cli.md)
 
 #### `Pear.app.links <Object|Array>` <a name="pear-app-links"></a>
 
 Holds trusted Pear application links and domains as specified in the `links` field inside `package.json`.
 
 **References**
-* [pear.links](./configuration.md#pear-links)
-* [`pear run`](./cli.md#pear-run)
+* [pear.links](/reference/configuration.md#pear-links)
+* [`pear run`](/reference/cli.md#pear-run)
 
 #### `Pear.app.routes <String>` <a name="pear-app-routes"></a>
 
-The configuration provided [`pear.routes`](./configuration.md#pear-routes) mapping object.
+The configuration provided [`pear.routes`](/reference/configuration.md#pear-routes) mapping object.
 
 #### `Pear.app.entrypoint <String>` <a name="pear-app-entrypoint"></a>
 
-The link pathname (`pear://<key>/<pathname>`), after any route mappings have been applied per [`pear.routes`](./configuration.md#pear-routes).
+The link pathname (`pear://<key>/<pathname>`), after any route mappings have been applied per [`pear.routes`](/reference/configuration.md#pear-routes).
 
 Includes the leading `/`, e.g given `pear://foo/bar/baz`, `Pear.app.entrypoint` would be `/bar/baz`.
 
-Only `Pear.app.entrypoint` supports route-mapping via the [`pear.routes`](./configuration.md#pear-routes) mapping object. `Pear.app.route` is provides access the raw pathname, including the leading slash (`/`), while `Pear.app.linkData` is legacy, excludes the slash, but is still supported.
+Only `Pear.app.entrypoint` supports route-mapping via the [`pear.routes`](/reference/configuration.md#pear-routes) mapping object. `Pear.app.route` is provides access the raw pathname, including the leading slash (`/`), while `Pear.app.linkData` is legacy, excludes the slash, but is still supported.
 
 * [`Pear.app.route`](#pear-app-entrypoint)
 * [`Pear.app.routes`](#pear-app-routes)
-* [`pear.routes`](./configuration.md#pear-routes)
+* [`pear.routes`](/reference/configuration.md#pear-routes)
 
 #### `Pear.app.fragment <String>` <a name="pear-app-fragment"></a>
 
@@ -167,7 +167,7 @@ Includes the leading `/`, e.g given `pear://foo/bar/baz`, `Pear.app.route` would
 
 * [`Pear.app.entrypoint`](#pear-app-entrypoint)
 * [`Pear.app.routes`](#pear-app-routes)
-* [`pear.routes`](./configuration.md#pear-routes)
+* [`pear.routes`](/reference/configuration.md#pear-routes)
 
 #### `Pear.app.linkData <String>` <a name="pear-app-linkData"></a>
 
@@ -186,7 +186,7 @@ Legacy but still supported. Prefer `Pear.app.entrypoint` or `Pear.app.route`.
 * [`Pear.app.entrypoint`](#pear-app-entrypoint)
 * [`Pear.app.route`](#pear-app-route)
 * [Pear.app.link](#pear-app-link)
-* [`pear run`](./cli.md#pear-run)
+* [`pear run`](/reference/cli.md#pear-run)
 
 #### `Pear.app.checkpoint <Any>` <a name="pear-app-checkpoint"></a>
 
@@ -232,7 +232,7 @@ A list of custom bootstrap nodes Pear is started with of the form `{ host: <Stri
 
 Advanced / integration purposes.
 
-Per [`pear-assets`](./configuration.md#pear-assets) configuration assets are fetched and stored to disk. Use `Pear.app.assets[namespace].path` to get the path that given asset is stored to.
+Per [`pear-assets`](/reference/configuration.md#pear-assets) configuration assets are fetched and stored to disk. Use `Pear.app.assets[namespace].path` to get the path that given asset is stored to.
 
 Takes the form `{ [namespace]: { link <String>, ns <String>, path <String>, name <String>, only <Array<String>>, bytes <Integer> } }`. `namespace` is per the property name on the assets object. By convention, should be describe the asset type, for example: `ui`.
 
@@ -264,7 +264,7 @@ Example:
 
 #### `Pear.app.prerunning <Boolean>` <a name="pear-app-prerunning"></a>
 
-Whether the current application is a [`pre`](./configuration.md#pear-pre) script.
+Whether the current application is a [`pre`](/reference/configuration.md#pear-pre) script.
 
 #### `Pear.app.startId <String>` <a name="pear-app-startid"></a>
 
@@ -438,7 +438,7 @@ The core JavaScript API of Bare is available through the global `Bare` namespace
 
 The `Bare` API is designed to be as minimal as possible.
 
-The majority of capabilities are supplied via [Bare Modules](../README.md#bare-modules).
+The majority of capabilities are supplied via [Bare Modules](/README.md#bare-modules).
 
 ### `Bare.platform` <a name="bare-platform"></a>
 

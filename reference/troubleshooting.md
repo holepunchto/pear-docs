@@ -9,7 +9,7 @@ Troubleshooting confusing scenarios while developing Pear applications.
 
 ### `Pear.teardown` Callback Fires But Worker Keeps Running
 
-The `Pear.teardown(cb)` callback is triggered whenever the Pear app start to unload. If it is not exiting, then something is keeping the applications event loop running. A common cause of this is not cleaning up the [worker pipe](./api.md#const-pipe-pear.worker.pipe) by calling `pipe.end()` to gracefully end the writable part of the stream.
+The `Pear.teardown(cb)` callback is triggered whenever the Pear app start to unload. If it is not exiting, then something is keeping the applications event loop running. A common cause of this is not cleaning up the [worker pipe](/reference/api.md#const-pipe-pear.worker.pipe) by calling `pipe.end()` to gracefully end the writable part of the stream.
 
 ### `pear` CLI Exits Without Running the Application
 
@@ -115,7 +115,7 @@ To support dependencies that rely on Node.js builtins (eg. `fs`, `os`, etc), an 
 npm i bare-net net@npm:bare-node-net
 ```
 
-See [Consuming dependencies using NPM Aliases](./nodejs-compatibility-with-bare.md#consuming-dependencies-using-npm-aliases) for more info.
+See [Consuming dependencies using NPM Aliases](/reference/node-compat.md#consuming-dependencies-using-npm-aliases) for more info.
 
 For compatibility and to support builtin globals, such as `process`, the corresponding `bare-*` module will include a `/global.js` submodule that sets the global variable to `global`. This is useful when importing modules that assume the global variable exists. It is not recommended to use global variables when writing new code as it is less flexible and a harder to upgrade piecemeal.
 

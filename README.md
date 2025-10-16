@@ -49,7 +49,7 @@ The following stability indices have been used:
 
 Peer-to-Peer applications built on, deployed with, running on Pear.
 
-- [Keet](./apps/keet.md): A peer-to-peer chat and video-conferencing application with end-to-end encryption.
+- [Keet](/apps/keet.md): A peer-to-peer chat and video-conferencing application with end-to-end encryption.
 
 
 ### Reference <a name="reference"></a>
@@ -58,16 +58,16 @@ Pear is a native point-to-point peer-to-peer capable platform that consists of a
 
 Pear's runtime binary is built on [Bare](https://github.com/holepunchto/bare), a small and modular JavaScript runtime for desktop and mobile. Like Node.js, it provides an asynchronous, event-driven architecture for writing applications in the lingua franca of modern software. Unlike Node.js, embedding and cross-device are supported as core use cases, aiming to run just as well on mobile as desktop.
 
-* [Pear CLI](./reference/cli.md)
-* [Pear Configuration](./reference/configuration.md)
-* [Pear API](./reference/api.md#pear)
-* [Bare API](./reference/api.md#bare)
-* [Templates](./reference/templates.md)
-* [Node.js Compatability](./reference/node-compat.md)
-* [Recommended Practices](./reference/recommended-practices.md)
-* [Troubleshooting](./reference/troubleshooting.md)
-* [Frequently Asked Questions](./reference/faq.md)
-* [Migration](./reference/migration.md)
+* [Pear CLI](/reference/cli.md)
+* [Pear Configuration](/reference/configuration.md)
+* [Pear API](/reference/api.md#pear)
+* [Bare API](/reference/api.md#bare)
+* [Templates](/reference/templates.md)
+* [Node.js Compatability](/reference/node-compat.md)
+* [Recommended Practices](/reference/recommended-practices.md)
+* [Troubleshooting](/reference/troubleshooting.md)
+* [Frequently Asked Questions](/reference/faq.md)
+* [Migration](/reference/migration.md)
 
 ### Examples <a name="examples"></a>
 
@@ -80,26 +80,26 @@ Pear's runtime binary is built on [Bare](https://github.com/holepunchto/bare), a
 
 Guides on using Pear Runtime to build and share peer-to-peer applications.
 
-* [Getting Started](./guide/getting-started.md)
-* [Starting a Pear Desktop Project](./guide/starting-a-pear-desktop-project.md)
-* [Making a Pear Desktop Application](./guide/making-a-pear-desktop-app.md)
-* [Starting a Pear Terminal Project](./guide/starting-a-pear-terminal-project.md)
-* [Making a Pear Terminal Application](./guide/making-a-pear-terminal-app.md)
-* [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
-* [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
-* [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
-* [Creating a `pear init` Template](./guide/creating-a-pear-init-template.md)
+* [Getting Started](/guide/getting-started.md)
+* [Starting a Pear Desktop Project](/guide/starting-a-pear-desktop-project.md)
+* [Making a Pear Desktop Application](/guide/making-a-pear-desktop-app.md)
+* [Starting a Pear Terminal Project](/guide/starting-a-pear-terminal-project.md)
+* [Making a Pear Terminal Application](/guide/making-a-pear-terminal-app.md)
+* [Sharing a Pear Application](/guide/sharing-a-pear-app.md)
+* [Releasing a Pear Application](/guide/releasing-a-pear-app.md)
+* [Making a Bare Mobile Application](/guide/making-a-bare-mobile-app.md)
+* [Creating a `pear init` Template](/guide/creating-a-pear-init-template.md)
 
 ### How-tos <a name="howtos"></a>
 
 Collection of How-tos using the essential peer-to-peer building-blocks in Pear applications.
 
-* [How to connect two peers by key with HyperDHT](./howto/connect-two-peers-by-key-with-hyperdht.md)
-* [How to connect to many peers by topic with Hyperswarm](./howto/connect-to-many-peers-by-topic-with-hyperswarm.md)
-* [How to replicate and persist with Hypercore](./howto/replicate-and-persist-with-hypercore.md)
-* [How to work with many Hypercores using Corestore](./howto/work-with-many-hypercores-using-corestore.md)
-* [How to share append-only databases with Hyperbee](./howto/share-append-only-databases-with-hyperbee.md)
-* [How to create a full peer-to-peer filesystem with Hyperdrive](./howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive.md)
+* [How to connect two peers by key with HyperDHT](/howto/connect-two-peers-by-key-with-hyperdht.md)
+* [How to connect to many peers by topic with Hyperswarm](/howto/connect-to-many-peers-by-topic-with-hyperswarm.md)
+* [How to replicate and persist with Hypercore](/howto/replicate-and-persist-with-hypercore.md)
+* [How to work with many Hypercores using Corestore](/howto/work-with-many-hypercores-using-corestore.md)
+* [How to share append-only databases with Hyperbee](/howto/share-append-only-databases-with-hyperbee.md)
+* [How to create a full peer-to-peer filesystem with Hyperdrive](/howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive.md)
 
 ### Pear Modules <a name="pear-modules"></a>
 
@@ -273,7 +273,7 @@ Compatibility modules for Node.js builtins in Bare can be found in [bare-node](h
 
 ### Tools <a name="tools"></a>
 
-Beyond the [Pear CLI](./reference/cli.md) these ecosystem P2P CLI tools are additionally useful for day-to-day development and operations.
+Beyond the [Pear CLI](/reference/cli.md) these ecosystem P2P CLI tools are additionally useful for day-to-day development and operations.
 
 | Name                                                    | Description                                              | Systems    <!-- NOTE: 4 em-space chars prevent icon wrapping --> | Stability                                                 |
 |-------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------- |

@@ -4,7 +4,7 @@
 
 ### Features
 
-|![Video Quality](../assets/keet/quality.png)| ![Secure](../assets/keet/secure.png)| ![File Handling](../assets/keet/filehandling.png)|
+|![Video Quality](/assets/keet/quality.png)| ![Secure](/assets/keet/secure.png)| ![File Handling](/assets/keet/filehandling.png)|
 | --- | --- | --- |
 |**Video quality that impresses! 🎥**|**Private and encrypted 🔒**  |   **Handle any file size 📂✅** |
 |Keet video calls operate over direct connections between you and your friends, without using servers that can throttle your performance. You'll notice the difference.| Keet only shares end-to-end encrypted data between participants in your calls. Without middlemen, third-parties, or servers, there’s nobody left who can snoop or leak data. |  When you share a file in Keet, you don’t have to wait for it to upload. Other peers can immediately download it straight from the source. Megabytes, gigabytes, or terabytes. No limits.|

@@ -104,8 +104,8 @@ Asset building of distribution packages (.dmg, .msi, .appimage) is not yet possi
 
 ## Next
 
-* [Starting a Pear Desktop Project](./starting-a-pear-desktop-project.md)
-* [Making a Pear Desktop Application](./making-a-pear-desktop-app.md)
-* [Starting a Pear Terminal Project](./starting-a-pear-terminal-project.md)
-* [Making a Pear Terminal Application](./making-a-pear-terminal-app.md)
-* [Sharing a Pear Application](./sharing-a-pear-app.md)
+* [Starting a Pear Desktop Project](/guide/starting-a-pear-desktop-project.md)
+* [Making a Pear Desktop Application](/guide/making-a-pear-desktop-app.md)
+* [Starting a Pear Terminal Project](/guide/starting-a-pear-terminal-project.md)
+* [Making a Pear Terminal Application](/guide/making-a-pear-terminal-app.md)
+* [Sharing a Pear Application](/guide/sharing-a-pear-app.md)

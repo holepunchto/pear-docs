@@ -2,7 +2,7 @@
 
 This guide demonstrates how to build a peer-to-peer chat application.
 
-It continues where [Starting a Pear Desktop Project](./starting-a-pear-desktop-project.md) left off.
+It continues where [Starting a Pear Desktop Project](/guide/starting-a-pear-desktop-project.md) left off.
 
 {% embed url="https://www.youtube.com/watch?v=y2G97xz78gU" %} Build with Pear - Episode 01: Developing with Pear {% embeded %}
 
@@ -162,7 +162,7 @@ This non-standard CSS property tells the application that this element should ac
 
 Running `pear run --dev .` should show
 
-![Layout of the app](../assets/chat-app-3.png)
+![Layout of the app](/assets/chat-app-3.png)
 
 
 ## Step 2. Module dependencies
@@ -279,7 +279,7 @@ function onMessageAdded (from, message) {
 }
 ```
 
-> Note that the `pear` dependency is used, even though it was not installed. This is the [Pear API](../reference/pear/api.md), available to any Pear project.
+> Note that the `pear` dependency is used, even though it was not installed. This is the [Pear API](/reference/api.md), available to any Pear project.
 
 
 ## Step 4. Chat
@@ -291,19 +291,19 @@ In the first app, click on `Create`. A random topic will appear at the top.
 Note that topics consist of 64 hexadecimal characters (32 bytes).
 
 <p align="center">
-  <img src="../assets/chat-app-4a.png" alt="The first app, with the topic">
+  <img src="/assets/chat-app-4a.png" alt="The first app, with the topic">
 </p>
 
 Paste the topic into the second app, then click on `Join`.
 
 <p align="center">
-  <img src="../assets/chat-app-4b.png" alt="Second app, using topic from the first">
+  <img src="/assets/chat-app-4b.png" alt="Second app, using topic from the first">
 </p>
 
 Once connected, messages can be sent between each chat application.
 
 <p align="center">
-  <img src="../assets/chat-app-5a.png" alt="View from the first app"> <img src="../assets/chat-app-5b.png" alt="View from the second app">
+  <img src="/assets/chat-app-5a.png" alt="View from the first app"> <img src="/assets/chat-app-5b.png" alt="View from the second app">
 </p>
 
 ### Discussion
@@ -314,7 +314,7 @@ The two application instances used Hyperswarm's distributed hash table (DHT) to 
 
 The DHT enables connections across different machines, so chatting with other people is also possible, as long as they run the same application.
 
-One option is to copy the code, but it is also possible to distribute the application itself over the DHT. This is the topic of [Sharing a Pear Application](./sharing-a-pear-app.md).
+One option is to copy the code, but it is also possible to distribute the application itself over the DHT. This is the topic of [Sharing a Pear Application](/guide/sharing-a-pear-app.md).
 
 #### Joining Topics VS Joining Servers
 
@@ -332,5 +332,5 @@ Any frontend framework can be used with Pear.
 
 ## Next
 
-* [Starting a Pear Terminal Project](./starting-a-pear-terminal-project.md)
-* [Sharing a Pear Application](./sharing-a-pear-app.md)
+* [Starting a Pear Terminal Project](/guide/starting-a-pear-terminal-project.md)
+* [Sharing a Pear Application](/guide/sharing-a-pear-app.md)

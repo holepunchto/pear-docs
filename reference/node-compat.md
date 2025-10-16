@@ -58,7 +58,7 @@ When creating a hybrid module, importing or requiring [`bare-process`](https://g
 
 ## Deviant Mappings
 
-Most Node.js core API modules names map to suffixes of [bare-* modules](../README.md#bare-modules) with a few exceptions:
+Most Node.js core API modules names map to suffixes of [bare-* modules](/README.md#bare-modules) with a few exceptions:
 
 * `http` -> [`bare-http1`](https://github.com/holepunchto/bare-http1)
 * `child_process` -> [`bare-subprocess`](https://github.com/holepunchto/bare-subprocess)

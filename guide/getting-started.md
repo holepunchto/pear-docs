@@ -81,5 +81,5 @@ Pear loads applications from peers, so this command should open [Keet](https://k
 
 ## Next
 
-* [Starting a Pear Desktop Project](./starting-a-pear-desktop-project.md)
-* [Starting a Pear Terminal Project](./starting-a-pear-terminal-project.md)
+* [Starting a Pear Desktop Project](/guide/starting-a-pear-desktop-project.md)
+* [Starting a Pear Terminal Project](/guide/starting-a-pear-terminal-project.md)

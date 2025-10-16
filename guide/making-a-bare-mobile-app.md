@@ -279,7 +279,7 @@ This will create a bundle and store it under the `app` directory as `app.bundle.
 
 ## Running the application
 
-![Autopass mobile app running on iOS](../assets/autopass-mobile-running.png)
+![Autopass mobile app running on iOS](/assets/autopass-mobile-running.png)
 
 ### iOS
 

@@ -4,7 +4,7 @@ Applications can be shared with peers by seeding them to the network from an eff
 
 {% embed url="https://www.youtube.com/watch?v=BEadqmp7lA0" %} Build with Pear - Episode 02: Sharing Pear Applications {% embeded %}
 
-This guide can either follow on from, [Making a Pear Desktop Application](./making-a-pear-desktop-app.md), [Making a Pear Terminal Application](./making-a-pear-terminal-app.md), or get setup quickly with the following:
+This guide can either follow on from, [Making a Pear Desktop Application](/guide/making-a-pear-desktop-app.md), [Making a Pear Terminal Application](/guide/making-a-pear-terminal-app.md), or get setup quickly with the following:
 
 ```bash
 mkdir staging-example
@@ -12,7 +12,7 @@ cd staging-example
 pear init -y
 ```
 
-If starting from [Making a Pear Desktop Application](./making-a-pear-desktop-app.md) or [Making a Pear Terminal Application](./making-a-pear-terminal-app.md) ensure that the command-line current working directory is set to the project folder of the application.
+If starting from [Making a Pear Desktop Application](/guide/making-a-pear-desktop-app.md) or [Making a Pear Terminal Application](/guide/making-a-pear-terminal-app.md) ensure that the command-line current working directory is set to the project folder of the application.
 
 ## Step 1. Stage the app
 
@@ -109,7 +109,7 @@ Trust application?
 ```
 The trust dialog is a security mechanism in Pear that appears when the user tries to run an application from an unknown or untrusted key for the first time. In case that the app is run in detached mode, for example, when clicking on a pear link in the browser, the trust dialog is a GUI (Graphical User Interface). 
 
-![Trust dialog](../assets/trust-dialog.png)
+![Trust dialog](/assets/trust-dialog.png)
 
 > During development with `pear run --dev`, applications are automatically trusted, as they are assumed to be safe for testing purposes. Trust dialog can be suppressed using the  `--no-ask` flag with `pear run` in which case the application will automatically decline unknown keys.
 
@@ -164,4 +164,4 @@ Once an application is being reseeded, the original seeding process can be close
 
 ## Next
 
-* [Releasing a Pear Application](./releasing-a-pear-app.md)
+* [Releasing a Pear Application](/guide/releasing-a-pear-app.md)

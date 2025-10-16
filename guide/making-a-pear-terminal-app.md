@@ -2,7 +2,7 @@
 
 This guide demonstrates how to build a peer-to-peer chat application.
 
-It continues where [Starting a Pear Terminal Project](./starting-a-pear-terminal-project.md) left off.
+It continues where [Starting a Pear Terminal Project](/guide/starting-a-pear-terminal-project.md) left off.
 
 {% embed url="https://www.youtube.com/watch?v=UoGJ7PtAwtI" %} Build with Pear - Episode 04: Pear Terminal Applications {% embeded %}
 
@@ -16,7 +16,7 @@ This will install the following:
 - [pear-interface](https://github.com/holepunchto/pear-interface) for documentation and auto-completion inside editors.
 - [brittle](https://github.com/holepunchto/brittle) a TAP framework for testing.
 
-For the chat part of the app, the same modules are needed as in [Making a Pear Desktop Application](./making-a-pear-desktop-app.md), `hyperswarm`, `b4a` and  `hypercore-crypto`.
+For the chat part of the app, the same modules are needed as in [Making a Pear Desktop Application](/guide/making-a-pear-desktop-app.md), `hyperswarm`, `b4a` and  `hypercore-crypto`.
 
 Pear runs on [`Bare`](https://github.com/holepunchto/bare), a lightweight JavaScript runtime which is similar to Node.js but comes with very few internal modules. Almost all Bare functionality comes from dependencies. Pear Terminal Applications are Bare applications so we will need `bare-readline` and `bare-tty` to read user input.
 
@@ -149,4 +149,4 @@ Type something in one of the applications. Two Terminal Applications are now con
 
 ## Next
 
-* [Sharing a Pear Application](./sharing-a-pear-app.md)
+* [Sharing a Pear Application](/guide/sharing-a-pear-app.md)
