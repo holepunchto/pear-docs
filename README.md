@@ -284,8 +284,8 @@ Beyond the [Pear CLI](/reference/cli.md) these ecosystem P2P CLI tools are addit
 | [Drives](https://github.com/holepunchto/drives)         | CLI that interacts with `hyperdrive` & `localdrive`      | ![Windows][1] ![MacOS][2] ![Linux][3]                          | <mark style="background-color:#80ff80;">**stable**</mark> |
 
 
-[1]: assets/windows.svg
-[2]: assets/macos.svg
-[3]: assets/linux.svg
-[4]: assets/android.svg
-[5]: assets/ios.svg
+[1]: /assets/windows.svg
+[2]: /assets/macos.svg
+[3]: /assets/linux.svg
+[4]: /assets/android.svg
+[5]: /assets/ios.svg
