@@ -43,7 +43,7 @@ This path can be accessed in a Pear application via [`Pear.config.pearDir`](/ref
 
 Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in the `corestores` directory, and Pear application storage (aka [`Pear.config.storage`](/reference/api.md#pear.config.storage-less-than-string-greater-than) for applications) are stored in `app-storage`.
 
-Note that Pear applications and the Pear platform are stored in a [`corestore`](../../helpers/corestore.md) as [`hyperdrive`](../../building-blocks/hyperdrive.md)s so are not easily inspectable via a file explorer. To see the files distributed with an application use [`pear dump`](/reference/cli.md#pear-dump-flags-less-than-link-greater-than-less-than-dir-greater-than) to dump its contents as files.
+Note that Pear applications and the Pear platform are stored in a [`corestore`](https://github.com/holepunchto/corestore) as [`hyperdrive`](https://github.com/holepunchto/hyperdrive)s so are not easily inspectable via a file explorer. To see the files distributed with an application use [`pear dump`](/reference/cli.md#pear-dump-flags-less-than-link-greater-than-less-than-dir-greater-than) to dump its contents as files.
 
 ## Can Pear use with X language?
 

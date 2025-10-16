@@ -220,7 +220,7 @@ The current working directory of `pear run` when the application was started.
 
 #### `Pear.app.dht.nodes <Array<Object>>` <a name="pear-app-dht-nodes"></a>
 
-A list of known [DHT](../../building-blocks/hyperdht.md) nodes of the form `{ host: <String>, port: <Number> }`. The nodes are set when the Pear application is started.
+A list of known [DHT](https://github.com/holepunchto/hyperdht) nodes of the form `{ host: <String>, port: <Number> }`. The nodes are set when the Pear application is started.
 
 Unless started with a custom set of bootstrap nodes, Pear caches known nodes to speed up connecting to the swarm and to make it more resilient.
 

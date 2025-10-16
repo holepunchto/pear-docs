@@ -2,7 +2,7 @@
 
 In the former example, two peers connected directly using the first peer's public key. Hyperswarm helps to discover peers swarming a common topic, and connect to as many of them as possible. This will become clearer in the Hypercore example, but it's the best way to distribute peer-to-peer data structures.
 
-The [Hyperswarm](../building-blocks/hyperswarm.md) module provides a higher-level interface over the underlying DHT, abstracting away the mechanics of establishing and maintaining connections. Instead, 'join' topics, and the swarm discovers peers automatically. It also handles reconnections in the event of failures.
+The [Hyperswarm](https://github.com/holepunchto/hyperswarm) module provides a higher-level interface over the underlying DHT, abstracting away the mechanics of establishing and maintaining connections. Instead, 'join' topics, and the swarm discovers peers automatically. It also handles reconnections in the event of failures.
 
 In the [How to connect two Peers by key with Hyperdht](/howto/connect-two-peers-by-key-with-hyperdht.md), we needed to explicitly indicate which peer was the server and which was the client. By using Hyperswarm, we create two peers, have them join a common topic, and let the swarm deal with connections.
 
