@@ -16,7 +16,7 @@ pear init -y -t terminal
 npm install corestore hyperswarm hyperbee b4a bare-fs
 ```
 
-[Click here to save `dict.json`](../assets/dict.json).
+[Click here to save `dict.json`](/assets/dict.json).
 
 Save it into `bee-writer-app` directory. The `dict.json` file contains 100K dictionary words.
 
