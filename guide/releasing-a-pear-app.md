@@ -1,6 +1,6 @@
 # Releasing a Pear Application
 
-Pear applications are stored in an append-only log ([hypercore](../building-blocks/hypercore.md)).
+Pear applications are stored in an append-only log ([hypercore](https://github.com/holepunchto/hypercore)).
 
 Each version is identified by `<fork>.<length>.<key>`. The length corresponds to the length of the application's append-only log at the time.
 
