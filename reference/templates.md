@@ -4,7 +4,7 @@ The `pear init` command can be used to generate a project from a template.
 
 This document describes how to create a template for `pear init`.
 
-See [pear-templates](https://github.com/holepunchto/templates) for a collection of reference templates.
+See [pear-templates](https://github.com/holepunchto/pear-templates) for a collection of reference templates.
 
 ## Declaring Locals
 
