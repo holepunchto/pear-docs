@@ -31,7 +31,7 @@ Welcome to the Internet of Peers
 * link - a `pear://` link, a `file://` link or an absolute/relative dir path
 * P2P - Peer-to-Peer
 
-### Legend <a name="legend"></a>
+### Legend<a name="legend"></a>
 
 Throughout the documentation, indications of stability are provided. Some modules are well-established and used widely, making them highly unlikely to ever change. Other modules may be new, experimental, or known to have risks associated with their use.
 
@@ -45,14 +45,14 @@ The following stability indices have been used:
 | <mark style="background-color: #ff4242;">**unstable**</mark>     | May change or be removed without warning                    |
 
 
-## Showcase <a name="showcase"></a>
+## Showcase<a name="showcase"></a>
 
 Peer-to-Peer applications built on, deployed with, running on Pear.
 
 - [Keet](./apps/keet.md): A peer-to-peer chat and video-conferencing application with end-to-end encryption.
 
 
-### Reference <a name="reference"></a>
+### Reference<a name="reference"></a>
 
 Pear is a native point-to-point peer-to-peer capable platform that consists of a runtime binary, an API, userland modules, a command-line interface, an on-demand daemon and an application shell to provide the capabilities to develop & deploy production P2P applications. With JavaScript and beyond.
 
@@ -69,14 +69,14 @@ Pear's runtime binary is built on [Bare](https://github.com/holepunchto/bare), a
 * [Frequently Asked Questions](./reference/faq.md)
 * [Migration](./reference/migration.md)
 
-### Examples <a name="examples"></a>
+### Examples<a name="examples"></a>
 
 - [Pear Terminal](https://github.com/holepunchto/pear/tree/main/examples/terminal)
 - [Pear Desktop (Electron)](https://github.com/holepunchto/pear/tree/main/examples/desktop)
 - [Bare Android](https://github.com/holepunchto/bare-android)
 - [Bare iOS](https://github.com/holepunchto/bare-ios)
 
-### Guides <a name="guides"></a>
+### Guides<a name="guides"></a>
 
 Guides on using Pear Runtime to build and share peer-to-peer applications.
 
@@ -90,7 +90,7 @@ Guides on using Pear Runtime to build and share peer-to-peer applications.
 * [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
 * [Creating a `pear init` Template](./guide/creating-a-pear-init-template.md)
 
-### How-tos <a name="howtos"></a>
+### How-tos<a name="howtos"></a>
 
 Collection of How-tos using the essential peer-to-peer building-blocks in Pear applications.
 
@@ -101,12 +101,12 @@ Collection of How-tos using the essential peer-to-peer building-blocks in Pear a
 * [How to share append-only databases with Hyperbee](./howto/share-append-only-databases-with-hyperbee.md)
 * [How to create a full peer-to-peer filesystem with Hyperdrive](./howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive.md)
 
-### Pear Modules <a name="pear-modules"></a>
+### Pear Modules<a name="pear-modules"></a>
 
-The `Pear` global API is minimal and not intended as a standard library. 
-Application & Integration libraries are supplied via installable modules prefixed with `pear-`. 
+The `Pear` global API is minimal and not intended as a standard library.
+Application & Integration libraries are supplied via installable modules prefixed with `pear-`.
 
-#### Application Libraries <a name="application-libraries"></a>
+#### Application Libraries<a name="application-libraries"></a>
 
 Pear modules related directly to application environment.
 
@@ -117,12 +117,12 @@ Pear modules related directly to application environment.
 | [pear-messages](https://github.com/holepunchto/pear-messages)                 | Receive object messages that match a given object pattern            | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-pipe](https://github.com/holepunchto/pear-pipe)                         | Parent-app-connected pipe, the other end of pear-run pipe            | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-run](https://github.com/holepunchto/pear-run)                           | Run Pear child app by link. Returns a pipe to the child pipe         | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
-| [pear-updates](https://github.com/holepunchto/pear-updates)                   | Receive platform and application update notifications                | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  | 
+| [pear-updates](https://github.com/holepunchto/pear-updates)                   | Receive platform and application update notifications                | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-user-dirs](https://github.com/holepunchto/pear-user-dirs)               | Get the path of user-specific directories                            | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-versions](https://github.com/holepunchto/pear-versions)                 | Platform, Application and Runtime versions                           | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-wakeups](https://github.com/holepunchto/pear-wakeups)                   | Receive wakeup events, including link clicks external to app         | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
 
-#### User Interface Libraries <a name="user-interface-libraries"></a>| 
+#### User Interface Libraries<a name="user-interface-libraries"></a>|
 
 Pear modules that supply User Interface runtime capabilities.
 
@@ -131,7 +131,7 @@ Pear modules that supply User Interface runtime capabilities.
 | [pear-electron](https://github.com/holepunchto/pear-electron)                 | Pear User-Interface Library for Electron"                            | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-bridge](https://github.com/holepunchto/pear-bridge)                     | Local HTTP bridge for pear-electron applications                     | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
 
-#### Common Libraries <a name="common-libraries"></a>
+#### Common Libraries<a name="common-libraries"></a>
 
 Pear modules for general usage, including applications per case.
 
@@ -147,8 +147,8 @@ Pear modules for general usage, including applications per case.
 | [pear-seed](https://github.com/holepunchto/pear-seed)                         | Seed or reseed a Pear app drive by link                              | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-stage](https://github.com/holepunchto/pear-stage)                       | Synchronize from-disk to app drive peer-to-peer                      | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-stamp](https://github.com/holepunchto/pear-stamp)                       | Interleave locals into a template, sync and stream                   | ![Windows][1] ![MacOS][2] ![Linux][3]                            | <mark style="background-color:#80ff80;">**stable**</mark>  |
-    
-#### Developer Libraries <a name="developer-libraries"></a>
+
+#### Developer Libraries<a name="developer-libraries"></a>
 
 Pear modules to assist with developing & debugging
 
@@ -157,7 +157,7 @@ Pear modules to assist with developing & debugging
 | [pear-inspect](https://github.com/holepunchto/pear-inspect)                   | Securely enable remote debugging protocol over Hyperswarm            | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]   | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-hotmods](https://github.com/holepunchto/pear-hotmods)                   | For `pear-electron` UI apps. Frontend framework-agnostic live-reload | ![Windows][1] ![MacOS][2] ![Linux][3]                           | <mark style="background-color:#80ff80;">**stable**</mark>  |
 
-#### Integration Libraries <a name="integration-libraries"></a>
+#### Integration Libraries<a name="integration-libraries"></a>
 
 Pear modules for runtime integrations. Such as [pear-electron](https://github.com/holepunchto/pear-electron).
 
@@ -178,11 +178,11 @@ Pear modules for runtime integrations. Such as [pear-electron](https://github.co
 | [pear-terminal](https://github.com/holepunchto/pear-terminal)                 | Terminal User Interface library                                      | ![Windows][1] ![MacOS][2] ![Linux][3]                           | <mark style="background-color:#80ff80;">**stable**</mark>  |
 | [pear-tryboot](https://github.com/holepunchto/pear-tryboot)                   | Used with `pear-ipc`, tries to boot sidecar on connect failure       | ![Windows][1] ![MacOS][2] ![Linux][3]                           | <mark style="background-color:#80ff80;">**stable**</mark>  |
 
-### P2P Modules <a name="p2p-modules"></a>
+### P2P Modules<a name="p2p-modules"></a>
 
-Modules that supply point-to-point peer-to-peer connection and storage capabilities. 
+Modules that supply point-to-point peer-to-peer connection and storage capabilities.
 
-#### Building-Block Libraries <a name="building-blocks"></a>
+#### Building-Block Libraries<a name="building-blocks"></a>
 
 The essential building-blocks for building powerful P2P applications using Pear.
 
@@ -195,7 +195,7 @@ The essential building-blocks for building powerful P2P applications using Pear.
 | [hyperdht](https://github.com/holepunchto/hyperdht)      | The Distributed Hash Table (DHT) powering Hyperswarm                                | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [hyperswarm](https://github.com/holepunchto/hyperswarm)  | A high-level API for finding and connecting to peers by topic                       | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      | <mark style="background-color:#80ff80;">**stable**</mark> |
 
-#### Helper Libraries <a name="helpers"></a>
+#### Helper Libraries<a name="helpers"></a>
 
 Helper modules can be used together with the building-blocks to create cutting-edge P2P tools and application-modules.
 
@@ -208,9 +208,9 @@ Helper modules can be used together with the building-blocks to create cutting-e
 | [compact-encoding](https://github.com/holepunchto/compact-encoding)                 | Binary encoding schemes for efficient parser-serializers.           | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]   | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [protomux](https://github.com/holepunchto/protomux)                                 | Multiplex multiple message oriented protocols over a stream         | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]   | <mark style="background-color:#80ff80;">**stable**</mark> |
 
-### Bare Modules <a name="bare-modules"></a>
+### Bare Modules<a name="bare-modules"></a>
 
-Pear's native runtime is [Bare](https://github.com/holepunchto/bare). The `Bare` global API is minimal and not intended as a standard library. 
+Pear's native runtime is [Bare](https://github.com/holepunchto/bare). The `Bare` global API is minimal and not intended as a standard library.
 Standard runtime functionality is provided via a installable modules. prefixed with `bare-`.
 
 | Module                                                                        | Description                                                          | Systems    <!-- NOTE: 4 em-space chars prevent icon wrapping --> | Stability                                                  |
@@ -224,7 +224,7 @@ Standard runtime functionality is provided via a installable modules. prefixed w
 | [bare-channel](https://github.com/holepunchto/bare-channel)                   | Inter-thread messaging for JavaScript                                | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-console](https://github.com/holepunchto/bare-console)                   | WHATWG debugging console for JavaScript                              | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-crypto](https://github.com/holepunchto/bare-crypto)                     | Cryptographic primitives for JavaScript                              | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
-| [bare-daemon](https://github.com/holepunchto/bare-daemon)                     | Create and manage daemon processes in JavaScript                     | ![Windows][1] ![MacOS][2] ![Linux][3]                              |  <mark style="background-color:#80ff80;">**stable**</mark> | 
+| [bare-daemon](https://github.com/holepunchto/bare-daemon)                     | Create and manage daemon processes in JavaScript                     | ![Windows][1] ![MacOS][2] ![Linux][3]                              |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-dgram](https://github.com/holepunchto/bare-dgram)                       | Native UDP for JavaScript                                            | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-dns](https://github.com/holepunchto/bare-dns)                           | Domain name resolution for JavaScript                                | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-encoding](https://github.com/holepunchto/bare-encoding)                 | WHATWG text encoding interfaces for JavaScript                       | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
@@ -255,7 +255,7 @@ Standard runtime functionality is provided via a installable modules. prefixed w
 | [bare-semver](https://github.com/holepunchto/bare-semver)                     | Minimal semantic versioning library for Bare                         | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-signals](https://github.com/holepunchto/bare-signals)                   | Native signal handling for JavaScript                                | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-stream](https://github.com/holepunchto/bare-stream)                     | Streaming data for JavaScript                                        | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
-| [bare-structured-clone](https://github.com/holepunchto/bare-structured-clone) | Structured cloning algorithm for JavaScript                          | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> | 
+| [bare-structured-clone](https://github.com/holepunchto/bare-structured-clone) | Structured cloning algorithm for JavaScript                          | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-subprocess](https://github.com/holepunchto/bare-subprocess)             | Native process spawning for JavaScript                               | ![Windows][1] ![MacOS][2] ![Linux][3]                              |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-tcp](https://github.com/holepunchto/bare-tcp)                           | Native TCP sockets for JavaScript                                    | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
 | [bare-timers](https://github.com/holepunchto/bare-timers)                     | Native timers for JavaScript                                         | ![Windows][1] ![MacOS][2] ![Linux][3] ![Android][4] ![iOS][5]      |  <mark style="background-color:#80ff80;">**stable**</mark> |
@@ -271,7 +271,7 @@ Standard runtime functionality is provided via a installable modules. prefixed w
 
 Compatibility modules for Node.js builtins in Bare can be found in [bare-node](https://github.com/holepunchto/bare-node).
 
-### Tools <a name="tools"></a>
+### Tools<a name="tools"></a>
 
 Beyond the [Pear CLI](./reference/cli.md) these ecosystem P2P CLI tools are additionally useful for day-to-day development and operations.
 

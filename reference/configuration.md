@@ -2,7 +2,7 @@
 
 <mark style="background-color: #8484ff;">**stable**</mark>
 
-## The `package.json` file <a name="package-json"></a>
+## The `package.json` file<a name="package-json"></a>
 
 A Pear project **must** have a `package.json` file and a main entry file.
 
@@ -18,25 +18,25 @@ The `package.json` `pear` object contains application configuration and is expos
 
 Pear versioning is automatic. The `package.json` file does **not** require a version field, the version field will be ignored.
 
-## The `package.json` `pear` field. <a name="pear"></a>
+## The `package.json` `pear` field.<a name="pear"></a>
 
-### `pear.name <String>` <a name="pear-name"></a>
+### `pear.name <String>`<a name="pear-name"></a>
 
 The name of the application. Overrides `package.json` `name`.
 
-### `pear.stage <Object>` <a name="pear-stage"></a>
+### `pear.stage <Object>`<a name="pear-stage"></a>
 
 Staging configuration options.
 
-#### `pear.stage.entrypoints <Array>` <a name="pear-stage-entrypoints"></a>
+#### `pear.stage.entrypoints <Array>`<a name="pear-stage-entrypoints"></a>
 
 An array of entrypoint paths as staging start-points in addition to (deduped) main entry point.
 
-#### `pear.stage.ignore <Array>` <a name="pear-stage-ignore"></a>
+#### `pear.stage.ignore <Array>`<a name="pear-stage-ignore"></a>
 
 An array of file paths to ignore relative to `package.json` file.
 
-#### `pear.stage.includes <Array>` <a name="pear-stage-includes"></a>
+#### `pear.stage.includes <Array>`<a name="pear-stage-includes"></a>
 
 Explicitly declare paths to include.
 
@@ -45,11 +45,11 @@ Ensures warmup during staging in addition to all `stage.entrypoints` which can i
 When used with `pear stage --compact` command flag `pear.stage.includes` can be used to ensure any files that aren't recognized via JavaScript static analysis - which would be any non-JavaScript files, any files that aren't required/imported or any files that are imported/required using an expression in code - eg `require(getPkgName())` would mean
 whatever is required wouldn't be identified in static analysis so would need to be added to `pear.stage.includes`.
 
-#### `pear.stage.defer <Array>` <a name="pear-stage-defer"></a>
+#### `pear.stage.defer <Array>`<a name="pear-stage-defer"></a>
 
 An array of dependency specifiers, as used with `require` or `import`, to declare it as an uninstalled optional or peer dependency in the dependency tree. Some modules use the pattern: `try { require('a-dep') } catch { fallback() }`, in order to try to include an optional dependency if available. Adding such specifiers (`a-dep` in the example) to the `pear.stage.defer` configuration array let's the static-analysis steps during `pear stage` (compact and warmup phases) step over these cases. If there are a lot of cases like this in an applications dependency tree, it will slow the static-analysis phases down since by default it brute forces and grows a dynamic defers list until there's no MODULE_NOT_FOUND errors left. The `pear stage` command will print out skip hints for these dependencies - add any specifiers identified to `pear.stage.defer`.
 
-### `pear.pre <String>` <a name="pear-pre"></a>
+### `pear.pre <String>`<a name="pear-pre"></a>
 
 A specifier such as `./path/to/pre.js` or `some-module`, or `pear-electron/pre`.
 
@@ -61,7 +61,7 @@ The specifier must point to a script that executes prior to run-from-disk, prior
 
 When a `pre` script is executed, it has a `pipe` available which can be obtained via [`pear-pipe`](https://github.com/holepunchto/pear-pipe). This can be used to modify configuration which is sent as [`compact-encoding`](https://github.com/holepunchto/compact-encoding) `any` encoding (i.e. an encoded object, like JSON). The first encoded object sent to `pipe` is the application configuration. The first response expected on the pre scripts `pipe` by the `pear run` or `pear stage` command is an `any` encoded configuration object. This allows the prescript to send back mutated application configuration back to `pear run` or `pear stage`. The application is then loaded with that mutated confiruation in the case of `pear run`, in the case of `pear stage` the configuration overrides the application drives `manifest` property. The `pear info --manifest <link>` command can be used to view any mutated configuration post-stage.
 
-### `pear.routes <Object|String>` <a name="pear-routes"></a>
+### `pear.routes <Object|String>`<a name="pear-routes"></a>
 
 By default, [`pear run`](./cli.md#pear-run) considers link pathnames to be entrypoints. This means `pear run` can execute any valid file staged to a Pear application. For example `pear run pear://<key>/some/path.js` would run some/path.js if it's valid. In that case [`Pear.app.route`](./api.md#pear-app-route) would contain `/some/path.js` and [`Pear.app.entrypoint`](./api.md#pear-app-entrypoint) would also contain `/some/path.js`.
 
@@ -94,12 +94,12 @@ The `pear.routes` configuration can also be an object where the keys are pathnam
 When `routes: "."` is used in conjuction with [`pear-electron`](https://github.com/holepunchto/pear-electron) and [`pear-bridge` `waypoint` option](https://github.com/holepunchto/pear-bridge/#options) this enables in-app single-page-application routing.
 
 
-### `pear.unrouted <Array>` <a name="pear-unrouted"></a>
+### `pear.unrouted <Array>`<a name="pear-unrouted"></a>
 
 Array of paths to exclude from any routing rules in [`pear.routes`](#pear-routes).
 
 
-### `pear.assets <Object>` <a name="pear-assets"></a>
+### `pear.assets <Object>`<a name="pear-assets"></a>
 
 Asset declarations to fetch and store on disk on behalf of the application.
 
@@ -142,7 +142,7 @@ While assets can be declared directly on the `pear.assets` as described but when
 
 Assets are automatically stored in the platform folder. Use [`Pear.app.assets[namespace].path`](./api.md#pear-app-assets) within the application to get the path to the asset. For example, `Pear.assets.ui.path`.
 
-###  `pear.links <Object|Array>` <a name="pear-links"></a>
+###  `pear.links <Object|Array>`<a name="pear-links"></a>
 
 Storing and managing Pear application links and domains.
 
@@ -161,9 +161,9 @@ Note that this is only for requests that the Pear app makes itself such as loadi
   // ...
   "pear": {
     // accessed at runtime using Pear.config.links[index] eg. Pear.config.links[0] for pear://somePearKey
-    "links": [ 
-      "pear://somePearKey", 
-      "https://example.com" 
+    "links": [
+      "pear://somePearKey",
+      "https://example.com"
     ]
     // OR
     // accessed at runtime using Pear.config.links.name eg. Pear.config.links.myWorker for myWorker
@@ -175,7 +175,7 @@ Note that this is only for requests that the Pear app makes itself such as loadi
 }
 ```
 
-### `pear.gui <Object>` <a name="pear-gui"></a>
+### `pear.gui <Object>`<a name="pear-gui"></a>
 
 Graphical User Interface configuration options.
 
