@@ -3,7 +3,7 @@
 * [Pear](#pear)
 * [Bare](#bare)
 
-## Pear <a name="pear"></a>
+## Pear<a name="pear"></a>
 
 Troubleshooting confusing scenarios while developing Pear applications.
 
@@ -16,8 +16,8 @@ The `Pear.teardown(cb)` callback is triggered whenever the Pear app start to unl
 If after debugging an application it seems the issue is happening in the Pear platform itself, try the following steps to debug the issue:
 
 1. Run pear command with logs enabled `pear --log [command]`.
-2. If no helpful info, run sidecar with logs `pear sidecar --log-level 3`.  
-   If the `pear sidecar` stops after printing `Closing any current Sidecar clients...`, then the current Pear Sidecar process is hanging. Check the next steps for forensics that might explain why, but then kill existing Pear processes.  
+2. If no helpful info, run sidecar with logs `pear sidecar --log-level 3`.
+   If the `pear sidecar` stops after printing `Closing any current Sidecar clients...`, then the current Pear Sidecar process is hanging. Check the next steps for forensics that might explain why, but then kill existing Pear processes.
    _Note_ that this will close any running pear applications such as Keet.
 3. If still no helpful info, check that there are still pear processes running via `ps aux | grep pear` or equivalent method for finding processes by name.
 4. Finally check the crash logs in platform's `current` directory.
@@ -36,7 +36,7 @@ Uncaught (in promise) Error: While lock file: ./pear/app-storage/by-random/.../d
 Means the application is trying to open a RockDB instance on files currently
 locked by another process. This means either:
 
-- An application is trying to open the same storage twice.  
+- An application is trying to open the same storage twice.
   If using `Corestore`, it is recommended to only create only one instance and
   reusing it.
 - There are multiple of processes running for the same application.
@@ -47,8 +47,8 @@ There can be many reasons but here are a few common reasons:
 
 - Random NAT networks can take longer as another node may be needed to facility the connection.
 - Not destroying the hyperswarm instance in the `Pear.teardown()` callback so
-  Hyperswarm can unannounce and clean up the DHT.  
-  It's recommended to clean up the hyperswarm instance with `swarm.destroy()` before exiting the application. This prevents conflicting records in the DHT for the application's peer which cause it take longer to join a topic.  
+  Hyperswarm can unannounce and clean up the DHT.
+  It's recommended to clean up the hyperswarm instance with `swarm.destroy()` before exiting the application. This prevents conflicting records in the DHT for the application's peer which cause it take longer to join a topic.
 
   Example:
   ```js
@@ -58,7 +58,7 @@ There can be many reasons but here are a few common reasons:
   Make sure to unregister the teardown callback if the swarm is destroyed
   prematurely.
 
-- A firewall is blocking the traffic.  
+- A firewall is blocking the traffic.
   Please let Holepunch know if this is the case.
 
 ### Running Bare modules in Pear Desktop Applications
@@ -93,7 +93,7 @@ so a module `fs` can be resolved to `bare-fs` on Bare and `fs` on Node.js.
 
 See [`bare-node`'s "Import maps"](https://github.com/holepunchto/bare-node?tab=readme-ov-file#import-maps) for more details.
 
-## Bare <a name="bare"></a>
+## Bare<a name="bare"></a>
 
 Troubleshooting confusing scenarios while developing Pear applications.
 
@@ -132,9 +132,9 @@ As the error suggests, this is because the native addon cannot be found. This co
 
 A few reasons why an addon may be missing:
 
-- The addon is not available for the current platform and/or architecture.  
+- The addon is not available for the current platform and/or architecture.
   To see what platform and architecture Bare is running on, log `Bare.platform` and `Bare.arch`.
-- The addon wasn't linked ahead of time.  
+- The addon wasn't linked ahead of time.
   Mobile applications require native code to be linked as part of compiling the application.
 
   If developing with `react-native-bare-kit` (including using `bare-expo` as a template), check that the addon was loaded in `node_modules/react-native-bare-kit/ios/addons` for iOS and `node_modules/react-native-bare-kit/android/src/main/addons` for Android. This is where the libraries are linked from.
