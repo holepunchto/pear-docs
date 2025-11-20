@@ -133,12 +133,12 @@ Verify in development with
  ```sh
  pear run -d .
  ```
- 
+
 Production equivalent verification:
 
 ```sh
 pear stage check
-``` 
+```
 
 Then per link output from stage command:
 
@@ -150,7 +150,7 @@ If the application starts and operates correctly in any related areas where chan
 
 If the SemVer printed by `pear -v` is 2.x.x then migration verification is complete.
 
-If the SemVer printed by `pear -v` is 1.x.x then these steps need to performed on v2 also. 
+If the SemVer printed by `pear -v` is 1.x.x then these steps need to performed on v2 also.
 
 Switch to v2 with:
 
@@ -201,12 +201,12 @@ Verify in development with
  ```sh
  pear run -d .
  ```
- 
+
 Production equivalent verification:
 
 ```sh
 pear stage check
-``` 
+```
 
 Then per link output from stage command:
 
@@ -224,12 +224,12 @@ pear sidecar --key pqbzjhqyonxprx8hghxexnmctw75mr91ewqw5dxe1zmntfyaddqy
 
 If there's any problems switching back, make sure there are no `pear-runtime` processes running and run `npx pear`.
 
->  ⚠️ **WARNING:** Omitting to switch back to production Pear leaves the system on a release-line that will be ended. 
+>  ⚠️ **WARNING:** Omitting to switch back to production Pear leaves the system on a release-line that will be ended.
 >
 >  **In order to avoid any issues, be sure to switch back to production [ pqbzjhqyonx... ]**
 >
 
-## Compat Mode
+## Compat Mode<a name="compat-mode"></a>
 
 While v1 Pear APIs will continue to function with deprecation messages, for projects that need a legacy-bridge during overlapping transitional periods, compat-mode can be used to:
 
