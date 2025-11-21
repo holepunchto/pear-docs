@@ -169,7 +169,7 @@ In both cases, autofill actions require biometric verification (Face ID, Touch I
 ![Master Password](../assets/pearpass/MasterPassword.gif)
 
 ### Add a vault
-<p>Create a new vault or load one from an existing device. Adding a password is optional to enhance the security even further</p>
+<p>Create a new vault or load one from an existing device.</p>
 
 ![Add a vault](../assets/pearpass/CreateVault.gif)
 
