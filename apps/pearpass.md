@@ -9,7 +9,7 @@
 |![Store passwords, IDs and notes](../assets/pearpass/Items.png)| ![Sync privately between devices](../assets/pearpass/Sync.png)| ![Add documents and files](../assets/pearpass/LocalStorage.png)|
 | --- | --- | --- |
 |**Store passwords, IDs and notes!**|**Sync privately between devices**  |   **Add documents and files** |
-|PearPass lets you securely store your passwords, passkeys, IDs, and notes, and generate new ones.| PearPass includes built-in sync for effortless and secure access to your credentials across all your devices. |  Passport or ID photo? A health record linked to your identity? PearPass lets you securely store files locally and sync them across all your devices.|
+PearPass lets you securely store your passwords, passkeys, IDs, notes, and more, and it also allows you to generate new ones.| PearPass includes built-in sync for effortless and secure access to your credentials across all your devices. |  Passport or ID photo? A health record linked to your identity? PearPass lets you securely store files locally and sync them across all your devices.|
 
 PearPass consists of three applications:
 - A desktop app available on Mac, Linux, and Windows.
