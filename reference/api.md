@@ -2,10 +2,10 @@
 
 Pear is built on [Bare](https://github.com/holepunchto/bare). Pear applications have a `global.Pear` object and a`global.Bare` object.
 
-* [global.Pear](#pear)
-* [global.Bare](#bare)
+* [global.Pear](#globalpear)
+* [global.Bare](#globalbare)
 
-## `global.Pear`<a name="pear"></a>
+## `global.Pear`<a name="globalpear"></a>
 
 <mark style="background-color: #8484ff;">**stable**</mark>
 
@@ -430,7 +430,7 @@ Deprecated. Use [`pear-electron ui.Window`](https://github.com/holepunchto/pear-
 
 Deprecated. Use [`pear-electron ui.View`](https://github.com/holepunchto/pear-electron#const-view--new-uiviewoptions-object).
 
-## `global.Bare`<a name="bare"></a>
+## `global.Bare`<a name="globalbare"></a>
 
 <mark style="background-color: #8484ff;">**stable**</mark>
 
