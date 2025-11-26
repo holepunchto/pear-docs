@@ -2,8 +2,8 @@
 
 Pear is built on [Bare](https://github.com/holepunchto/bare). Pear applications have a `global.Pear` object and a`global.Bare` object.
 
-* [global.Pear](#pear)
-* [global.Bare](#bare)
+* [global.Pear](#global.pear)
+* [global.Bare](#global.bare)
 
 ## `global.Pear`<a name="pear"></a>
 
