@@ -185,11 +185,11 @@ The command should output something similar to:
 
 ========================= RUN ====================================
 
-- Switching to key pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o with length 5932... [+261.4711ms]
+- Switching to key pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o with length 2371... [+261.4711ms]
 Platform update Available. Restart to update to: [+367.2348ms]
- v0.5932.pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o [+0.0349ms]
+ v0.2371.pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o [+0.0349ms]
 - DHT known-nodes read from database 100 nodes [+4631.6207ms]
-- Drive bundle pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o core length: 5932 [+5.1877ms]
+- Drive bundle pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o core length: 2371 [+5.1877ms]
 - Sidecar swarm joining discovery key of pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o [+0.0797ms]
 - Sidecar Booted [+1.1023ms]
 ```
