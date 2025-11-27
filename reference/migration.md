@@ -155,7 +155,7 @@ If the SemVer printed by `pear -v` is 1.x.x then these steps need to performed o
 Switch to v2 with:
 
 ```sh
-pear sidecar --key dhpc5npmqkansx38uh18h3uwpdp6g9ukozrqyc4irbhwriedyeho
+pear sidecar --key pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o
 ```
 
 This will run the current sidecar in the terminal and switch to the v2 release line per the supplied key.
@@ -185,12 +185,12 @@ The command should output something similar to:
 
 ========================= RUN ====================================
 
-- Switching to key dhpc5npmqkansx38uh18h3uwpdp6g9ukozrqyc4irbhwriedyeho with length 3097... [+261.4711ms]
+- Switching to key pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o with length 2371... [+261.4711ms]
 Platform update Available. Restart to update to: [+367.2348ms]
- v0.3097.dhpc5npmqkansx38uh18h3uwpdp6g9ukozrqyc4irbhwriedyeho [+0.0349ms]
+ v0.2371.pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o [+0.0349ms]
 - DHT known-nodes read from database 100 nodes [+4631.6207ms]
-- Drive bundle dhpc5npmqkansx38uh18h3uwpdp6g9ukozrqyc4irbhwriedyeho core length: 3097 [+5.1877ms]
-- Sidecar swarm joining discovery key of dhpc5npmqkansx38uh18h3uwpdp6g9ukozrqyc4irbhwriedyeho [+0.0797ms]
+- Drive bundle pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o core length: 2371 [+5.1877ms]
+- Sidecar swarm joining discovery key of pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o [+0.0797ms]
 - Sidecar Booted [+1.1023ms]
 ```
 
