@@ -1,4 +1,4 @@
-# Best Practices
+# Recommended Practices
 
 This article covers useful patterns that one should follow in most cases when
 developing Pear applications.

@@ -1,10 +1,10 @@
 # How to create a full peer-to-peer filesystem with Hyperdrive
 
-[`Hyperdrive`](../building-blocks/hyperdrive.md) is a secure, real-time distributed file system designed for easy peer-to-peer file sharing. In the same way that a Hyperbee is just a wrapper around a Hypercore, a Hyperdrive is a wrapper around two Hypercores: one is a Hyperbee index for storing file metadata, and the other is used to store file contents.
+[`Hyperdrive`](https://github.com/holepunchto/hyperdrive) is a secure, real-time distributed file system designed for easy peer-to-peer file sharing. In the same way that a Hyperbee is just a wrapper around a Hypercore, a Hyperdrive is a wrapper around two Hypercores: one is a Hyperbee index for storing file metadata, and the other is used to store file contents.
 
 This How-to consists of three applications: `drive-writer-app`, `drive-reader-app` and `drive-bee-reader-app`.
 
-Now let's mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, we'll use two additional tools: [`MirrorDrive`](../helpers/mirrordrive.md) and [`LocalDrive`](../helpers/localdrive.md), which handle all interactions between Hyperdrives and the local filesystem.
+Now let's mirror a local directory into a Hyperdrive, replicate it with a reader peer, who then mirrors it into their own local copy. When the writer modifies its drive, by adding, removing, or changing files, the reader's local copy will be updated to reflect that. To do this, we'll use two additional tools: [`MirrorDrive`](https://github.com/holepunchto/mirror-drive) and [`LocalDrive`](https://github.com/holepunchto/localdrive), which handle all interactions between Hyperdrives and the local filesystem.
 
 Start by creating the `drive-writer-app` project with these commands:
 

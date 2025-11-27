@@ -2,7 +2,7 @@
 
 In the HyperDHT How-to ([Connect Two Peers](./connect-two-peers-by-key-with-hyperdht.md)) and the Hyperswarm How-to ([Connect Many Peers](./connect-to-many-peers-by-topic-with-hyperswarm.md)), peers can exchange chat messages so long as both are online at the same time and directly connected. The application is ephemeral, the messages are not persisted - they will be lost if the recipient is offline. Hypercore provides the persistence.
 
-[`Hypercore`](../building-blocks/hypercore.md) is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
+[`Hypercore`](https://github.com/holepunchto/hypercore) is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
 {% embed url="https://www.youtube.com/watch?v=5t2mOi0BeDg" %} Build with Pear - Episode 05: Replication and Persistence {% embeded %}
 
