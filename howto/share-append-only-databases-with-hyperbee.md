@@ -1,7 +1,7 @@
 
 # How to share Append-Only Databases with Hyperbee
 
-[Hyperbee](../building-blocks/hyperbee.md) is an append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
+[Hyperbee](https://github.com/holepunchto/hyperbee) is an append-only B-tree based on Hypercore. It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
 
 This How-to consists of three applications: `bee-writer-app` , `bee-reader-app` and `core-reader-app`.
 
