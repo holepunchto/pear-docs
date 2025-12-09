@@ -49,10 +49,8 @@ The following stability indices have been used:
 
 Peer-to-Peer applications built on, deployed with, running on Pear.
 
-- <div style="display: flex; align-items: center; gap: 0.5rem;"><a href="https://keet.io" pear-data="pear://keet"><img src="./assets/keet.svg" alt="Keet logo" width="32" height="32" style="vertical-align: middle; box-shadow: none; margin: 0.5rem">Keet</a>: A peer-to-peer chat and video-conferencing application with end-to-end encryption.</div>
-
-- <div style="display: flex; align-items: center; gap: 0.5rem;"><a href="https://pass.pears.com" pear-data="pear://pass"><img src="./assets/pearpass.svg" alt="PearPass logo" width="32" height="32" style="vertical-align: middle; box-shadow: none; margin: 0.5rem">PearPass</a>: A secure peer-to-peer password manager.</div>
-
+- [<img src="./assets/keet.svg" width="24" align="top">](https://keet.io) **[Keet](https://keet.io)**: A peer-to-peer chat and video-conferencing application with end-to-end encryption.
+- [<img src="./assets/pearpass.svg" width="24" align="top">](https://pass.pears.com) **[PearPass](https://pass.pears.com)**: A secure peer-to-peer password manager.
 
 ### Reference<a name="reference"></a>
 
