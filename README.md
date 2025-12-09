@@ -52,7 +52,7 @@ Peer-to-Peer applications built on, deployed with, running on Pear.
 - <a href="https://keet.io" pear-data="pear://keet" style="display: inline-flex; align-items: center; gap: 0.5em;"><img src="./assets/keet.svg" alt="Keet logo" width="32" height="32" style="display: inline; margin: 0; vertical-align: middle; box-shadow: none;">
 Keet</a>: A peer-to-peer chat and video-conferencing application with end-to-end encryption.
 
-- <a href="https://pass.pears.com" pear-data="pear://68dzzkp1kytp1nwaqij4dft886stmjayopnxixaqwr9gta9hfuzy" style="display: inline-flex; align-items: center; gap: 0.5em;"><img src="./assets/pearpass.svg" alt="PearPass logo" width="32" height="32" style="display: inline; margin: 0; vertical-align: middle; box-shadow: none;">PearPass</a>: A secure peer-to-peer password manager.
+- <a href="https://pass.pears.com" pear-data="pear://pass" style="display: inline-flex; align-items: center; gap: 0.5em;"><img src="./assets/pearpass.svg" alt="PearPass logo" width="32" height="32" style="display: inline; margin: 0; vertical-align: middle; box-shadow: none;">PearPass</a>: A secure peer-to-peer password manager.
 
 
 ### Reference<a name="reference"></a>
