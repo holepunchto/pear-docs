@@ -49,9 +49,9 @@ The following stability indices have been used:
 
 Peer-to-Peer applications built on, deployed with, running on Pear.
 
-- <a href="https://keet.io" pear-data="pear://keet" style="display: inline-flex; align-items: center; gap: 0.5em;"><img src="./assets/keet.svg" alt="Keet logo" width="32" height="32" style="vertical-align: middle; box-shadow: none;">Keet</a><p>: A peer-to-peer chat and video-conferencing application with end-to-end encryption.</p>
+- <div style="display: flex; align-items: center; gap: 0.5rem;"><a href="https://keet.io" pear-data="pear://keet"><img src="./assets/keet.svg" alt="Keet logo" width="32" height="32" style="vertical-align: middle; box-shadow: none; margin: 0.5rem">Keet</a>: A peer-to-peer chat and video-conferencing application with end-to-end encryption.</div>
 
-- <a href="https://pass.pears.com" pear-data="pear://pass" style="display: inline-flex; align-items: center; gap: 0.5em;"><img src="./assets/pearpass.svg" alt="PearPass logo" width="32" height="32" style="vertical-align: middle; box-shadow: none;">PearPass</a><p>: A secure peer-to-peer password manager.</p>
+- <div style="display: flex; align-items: center; gap: 0.5rem;"><a href="https://pass.pears.com" pear-data="pear://pass"><img src="./assets/pearpass.svg" alt="PearPass logo" width="32" height="32" style="vertical-align: middle; box-shadow: none; margin: 0.5rem">PearPass</a>: A secure peer-to-peer password manager.</div>
 
 
 ### Reference<a name="reference"></a>
