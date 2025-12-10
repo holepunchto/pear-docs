@@ -2,18 +2,6 @@
 
 * [Pear by Holepunch](./README.md)
 
-* [Terms](./README.md#terms)
-* [Reference](./README.md#reference)
-* [Examples](./README.md#examples)
-* [Guides](./README.md#guides)
-* [How-tos](./README.md#how-tos)
-* [Pear Modules](./README.md#pear-modules)
-* [P2P Modules](./README.md#p2p-modules)
-* [Bare Modules](./README.md#bare-modules)
-* [Tools](./README.md#tools)
-* [Showcase](./README.md#showcase)
-* [Stability Legend](./README.md#stability-legend)
-
 ### Reference
 
 * [Pear CLI](./reference/cli.md)

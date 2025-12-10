@@ -12,6 +12,7 @@ Welcome to the Internet of Peers
 
 ## Documentation
 
+* [Showcase](#showcase)
 * [Terms](#terms)
 * [Legend](#legend)
 * [Reference](#reference)
@@ -22,7 +23,14 @@ Welcome to the Internet of Peers
 * [P2P Modules](#p2p-modules)
 * [Bare Modules](#bare-modules)
 * [Tools](#tools)
-* [Showcase](#showcase)
+
+### Showcase<a name="showcase"></a>
+
+Peer-to-Peer applications built on, deployed with, running on Pear.
+
+| <div align="center"><a href="https://keet.io" data-pear="pear://keet" title="Encrypted peer-to-peer message, audio & video chat"><img src="./assets/keet.svg" alt="Keet logo"></a></div> | <div align="center"><a href="https://pass.pears.com" data-pear="pear://pass" title="Secure peer-to-peer password & secrets manager"><img src="./assets/pearpass.svg" alt="PearPass logo"></a></div> |
+| --- | --- |
+| <div align="center"><a href="https://keet.io" data-pear="pear://keet" title="Encrypted peer-to-peer message, audio & video chat"><strong>Keet</strong></a></div> | <div align="center"><a href="https://pass.pears.com" data-pear="pear://pass" title="Secure peer-to-peer password & secrets manager"><strong>PearPass</strong></a></div> |
 
 ### Terms
 
@@ -43,15 +51,6 @@ The following stability indices have been used:
 | <mark style="background-color: #8484ff;">**experimental**</mark> | New, untested, or has known issues                          |
 | <mark style="background-color: #ffffa2;">**deprecated**</mark>   | Being removed or replaced in the future                     |
 | <mark style="background-color: #ff4242;">**unstable**</mark>     | May change or be removed without warning                    |
-
-
-## Showcase<a name="showcase"></a>
-
-Peer-to-Peer applications built on, deployed with, running on Pear.
-
-| <div align="center"><a href="https://keet.io" data-pear="pear://keet" title="Encrypted peer-to-peer message, audio & video chat"><img src="./assets/keet.svg" alt="Keet logo"></a></div> | <div align="center"><a href="https://pass.pears.com" data-pear="pear://pass" title="Secure peer-to-peer password & secrets manager"><img src="./assets/pearpass.svg" alt="PearPass logo"></a></div> |
-| --- | --- |
-| <div align="center"><a href="https://keet.io" data-pear="pear://keet" title="Encrypted peer-to-peer message, audio & video chat"><strong>Keet</strong></a></div> | <div align="center"><a href="https://pass.pears.com" data-pear="pear://pass" title="Secure peer-to-peer password & secrets manager"><strong>PearPass</strong></a></div> |
 
 ### Reference<a name="reference"></a>
 
