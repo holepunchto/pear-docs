@@ -27,7 +27,7 @@ cd autopass-mobile-example
 And install the dependencies we will need:
 
 ```bash
-npm i b4a bare-fs bare-rpc corestore autopass @react-native-clipboard/clipboard
+npm i b4a bare-fs bare-rpc corestore autopass @react-native-clipboard/clipboard graceful-goodbye
 ```
 
 ```bash
@@ -211,6 +211,7 @@ Add the following code to `backend/backend.mjs`:
 import RPC from 'bare-rpc'
 import fs from 'bare-fs'
 import URL from 'bare-url'
+import goodbye from 'graceful-goodbye'
 import { join } from 'bare-path'
 import { RPC_RESET, RPC_MESSAGE } from '../rpc-commands.mjs'
 
@@ -236,7 +237,7 @@ fs.mkdirSync(path)
 const invite = Bare.argv[1]
 const pair = Autopass.pair(new Corestore(path), invite)
 const pass = await pair.finished()
-Bare.on('teardown', () => pass.close())
+goodbye(() => pass.close())
 
 await pass.ready()
 

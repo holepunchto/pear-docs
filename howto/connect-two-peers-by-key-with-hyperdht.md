@@ -1,7 +1,7 @@
 
 # How to connect two Peers by key with Hyperdht
 
-[`HyperDHT`](../building-blocks/hyperdht.md) helps clients connect to a server peer with a known public key. HyperDHT uses a series of holepunching techniques to establish direct connections between the peers, even if they're located on home networks with tricky NATs.
+[`HyperDHT`](https://github.com/holepunchto/hyperdht) helps clients connect to a server peer with a known public key. HyperDHT uses a series of holepunching techniques to establish direct connections between the peers, even if they're located on home networks with tricky NATs.
 
 In the HyperDHT, peers are identified by a public key, not by an IP address. The public key is looked up in a decentralized hash table, which maps the key to an IP address and port. This means users can connect to each other irrespective of their location, even if they move between different networks.
 
