@@ -284,9 +284,11 @@ Beyond the [Pear CLI](./reference/cli.md) these ecosystem P2P CLI tools are addi
 | [Hyperssh](https://github.com/holepunchto/hyperssh)     | A CLI to run SSH over the DHT.                           | ![Windows][1] ![MacOS][2] ![Linux][3]                          | <mark style="background-color:#80ff80;">**stable**</mark> |
 | [Drives](https://github.com/holepunchto/drives)         | CLI that interacts with `hyperdrive` & `localdrive`      | ![Windows][1] ![MacOS][2] ![Linux][3]                          | <mark style="background-color:#80ff80;">**stable**</mark> |
 
+<picture><img src="./assets/macos-light.svg" alt="MacOS"></picture>
+<img src="./assets/macos-light.svg" alt="MacOS">
 
-[1]: assets/windows.svg
-[2]: assets/macos.svg
-[3]: assets/linux.svg
-[4]: assets/android.svg
-[5]: assets/ios.svg
+[1]: ./assets/windows.svg
+[2]: ./assets/macos.svg
+[3]: ./assets/linux.svg
+[4]: ./assets/android.svg
+[5]: ./assets/ios.svg
