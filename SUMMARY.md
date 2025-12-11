@@ -47,7 +47,19 @@
 ### P2P Modules
 
 * [Building-Block Libraries](./README.md#building-blocks)
+* [Hypercore](./building-blocks/hypercore.md)
+* [Hyperbee](./building-blocks/hyperbee.md)
+* [Hyperdrive](./building-blocks/hyperdrive.md)
+* [Autobase](./building-blocks/autobase.md)
+* [HyperDHT](./building-blocks/hyperdht.md)
+* [Hyperswarm](./building-blocks/hyperswarm.md)
 * [Helper Libraries](./README.md#helpers)
+* [Corestore](./helpers/corestore.md)
+* [Localdrive](./helpers/localdrive.md)
+* [Mirrordrive](./helpers/mirrordrive.md)
+* [Secretstream](./helpers/secretstream.md)
+* [Compact encoding](./helpers/compact-encoding.md)
+* [Protomux](./helpers/protomux.md)
 
 ### Bare Modules
 
@@ -56,6 +68,11 @@
 ### Tools
 
 * [Tool List](./README.md#tools)
+* [Hypershell](./tools/hypershell.md)
+* [Hypertele](./tools/hypertele.md)
+* [Hyperbeam](./tools/hyperbeam.md)
+* [Hyperssh](./tools/hyperssh.md)
+* [Drives](./tools/drives.md)
 
 ### Examples<a name="examples"></a>
 
