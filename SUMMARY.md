@@ -48,6 +48,10 @@
 ### P2P Modules
 
 * [Building-Block Libraries](./README.md#building-blocks)
+* [Helper Libraries](./README.md#helpers)
+
+### Building blocks
+
 * [Hypercore](./building-blocks/hypercore.md)
 * [Hyperbee](./building-blocks/hyperbee.md)
 * [Hyperdrive](./building-blocks/hyperdrive.md)
@@ -55,7 +59,8 @@
 * [HyperDHT](./building-blocks/hyperdht.md)
 * [Hyperswarm](./building-blocks/hyperswarm.md)
 
-* [Helper Libraries](./README.md#helpers)
+### Helpers
+
 * [Corestore](./helpers/corestore.md)
 * [Localdrive](./helpers/localdrive.md)
 * [Mirrordrive](./helpers/mirrordrive.md)
