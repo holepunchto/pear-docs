@@ -88,6 +88,7 @@ Guides on using Pear Runtime to build and share peer-to-peer applications.
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
 * [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
+* [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
 * [Creating a `pear init` Template](./guide/creating-a-pear-init-template.md)
 
 ### How-tos<a name="howtos"></a>
