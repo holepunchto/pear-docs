@@ -25,6 +25,7 @@
 * [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
 * [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
 * [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
+* [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
 * [Creating a `pear init` Template](./guide/creating-a-pear-init-template.md)
 
 ### How-tos
@@ -47,7 +48,20 @@
 ### P2P Modules
 
 * [Building-Block Libraries](./README.md#building-blocks)
-* [Helper Libraries](./README.md#helper-libraries)
+* [Hypercore](./building-blocks/hypercore.md)
+* [Hyperbee](./building-blocks/hyperbee.md)
+* [Hyperdrive](./building-blocks/hyperdrive.md)
+* [Autobase](./building-blocks/autobase.md)
+* [HyperDHT](./building-blocks/hyperdht.md)
+* [Hyperswarm](./building-blocks/hyperswarm.md)
+
+* [Helper Libraries](./README.md#helpers)
+* [Corestore](./helpers/corestore.md)
+* [Localdrive](./helpers/localdrive.md)
+* [Mirrordrive](./helpers/mirrordrive.md)
+* [Secretstream](./helpers/secretstream.md)
+* [Compact encoding](./helpers/compact-encoding.md)
+* [Protomux](./helpers/protomux.md)
 
 ### Bare Modules
 
@@ -56,6 +70,11 @@
 ### Tools
 
 * [Tool List](./README.md#tools)
+* [Hypershell](./tools/hypershell.md)
+* [Hypertele](./tools/hypertele.md)
+* [Hyperbeam](./tools/hyperbeam.md)
+* [Hyperssh](./tools/hyperssh.md)
+* [Drives](./tools/drives.md)
 
 ### Examples<a name="examples"></a>
 
