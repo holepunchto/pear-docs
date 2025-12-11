@@ -47,7 +47,7 @@
 ### P2P Modules
 
 * [Building-Block Libraries](./README.md#building-blocks)
-* [Helper Libraries](./README.md#helper-libraries)
+* [Helper Libraries](./README.md#helpers)
 
 ### Bare Modules
 
