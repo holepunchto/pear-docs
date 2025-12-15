@@ -97,7 +97,7 @@ Seed project or reseed key.
 
 Specify channel or link to seed a project or a remote link to reseed.
 
-Seeding will sparsely replicate the application. This means the entire history of the channel or link is available, but most likely only the most recent version will be replicated. For more info, read ["Lazy loading large files & sparse replication"](../guide/sharing-a-pear-app#lazy-loading-large-files-and-sparse-replication) section in the "Sharing a Pear Application" guide.
+Seeding will sparsely replicate the application. This means the entire history of the channel or link is available, but most likely only the most recent version will be replicated. For more info, read ["Lazy loading large files & sparse replication"](../guide/sharing-a-pear-app.md#lazy-loading-large-files-and-sparse-replication) section in the "Sharing a Pear Application" guide.
 
 ```
   --json                    Newline delimited JSON output
