@@ -396,7 +396,21 @@ Deprecated. Use [`pear-electron ui.media`](https://github.com/holepunchto/pear-e
 
 ### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.versions <Async Function>`
 
-Deprecated. Use [`pear-versions`](https://github.com/holepunchto/pear-versions).
+Outputs version information.
+
+Example:
+
+```js
+{
+  platform: {
+    key: 'pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o',
+    length: 5949,
+    fork: 0
+  },
+  app: { key: null, length: 0, fork: 0 },
+  runtimes: { bare: '1.24.3', pear: '2.2.6' }
+}
+```
 
 ### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `Pear.reload()`
 
