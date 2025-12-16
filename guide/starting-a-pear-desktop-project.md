@@ -59,7 +59,7 @@ The app should now show:
 
 ![Automatic reload](../assets/chat-app-2.png)
 
-> Live reload with hot-module reloading is possible by using the `pear.watch` configuration and the [`pear.updates`](../reference/pear/api.md#pear.updates-listener-less-than-async-function-or-function-greater-than-greater-than-streamx.readabl) API. The [pear-hotmods](https://github.com/holepunchto/pear-hotmods) convenience module can also be used.
+> Live reload with hot-module reloading is possible by using the `pear.watch` configuration and the [`pear.updates`](https://github.com/holepunchto/pear-updates) API. The [pear-hotmods](https://github.com/holepunchto/pear-hotmods) convenience module can also be used.
 
 ## Step 4. Configuration
 
@@ -82,7 +82,7 @@ Open `package.json` and update it to:
 
 Close the app and re-run `pear run --dev .` to see the changes, the initial window size is different now.
 
-See the [Configuration Documentation](../reference/pear/configuration.md) for all options.
+See the [Configuration Documentation](../reference/configuration.md) for all options.
 
 
 ## Next

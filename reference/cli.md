@@ -136,7 +136,7 @@ pear release --checkout 500 production
 
 This method doesn't add any file changes so will not show update diffs from the previous release version.
 
-The second approach is dumping the files from the previous version and staging and rereleasing the new version. This appends file changes so is heavier than just changing the release pointer, but shows update diffs and fits the [dump-stage-release strategy](../../guide/releasing-a-pear-app.md) approach since updates to the `production` channel are applied by dumping from another channel or link.
+The second approach is dumping the files from the previous version and staging and rereleasing the new version. This appends file changes so is heavier than just changing the release pointer, but shows update diffs and fits the [dump-stage-release strategy](../guide/releasing-a-pear-app.md) approach since updates to the `production` channel are applied by dumping from another channel or link.
 
 ## `pear info [link|channel]`<a name="pear-info"></a>
 
