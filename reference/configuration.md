@@ -146,7 +146,7 @@ Assets are automatically stored in the platform folder. Use [`Pear.app.assets[na
 
 Storing and managing Pear application links and domains.
 
-`links` can be an object or an array. If it's an object, naming the key makes it easy to reference from [`Pear.config.links`](./api.md#pearconfiglinks-objectarray)
+`links` can be an object or an array. If it's an object, naming the key makes it easy to reference from [`Pear.config.links`](./api.md#pear-config)
 
 By default in Pear apps, only requests to the sidecar host (127.0.0.1:9342) are allowed. Additional hosts and trusted keys must be added in `pear.links` to allow access.
 

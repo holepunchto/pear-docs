@@ -60,7 +60,9 @@ Pear's runtime binary is built on [Bare](https://github.com/holepunchto/bare), a
 
 * [Pear CLI](./reference/cli.md)
 * [Pear Configuration](./reference/configuration.md)
-* [API](./reference/api.md)
+* [Bare Overview](./reference/bare-overview.md)
+* [Pear API](./reference/api.md#globalpear)
+* [Bare API](./reference/api.md#globalbare)
 * [Templates](./reference/templates.md)
 * [Node.js Compatability](./reference/node-compat.md)
 * [Recommended Practices](./reference/recommended-practices.md)
