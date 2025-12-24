@@ -9,7 +9,7 @@
 * [Bare Overview](./reference/bare-overview.md)
 * [API](./reference/api.md)
 * [Templates](./reference/templates.md)
-* [Node.js Compatability](./reference/node-compat.md)
+* [Node.js Compatibility](./reference/node-compat.md)
 * [Recommended Practices](./reference/recommended-practices.md)
 * [Troubleshooting](./reference/troubleshooting.md)
 * [Frequently Asked Questions](./reference/faq.md)
