@@ -115,7 +115,7 @@ To support dependencies that rely on Node.js builtins (eg. `fs`, `os`, etc), an 
 npm i bare-net net@npm:bare-node-net
 ```
 
-See [Node.js Compatability](./node-compat) for more info.
+See [Node.js Compatibility](./node-compat) for more info.
 
 For compatibility and to support builtin globals, such as `process`, the corresponding `bare-*` module will include a `/global.js` submodule that sets the global variable to `global`. This is useful when importing modules that assume the global variable exists. It is not recommended to use global variables when writing new code as it is less flexible and a harder to upgrade piecemeal.
 
