@@ -91,7 +91,7 @@ so a module `fs` can be resolved to `bare-fs` on Bare and `fs` on Node.js.
 }
 ```
 
-See [`bare-node`'s "Import maps"](https://github.com/holepunchto/bare-node?tab=readme-ov-file#import-maps) for more details.
+See [`bare-node`'s "Import maps"](https://github.com/holepunchto/bare-node#import-maps) for more details.
 
 ## Bare<a name="bare"></a>
 
@@ -99,13 +99,13 @@ Troubleshooting confusing scenarios while developing Pear applications.
 
 ### Missing builtin Modules when Running with Bare
 
-Bare is minimal by design, so does not include all of the modules provided with Node.js. Instead modules such as `process` can be imported as a Bare specific module, for example `bare-process`. For a list of Node.js builtins and their Bare replacements, check out `bare-node`'s ["Modules" table](https://github.com/holepunchto/bare-node?tab=readme-ov-file#modules)
+Bare is minimal by design, so does not include all of the modules provided with Node.js. Instead modules such as `process` can be imported as a Bare specific module, for example `bare-process`. For a list of Node.js builtins and their Bare replacements, check out `bare-node`'s ["Modules" table](https://github.com/holepunchto/bare-node#modules)
 
 #### Writing a module with Support for Bare & Node.js
 
 If writing a library that can be run in both the Bare and Node.js runtimes, import maps should be used to support both the Bare version and the Node.js version of builtin modules. Import maps only apply to the `package.json`'s package so does not modify dependencies of the module.
 
-See [`bare-node`'s "Import maps"](https://github.com/holepunchto/bare-node?tab=readme-ov-file#import-maps) for more details.
+See [`bare-node`'s "Import maps"](https://github.com/holepunchto/bare-node#import-maps) for more details.
 
 #### Running 3rd Party Modules Written for Node.js
 
@@ -115,7 +115,7 @@ To support dependencies that rely on Node.js builtins (eg. `fs`, `os`, etc), an 
 npm i bare-net net@npm:bare-node-net
 ```
 
-See [Node.js Compatability](./node-compat) for more info.
+See [Node.js Compatibility](./node-compat) for more info.
 
 For compatibility and to support builtin globals, such as `process`, the corresponding `bare-*` module will include a `/global.js` submodule that sets the global variable to `global`. This is useful when importing modules that assume the global variable exists. It is not recommended to use global variables when writing new code as it is less flexible and a harder to upgrade piecemeal.
 
@@ -181,6 +181,6 @@ This is because it is trying to pack `node:crypto` for Bare which isn't possible
 
 Instead of dynamic conditions based on runtime environment, modules should have an import map defined to use the correct module for the given runtime.
 
-See [`bare-node`'s "Import maps"](https://github.com/holepunchto/bare-node?tab=readme-ov-file#import-maps) for more details.
+See [`bare-node`'s "Import maps"](https://github.com/holepunchto/bare-node#import-maps) for more details.
 
 
