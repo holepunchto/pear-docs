@@ -392,7 +392,7 @@ Deprecated. Use [`pear-pipe`](https://github.com/holepunchto/pear-pipe).
 
 ### <mark style="background-color: #ffffa2;" name="pear-media">**DEPRECATED**</mark> `Pear.media <Object>`
 
-Deprecated. Use [`pear-electron ui.media`](https://github.com/holepunchto/pear-electron#uimedia-object).
+Deprecated. Use [`pear-electron ui.media`](https://github.com/holepunchto/pear-electron#uimedia-object-).
 
 ### <mark style="background-color: #ffffa2;" name="pear-versions">**DEPRECATED**</mark> `Pear.versions <Async Function>`
 
@@ -430,19 +430,19 @@ Deprecated. Use [`pear-updates`](https://github.com/holepunchto/pear-wakeups).
 
 ### <mark style="background-color: #ffffa2;" name="pear-badge">**DEPRECATED**</mark> `Pear.badge(count <Integer|null>) =>Promise<Boolean>`
 
-Deprecated. Use [`pear-electron ui.app.badge()`](https://github.com/holepunchto/pear-electron#const-success--await-appbadgecount-integernull).
+Deprecated. Use [`pear-electron ui.app.badge()`](https://github.com/holepunchto/pear-electron#const-success--await-uiappbadgecount-integernull-).
 
 ### <mark style="background-color: #ffffa2;" name="pear-tray">**DEPRECATED**</mark> `Pear.tray(options <Object>, listener <AsyncFunction|Function>) => Promise<untray()>`
 
-Deprecated. Use [`pear-electron ui.app.tray()`](https://github.com/holepunchto/pear-electron#const-untray--await-apptrayoptions-object-listener-function).
+Deprecated. Use [`pear-electron ui.app.tray()`](https://github.com/holepunchto/pear-electron#const-untray--await-uiapptrayoptions-object-listener-function-).
 
 ### <mark style="background-color: #ffffa2;" name="pear-window">**DEPRECATED**</mark> `const win = new Pear.Window(entry <String>, options<Object>)`
 
-Deprecated. Use [`pear-electron ui.Window`](https://github.com/holepunchto/pear-electron#const-win--new-uiwindowentry-string-options-object).
+Deprecated. Use [`pear-electron ui.Window`](https://github.com/holepunchto/pear-electron#const-win--new-uiwindowentry-string-options-object-).
 
 ### <mark style="background-color: #ffffa2;" name="pear-view">**DEPRECATED**</mark> `const view = new Pear.View(options <Object>)`
 
-Deprecated. Use [`pear-electron ui.View`](https://github.com/holepunchto/pear-electron#const-view--new-uiviewoptions-object).
+Deprecated. Use [`pear-electron ui.View`](https://github.com/holepunchto/pear-electron#const-view--new-uiviewoptions-object-).
 
 ## `global.Bare`<a name="globalbare"></a>
 
