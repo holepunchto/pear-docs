@@ -183,7 +183,7 @@ This is a namespace reserved for UI integration libraries to use for configurati
 
 Defined per UI Integration library.
 
-* [pear-electron pear.gui](https://github.com/holepunchto/pear-electron/?tab=readme-ov-file#graphical-user-interface-options)
+* [pear-electron pear.gui](https://github.com/holepunchto/pear-electron#graphical-user-interface-options-)
 
 
 #### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `pear.stage.prefetch <Array>`
@@ -192,4 +192,4 @@ Deprecated, use `pear.stage.includes`.
 
 ### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `pear.userAgent <string>` (default: `Pear ${Pear.#state.id}`)
 
-Deprecated. Use `pear.gui.userAgent` per [pear-electron pear.gui](https://github.com/holepunchto/pear-electron/?tab=readme-ov-file#graphical-user-interface-options)
+Deprecated. Use `pear.gui.userAgent` per [pear-electron pear.gui](https://github.com/holepunchto/pear-electron#graphical-user-interface-options-)
