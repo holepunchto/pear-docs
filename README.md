@@ -28,8 +28,9 @@ Welcome to the Internet of Peers
 
 Peer-to-Peer applications built on, deployed with, running on Pear.
 
-| <a href="https://keet.io" data-pear="pear://keet" title="Encrypted peer-to-peer message, audio & video chat"><img src="assets/keet.svg" alt="Encrypted peer-to-peer message, audio & video chat"></a> | <a href="https://pass.pears.com" data-pear="pear://pass" title="Secure peer-to-peer password & secrets manager"><img src="assets/pearpass.svg" alt="Secure peer-to-peer password & secrets manager"></a> | &nbsp; | &nbsp; | &nbsp; |
+|       |       |       |       |       |
 | :---: | :---: | :---: | :---: | :---: |
+| <a href="https://keet.io" data-pear="pear://keet" title="Encrypted peer-to-peer message, audio & video chat"><img src="assets/keet.svg" alt="Encrypted peer-to-peer message, audio & video chat"></a> | <a href="https://pass.pears.com" data-pear="pear://pass" title="Secure peer-to-peer password & secrets manager"><img src="assets/pearpass.svg" alt="Secure peer-to-peer password & secrets manager"></a> | &nbsp; | &nbsp; | &nbsp; |
 | <a href="https://keet.io" data-pear="pear://keet" title="Encrypted peer-to-peer message, audio & video chat"><strong>Keet</strong></a> | <a href="https://pass.pears.com" data-pear="pear://pass" title="Secure peer-to-peer password & secrets manager"><strong>PearPass</strong></a> | &nbsp; | &nbsp; | &nbsp; |
 
 ### Terms

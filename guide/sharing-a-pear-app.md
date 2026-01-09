@@ -2,7 +2,7 @@
 
 Applications can be shared with peers by seeding them to the network from an efficient local data structure (a [hypercore](https://github.com/holepunchto/hypercore)). We call the mirroring of a local file system into the Pear platform Application Storage "staging". Seeding is sharing an app from a machine over the Distributed Hash Table (DHT) (via [hyperswarm](https://github.com/holepunchto/hyperswarm)) so that other peers can replicate, consume and reseed the application.
 
-{% embed url="https://www.youtube.com/watch?v=BEadqmp7lA0" %} Build with Pear - Episode 02: Sharing Pear Applications {% embeded %}
+[![Build with Pear - Episode 02: Sharing Pear Applications](https://img.youtube.com/vi/BEadqmp7lA0/0.jpg)](https://www.youtube.com/watch?v=BEadqmp7lA0)
 
 This guide can either follow on from, [Making a Pear Desktop Application](./making-a-pear-desktop-app.md), [Making a Pear Terminal Application](./making-a-pear-terminal-app.md), or get setup quickly with the following:
 
@@ -105,9 +105,9 @@ Be sure that software is trusted before running it
 
 Type "TRUST" to allow execution or anything else to exit
 
-Trust application? 
+Trust application?
 ```
-The trust dialog is a security mechanism in Pear that appears when the user tries to run an application from an unknown or untrusted key for the first time. In case that the app is run in detached mode, for example, when clicking on a pear link in the browser, the trust dialog is a GUI (Graphical User Interface). 
+The trust dialog is a security mechanism in Pear that appears when the user tries to run an application from an unknown or untrusted key for the first time. In case that the app is run in detached mode, for example, when clicking on a pear link in the browser, the trust dialog is a GUI (Graphical User Interface).
 
 ![Trust dialog](../assets/trust-dialog.png)
 
@@ -128,7 +128,7 @@ The application staging machine that is running the seeding process should show 
 •-• peer join 8054f613d911b990834a0234507447c8ca88f4e778594c0e4fc480a314dc6d62
 ```
 
-The `peer join` line displays the remote public key, in hex, of the peer that executed `pear run` with the application link. 
+The `peer join` line displays the remote public key, in hex, of the peer that executed `pear run` with the application link.
 
 Once the application is closed on the peer machine the seeding output on the original machine will be similar to:
 
