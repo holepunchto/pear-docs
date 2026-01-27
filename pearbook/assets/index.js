@@ -53,7 +53,7 @@ function loadContent(url, pushState = true) {
       if (anchor) anchor.scrollIntoView();
     } else {
       content.innerHTML = xhr.responseText;
-      if (siteContainer) siteContainer.scrollTo({ top: 0 });
+      content.scrollTo({ top: 0 });
       siteContainer?.classList.remove("site-container--loading");
     }
     closeTOC();
@@ -108,7 +108,7 @@ function onClickTOCButton(e) {
 }
 
 const TOCToggleButton = document.querySelector(
-  "#table-of-contents-toggle-button"
+  "#table-of-contents-toggle-button",
 );
 if (TOCToggleButton) {
   TOCToggleButton.addEventListener("click", onClickTOCButton);
@@ -157,7 +157,8 @@ function setColorScheme(colorScheme) {
   }
 }
 
-function toggleColorScheme() {
+// @ts-expect-error
+window.toggleColorScheme = function toggleColorScheme() {
   const colorScheme = document.documentElement.style.colorScheme;
   const colorSchemeToggle = Selectors.colorSchemeToggleButton();
 
@@ -171,4 +172,4 @@ function toggleColorScheme() {
   } else {
     setColorScheme("light");
   }
-}
+};
