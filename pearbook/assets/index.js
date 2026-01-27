@@ -157,8 +157,7 @@ function setColorScheme(colorScheme) {
   }
 }
 
-// @ts-expect-error
-window.toggleColorScheme = function toggleColorScheme() {
+function toggleColorScheme() {
   const colorScheme = document.documentElement.style.colorScheme;
   const colorSchemeToggle = Selectors.colorSchemeToggleButton();
 
@@ -172,4 +171,8 @@ window.toggleColorScheme = function toggleColorScheme() {
   } else {
     setColorScheme("light");
   }
-};
+}
+
+const colorSchemeToggle = Selectors.colorSchemeToggleButton();
+colorSchemeToggle?.addEventListener("click", toggleColorScheme);
+colorSchemeToggle?.addEventListener("touch", toggleColorScheme);
