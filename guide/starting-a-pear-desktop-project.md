@@ -11,14 +11,15 @@ Use `pear init` to create a new Pear project.
 ```
 mkdir chat
 cd chat
-pear init --yes
+pear init ui --yes
 ```
 
 This creates the base project structure.
 
 - `package.json`. App configuration. Notice the `pear` property.
-- `index.html`. App entrypoint.
-- `app.js`. Main code.
+- `index.js`. App entrypoint.
+- `ui/index.html`. GUI entrypoint.
+- `ui/app.js`. Main code.
 - `test/index.test.js`. Test skeleton.
 
 ## Step 2. Verify Everything Works
