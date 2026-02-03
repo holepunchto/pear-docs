@@ -11,8 +11,9 @@ It continues where [Starting a Pear Desktop Project](./starting-a-pear-desktop-p
 The project folder should contain:
 
 - `package.json`
-- `index.html`
-- `app.js`
+- `index.js`
+- `ui/index.html`
+- `ui/app.js`
 - `test/index.test.js`
 
 Start by defining the app's layout in `index.html`:
