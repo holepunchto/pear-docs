@@ -4,7 +4,7 @@ This guide demonstrates how to build a peer-to-peer chat application.
 
 It continues where [Starting a Pear Desktop Project](./starting-a-pear-desktop-project.md) left off.
 
-{% embed url="https://www.youtube.com/watch?v=y2G97xz78gU" %} Build with Pear - Episode 01: Developing with Pear {% embeded %}
+[![Build with Pear - Episode 01: Developing with Pear](https://img.youtube.com/vi/y2G97xz78gU/0.jpg)](https://www.youtube.com/watch?v=y2G97xz78gU)
 
 ## Step 1. HTML Structure and CSS Styles
 
@@ -155,10 +155,10 @@ Start by defining the app's layout in `index.html`:
 </html>
 ```
 
-**Note**: To make the `<pear-ctrl>` element draggable in Pear applications, wrap it in another element that uses the following CSS property: 
+**Note**: To make the `<pear-ctrl>` element draggable in Pear applications, wrap it in another element that uses the following CSS property:
 ```css
 -webkit-app-region : drag;
-``` 
+```
 This non-standard CSS property tells the application that this element should act as a draggable region for the entire window.
 
 Running `pear run --dev .` should show
@@ -174,7 +174,7 @@ Install the development dependencies using:
 ```
 npm install
 ```
-This will install the following: 
+This will install the following:
 - [pear-interface](https://github.com/holepunchto/pear-interface) for documentation and auto-completion inside editor.
 - [brittle](https://github.com/holepunchto/brittle) a TAP framework for testing.
 
@@ -198,12 +198,12 @@ Replace `app.js` with
 ``` js
 
 // For interactive documentation and code auto-completion in editor
-/** @typedef {import('pear-interface')} */ 
+/** @typedef {import('pear-interface')} */
 
 /* global Pear */
 import Hyperswarm from 'hyperswarm'   // Module for P2P networking and connecting peers
 import crypto from 'hypercore-crypto' // Cryptographic functions for generating the key in app
-import b4a from 'b4a'                 // Module for buffer-to-string and vice-versa conversions 
+import b4a from 'b4a'                 // Module for buffer-to-string and vice-versa conversions
 const { teardown, updates } = Pear    // Functions for cleanup and updates
 
 const swarm = new Hyperswarm()
@@ -285,7 +285,7 @@ function onMessageAdded (from, message) {
 
 ## Step 4. Chat
 
-Open two app instances by running `pear run --dev .` in two terminals. 
+Open two app instances by running `pear run --dev .` in two terminals.
 
 In the first app, click on `Create`. A random topic will appear at the top.
 

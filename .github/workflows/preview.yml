@@ -1,0 +1,34 @@
+name: Preview
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Node/NPM
+        uses: actions/setup-node@v6
+      - name: Install Pear
+        run: |
+          npm install -g pear
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Run Pearbook
+        run: |
+          pear run pear://runtime
+          pear run --trusted pear://${{ vars.PEAR_BOOK_KEY }} --output pearbook .
+      - name: Push to preview branch
+        run: |
+          git config --global user.email "eric.bauerfeld+pearbot@holepunch.to"
+          git config --global user.name "Eric's Pearbot"
+          git fetch
+          git checkout -b preview
+          git add pearbook
+          git commit -m "Publish"
+          git branch --set-upstream-to=origin/preview preview
+          git pull --rebase --prune
+          git push -u -f origin preview

@@ -4,7 +4,7 @@ This guide demonstrates how to build a peer-to-peer chat application.
 
 It continues where [Starting a Pear Terminal Project](./starting-a-pear-terminal-project.md) left off.
 
-{% embed url="https://www.youtube.com/watch?v=UoGJ7PtAwtI" %} Build with Pear - Episode 04: Pear Terminal Applications {% embeded %}
+[![Build with Pear - Episode 04: Pear Terminal Applications](https://img.youtube.com/vi/UoGJ7PtAwtI/0.jpg)](https://www.youtube.com/watch?v=UoGJ7PtAwtI)
 
 ## Step 1. Install modules
 
@@ -12,7 +12,7 @@ Install the development dependencies using:
 ```
 npm install
 ```
-This will install the following: 
+This will install the following:
 - [pear-interface](https://github.com/holepunchto/pear-interface) for documentation and auto-completion inside editors.
 - [brittle](https://github.com/holepunchto/brittle) a TAP framework for testing.
 
@@ -32,11 +32,11 @@ Replace `index.js` with
 ``` js
 
 // For interactive documentation and code auto-completion in editor
-/** @typedef {import('pear-interface')} */ 
+/** @typedef {import('pear-interface')} */
 
 /* global Pear */
 import Hyperswarm from 'hyperswarm'   // Module for P2P networking and connecting peers
-import b4a from 'b4a'                 // Module for buffer-to-string and vice-versa conversions 
+import b4a from 'b4a'                 // Module for buffer-to-string and vice-versa conversions
 import crypto from 'hypercore-crypto' // Cryptographic functions for generating the key in app
 import readline from 'bare-readline'  // Module for reading user input in terminal
 import tty from 'bare-tty'            // Module to control terminal behavior
