@@ -6,9 +6,9 @@
 
 * [Pear CLI](./reference/cli.md)
 * [Pear Application Configuration](./reference/configuration.md)
-* [Bare Overview](./reference/bare-overview.md)
 * [API](./reference/api.md)
 * [Templates](./reference/templates.md)
+* [Bare Overview](./reference/bare-overview.md)
 * [Node.js Compatibility](./reference/node-compat.md)
 * [Recommended Practices](./reference/recommended-practices.md)
 * [Troubleshooting](./reference/troubleshooting.md)
