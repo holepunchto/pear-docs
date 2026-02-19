@@ -1,5 +1,7 @@
 # Application Programming Interface (API)
 
+**DEPRECATED**: `pear run` is deprecated and will be removed and the global API with it. Use the [`pear-runtime`](https://github.com/holepunchto/pear-runtime) module instead.
+
 Pear is built on [Bare](https://github.com/holepunchto/bare). Pear applications have a `global.Pear` object and a`global.Bare` object.
 
 * [global.Pear](#globalpear)

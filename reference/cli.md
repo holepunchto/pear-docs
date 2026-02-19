@@ -25,6 +25,8 @@ Template can also be initialized from a pear:// link, the template should contai
 
 ## `pear run [flags] <link|dir> [...app-args]`<a name="pear-run"></a>
 
+**DEPRECATED** - use [`pear-runtime`](https://github.com/holepunchto/pear-runtime)
+
 Run an application from a link or dir.
 
 |       |                                                   |
@@ -231,6 +233,7 @@ Output version information.
 
 ## `pear shift [flags] <source> <destination>`<a name="pear-shift"></a>
 
+**DEPRECATED** 
 
 Move user application storage between applications.
 
@@ -243,6 +246,8 @@ Move user application storage between applications.
 ```
 
 ## `pear drop [flags] [command]`<a name="pear-drop"></a>
+
+**DEPRECATED**: `pear run` is deprecated and `pear drop app` is related. 
 
 Advanced. Permanent data deletion
 
@@ -275,13 +280,15 @@ Perform garbage collection and remove unused resources.
 
 ## `pear data [flags] [command]`<a name="pear-data"></a>
 
+**DEPRECATED**: `pear run` is deprecated and `pear data apps` is related. 
+
 View database contents.
 
 The database contains metadata stored on this device used by the Pear runtime.
 
 | Commands   | Description                |
 | ---------- | -------------------------- |
-| apps       | Installed apps             |
+| apps       | DEPRECATED Installed apps  |
 | dht        | DHT known-nodes cache      |
 | gc         | Garbage collection records |
 | manifest   | Database internal versioning |

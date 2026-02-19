@@ -2,27 +2,30 @@
 
 <mark style="background-color: #8484ff;">**stable**</mark>
 
-## The `package.json` file<a name="package-json"></a>
+## `package.json`<a name="package-json"></a>
 
-A Pear project **must** have a `package.json` file and a main entry file.
+The `package.json` is used by `pear` and [`pear-runtime`](https://github.com/holepunchto/pear-runtime) for application builds, delivery and updates.
 
-The `package.json` file **must** have either a `name` property or `pear` object with a `name` property.
+### `version`
 
-The `package.json` `name` field must be lowercase and one word, and may contain letters, numbers, hyphens (`-`), underscores (`_`), forward slashes (`/`) and asperands (`@`).
+In order for an OTA update to occur from `pear-runtime`, the `package.json` `version` field must be updated before deploying an application update.
 
-The `package.json` file may also contain a `main` field, which typically should point to an HTML file. If omitted, `index.html` or `index.js` is the default entry file depending on application type.
+### `upgrade`
 
-Any other fields (such as `dependencies`) may also be present in the `package.json` file.
+The `upgrade` field of the `package.json` should hold a `pear://` link to seeded application:
 
-The `package.json` `pear` object contains application configuration and is exposed via the API as `pear.config.options`.
 
-Pear versioning is automatic. The `package.json` file does **not** require a version field, the version field will be ignored.
+Example:
+```json
+{
+  "name": "my-app",
+  "version": "1.2.3",
+  "upgrade": "pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o",
+  ...
+}
+```
 
-## The `package.json` `pear` field.<a name="pear"></a>
-
-### `pear.name <String>`<a name="pear-name"></a>
-
-The name of the application. Overrides `package.json` `name`.
+## `package.json` `pear` field<a name="pear"></a>
 
 ### `pear.stage <Object>`<a name="pear-stage"></a>
 
@@ -49,7 +52,20 @@ whatever is required wouldn't be identified in static analysis so would need to 
 
 An array of dependency specifiers, as used with `require` or `import`, to declare it as an uninstalled optional or peer dependency in the dependency tree. Some modules use the pattern: `try { require('a-dep') } catch { fallback() }`, in order to try to include an optional dependency if available. Adding such specifiers (`a-dep` in the example) to the `pear.stage.defer` configuration array let's the static-analysis steps during `pear stage` (compact and warmup phases) step over these cases. If there are a lot of cases like this in an applications dependency tree, it will slow the static-analysis phases down since by default it brute forces and grows a dynamic defers list until there's no MODULE_NOT_FOUND errors left. The `pear stage` command will print out skip hints for these dependencies - add any specifiers identified to `pear.stage.defer`.
 
+### DEPRECATIONS
+
+
+**DEPRECATED**: `pear run` is deprecated the following fields are related. Use the [`pear-runtime`](https://github.com/holepunchto/pear-runtime) module instead.
+
+### `pear.name <String>`<a name="pear-name"></a>
+
+**DEPRECATED**
+
+The name of the application. Overrides `package.json` `name`.
+
 ### `pear.pre <String>`<a name="pear-pre"></a>
+
+**DEPRECATED**
 
 A specifier such as `./path/to/pre.js` or `some-module`, or `pear-electron/pre`.
 
@@ -62,6 +78,8 @@ The specifier must point to a script that executes prior to run-from-disk, prior
 When a `pre` script is executed, it has a `pipe` available which can be obtained via [`pear-pipe`](https://github.com/holepunchto/pear-pipe). This can be used to modify configuration which is sent as [`compact-encoding`](https://github.com/holepunchto/compact-encoding) `any` encoding (i.e. an encoded object, like JSON). The first encoded object sent to `pipe` is the application configuration. The first response expected on the pre scripts `pipe` by the `pear run` or `pear stage` command is an `any` encoded configuration object. This allows the prescript to send back mutated application configuration back to `pear run` or `pear stage`. The application is then loaded with that mutated confiruation in the case of `pear run`, in the case of `pear stage` the configuration overrides the application drives `manifest` property. The `pear info --manifest <link>` command can be used to view any mutated configuration post-stage.
 
 ### `pear.routes <Object|String>`<a name="pear-routes"></a>
+
+**DEPRECATED**
 
 By default, [`pear run`](./cli.md#pear-run) considers link pathnames to be entrypoints. This means `pear run` can execute any valid file staged to a Pear application. For example `pear run pear://<key>/some/path.js` would run some/path.js if it's valid. In that case [`Pear.app.route`](./api.md#pear-app-route) would contain `/some/path.js` and [`Pear.app.entrypoint`](./api.md#pear-app-entrypoint) would also contain `/some/path.js`.
 
@@ -96,10 +114,13 @@ When `routes: "."` is used in conjuction with [`pear-electron`](https://github.c
 
 ### `pear.unrouted <Array>`<a name="pear-unrouted"></a>
 
+**DEPRECATED**
+
 Array of paths to exclude from any routing rules in [`pear.routes`](#pear-routes).
 
-
 ### `pear.assets <Object>`<a name="pear-assets"></a>
+
+**DEPRECATED**
 
 Asset declarations to fetch and store on disk on behalf of the application.
 
@@ -144,6 +165,8 @@ Assets are automatically stored in the platform folder. Use [`Pear.app.assets[na
 
 ###  `pear.links <Object|Array>`<a name="pear-links"></a>
 
+**DEPRECATED**
+
 Storing and managing Pear application links and domains.
 
 `links` can be an object or an array. If it's an object, naming the key makes it easy to reference from [`Pear.config.links`](./api.md#pear-config)
@@ -175,7 +198,10 @@ Note that this is only for requests that the Pear app makes itself such as loadi
 }
 ```
 
+
 ### `pear.gui <Object>`<a name="pear-gui"></a>
+
+**DEPRECATED**
 
 Graphical User Interface configuration options.
 
@@ -184,7 +210,6 @@ This is a namespace reserved for UI integration libraries to use for configurati
 Defined per UI Integration library.
 
 * [pear-electron pear.gui](https://github.com/holepunchto/pear-electron#graphical-user-interface-options-)
-
 
 #### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `pear.stage.prefetch <Array>`
 

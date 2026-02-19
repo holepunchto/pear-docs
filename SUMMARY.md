@@ -5,15 +5,12 @@
 ### Reference
 
 * [Pear CLI](./reference/cli.md)
-* [Pear Application Configuration](./reference/configuration.md)
-* [Bare Overview](./reference/bare-overview.md)
-* [API](./reference/api.md)
-* [Templates](./reference/templates.md)
-* [Node.js Compatibility](./reference/node-compat.md)
+* [Pear Configuration](./reference/configuration.md)
 * [Recommended Practices](./reference/recommended-practices.md)
 * [Troubleshooting](./reference/troubleshooting.md)
 * [Frequently Asked Questions](./reference/faq.md)
 * [Migration](./reference/migration.md)
+* [DEPRECATED: Pear API](./reference/api.md)
 
 ### Guides
 
@@ -26,7 +23,6 @@
 * [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
 * [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
 * [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
-* [Creating a `pear init` Template](./guide/creating-a-pear-init-template.md)
 
 ### How-tos
 
