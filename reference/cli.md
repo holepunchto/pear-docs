@@ -23,13 +23,35 @@ Each time new changes are staged, the length will increase. This change can be r
   --compact|-c       Tree-shaking minimal stage via static-analysis
   --only <paths>     Filter by paths. Comma-separated
   --truncate <n>     Advanced. Truncate to version length n
-  --name <name>      Advanced. Override app name
   --no-ask           Suppress permission prompt
   --no-pre           Skip pre scripts
   --pre-io           Show stdout & stderr of pre scripts
   --pre-q            Suppress piped output of pre scripts
   --json             Newline delimited JSON output
   --help|-h          Show help
+```
+
+## `pear provision <source-link> <target-link> <production-link>[dir]`<a name="pear-provision"></a>
+
+Pre-production block sync
+
+Synchronize blocks to a pre-production target link
+
+The target can then be multi-signed against a production link
+
+Use [pear touch](#pear-touch) to generate target link
+
+
+```
+Arguments:
+  <source-link>       Versioned source link
+  <target-link>       Target link to sync to
+  <production-link>   Versioned link to sync against
+
+Flags:
+  --dry-run|-d        Execute provision without writing
+  --json              Newline delimited JSON output
+  --help|-h           Show help
 ```
 
 ## `pear seed <link> [dir]`<a name="pear-seed"></a>
@@ -60,6 +82,23 @@ Use this to indicate production release points. Once a link has been released (s
   --checkout=n|current     Set a custom release length (version)
   --json                   Newline delimited JSON output
   --help|-h                Show help
+```
+
+## `pear changelog [link]`<a name="pear-changelog"></a>
+
+View project changelog
+
+Supply a link to view application changelog
+
+Shows Pear changelog by default
+
+```
+  --max|-m <n=10>    Maximum entries to show
+  --of <semver=^*>   SemVer filter - default: latest major
+  --full             Show entire changelog
+  --no-ask           Suppress permission prompt
+  --json             Newline delimited JSON output
+  --help|-h          Show help
 ```
 
 
@@ -141,6 +180,17 @@ Output version information.
 --modules|-m   Include module versions
 --json         Single JSON object
 --help|-h      Show help
+```
+
+## `pear presets [flags] [command]`<a name="pear-presets  "></a>
+
+Default flags per command & link
+
+Pin flags to a given pear command per app link
+
+```
+  --json        Newline delimited JSON output
+  --help|-h     Show help
 ```
 
 ## `pear shift [flags] <source> <destination>`<a name="pear-shift"></a>

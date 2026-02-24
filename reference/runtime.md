@@ -1,16 +1,18 @@
 # Runtime
 
+The `pear-runtime` module enables applications to be deployed peer-to-peer with the [`pear` CLI](./cli.md).
+
+Embedding `pear-runtime` library into an application provides the following capabilities:
+
+* Over-the-Air Peer-to-peer (OTA P2P) updates
+* Application P2P storage management
+* Embedded [bare](https://github.com/holepunchto/bare) workers
+
 Install the [`pear-runtime`](https://github.com/holepunchto/pear-runtime) module into any JS-capable application:
 
 ```sh
 npm install pear-runtime
 ```
-
-Embedding the runtime library into an application provides the following capabilities:
-
-* Over-the-Air Peer-to-peer (OTA P2P) updates
-* Application P2P storage management
-* Embedded [bare](https://github.com/holepunchto/bare) workers
 
 ## Package.json Configuration
 
