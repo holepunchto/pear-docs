@@ -1,6 +1,6 @@
 # Application Programming Interface (API)
 
-**DEPRECATED**: `pear run` is deprecated and will be removed and the global API with it. Use the [`pear-runtime`](https://github.com/holepunchto/pear-runtime) module instead.
+**DEPRECATED** `pear run` is deprecated and will be removed and the global API with it. Use the [`pear-runtime`](https://github.com/holepunchto/pear-runtime) module instead.
 
 Pear is built on [Bare](https://github.com/holepunchto/bare). Pear applications have a `global.Pear` object and a`global.Bare` object.
 
@@ -8,6 +8,8 @@ Pear is built on [Bare](https://github.com/holepunchto/bare). Pear applications 
 * [global.Bare](#globalbare)
 
 ## `global.Pear`<a name="globalpear"></a>
+
+**DEPRECATED**
 
 <mark style="background-color: #8484ff;">**stable**</mark>
 
@@ -19,17 +21,25 @@ The majority of capabilities are supplied via [Pear Modules](../README.md#pear-m
 
 ### `Pear.app <Object>`<a name="#pear-app"></a>
 
+**DEPRECATED**
+
 Contains application information. Supersedes `Pear.config`.
 
 #### `Pear.app.key <Buffer|null>`<a name="pear-app-key"></a>
+
+**DEPRECATED**
 
 A buffer of the application key. If running from disk, `Pear.app.key` is null.
 
 #### `Pear.app.length <Integer>`<a name="pear-app-length"></a>
 
+**DEPRECATED**
+
 The application drive length. The application version consists of `Pear.app.key`, `Pear.app.length` and `Pear.app.fork`.
 
 #### `Pear.app.fork <Integer>`<a name="pear-app-fork"></a>
+
+**DEPRECATED**
 
 The application drive fork count. A fork is where the append-only log of the drive is truncated.
 
@@ -37,10 +47,14 @@ The application version consists of `Pear.app.key`, `Pear.app.length` and `Pear.
 
 #### `Pear.app.alias <String|null>`<a name="pear-app-alias"></a>
 
+**DEPRECATED**
+
 Given an application that is run from a pear:// link with an alias it, contains that alias.
 For example the `Pear.app.alias` for `pear run pear://keet` would be `keet`.
 
 #### `Pear.app.dev <Boolean>`<a name="pear-app-dev"></a>
+
+**DEPRECATED**
 
 Whether the application is in development mode.
 
@@ -57,21 +71,31 @@ const isDev = fromDisk && Pear.app.dev
 
 #### `Pear.app.name <String>`<a name="pear-app-name"></a>
 
+**DEPRECATED**
+
 Application name.
 
 #### `Pear.app.main <String>`<a name="pear-app-main"></a>
+
+**DEPRECATED**
 
 Application entry file.
 
 #### `Pear.app.channel <String|null>`<a name="pear-app-channel"></a>
 
+**DEPRECATED**
+
 Application release/staging channel.
 
 #### `Pear.app.storage <String>`<a name="pear-app-storage"></a>
 
+**DEPRECATED**
+
 Application storage path
 
 #### `Pear.app.options <Object>`<a name="pear-app-options"></a>
+
+**DEPRECATED**
 
 Configuration options.
 The `pear` configuration object as supplied via an applications `package.json` file.
@@ -82,13 +106,19 @@ The `pear` configuration object as supplied via an applications `package.json` f
 
 #### `Pear.app.env <Object>`<a name="pear-app-env"></a>
 
+**DEPRECATED**
+
 The environment variables that an application was started with, as key-value pairs in an object.
 
 #### `Pear.app.flags <Object>`<a name="pear-app-flags"></a>
 
+**DEPRECATED**
+
 Parsed command-line flag values as supplied when an application was started.
 
 #### `Pear.app.checkout <String>`<a name="pear-app-checkout"></a>
+
+**DEPRECATED**
 
 The value of the [`pear run --checkout`](./cli.md#pear-run) flag. Same as [`Pear.app.flags.checkout`](#pear-app-checkout).
 
@@ -99,13 +129,19 @@ The value of the [`pear run --checkout`](./cli.md#pear-run) flag. Same as [`Pear
 
 #### `Pear.app.storage <String>`<a name="pear-app-storage"></a>
 
+**DEPRECATED**
+
 Application storage path.
 
 #### `Pear.app.args <Array>`<a name="pear-app-args"></a>
 
+**DEPRECATED**
+
 Command-line application arguments passed like `pear run --dev . --some arg`.
 
 #### `Pear.app.release <Number>`<a name="pear-app-release"></a>
+
+**DEPRECATED**
 
 The current release length as marked by the `pear release` command.
 
@@ -114,6 +150,8 @@ The current release length as marked by the `pear release` command.
 * [`pear release`](./cli.md#pear-release)
 
 #### `Pear.app.link <String>`<a name="pear-app-link"></a>
+
+**DEPRECATED**
 
 The link that was passed to `pear run` with alias resolved to key.
 
@@ -125,6 +163,8 @@ Includes any potential pathname, query or fragment.
 
 #### `Pear.app.links <Object|Array>`<a name="pear-app-links"></a>
 
+**DEPRECATED**
+
 Holds trusted Pear application links and domains as specified in the `links` field inside `package.json`.
 
 **References**
@@ -133,9 +173,13 @@ Holds trusted Pear application links and domains as specified in the `links` fie
 
 #### `Pear.app.routes <String>`<a name="pear-app-routes"></a>
 
+**DEPRECATED**
+
 The configuration provided [`pear.routes`](./configuration.md#pear-routes) mapping object.
 
 #### `Pear.app.entrypoint <String>`<a name="pear-app-entrypoint"></a>
+
+**DEPRECATED**
 
 The link pathname (`pear://<key>/<pathname>`), after any route mappings have been applied per [`pear.routes`](./configuration.md#pear-routes).
 
@@ -149,17 +193,23 @@ Only `Pear.app.entrypoint` supports route-mapping via the [`pear.routes`](./conf
 
 #### `Pear.app.fragment <String>`<a name="pear-app-fragment"></a>
 
+**DEPRECATED**
+
 The link hash, without the leading `#`.
 
 Given `pear://<key>/<pathname>#frag` `Pear.app.fragment` would be `frag`.
 
 #### `Pear.app.query <String>`<a name="pear-app-query"></a>
 
+**DEPRECATED**
+
 The link query string, without the leading `?`.
 
 Given `pear://<key>/<pathname>?qs` `Pear.app.query` would be `qs`.
 
 #### `Pear.app.route <String>`<a name="pear-app-route"></a>
+
+**DEPRECATED**
 
 The link pathname (`pear://<key>/<pathname>`), prior to any route mappings being applied.
 
@@ -172,6 +222,8 @@ Includes the leading `/`, e.g given `pear://foo/bar/baz`, `Pear.app.route` would
 * [`pear.routes`](./configuration.md#pear-routes)
 
 #### `Pear.app.linkData <String>`<a name="pear-app-linkData"></a>
+
+**DEPRECATED**
 
 Holds just the data portion of a Pear link.
 
@@ -192,6 +244,8 @@ Legacy but still supported. Prefer `Pear.app.entrypoint` or `Pear.app.route`.
 
 #### `Pear.app.checkpoint <Any>`<a name="pear-app-checkpoint"></a>
 
+**DEPRECATED**
+
 Holds state as set by `Pear.checkpoint()`. When an application restarts it will hold the most recent value passed to `Pear.checkpoint()`.
 
 Stores state that will be available as `Pear.app.checkpoint` next time the application starts.
@@ -206,21 +260,31 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 #### `Pear.app.release <Integer>`<a name="pear-app-release"></a>
 
+**DEPRECATED**
+
 Application release sequence integer.
 
 #### `Pear.app.flags <Object>`<a name="pear-app-flags"></a>
+
+**DEPRECATED**
 
 Parsed `pear run` flags.
 
 #### `Pear.app.applink <String>` <a name="pear-app-applink"></a>
 
+**DEPRECATED**
+
 Pear application link. May be a `pear://` link or a local directory.
 
 #### `Pear.app.dir <String>` <a name="pear-app-dir"></a>
 
+**DEPRECATED**
+
 The current working directory of `pear run` when the application was started.
 
 #### `Pear.app.dht.nodes <Array<Object>>`<a name="pear-app-dht-nodes"></a>
+
+**DEPRECATED**
 
 A list of known [DHT](https://github.com/holepunchto/hyperdht) nodes of the form `{ host: <String>, port: <Number> }`. The nodes are set when the Pear application is started.
 
@@ -228,9 +292,13 @@ Unless started with a custom set of bootstrap nodes, Pear caches known nodes to 
 
 #### `Pear.app.dht.bootstrap <Array<Object>>` <a name="pear-app-dht-bootstrap"></a>
 
+**DEPRECATED**
+
 A list of custom bootstrap nodes Pear is started with of the form `{ host: <String>, port: <Number> }`.
 
 #### `Pear.app.assets  <String>`<a name="pear-app-assets"></a>
+
+**DEPRECATED**
 
 Advanced / integration purposes.
 
@@ -266,9 +334,13 @@ Example:
 
 #### `Pear.app.prerunning <Boolean>`<a name="pear-app-prerunning"></a>
 
+**DEPRECATED**
+
 Whether the current application is a [`pre`](./configuration.md#pear-pre) script.
 
 #### `Pear.app.startId <String>`<a name="pear-app-startid"></a>
+
+**DEPRECATED**
 
 Advanced. Integration purposes.
 
@@ -277,17 +349,23 @@ The application start identifier. Can be used to register a [`pear-ipc`](https:/
 
 #### `Pear.app.swapDir <String>`<a name="pear-app-swapdir"></a>
 
+**DEPRECATED**
+
 Advanced. Integration purposes.
 
 The active swap directory with Pear platform directory.
 
 #### `Pear.app.pearDir <String>`<a name="pear-app-peardir"></a>
 
+**DEPRECATED**
+
 Advanced. Integration purposes.
 
 Pear platform directory.
 
 ### `Pear.checkpoint(<Any>) => Promise`<a name="pear-checkpoint"></a>
+
+**DEPRECATED**
 
 Stores state that will be available as `Pear.app.checkpoint` next time the application starts.
 
@@ -301,6 +379,8 @@ The returned `Promise` will resolve once the checkpoint has been successfully st
 
 ### `Pear.teardown(fn <Async Function|Function>)`<a name="pear-teardown"></a>
 
+**DEPRECATED**
+
 Register application clean-up handlers to be called when an application begins to unload.
 
 May be called multiple times to register multiple teardown handlers.
@@ -311,21 +391,31 @@ will be waited upon until resolution before calling the next teardown handler.
 
 ### `Pear.argv`<a name="pear-argv"></a>
 
+**DEPRECATED**
+
 The command line arguments passed to the process when launched.
 
 ### `Pear.pid`<a name="pear-pid"></a>
+
+**DEPRECATED**
 
 The ID of the current process.
 
 ### `Pear.exitCode`<a name="pear-exitcode"></a>
 
+**DEPRECATED**
+
 The code that will be returned once the process exits. If the process is exited using `Bare.exit()` without specifying a code, `Bare.exitCode` is used.
 
 ### `Pear.exit(code)`<a name="pear-exit"></a>
 
+**DEPRECATED**
+
 Exits the process with the provided exit code. Follows Pear teardown flow, whereas `Bare.exit()` does not.
 
 ### `Pear.constructor.CUTOVER` <a name="pear-constructor-cutover"></a> (Integration)
+
+**DEPRECATED**
 
 > NOTE: Integration APIs may change.
 
@@ -337,17 +427,23 @@ This stops an internal `ipc.cutover` call to the sidecar, indicating that a manu
 
 ### `Pear.constructor.COMPAT` <a name="pear-constructor-compat"></a> (Integration)
 
+**DEPRECATED**
+
 > NOTE: Integration APIs may change.
 
 Compat-mode opt-in. See [./migration.md#compat-mode](./migration.md#compat-mode)
 
 ### `Pear.constructor.RTI` <a name="pear-constructor-rit"></a> (Integration)
 
+**DEPRECATED**
+
 > NOTE: Integration APIs may change.
 
 Runtime Information. Used by additional runtimes to bootstrap runtime state at boot. Used by [`pear-run`](https://github.com/holepunchto/pear-run).
 
 ### `Pear.constructor.IPC` <a name="pear-constructor-ipc"></a> (Integration)
+
+**DEPRECATED**
 
 > NOTE: Integration APIs may change.
 
@@ -359,11 +455,15 @@ const ipc = Pear[Pear.constructor.IPC]
 
 ### `Pear.constructor.RUNTIME` <a name="pear-constructor-runtime"></a> (Integration)
 
+**DEPRECATED**
+
 > NOTE: Integration APIs may change.
 
 The runtime binary to spawn when running. Used by [`pear-run`](https://github.com/holepunchto/pear-run). Useful for certain testing scenarios.
 
 ### `Pear.constructor.RUNTIME_ARGV` <a name="pear-constructor-runtime_argv"></a> (Integration)
+
+**DEPRECATED**
 
 > NOTE: Integration APIs may change.
 
@@ -372,29 +472,29 @@ Used to modify argv passed spawn when running. Used by [`pear-run`](https://gith
 
 ### <mark style="background-color: #ffffa2;" name="pear-restart">**DEPRECATED**</mark> `Pear.restart()`
 
-Deprecated. Use [`pear-restart`](https://github.com/holepunchto/pear-restart).
+**DEPRECATED** Use [`pear-restart`](https://github.com/holepunchto/pear-restart).
 
 ### <mark style="background-color: #ffffa2;" name="pear-config">**DEPRECATED**</mark> `Pear.config <Object>`
 
-Deprecated. Use [`Pear.app`](#pear-app).
+**DEPRECATED** Use [`Pear.app`](#pear-app).
 
 ### <mark style="background-color: #ffffa2;" name="pear-messages">**DEPRECATED**</mark> `Pear.messages([ pattern ], [ listener ]) -> Iterable`
 
-Deprecated. Use [`pear-messages`](https://github.com/holepunchto/pear-messages).
+**DEPRECATED** Use [`pear-messages`](https://github.com/holepunchto/pear-messages).
 
 ### <mark style="background-color: #ffffa2;" name="pear-message">**DEPRECATED**</mark> `await Pear.message(<Object>)`
 
-Deprecated. Use [`pear-message`](https://github.com/holepunchto/pear-message).
+**DEPRECATED** Use [`pear-message`](https://github.com/holepunchto/pear-message).
 
 ### <mark style="background-color: #ffffa2;" name="pear-worker">**DEPRECATED**</mark> `Pear.worker <Object>`
 
-Deprecated. Use [`pear-run`](https://github.com/holepunchto/pear-run) & [`pear-pipe`](https://github.com/holepunchto/pear-pipe).
+**DEPRECATED** Use [`pear-run`](https://github.com/holepunchto/pear-run) & [`pear-pipe`](https://github.com/holepunchto/pear-pipe).
 
-Deprecated. Use [`pear-pipe`](https://github.com/holepunchto/pear-pipe).
+**DEPRECATED** Use [`pear-pipe`](https://github.com/holepunchto/pear-pipe).
 
 ### <mark style="background-color: #ffffa2;" name="pear-media">**DEPRECATED**</mark> `Pear.media <Object>`
 
-Deprecated. Use [`pear-electron ui.media`](https://github.com/holepunchto/pear-electron#uimedia-object-).
+**DEPRECATED** Use [`pear-electron ui.media`](https://github.com/holepunchto/pear-electron#uimedia-object-).
 
 ### <mark style="background-color: #ffffa2;" name="pear-versions">**DEPRECATED**</mark> `Pear.versions <Async Function>`
 
@@ -416,35 +516,35 @@ Example:
 
 ### <mark style="background-color: #ffffa2;" name="pear-reload">**DEPRECATED**</mark> `Pear.reload()`
 
-Deprecated. Use `location.reload()` in Desktop apps. No reload in terminal apps.
+**DEPRECATED** Use `location.reload()` in Desktop apps. No reload in terminal apps.
 
 ### <mark style="background-color: #ffffa2;" name="pear-updates">**DEPRECATED**</mark> `Pear.updates(listener <Async Function|Function>) =>streamx.Readable`
 
-Deprecated. Use [`pear-updates`](https://github.com/holepunchto/pear-updates).
+**DEPRECATED** Use [`pear-updates`](https://github.com/holepunchto/pear-updates).
 
 ### <mark style="background-color: #ffffa2;" name="pear-updated">**DEPRECATED**</mark> `const update = await Pear.updated()`
 
-Deprecated. No-op. Do not use.
+**DEPRECATED** No-op. Do not use.
 
 ### <mark style="background-color: #ffffa2;" name="pear-wakeups">**DEPRECATED**</mark> `Pear.wakeups(listener <Async Function|Function>) =>streamx.Readable`
 
-Deprecated. Use [`pear-updates`](https://github.com/holepunchto/pear-wakeups).
+**DEPRECATED** Use [`pear-updates`](https://github.com/holepunchto/pear-wakeups).
 
 ### <mark style="background-color: #ffffa2;" name="pear-badge">**DEPRECATED**</mark> `Pear.badge(count <Integer|null>) =>Promise<Boolean>`
 
-Deprecated. Use [`pear-electron ui.app.badge()`](https://github.com/holepunchto/pear-electron#const-success--await-uiappbadgecount-integernull-).
+**DEPRECATED** Use [`pear-electron ui.app.badge()`](https://github.com/holepunchto/pear-electron#const-success--await-uiappbadgecount-integernull-).
 
 ### <mark style="background-color: #ffffa2;" name="pear-tray">**DEPRECATED**</mark> `Pear.tray(options <Object>, listener <AsyncFunction|Function>) => Promise<untray()>`
 
-Deprecated. Use [`pear-electron ui.app.tray()`](https://github.com/holepunchto/pear-electron#const-untray--await-uiapptrayoptions-object-listener-function-).
+**DEPRECATED** Use [`pear-electron ui.app.tray()`](https://github.com/holepunchto/pear-electron#const-untray--await-uiapptrayoptions-object-listener-function-).
 
 ### <mark style="background-color: #ffffa2;" name="pear-window">**DEPRECATED**</mark> `const win = new Pear.Window(entry <String>, options<Object>)`
 
-Deprecated. Use [`pear-electron ui.Window`](https://github.com/holepunchto/pear-electron#const-win--new-uiwindowentry-string-options-object-).
+**DEPRECATED** Use [`pear-electron ui.Window`](https://github.com/holepunchto/pear-electron#const-win--new-uiwindowentry-string-options-object-).
 
 ### <mark style="background-color: #ffffa2;" name="pear-view">**DEPRECATED**</mark> `const view = new Pear.View(options <Object>)`
 
-Deprecated. Use [`pear-electron ui.View`](https://github.com/holepunchto/pear-electron#const-view--new-uiviewoptions-object-).
+**DEPRECATED** Use [`pear-electron ui.View`](https://github.com/holepunchto/pear-electron#const-view--new-uiviewoptions-object-).
 
 ## `global.Bare`<a name="globalbare"></a>
 

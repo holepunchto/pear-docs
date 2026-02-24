@@ -130,11 +130,10 @@ for (const key of otherKeys) {
 }
 ```
 
-In one terminal, open `multicore-writer-app` with `pear run --dev .`.
+In one terminal, run `multicore-writer-app` with `bare`.
 
 ```
-cd  multicore-writer-app
-pear run --dev .
+bare multicore-writer-app
 ```
 
 The `multicore-writer-app` will output the main core key.
@@ -142,8 +141,7 @@ The `multicore-writer-app` will output the main core key.
 In another terminal, open the `multicore-reader-app` and pass it the key:
 
 ```
-cd multicore-reader-app
-pear run --dev . <SUPPLY THE KEY HERE>
+bare multicore-reader-app <SUPPLY THE KEY HERE>
 ```
 
 As inputs are made to the terminal running the writer application, outputs should be shown in the terminal running the reader application.

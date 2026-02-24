@@ -12,18 +12,9 @@ Troubleshooting confusing scenarios while developing Pear applications.
 There can be many reasons but here are a few common reasons:
 
 - Random NAT networks can take longer as another node may be needed to facility the connection.
-- Not destroying the hyperswarm instance in the `Pear.teardown()` callback so
+- Not destroying the hyperswarm instance during application teardown so
   Hyperswarm can unannounce and clean up the DHT.
   It's recommended to clean up the hyperswarm instance with `swarm.destroy()` before exiting the application. This prevents conflicting records in the DHT for the application's peer which cause it take longer to join a topic.
-
-  Example:
-  ```js
-  Pear.teardown(() => swarm.destroy())
-  ```
-
-  Make sure to unregister the teardown callback if the swarm is destroyed
-  prematurely.
-
 - A firewall is blocking the traffic.
   Please let Holepunch know if this is the case.
 

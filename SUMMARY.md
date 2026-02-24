@@ -4,25 +4,15 @@
 
 ### Reference
 
-* [Pear CLI](./reference/cli.md)
-* [Pear Configuration](./reference/configuration.md)
+* [`pear` CLI](./reference/cli.md)
+* [`pear-runtime` module](./reference/runtime.md)
+* [Configuration](./reference/configuration.md)
+* [Deployment](./reference/deployment.md)
 * [Recommended Practices](./reference/recommended-practices.md)
 * [Troubleshooting](./reference/troubleshooting.md)
 * [Frequently Asked Questions](./reference/faq.md)
 * [Migration](./reference/migration.md)
 * [DEPRECATED: Pear API](./reference/api.md)
-
-### Guides
-
-* [Getting Started](./guide/getting-started.md)
-* [Starting a Pear Desktop Project](./guide/starting-a-pear-desktop-project.md)
-* [Making a Pear Desktop Application](./guide/making-a-pear-desktop-app.md)
-* [Starting a Pear Terminal Project](./guide/starting-a-pear-terminal-project.md)
-* [Making a Pear Terminal Application](./guide/making-a-pear-terminal-app.md)
-* [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
-* [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
-* [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
-* [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
 
 ### How-tos
 
@@ -77,9 +67,7 @@
 * [Hyperssh](./tools/hyperssh.md)
 * [Drives](./tools/drives.md)
 
-### Examples<a name="examples"></a>
+### Boilerplates<a name="boilerplates"></a>
 
-- [Pear Terminal](https://github.com/holepunchto/pear/tree/main/examples/terminal)
-- [Pear Desktop (Electron)](https://github.com/holepunchto/pear/tree/main/examples/desktop)
-- [Bare Android](https://github.com/holepunchto/bare-android)
-- [Bare iOS](https://github.com/holepunchto/bare-ios)
+- Desktop: [Hello Pear Electron](https://github.com/holepunchto/hello-pear-electron)
+- Mobile: [Hello Pear React-Native](https://github.com/holepunchto/hello-pear-react-native)

@@ -1,10 +1,8 @@
 # Pear by Holepunch
 
-> Pear loads applications remotely from peers and allows anyone to create and share applications with peers.
+Pear is a Development & Deployment platform with an embeddable Peer-to-Peer (P2P) Runtime library for P2P OTA updates
 
-Pear is an installable Peer-to-Peer (P2P) Runtime, Development & Deployment platform.
-
-Build, share & extend unstoppable, zero-infrastructure P2P applications for Mobile, Desktop & Terminal.
+Build, share & extend unstoppable, zero-infrastructure P2P-enabled applications.
 
 Welcome to the Internet of Peers
 
@@ -26,7 +24,7 @@ Welcome to the Internet of Peers
 
 ### Showcase<a name="showcase"></a>
 
-Peer-to-Peer applications built on, deployed with, running on Pear.
+Peer-to-Peer applications built & deployed with Pear.
 
 | <a href="https://keet.io" data-pear="pear://keet" title="Encrypted peer-to-peer message, audio & video chat"><img src="assets/keet.svg" alt="Encrypted peer-to-peer message, audio & video chat"></a> | <a href="https://pass.pears.com" data-pear="pear://pass" title="Secure peer-to-peer password & secrets manager"><img src="assets/pearpass.svg" alt="Secure peer-to-peer password & secrets manager"></a> | &nbsp; | &nbsp; | &nbsp; |
 | :---: | :---: | :---: | :---: | :---: |
@@ -54,39 +52,24 @@ The following stability indices have been used:
 
 ### Reference<a name="reference"></a>
 
-Pear is a native point-to-point peer-to-peer capable platform that consists of a runtime binary, an API, userland modules, a command-line interface, an on-demand daemon and an application shell to provide the capabilities to develop & deploy production P2P applications. With JavaScript and beyond.
+Pear is a native point-to-point peer-to-peer platform in the form of acommand-line interface and an embeddable runtime library for JS-based desktop & mobile applications.
 
-Pear's runtime binary is built on [Bare](https://github.com/holepunchto/bare), a small and modular JavaScript runtime for desktop and mobile. Like Node.js, it provides an asynchronous, event-driven architecture for writing applications in the lingua franca of modern software. Unlike Node.js, embedding and cross-device are supported as core use cases, aiming to run just as well on mobile as desktop.
+Pear's runtime binary is built on [Bare](https://github.com/holepunchto/bare), a small and modular JavaScript runtime for desktop and mobile. Like Node.js, it provides an asynchronous, event-driven architecture for writing applications in the lingua franca of modern software. Unlike Node.js, embedding and cross-device are supported as core use cases of Bare.
 
-* [Pear CLI](./reference/cli.md)
-* [Pear Configuration](./reference/configuration.md)
+* [Command](./reference/cli.md)
+* [Runtime](./reference/runtime.md)
+* [Configuration](./reference/configuration.md)
+* [Deployment](./reference/deployment.md)
 * [Recommended Practices](./reference/recommended-practices.md)
 * [Troubleshooting](./reference/troubleshooting.md)
 * [Frequently Asked Questions](./reference/faq.md)
 * [Migration](./reference/migration.md)
 * [DEPRECATED: Pear API](./reference/api.md)
 
-### Examples<a name="examples"></a>
+### Boilerplates<a name="boilerplates"></a>
 
-- [Pear Terminal](https://github.com/holepunchto/pear/tree/main/examples/terminal)
-- [Pear Desktop (Electron)](https://github.com/holepunchto/pear/tree/main/examples/desktop)
-- [Bare Android](https://github.com/holepunchto/bare-android)
-- [Bare iOS](https://github.com/holepunchto/bare-ios)
-
-### Guides<a name="guides"></a>
-
-Guides on using Pear Runtime to build and share peer-to-peer applications.
-
-* [Getting Started](./guide/getting-started.md)
-* [Starting a Pear Desktop Project](./guide/starting-a-pear-desktop-project.md)
-* [Making a Pear Desktop Application](./guide/making-a-pear-desktop-app.md)
-* [Starting a Pear Terminal Project](./guide/starting-a-pear-terminal-project.md)
-* [Making a Pear Terminal Application](./guide/making-a-pear-terminal-app.md)
-* [Sharing a Pear Application](./guide/sharing-a-pear-app.md)
-* [Releasing a Pear Application](./guide/releasing-a-pear-app.md)
-* [Making a Bare Mobile Application](./guide/making-a-bare-mobile-app.md)
-* [Debugging a Pear Terminal Application](./guide/debugging-a-pear-terminal-app.md)
-* [Creating a `pear init` Template](./guide/creating-a-pear-init-template.md)
+- Desktop: [Hello Pear Electron](https://github.com/holepunchto/hello-pear-electron)
+- Mobile: [Hello Pear React-Native](https://github.com/holepunchto/hello-pear-react-native)
 
 ### How-tos<a name="howtos"></a>
 
