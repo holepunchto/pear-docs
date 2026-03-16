@@ -13,7 +13,7 @@ Create the `peer-app` project with the following commands:
 ```
 mkdir peer-app
 cd peer-app
-pear init -y -t terminal
+pear init -y
 npm install hyperswarm hypercore-crypto b4a bare-process
 ```
 

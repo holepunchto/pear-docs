@@ -11,7 +11,7 @@ Start by creating the `drive-writer-app` project with these commands:
 ```
 mkdir drive-writer-app
 cd drive-writer-app
-pear init -y -t terminal
+pear init -y
 npm install corestore localdrive hyperswarm hyperdrive debounceify b4a pear-stdio
 ```
 
@@ -86,7 +86,7 @@ Leave the `driver-writer-app` running and in a new terminal create the `drive-re
 ```
 mkdir drive-reader-app
 cd drive-reader-app
-pear init -y -t terminal
+pear init -y
 npm install corestore localdrive hyperswarm hyperdrive debounceify b4a
 ```
 
@@ -159,7 +159,7 @@ In a new terminal, create the `drive-bee-reader-app` project with these commands
 ```
 mkdir drive-bee-reader-app
 cd drive-bee-reader-app
-pear init -y -t terminal
+pear init -y
 npm install corestore hyperswarm hyperdrive hyperbee b4a
 ```
 

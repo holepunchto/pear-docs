@@ -12,7 +12,7 @@ Start the `bee-writer-app` project with the following commands:
 ```
 mkdir bee-writer-app
 cd bee-writer-app
-pear init -y -t terminal
+pear init -y
 npm install corestore hyperswarm hyperbee b4a bare-fs
 ```
 
@@ -84,7 +84,7 @@ Start the `bee-reader-app` project in a new terminal with the following commands
 ```
 mkdir bee-reader-app
 cd bee-reader-app
-pear init -y -t terminal
+pear init -y
 npm install corestore hyperswarm hyperbee b4a bare-pipe
 ```
 
@@ -161,7 +161,7 @@ Finally create a `core-reader-app` project:
 ```
 mkdir core-reader-app
 cd core-reader-app
-pear init -y -t terminal
+pear init -y
 npm install corestore hyperswarm hyperbee b4a
 ```
 

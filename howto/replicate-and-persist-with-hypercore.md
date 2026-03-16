@@ -21,7 +21,7 @@ Create the `writer-app` project with these commands:
 ```
 mkdir writer-app
 cd writer-app
-pear init -y -t terminal
+pear init -y
 npm install bare-path bare-process hypercore hyperswarm b4a
 ```
 
@@ -60,7 +60,7 @@ Create the `reader-app` project with these commands:
 ```
 mkdir reader-app
 cd reader-app
-pear init -y -t terminal
+pear init -y
 npm install bare-path hypercore hyperswarm
 ```
 

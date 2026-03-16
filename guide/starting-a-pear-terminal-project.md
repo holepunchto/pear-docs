@@ -4,12 +4,12 @@
 
 ## Step 1. Init
 
-First create a new project using `pear init --type terminal`.
+First create a new project using `pear init`.
 
 ```
 mkdir chat-app
 cd chat-app
-pear init --yes --type terminal
+pear init --yes
 ```
 
 This creates the base project structure.

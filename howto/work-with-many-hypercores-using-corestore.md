@@ -16,7 +16,7 @@ Create the `multicore-writer-app` project with these commands:
 ```
 mkdir multicore-writer-app
 cd multicore-writer-app
-pear init -y -t terminal
+pear init -y
 npm install bare-process corestore hyperswarm b4a
 ```
 
@@ -76,7 +76,7 @@ The `multicore-reader-app` connects to the previous peer with `Hyperswarm` and r
 ```
 mkdir multicore-reader-app
 cd multicore-reader-app
-pear init -y -t terminal
+pear init -y
 npm install corestore hyperswarm b4a
 ```
 

@@ -20,7 +20,7 @@ Create the `server-app` project with the following commands:
 ```
 mkdir server-app
 cd server-app
-pear init -y -t terminal
+pear init -y
 npm install hyperdht b4a bare-process
 ```
 
@@ -57,7 +57,7 @@ In another terminal create the `client-app` project with the following commands:
 ```
 mkdir client-app
 cd client-app
-pear init -y -t terminal
+pear init -y
 npm install hyperdht b4a bare-process
 ```
 Alter `client-app/index.js` to the following:
