@@ -1,0 +1,756 @@
+---
+title: "Application Programming Interface (API)"
+description: "Reference for global Pear and Bare APIs in Pear applications."
+---
+
+**DEPRECATED** `pear run` is deprecated and will be removed and the global API with it. Use the [`pear-runtime`](https://github.com/holepunchto/pear-runtime) module instead.
+
+Pear is built on [Bare](https://github.com/holepunchto/bare). Pear applications have a `global.Pear` object and a`global.Bare` object.
+
+* [global.Pear](#globalpear)
+* [global.Bare](#globalbare)
+
+## `global.Pear` [#globalpear]
+
+**DEPRECATED**
+
+<mark style="background-color: #8484ff;">**stable**</mark>
+
+The Pear Platform API is made available globally as `Pear`.
+
+The `Pear` API is designed to be as minimal as possible.
+
+The majority of capabilities are supplied via [Pear Modules](../README.md#pear-modules).
+
+### `Pear.app <Object>` [#pear-app]
+
+**DEPRECATED**
+
+Contains application information. Supersedes `Pear.config`.
+
+#### `Pear.app.key <Buffer|null>` [#pear-app-key]
+
+**DEPRECATED**
+
+A buffer of the application key. If running from disk, `Pear.app.key` is null.
+
+#### `Pear.app.length <Integer>` [#pear-app-length]
+
+**DEPRECATED**
+
+The application drive length. The application version consists of `Pear.app.key`, `Pear.app.length` and `Pear.app.fork`.
+
+#### `Pear.app.fork <Integer>` [#pear-app-fork]
+
+**DEPRECATED**
+
+The application drive fork count. A fork is where the append-only log of the drive is truncated.
+
+The application version consists of `Pear.app.key`, `Pear.app.length` and `Pear.app.fork`.
+
+#### `Pear.app.alias <String|null>` [#pear-app-alias]
+
+**DEPRECATED**
+
+Given an application that is run from a pear:// link with an alias it, contains that alias.
+For example the `Pear.app.alias` for `pear run pear://keet` would be `keet`.
+
+#### `Pear.app.dev <Boolean>` [#pear-app-dev]
+
+**DEPRECATED**
+
+Whether the application is in development mode.
+
+Note that development mode means, the application has been run with the `--dev` flag.
+
+Development mode is not the same as development environment. Development environment equates to running from disk.
+
+For example, to detect both development mode & environment:
+
+```js
+const fromDisk = Pear.app.key === null
+const isDev = fromDisk && Pear.app.dev
+```
+
+#### `Pear.app.name <String>` [#pear-app-name]
+
+**DEPRECATED**
+
+Application name.
+
+#### `Pear.app.main <String>` [#pear-app-main]
+
+**DEPRECATED**
+
+Application entry file.
+
+#### `Pear.app.channel <String|null>` [#pear-app-channel]
+
+**DEPRECATED**
+
+Application release/staging channel.
+
+#### `Pear.app.storage <String>` [#pear-app-storage]
+
+**DEPRECATED**
+
+Application storage path
+
+#### `Pear.app.options <Object>` [#pear-app-options]
+
+**DEPRECATED**
+
+Configuration options.
+The `pear` configuration object as supplied via an applications `package.json` file.
+
+**References**
+
+* [Configuration](./configuration.md)
+
+#### `Pear.app.env <Object>` [#pear-app-env]
+
+**DEPRECATED**
+
+The environment variables that an application was started with, as key-value pairs in an object.
+
+#### `Pear.app.flags <Object>` [#pear-app-flags]
+
+**DEPRECATED**
+
+Parsed command-line flag values as supplied when an application was started.
+
+#### `Pear.app.checkout <String>` [#pear-app-checkout]
+
+**DEPRECATED**
+
+The value of the [`pear run --checkout`](./cli.md#pear-run) flag. Same as [`Pear.app.flags.checkout`](#pear-app-checkout).
+
+**References**
+
+* [`pear run`](./cli.md#pear-run)
+* [`Pear.app.flags`](./#pear-app-flags)
+
+#### `Pear.app.storage <String>` [#pear-app-storage-dir]
+
+**DEPRECATED**
+
+Application storage path.
+
+#### `Pear.app.args <Array>` [#pear-app-args]
+
+**DEPRECATED**
+
+Command-line application arguments passed like `pear run --dev . --some arg`.
+
+#### `Pear.app.release <Number>` [#pear-app-release]
+
+**DEPRECATED**
+
+The current release length as marked by the `pear release` command.
+
+**References**
+
+* [`pear release`](./cli.md#pear-release)
+
+#### `Pear.app.link <String>` [#pear-app-link]
+
+**DEPRECATED**
+
+The link that was passed to `pear run` with alias resolved to key.
+
+Includes any potential pathname, query or fragment.
+
+**References**
+
+* [`pear run`](./cli.md)
+
+#### `Pear.app.links <Object|Array>` [#pear-app-links]
+
+**DEPRECATED**
+
+Holds trusted Pear application links and domains as specified in the `links` field inside `package.json`.
+
+**References**
+* [pear.links](./configuration.md#pear-links)
+* [`pear run`](./cli.md#pear-run)
+
+#### `Pear.app.routes <String>` [#pear-app-routes]
+
+**DEPRECATED**
+
+The configuration provided [`pear.routes`](./configuration.md#pear-routes) mapping object.
+
+#### `Pear.app.entrypoint <String>` [#pear-app-entrypoint]
+
+**DEPRECATED**
+
+The link pathname (`pear://<key>/<pathname>`), after any route mappings have been applied per [`pear.routes`](./configuration.md#pear-routes).
+
+Includes the leading `/`, e.g given `pear://foo/bar/baz`, `Pear.app.entrypoint` would be `/bar/baz`.
+
+Only `Pear.app.entrypoint` supports route-mapping via the [`pear.routes`](./configuration.md#pear-routes) mapping object. `Pear.app.route` is provides access the raw pathname, including the leading slash (`/`), while `Pear.app.linkData` is legacy, excludes the slash, but is still supported.
+
+* [`Pear.app.route`](#pear-app-entrypoint)
+* [`Pear.app.routes`](#pear-app-routes)
+* [`pear.routes`](./configuration.md#pear-routes)
+
+#### `Pear.app.fragment <String>` [#pear-app-fragment]
+
+**DEPRECATED**
+
+The link hash, without the leading `#`.
+
+Given `pear://<key>/<pathname>#frag` `Pear.app.fragment` would be `frag`.
+
+#### `Pear.app.query <String>` [#pear-app-query]
+
+**DEPRECATED**
+
+The link query string, without the leading `?`.
+
+Given `pear://<key>/<pathname>?qs` `Pear.app.query` would be `qs`.
+
+#### `Pear.app.route <String>` [#pear-app-route]
+
+**DEPRECATED**
+
+The link pathname (`pear://<key>/<pathname>`), prior to any route mappings being applied.
+
+Includes the leading `/`, e.g given `pear://foo/bar/baz`, `Pear.app.route` would be `/bar/baz`.
+
+**References**
+
+* [`Pear.app.entrypoint`](#pear-app-entrypoint)
+* [`Pear.app.routes`](#pear-app-routes)
+* [`pear.routes`](./configuration.md#pear-routes)
+
+#### `Pear.app.linkData <String>` [#pear-app-linkData]
+
+**DEPRECATED**
+
+Holds just the data portion of a Pear link.
+
+The Pear link of an application. Takes the form `pear://<key>/<data>`.
+
+In development, `pear://dev/<data>`.
+
+Unlike `Pear.app.route` and `Pear.app.entrypoint` *does not* include the leading slash (`/`).
+
+Legacy but still supported. Prefer `Pear.app.entrypoint` or `Pear.app.route`.
+
+**References**
+
+* [`Pear.app.entrypoint`](#pear-app-entrypoint)
+* [`Pear.app.route`](#pear-app-route)
+* [Pear.app.link](#pear-app-link)
+* [`pear run`](./cli.md#pear-run)
+
+#### `Pear.app.checkpoint <Any>` [#pear-app-checkpoint]
+
+**DEPRECATED**
+
+Holds state as set by `Pear.checkpoint()`. When an application restarts it will hold the most recent value passed to `Pear.checkpoint()`.
+
+Stores state that will be available as `Pear.app.checkpoint` next time the application starts.
+
+The `Pear.app.checkpoint` property immediately reflects the latest checkpoint.
+
+The returned `Promise` will resolve once the checkpoint has been successfully stored.
+
+**References**
+
+* [Pear.checkpoint()](#pear-checkpoint)
+
+#### `Pear.app.release <Integer>` [#pear-app-release-sequence]
+
+**DEPRECATED**
+
+Application release sequence integer.
+
+#### `Pear.app.flags <Object>` [#pear-app-run-flags]
+
+**DEPRECATED**
+
+Parsed `pear run` flags.
+
+#### `Pear.app.applink <String>` [#pear-app-applink]
+
+**DEPRECATED**
+
+Pear application link. May be a `pear://` link or a local directory.
+
+#### `Pear.app.dir <String>` [#pear-app-dir]
+
+**DEPRECATED**
+
+The current working directory of `pear run` when the application was started.
+
+#### `Pear.app.dht.nodes <Array<Object>>` [#pear-app-dht-nodes]
+
+**DEPRECATED**
+
+A list of known [DHT](https://github.com/holepunchto/hyperdht) nodes of the form `{ host: <String>, port: <Number> }`. The nodes are set when the Pear application is started.
+
+Unless started with a custom set of bootstrap nodes, Pear caches known nodes to speed up connecting to the swarm and to make it more resilient.
+
+#### `Pear.app.dht.bootstrap <Array<Object>>` [#pear-app-dht-bootstrap]
+
+**DEPRECATED**
+
+A list of custom bootstrap nodes Pear is started with of the form `{ host: <String>, port: <Number> }`.
+
+#### `Pear.app.assets  <String>` [#pear-app-assets]
+
+**DEPRECATED**
+
+Advanced / integration purposes.
+
+Per [`pear-assets`](./configuration.md#pear-assets) configuration assets are fetched and stored to disk. Use `Pear.app.assets[namespace].path` to get the path that given asset is stored to.
+
+Takes the form `{ [namespace]: { link <String>, ns <String>, path <String>, name <String>, only <Array<String>>, bytes <Integer> } }`. `namespace` is per the property name on the assets object. By convention, should be describe the asset type, for example: `ui`.
+
+* `link` - Configuration supplied `pear://<fork>.<length>.<key>`
+* `ns` - Namespace - same as the property name
+* `path` - The path that Pear stored the asset to on-disk
+* `name` - Configuration supplied name
+* `only` - Configuration supplied only array
+* `bytes` - The total bytes used by asset on-disk
+
+Example:
+
+```js
+{
+  "ui": {
+    "link": "pear://0.940.cktxzetiwt6un3ado5kgqedge6ya4nfazjckzq76zcapefwxakdy",
+    "ns": "ui",
+    "path": "/Users/xxx/Library/Application Support/pear/assets/0c82035d08c00ae4da2f307eb5d2c1fd",
+    "name": "Pear Runtime",
+    "only": [
+      "/boot.bundle",
+      "/by-arch/%HOST%",
+      "/prebuilds/%HOST%"
+    ],
+    "bytes": 259158801
+  }
+}
+```
+
+#### `Pear.app.prerunning <Boolean>` [#pear-app-prerunning]
+
+**DEPRECATED**
+
+Whether the current application is a [`pre`](./configuration.md#pear-pre) script.
+
+#### `Pear.app.startId <String>` [#pear-app-startid]
+
+**DEPRECATED**
+
+Advanced. Integration purposes.
+
+The application start identifier. Can be used to register a [`pear-ipc`](https://github.com/holepunchto/pear-ipc) client to an applicaiton, with
+`ipc.identify()`
+
+#### `Pear.app.swapDir <String>` [#pear-app-swapdir]
+
+**DEPRECATED**
+
+Advanced. Integration purposes.
+
+The active swap directory with Pear platform directory.
+
+#### `Pear.app.pearDir <String>` [#pear-app-peardir]
+
+**DEPRECATED**
+
+Advanced. Integration purposes.
+
+Pear platform directory.
+
+### `Pear.checkpoint(<Any>) => Promise` [#pear-checkpoint]
+
+**DEPRECATED**
+
+Stores state that will be available as `Pear.app.checkpoint` next time the application starts.
+
+The `Pear.app.checkpoint` property immediately reflects the latest checkpoint.
+
+The returned `Promise` will resolve once the checkpoint has been successfully stored.
+
+**References**
+
+* [Pear.app.checkpoint](#pear--config-checkpoint-any)
+
+### `Pear.teardown(fn <Async Function|Function>)` [#pear-teardown]
+
+**DEPRECATED**
+
+Register application clean-up handlers to be called when an application begins to unload.
+
+May be called multiple times to register multiple teardown handlers.
+
+Functions supplied to teardown will be executed in order of registration when
+an application begins to unload. Any promise returned from each supplied function
+will be waited upon until resolution before calling the next teardown handler.
+
+### `Pear.argv` [#pear-argv]
+
+**DEPRECATED**
+
+The command line arguments passed to the process when launched.
+
+### `Pear.pid` [#pear-pid]
+
+**DEPRECATED**
+
+The ID of the current process.
+
+### `Pear.exitCode` [#pear-exitcode]
+
+**DEPRECATED**
+
+The code that will be returned once the process exits. If the process is exited using `Bare.exit()` without specifying a code, `Bare.exitCode` is used.
+
+### `Pear.exit(code)` [#pear-exit]
+
+**DEPRECATED**
+
+Exits the process with the provided exit code. Follows Pear teardown flow, whereas `Bare.exit()` does not.
+
+### `Pear.constructor.CUTOVER` [#pear-constructor-cutover] (Integration)
+
+**DEPRECATED**
+
+> NOTE: Integration APIs may change.
+
+For auto-cutover opt-out do `Pear.constructor.CUTOVER = false` in the first-tick.
+
+Cutover signals the end of the application init phase and instructs sidecar to stop buffering critical streams, such as updates.
+
+This stops an internal `ipc.cutover` call to the sidecar, indicating that a manual call will be made later which in turn allows child processes to listen to critical streams without any data loss but the onus is then on child process to call cutover in order free resources in the sidecar.
+
+### `Pear.constructor.COMPAT` [#pear-constructor-compat] (Integration)
+
+**DEPRECATED**
+
+> NOTE: Integration APIs may change.
+
+Compat-mode opt-in. See [./migration.md#compat-mode](./migration.md#compat-mode)
+
+### `Pear.constructor.RTI` [#pear-constructor-rit] (Integration)
+
+**DEPRECATED**
+
+> NOTE: Integration APIs may change.
+
+Runtime Information. Used by additional runtimes to bootstrap runtime state at boot. Used by [`pear-run`](https://github.com/holepunchto/pear-run).
+
+### `Pear.constructor.IPC` [#pear-constructor-ipc] (Integration)
+
+**DEPRECATED**
+
+> NOTE: Integration APIs may change.
+
+Symbol for accessing built-in IPC client. Used by libraries and other integrations.
+
+```js
+const ipc = Pear[Pear.constructor.IPC]
+```
+
+### `Pear.constructor.RUNTIME` [#pear-constructor-runtime] (Integration)
+
+**DEPRECATED**
+
+> NOTE: Integration APIs may change.
+
+The runtime binary to spawn when running. Used by [`pear-run`](https://github.com/holepunchto/pear-run). Useful for certain testing scenarios.
+
+### `Pear.constructor.RUNTIME_ARGV` [#pear-constructor-runtime_argv] (Integration)
+
+**DEPRECATED**
+
+> NOTE: Integration APIs may change.
+
+Used to modify argv passed spawn when running. Used by [`pear-run`](https://github.com/holepunchto/pear-run). Useful for certain testing scenarios.
+
+
+### `Pear.restart()` [#pear-restart]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`pear-restart`](https://github.com/holepunchto/pear-restart).
+
+### `Pear.config <Object>` [#pear-config]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`Pear.app`](#pear-app).
+
+### `Pear.messages([ pattern ], [ listener ]) -> Iterable` [#pear-messages]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`pear-messages`](https://github.com/holepunchto/pear-messages).
+
+### `await Pear.message(<Object>)` [#pear-message]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`pear-message`](https://github.com/holepunchto/pear-message).
+
+### `Pear.worker <Object>` [#pear-worker]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`pear-run`](https://github.com/holepunchto/pear-run) & [`pear-pipe`](https://github.com/holepunchto/pear-pipe).
+
+**DEPRECATED** Use [`pear-pipe`](https://github.com/holepunchto/pear-pipe).
+
+### `Pear.media <Object>` [#pear-media]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`pear-electron ui.media`](https://github.com/holepunchto/pear-electron#uimedia-object-).
+
+### `Pear.versions <Async Function>` [#pear-versions]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+Outputs version information.
+
+Example:
+
+```js
+{
+  platform: {
+    key: 'pzcjqmpoo6szkoc4bpkw65ib9ctnrq7b6mneeinbhbheihaq6p6o',
+    length: 5949,
+    fork: 0
+  },
+  app: { key: null, length: 0, fork: 0 },
+  runtimes: { bare: '1.24.3', pear: '2.2.6' }
+}
+```
+
+### `Pear.reload()` [#pear-reload]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use `location.reload()` in Desktop apps. No reload in terminal apps.
+
+### `Pear.updates(listener <Async Function|Function>) =>streamx.Readable` [#pear-updates]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`pear-updates`](https://github.com/holepunchto/pear-updates).
+
+### `const update = await Pear.updated()` [#pear-updated]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** No-op. Do not use.
+
+### `Pear.wakeups(listener <Async Function|Function>) =>streamx.Readable` [#pear-wakeups]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`pear-updates`](https://github.com/holepunchto/pear-wakeups).
+
+### `Pear.badge(count <Integer|null>) =>Promise<Boolean>` [#pear-badge]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`pear-electron ui.app.badge()`](https://github.com/holepunchto/pear-electron#const-success--await-uiappbadgecount-integernull-).
+
+### `Pear.tray(options <Object>, listener <AsyncFunction|Function>) => Promise<untray()>` [#pear-tray]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`pear-electron ui.app.tray()`](https://github.com/holepunchto/pear-electron#const-untray--await-uiapptrayoptions-object-listener-function-).
+
+### `const win = new Pear.Window(entry <String>, options<Object>)` [#pear-window]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`pear-electron ui.Window`](https://github.com/holepunchto/pear-electron#const-win--new-uiwindowentry-string-options-object-).
+
+### `const view = new Pear.View(options <Object>)` [#pear-view]
+
+<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+
+**DEPRECATED** Use [`pear-electron ui.View`](https://github.com/holepunchto/pear-electron#const-view--new-uiviewoptions-object-).
+
+## `global.Bare` [#globalbare]
+
+<mark style={{ backgroundColor: '#8484ff' }}><strong>stable</strong></mark>
+
+The core JavaScript API of Bare is available through the global `Bare` namespace.
+
+The `Bare` API is designed to be as minimal as possible.
+
+The majority of capabilities are supplied via [Bare Modules](../README.md#bare-modules).
+
+### `Bare.platform` [#bare-platform]
+
+The identifier of the operating system for which Bare was compiled. The possible values are `android`, `darwin`, `ios`, `linux`, and `win32`.
+
+### `Bare.arch` [#bare-arch]
+
+The identifier of the processor architecture for which Bare was compiled. The possible values are `arm`, `arm64`, `ia32`, `mips`, `mipsel`, and `x64`.
+
+### `Bare.simulator` [#bare-simulator]
+
+Whether or not Bare was compiled for a simulator.
+
+### `Bare.argv` [#bare-argv]
+
+The command line arguments passed to the process when launched.
+
+### `Bare.pid` [#bare-pid]
+
+The ID of the current process.
+
+### `Bare.exitCode` [#bare-exitcode]
+
+The code that will be returned once the process exits. If the process is exited using `Bare.exit()` without specifying a code, `Bare.exitCode` is used.
+
+### `Bare.suspended` [#bare-suspended]
+
+Whether or not the process is currently suspended.
+
+### `Bare.exiting` [#bare-exiting]
+
+Whether or not the process is currently exiting.
+
+### `Bare.version` [#bare-version]
+
+The Bare version string.
+
+### `Bare.versions` [#bare-versions]
+
+An object containing the version strings of Bare and its dependencies.
+
+### `Bare.exit([code])` [#bare-exit]
+
+Immediately terminate the process or current thread with an exit status of `code` which defaults to `Bare.exitCode`.
+
+### `Bare.suspend([linger])` [#bare-suspend]
+
+Suspend the process and all threads. This will emit a `suspend` event signalling that all work should stop immediately. When all work has stopped and the process would otherwise exit, an `idle` event will be emitted. If the process is not resumed from an `idle` event listener, the loop will block until the process is resumed.
+
+### `Bare.idle()` [#bare-idle]
+
+Immediately suspend the event loop and trigger the `idle` event.
+
+### `Bare.resume()` [#bare-resume]
+
+Resume the process and all threads after suspension. This can be used to cancel suspension after the `suspend` event has been emitted and up until all `idle` event listeners have run.
+
+### `Bare.on('uncaughtException', err)` [#bare-on-uncaught-exception]
+
+Emitted when a JavaScript exception is thrown within an execution context without being caught by any exception handlers within that execution context. By default, uncaught exceptions are printed to `stderr` and the processes aborted. Adding an event listener for the `uncaughtException` event overrides the default behavior.
+
+### `Bare.on('unhandledRejection', reason, promise)` [#bare-on-unhandled-rejection]
+
+Emitted when a JavaScript promise is rejected within an execution context without that rejection being handled within that execution context. By default, unhandled rejections are printed to `stderr` and the process aborted. Adding an event listener for the `unhandledRejection` event overrides the default behavior.
+
+### `Bare.on('beforeExit', code)` [#bare-on-beforeexit]
+
+Emitted when the loop runs out of work and before the process or current thread exits. This provides a chance to schedule additional work and keep the process from exiting. If additional work is scheduled, `beforeExit` will be emitted again once the loop runs out of work.
+
+If the process is exited explicitly, such as by calling `Bare.exit()` or as the result of an uncaught exception, the `beforeExit` event will not be emitted.
+
+### `Bare.on('exit', code)` [#bare-on-exit]
+
+Emitted when the process or current thread exits. If the process is forcefully terminated from an `exit` event listener, the remaining listeners will not run.
+
+> [!CAUTION]
+> Additional work **MUST NOT** be scheduled from an `exit` event listener.
+
+### `Bare.on('suspend', linger)` [#bare-on-suspend]
+
+Emitted when the process or current thread is suspended. Any in-progress or outstanding work, such as network activity or file system access, should be deferred, cancelled, or paused when the `suspend` event is emitted and no additional work should be scheduled.
+
+### `Bare.on('idle')` [#bare-on-idle]
+
+Emitted when the process or current thread becomes idle after suspension. After all handlers have run, the event loop will block and no additional work be performed until the process is resumed. An `idle` event listener may call `Bare.resume()` to cancel the suspension.
+
+### `Bare.on('resume')` [#bare-on-resume]
+
+Emitted when the process or current thread resumes after suspension. Deferred and paused work should be continued when the `resume` event is emitted and new work may again be scheduled.
+
+## `Bare.Addon` [#bare-addon]
+
+The `Bare.Addon` namespace provides support for loading native addons, which are typically written in C/C++ and distributed as shared libraries.
+
+### `const addon = Addon.load(url[, options])` [#bare-addon-load]
+
+Load a static or dynamic native addon identified by `url`. If `url` is not a static native addon, Bare will instead look for a matching dynamic object library.
+
+Options are reserved.
+
+### `const unloaded = Addon.unload(url[, options])` [#bare-addon-unload]
+
+Unload a dynamic native addon identified by `url`. If the function returns `true`, the addon was unloaded from memory. If it instead returns `false`, the addon is still in use by one or more threads and will only be unloaded from memory when those threads either exit or explicitly unload the addon.
+
+Options are reserved.
+
+### `const url = Addon.resolve(specifier, parentURL[, options])` [#bare-addon-resolve]
+
+Resolve a native addon specifier by searching for a static native addon or dynamic object library matching `specifier` imported from `parentURL`.
+
+Options are reserved.
+
+## `Bare.Thread` [#bare-thread]
+
+The `Bare.Thread` provides support for lightweight threads. Threads are similar to workers in Node.js, but provide only minimal API surface for creating and joining threads.
+
+### `Thread.isMainThread` [#bare-thread-ismainthread]
+
+`true` if the current thread is the main thread.
+
+### `Thread.self` [#bare-thread-self]
+
+A reference to the current thread as a `ThreadProxy` object. Will be `null` on the main thread.
+
+### `Thread.self.data` [#bare-self-data]
+
+A copy of or, if shared, reference to the `data` buffer that was passed to the current thread on creation. Will be `null` if no buffer was passed.
+
+### `const thread = new Thread([filename][, options][, callback])` [#bare-new-thread]
+
+Start a new thread that will run the contents of `filename`. If `callback` is provided, its function body will be treated as the contents of `filename` and invoked on the new thread with `Thread.self.data` passed as an argument.
+
+Options include:
+
+```js
+{
+  // Optional data to pass to the thread
+  data: null,
+  // Optional file source, will be read from `filename` if neither `source` nor `callback` are provided
+  source: string | Buffer,
+  // Optional source encoding if `source` is a string
+  encoding: 'utf8',
+  // Optional stack size in bytes, pass 0 for default
+  stackSize: 0
+}
+```
+
+### `const thread = Thread.create([filename][, options][, callback])` [#bare-thread-create]
+
+Convenience method for the `new Thread()` constructor.
+
+### `thread.joined` [#bare-new-thread-joined]
+
+Whether or not the thread has been joined with the current thread.
+
+### `thread.join()` [#bare-new-thread-join]
+
+Block and wait for the thread to exit.
+
+### `thread.suspend([linger])` [#bare-new-thread-suspend]
+
+Suspend the thread. Equivalent to calling `Bare.suspend()` from within the thread.
+
+### `thread.resume()` [#bare-new-thread-resume]
+
+Resume the thread. Equivalent to calling `Bare.resume()` from within the thread.
