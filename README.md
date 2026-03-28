@@ -1,5 +1,7 @@
 # Pear by Holepunch
 
+[![gitcgr](https://gitcgr.com/badge/holepunchto/pear-docs.svg)](https://gitcgr.com/holepunchto/pear-docs)
+
 > Pear loads applications remotely from peers and allows anyone to create and share applications with peers.
 
 Pear is an installable Peer-to-Peer (P2P) Runtime, Development & Deployment platform.
