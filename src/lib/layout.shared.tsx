@@ -13,12 +13,12 @@ export function baseOptions(): BaseLayoutProps {
       title: (
         <>
           <Image
-            src="/pearpass.svg"
+            src="/pear-1.svg"
             alt="Logo"
             width={24}
             height={24}
           />
-          PearPass
+          Pear Docs
         </>
       ),
     },
