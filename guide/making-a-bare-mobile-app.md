@@ -78,7 +78,7 @@ import {
   Alert,
   StyleSheet
 } from 'react-native'
-import { documentDirectory } from 'expo-file-system'
+import { documentDirectory } from 'expo-file-system/legacy'
 import Clipboard from '@react-native-clipboard/clipboard'
 import { Worklet } from 'react-native-bare-kit'
 import bundle from './app.bundle.mjs'
@@ -272,7 +272,7 @@ To create the bundle we will use `bare-pack`. Mobile apps link the native addons
 To create a bundle that targets both iOS and Android, run:
 
 ```bash
-npx bare-pack --target ios --target android  --linked --out app/app.bundle.mjs backend/backend.mjs
+npx bare-pack --host ios-arm64 --host ios-arm64-simulator --host ios-x64-simulator --host android-arm64 --host android-x64 --linked --out app/app.bundle.mjs backend/backend.mjs
 ```
 
 This will create a bundle and store it under the `app` directory as `app.bundle.mjs` which is imported by the UI.
