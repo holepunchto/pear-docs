@@ -3,9 +3,9 @@ title: "Configuration"
 description: "Pear package.json fields and pear application configuration."
 ---
 
-<mark style={{ backgroundColor: '#8484ff' }}><strong>stable</strong></mark>
+**stable**
 
-## `package.json`<a name="package-json"></a>
+## `package.json`[#package-json]
 
 The `package.json` is used by `pear` and [`pear-runtime`](https://github.com/holepunchto/pear-runtime) for application builds, delivery and updates.
 
@@ -28,7 +28,7 @@ Example:
 }
 ```
 
-## `package.json` `pear` field<a name="pear"></a>
+## `package.json` `pear` field[#pear]
 
 ### `pear.stage <Object>` [#pear-stage]
 
@@ -60,13 +60,13 @@ An array of dependency specifiers, as used with `require` or `import`, to declar
 
 **DEPRECATED**: `pear run` is deprecated the following fields are related. Use the [`pear-runtime`](https://github.com/holepunchto/pear-runtime) module instead.
 
-### `pear.name <String>`<a name="pear-name"></a>
+### `pear.name <String>`[#pear-name]
 
 **DEPRECATED**
 
 The name of the application. Overrides `package.json` `name`.
 
-### `pear.pre <String>`<a name="pear-pre"></a>
+### `pear.pre <String>`[#pear-pre]
 
 **DEPRECATED**
 
@@ -121,7 +121,7 @@ When `routes: "."` is used in conjuction with [`pear-electron`](https://github.c
 
 Array of paths to exclude from any routing rules in [`pear.routes`](#pear-routes).
 
-### `pear.assets <Object>`<a name="pear-assets"></a>
+### `pear.assets <Object>`[#pear-assets]
 
 **DEPRECATED**
 
@@ -202,7 +202,7 @@ Note that this is only for requests that the Pear app makes itself such as loadi
 ```
 
 
-### `pear.gui <Object>`<a name="pear-gui"></a>
+### `pear.gui <Object>`[#pear-gui]
 
 **DEPRECATED**
 
@@ -214,13 +214,13 @@ Defined per UI Integration library.
 
 * [pear-electron pear.gui](https://github.com/holepunchto/pear-electron#graphical-user-interface-options-)
 
-#### <mark style="background-color: #ffffa2;">**DEPRECATED**</mark> `pear.stage.prefetch <Array>`
+#### **DEPRECATED** `pear.stage.prefetch <Array>`
 
 Deprecated, use `pear.stage.includes`.
 
 ### `pear.userAgent <string>` [#pear-useragent]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 Former default was a template literal that interpolated `Pear.#state.id` after the `Pear ` prefix.
 

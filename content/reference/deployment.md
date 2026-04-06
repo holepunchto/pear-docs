@@ -1,4 +1,7 @@
-# Deployment
+---
+title: "Deployment"
+description: "Deploying Pear applications to production."
+---
 
 ## Desktop
 

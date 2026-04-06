@@ -14,7 +14,7 @@ Pear is built on [Bare](https://github.com/holepunchto/bare). Pear applications 
 
 **DEPRECATED**
 
-<mark style="background-color: #8484ff;">**stable**</mark>
+**stable**
 
 The Pear Platform API is made available globally as `Pear`.
 
@@ -475,31 +475,31 @@ Used to modify argv passed spawn when running. Used by [`pear-run`](https://gith
 
 ### `Pear.restart()` [#pear-restart]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`pear-restart`](https://github.com/holepunchto/pear-restart).
 
 ### `Pear.config <Object>` [#pear-config]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`Pear.app`](#pear-app).
 
 ### `Pear.messages([ pattern ], [ listener ]) -> Iterable` [#pear-messages]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`pear-messages`](https://github.com/holepunchto/pear-messages).
 
 ### `await Pear.message(<Object>)` [#pear-message]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`pear-message`](https://github.com/holepunchto/pear-message).
 
 ### `Pear.worker <Object>` [#pear-worker]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`pear-run`](https://github.com/holepunchto/pear-run) & [`pear-pipe`](https://github.com/holepunchto/pear-pipe).
 
@@ -507,13 +507,13 @@ Used to modify argv passed spawn when running. Used by [`pear-run`](https://gith
 
 ### `Pear.media <Object>` [#pear-media]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`pear-electron ui.media`](https://github.com/holepunchto/pear-electron#uimedia-object-).
 
 ### `Pear.versions <Async Function>` [#pear-versions]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 Outputs version information.
 
@@ -533,55 +533,55 @@ Example:
 
 ### `Pear.reload()` [#pear-reload]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use `location.reload()` in Desktop apps. No reload in terminal apps.
 
 ### `Pear.updates(listener <Async Function|Function>) =>streamx.Readable` [#pear-updates]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`pear-updates`](https://github.com/holepunchto/pear-updates).
 
 ### `const update = await Pear.updated()` [#pear-updated]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** No-op. Do not use.
 
 ### `Pear.wakeups(listener <Async Function|Function>) =>streamx.Readable` [#pear-wakeups]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`pear-updates`](https://github.com/holepunchto/pear-wakeups).
 
 ### `Pear.badge(count <Integer|null>) =>Promise<Boolean>` [#pear-badge]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`pear-electron ui.app.badge()`](https://github.com/holepunchto/pear-electron#const-success--await-uiappbadgecount-integernull-).
 
 ### `Pear.tray(options <Object>, listener <AsyncFunction|Function>) => Promise<untray()>` [#pear-tray]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`pear-electron ui.app.tray()`](https://github.com/holepunchto/pear-electron#const-untray--await-uiapptrayoptions-object-listener-function-).
 
 ### `const win = new Pear.Window(entry <String>, options<Object>)` [#pear-window]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`pear-electron ui.Window`](https://github.com/holepunchto/pear-electron#const-win--new-uiwindowentry-string-options-object-).
 
 ### `const view = new Pear.View(options <Object>)` [#pear-view]
 
-<mark style={{ backgroundColor: '#ffffa2' }}><strong>DEPRECATED</strong></mark>
+**DEPRECATED**
 
 **DEPRECATED** Use [`pear-electron ui.View`](https://github.com/holepunchto/pear-electron#const-view--new-uiviewoptions-object-).
 
 ## `global.Bare` [#globalbare]
 
-<mark style={{ backgroundColor: '#8484ff' }}><strong>stable</strong></mark>
+**stable**
 
 The core JavaScript API of Bare is available through the global `Bare` namespace.
 

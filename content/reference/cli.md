@@ -3,11 +3,11 @@ title: "Command Line Interface (CLI)"
 description: "Pear CLI: init, run, release, and day-to-day development commands."
 ---
 
-<mark style={{ backgroundColor: '#8484ff' }}><strong>stable</strong></mark>
+**stable**
 
 The Command Line Interface is the primary interface for Pear Development.
 
-## `pear stage <link> [dir]`<a name="pear-stage"></a>
+## `pear stage <link> [dir]`[#pear-stage]
 
 Synchronize local changes to pear hypercores.
 
@@ -34,7 +34,7 @@ Each time new changes are staged, the length will increase. This change can be r
   --help|-h          Show help
 ```
 
-## `pear provision <source-link> <target-link> <production-link>[dir]`<a name="pear-provision"></a>
+## `pear provision <source-link> <target-link> <production-link>[dir]`[#pear-provision]
 
 Pre-production block sync
 
@@ -57,7 +57,7 @@ Flags:
   --help|-h           Show help
 ```
 
-## `pear seed <link> [dir]`<a name="pear-seed"></a>
+## `pear seed <link> [dir]`[#pear-seed]
 
 Seed project or reseed key.
 
@@ -73,7 +73,7 @@ Seeding will sparsely replicate the application. This means the entire history o
   --help|-h        Show help
 ```
 
-## `pear release <link> [dir]`<a name="pear-release"></a>
+## `pear release <link> [dir]`[#pear-release]
 
 Set production release version.
 
@@ -87,7 +87,7 @@ Use this to indicate production release points. Once a link has been released (s
   --help|-h                Show help
 ```
 
-## `pear changelog [link]`<a name="pear-changelog"></a>
+## `pear changelog [link]`[#pear-changelog]
 
 View project changelog
 
@@ -105,7 +105,7 @@ Shows Pear changelog by default
 ```
 
 
-## `pear info [link]`<a name="pear-info"></a>
+## `pear info [link]`[#pear-info]
 
 Read project information.
 
@@ -122,7 +122,7 @@ Supply no argument to view platform information.
   --help|-h        Show help
 ```
 
-## `pear dump [flags] <link> <dir>`<a name="pear-dump"></a>
+## `pear dump [flags] <link> <dir>`[#pear-dump]
 
 Synchronize files from link to dir.
 
@@ -146,7 +146,7 @@ pear dump pear://keet/CHANGELOG.md dump-dir/
   --help|-h        Show help
 ```
 
-## `pear touch [flags]`<a name="pear-touch"></a>
+## `pear touch [flags]`[#pear-touch]
 
 
 Creates a Pear link. Pear links hold a key, this is the basis for application discovery.
@@ -156,7 +156,7 @@ Creates a Pear link. Pear links hold a key, this is the basis for application di
   --help|-h   Show help
 ```
 
-## `pear sidecar`<a name="pear-sidecar"></a>
+## `pear sidecar`[#pear-sidecar]
 
 
 The Pear Sidecar is a local-running HTTP and IPC server which
@@ -175,7 +175,7 @@ and then becomes the sidecar.
   --help|-h             Show help
 ```
 
-## `pear versions`<a name="pear-versions"></a>
+## `pear versions`[#pear-versions]
 
 Output version information.
 
@@ -185,7 +185,7 @@ Output version information.
 --help|-h      Show help
 ```
 
-## `pear presets [flags] [command]`<a name="pear-presets  "></a>
+## `pear presets [flags] [command]`[#pear-presets  ]
 
 Default flags per command & link
 
@@ -196,7 +196,7 @@ Pin flags to a given pear command per app link
   --help|-h     Show help
 ```
 
-## `pear shift [flags] <source> <destination>`<a name="pear-shift"></a>
+## `pear shift [flags] <source> <destination>`[#pear-shift]
 
 **DEPRECATED** 
 
@@ -210,7 +210,7 @@ Move user application storage between applications.
 --help|-h   Show help
 ```
 
-## `pear drop [flags] [command]`<a name="pear-drop"></a>
+## `pear drop [flags] [command]`[#pear-drop]
 
 **DEPRECATED**: `pear run` is deprecated and `pear drop app` is related. 
 
@@ -227,7 +227,7 @@ WARNING: Confirmation will be requested as the storage will be deleted permanent
 --help|-h   Show help
 ```
 
-## `pear gc [flags] [command]`<a name="pear-gc"></a>
+## `pear gc [flags] [command]`[#pear-gc]
 
 Perform garbage collection and remove unused resources.
 
@@ -243,7 +243,7 @@ Perform garbage collection and remove unused resources.
   --help|-h     Show help
 ```
 
-## `pear data [flags] [command]`<a name="pear-data"></a>
+## `pear data [flags] [command]`[#pear-data]
 
 **DEPRECATED**: `pear run` is deprecated and `pear data apps` is related. 
 
@@ -266,7 +266,7 @@ The database contains metadata stored on this device used by the Pear runtime.
 --help|-h   Show help
 ```
 
-## `pear init [flags] <link|name> [dir]`<a name="pear-init"></a>
+## `pear init [flags] <link|name> [dir]`[#pear-init]
 
 Create initial project files.
 
