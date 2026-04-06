@@ -5,7 +5,7 @@ description: "Pear Runtime module for peer-to-peer application deployment."
 
 # Runtime
 
-The `pear-runtime` module enables applications to be deployed peer-to-peer with the [`pear` CLI](./cli.md).
+The `pear-runtime` module enables applications to be deployed peer-to-peer with the [`pear` CLI](/reference/cli).
 
 Embedding `pear-runtime` library into an application provides the following capabilities:
 
@@ -50,7 +50,7 @@ const pear = new Pear({ ...pkg, dir, app })
 
 ## Updates
 
-An update occurs when a seeded application drive is written to - see [Deployment](./deployment.md).
+An update occurs when a seeded application drive is written to - see [Deployment](/reference/deployment).
 
 When an update occurs, the instance will emit two events `updating` and `updated`.
 
