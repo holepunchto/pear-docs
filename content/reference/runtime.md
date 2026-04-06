@@ -5,7 +5,7 @@ description: "Pear Runtime module for peer-to-peer application deployment."
 
 # Runtime
 
-The `pear-runtime` module enables applications to be deployed peer-to-peer with the [`pear` CLI](/reference/cli).
+The `pear-runtime` module enables applications to be deployed peer-to-peer with the [`pear cli`](/reference/cli).
 
 Embedding `pear-runtime` library into an application provides the following capabilities:
 
