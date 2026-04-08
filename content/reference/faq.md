@@ -24,13 +24,13 @@ It will return a list like the following:
     storage: ./pear/app-storage/by-dkey/be6ff2fc20eb691af1ff7b90d5848ee1e22d2fe4fab031900e1014e224f659ab
 ```
 
-For more information about the `pear data apps` command, see the [cli docs](/reference/cli#pear-data).
+For more information about the `pear data apps` command, see the [cli docs](/reference/cli#pear-data-flags-command).
 
 ## How Do I Uninstall a Pear Application?
 
 Uninstalling Pear Applications is currently not supported. You can reset the storage for an application via the `pear drop <link>` command. This is a **destructive** command that will permanently delete the storage for the application loosing all data it contains. Use with caution.
 
-For more information about the `pear drop` command, see the [cli docs](/reference/cli#pear-drop).
+For more information about the `pear drop` command, see the [cli docs](/reference/cli#pear-drop-flags-command).
 
 ## Where is the Pear Application stored?
 
@@ -42,17 +42,17 @@ The Pear framework, applications and their storage are all within the `pear` dir
 | Linux   | `~/.config/pear`                     |
 | Windows | `%userprofile%\AppData\Roaming\pear` |
 
-This path can be accessed in a Pear application via [`Pear.config.pearDir`](/reference/api#pear-config).
+This path can be accessed in a Pear application via [`Pear.config.pearDir`](/reference/api#pearconfig-object).
 
-Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in the `corestores` directory, and Pear application storage (aka [`Pear.config.storage`](/reference/api#pear-config) for applications) are stored in `app-storage`.
+Within the `pear` directory the Pear framework itself is stored where the `current` symlink points, Pear applications are stored in the `corestores` directory, and Pear application storage (aka [`Pear.config.storage`](/reference/api#pearconfig-object) for applications) are stored in `app-storage`.
 
-Note that Pear applications and the Pear platform are stored in a [`corestore`](https://github.com/holepunchto/corestore) as [`hyperdrive`](https://github.com/holepunchto/hyperdrive)s so are not easily inspectable via a file explorer. To see the files distributed with an application use [`pear dump`](/reference/cli#pear-dump) to dump its contents as files.
+Note that Pear applications and the Pear platform are stored in a [`corestore`](https://github.com/holepunchto/corestore) as [`hyperdrive`](https://github.com/holepunchto/hyperdrive)s so are not easily inspectable via a file explorer. To see the files distributed with an application use [`pear dump`](/reference/cli#pear-dump-flags-link-dir) to dump its contents as files.
 
 ## Can Pear be used with X language?
 
 Pear applications currently can only be written in JavaScript, but other languages and libraries can be integrated by adding bindings as a native addon. See the [`bare-addon`](https://github.com/holepunchto/bare-addon) for a template to get started creating a native addon for Bare runtime.
 
-For languages like TypeScript that compile to JavaScript, it is recommended to compile into JavaScript and then load it as the Javascript entrypoint either as the `main` property for a terminal application or as a `<script>` in the HTML entrypoint for a desktop application. For more information about configuring the entrypoint for Pear Application see [here](/reference/configuration#package-json).
+For languages like TypeScript that compile to JavaScript, it is recommended to compile into JavaScript and then load it as the Javascript entrypoint either as the `main` property for a terminal application or as a `<script>` in the HTML entrypoint for a desktop application. For more information about configuring the entrypoint for Pear Application see [here](/reference/configuration#packagejson).
 
 ## How Do I Write an Application Once So It Can Be Run on Desktop, Mobile, etc?
 
