@@ -6,7 +6,8 @@ description: "Fixes for Pear and Bare development issues."
 * [Pear](#pear)
 * [Bare](#bare)
 
-## Pear [#pear]
+## Pear
+<a name="pear"></a>
 
 Troubleshooting confusing scenarios while developing Pear applications.
 
@@ -22,7 +23,8 @@ There can be many reasons but here are a few common reasons:
   Please let Holepunch know if this is the case.
 
 
-## Bare [#bare]
+## Bare
+<a name="bare"></a>
 
 Troubleshooting confusing scenarios while developing Pear applications.
 
