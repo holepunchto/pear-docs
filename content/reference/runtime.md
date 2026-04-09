@@ -1,0 +1,149 @@
+---
+title: "Runtime"
+description: "Pear Runtime module for peer-to-peer application deployment."
+---
+
+# Runtime
+
+The `pear-runtime` module enables applications to be deployed peer-to-peer with the [`pear cli`](/reference/cli).
+
+Embedding `pear-runtime` library into an application provides the following capabilities:
+
+* Over-the-Air Peer-to-peer (OTA P2P) updates
+* Application P2P storage management
+* Embedded [bare](https://github.com/holepunchto/bare) workers
+
+Install the [`pear-runtime`](https://github.com/holepunchto/pear-runtime) module into any JS-capable application:
+
+```sh
+npm install pear-runtime
+```
+
+## Package.json Configuration
+
+Add an `upgrade` field with a `pear://...` link. 
+
+Use `pear touch` to create a link.
+
+Example:
+
+```json
+{
+  "version": "1.0.0",
+  "upgrade": "pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o",
+  ...
+}
+```
+
+## Instantiate
+
+In an applications entrypoint create an instance:
+
+```sh
+const path = require('path')
+const pkg = require('./package.json')
+const Pear = require('pear-runtime')
+const dir = path.join('path', 'to', 'app', 'storage') // eg ~/.config/{pkg.productName}
+const app = path.join('application', 'path') // eg process.execPath, may also be null
+const pear = new Pear({ ...pkg, dir, app })
+```
+
+## Updates
+
+An update occurs when a seeded application drive is written to - see [Deployment](/reference/deployment).
+
+When an update occurs, the instance will emit two events `updating` and `updated`.
+
+```js
+pear.on('updating', () => {
+  // update view to indicate updating in progress
+})
+```
+
+```js
+pear.on('updated', () => {
+  // update view to indicate application updated
+})
+```
+
+### Disabling Updates
+
+To opt-out of updates set `updates` option to `false`.
+
+```js
+const pear = new Pear({ ...pkg, dir, app, updates: false })
+```
+
+Perhaps support a `--no-updates` flag:
+
+```js
+const pear = new Pear({ ...pkg, dir, app, updates: !NO_UPDATES_FLAG })
+```
+
+To disable updates as an application default, ensure that the package.json is spread into the options (`{...pkg, ...}`) and set the `updates` field to `false`:
+
+```json
+{
+  "version": "1.0.0",
+  "updates": false
+  ...
+}
+```
+
+## Storage
+
+The `dir` option defines where peer-to-peer storage should be kept.
+
+The `pear.storage` property holds a path to application storage, this value should be passed as `Corestore` storage argument.
+
+For local development, specifying different `dir` values for different running instances allows for local end-to-end flow.
+
+For example, an application could support `--storage|-s` flag:
+
+```js
+const pear = new Pear({ ...pkg, app, dir: STORAGE_FLAG })
+```
+
+Then pass `-s /tmp/storage-a` to one instance and `-s /tmp/storage-b` to another.
+
+The separate application instances can then interact without conflicting.
+
+## Running Workers
+
+To run a Bare worker pass its entrypoint with any args: 
+
+```js
+const IPC = pear.run('./path/to/js/file.js', ['some', 'args'])
+```
+
+`IPC` is a duplex stream for Inter-Process Communication. Use this to communicate with the worker.
+
+The idea is to put all application peer-to-peer code into a main worker that then acts as a local backend for the application view layer.
+
+```js
+const IPC = pear.run('./workers/main.js', [pear.storage])
+IPC.on('data', (data) => { 
+  console.log('data from worker', data)
+})
+IPC.write('hello')
+```
+
+The `workers/main.js` would then be executed with an embedded Bare runtime. 
+
+The other side of the IPC stream can be accessed inside the worker as `Bare.IPC`.
+
+Note how `pear.storage` is passed in as a the first arguments, this can be accessed via `Bare.argv[2]`.
+
+```js
+const Corestore = require('corestore')
+const storage = Bare.argv[2]
+
+Bare.IPC.on('data', (data) => console.log(data.toString()))
+
+Bare.IPC.write('Hello from worker')
+
+const corestore = new Corestore(storage)
+//.. do more with corestore..
+```
+
+
