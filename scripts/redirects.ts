@@ -13,7 +13,8 @@
  *
  * See decisions/0001-adopt-diataxis-ia.md §6 for the full rationale.
  */
-import { readdirSync } from 'fs';
+import { readdirSync, statSync } from 'fs';
+import { join } from 'path';
 
 export interface Redirect {
   from: string;
@@ -22,7 +23,9 @@ export interface Redirect {
 
 /**
  * Reference docs that were always logically how-tos; they moved out of
- * /reference/ into /how-to/ in subtask 2. /reference/<slug>/ -> /how-to/<slug>/.
+ * /reference/ into /how-to/<topic>/ across subtask 2 + the by-topic nesting
+ * pass. Legacy URL was /reference/<slug>/, new is /how-to/<topic>/<slug>/.
+ * The topic is inferred from the filesystem at runtime — see buildHowToTopics.
  */
 const MISFILED_HOWTOS: ReadonlySet<string> = new Set([
   'deployment',
@@ -37,25 +40,50 @@ function listSlugs(dir: string): string[] {
     .map((f) => f.replace(/\.mdx$/, ''));
 }
 
+function listSubdirs(dir: string): string[] {
+  return readdirSync(dir).filter((entry) => statSync(join(dir, entry)).isDirectory());
+}
+
 function withSlash(p: string): string {
   return p.endsWith('/') ? p : p + '/';
+}
+
+/**
+ * Walk content/how-to/<topic>/<slug>.mdx and return a slug -> topic map.
+ * Used for building both /howto/<slug>/ and /reference/<misfiled>/ redirect
+ * destinations. Legacy URLs are flat (no topic in the path), so the redirect
+ * destination needs the topic looked up from the live tree — that way new
+ * how-tos get a redirect for free, and re-shuffling pages between topics
+ * doesn't require editing this file.
+ */
+function buildHowToTopics(howToRoot: string): Map<string, string> {
+  const slugToTopic = new Map<string, string>();
+  for (const topic of listSubdirs(howToRoot)) {
+    for (const slug of listSlugs(join(howToRoot, topic))) {
+      slugToTopic.set(slug, topic);
+    }
+  }
+  return slugToTopic;
 }
 
 export function buildRedirects(contentRoot = 'content'): Redirect[] {
   const out: Redirect[] = [];
 
-  // /howto/<slug>/  ->  /how-to/<slug>/
-  // Excludes the four misfiled how-tos (they had a different legacy prefix:
-  // /reference/<slug>/, handled below) so we don't emit a wrong stub from
-  // /howto/deployment/ which never existed.
-  for (const slug of listSlugs(`${contentRoot}/how-to`)) {
-    if (MISFILED_HOWTOS.has(slug)) continue;
-    out.push({ from: withSlash(`/howto/${slug}`), to: withSlash(`/how-to/${slug}`) });
-  }
+  // The how-to quadrant is nested by topic now: content/how-to/<topic>/<slug>.mdx.
+  // Legacy URLs (/howto/<slug>/, /reference/<misfiled>/) are flat, so we look up
+  // the topic from the filesystem and emit a single-hop redirect to the deeply-
+  // nested final URL. No chained redirects.
+  const slugToTopic = buildHowToTopics(`${contentRoot}/how-to`);
 
-  // /reference/<slug>/  ->  /how-to/<slug>/  (the four misfiled how-tos)
-  for (const slug of MISFILED_HOWTOS) {
-    out.push({ from: withSlash(`/reference/${slug}`), to: withSlash(`/how-to/${slug}`) });
+  for (const [slug, topic] of slugToTopic) {
+    const finalDestination = withSlash(`/how-to/${topic}/${slug}`);
+    if (MISFILED_HOWTOS.has(slug)) {
+      // /reference/<slug>/  ->  /how-to/<topic>/<slug>/
+      out.push({ from: withSlash(`/reference/${slug}`), to: finalDestination });
+    } else {
+      // /howto/<slug>/  ->  /how-to/<topic>/<slug>/
+      out.push({ from: withSlash(`/howto/${slug}`), to: finalDestination });
+    }
   }
 
   // /building-blocks/<slug>/  ->  /reference/building-blocks/<slug>/

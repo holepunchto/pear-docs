@@ -34,14 +34,29 @@ const config = {
   // See decisions/0001-adopt-diataxis-ia.md §6.
   async redirects() {
     return [
-      { source: '/howto/:slug', destination: '/how-to/:slug', permanent: true },
+      // /howto/<slug>/ -> /how-to/<topic>/<slug>/. The how-to quadrant is
+      // nested by topic now; legacy URLs map directly to the deeply-nested
+      // final destination (single hop). The :slug-style wildcards work for
+      // helpers / tools / building-blocks because those weren't re-nested,
+      // but how-to slugs need explicit per-slug rules — the destination's
+      // topic prefix depends on which slug it is. scripts/redirects.ts is
+      // the production source of truth (postbuild stubs + _redirects); this
+      // list mirrors it for `next dev`.
+      { source: '/howto/connect-two-peers-by-key-with-hyperdht', destination: '/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht', permanent: true },
+      { source: '/howto/connect-to-many-peers-by-topic-with-hyperswarm', destination: '/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm', permanent: true },
+      { source: '/howto/replicate-and-persist-with-hypercore', destination: '/how-to/store-and-replicate/replicate-and-persist-with-hypercore', permanent: true },
+      { source: '/howto/work-with-many-hypercores-using-corestore', destination: '/how-to/store-and-replicate/work-with-many-hypercores-using-corestore', permanent: true },
+      { source: '/howto/share-append-only-databases-with-hyperbee', destination: '/how-to/store-and-replicate/share-append-only-databases-with-hyperbee', permanent: true },
+      { source: '/howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive', destination: '/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive', permanent: true },
+      // Misfiled how-tos that lived under /reference/ before subtask 2.
+      { source: '/reference/deployment', destination: '/how-to/operate-an-app/deployment', permanent: true },
+      { source: '/reference/migration', destination: '/how-to/operate-an-app/migration', permanent: true },
+      { source: '/reference/recommended-practices', destination: '/how-to/operate-an-app/recommended-practices', permanent: true },
+      { source: '/reference/troubleshooting', destination: '/how-to/operate-an-app/troubleshooting', permanent: true },
+      // Reference subdirs that are flat (no inner topic level), wildcards work.
       { source: '/building-blocks/:slug', destination: '/reference/building-blocks/:slug', permanent: true },
       { source: '/helpers/:slug', destination: '/reference/helpers/:slug', permanent: true },
       { source: '/tools/:slug', destination: '/reference/tools/:slug', permanent: true },
-      { source: '/reference/deployment', destination: '/how-to/deployment', permanent: true },
-      { source: '/reference/troubleshooting', destination: '/how-to/troubleshooting', permanent: true },
-      { source: '/reference/recommended-practices', destination: '/how-to/recommended-practices', permanent: true },
-      { source: '/reference/migration', destination: '/how-to/migration', permanent: true },
     ];
   },
 };
