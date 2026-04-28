@@ -110,6 +110,15 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
     });
   }
 
+  // /reference/faq/ -> /explanation/. Most FAQ Q&As were explanation-shaped
+  // and moved into /explanation/{runtime-and-languages,storage-and-distribution,
+  // dependencies-and-network}; the explanation index carries a "Coming from
+  // the old FAQ?" lookup table mapping each old anchor to its new home.
+  // Static stubs can't dispatch on URL fragment, so a single page-level
+  // redirect to /explanation/ is the best we can do without JavaScript.
+  // See decisions/0001-adopt-diataxis-ia.md §5 (FAQ resolution).
+  out.push({ from: '/reference/faq/', to: '/explanation/' });
+
   out.sort((a, b) => a.from.localeCompare(b.from));
   return out;
 }

@@ -40,18 +40,14 @@ const ROOT_INDEX = 'content/index.mdx';
 const ROOT_INDEX_DOCTYPE = 'explanation';
 
 /**
- * Files temporarily exempted from the dir<->docType rule. The FAQ is the
- * only entry today and goes away in subtask 9 (FAQ deconstruction); when
- * that lands, this set goes back to empty and any future drift fails CI.
+ * Files temporarily exempted from the dir<->docType rule. Empty today; the
+ * FAQ exemption that lived here was retired when subtask 9 deconstructed
+ * /reference/faq.mdx into the right quadrants.
  *
  * Anything new added here MUST come with a tracked-issue link in the
  * comment so it can't quietly accrue.
  */
-const TEMPORARY_EXEMPTIONS: ReadonlySet<string> = new Set([
-  // Subtask 9 will deconstruct this into how-to/explanation/reference
-  // pages and delete the file. Until then, accept docType: faq here.
-  'content/reference/faq.mdx',
-]);
+const TEMPORARY_EXEMPTIONS: ReadonlySet<string> = new Set();
 
 /**
  * Match a `docType:` line in the YAML frontmatter. Tolerates the three
