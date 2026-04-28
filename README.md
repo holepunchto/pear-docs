@@ -14,11 +14,33 @@ The docs website is a static site generated via SSG from a Next.js + **Fumadocs*
 * Node.js >= 20.0.0
 * `npm` >= 10.0.0
 
+### Set up `.env`
+
+`@tetherto/docs-seo-*` is installed from **GitHub Packages**, which `.npmrc` authenticates against using `${GITHUB_TOKEN}` read from the **process environment** at install time. Next.js loads `.env*` files for the app, but `npm` does **not** — you have to put the token in your shell before running `npm install`.
+
+1. Create `.env` from the example:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Set `GITHUB_TOKEN` to a classic GitHub PAT with at least `read:packages` scope (generate at <https://github.com/settings/tokens>). See `docs-template`'s [README](https://github.com/tetherto/docs-template#using-these-packages-from-another-repository) for the full PAT flow (scopes, expiration, SSO).
+
+3. Source `.env` into your shell once per session:
+
+   ```bash
+   set -a && source .env && set +a
+   ```
+
+   Or use [`direnv`](https://direnv.net) / [`dotenv-cli`](https://www.npmjs.com/package/dotenv-cli) if you prefer auto-loading.
+
 ### Install dependencies
 
 ```bash
 npm install
 ```
+
+If `npm install` fails with `401 Unauthorized` against `npm.pkg.github.com`, your shell doesn't have `GITHUB_TOKEN` exported — re-run the source step above.
 
 ## Development
 
