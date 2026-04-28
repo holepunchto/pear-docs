@@ -32,6 +32,11 @@ export function extractLinks(content: string): {
   internal: string[];
   external: string[];
 } {
+  // Strip JSX comments ({/* ... */}) before scanning. JSX comments don't render,
+  // so links commented out for "re-enable later" shouldn't fail the link check.
+  // Multi-line; non-greedy.
+  content = content.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+
   // Matches markdown links: [text](url)
   // Example: [Getting Started](/getting-started) → captures "/getting-started"
   // Note: captures everything up to the next ')' without attempting to fully balance nested parentheses
