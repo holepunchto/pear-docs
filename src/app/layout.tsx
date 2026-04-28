@@ -6,7 +6,11 @@ import { Provider } from '@/app/provider';
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_DOCS_ORIGIN ??
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      'http://localhost:8080',
+  ),
 };
 
 const poppins = Poppins({

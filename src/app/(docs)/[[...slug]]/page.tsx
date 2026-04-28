@@ -1,4 +1,4 @@
-import { getLLMText, getPageImage, source } from '@/lib/source';
+import { getLLMText, source } from '@/lib/source';
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/mdx-components';
@@ -6,6 +6,14 @@ import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { LLMCopyButton, ViewOptions } from '@/components/ai/page-actions';
 import { gitConfig } from '@/lib/layout.shared';
+import {
+  buildDocsMetadata,
+  buildJsonLdGraph,
+  DocsJsonLd,
+  getPageSeoState,
+} from '@tetherto/docs-seo-next';
+import { getPageImage } from '@tetherto/docs-seo-og';
+import { getDocsSeoConfig } from '@/lib/seo-config';
 
 export const dynamic = 'force-static';
 
@@ -18,8 +26,13 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
   const markdownForCopy = await getLLMText(page);
   const githubUrl = `https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/content/${page.path}`;
 
+  const seoConfig = getDocsSeoConfig();
+  const seoState = getPageSeoState(page, seoConfig);
+  const jsonLd = buildJsonLdGraph(page, seoState, seoConfig);
+
   return (
     <DocsPage toc={page.data.toc} full={page.data.full} tableOfContent={{style: 'clerk'}}>
+      {jsonLd ? <DocsJsonLd data={jsonLd} /> : null}
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
       <div className="flex flex-row gap-2 items-center border-b pb-6">
@@ -54,11 +67,19 @@ export async function generateMetadata(props: PageProps<'/[[...slug]]'>): Promis
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  return {
-    title: page.data.title,
-    description: page.data.description,
-    openGraph: {
-      images: getPageImage(page).url,
-    },
-  };
+  const isHomePage = !params.slug || params.slug.length === 0;
+  const seoConfig = getDocsSeoConfig();
+  const state = getPageSeoState(page, seoConfig);
+  const ogImageUrl =
+    state.ogImageOverride ??
+    (process.env.SKIP_OG_BUILD === '1'
+      ? (seoConfig.staticOgImagePath ?? '/og-default.png')
+      : getPageImage(page).url);
+
+  return buildDocsMetadata({
+    state,
+    ogImageUrl,
+    siteName: seoConfig.siteName,
+    isHomePage,
+  });
 }
