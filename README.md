@@ -59,6 +59,13 @@ Check broken external links:
 npm run check:external-links
 ```
 
+Audit cross-link coverage and orphan pages (informational; `--strict`
+fails the build on coverage <50% for high-mention canonical terms or any
+page with <2 inbound links):
+```bash
+npm run check:cross-links
+```
+
 Check that legacy URL redirects still resolve to live pages:
 ```bash
 npm run check:redirects        # requires a build first; reads out/_redirects + stubs
