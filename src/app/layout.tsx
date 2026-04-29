@@ -2,15 +2,14 @@ import './global.css';
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
 import { Provider } from '@/app/provider';
+import { getDocsSeoConfig } from '@/lib/seo-config';
 
 export const dynamic = 'force-static';
 
+const { metadataBase } = getDocsSeoConfig();
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_DOCS_ORIGIN ??
-      process.env.NEXT_PUBLIC_SITE_URL ??
-      'http://localhost:8080',
-  ),
+  metadataBase,
 };
 
 const poppins = Poppins({

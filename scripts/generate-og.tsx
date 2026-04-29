@@ -1,3 +1,7 @@
+// OG image prebuild entrypoint. Engine-agnostic by name so the rendering
+// backend can be swapped without renaming the script or its npm scripts;
+// today it uses Takumi via `@tetherto/docs-seo-og/build`.
+
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
