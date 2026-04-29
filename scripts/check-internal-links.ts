@@ -5,6 +5,8 @@ import {
   getFiles,
   extractLinks,
   buildSlugSet,
+  buildAnchorMap,
+  fileToSlug,
   isAssetLink,
   assetExists,
 } from './helpers';
@@ -12,7 +14,8 @@ import {
 interface BrokenLink {
   file: string;
   link: string;
-  type: 'page' | 'asset';
+  type: 'page' | 'asset' | 'fragment';
+  detail?: string;
 }
 
 async function main() {
@@ -20,23 +23,44 @@ async function main() {
 
   const files = await getFiles(CONTENT_DIR);
   const allSlugs = buildSlugSet(files);
+  const anchorMap = await buildAnchorMap(files);
   const brokenLinks: BrokenLink[] = [];
 
   for (const file of files) {
     const content = await readFile(file, 'utf-8');
     const { internal } = extractLinks(content);
+    const currentSlug = fileToSlug(file);
 
     for (const link of internal) {
-      if (isAssetLink(link)) {
-        // Check if asset exists in /public folder
-        const exists = await assetExists(link);
+      // Asset links bypass slug + fragment validation; they live in /public.
+      if (link.path && isAssetLink(link.path)) {
+        const exists = await assetExists(link.path);
         if (!exists) {
-          brokenLinks.push({ file, link, type: 'asset' });
+          brokenLinks.push({ file, link: link.raw, type: 'asset' });
         }
-      } else {
-        // Check if page exists in slug set
-        if (!allSlugs.has(link)) {
-          brokenLinks.push({ file, link, type: 'page' });
+        continue;
+      }
+
+      // Resolve the slug to look up in the anchor map.
+      const targetSlug = link.path === '' ? currentSlug : link.path;
+
+      // Validate the page itself exists (skip for in-page links since they
+      // always target the current file, which exists by construction).
+      if (link.path && !allSlugs.has(link.path)) {
+        brokenLinks.push({ file, link: link.raw, type: 'page' });
+        continue;
+      }
+
+      // Validate the fragment, if any, against the target file's anchor set.
+      if (link.fragment) {
+        const anchors = anchorMap.get(targetSlug);
+        if (!anchors || !anchors.has(link.fragment)) {
+          brokenLinks.push({
+            file,
+            link: link.raw,
+            type: 'fragment',
+            detail: `target page ${targetSlug} has no anchor "${link.fragment}"`,
+          });
         }
       }
     }
@@ -47,6 +71,7 @@ async function main() {
   if (brokenLinks.length > 0) {
     const brokenPages = brokenLinks.filter((l) => l.type === 'page');
     const brokenAssets = brokenLinks.filter((l) => l.type === 'asset');
+    const brokenFragments = brokenLinks.filter((l) => l.type === 'fragment');
 
     if (brokenPages.length > 0) {
       console.log('❌ Broken page links:\n');
@@ -61,6 +86,16 @@ async function main() {
       for (const { file, link } of brokenAssets) {
         console.log(`   ${file}`);
         console.log(`   → ${link}\n`);
+      }
+    }
+
+    if (brokenFragments.length > 0) {
+      console.log('❌ Broken fragment links:\n');
+      for (const { file, link, detail } of brokenFragments) {
+        console.log(`   ${file}`);
+        console.log(`   → ${link}`);
+        if (detail) console.log(`     ${detail}`);
+        console.log('');
       }
     }
 

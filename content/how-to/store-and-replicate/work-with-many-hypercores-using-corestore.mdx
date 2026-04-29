@@ -5,16 +5,18 @@ docType: how-to
 schemaType: TechArticle
 ---
 
-An append-only log is powerful on its own, but it's most useful as a building-block for constructing larger data structures, such as databases or filesystems. Building these data structures often requires many cores, each with different responsibilities. For example, Hyperdrive uses one core to store file metadata and another to store file contents.
+An append-only log is powerful on its own, but it's most useful as a building-block for constructing larger data structures, such as databases or filesystems. Building these data structures often requires many cores, each with different responsibilities. For example, [Hyperdrive](/reference/building-blocks/hyperdrive) uses one core to store file metadata and another to store file contents.
 
-[`Corestore`](https://github.com/holepunchto/corestore) is a Hypercore factory that makes it easier to manage large collections of named Hypercores. This how-to demonstrates a pattern often in use: co-replicating many cores using Corestore, where several 'internal cores' are linked to from a primary core. Only the primary core is announced on the swarm -- the keys for the others are recorded inside of that core.
+[`Corestore`](/reference/helpers/corestore) is a [Hypercore](/reference/building-blocks/hypercore) factory that makes it easier to manage large collections of named Hypercores. This how-to demonstrates a pattern often in use: co-replicating many cores using Corestore, where several 'internal cores' are linked to from a primary core. Only the primary core is announced on the swarm -- the keys for the others are recorded inside of that core.
 
-In [How to replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore), only single Hypercore instance was replicated. But in this how-to, we will replicate a single Corestore instance, which will internally manage the replication of a collection of Hypercores. We will achieve this with two Pear Terminal Applications: `multicore-writer-app` and `multicore-reader-app`.
+In [Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore), only single Hypercore instance was replicated. But in this how-to, we will replicate a single Corestore instance, which will internally manage the replication of a collection of Hypercores. We will achieve this with two Pear Terminal Applications: [`multicore-writer-app`](#create-the-multicore-writer-app) and [`multicore-reader-app`](#create-the-multicore-reader-app).
 
 > Only one Corestore per application is needed. This is the recommended best practices to make managing Hypercores efficient and to avoid pitfalls from having multiple Corestores. A single Corestore will:
 > - Manage multiple sessions for the same Hypercore.
 > - Requires only one replication stream per peer connection.
 > - Simplifies referring to Hypercores by a name.
+
+## Create the multicore writer app
 
 Create the `multicore-writer-app` project with these commands:
 
@@ -74,7 +76,9 @@ process.stdin.on('data', (data) => {
 })
 ```
 
-The `multicore-writer-app` uses a Corestore instance to create three Hypercores, which are then replicated with other peers using `Hyperswarm`. The keys for the second and third cores are stored in the first core (the first core bootstraps the system). Messages entered into the command line are written into the second and third cores, depending on the length of the message. The main core key logged into the command line so that it can be passed to the `multicore-reader-app`.
+The `multicore-writer-app` uses a Corestore instance to create three Hypercores, which are then replicated with other peers using `Hyperswarm`. The keys for the second and third cores are stored in the first core (the first core bootstraps the system). Messages entered into the command line are written into the second and third cores, depending on the length of the message. The main core key is logged into the command line so that it can be passed to the `multicore-reader-app`.
+
+## Create the multicore reader app
 
 The `multicore-reader-app` connects to the previous peer with `Hyperswarm` and replicates the local `Corestore` instance to receive the data from it. This requires the copied key to be supplied as an argument when executing the file, which will then be used to create a core with the same public key as the other peer (i.e., the same discovery key for both the reader and writer peers).
 
@@ -135,6 +139,8 @@ for (const key of otherKeys) {
 }
 ```
 
+## Run the writer and reader
+
 In one terminal, run `multicore-writer-app` with `bare`.
 
 ```
@@ -150,3 +156,9 @@ bare multicore-reader-app <SUPPLY THE KEY HERE>
 ```
 
 As inputs are made to the terminal running the writer application, outputs should be shown in the terminal running the reader application.
+
+## See also
+
+- [Share append-only databases with Hyperbee](/how-to/store-and-replicate/share-append-only-databases-with-hyperbee) — key/value store on top of Hypercore.
+- [Create a full peer-to-peer filesystem with Hyperdrive](/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive) — filesystem on top of two Hypercores.
+- [Apply recommended practices](/how-to/operate-an-app/recommended-practices) — the Corestore-per-app guidance in context.
