@@ -64,6 +64,8 @@ fails the build on coverage <50% for high-mention canonical terms or any
 page with <2 inbound links):
 ```bash
 npm run check:cross-links
+# or enforce thresholds in CI:
+npm run check:cross-links -- --strict
 ```
 
 Check that legacy URL redirects still resolve to live pages:
