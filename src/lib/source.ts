@@ -16,27 +16,16 @@ export const source = loader({
   plugins: [lucideIconsPlugin()],
   icon(icon) {
     if (!icon) return undefined;
-    
-    // Check custom icons first
+
     if (icon in customIcons) {
       return createElement(customIcons[icon]);
     }
-    
-    // Fall back to Lucide icons
+
     if (icon in icons) {
       return createElement(icons[icon as keyof typeof icons]);
     }
   },
 });
-
-export function getPageImage(page: InferPageType<typeof source>) {
-  const segments = [...page.slugs, 'image.png'];
-
-  return {
-    segments,
-    url: `/og/docs/${segments.join('/')}`,
-  };
-}
 
 export async function getLLMText(page: InferPageType<typeof source>) {
   const processed = await page.data.getText('processed');
