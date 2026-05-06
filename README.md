@@ -59,6 +59,27 @@ Check broken external links:
 npm run check:external-links
 ```
 
+Audit cross-link coverage and orphan pages (informational; `--strict`
+fails the build on coverage <50% for high-mention canonical terms or any
+page with <2 inbound links):
+```bash
+npm run check:cross-links
+# or enforce thresholds in CI:
+npm run check:cross-links -- --strict
+```
+
+Check that legacy URL redirects still resolve to live pages:
+```bash
+npm run check:redirects        # requires a build first; reads out/_redirects + stubs
+```
+
+Check that every page's `docType` frontmatter matches the Diátaxis quadrant
+it lives in (a how-to in `content/how-to/`, an explanation in
+`content/explanation/`, etc.):
+```bash
+npm run check:doctypes
+```
+
 ## Build
 
 Generate static website:
@@ -66,19 +87,33 @@ Generate static website:
 npm run build
 ```
 
+Regenerate Open Graph images only (without a full Next build):
+```bash
+npm run build:og
+```
+
 Preview the production build locally:
 ```bash
-npx serve out
+npm run serve                  # serves ./out on :8080 via the `serve` package
 ```
 
 ## Repository Layout
 
 ```
+├── content/      # Documentation MDX files (one directory per Diátaxis quadrant)
 ├── src/          # Next.js app and React components
-├── content/      # Documentation MDX files
-├── public/       # Static assets
-└── scripts/      # Link checking and automation
+├── public/       # Static assets (logos, OG images precomputed by build:og)
+├── scripts/      # Link checks, doctype validation, OG generation, redirects
+├── decisions/    # ADRs (architectural decision records)
+└── out/          # Static export output (generated; not checked in)
 ```
+
+## Architectural decisions
+
+Substantive shape changes (information architecture, redirect strategy,
+front-matter conventions) are recorded as Architecture Decision Records
+under `decisions/`. The current site IA is documented in
+[`decisions/0001-adopt-diataxis-ia.md`](decisions/0001-adopt-diataxis-ia.md).
 
 ## Contributing
 

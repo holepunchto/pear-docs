@@ -1,0 +1,51 @@
+---
+title: "Storage and distribution"
+description: "Where Pear keeps applications and their data on disk, why it's structured that way, and how the swarm gets new versions to your peers."
+docType: explanation
+schemaType: WebPage
+---
+
+Pear stores everything — the runtime itself, every installed application, and each application's persistent data — under a single per-OS directory. New versions of an application reach users through the same peer-to-peer swarm that distributes data inside the application; there is no central server. This page explains the on-disk layout and the distribution model, and the trade-offs that motivate both.
+
+## On-disk layout
+
+The top-level directory depends on the operating system:
+
+| OS      | Pear directory                       |
+| ------- | ------------------------------------ |
+| macOS   | `~/Library/Application Support/pear` |
+| Linux   | `~/.config/pear`                     |
+| Windows | `%USERPROFILE%\AppData\Roaming\pear` |
+
+Inside that directory:
+
+- **`current`** — a symlink to the Pear platform binary that's currently active. The platform itself is delivered the same way an application is: by the swarm. Updating Pear means re-pointing this symlink.
+- **`corestores/`** — every installed application, stored as a [Corestore](/reference/helpers/corestore) of [Hyperdrives](/reference/building-blocks/hyperdrive). One corestore per application; one Hyperdrive per logical bundle (binaries plus assets).
+- **`app-storage/`** — application-private persistent data, keyed by the application's `dkey` (derived from its `pear://` link). This is where chat history, drafts, settings, and user content live. Each subdirectory is its own corestore again, scoped to one application.
+
+In a running application, the path you'd write to is exposed as [`Pear.config.storage`](/reference/api#pearconfig-object); the platform root is [`Pear.config.pearDir`](/reference/api#pearconfig-object).
+
+A practical consequence of this layout: you can't browse the on-disk files with Finder or a file manager and expect to see the application's actual content. Everything is encoded inside hyperdrives. To read what an installed application actually distributed, use [`pear dump`](/reference/cli#pear-dump-flags-link-dir) — it materializes the hyperdrive's contents back into ordinary files.
+
+## How distribution works
+
+A Pear application's `pear://<key>` link is a stable identifier the swarm can route on. When you publish a new version with `pear stage` and announce it with `pear seed`, you're appending to the application's [Hyperdrive](/reference/building-blocks/hyperdrive) — peers tracking that drive get the new version on next sync.
+
+The swarm replicates lazily: a peer that runs your app becomes a source for it. Once you have a few users running an application, distribution scales without any central infrastructure on your end. The original author can go offline and the application keeps spreading, as long as at least one peer with a copy is reachable.
+
+The `pear seed <link>` command keeps a peer online and announcing as a source for a given link. It's not strictly required — any peer running the app contributes — but it's the recommended way to guarantee availability for a release. A handful of seeders is usually enough; very popular apps reach the long-tail-availability sweet spot quickly.
+
+The same model applies to the Pear platform itself: there's no Pear download server, only a swarm.
+
+## Why this shape
+
+- **No infrastructure.** The author of an application doesn't run servers, doesn't pay for bandwidth, doesn't have a single point of failure. The cost of serving the app is amortized across users.
+- **Versioning is built in.** Hyperdrives are append-only. An application's history is preserved automatically, and rollbacks are routine — see [Migrate to a new release](/how-to/operate-an-app/migration).
+- **Same primitives for code and data.** Application storage and the application itself are both corestores, which means the same replication, encryption, and update mechanics apply to both.
+
+## See also
+
+- [Manage installed applications](/how-to/operate-an-app/manage-installed-applications) — listing and dropping local application storage.
+- [Deploy your application](/how-to/operate-an-app/deployment) — staging and seeding new releases.
+- [Hypercore](/reference/building-blocks/hypercore) — the append-only log every other primitive composes.
+- [Hyperdrive](/reference/building-blocks/hyperdrive) — file-system layer used for application bundles and assets.
