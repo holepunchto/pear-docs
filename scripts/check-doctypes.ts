@@ -23,12 +23,18 @@ interface Mismatch {
  * Top-level directory under content/ -> required docType for every .mdx
  * inside (recursive). Singular, matching the @tetherto/docs-seo-schema
  * docType enum.
+ *
+ * `getting-started/` is a template-specific helper, not one of the four
+ * Diátaxis quadrants. The Diátaxis skill classifies it as "tutorial in
+ * spirit"; we keep it as its own top-level directory so the page sits
+ * outside `tutorials/` (which is reserved for full multi-step lessons).
  */
 const QUADRANT_DOCTYPE: Record<string, string> = {
   tutorials: 'tutorial',
   'how-to': 'how-to',
   reference: 'reference',
   explanation: 'explanation',
+  'getting-started': 'getting-started',
 };
 
 /**
