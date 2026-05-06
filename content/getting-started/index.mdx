@@ -1,0 +1,376 @@
+---
+title: "Getting started: build a peer-to-peer chat"
+description: "Build a Pear desktop chat in five files and 15 minutes — no servers, no clone, paste and run."
+docType: getting-started
+schemaType: TechArticle
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+In this guide you build a peer-to-peer desktop chat with Pear. By the end you have an Electron app that finds peers on the public distributed hash table (DHT) and exchanges messages with them — no server, no cloning, no boilerplate. Five files. You write them yourself.
+
+The example mirrors [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) — Pear's official Electron starter — minus over-the-air updates and persistent storage. The full Pear-Electron tutorial (coming soon) layers those features on top of what you build here.
+
+## What you'll build
+
+A small desktop window with a message list, a text input, and a peer counter. Two windows running on the same machine — or on a friend's machine on the other side of the world — discover each other through the DHT and stream messages directly.
+
+```text
+┌──────────────────────────────────┐
+│ peers: 1                         │
+├──────────────────────────────────┤
+│ alice: hey                       │
+│ you:   hello back                │
+├──────────────────────────────────┤
+│ > _                              │
+└──────────────────────────────────┘
+```
+
+The four moving parts you meet along the way:
+
+- **`pear-runtime`** — the library that lets a JavaScript host (Electron, here) embed [Bare](/explanation/runtime-and-languages) workers.
+- **The Bare worker** — a separate process that owns the peer-to-peer code. Acts as a local backend for the renderer.
+- **[Hyperswarm](/reference/building-blocks/hyperswarm)** — finds peers on a topic and gives you a connection.
+- **The Electron preload bridge** — the only door between the browser-style renderer and the worker.
+
+## Before you start
+
+You need:
+
+- Node.js ≥ 22.17 and npm ≥ 10.9
+- A POSIX-style terminal (macOS, Linux, or Windows with WSL)
+- About 15 minutes
+
+You do **not** need: git, the `pear` CLI, an account, or any cloud setup.
+
+## Project layout
+
+You create five files in a fresh folder:
+
+```text
+chat-app/
+├─ package.json
+├─ electron/
+│  ├─ main.js          # CommonJS
+│  └─ preload.js       # CommonJS
+├─ renderer/
+│  ├─ index.html
+│  └─ app.js
+└─ workers/
+   └─ main.mjs         # ESM (the .mjs extension forces ES module loading)
+```
+
+<Steps>
+
+<Step>
+
+### Set up the project
+
+Create the folder and initialize it:
+
+```bash
+mkdir chat-app
+cd chat-app
+npm init -y
+```
+
+Open the generated `package.json` and replace it with this:
+
+```json
+{
+  "name": "chat-app",
+  "version": "1.0.0",
+  "main": "electron/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "b4a": "^1.6.7",
+    "hyperswarm": "^4.17.0",
+    "pear-runtime": "^1.1.3"
+  },
+  "devDependencies": {
+    "electron": "^40.2.1"
+  }
+}
+```
+
+Install everything:
+
+```bash
+npm install
+```
+
+`pear-runtime` is the library that lets Electron run a [Bare](/explanation/runtime-and-languages) worker. `hyperswarm` discovers peers on a topic. `b4a` is a small Buffer-and-Uint8Array helper. `electron` is the desktop shell.
+
+</Step>
+
+<Step>
+
+### Write the worker
+
+The worker is where all the peer-to-peer code lives. It runs in a separate Bare process — not in Electron. That keeps the renderer free of native modules and the main process free of swarm logic.
+
+Create `workers/main.mjs`. The `.mjs` extension is important: it forces the file to load as an ES module regardless of what `"type"` your `package.json` declares.
+
+```js
+import Hyperswarm from 'hyperswarm'
+import b4a from 'b4a'
+
+const topic = b4a.from(Bare.argv[2], 'hex')
+const swarm = new Hyperswarm()
+const conns = []
+
+swarm.on('connection', (conn) => {
+  const id = b4a.toString(conn.remotePublicKey, 'hex').slice(0, 6)
+  conns.push(conn)
+  Bare.IPC.write(JSON.stringify({ type: 'peers', count: conns.length }))
+
+  conn.on('data', (data) => {
+    Bare.IPC.write(
+      JSON.stringify({ type: 'message', from: id, text: b4a.toString(data) })
+    )
+  })
+
+  conn.on('error', () => {})
+  conn.once('close', () => {
+    conns.splice(conns.indexOf(conn), 1)
+    Bare.IPC.write(JSON.stringify({ type: 'peers', count: conns.length }))
+  })
+})
+
+Bare.IPC.on('data', (data) => {
+  const text = b4a.toString(data)
+  for (const conn of conns) conn.write(text)
+})
+
+await swarm.join(topic, { client: true, server: true }).flushed()
+Bare.IPC.write(JSON.stringify({ type: 'ready' }))
+```
+
+You should recognise the swarm-on-a-topic pattern from the [Hyperswarm how-to](/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm). Three things to notice:
+
+- `Bare.IPC` is the worker's pipe back to the Electron main process. Anything you write to it shows up as a `'data'` event on the worker handle on the other side.
+- `Bare.argv[2]` is the first argument the main process passes when it spawns the worker. You'll wire that up next — the topic comes from there.
+- The worker depends on nothing Bare-specific beyond `Bare.IPC` and `Bare.argv`. `Hyperswarm` and `b4a` are normal npm packages that work in both Bare and Node.
+
+<Callout type="info">
+The worker uses ESM (`import`) because that's Bare's recommended convention for new code. The Electron files in the next steps use CommonJS (`require`) because that's what most Electron projects ship with. The two coexist cleanly thanks to the file-extension split: anything ending in `.mjs` is ESM, anything ending in `.js` follows the `package.json` `"type"` field — which we set to `"commonjs"` above.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Wire up Electron's main process
+
+The main process creates the window and starts the worker. `PearRuntime.run()` does most of the heavy lifting; everything else is plumbing.
+
+Create `electron/main.js`:
+
+```js
+const { app, BrowserWindow, ipcMain } = require('electron')
+const path = require('path')
+const os = require('os')
+const crypto = require('crypto')
+const PearRuntime = require('pear-runtime')
+
+const topic = crypto
+  .createHash('sha256')
+  .update('pear-getting-started-chat:' + os.userInfo().username)
+  .digest('hex')
+
+let worker = null
+
+function createWindow() {
+  const win = new BrowserWindow({
+    width: 480,
+    height: 600,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false
+    }
+  })
+
+  const workerPath = path.join(__dirname, '..', 'workers', 'main.mjs')
+  worker = PearRuntime.run(workerPath, [topic])
+
+  worker.on('data', (data) => {
+    if (!win.isDestroyed()) win.webContents.send('chat:from-worker', data.toString())
+  })
+
+  worker.stderr.on('data', (data) => {
+    console.error('[worker]', data.toString())
+  })
+
+  ipcMain.handle('chat:send', (_evt, text) => {
+    worker.write(Buffer.from(text))
+  })
+
+  win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'))
+}
+
+app.whenReady().then(createWindow)
+
+app.on('window-all-closed', () => {
+  if (worker) worker.destroy()
+  app.quit()
+})
+```
+
+Three things happen here:
+
+- `PearRuntime.run(workerPath, [topic])` is the static method on `pear-runtime` that spawns a Bare worker. The second argument becomes the worker's `Bare.argv` — that's how the topic reaches the worker. The call returns a duplex stream whose other end is `Bare.IPC` inside the worker.
+- The topic is derived from the OS username with a fixed prefix. Two windows on **your** machine find each other immediately while staying isolated from other readers running this same example. Change the prefix string `'pear-getting-started-chat:'` to share a private room with a friend.
+- This is the simplest form of `pear-runtime`. The full `new PearRuntime({ ... })` form — with the OTA updater and a shared Corestore — is what you use once you start [shipping updates](/how-to/operate-an-app/deployment).
+
+</Step>
+
+<Step>
+
+### Add the preload bridge
+
+The renderer runs in a sandboxed browser context with `contextIsolation: true`. It can't talk to the worker directly. The preload script is a tiny adapter that exposes a `window.chat` object the renderer can use.
+
+Create `electron/preload.js`:
+
+```js
+const { contextBridge, ipcRenderer } = require('electron')
+
+contextBridge.exposeInMainWorld('chat', {
+  send(text) {
+    return ipcRenderer.invoke('chat:send', text)
+  },
+  onMessage(listener) {
+    const wrap = (_evt, payload) => listener(JSON.parse(payload))
+    ipcRenderer.on('chat:from-worker', wrap)
+    return () => ipcRenderer.removeListener('chat:from-worker', wrap)
+  }
+})
+```
+
+`exposeInMainWorld` puts a single `chat` object on the renderer's `window`. Two methods: `send(text)` ships a message to the worker through the main process, and `onMessage(listener)` subscribes to anything the worker pushes back.
+
+</Step>
+
+<Step>
+
+### Build the renderer
+
+The renderer is a normal HTML page. Nothing here is Pear-specific — it calls `window.chat.send` and `window.chat.onMessage`.
+
+Create `renderer/index.html`:
+
+```html
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Pear chat</title>
+    <style>
+      body { font-family: -apple-system, system-ui, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #0e1117; color: #f0f6fc; }
+      header { padding: 8px 12px; background: #161b22; font-size: 13px; border-bottom: 1px solid #30363d; }
+      #log { flex: 1; overflow-y: auto; padding: 12px; }
+      #log .msg { margin: 4px 0; }
+      #log .from { color: #58a6ff; margin-right: 6px; }
+      footer { padding: 8px; border-top: 1px solid #30363d; }
+      input { width: 100%; padding: 8px; background: #0e1117; color: #f0f6fc; border: 1px solid #30363d; border-radius: 4px; font: inherit; }
+    </style>
+  </head>
+  <body>
+    <header>peers: <span id="peers">0</span></header>
+    <main id="log"></main>
+    <footer>
+      <input id="input" placeholder="type and press enter" autofocus />
+    </footer>
+    <script src="app.js"></script>
+  </body>
+</html>
+```
+
+Create `renderer/app.js`:
+
+```js
+const log = document.getElementById('log')
+const peers = document.getElementById('peers')
+const input = document.getElementById('input')
+
+function append(from, text) {
+  const div = document.createElement('div')
+  div.className = 'msg'
+  div.innerHTML = '<span class="from"></span><span class="text"></span>'
+  div.querySelector('.from').textContent = from + ':'
+  div.querySelector('.text').textContent = text
+  log.appendChild(div)
+  log.scrollTop = log.scrollHeight
+}
+
+window.chat.onMessage((event) => {
+  if (event.type === 'peers') peers.textContent = event.count
+  else if (event.type === 'message') append(event.from, event.text)
+  else if (event.type === 'ready') append('system', 'connected to swarm')
+})
+
+input.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || !input.value) return
+  const text = input.value
+  input.value = ''
+  append('you', text)
+  window.chat.send(text)
+})
+```
+
+</Step>
+
+<Step>
+
+### Run it
+
+In your terminal, from the `chat-app` folder:
+
+```bash
+npm start
+```
+
+A small dark window opens. The header shows `peers: 0` until another peer joins.
+
+Open a second terminal in the same folder and run `npm start` again. A second window appears. Within a few seconds the `peers` counter on both windows ticks to `1` and you see `system: connected to swarm` in the message log.
+
+Type a message in one window and press Enter. It shows up in the other window prefixed with the sender's short peer id (six hex characters).
+
+<Callout type="info">
+First connection can take 5–15 seconds while Hyperswarm announces the topic to the DHT. If both peers are on the same machine they connect locally; on different networks they hole-punch through the DHT. If two readers happen to share an OS username they'll find each other on the public DHT — change the prefix string in `electron/main.js` if that bothers you.
+</Callout>
+
+</Step>
+
+</Steps>
+
+## What you built
+
+A peer-to-peer desktop chat that runs without a server. Each piece you wrote maps to one concept:
+
+| File | What it does | Pear concept |
+|---|---|---|
+| `package.json` | Declares Electron, Hyperswarm, Pear runtime as deps | The Pear stack you embed into a JS host |
+| `workers/main.mjs` | Hyperswarm + topic + connection handlers | Peer-to-peer code lives in a [Bare worker](/explanation/runtime-and-languages) |
+| `electron/main.js` | `PearRuntime.run()` to spawn the worker | The worker is your local backend |
+| `electron/preload.js` | `contextBridge.exposeInMainWorld` | The single door from renderer to worker |
+| `renderer/*.{html,js}` | Plain DOM, no Pear imports | The view layer is a plain web page |
+
+Three things are deliberately missing:
+
+- **No persistence.** Messages disappear when you close the window. You add this with [Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore).
+- **No over-the-air updates.** You add this with the full `new PearRuntime({ ... })` form and a `pear://` upgrade link. See the [deployment how-to](/how-to/operate-an-app/deployment).
+- **No packaging.** `npm start` runs Electron in development mode. To ship a `.app`, `.AppImage`, or `.msix`, see [distribute as a binary](/how-to/operate-an-app/distribute-as-binary).
+
+## Where to go next
+
+- For the production-grade Electron starter you'd actually clone for a real project, see [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron). It adds OTA updates, the staged → provisioned → multisig deployment pipeline, and per-OS packaging.
+- To swap Hyperswarm for a direct one-to-one connection by public key, see [Connect two peers by key with HyperDHT](/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht).
+- To persist messages so a reader can catch up after the writer disconnects, see [Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore).
+- To deploy what you built and ship updates over the air, see [Deploy your application](/how-to/operate-an-app/deployment).
+- To understand why Pear ships with two runtimes (Node-style for Electron, Bare for workers), read [Runtime and languages](/explanation/runtime-and-languages).
