@@ -1,0 +1,81 @@
+---
+title: Troubleshoot desktop releases
+description: >-
+  Fix common Pear desktop OTA and staging problems — version bumps, upgrade
+  links, seeding, lost keys, and pear-build folder layout.
+docType: how-to
+schemaType: TechArticle
+---
+
+Use this guide when **desktop OTA** or **`pear stage`** behaves unexpectedly after you have a [deployment directory](/explanation/release-pipeline#deployment-directory-and-release-lines) and a release line. For general Pear and Bare development issues, see [Troubleshoot common issues](/how-to/operate-an-app/troubleshooting).
+
+<Callout type="info">
+
+**Related:** [Troubleshoot common issues](/how-to/operate-an-app/troubleshooting) covers broader Pear and Bare development; this page focuses on desktop release and OTA.
+
+</Callout>
+
+## App did not update
+
+### Bump `version`
+
+An update will not apply unless `package.json` **`version`** changes. Use `npm version patch` (or the level you intend) before rebuilding and staging.
+
+### Confirm the `upgrade` link
+
+The `upgrade` field must point at the **`pear://` link** you actually staged to. If it points at an old line, clients will track the wrong drive.
+
+### Seed the link
+
+The upgrade target must be **seeded** so peers can find it:
+
+```bash
+pear seed pear://your-link-here
+```
+
+Keep **always-on seeders** for production links; user laptops alone are a fragile source.
+
+### Seeder came online after the client
+
+Discovery is asynchronous. If the seeder was offline when the client first looked up the key, the client may retry on a **roughly fifteen-minute** cadence. Wait, or add more seeders, then restart the client once the key is announced.
+
+### Seeder unreachable
+
+Add the key to **multiple** reachable seeders so OTA does not depend on one network path.
+
+## Recovering from lost write access
+
+- **Staged** and **provisioned** drives are **machine-bound** in normal setups — if you lose the data that holds write capability to those keys, you cannot “undelete” the same keys from thin air.
+- **Multisig** production drives are designed **not** to be tied to one laptop’s disk state in the same way.
+
+**If a stage link is lost:** create a **new** link with `pear touch`, seed it, stage to it, and repoint **stage-line** builds’ `upgrade` fields as needed.
+
+**If a provision key is lost:** bootstrap a new provision target using your **production** multisig link as the stable reference (see your `multisig.json` workflow), then re-point `srcKey` in multisig config after you have a healthy new provision drive. Details vary by team — mirror the recovery flow in the sample repo’s README or internal runbooks.
+
+## `pear stage` shows huge size growth
+
+### Deployment folder nested inside the app
+
+If the **deployment directory** (output of `pear-build`) lives **inside** the application tree that gets staged, each stage can **re-include the previous deployment blob**, so diffs grow without bound.
+
+**Fix:** always emit `pear-build` output **beside** the repo root (sibling `target` directory) or omit `--target` so the tool writes a versioned folder **outside** the app tree. Never run:
+
+```bash
+# Bad: target inside the app you are about to stage
+pear-build ... --package ./my-app/package.json --target ./my-app/deploy-out
+```
+
+**Do** run from a parent directory:
+
+```bash
+# Good: target next to the app
+pear-build ... --package ./my-app/package.json --target ./deploy-out/my-app-1.2.3
+```
+
+Keeping one folder per version also makes **rollback** easier: you can re-stage or re-provision from an older deployment directory.
+
+## Where to go next
+
+- [Deploy your application](/how-to/operate-an-app/deployment) — dry-run staging and provision commands.
+- [Build desktop distributables](/how-to/operate-an-app/build-desktop-distributables) — correct `pear-build` invocation before staging.
+- [Release pipeline](/explanation/release-pipeline) — which link each build should follow.
