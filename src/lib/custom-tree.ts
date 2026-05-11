@@ -18,6 +18,7 @@ import type { Node } from 'fumadocs-core/page-tree';
  */
 export const customTree: Node[] = [
   { type: 'page', name: 'Pear by Holepunch', url: '/' },
+  { type: 'page', name: 'Getting Started', url: '/getting-started' },
 
   {
     type: 'folder',

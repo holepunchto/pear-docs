@@ -1,4 +1,5 @@
 import defaultMdxComponents from 'fumadocs-ui/mdx';
+import { ImageZoom } from 'fumadocs-ui/components/image-zoom';
 import type { MDXComponents } from 'mdx/types';
 import type { ImgHTMLAttributes } from 'react';
 import { ImageGrid } from '@/components/ImageGrid';
@@ -6,24 +7,31 @@ import { Image } from '@/components/Image';
 import { cn } from '@/lib/cn';
 
 /**
- * Markdown `![]()` maps to `img`. We intentionally use the native element
- * (not `next/image`) because MDX images don't carry width/height metadata,
- * and `next/image` requires both. The `alt` attribute comes from MDX's
- * bracketed text and is forwarded via `...rest`.
+ * Markdown `![]()` maps to `img`. We render a native `<img>` (not
+ * `next/image`) because markdown images often omit width/height. Click-to-zoom
+ * uses Fumadocs `ImageZoom` + `react-medium-image-zoom`.
  */
 function MdxImg({
   className,
   srcSet,
   srcset,
+  src,
+  alt,
   ...rest
 }: ImgHTMLAttributes<HTMLImageElement> & { srcset?: string }) {
+  const mergedClassName = cn('rounded-lg', className);
+  const srcStr = typeof src === 'string' ? src : undefined;
   return (
-    // eslint-disable-next-line jsx-a11y/alt-text, @next/next/no-img-element
-    <img
-      {...rest}
-      srcSet={srcSet ?? srcset}
-      className={cn('rounded-lg', className)}
-    />
+    <ImageZoom src={srcStr} alt={alt ?? ''}>
+      {/* eslint-disable-next-line jsx-a11y/alt-text, @next/next/no-img-element */}
+      <img
+        {...rest}
+        src={src}
+        alt={alt}
+        srcSet={srcSet ?? srcset}
+        className={mergedClassName}
+      />
+    </ImageZoom>
   );
 }
 
