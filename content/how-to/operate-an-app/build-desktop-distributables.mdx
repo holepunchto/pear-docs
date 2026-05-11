@@ -1,0 +1,79 @@
+---
+title: Build desktop distributables
+description: >-
+  Produce signed macOS, Windows, and Linux artifacts for a Pear Electron app,
+  then assemble a multi-architecture deployment directory for pear stage.
+docType: how-to
+schemaType: TechArticle
+---
+
+This guide shows you how to **produce per-OS distributables** and assemble a **deployment directory** that `pear stage` can consume. It assumes you already ship with Electron tooling (for example Electron Forge) and a Pear release line; for the overall pipeline, read [Release pipeline](/explanation/release-pipeline) and [Deploy your application](/how-to/operate-an-app/deployment).
+
+<Callout type="info">
+
+**Related:** [Desktop release npm scripts](/how-to/operate-an-app/desktop-release-npm-scripts) maps common `package.json` targets; [Deploy your application](/how-to/operate-an-app/deployment) and [Release pipeline](/explanation/release-pipeline) place this step in the full flow.
+
+</Callout>
+
+## Before you start
+
+- [Node.js](https://nodejs.org/) and npm on each build host (or CI runners) for the target OS.
+- [`pear` CLI](/reference/cli) available (`npx pear`) for later `pear-build` / `pear stage` steps.
+- Branding fields filled in `package.json` (`name`, `productName`, `description`, `author`, `license`) and icons under `build/` where your template expects them.
+
+## Checklist (all platforms)
+
+Complete these before you cut binaries you will ship to others:
+
+- Application metadata and icons are **final for the brand** you are releasing under.
+- You know which **release line** link (development, staging, rc, etc.) this build will track — see [Release pipeline](/explanation/release-pipeline).
+- For **macOS** and **Windows** production paths, plan **vendor signing** up front (same certificate across builds for MSIX updates).
+
+## macOS
+
+1. On a Mac, run your project’s macOS make script (often `npm run make:darwin` or `electron-forge make --platform=darwin`).
+2. Unsigned local `.app` bundles are fine for **your machine**; **other Macs** will quarantine unsigned builds. For OTA installs on other machines you need **code signing and notarization** with Apple credentials.
+3. Set the environment variables your template documents (commonly `MAC_CODESIGN_IDENTITY`, `APPLE_TEAM_ID`, `APPLE_ID`, and an **app-specific** `APPLE_PASSWORD` — not your Apple ID login password).
+4. Maintain `build/entitlements.mac.plist` for Hardened Runtime: typical Pear stacks need JIT and related entitlements for the Bare runtime; adjust if you add camera, microphone, or other capabilities.
+
+Follow the [Electron Forge macOS code signing guide](https://www.electronforge.io/guides/code-signing/code-signing-macos) for credential setup.
+
+## Windows
+
+1. Install [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) and [PowerShell 7+](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows) on the build host.
+2. Run your Windows make script (often `npm run make:win32` or `electron-forge make --platform=win32`).
+3. Without production credentials, many templates generate a **self-signed** certificate tied to that machine — fine for local iteration, not portable.
+4. For production MSIX, supply a persistent code signing certificate (`WINDOWS_CERTIFICATE_FILE`, `WINDOWS_CERTIFICATE_PASSWORD`) and keep the **`Publisher`** field in `AppxManifest.xml` aligned with the certificate subject — Windows rejects updates when the publisher string drifts.
+
+See [Microsoft’s MSIX signing documentation](https://learn.microsoft.com/en-us/windows/msix/package/create-certificate-package-signing).
+
+## Linux
+
+1. On Linux (or a Linux CI runner), run your Linux make script (often `npm run make:linux`).
+2. Verify the produced AppImage (or your chosen format) launches on a clean VM before you fold it into the deployment directory.
+
+## Build the deployment directory
+
+After you have one build **per target architecture** (darwin arm64/x64, linux arm64/x64, win32 x64, etc.), run [`pear-build`](https://www.npmjs.com/package/pear-build) to merge them into a **single deployment directory** (typically `package.json` + `by-arch/.../app`).
+
+- Run `pear-build` **outside** the application source tree, or pass `--target` to a sibling folder — never nest the deployment folder inside a tree that will itself be staged, or sizes will balloon on every stage. See [Troubleshoot desktop releases](/how-to/operate-an-app/troubleshoot-desktop-releases).
+
+Example shape (paths illustrative only):
+
+```bash
+pear-build --package=./my-app/package.json \
+  --darwin-arm64-app ./out/MyApp-darwin-arm64/MyApp.app \
+  --darwin-x64-app ./out/MyApp-darwin-x64/MyApp.app \
+  --linux-arm64-app ./out/MyApp-linux-arm64/MyApp.AppImage \
+  --linux-x64-app ./out/MyApp-linux-x64/MyApp.AppImage \
+  --win32-x64-app ./out/MyApp-win32-x64/MyApp.msix \
+  --target my-app-1.2.3
+```
+
+Then continue with **dry-run** and real **`pear stage`** as described in [Deploy your application](/how-to/operate-an-app/deployment).
+
+## Where to go next
+
+- [Desktop release npm scripts](/how-to/operate-an-app/desktop-release-npm-scripts) — common `npm` entry points in sample repos.
+- [Troubleshoot desktop releases](/how-to/operate-an-app/troubleshoot-desktop-releases) — OTA did not land, `pear stage` sizes exploded, or keys were lost.
+- [Release pipeline glossary](/reference/release-pipeline-glossary) — terminology for links, lines, and multisig.

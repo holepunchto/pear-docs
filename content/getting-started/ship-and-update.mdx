@@ -1,0 +1,277 @@
+---
+title: "Getting started, part 3: ship and update"
+description: "Third of three onboarding steps: wire pear-runtime for OTA, add a pear:// upgrade link, and run touch, seed, and stage on your own machine."
+docType: getting-started
+schemaType: TechArticle
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+This page is **part 3 of 3** in the hands-on getting started path. It assumes you finished [part 1 — the Hyperswarm chat](/getting-started/chat) and [part 2 — the on-disk transcript](/getting-started/persist).
+
+When you **finish this section**, you will have:
+* a real **`pear://` upgrade link** in `package.json`,
+* replaced `PearRuntime.run(...)` with a **`Pear` instance** on the **[over-the-air (OTA) update path](/reference/runtime#updates)** — the runtime follows your `upgrade` link, syncs the **application drive**, and emits **`updating` / `updated`** while a new build lands (see [Storage and distribution](/explanation/storage-and-distribution) for how peers get bits without a central server),
+* run the **Pear CLI** (`touch`, `seed`, `stage` dry-run) so you have executed the same *shape* of flow production desktop apps use.
+
+## What you'll change
+
+| Piece | Role |
+| --- | --- |
+| **`upgrade` in `package.json`** | Tells the runtime which **application drive** to track on the [OTA path](/reference/runtime#updates). |
+| **`new Pear({ ...pkg, dir, app, updates })`** | Full embed: storage path, binary path, and whether [updates](/reference/runtime#updates) run for this process (see [disabling updates](/reference/runtime#disabling-updates)). |
+| **`pear.run(workerPath, [topic, storageRoot])`** | Same worker IPC as before, but owned by the `Pear` instance so it shares `pear.storage`. |
+| **`pear touch` / `pear seed` / `pear stage`** | Create a link, keep it announced, and publish a **deployment directory** when you have one. |
+
+<Steps>
+
+<Step>
+
+### Create a `pear://` link and add it to `package.json`
+
+From the `chat-app` folder, create a new application link:
+
+```bash
+npx pear touch
+```
+
+The command prints a `pear://…` URL. Open the `package.json` file and add an **`upgrade`** field with that exact string (valid JSON — no comments):
+
+```json
+{
+  "name": "chat-app",
+  "version": "1.0.0",
+  "upgrade": "pear://paste-your-touch-output-here",
+  ...
+}
+```
+
+The [`upgrade` field](/reference/runtime#packagejson-configuration) is what the embedded runtime uses to resolve which Hyperdrive to follow.
+When you bump **`version`** and publish a new build to that link, peers that run with updates enabled can pull the new application bundle. This is the **`pear://` upgrade link** you created with `pear touch`.
+
+</Step>
+
+<Step>
+
+### Point `npm start` at `--no-updates` by default
+
+While you develop locally you usually **do not** want the running app to swap itself for whatever is already seeded on your `upgrade` link. Pass **`--no-updates`** on the default start command; use the **`start:with-updates`** script when you want to **exercise the [OTA path](/reference/runtime#updates)** end to end. After you **stage** a build to your link, that run can sync the **application drive** and emit **`updating` / `updated`** ([Runtime → Updates](/reference/runtime#updates)).
+
+In the `package.json` file, add a **`scripts`** section with the following:
+
+```json
+"scripts": {
+  "start": "electron . --no-updates",
+  "start:with-updates": "electron . --updates",
+  ...
+}
+```
+
+If you used [part 2’s second peer](/getting-started/persist) (`start:peer`), add the same flag there so both profiles behave predictably:
+
+```json
+"start:peer": "electron . --user-data-dir=.user-data-peer --no-updates"
+```
+
+</Step>
+
+<Step>
+
+### Replace `electron/main.js` with a `Pear` instance
+
+Swap the static **`PearRuntime.run`** helper for a **`Pear`** instance created after `app.whenReady()`. The pattern matches [`pear-runtime` instantiate](/reference/runtime#instantiate) and [`running workers`](/reference/runtime#running-workers): 
+1. spread your **`package.json`** into the options
+2. set **`dir`** to Electron's `userData` folder
+3. set **`app`** to `process.execPath`
+4. set **`updates`** from whether **`--updates`** appears in `process.argv`
+
+Keep your **topic**, **preload**, **ipcMain** wiring, and the **same worker arguments** (`topic` and a folder under `pear.storage` so part 2’s worker still receives `Bare.argv[2]` and `Bare.argv[3]`) as before. This is the same worker that was used in [part 2 — add persistence](/getting-started/persist).
+
+Replace the contents of `electron/main.js` with:
+
+```js
+const { app, BrowserWindow, ipcMain } = require('electron')
+const fs = require('fs')
+const path = require('path')
+const os = require('os')
+const crypto = require('crypto')
+const Pear = require('pear-runtime')
+
+const pkg = require(path.join(__dirname, '..', 'package.json'))
+
+const topic = crypto
+  .createHash('sha256')
+  .update('pear-getting-started-chat:' + os.userInfo().username)
+  .digest('hex')
+
+let pear = null
+let worker = null
+
+function createWindow() {
+  const win = new BrowserWindow({
+    width: 480,
+    height: 600,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false
+    }
+  })
+
+  const workerPath = path.join(__dirname, '..', 'workers', 'main.mjs')
+  const storageRoot = path.join(pear.storage, 'pear-chat-core')
+  fs.mkdirSync(storageRoot, { recursive: true })
+
+  win.webContents.once('did-finish-load', () => {
+    worker = pear.run(workerPath, [topic, storageRoot])
+
+    worker.on('data', (data) => {
+      if (!win.isDestroyed()) win.webContents.send('chat:from-worker', data.toString())
+    })
+
+    worker.stderr.on('data', (data) => {
+      console.error('[worker]', data.toString())
+    })
+
+    worker.stdout.on('data', () => {})
+  })
+
+  win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'))
+}
+
+app.whenReady().then(() => {
+  const dir = app.getPath('userData')
+  const updates = process.argv.includes('--updates')
+
+  pear = new Pear({
+    ...pkg,
+    dir,
+    app: process.execPath,
+    updates
+  })
+
+  pear.on('updating', () => console.log('[pear] updating…'))
+  pear.on('updated', () =>
+    console.log('[pear] updated — restart the app to run the new build')
+  )
+
+  ipcMain.handle('chat:send', (_evt, text) => {
+    if (worker) worker.write(Buffer.from(text))
+  })
+
+  createWindow()
+})
+
+app.on('window-all-closed', () => {
+  if (worker) worker.destroy()
+  app.quit()
+})
+```
+### Run the app
+
+Run **`npm start`**. The chat should behave like part 2: persistence under `pear.storage`, same Hyperswarm topic, no surprise OTA while `--no-updates` is in effect.
+
+<Callout type="info">
+
+`pear.storage` is the resolved application storage directory for this `Pear` instance (under the `dir` you pass in). The worker still receives **`Bare.argv[2]`** = topic hex and **`Bare.argv[3]`** = the `storageRoot` folder you pass, unchanged from [part 2](/getting-started/persist).
+
+</Callout>
+
+</Step>
+
+<Step>
+
+### Seed your `upgrade` link
+
+So other peers (and your own app when **[updates](/reference/runtime#updates)** are on) can discover the **application drive** behind your link, **announce** it from a machine that will stay online long enough to test ([Storage and distribution](/explanation/storage-and-distribution) — **seeding**):
+
+```bash
+npx pear seed pear://your-link-from-touch
+```
+
+Use the same `pear://` value as in `package.json` **`upgrade`**. Leave this running in a terminal while you test, or run it on an always-on host later.
+
+You have now **completed** the “link exists + is seeded” slice of shipping. The drive gains real application bytes when you **stage** a deployment directory (next step).
+
+</Step>
+
+<Step>
+
+### Stage a deployment directory (dry-run, then real)
+
+Publishing replaces the contents of the drive behind your `pear://` link with a **deployment directory** — a multi-architecture folder produced after you build desktop binaries and run [`pear-build`](https://www.npmjs.com/package/pear-build) 
+
+<Callout type="tip">
+See [Build desktop distributables](/how-to/operate-an-app/build-desktop-distributables) for the full matrix.
+</Callout>
+
+#### Dry-run the stage command
+
+As soon as you have **any** such folder on disk (even from a minimal local experiment), you can **inspect** what staging would do with a dry-run:
+
+```bash
+npx pear stage --dry-run pear://your-link ./path-to-your-deployment-directory
+```
+
+#### Stage the deployment directory
+
+Review the diff output. When it looks right, run the command again to stage the deployment directory:
+
+```bash
+npx pear stage pear://your-link ./path-to-your-deployment-directory
+```
+
+After a successful stage, peers tracking that link can replicate the new tree — the same **P2P distribution** model as in [Storage and distribution](/explanation/storage-and-distribution). With **`npm run start:with-updates`**, your dev app walks the **[OTA path](/reference/runtime#updates)**; in production you typically restart or apply the swap as your shell describes ([Pear desktop application architecture](/explanation/pear-desktop-architecture)).
+
+<Callout type="info">
+
+**Provision** and **multisig** tighten trust for production release lines — see [Release pipeline](/explanation/release-pipeline) for the diagram and [Deploy your application](/how-to/operate-an-app/deployment) when you move past solo staging.
+
+</Callout>
+
+</Step>
+
+</Steps>
+
+## What you completed
+
+- **`upgrade`** in `package.json` tied to a link you created with **`pear touch`**.
+- Embedded **`Pear`** runtime with **`--no-updates` / `--updates`** control from the command line.
+- **Worker** still runs Hyperswarm + Corestore transcript; storage lives under **`pear.storage`**.
+- **`pear seed`** and **`pear stage`** (including **`--dry-run`**) executed or ready to run with your deployment folder path.
+
+## Where to go next
+
+### Explanations
+
+- [Storage and distribution](/explanation/storage-and-distribution) — on-disk layout, **application drives**, seeders, and how updates propagate over the swarm.
+- [Pear desktop application architecture](/explanation/pear-desktop-architecture) — main process, **OTA** lifecycle, workers, and `pear.storage` in Electron.
+- [Release pipeline](/explanation/release-pipeline) — **stage → provision → multisig** and release lines (beyond solo `pear stage`).
+- [Runtime and languages](/explanation/runtime-and-languages) — why **Bare workers** sit beside Node-style Electron.
+- [Dependencies and network](/explanation/dependencies-and-network) — what leaving the **Hyperswarm** / DHT path implies for IP and connectivity (tangential to chat, relevant when you ship widely).
+
+### How-tos
+
+- [Deploy your application](/how-to/operate-an-app/deployment) — end-to-end desktop release checklist after your first successful stage.
+- [Build desktop distributables](/how-to/operate-an-app/build-desktop-distributables) — signing, **`pear-build`**, deployment directory shape.
+- [Desktop release npm scripts](/how-to/operate-an-app/desktop-release-npm-scripts) — mapping **`electron-forge`** (or similar) scripts to the pipeline you staged here.
+- [Troubleshoot desktop releases](/how-to/operate-an-app/troubleshoot-desktop-releases) — **OTA** stuck, **`pear seed`**, **`pear stage`** size blowups, lost keys.
+- [Distribute as a binary](/how-to/operate-an-app/distribute-as-binary) — when a **native installer** is the hand-off instead of (or before) pure **`pear://`** flows.
+- [Migrate to a new release](/how-to/operate-an-app/migration) — roll forward / rollback once users track a link.
+- [Manage installed applications](/how-to/operate-an-app/manage-installed-applications) — what operators see after install.
+- [Apply recommended practices](/how-to/operate-an-app/recommended-practices) and [Troubleshoot common issues](/how-to/operate-an-app/troubleshooting) — general Pear / Bare hygiene beyond desktop OTA.
+
+### Reference
+
+- [Runtime](/reference/runtime) — **`upgrade`**, **`new Pear`**, **[updates](/reference/runtime#updates)**, **workers**, **storage**.
+- [Configuration](/reference/configuration) — `package.json` fields that affect **stage / seed / updates** (companion to Runtime).
+- [CLI](/reference/cli) — **`pear touch`**, **`seed`**, **`stage`**, **`dump`**, flags.
+- [Release pipeline glossary](/reference/release-pipeline-glossary) — **OTA**, **application drive**, **versioned links**, **seeding**, **multisig**, **release lines**.
+- [Hyperdrive](/reference/building-blocks/hyperdrive) — the filesystem primitive behind an **application** link (tangential but precise).
+
+### Back in this path
+
+- [Getting started — introduction](/getting-started) — overview of all three steps.
+- [Part 1 — chat](/getting-started/chat) and [Part 2 — persist](/getting-started/persist) — reread or compare your files.
+

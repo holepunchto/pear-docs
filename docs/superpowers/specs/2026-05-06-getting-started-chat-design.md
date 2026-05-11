@@ -17,7 +17,7 @@
 
 ## Decision
 
-Ship `content/getting-started/index.mdx` as a **type-along peer-to-peer chat tutorial** based on the architecture of [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron), simplified to in-memory messaging (no Hypercore, no OTA updates, no electron-forge, no packaging).
+Ship `content/getting-started/index.mdx` as a **type-along peer-to-peer chat tutorial** based on the architecture in `content/explanation/pear-desktop-architecture.mdx`, aligned with the upstream `holepunchto/hello-pear-electron` template, simplified to in-memory messaging (no Hypercore, no OTA updates, no electron-forge, no packaging).
 
 The page is the single source of orientation in the docs. Task 2 (the full tutorial) and Task 3 (the how-to set) build on top of it.
 
