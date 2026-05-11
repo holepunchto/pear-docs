@@ -1,4 +1,4 @@
-import NextImage from "next/image";
+import { ImageZoom } from 'fumadocs-ui/components/image-zoom';
 
 interface ImageProps {
   src: string;
@@ -17,16 +17,16 @@ const sizes = {
   full: 'w-full',
 };
 
-export function Image({ 
-  src, 
-  alt, 
-  size = 'full', 
+export function Image({
+  src,
+  alt,
+  size = 'full',
   className = '',
   width = 800,
   height = 600,
 }: ImageProps) {
   return (
-    <NextImage
+    <ImageZoom
       src={src}
       alt={alt}
       width={width}
