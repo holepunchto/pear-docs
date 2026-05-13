@@ -7,13 +7,20 @@ export const CONTENT_DIR = 'content';
 export const PUBLIC_DIR = 'public';
 
 /**
- * Recursively get all MDX and MD files from a directory
+ * Recursively get all MDX and MD files from a directory.
+ *
+ * Underscore-prefixed files and directories are treated as Fumadocs partials
+ * (inlined via `<include>./_partial.mdx</include>`) and skipped — they are not
+ * standalone pages and shouldn't be checked for docType, slugs, OG metadata,
+ * or redirects. This mirrors the `files: ['!**\/_*.{md,mdx}']` filter on the
+ * Fumadocs `defineDocs` collection in `source.config.ts`.
  */
 export async function getFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const files: string[] = [];
 
   for (const entry of entries) {
+    if (entry.name.startsWith('_')) continue;
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
       files.push(...(await getFiles(path)));

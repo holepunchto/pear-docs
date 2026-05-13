@@ -38,12 +38,11 @@ const QUADRANT_DOCTYPE: Record<string, string> = {
 };
 
 /**
- * The site-root index is conceptually an explanation (it tells you what
- * Pear *is*) so it gets the explanation docType. ADR §8 calls this out
- * as a special case.
+ * The site-root index is a quadrant launcher, so it uses the generic page
+ * docType instead of pretending to be one of the four Diátaxis modes.
  */
 const ROOT_INDEX = 'content/index.mdx';
-const ROOT_INDEX_DOCTYPE = 'explanation';
+const ROOT_INDEX_DOCTYPE = 'page';
 
 /**
  * Files temporarily exempted from the dir<->docType rule. Empty today; the

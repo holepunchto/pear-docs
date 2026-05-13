@@ -1,0 +1,634 @@
+---
+title: "Add persistence with Corestore"
+description: "Second of four onboarding steps: switch to new PearRuntime({ ... }), wire OTA events through a bridge, and persist the chat transcript with Corestore."
+docType: getting-started
+schemaType: TechArticle
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+This is **part 2 of 4** in the [getting started path](/getting-started). You take the working chat from [part 1](/getting-started/chat) and reshape it to match the official [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) template — the same template the Holepunch team ships and the same shape [Keet](https://keet.io) and [PearPass](https://pass.pears.com) use under the hood. The biggest user-visible change is a Corestore-backed transcript so the chat survives a restart; under the hood you also wire OTA events, a single-instance lock, a `paparam` CLI, and a worker proxy.
+
+<include>./_hello-pear-electron-callout.mdx</include>
+
+By the end you have:
+
+- The full `new PearRuntime({ ... })` instance form, with a [Corestore](/reference/helpers/corestore) and a [Hyperswarm](/reference/building-blocks/hyperswarm) the runtime uses to replicate updates.
+- A preload `bridge` that mirrors `hello-pear-electron`'s API surface (`startWorker`, `onWorkerIPC`, `writeWorkerIPC`, `onPearEvent`, `applyUpdate`).
+- `paparam` flags (`--storage`, `--no-updates`) so you can run two local peers from one packaged binary.
+- A single-instance lock and a `pear-chat://` deep-link handler.
+- A chat transcript persisted on disk, replayed into the UI on every launch.
+- OTA event wiring ready for [part 3](/getting-started/ship) and [part 4](/getting-started/update) to flip on.
+
+## Before you start
+
+You need the working project from [part 1 — build the peer-to-peer chat](/getting-started/chat).
+
+## What you'll change
+
+| File | Change |
+| --- | --- |
+| `package.json` | Add [`corestore`](https://www.npmjs.com/package/corestore), [`paparam`](https://www.npmjs.com/package/paparam), [`which-runtime`](https://www.npmjs.com/package/which-runtime), [`bare-path`](https://www.npmjs.com/package/bare-path); add an `upgrade` placeholder link; flip `start` to forward `--no-updates`. |
+| `electron/main.js` | Rewrite around `new PearRuntime({ ... })`, `paparam`, `which-runtime`, single-instance lock, deep-link handler, and a `getWorker` helper that forwards `pear:worker:*` IPC to every window. |
+| `electron/preload.js` | Expose `window.bridge` with `pkg`, `applyUpdate`, `appAfterUpdate`, `onPearEvent`, `startWorker`, `onWorkerStdout`, `onWorkerStderr`, `onWorkerIPC`, `onWorkerExit`, `writeWorkerIPC`. |
+| `workers/main.mjs` | Open a [Corestore](/reference/helpers/corestore) on `Bare.argv[2]` (the storage path), keep a `chat-transcript` Hypercore, replay it on startup, append every message. |
+| `renderer/app.js` | Switch from `window.chat` to `window.bridge`; start the worker through the bridge; render an "Update ready!" button driven by `bridge.onPearEvent`. |
+
+The `renderer/index.html` from part 1 needs one small addition (the update button); the rest stays put.
+
+<Steps>
+
+<Step>
+
+### Install the new dependencies
+
+From the `pear-chat` folder:
+
+```bash
+npm install corestore@^7.9.1 paparam@^1.10.0 which-runtime@^1.3.2 bare-path@^3.0.0
+```
+
+- [`corestore`](https://www.npmjs.com/package/corestore) manages one on-disk store and hands you named [Hypercores](/reference/building-blocks/hypercore). The runtime needs it for its update drive; the worker uses it for the chat transcript.
+- [`paparam`](https://www.npmjs.com/package/paparam) is Pear's tiny command-and-flag parser. We use it for `--storage`, `--no-updates`, and `--no-sandbox`.
+- [`which-runtime`](https://www.npmjs.com/package/which-runtime) exposes `isMac`, `isLinux`, `isWindows` booleans so you can pick the correct per-OS storage directory.
+- [`bare-path`](https://www.npmjs.com/package/bare-path) is the Bare-friendly `path` module the worker uses (Bare does not have Node's built-in `path`).
+
+### Modify `package.json`
+
+1. Add an `upgrade` placeholder to `package.json`
+      The `upgrade` link below is the public [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) link — a working `pear://` address you can use as a placeholder so the runtime initialises cleanly. [Part 3](/getting-started/ship) replaces it with your own link from `pear touch`.
+2. Tweak `start` to forward `--no-updates` in development. 
+    In development, you typically want to start the app without OTA updates, so you can test the app's functionality without having to wait for the update to be downloaded and applied.
+3. Add a `productName` field. 
+    This is the user-facing app name `electron-forge` uses when it builds distributables (the `.app`/`.dmg`/`.msix` you see in Finder or Explorer). If you don't have a `productName` field, `electron-forge` will use the `name` field as the product name.
+
+    The two fields play different roles and have different rules:
+    - `name` is the **package identifier**. Pear's `pear stage` requires it to be a single lowercase word — letters, numbers, hyphens (`-`), underscores (`_`), forward slashes (`/`), or asperands (`@`) only. It also becomes your `pear-chat://` deep-link scheme.
+    - `productName` is the **display name**. It can contain uppercase letters and any characters that are valid in a filesystem path, since it shows up in distributable filenames and the app's window title.
+
+```json
+{
+  "name": "pear-chat",
+  "productName": "PearChat",
+  "version": "1.0.0",
+  "upgrade": "pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o",
+  "main": "electron/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron . --no-updates"
+  }
+}
+```
+
+
+
+</Step>
+
+<Step>
+
+### Replace `electron/main.js` with the instance form
+
+This file gets larger because it does five jobs at once:
+1. Parse CLI flags
+2. Resolve a per-OS storage directory
+3. Construct the `PearRuntime` instance
+4. Manage worker lifecycle
+5. Broadcast OTA events to every renderer
+
+It mirrors [`hello-pear-electron/electron/main.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/electron/main.js) almost line-for-line.
+
+```js
+const { app, BrowserWindow, ipcMain } = require('electron')
+const os = require('os')
+const path = require('path')
+const crypto = require('crypto')
+const Hyperswarm = require('hyperswarm')
+const Corestore = require('corestore')
+const PearRuntime = require('pear-runtime')
+
+const { isMac, isLinux, isWindows } = require('which-runtime')
+const { command, flag } = require('paparam')
+const pkg = require('../package.json')
+const { name, productName, version, upgrade } = pkg
+
+const protocol = name // used for pear-chat:// deep links
+const appName = productName ?? name
+
+// Same per-username topic as part 1
+const topic = crypto
+  .createHash('sha256')
+  .update('pear-getting-started-chat:' + os.userInfo().username)
+  .digest('hex')
+
+const workers = new Map()
+let pear = null
+
+// 1. Parse CLI flags
+const cmd = command(
+  appName,
+  flag('--storage <dir>', 'pass custom storage to pear-runtime'),
+  flag('--no-updates', 'start without OTA updates'),
+  flag('--no-sandbox', 'start without Chromium sandbox').hide()
+)
+
+cmd.parse(app.isPackaged ? process.argv.slice(1) : process.argv.slice(2))
+
+const pearStore = cmd.flags.storage
+const updates = cmd.flags.updates
+
+if (pearStore) app.setPath('userData', pearStore)
+
+ipcMain.on('pkg', (evt) => {
+  evt.returnValue = pkg
+})
+
+// 2. Resolve a per-OS storage directory
+function getAppPath() {
+  if (!app.isPackaged) return null
+  if (isLinux && process.env.APPIMAGE) return process.env.APPIMAGE
+  if (isWindows) return process.execPath
+  return path.join(process.resourcesPath, '..', '..')
+}
+
+function getPear() {
+  if (pear) return pear
+  const appPath = getAppPath()
+  let dir = null
+  if (pearStore) {
+    dir = pearStore
+  } else if (appPath === null) {
+    dir = path.join(os.tmpdir(), 'pear', appName)
+  } else if (isMac) {
+    dir = path.join(os.homedir(), 'Library', 'Application Support', appName)
+  } else if (isLinux) {
+    dir = path.join(os.homedir(), '.config', appName)
+  } else {
+    dir = path.join(os.homedir(), 'AppData', 'Local', appName)
+  }
+
+  const extension = isLinux ? '.AppImage' : isMac ? '.app' : '.msix'
+  const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
+  const swarm = new Hyperswarm()
+
+  // 3. Construct the PearRuntime instance
+  pear = new PearRuntime({
+    dir,
+    app: appPath,
+    updates,
+    version,
+    upgrade,
+    name: productName + extension,
+    store,
+    swarm,
+    // Tutorial setting: detect new releases immediately. The default polls
+    // with a random delay of up to one hour after the 60s boot grace period —
+    // great for production (no thundering herd on seeders) but hides the OTA
+    // flow from anyone watching live. Remove or raise for production builds.
+    delay: 0
+  })
+
+  if (updates !== false) {
+    swarm.on('connection', (connection) => store.replicate(connection))
+    swarm.join(pear.updater.drive.core.discoveryKey, {
+      client: true,
+      server: false
+    })
+  }
+
+  pear.on('error', console.error)
+  return pear
+}
+
+function sendToAll(channel, data) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send(channel, data)
+  }
+}
+
+// 4. Manage worker lifecycle
+function getWorker(specifier) {
+  if (workers.has(specifier)) return workers.get(specifier)
+  const pear = getPear()
+  const worker = pear.run(require.resolve('..' + specifier), [pear.storage, topic])
+
+  const onIPC = (data) => sendToAll('pear:worker:ipc:' + specifier, data)
+  const onStdout = (data) => sendToAll('pear:worker:stdout:' + specifier, data)
+  const onStderr = (data) => sendToAll('pear:worker:stderr:' + specifier, data)
+
+  ipcMain.handle('pear:worker:writeIPC:' + specifier, (_evt, data) => {
+    return worker.write(Buffer.from(data))
+  })
+
+  workers.set(specifier, worker)
+  worker.on('data', onIPC)
+  worker.stdout.on('data', onStdout)
+  worker.stderr.on('data', onStderr)
+  worker.once('exit', (code) => {
+    ipcMain.removeHandler('pear:worker:writeIPC:' + specifier)
+    worker.removeListener('data', onIPC)
+    worker.stdout.removeListener('data', onStdout)
+    worker.stderr.removeListener('data', onStderr)
+    sendToAll('pear:worker:exit:' + specifier, code)
+    workers.delete(specifier)
+  })
+  return worker
+}
+
+// Bare workers spawn as plain child processes and do NOT die when Electron
+// exits. Always destroy them on quit and before applying an update — otherwise
+// the orphaned worker keeps an exclusive lock on the Corestore storage and the
+// next launch hangs on `await store.ready()`.
+async function destroyWorkers() {
+  const pending = []
+  for (const worker of workers.values()) {
+    pending.push(
+      new Promise((resolve) => {
+        worker.once('exit', resolve)
+        worker.destroy()
+      })
+    )
+  }
+  workers.clear()
+  await Promise.all(pending)
+}
+
+app.on('before-quit', (evt) => {
+  if (workers.size === 0) return
+  evt.preventDefault()
+  destroyWorkers().finally(() => app.quit())
+})
+
+async function createWindow() {
+  const win = new BrowserWindow({
+    width: 480,
+    height: 600,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      sandbox: true,
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  })
+
+  const pear = getPear()
+
+  // 5. Broadcast OTA events to every renderer
+  const onUpdating = () => {
+    if (!win.isDestroyed()) win.webContents.send('pear:event:updating')
+  }
+  const onUpdated = () => {
+    if (!win.isDestroyed()) win.webContents.send('pear:event:updated')
+  }
+  pear.updater.on('updating', onUpdating)
+  pear.updater.on('updated', onUpdated)
+  win.on('closed', () => {
+    pear.updater.removeListener('updating', onUpdating)
+    pear.updater.removeListener('updated', onUpdated)
+  })
+
+  await win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'))
+}
+
+ipcMain.handle('pear:applyUpdate', async () => {
+  const pear = getPear()
+  await pear.updater.applyUpdate()
+})
+
+ipcMain.handle('pear:startWorker', (_evt, specifier) => {
+  getWorker(specifier)
+  return true
+})
+
+ipcMain.handle('app:afterUpdate', async () => {
+  await destroyWorkers()
+  if (isLinux && process.env.APPIMAGE) {
+    app.relaunch({
+      execPath: process.env.APPIMAGE,
+      args: ['--appimage-extract-and-run', ...process.argv.slice(1).filter((a) => a !== '--appimage-extract-and-run')]
+    })
+  } else if (!isWindows) {
+    app.relaunch()
+  }
+  app.exit(0)
+})
+
+function handleDeepLink(url) {
+  console.log('deep link:', url)
+}
+
+app.setAsDefaultProtocolClient(protocol)
+app.on('open-url', (evt, url) => {
+  evt.preventDefault()
+  handleDeepLink(url)
+})
+
+const lock = app.requestSingleInstanceLock()
+if (!lock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_evt, args) => {
+    const url = args.find((a) => a.startsWith(protocol + '://'))
+    if (url) handleDeepLink(url)
+  })
+
+  app.whenReady().then(() => {
+    createWindow().catch((err) => {
+      console.error('failed to create window:', err)
+      app.quit()
+    })
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
+  })
+
+  app.on('window-all-closed', () => {
+    if (!isMac) app.quit()
+  })
+}
+```
+
+What changed from part 1, in the order it appears in the file:
+
+- **`paparam` command + flags.** `paparam` parses `--storage`, `--no-updates`, and `--no-sandbox`. `--storage` lets you point a second running copy at a different folder so its [Corestore](/reference/helpers/corestore) does not collide with the first. `--no-updates` lets development bypass the OTA flow.
+- **Per-OS `dir` resolution.** Production builds land at `~/Library/Application Support/<appName>` on macOS, `~/.config/<appName>` on Linux, and `%USERPROFILE%\AppData\Local\<appName>` on Windows. In development (no packaged app) the runtime falls back to `<tmpdir>/pear/<appName>`. The decision is the same one [`hello-pear-electron` documents in its Storage section](https://github.com/holepunchto/hello-pear-electron#storage). For the full picture see [Storage and distribution](/explanation/storage-and-distribution).
+- **`new PearRuntime({ ... })`.** Instead of the static `PearRuntime.run()` helper from part 1, you instantiate a runtime. It owns a [Corestore](/reference/helpers/corestore) (`store`) and a [Hyperswarm](/reference/building-blocks/hyperswarm) (`swarm`); they are needed for the OTA updater to replicate the application drive from peers. When updates are on, `swarm.join(pear.updater.drive.core.discoveryKey, ...)` looks for seeders of your upgrade link. `delay: 0` makes the updater check for new content as soon as it arrives — see [Tune `PearRuntime` `delay` for live OTA visibility](/how-to/operate-an-app/troubleshoot-desktop-releases#tune-pearruntime-delay-for-live-ota-visibility) for the production trade-off.
+- **`getWorker(specifier)` pattern.** The Electron main process becomes a thin proxy: any window can ask `bridge.startWorker(specifier)`, and the worker's IPC, stdout, stderr, and exit events get fanned out to every window over `pear:worker:*` channels. This is the same surface `hello-pear-electron` uses, so the same renderer code can work against any worker you add later.
+- **Worker argv: `[pear.storage, topic]`.** The first argument matches [`hello-pear-electron`'s Workers convention](https://github.com/holepunchto/hello-pear-electron#workers): `pear.storage` is the runtime-managed directory the worker can put its data in. The second argument is the same per-username topic hex from part 1.
+- **OTA event fan-out.** `pear.updater.on('updating'|'updated')` is forwarded to every window via `webContents.send('pear:event:*')`. `applyUpdate` swaps the app on disk; `appAfterUpdate` destroys live workers and restarts the process. The renderer wires those into a button.
+- **`destroyWorkers()` before quit or relaunch.** Bare workers are plain child processes — they do **not** exit when Electron does. If you let them outlive the parent, the next launch hangs on `await store.ready()` because [Corestore](/reference/helpers/corestore) holds an exclusive lock on `<storage>/chat-corestore`. The `before-quit` handler defers the actual quit until every worker has emitted `exit`; `app:afterUpdate` awaits the same helper before calling `app.exit(0)`. See [Worker did not exit cleanly](/how-to/operate-an-app/troubleshoot-desktop-releases#worker-did-not-exit-cleanly).
+- **Single-instance lock + deep links.** `requestSingleInstanceLock` ensures a `pear-chat://` deep link from the OS goes to the running instance instead of spawning a second one. `setAsDefaultProtocolClient(protocol)` registers the scheme.
+
+</Step>
+
+<Step>
+
+### Expose the bridge in `electron/preload.js`
+
+The preload script is now bigger because it exposes the same `bridge` API every `hello-pear-electron`-shaped app uses:
+
+```js
+const { contextBridge, ipcRenderer } = require('electron')
+
+contextBridge.exposeInMainWorld('bridge', {
+  pkg() {
+    return ipcRenderer.sendSync('pkg')
+  },
+  applyUpdate: () => ipcRenderer.invoke('pear:applyUpdate'),
+  appAfterUpdate: () => ipcRenderer.invoke('app:afterUpdate'),
+  onPearEvent: (name, listener) => {
+    const wrap = () => listener(name)
+    ipcRenderer.on('pear:event:' + name, wrap)
+    return () => ipcRenderer.removeListener('pear:event:' + name, wrap)
+  },
+  startWorker: (specifier) => ipcRenderer.invoke('pear:startWorker', specifier),
+  onWorkerStdout: (specifier, listener) => {
+    const wrap = (_evt, data) => listener(Buffer.from(data))
+    ipcRenderer.on('pear:worker:stdout:' + specifier, wrap)
+    return () => ipcRenderer.removeListener('pear:worker:stdout:' + specifier, wrap)
+  },
+  onWorkerStderr: (specifier, listener) => {
+    const wrap = (_evt, data) => listener(Buffer.from(data))
+    ipcRenderer.on('pear:worker:stderr:' + specifier, wrap)
+    return () => ipcRenderer.removeListener('pear:worker:stderr:' + specifier, wrap)
+  },
+  onWorkerIPC: (specifier, listener) => {
+    const wrap = (_evt, data) => listener(Buffer.from(data))
+    ipcRenderer.on('pear:worker:ipc:' + specifier, wrap)
+    return () => ipcRenderer.removeListener('pear:worker:ipc:' + specifier, wrap)
+  },
+  onWorkerExit: (specifier, listener) => {
+    const wrap = (_evt, code) => listener(code)
+    ipcRenderer.on('pear:worker:exit:' + specifier, wrap)
+    return () => ipcRenderer.removeListener('pear:worker:exit:' + specifier, wrap)
+  },
+  writeWorkerIPC: (specifier, data) => {
+    return ipcRenderer.invoke('pear:worker:writeIPC:' + specifier, data)
+  }
+})
+```
+
+The renderer no longer needs a custom chat protocol — it speaks to any worker through the same set of IPC channels.
+
+</Step>
+
+<Step>
+
+### Persist the chat transcript in `workers/main.mjs`
+
+The worker now reads `Bare.argv[2]` as the storage directory and `Bare.argv[3]` as the topic hex. It opens a [Corestore](/reference/helpers/corestore), keeps a single named [Hypercore](/reference/building-blocks/hypercore) as the chat transcript, replays it before joining the swarm, and appends every message it sees:
+
+```js
+import path from 'bare-path'
+import Hyperswarm from 'hyperswarm'
+import Corestore from 'corestore'
+import b4a from 'b4a'
+
+const storage = Bare.argv[2]
+const topic = b4a.from(Bare.argv[3], 'hex')
+
+const store = new Corestore(path.join(storage, 'chat-corestore'))
+await store.ready()
+
+const core = store.get({ name: 'chat-transcript' })
+await core.ready()
+
+// Replay anything already on disk so the UI matches the last session
+for (let i = 0; i < core.length; i++) {
+  Bare.IPC.write(b4a.toString(await core.get(i)))
+}
+
+const swarm = new Hyperswarm()
+const conns = []
+
+swarm.on('connection', (conn) => {
+  const id = b4a.toString(conn.remotePublicKey, 'hex').slice(0, 6)
+  conns.push(conn)
+  Bare.IPC.write(JSON.stringify({ type: 'peers', count: conns.length }))
+
+  conn.on('data', async (data) => {
+    const payload = JSON.stringify({ type: 'message', from: id, text: b4a.toString(data) })
+    await core.append(b4a.from(payload, 'utf8'))
+    Bare.IPC.write(payload)
+  })
+
+  conn.on('error', () => {})
+  conn.once('close', () => {
+    conns.splice(conns.indexOf(conn), 1)
+    Bare.IPC.write(JSON.stringify({ type: 'peers', count: conns.length }))
+  })
+})
+
+Bare.IPC.on('data', async (data) => {
+  const text = b4a.toString(data)
+  const payload = JSON.stringify({ type: 'message', from: 'you', text })
+  await core.append(b4a.from(payload, 'utf8'))
+  for (const conn of conns) conn.write(text)
+})
+
+await swarm.join(topic, { client: true, server: true }).flushed()
+Bare.IPC.write(JSON.stringify({ type: 'ready' }))
+```
+
+Notice:
+
+- The store lives under `<storage>/chat-corestore`. The Electron main process owns `<storage>` itself (the runtime's update drive is also under there in `pear-runtime/corestore`). Keeping the chat data in its own subdirectory keeps the runtime's append-only update log separate from your application data.
+- Every emitted line is a complete JSON event. The same string is appended to the Hypercore **and** sent over IPC, so replay drops straight into the renderer's existing `onMessage` handler.
+- `Corestore` takes an exclusive lock on its directory. Two windows pointing at the same `<storage>` collide with `File descriptor could not be locked`. The next step shows how to give a second window its own `--storage` directory.
+
+Read [Workers](/explanation/workers) for the wider pattern — why the worker is the application's local backend, what crosses the IPC boundary, and where the host/worker split sits on mobile and terminal.
+
+</Step>
+
+<Step>
+
+### Rewire the renderer to use the bridge
+
+The renderer drops `window.chat` and uses `window.bridge` instead. It asks the main process to start the worker, then listens on `bridge.onWorkerIPC` for events. It also renders the OTA update banner.
+
+Add an `Update ready!` button to `renderer/index.html`. The whole header now looks like this:
+
+```html
+<header class="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/60 px-4 py-3">
+  <div class="flex items-center gap-2">
+    <h1 class="text-sm font-semibold">Pear chat</h1>
+    <span id="v" class="text-xs text-zinc-500"></span>
+    <button
+      id="update-btn"
+      class="hidden rounded-md bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-300 hover:bg-amber-500/30"
+    >
+      Update ready!
+    </button>
+  </div>
+  <div class="flex items-center gap-2 text-xs text-zinc-400">
+    <span class="size-2 rounded-full bg-emerald-500"></span>
+    <span>peers: <span id="peers" class="font-medium text-zinc-100">0</span></span>
+  </div>
+</header>
+```
+
+Replace `renderer/app.js` with:
+
+```js
+const decoder = new TextDecoder('utf-8')
+
+document.getElementById('v').textContent = 'v' + window.bridge.pkg().version
+
+window.bridge.onPearEvent('updating', () => {
+  document.getElementById('v').textContent = 'updating…'
+})
+
+window.bridge.onPearEvent('updated', () => {
+  const btn = document.getElementById('update-btn')
+  btn.classList.remove('hidden')
+  btn.onclick = async () => {
+    btn.disabled = true
+    btn.textContent = 'restarting…'
+    try {
+      await window.bridge.applyUpdate()
+      await window.bridge.appAfterUpdate()
+    } catch (err) {
+      btn.textContent = 'update failed: ' + err.message
+    }
+  }
+})
+
+const workers = { main: '/workers/main.mjs' }
+window.bridge.startWorker(workers.main)
+
+const log = document.getElementById('log')
+const peers = document.getElementById('peers')
+const input = document.getElementById('input')
+
+const fromColor = {
+  system: 'text-zinc-500 italic',
+  you: 'text-emerald-400 font-medium',
+  peer: 'text-sky-400 font-medium'
+}
+
+function append(from, text) {
+  const row = document.createElement('div')
+  row.className = 'flex gap-2 items-baseline'
+  const fromEl = document.createElement('span')
+  fromEl.className = fromColor[from] ?? fromColor.peer
+  fromEl.textContent = from + ':'
+  const textEl = document.createElement('span')
+  textEl.textContent = text
+  row.append(fromEl, textEl)
+  log.appendChild(row)
+  log.scrollTop = log.scrollHeight
+}
+
+window.bridge.onWorkerIPC(workers.main, (data) => {
+  let event
+  try {
+    event = JSON.parse(decoder.decode(data))
+  } catch {
+    return
+  }
+  if (event.type === 'peers') peers.textContent = event.count
+  else if (event.type === 'message') append(event.from, event.text)
+  else if (event.type === 'ready') append('system', 'connected to swarm')
+})
+
+window.bridge.onWorkerStderr(workers.main, (data) => {
+  console.error('[worker]', decoder.decode(data))
+})
+
+input.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || !input.value) return
+  const text = input.value
+  input.value = ''
+  append('you', text)
+  window.bridge.writeWorkerIPC(workers.main, text)
+})
+```
+
+<Callout type="info">
+`contextBridge` turns `bridge` into a global in the renderer scope, so do not write `const bridge = window.bridge` — that throws `Identifier 'bridge' has already been declared`. Use `window.bridge.*` directly.
+</Callout>
+
+The Pear concept here: the renderer is now generic. It talks to a named worker through the bridge without knowing what that worker does. Swap `'/workers/main.mjs'` for a different specifier later and the same plumbing works.
+
+</Step>
+
+<Step>
+
+### Run two peers locally
+
+`Corestore` will not let two processes share a folder, so the second instance needs its own `--storage`:
+
+```bash
+# terminal 1
+npm start
+
+# terminal 2
+npm start -- --storage /tmp/pear-chat-peer
+```
+
+`npm start -- <flags>` forwards `<flags>` after the script command, so this expands to `electron . --no-updates --storage /tmp/pear-chat-peer`. `paparam` picks `--storage` up; the runtime then uses `/tmp/pear-chat-peer` instead of the per-OS default folder.
+
+The first instance writes to your real per-OS storage directory; the second to `/tmp/pear-chat-peer`. Both windows show `peers: 0`, then tick to `peers: 1` after Hyperswarm finds them on the DHT (typically 5–15 seconds). Send a few messages, quit both windows, and start them again — your half of the transcript reappears from disk before any live traffic.
+
+The README's [§Storage → Setting Storage for Additional Instances](https://github.com/holepunchto/hello-pear-electron#additional-instances) covers the same trick for packaged binaries on each OS.
+
+</Step>
+
+</Steps>
+
+## What you added
+
+| Piece | Role |
+| --- | --- |
+| `paparam` flags | `--storage`, `--no-updates`, `--no-sandbox` — the same surface every Pear Electron binary exposes. |
+| Per-OS `dir` resolution | Matches the [Storage and distribution](/explanation/storage-and-distribution) table; production builds land in the right OS folder. |
+| `new PearRuntime({ ... })` | The full runtime instance: holds the Corestore, the Hyperswarm, and the [updater](/reference/runtime). |
+| `getWorker(specifier)` + bridge | One IPC vocabulary (`pear:worker:*`) for any worker the app spawns. |
+| Corestore-backed transcript | The chat replays from disk on every start. Each window has its own log; they sync on connection only because both speakers also `conn.write(...)` live. |
+| OTA event wiring | `pear.updater.on('updating'|'updated')` → bridge → "Update ready!" button. Inert in development; [part 3](/getting-started/ship) ships the first version and [part 4](/getting-started/update) drives it live. |
+| Single-instance lock + deep links | `pear-chat://...` from the OS opens the running instance instead of spawning a fresh one. |
+
+## Where to go next
+
+- **Continue the path:** [Ship your app](/getting-started/ship) (part 3 of 4) — `pear touch`, `npm version`, `electron-forge make`, `pear-build`, and `pear stage` to publish your first version. Then [Deploy over-the-air updates](/getting-started/update) (part 4 of 4) ships a second version live and previews `pear provision` and multisig.
+- For the Architecture explanations that this part mirrors, read [Pear desktop application architecture](/explanation/pear-desktop-architecture) and [Storage and distribution](/explanation/storage-and-distribution).
+- The full [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) repository — the template every snippet here came from.

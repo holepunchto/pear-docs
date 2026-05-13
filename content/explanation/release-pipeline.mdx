@@ -19,6 +19,37 @@ This page explains **why** many Pear **desktop** release flows use three operati
 
 Centralized deploy pipelines often separate *staging servers*, *preview*, and *production*. Pear can fold similar **trust boundaries** into **different Hyperdrives addressed by different `pear://` links**: you **stage** a folder of builds into a drive used for iteration, **provision** from a versioned stage into a leaner prerelease drive, then **multisig-commit** into production so a **quorum of signers** must agree. Each hop can shrink history or raise assurance.
 
+## OTA update event lifecycle
+
+A running Pear desktop app polls the [Hyperdrive](/reference/building-blocks/hyperdrive) behind its `upgrade` link, downloads new application data when the [Hypercore](/reference/building-blocks/hypercore) length advances, and emits two events from [`pear.updater`](/reference/runtime). The host process forwards them to renderers so the UI can react:
+
+```mermaid
+sequenceDiagram
+    participant Peer as Seeder peer
+    participant Updater as pear.updater
+    participant Main as Electron main
+    participant UI as Renderer
+    Peer-->>Updater: new core length
+    Updater-->>Main: 'updating' (download in progress)
+    Main-->>UI: webContents.send('pear:event:updating')
+    Updater-->>Main: 'updated' (download ready)
+    Main-->>UI: webContents.send('pear:event:updated')
+    UI->>Main: applyUpdate()
+    Main->>Updater: updater.applyUpdate()
+    Note over Updater,Main: swap app path on disk, remove old build
+    UI->>Main: appAfterUpdate()
+    Main->>Main: app.relaunch(); app.exit(0)
+```
+
+- `updating` fires when the updater begins streaming new blocks; treat it as "background work in progress".
+- `updated` fires when the new build is fully on disk; it is safe to swap.
+- `bridge.applyUpdate()` (renderer side) calls `pear.updater.applyUpdate()` (main side). `applyUpdate` renames the application directory to the new build and deletes the old one — until the process restarts, the running code is still the old build.
+- `bridge.appAfterUpdate()` triggers `app.relaunch()` and `app.exit(0)`. On Linux AppImage you usually relaunch with `process.env.APPIMAGE` instead of `process.execPath` so the host wrapper script gets re-executed.
+
+You can disable updates per run with `--no-updates` (handy in development) or globally by setting `"updates": false` in `package.json` and spreading the package config into the `PearRuntime` options.
+
+The two-event split is what lets you build UI like the "Update ready!" banner in [Add persistence with Corestore](/getting-started/production-shape): show a spinner on `updating`, swap to a restart button on `updated`, restart the app on click.
+
 ## Stage, provision, multisig
 
 ```mermaid
@@ -168,7 +199,7 @@ graph TD
   N ~~~ Y
 ```
 
-## Staged release lines (who sees what)
+## Release lines
 
 ```mermaid
 graph LR
@@ -205,5 +236,5 @@ Platform installs still use Pear’s OS-wide tree described in [Storage and dist
 - [Pear desktop application architecture](/explanation/pear-desktop-architecture) — workers, storage, and update events in the running app.
 - [Deploy your application](/how-to/operate-an-app/deployment) — operator checklist for `pear stage` / `pear provision` / multisig tooling.
 - [Build desktop distributables](/how-to/operate-an-app/build-desktop-distributables) — per-OS makes and signing pointers.
-- [Desktop release npm scripts](/how-to/operate-an-app/desktop-release-npm-scripts) — common `package.json` scripts.
+- [Desktop release npm scripts](/reference/desktop-release-npm-scripts) — common `package.json` scripts.
 - [Troubleshoot desktop releases](/how-to/operate-an-app/troubleshoot-desktop-releases) — OTA, staging, and `pear-build` pitfalls.

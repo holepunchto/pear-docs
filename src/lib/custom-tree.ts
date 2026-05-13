@@ -29,18 +29,23 @@ export const customTree: Node[] = [
     children: [
       {
         type: 'page',
-        name: 'Peer-to-peer chat',
+        name: 'Build a peer-to-peer chat',
         url: '/getting-started/chat',
       },
       {
         type: 'page',
-        name: 'Add persistence',
-        url: '/getting-started/persist',
+        name: 'Add persistence with Corestore',
+        url: '/getting-started/production-shape',
       },
       {
         type: 'page',
-        name: 'Ship and update',
-        url: '/getting-started/ship-and-update',
+        name: 'Ship your app',
+        url: '/getting-started/ship',
+      },
+      {
+        type: 'page',
+        name: 'Deploy over-the-air updates',
+        url: '/getting-started/update',
       },
     ],
   },
@@ -108,11 +113,6 @@ export const customTree: Node[] = [
           },
           {
             type: 'page',
-            name: 'Desktop release npm scripts',
-            url: '/how-to/operate-an-app/desktop-release-npm-scripts',
-          },
-          {
-            type: 'page',
             name: 'Distribute as a binary',
             url: '/how-to/operate-an-app/distribute-as-binary',
           },
@@ -162,6 +162,11 @@ export const customTree: Node[] = [
         type: 'page',
         name: 'Release pipeline glossary',
         url: '/reference/release-pipeline-glossary',
+      },
+      {
+        type: 'page',
+        name: 'Desktop release npm scripts',
+        url: '/reference/desktop-release-npm-scripts',
       },
       {
         type: 'page',
@@ -270,13 +275,18 @@ export const customTree: Node[] = [
 
   {
     type: 'folder',
-    name: 'Explanations',
-    index: { type: 'page', name: 'Explanations', url: '/explanation' },
+    name: 'About Pear',
+    index: { type: 'page', name: 'About Pear', url: '/explanation' },
     children: [
       {
         type: 'page',
         name: 'Runtime and languages',
         url: '/explanation/runtime-and-languages',
+      },
+      {
+        type: 'page',
+        name: 'Workers',
+        url: '/explanation/workers',
       },
       {
         type: 'page',

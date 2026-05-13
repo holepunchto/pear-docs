@@ -7,6 +7,7 @@ import {
 } from 'fumadocs-mdx/config';
 import lastModified from 'fumadocs-mdx/plugins/last-modified';
 import { metaSchema } from 'fumadocs-core/source/schema';
+import { remarkMdxMermaid } from 'fumadocs-core/mdx-plugins';
 import { tetherSeoFrontmatterSchema } from '@tetherto/docs-seo-schema';
 
 const execFile = promisify(execFileCb);
@@ -62,6 +63,10 @@ async function gitLastModified(filePath: string): Promise<Date | null> {
 export const docs = defineDocs({
   dir: 'content',
   docs: {
+    // Underscore-prefixed `.mdx` files are partials — meant to be inlined via
+    // <include>./_partial.mdx</include> (see https://fumadocs.dev/docs/markdown#include)
+    // rather than rendered as their own page, so we skip them from the collection.
+    files: ['**/*.{md,mdx}', '!**/_*.{md,mdx}'],
     schema: frontmatterSchema
       .extend(tetherSeoFrontmatterSchema.shape)
       .passthrough(),
@@ -87,5 +92,8 @@ export default defineConfig({
     // markdown (postprocess.includeProcessedMarkdown). Use plain markdown images, or
     // opt into `<Image />` / `<img />` as block-level JSX where you need Next-optimized images.
     remarkImageOptions: false,
+    // Convert ` ```mermaid ` fenced code blocks into `<Mermaid chart="…" />`
+    // JSX so they render via the client component in `src/components/mermaid.tsx`.
+    remarkPlugins: (v) => [remarkMdxMermaid, ...v],
   },
 });
