@@ -9,17 +9,85 @@ schemaType: TechArticle
 
 Use this guide when **desktop OTA** or **`pear stage`** behaves unexpectedly after you have a [deployment directory](/explanation/release-pipeline#deployment-directory-and-release-lines) and a release line. For general Pear and Bare development issues, see [Troubleshoot common issues](/how-to/operate-an-app/troubleshooting).
 
-<Callout type="info">
-
-**Related:** [Troubleshoot common issues](/how-to/operate-an-app/troubleshooting) covers broader Pear and Bare development; this page focuses on desktop release and OTA.
-
-</Callout>
-
 ## App did not update
 
 ### Bump `version`
 
 An update will not apply unless `package.json` **`version`** changes. Use `npm version patch` (or the level you intend) before rebuilding and staging.
+
+### Advance the release pointer after `pear stage`
+
+`pear stage` writes new content into the Hypercore but does **not** move the `release` pointer that peers poll. The staging output reports this explicitly:
+
+```text
+Latest: 1191
+Release: 1177
+
+Use pear release pear://<your-link> to set release to latest
+```
+
+If `Latest` is higher than `Release`, peers continue to fetch the older content. Run `pear release pear://<your-link>` to advance the pointer. For production releases, use [`pear provision`](/how-to/operate-an-app/deployment#6-provision) or `pear multisig` instead — both manage their own release pointers.
+
+### Tune `PearRuntime` `delay` for live OTA visibility
+
+`pear-runtime-updater` polls aggressively only during the first **60 seconds** after launch (the boot grace period). After that, every detected change is scheduled with a random delay of up to **one hour** by default. The delay is sampled **once at construction**, so each new `append` event reschedules against the same offset. If you stage frequently, the timer can reset forever — you may not see the **Update ready!** button until the app restarts.
+
+`PearRuntime` forwards its constructor options straight to the updater, so you can shorten or remove the delay:
+
+```js
+pear = new PearRuntime({
+  dir,
+  app: appPath,
+  updates,
+  version,
+  upgrade,
+  name: productName + extension,
+  store,
+  swarm,
+  delay: 0 // detect every append immediately; default is up to 1 hour
+})
+```
+
+**Trade-off:** the long random delay exists on purpose for production. It spreads update checks across many clients so seeders do not get a thundering-herd when a new release goes out. Use `delay: 0` (or a few seconds) for development and tutorials; keep the default — or set a value in the **tens of minutes** — for production builds with many users.
+
+Restarting the running app is a quick workaround without recompiling: a restart resets the boot grace period, and the next poll happens within seconds. This is also why an OTA can appear to "only work after a restart" — detection waits for the next scheduled poll, and a restart triggers one immediately.
+
+### Worker did not exit cleanly
+
+Bare workers spawned through [`pear-runtime`](https://github.com/holepunchto/pear-runtime) (or `hello-pear-electron`-shaped `getWorker(...)` helpers) are plain OS child processes. Electron does **not** signal them on exit, so any code path that quits without running `worker.destroy()` leaves the worker running. The worker keeps an exclusive lock on `<storage>/<core-name>-corestore`, and the next launch hangs forever on `await store.ready()`.
+
+Look for the symptom in `ps`:
+
+```bash
+ps -A -o pid,command | grep bare-sidecar
+```
+
+If a row points at your old `.app` (or a now-deleted deployment directory), kill it:
+
+```bash
+kill <pid>
+```
+
+Then fix the host so it can't recur:
+
+1. In every code path that quits, destroy workers first. The `app:afterUpdate` IPC handler must `await destroyWorkers()` before `app.exit(0)`.
+2. Hook `before-quit` so user-driven quits also clean up. `evt.preventDefault()` defers the quit until every worker emits `exit`, then call `app.quit()`.
+3. Avoid `app.exit(0)` on signal handlers without a destroy step — `app.exit` skips Electron's clean-shutdown path entirely.
+
+The reference wiring lives in [Replace `electron/main.js` with the instance form](/getting-started/production-shape#replace-electronmainjs-with-the-instance-form) (the `destroyWorkers` helper and the `before-quit` listener).
+
+### Apply finishes the swap before relaunch
+
+`pear.updater.applyUpdate()` is **async** — it atomically swaps the new app bundle on disk and removes the staging copy. If you wire it into an IPC handler, await it before relaunching the process:
+
+```js
+ipcMain.handle('pear:applyUpdate', async () => {
+  const pear = getPear()
+  await pear.updater.applyUpdate()
+})
+```
+
+If the handler returns before the swap completes, `app.exit(0)` can fire mid-swap, and the relaunch may load the previous bundle. The symptom is that clicking **Update ready!** appears to do nothing, but quitting the app manually and reopening it shows the new version.
 
 ### Confirm the `upgrade` link
 
@@ -45,12 +113,47 @@ Add the key to **multiple** reachable seeders so OTA does not depend on one netw
 
 ## Recovering from lost write access
 
-- **Staged** and **provisioned** drives are **machine-bound** in normal setups — if you lose the data that holds write capability to those keys, you cannot “undelete” the same keys from thin air.
-- **Multisig** production drives are designed **not** to be tied to one laptop’s disk state in the same way.
+- **Staged** and **provisioned** drives are **machine-bound** in normal setups — if you lose the data that holds write capability to those keys, you cannot "undelete" the same keys from thin air.
+- **Multisig** production drives are **not** machine-bound. Write access is determined by signing capability, so a quorum of signers can keep producing releases even if every other key is lost.
 
-**If a stage link is lost:** create a **new** link with `pear touch`, seed it, stage to it, and repoint **stage-line** builds’ `upgrade` fields as needed.
+**If a stage link is lost:** create a new link with `pear touch`, seed it, stage to it, and repoint **stage-line** builds' `upgrade` fields as needed.
 
-**If a provision key is lost:** bootstrap a new provision target using your **production** multisig link as the stable reference (see your `multisig.json` workflow), then re-point `srcKey` in multisig config after you have a healthy new provision drive. Details vary by team — mirror the recovery flow in the sample repo’s README or internal runbooks.
+**If a provision key is lost** and you already have a multisig production drive, you can rebuild a clean provision drive from production. Mint a fresh target key with `pear touch`, then run two `pear provision` commands in order:
+
+```sh
+# 1. Seed the new target with the production drive's current contents
+pear provision <versioned-production-key> <target-key> <versioned-production-key>
+
+# 2. Sync from the most recent stage onto the new target, anchored on production
+pear provision <versioned-stage-key> <target-key> <versioned-production-key>
+```
+
+Then update `srcKey` in `multisig.json` to the new provision target's key (see [step 7b. Create the multisig config](/how-to/operate-an-app/deployment#7b-create-the-multisig-config)).
+
+`INCOMPATIBLE_SOURCE_AND_TARGET` errors from `hyper-multisig commit` mean the source provision drive and the multisig target have diverged in a way the tool refuses to reconcile. Do not work around this — reseed the provision on more peers and retry. Working around it can corrupt the production build.
+
+## Node ABI mismatch during make
+
+If `npm run make:darwin` (or `make:linux`/`make:win32`) fails with a `NODE_MODULE_VERSION` mismatch like:
+
+```text
+The module '.../node_modules/macos-alias/build/Release/volume.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 127. This version of Node.js requires
+NODE_MODULE_VERSION 141.
+```
+
+the native add-ons in `node_modules` were compiled for a different Node ABI than the Node version that runs `electron-forge make`. This usually happens after `nvm use`, a Node upgrade, or installing dependencies under one Node version and running the make under another.
+
+Rebuild against the current Node:
+
+```bash
+npm rebuild
+```
+
+If you have multiple Node versions installed, pin one for the project — for example with an [`.nvmrc`](https://github.com/nvm-sh/nvm#nvmrc) file and an `engines.node` field in `package.json` — so installs and builds always use the same ABI.
+
+`NODE_MODULE_VERSION` to Node version mapping is in the [Node.js release schedule](https://nodejs.org/en/about/previous-releases) (e.g. `127` is Node 22, `141` is Node 25).
 
 ## `pear stage` shows huge size growth
 
@@ -79,3 +182,20 @@ Keeping one folder per version also makes **rollback** easier: you can re-stage 
 - [Deploy your application](/how-to/operate-an-app/deployment) — dry-run staging and provision commands.
 - [Build desktop distributables](/how-to/operate-an-app/build-desktop-distributables) — correct `pear-build` invocation before staging.
 - [Release pipeline](/explanation/release-pipeline) — which link each build should follow.
+
+<Callout type="info">
+
+**Related documentation**
+
+**Getting Started** — [Part 1: Chat](/getting-started/chat) · [Part 2: Production-shaped](/getting-started/production-shape) · [Part 3: Ship](/getting-started/ship) · [Part 4: Update](/getting-started/update)
+
+**Operating an app**
+
+- [Desktop release npm scripts](/reference/desktop-release-npm-scripts)
+- [Distribute as a binary](/how-to/operate-an-app/distribute-as-binary)
+- [Manage installed applications](/how-to/operate-an-app/manage-installed-applications)
+- [Migrate to a new release](/how-to/operate-an-app/migration)
+- [Apply recommended practices](/how-to/operate-an-app/recommended-practices)
+- [Troubleshoot common issues](/how-to/operate-an-app/troubleshooting)
+
+</Callout>

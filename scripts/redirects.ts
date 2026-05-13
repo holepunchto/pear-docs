@@ -119,6 +119,17 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // See decisions/0001-adopt-diataxis-ia.md §5 (FAQ resolution).
   out.push({ from: '/reference/faq/', to: '/explanation/' });
 
+  // Desktop release npm scripts is reference-shaped, so it moved out of the
+  // task-oriented operating-an-app how-to section.
+  out.push({
+    from: '/how-to/operate-an-app/desktop-release-npm-scripts/',
+    to: '/reference/desktop-release-npm-scripts/',
+  });
+  out.push({
+    from: '/howto/desktop-release-npm-scripts/',
+    to: '/reference/desktop-release-npm-scripts/',
+  });
+
   out.sort((a, b) => a.from.localeCompare(b.from));
   return out;
 }
