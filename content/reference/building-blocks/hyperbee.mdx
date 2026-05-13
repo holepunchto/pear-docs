@@ -1,8 +1,321 @@
 ---
 title: "Hyperbee"
-description: "Append-only B-tree on Hypercore—upstream Hyperbee repository."
+description: "Append-only B-tree on Hypercore for sorted key/value data."
 docType: reference
 schemaType: APIReference
 ---
 
-[https://github.com/holepunchto/hyperbee](https://github.com/holepunchto/hyperbee)
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+`Hyperbee` stores sorted key/value entries in an append-only B-tree backed by [`Hypercore`](/reference/building-blocks/hypercore). Use it when you need ordered lookups, range scans, atomic batches, namespaces, and point-in-time snapshots over one replicated log.
+
+## Install
+
+```sh
+npm i hyperbee
+```
+
+## Quickstart
+
+```js
+import Hypercore from 'hypercore'
+import Hyperbee from 'hyperbee'
+
+const core = new Hypercore('./bee-storage')
+const db = new Hyperbee(core, {
+  keyEncoding: 'utf-8',
+  valueEncoding: 'json'
+})
+
+await db.ready()
+await db.put('config', { theme: 'dark', retries: 3 })
+
+const entry = await db.get('config')
+console.log(entry.value.theme)
+
+await db.close()
+```
+
+## API Reference
+
+### Constructor and readiness
+
+#### `new Hyperbee(core, [options])`
+
+- Signature: `const db = new Hyperbee(core, [options])`
+- Parameters: `core` is the backing [`Hypercore`](/reference/building-blocks/hypercore); `options.keyEncoding` and `options.valueEncoding` accept `'binary'`, `'utf-8'`, `'ascii'`, `'json'`, or another abstract encoding.
+- Returns: A `Hyperbee` instance that reads and writes entries on top of the supplied core.
+- Example: `const db = new Hyperbee(core, { keyEncoding: 'utf-8', valueEncoding: 'json' })`
+
+Read and diff streams sort keys by their encoded byte values, so choose `keyEncoding` deliberately if lexicographic order matters.
+
+#### `await db.ready()`
+
+- Signature: `await db.ready()`
+- Parameters: None.
+- Returns: Resolves when the bee has loaded enough internal state for synchronous properties such as `db.version`.
+- Example: `await db.ready()`
+
+### Properties and identity
+
+#### `db.core`
+
+- Signature: `db.core`
+- Returns: The underlying [`Hypercore`](/reference/building-blocks/hypercore) instance.
+- Example: `swarm.join(db.core.discoveryKey)`
+
+#### `db.version`
+
+- Signature: `db.version`
+- Returns: The current modification count for the bee, which is useful as a version identifier for snapshots and diffs.
+- Example: `const snapshot = db.checkout(db.version)`
+
+#### `db.id`
+
+- Signature: `db.id`
+- Returns: A z-base-32 string derived from the public key that identifies this bee.
+- Example: `console.log(db.id)`
+
+#### `db.key`
+
+- Signature: `db.key`
+- Returns: The public key buffer for the bee.
+- Example: `console.log(db.key.toString('hex'))`
+
+#### `db.discoveryKey`
+
+- Signature: `db.discoveryKey`
+- Returns: A derived key suitable for peer discovery without exposing `db.key`.
+- Example: `swarm.join(db.discoveryKey)`
+
+#### `db.writable`
+
+- Signature: `db.writable`
+- Returns: `true` when this process can append writes to the backing core.
+- Example: `if (db.writable) await db.put('mode', 'writer')`
+
+#### `db.readable`
+
+- Signature: `db.readable`
+- Returns: `true` while the bee is open and readable.
+- Example: `if (!db.readable) throw new Error('bee is closed')`
+
+### Writes and batches
+
+#### `await db.put(key, [value], [options])`
+
+- Signature: `await db.put(key, [value], [options])`
+- Parameters: `key` uses `keyEncoding`; `value` is optional and uses `valueEncoding`; `options.cas(prev, next)` can accept or reject updates when a key already exists.
+- Returns: Resolves when the write has been appended.
+- Example: `await db.put('user:1', { name: 'Ada' })`
+
+The `cas` comparator receives the current node as `prev` and the potential new node as `next`. It runs only when the key already exists.
+
+#### `await db.del(key, [options])`
+
+- Signature: `await db.del(key, [options])`
+- Parameters: `key` uses `keyEncoding`; `options.cas(prev)` can veto the delete when the current value should be preserved.
+- Returns: Resolves when the delete marker has been appended.
+- Example: `await db.del('user:1')`
+
+The delete comparator runs only when the key exists. Deleting a missing key succeeds without calling `cas`.
+
+#### `const batch = db.batch()`
+
+- Signature: `const batch = db.batch()`
+- Parameters: None.
+- Returns: A write batch that applies all queued operations atomically when flushed.
+- Example: `const batch = db.batch()`
+
+Use batches when you need grouped writes or lower overhead for many updates.
+
+#### `await batch.put(key, [value], [options])`
+
+- Signature: `await batch.put(key, [value], [options])`
+- Parameters: Same arguments and `cas` behavior as `db.put(...)`.
+- Returns: Resolves after queuing the write inside the batch.
+- Example: `await batch.put('settings', { retries: 3 })`
+
+#### `const entry = await batch.get(key)`
+
+- Signature: `const entry = await batch.get(key)`
+- Parameters: `key` uses the batch's key encoding.
+- Returns: The pending or committed entry visible within the batch, or `null` when missing.
+- Example: `const entry = await batch.get('settings')`
+
+#### `await batch.del(key, [options])`
+
+- Signature: `await batch.del(key, [options])`
+- Parameters: Same arguments and `cas` behavior as `db.del(...)`.
+- Returns: Resolves after queuing the delete inside the batch.
+- Example: `await batch.del('settings')`
+
+#### `await batch.flush()`
+
+- Signature: `await batch.flush()`
+- Parameters: None.
+- Returns: Resolves after committing the queued operations and releasing the batch lock.
+- Example: `await batch.flush()`
+
+#### `await batch.close()`
+
+- Signature: `await batch.close()`
+- Parameters: None.
+- Returns: Resolves after discarding the batch and releasing any lock it holds.
+- Example: `await batch.close()`
+
+Call `batch.close()` when you want to abort a batch without writing it.
+
+### Reads and iteration
+
+#### `const entry = await db.get(key)`
+
+- Signature: `const entry = await db.get(key)`
+- Parameters: `key` uses `keyEncoding`.
+- Returns: `null` when the key is missing, otherwise `{ seq, key, value }`, where `seq` is the backing Hypercore block index.
+- Example: `const entry = await db.get('config')`
+
+#### `const entry = await db.getBySeq(seq, [options])`
+
+- Signature: `const entry = await db.getBySeq(seq, [options])`
+- Parameters: `seq` is a Hypercore block index; `options` pass through to the underlying core lookup.
+- Returns: `null` when the block does not exist, otherwise the decoded `{ key, value }` entry stored at that sequence number.
+- Example: `const entry = await db.getBySeq(4)`
+
+#### `const stream = db.createReadStream([range], [options])`
+
+- Signature: `const stream = db.createReadStream([range], [options])`
+- Parameters: `range` can include `gt`, `gte`, `lt`, or `lte`; `options.reverse` flips sort order and `options.limit` caps the number of yielded entries.
+- Returns: An async iterable of `{ seq, key, value }` entries sorted by encoded key order.
+- Example: `for await (const entry of db.createReadStream({ gte: 'a', lt: 'd' })) {}`
+
+#### `const entry = await db.peek([range], [options])`
+
+- Signature: `const entry = await db.peek([range], [options])`
+- Parameters: Accepts the same `range` and `options` as `db.createReadStream(...)`.
+- Returns: The first matching entry, or `null` if the range is empty.
+- Example: `const first = await db.peek({ gte: 'user:' })`
+
+### History and change tracking
+
+#### `const stream = db.createHistoryStream([options])`
+
+- Signature: `const stream = db.createHistoryStream([options])`
+- Parameters: `options.live` keeps the stream open; `options.reverse` yields newest first; `gte`, `gt`, `lte`, and `lt` bound the sequence range; `limit` caps results. Negative sequence bounds are resolved relative to the current version.
+- Returns: An async iterable of change records shaped like `{ type, seq, key, value }`, where `type` is `'put'` or `'del'`.
+- Example: `for await (const entry of db.createHistoryStream({ reverse: true, limit: 1 })) {}`
+
+#### `const stream = db.createDiffStream(otherVersion, [options])`
+
+- Signature: `const stream = db.createDiffStream(otherVersion, [options])`
+- Parameters: `otherVersion` is the version to compare against; `options` match `db.createReadStream(...)` except `reverse` is not supported.
+- Returns: An async iterable of `{ left, right }` pairs sorted by key, where each side is an entry or `null` when that side lacks the key.
+- Example: `for await (const diff of db.createDiffStream(previousVersion)) {}`
+
+Causally equal entries are omitted from the diff, so the stream only yields actual changes between versions.
+
+#### `const entryWatcher = await db.getAndWatch(key, [options])`
+
+- Signature: `const entryWatcher = await db.getAndWatch(key, [options])`
+- Parameters: `key` selects one entry; `options.keyEncoding` and `options.valueEncoding` can override the bee defaults for the watched node.
+- Returns: A watcher whose `node` property always contains the latest entry for that key.
+- Example: `const entryWatcher = await db.getAndWatch('config')`
+
+Listen to `entryWatcher.on('update')` when you need push-style notifications for a single key.
+
+#### `await entryWatcher.close()`
+
+- Signature: `await entryWatcher.close()`
+- Parameters: None.
+- Returns: Resolves after stopping the watcher created by `db.getAndWatch(...)`.
+- Example: `await entryWatcher.close()`
+
+#### `const watcher = db.watch([range])`
+
+- Signature: `const watcher = db.watch([range])`
+- Parameters: `range` accepts the same bounds as `db.createReadStream(...)`, except `reverse`; `keyEncoding` and `valueEncoding` can override the yielded snapshot encodings.
+- Returns: An async iterable watcher that yields `[current, previous]` snapshot pairs each time the watched range changes.
+- Example: `for await (const [current, previous] of db.watch({ gte: 'user:' })) {}`
+
+Watchers are not supported on subs or checkouts. Use `range` to narrow the scope on the root bee instead.
+
+#### `await watcher.ready()`
+
+- Signature: `await watcher.ready()`
+- Parameters: None.
+- Returns: Resolves when a range watcher has loaded and is actively tracking changes.
+- Example: `await watcher.ready()`
+
+#### `await watcher.close()`
+
+- Signature: `await watcher.close()`
+- Parameters: None.
+- Returns: Resolves after stopping the range watcher. Breaking out of the async iterator also stops it.
+- Example: `await watcher.close()`
+
+### Snapshots and sub-bees
+
+#### `const snapshot = db.checkout(version)`
+
+- Signature: `const snapshot = db.checkout(version)`
+- Parameters: `version` is the modification count to read from.
+- Returns: A read-only `Hyperbee` view pinned to that version.
+- Example: `const beforeImport = db.checkout(10)`
+
+#### `const snapshot = db.snapshot()`
+
+- Signature: `const snapshot = db.snapshot()`
+- Parameters: None.
+- Returns: A read-only checkout pinned to the current `db.version`.
+- Example: `const current = db.snapshot()`
+
+#### `const sub = db.sub(prefix, [options])`
+
+- Signature: `const sub = db.sub(prefix, [options])`
+- Parameters: `prefix` becomes the namespace prefix; `options.sep` sets the separator buffer; `options.keyEncoding` and `options.valueEncoding` can override the parent encodings for the sub-bee.
+- Returns: A new `Hyperbee` view that transparently prefixes all keys in that namespace.
+- Example: `const users = db.sub('users')`
+
+Sub-bees are useful when one Hyperbee needs multiple logical keyspaces without creating extra cores.
+
+#### `const header = await db.getHeader([options])`
+
+- Signature: `const header = await db.getHeader([options])`
+- Parameters: `options` are passed through to the underlying `core.get(...)` call.
+- Returns: The decoded header stored in the first block, or throws when the header cannot be decoded.
+- Example: `const header = await db.getHeader()`
+
+### Replication and lifecycle
+
+#### `const stream = db.replicate(isInitiatorOrStream)`
+
+- Signature: `const stream = db.replicate(isInitiatorOrStream)`
+- Parameters: Pass the same initiator flag or replication stream you would pass to the underlying Hypercore replication API.
+- Returns: The replication stream for the backing core.
+- Example: `const replicationStream = db.replicate(true)`
+
+In larger apps, replication is often handled through a shared [`Corestore`](/reference/helpers/corestore) rather than per-bee streams.
+
+#### `await db.close()`
+
+- Signature: `await db.close()`
+- Parameters: None.
+- Returns: Resolves after closing the bee and its backing core.
+- Example: `await db.close()`
+
+### Static helpers
+
+#### `const isHyperbee = await Hyperbee.isHyperbee(core, [options])`
+
+- Signature: `const isHyperbee = await Hyperbee.isHyperbee(core, [options])`
+- Parameters: `core` is the candidate Hypercore; `options` pass through to the first-block lookup.
+- Returns: `true` when the core contains a Hyperbee header, otherwise `false`.
+- Example: `const ok = await Hyperbee.isHyperbee(core)`
+
+## See also
+
+- [Share append-only databases with Hyperbee](/how-to/store-and-replicate/share-append-only-databases-with-hyperbee) — replication walkthrough with reader and writer peers.
+- [Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore) — recommended multi-core replication pattern.
+- [Corestore](/reference/helpers/corestore) — manage many Hypercores and Hyperbees from one store.
+- [Hypercore](/reference/building-blocks/hypercore) — append-only log that stores Hyperbee nodes.
+- [Hyperdrive](/reference/building-blocks/hyperdrive) — filesystem abstraction that builds on Hyperbee-style metadata indexing.

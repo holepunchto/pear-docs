@@ -86,7 +86,8 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
     }
   }
 
-  // /building-blocks/<slug>/  ->  /reference/building-blocks/<slug>/
+  // Building-block reference docs live at /reference/building-blocks/<slug>/.
+  // Keep /building-blocks/<slug>/ as a legacy path only.
   for (const slug of listSlugs(`${contentRoot}/reference/building-blocks`)) {
     out.push({
       from: withSlash(`/building-blocks/${slug}`),

@@ -1,8 +1,518 @@
 ---
 title: "Hyperdrive"
-description: "Secure real-time P2P filesystem—upstream Hyperdrive repository."
+description: "Secure real-time distributed filesystem built on Hypercore-based storage."
 docType: reference
 schemaType: APIReference
 ---
 
-[https://github.com/holepunchto/hyperdrive](https://github.com/holepunchto/hyperdrive)
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+`Hyperdrive` stores filesystem metadata in a [Hyperbee](/reference/building-blocks/hyperbee) and file contents in a blob store, typically backed by one [Corestore](/reference/helpers/corestore). Use this page for the instance surface; use the linked how-to guides for end-to-end replication flows.
+
+## Install
+
+```sh
+npm i hyperdrive
+```
+
+## Quickstart
+
+```js
+import Corestore from 'corestore'
+import Hyperdrive from 'hyperdrive'
+
+const store = new Corestore('./storage')
+const drive = new Hyperdrive(store)
+
+await drive.ready()
+
+await drive.put('/hello.txt', Buffer.from('hello world'), {
+  metadata: { type: 'text/plain' }
+})
+
+const buffer = await drive.get('/hello.txt')
+const entry = await drive.entry('/hello.txt')
+
+console.log(buffer.toString())
+console.log(entry?.value.metadata)
+
+await drive.close()
+```
+
+## API Reference
+
+### Constructor and lifecycle
+
+#### `new Hyperdrive(store, [key])`
+
+- Signature: `new Hyperdrive(store, [key])`
+- Parameters: `store` is the `Corestore` used for metadata and blob storage; `key` optionally opens an existing drive by public key instead of using the default named core.
+- Returns: A `Hyperdrive` instance.
+- Example:
+
+```js
+const drive = new Hyperdrive(store, key)
+await drive.ready()
+```
+
+#### `await drive.ready()`
+
+- Signature: `await drive.ready()`
+- Parameters: None.
+- Returns: A promise that resolves when synchronous properties such as `drive.discoveryKey` are safe to read.
+- Example:
+
+```js
+await drive.ready()
+console.log(drive.discoveryKey)
+```
+
+#### `await drive.close()`
+
+- Signature: `await drive.close()`
+- Parameters: None.
+- Returns: A promise that resolves after the drive and its underlying storage objects are closed.
+- Example:
+
+```js
+await drive.close()
+```
+
+#### `await drive.purge()`
+
+- Signature: `await drive.purge()`
+- Parameters: None.
+- Returns: A promise that resolves after both the metadata core and blob storage are removed from local storage.
+- Example:
+
+```js
+await drive.purge()
+```
+
+### Drive properties
+
+#### `drive.corestore`
+
+- Returns: The `Corestore` instance backing the drive.
+
+#### `drive.db`
+
+- Returns: The underlying Hyperbee that stores the drive's directory structure and entry metadata.
+
+#### `drive.core`
+
+- Returns: The Hypercore used by `drive.db`.
+
+#### `drive.id`
+
+- Returns: A z-base-32 string identifier derived from the drive's public key.
+
+#### `drive.key`
+
+- Returns: The public key of the metadata Hypercore backing the drive.
+
+#### `drive.discoveryKey`
+
+- Returns: The discovery key derived from `drive.key`, typically used as a Hyperswarm topic.
+
+#### `drive.contentKey`
+
+- Returns: The public key of the Hyperblobs instance that stores file contents.
+
+#### `drive.writable`
+
+- Returns: `true` when the current instance can mutate entries in the drive.
+
+#### `drive.readable`
+
+- Returns: `true` when the instance can still read data; becomes `false` after `close()`.
+
+#### `drive.version`
+
+- Returns: The current drive version number, incremented as filesystem mutations are committed.
+
+#### `drive.supportsMetadata`
+
+- Returns: `true`. Hyperdrive always supports entry metadata.
+
+### Files
+
+#### `await drive.put(path, buffer, [options])`
+
+- Signature: `await drive.put(path, buffer, [options])`
+- Parameters: `path` is the absolute drive path to write; `buffer` is the file content; `options` matches `drive.createWriteStream(...)` and supports `executable` and `metadata`.
+- Returns: A promise that resolves after the file entry and blob are committed.
+- Example:
+
+```js
+await drive.put('/docs/readme.txt', Buffer.from('hello'))
+```
+
+#### `const buffer = await drive.get(path, [options])`
+
+- Signature: `const buffer = await drive.get(path, [options])`
+- Parameters: `path` is the file path to read; `options.wait` waits for remote blocks and `options.timeout` bounds that wait in milliseconds.
+- Returns: A `Buffer` for the file contents, or `null` if the file is missing or the path is a symlink.
+- Example:
+
+```js
+const buffer = await drive.get('/docs/readme.txt')
+console.log(buffer?.toString())
+```
+
+#### `const entry = await drive.entry(path, [options])`
+
+- Signature: `const entry = await drive.entry(path, [options])`
+- Parameters: `path` is the path to inspect; `options.follow` follows symlinks, while `wait` and `timeout` control remote reads.
+- Returns: The current entry object, including `seq`, `key`, and `value` metadata, or `null` when no entry exists.
+- Example:
+
+```js
+const entry = await drive.entry('/docs/readme.txt')
+console.log(entry?.value.metadata)
+```
+
+#### `const exists = await drive.exists(path)`
+
+- Signature: `const exists = await drive.exists(path)`
+- Parameters: `path` is the path to test.
+- Returns: `true` if an entry exists at that path, otherwise `false`.
+- Example:
+
+```js
+const exists = await drive.exists('/docs/readme.txt')
+```
+
+#### `await drive.has(path)`
+
+- Signature: `await drive.has(path)`
+- Parameters: `path` is the file path to check.
+- Returns: `true` when the data for that path is already stored locally.
+- Example:
+
+```js
+const hasLocalData = await drive.has('/docs/readme.txt')
+```
+
+#### `await drive.del(path)`
+
+- Signature: `await drive.del(path)`
+- Parameters: `path` is the file path to remove.
+- Returns: A promise that resolves after the entry is deleted from the drive.
+- Example:
+
+```js
+await drive.del('/docs/old.txt')
+```
+
+#### `const cleared = await drive.clear(path, [options])`
+
+- Signature: `const cleared = await drive.clear(path, [options])`
+- Parameters: `path` is the file path whose blob data should be discarded locally; `options.diff` includes a byte-count diff in the return value.
+- Returns: Information about cleared bytes when `diff` is enabled; otherwise `null`.
+- Example:
+
+```js
+await drive.clear('/videos/demo.mp4', { diff: true })
+```
+
+#### `const cleared = await drive.clearAll([options])`
+
+- Signature: `const cleared = await drive.clearAll([options])`
+- Parameters: `options.diff` includes a byte-count diff in the return value.
+- Returns: Information about cleared bytes when `diff` is enabled; otherwise `null`.
+- Example:
+
+```js
+await drive.clearAll({ diff: true })
+```
+
+#### `await drive.symlink(path, linkname)`
+
+- Signature: `await drive.symlink(path, linkname)`
+- Parameters: `path` is the symlink entry to create; `linkname` is the destination path inside the drive.
+- Returns: A promise that resolves after the symlink entry is written.
+- Example:
+
+```js
+await drive.symlink('/images/logo.shortcut', '/images/logo.png')
+```
+
+#### `const rs = drive.createReadStream(path, [options])`
+
+- Signature: `const rs = drive.createReadStream(path, [options])`
+- Parameters: `path` is the file path to stream; `options.start`, `end`, and `length` select a byte range, while `wait` and `timeout` control remote reads.
+- Returns: A readable stream for the blob at `path`.
+- Example:
+
+```js
+for await (const chunk of drive.createReadStream('/hello.txt')) {
+  console.log(chunk)
+}
+```
+
+#### `const ws = drive.createWriteStream(path, [options])`
+
+- Signature: `const ws = drive.createWriteStream(path, [options])`
+- Parameters: `path` is the file path to write; `options.executable` marks the file executable and `options.metadata` stores arbitrary JSON metadata.
+- Returns: A writable stream that commits the file when closed.
+- Example:
+
+```js
+const ws = drive.createWriteStream('/notes.txt')
+ws.end('hello from a stream')
+```
+
+### Directories and listings
+
+#### `const stream = drive.list(folder, [options])`
+
+- Signature: `const stream = drive.list(folder, [options])`
+- Parameters: `folder` scopes the prefix to list; `options.recursive` controls descent, `options.ignore` skips names, and `options.wait` blocks for remote metadata.
+- Returns: A stream of full entry records under the requested folder prefix.
+- Example:
+
+```js
+for await (const entry of drive.list('/images')) {
+  console.log(entry.key)
+}
+```
+
+#### `const stream = drive.readdir(folder, [options])`
+
+- Signature: `const stream = drive.readdir(folder, [options])`
+- Parameters: `folder` is the directory to enumerate; `options.wait` waits for remote metadata before yielding names.
+- Returns: A stream of child paths under the requested folder.
+- Example:
+
+```js
+for await (const name of drive.readdir('/images')) {
+  console.log(name)
+}
+```
+
+#### `const stream = await drive.entries([range], [options])`
+
+- Signature: `const stream = await drive.entries([range], [options])`
+- Parameters: `range` limits the key space to read; `options` follows the same stream options as the underlying Hyperbee read stream.
+- Returns: A read stream of drive entries in key order.
+- Example:
+
+```js
+for await (const entry of await drive.entries()) {
+  console.log(entry.key)
+}
+```
+
+#### `const comparison = drive.compare(entryA, entryB)`
+
+- Signature: `const comparison = drive.compare(entryA, entryB)`
+- Parameters: `entryA` and `entryB` are entry objects returned by Hyperdrive.
+- Returns: `0` when the entries match, `1` when `entryA` is older, and `-1` when `entryB` is older.
+- Example:
+
+```js
+const comparison = drive.compare(currentEntry, previousEntry)
+```
+
+#### `const watcher = drive.watch([folder])`
+
+- Signature: `const watcher = drive.watch([folder])`
+- Parameters: `folder` optionally narrows change detection to a subtree; defaults to `/`.
+- Returns: An async iterator that yields `[current, previous]` snapshots. The watcher also exposes `await watcher.ready()` and `await watcher.destroy()`.
+- Example:
+
+```js
+const watcher = drive.watch('/docs')
+await watcher.ready()
+
+for await (const [current, previous] of watcher) {
+  console.log(previous.version, '->', current.version)
+  break
+}
+
+await watcher.destroy()
+```
+
+### Versions and batched mutations
+
+#### `const batch = drive.batch()`
+
+- Signature: `const batch = drive.batch()`
+- Parameters: None.
+- Returns: A batch object with the same mutation interface as `drive`, allowing multiple writes to be staged atomically.
+- Example:
+
+```js
+const batch = drive.batch()
+await batch.put('/a.txt', Buffer.from('a'))
+await batch.put('/b.txt', Buffer.from('b'))
+await batch.flush()
+```
+
+#### `await batch.flush()`
+
+- Signature: `await batch.flush()`
+- Parameters: None.
+- Returns: A promise that resolves when the staged batch mutations are committed to the underlying drive.
+- Example:
+
+```js
+const batch = drive.batch()
+await batch.del('/old.txt')
+await batch.flush()
+```
+
+#### `const snapshot = drive.checkout(version)`
+
+- Signature: `const snapshot = drive.checkout(version)`
+- Parameters: `version` is the earlier drive version to open.
+- Returns: A read-only snapshot of that version of the drive.
+- Example:
+
+```js
+const snapshot = drive.checkout(10)
+const buffer = await snapshot.get('/hello.txt')
+```
+
+#### `const stream = drive.diff(version, folder, [options])`
+
+- Signature: `const stream = drive.diff(version, folder, [options])`
+- Parameters: `version` is the baseline version to compare against; `folder` scopes the diff to one subtree; `options` passes through to the diff stream.
+- Returns: A stream of `{ left, right }` objects describing shallow changes between `version` and the current drive version.
+- Example:
+
+```js
+for await (const change of drive.diff(10, '/docs')) {
+  console.log(change.left, change.right)
+}
+```
+
+#### `await drive.truncate(version, [options])`
+
+- Signature: `await drive.truncate(version, [options])`
+- Parameters: `version` is the drive version to roll back to; `options.blobs` can be provided when the matching blob length is already known.
+- Returns: A promise that resolves after the drive is truncated to that earlier state.
+- Example:
+
+```js
+await drive.truncate(10)
+```
+
+### Replication, downloads, and blob access
+
+#### `const mirror = drive.mirror(out, [options])`
+
+- Signature: `const mirror = drive.mirror(out, [options])`
+- Parameters: `out` is another drive-like destination such as [Localdrive](/reference/helpers/localdrive); `options` are forwarded to the underlying [Mirrordrive](/reference/helpers/mirrordrive) instance.
+- Returns: A `MirrorDrive` instance. Call `await mirror.done()` to wait for the copy to finish.
+- Example:
+
+```js
+const mirror = drive.mirror(localdrive)
+await mirror.done()
+```
+
+#### `const download = drive.download(folder, [options])`
+
+- Signature: `const download = drive.download(folder, [options])`
+- Parameters: `folder` scopes which subtree to fetch; `options` match `drive.list(...)`.
+- Returns: A `Download` handle for blob downloads. Use `await download.done()` to wait for completion or `download.destroy()` to cancel.
+- Example:
+
+```js
+const download = drive.download('/images')
+await download.done()
+```
+
+#### `const download = await drive.downloadDiff(version, folder, [options])`
+
+- Signature: `const download = await drive.downloadDiff(version, folder, [options])`
+- Parameters: `version` is the historical version to compare; `folder` scopes the subtree; `options` match `drive.list(...)`.
+- Returns: A `Download` handle for blobs that exist in `drive.checkout(version)` but not in the current drive state.
+- Example:
+
+```js
+const download = await drive.downloadDiff(10, '/images')
+await download.done()
+```
+
+#### `const download = await drive.downloadRange(dbRanges, blobRanges)`
+
+- Signature: `const download = await drive.downloadRange(dbRanges, blobRanges)`
+- Parameters: `dbRanges` selects metadata ranges and `blobRanges` selects blob ranges, using the range format accepted by [Hypercore](/reference/building-blocks/hypercore).
+- Returns: A `Download` handle for the requested metadata and blob ranges.
+- Example:
+
+```js
+const download = await drive.downloadRange([{ start: 0, end: 10 }], [])
+await download.done()
+```
+
+#### `const done = drive.findingPeers()`
+
+- Signature: `const done = drive.findingPeers()`
+- Parameters: None.
+- Returns: A callback that should be invoked when the current peer-discovery pass finishes, allowing pending updates to unblock.
+- Example:
+
+```js
+const done = drive.findingPeers()
+swarm.flush().then(done, done)
+```
+
+#### `const stream = drive.replicate(isInitiatorOrStream)`
+
+- Signature: `const stream = drive.replicate(isInitiatorOrStream)`
+- Parameters: Pass a replication stream or the initiator/options form accepted by the underlying Corestore replication API.
+- Returns: The replication stream for the drive and its loaded backing data.
+- Example:
+
+```js
+swarm.on('connection', (socket) => drive.replicate(socket))
+```
+
+#### `const updated = await drive.update([options])`
+
+- Signature: `const updated = await drive.update([options])`
+- Parameters: `options.wait` can force a blocking wait for a newer version.
+- Returns: A boolean indicating whether the drive observed a new version.
+- Example:
+
+```js
+const done = drive.findingPeers()
+swarm.flush().then(done, done)
+const updated = await drive.update()
+```
+
+#### `const blobs = await drive.getBlobs()`
+
+- Signature: `const blobs = await drive.getBlobs()`
+- Parameters: None.
+- Returns: The Hyperblobs instance storing file contents for the drive.
+- Example:
+
+```js
+const blobs = await drive.getBlobs()
+const entry = await drive.entry('/hello.txt')
+const buffer = await blobs.get(entry.value.blob)
+```
+
+#### `const blobsLength = await drive.getBlobsLength(checkout)`
+
+- Signature: `const blobsLength = await drive.getBlobsLength(checkout)`
+- Parameters: `checkout` optionally selects the drive version whose blob length should be resolved.
+- Returns: The Hyperblobs length associated with that version of the drive.
+- Example:
+
+```js
+const blobsLength = await drive.getBlobsLength()
+```
+
+## See also
+
+- [Create a full peer-to-peer filesystem with Hyperdrive](/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive) — end-to-end filesystem replication walkthrough.
+- [Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore) — recommended pattern when one app manages multiple drives or related cores.
+- [Localdrive](/reference/helpers/localdrive) — map a Hyperdrive-like API onto the local filesystem.
+- [Mirrordrive](/reference/helpers/mirrordrive) — sync between Hyperdrive and other drive-like destinations.
+- [Corestore](/reference/helpers/corestore) — shared storage and replication manager for drive metadata and content.
