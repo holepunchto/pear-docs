@@ -1,8 +1,372 @@
 ---
 title: "Compact encoding"
-description: "Compact binary encodings—upstream compact-encoding repository."
+description: "Small binary encoding toolkit for protocol messages and storage formats."
 docType: reference
 schemaType: APIReference
 ---
 
-[https://github.com/holepunchto/compact-encoding](https://github.com/holepunchto/compact-encoding)
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+`compact-encoding` packages small binary codecs behind a shared encoder interface. It is commonly paired with [Protomux](/reference/helpers/protomux) message schemas and shows up in [Hypercore](/reference/building-blocks/hypercore) and other Holepunch protocol surfaces whenever structured binary payloads matter. For the upstream package and implementation details, see the [compact-encoding repository](https://github.com/holepunchto/compact-encoding).
+
+## Install
+
+```sh
+npm i compact-encoding
+```
+
+## Quickstart
+
+```js
+import cenc from 'compact-encoding'
+
+const state = cenc.state()
+
+cenc.uint.preencode(state, 42)
+cenc.string.preencode(state, 'hello')
+
+state.buffer = Buffer.allocUnsafe(state.end)
+state.start = 0
+
+cenc.uint.encode(state, 42)
+cenc.string.encode(state, 'hello')
+
+state.start = 0
+
+console.log(cenc.uint.decode(state))
+console.log(cenc.string.decode(state))
+```
+
+## API Reference
+
+### Encoder contract
+
+Every bundled encoder follows the same three-method contract. The top-level helpers and exported factories below all return or consume objects with this shape.
+
+#### `enc.preencode(state, value)`
+
+- Signature: `enc.preencode(state, value)`
+- Parameters: `state` is the mutable encoding state object. `value` is the value that will later be encoded.
+- Returns: Nothing. It updates `state.end` so you know how large the output buffer must be.
+- Example:
+
+```js
+const state = cenc.state()
+cenc.uint.preencode(state, 42)
+console.log(state.end)
+```
+
+#### `enc.encode(state, value)`
+
+- Signature: `enc.encode(state, value)`
+- Parameters: `state` is a state object with `buffer` set. `value` is the value to encode.
+- Returns: Nothing. It writes into `state.buffer` at `state.start` and advances `state.start`.
+- Example:
+
+```js
+const state = cenc.state()
+cenc.uint.preencode(state, 42)
+state.buffer = Buffer.allocUnsafe(state.end)
+cenc.uint.encode(state, 42)
+```
+
+#### `const value = enc.decode(state)`
+
+- Signature: `const value = enc.decode(state)`
+- Parameters: `state` is a state object whose `buffer` contains encoded bytes.
+- Returns: The decoded value. `state.start` advances past the consumed bytes.
+- Example:
+
+```js
+const state = cenc.state(0, buffer.byteLength, buffer)
+const value = cenc.uint.decode(state)
+```
+
+### State and convenience helpers
+
+#### `const state = cenc.state([start], [end], [buffer])`
+
+- Signature: `const state = cenc.state([start], [end], [buffer])`
+- Parameters: `start` defaults to `0`, `end` defaults to `0`, and `buffer` defaults to `null`.
+- Returns: A mutable state object `{ start, end, buffer }` used by all encoders.
+- Example:
+
+```js
+const state = cenc.state()
+```
+
+#### `const buffer = cenc.encode(enc, value)`
+
+- Signature: `const buffer = cenc.encode(enc, value)`
+- Parameters: `enc` is any compact encoder. `value` is the value to serialize.
+- Returns: A freshly allocated buffer containing the encoded value.
+- Example:
+
+```js
+const buffer = cenc.encode(cenc.bool, true)
+```
+
+#### `const value = cenc.decode(enc, buffer)`
+
+- Signature: `const value = cenc.decode(enc, buffer)`
+- Parameters: `enc` is any compact encoder. `buffer` is the encoded byte sequence.
+- Returns: The decoded value.
+- Example:
+
+```js
+const value = cenc.decode(cenc.bool, buffer)
+```
+
+#### `const enc = cenc.from(encLike)`
+
+- Signature: `const enc = cenc.from(encLike)`
+- Parameters: `encLike` can be an existing compact encoder, a named raw string encoding such as `'utf8'` or `'json'`, a codec with `encode`/`decode`, or an abstract encoding with `encodingLength`.
+- Returns: A compact-encoding-compatible encoder object.
+- Example:
+
+```js
+const enc = cenc.from('utf8')
+const buffer = cenc.encode(enc, 'hello')
+```
+
+### Encoder factories
+
+#### `const enc = cenc.fixed(length)`
+
+- Signature: `const enc = cenc.fixed(length)`
+- Parameters: `length` is the exact byte length that every encoded value must have.
+- Returns: An encoder for fixed-size buffers.
+- Example:
+
+```js
+const keyEncoding = cenc.fixed(32)
+```
+
+#### `const enc = cenc.array(itemEncoding)`
+
+- Signature: `const enc = cenc.array(itemEncoding)`
+- Parameters: `itemEncoding` is the encoder used for each array element.
+- Returns: An encoder that prefixes arrays with their length and encodes each item in order.
+- Example:
+
+```js
+const listEncoding = cenc.array(cenc.string)
+const buffer = cenc.encode(listEncoding, ['a', 'b'])
+```
+
+#### `const enc = cenc.frame(innerEncoding)`
+
+- Signature: `const enc = cenc.frame(innerEncoding)`
+- Parameters: `innerEncoding` is the payload encoding to wrap.
+- Returns: An encoder that prefixes one encoded payload with its byte length.
+- Example:
+
+```js
+const framed = cenc.frame(cenc.string)
+```
+
+#### `const enc = cenc.record(keyEncoding, valueEncoding)`
+
+- Signature: `const enc = cenc.record(keyEncoding, valueEncoding)`
+- Parameters: `keyEncoding` encodes object keys and `valueEncoding` encodes object values.
+- Returns: An encoder for plain object records.
+- Example:
+
+```js
+const headerEncoding = cenc.record(cenc.string, cenc.string)
+```
+
+#### `cenc.stringRecord`
+
+- Returns: A prebuilt `record(cenc.string, cenc.string)` encoder for simple string maps.
+
+### Numeric encodings
+
+#### `cenc.uint`, `cenc.uint8`, `cenc.uint16`, `cenc.uint24`, `cenc.uint32`, `cenc.uint40`, `cenc.uint48`, `cenc.uint56`, `cenc.uint64`
+
+- Returns: Unsigned integer encoders. `cenc.uint` chooses a compact size automatically; the fixed-width variants always use the named byte width.
+- Example:
+
+```js
+const port = cenc.encode(cenc.uint16, 8080)
+```
+
+#### `cenc.int`, `cenc.int8`, `cenc.int16`, `cenc.int24`, `cenc.int32`, `cenc.int40`, `cenc.int48`, `cenc.int56`, `cenc.int64`
+
+- Returns: Signed integer encoders built on top of the unsigned variants with ZigZag encoding.
+- Example:
+
+```js
+const delta = cenc.encode(cenc.int, -12)
+```
+
+#### `cenc.biguint64`, `cenc.bigint64`, `cenc.biguint`, `cenc.bigint`
+
+- Returns: BigInt-aware integer encoders for fixed-width or variable-width large integer values.
+- Example:
+
+```js
+const buffer = cenc.encode(cenc.biguint64, 42n)
+```
+
+#### `cenc.float32`, `cenc.float64`
+
+- Returns: Floating-point encoders using IEEE-754 little-endian layouts.
+- Example:
+
+```js
+const sample = cenc.encode(cenc.float32, 3.14)
+```
+
+#### `cenc.lexint`
+
+- Returns: The exported lexicographic integer encoder family from the `./lexint` module.
+
+### Binary, buffer, and typed-array encodings
+
+#### `cenc.buffer`, `cenc.optionalBuffer`, `cenc.binary`
+
+- Returns: Buffer-oriented encoders. `buffer` length-prefixes a byte sequence, `optionalBuffer` maps zero length to `null`, and `binary` accepts either a string or buffer-like input.
+- Example:
+
+```js
+const payload = cenc.encode(cenc.buffer, Buffer.from('hello'))
+```
+
+#### `cenc.arraybuffer`
+
+- Returns: An encoder for `ArrayBuffer` instances.
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.arraybuffer, new Uint8Array([1, 2, 3]).buffer)
+```
+
+#### `cenc.uint8array`, `cenc.uint16array`, `cenc.uint32array`, `cenc.int8array`, `cenc.int16array`, `cenc.int32array`, `cenc.biguint64array`, `cenc.bigint64array`, `cenc.float32array`, `cenc.float64array`
+
+- Returns: Length-prefixed typed-array encoders that preserve the underlying element type.
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.uint32array, new Uint32Array([1, 2, 3]))
+```
+
+#### `cenc.fixed32`, `cenc.fixed64`
+
+- Returns: Prebuilt fixed-size buffer encoders for 32-byte and 64-byte values.
+- Example:
+
+```js
+const key = cenc.encode(cenc.fixed32, Buffer.alloc(32))
+```
+
+### Text encodings
+
+#### `cenc.string`, `cenc.utf8`, `cenc.ascii`, `cenc.hex`, `cenc.base64`, `cenc.utf16le`, `cenc.ucs2`
+
+- Returns: String encoders for the named text encoding. Each one also exposes `.fixed(length)` for fixed-size strings.
+- Example:
+
+```js
+const topic = cenc.encode(cenc.hex.fixed(64), '0123abcd'.repeat(8))
+```
+
+### Boolean, date, and structured-value encodings
+
+#### `cenc.bool`
+
+- Returns: A one-byte boolean encoder.
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.bool, true)
+```
+
+#### `cenc.date`
+
+- Returns: A `Date` encoder backed by the signed integer timestamp value from `date.getTime()`.
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.date, new Date())
+```
+
+#### `cenc.json`, `cenc.ndjson`
+
+- Returns: UTF-8 JSON encoders. `ndjson` appends a trailing newline before encoding.
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.json, { type: 'ping' })
+```
+
+#### `cenc.none`
+
+- Returns: A sentinel encoder that always decodes to `null` and writes no payload bytes.
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.none, null)
+```
+
+#### `cenc.any`
+
+- Returns: A schemaless tagged-value encoder for JSON-like values, arrays, objects, dates, strings, buffers, booleans, integers, and floats.
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.any, {
+  type: 'hello',
+  count: 3,
+  ok: true
+})
+```
+
+### Network encodings
+
+#### `cenc.port`
+
+- Returns: The same encoder as `cenc.uint16`, provided for protocol readability when encoding network ports.
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.port, 49737)
+```
+
+#### `cenc.ipv4`, `cenc.ipv6`, `cenc.ip`
+
+- Returns: Encoders for IPv4 addresses, IPv6 addresses, or either family with an embedded family tag.
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.ip, '127.0.0.1')
+```
+
+#### `cenc.ipv4Address`, `cenc.ipv6Address`, `cenc.ipAddress`
+
+- Returns: Address-object encoders for `{ host, family?, port }` shapes.
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.ipAddress, {
+  host: '127.0.0.1',
+  port: 49737
+})
+```
+
+### Raw variants
+
+#### `cenc.raw`
+
+- Returns: A namespace of non-length-prefixed variants for many buffer, string, array, JSON, and typed-array encodings such as `cenc.raw.buffer`, `cenc.raw.utf8`, `cenc.raw.array(enc)`, and `cenc.raw.json`.
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.raw.utf8, 'hello')
+```
+
+## See also
+
+- [Protomux](/reference/helpers/protomux) — the most common higher-level protocol surface built directly on compact-encoding schemas.
+- [Hypercore](/reference/building-blocks/hypercore) — accepts compact encodings for structured values and message payloads.
+- [Upstream compact-encoding repository](https://github.com/holepunchto/compact-encoding) — source, releases, and implementation details.

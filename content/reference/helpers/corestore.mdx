@@ -1,8 +1,307 @@
 ---
 title: "Corestore"
-description: "Hypercore factory for many cores—upstream Corestore repository."
+description: "Factory and replication manager for groups of named Hypercores."
 docType: reference
 schemaType: APIReference
 ---
 
-[https://github.com/holepunchto/corestore](https://github.com/holepunchto/corestore)
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+`Corestore` manages many related [Hypercores](/reference/building-blocks/hypercore) behind one storage root and one replication surface. It is the helper you usually share across [Hyperbee](/reference/building-blocks/hyperbee), [Hyperdrive](/reference/building-blocks/hyperdrive), and [Autobase](/reference/building-blocks/autobase) instances. For upstream source and changelog context, see the [Corestore repository](https://github.com/holepunchto/corestore).
+
+## Install
+
+```sh
+npm i corestore
+```
+
+## Quickstart
+
+```js
+import Corestore from 'corestore'
+
+const store = new Corestore('./app-storage')
+await store.ready()
+
+const messages = store.get({
+  name: 'messages',
+  valueEncoding: 'json'
+})
+
+await messages.ready()
+await messages.append({ text: 'hello from corestore' })
+
+console.log(await messages.get(0))
+
+await store.close()
+```
+
+## API Reference
+
+### Constructor and lifecycle
+
+#### `const store = new Corestore(storage, [options])`
+
+- Signature: `const store = new Corestore(storage, [options])`
+- Parameters: `storage` is either a local path string or a `hypercore-storage` instance. `options` can include `primaryKey`, `writable`, `readOnly`, `globalCache`, `manifestVersion`, `id`, `allowBackup`, `wait`, `suspend`, `active`, and `unsafe` when you intentionally pass a custom `primaryKey`.
+- Returns: A `Corestore` instance that lazily opens its underlying storage and derives writable core keys from one root key.
+- Example:
+
+```js
+const store = new Corestore('./storage', {
+  manifestVersion: 1,
+  writable: true
+})
+
+await store.ready()
+```
+
+#### `await store.ready()`
+
+- Signature: `await store.ready()`
+- Parameters: None.
+- Returns: A promise that resolves once the storage seed is loaded and properties such as `store.primaryKey` are available.
+- Example:
+
+```js
+await store.ready()
+console.log(store.primaryKey)
+```
+
+#### `await store.close()`
+
+- Signature: `await store.close()`
+- Parameters: None.
+- Returns: A promise that resolves after all open sessions, cores, and underlying storage handles managed by this store are closed.
+- Example:
+
+```js
+await store.close()
+```
+
+#### `await store.suspend([options])`
+
+- Signature: `await store.suspend([options])`
+- Parameters: `options.log` is an optional async logger callback that receives progress messages such as `"Flushing db..."` and `"Suspending db..."`.
+- Returns: A promise that resolves after the backing database has been flushed and, when supported, suspended.
+- Example:
+
+```js
+await store.suspend({
+  async log(message) {
+    console.log(message)
+  }
+})
+```
+
+#### `await store.resume()`
+
+- Signature: `await store.resume()`
+- Parameters: None.
+- Returns: A promise that resolves after a suspended backing store is resumed.
+- Example:
+
+```js
+await store.resume()
+```
+
+### Store properties
+
+#### `store.storage`
+
+- Returns: The backing storage adapter used for aliases, seeds, and Hypercore data files.
+
+#### `store.primaryKey`
+
+- Returns: The 32-byte primary key used to deterministically derive writable named cores and namespaced key pairs.
+
+#### `store.readOnly`
+
+- Returns: `true` when the store was opened without write access.
+
+#### `store.manifestVersion`
+
+- Returns: The Hypercore manifest version used when Corestore creates new writable cores.
+
+#### `store.active`
+
+- Returns: `true` when the store should automatically attach loaded cores to active replication streams.
+
+### Loading cores and scoping sessions
+
+#### `const core = store.get(keyOrOptions)`
+
+- Signature: `const core = store.get(keyOrOptions)`
+- Parameters: Pass a raw core key, discovery key, or an options object. Common options are `name`, `key`, `discoveryKey`, `valueEncoding`, `encryption`, `manifest`, `keyPair`, `writable`, `timeout`, `wait`, `active`, and any Hypercore constructor options that should flow into the resulting session.
+- Returns: A `Hypercore` session. Repeated calls for the same underlying core reuse the same loaded resources and hand back new sessions.
+- Example:
+
+```js
+const writer = store.get({ name: 'messages', valueEncoding: 'json' })
+await writer.ready()
+
+const reader = store.get(writer.key)
+await reader.ready()
+```
+
+#### `const sessionStore = store.session([options])`
+
+- Signature: `const sessionStore = store.session([options])`
+- Parameters: `options` can override session-level flags such as `namespace`, `active`, or `manifestVersion`.
+- Returns: A child `Corestore` session that shares the same underlying storage and primary key, but tracks its own opened cores. Closing the session closes the cores created through that session only.
+- Example:
+
+```js
+const sessionStore = store.session()
+const sessionCore = sessionStore.get({ name: 'session-only' })
+
+await sessionCore.ready()
+await sessionStore.close()
+```
+
+#### `const namespacedStore = store.namespace(name, [options])`
+
+- Signature: `const namespacedStore = store.namespace(name, [options])`
+- Parameters: `name` is the namespace label to hash into the key-derivation namespace. `options` are forwarded to `store.session(...)`.
+- Returns: A child `Corestore` session whose named writable cores do not collide with the parent or sibling namespaces.
+- Example:
+
+```js
+const appStore = store.namespace('my-app')
+const jobsStore = store.namespace('jobs')
+
+const appCore = appStore.get({ name: 'main' })
+const jobsCore = jobsStore.get({ name: 'main' })
+```
+
+### Replication and discovery
+
+#### `const stream = store.replicate(isInitiatorOrStream, [options])`
+
+- Signature: `const stream = store.replicate(isInitiatorOrStream, [options])`
+- Parameters: Pass either a boolean initiator flag or an existing protocol stream/socket. `options` are forwarded to Hypercore's protocol-stream creation, including transport-specific replication settings.
+- Returns: A protocol stream that can replicate every compatible core currently opened through the store, plus newly opened ones while the stream stays attached.
+- Example:
+
+```js
+swarm.on('connection', (socket) => {
+  store.replicate(socket)
+})
+```
+
+#### `const done = store.findingPeers()`
+
+- Signature: `const done = store.findingPeers()`
+- Parameters: None.
+- Returns: A completion callback. Call it after the current peer-discovery pass finishes so pending update waits on loaded cores can unblock.
+- Example:
+
+```js
+const done = store.findingPeers()
+swarm.flush().then(done, done)
+```
+
+#### `const stream = store.list([namespace])`
+
+- Signature: `const stream = store.list([namespace])`
+- Parameters: `namespace` optionally narrows the listing to one derived namespace buffer.
+- Returns: A stream of discovery keys for the cores known to the backing store.
+- Example:
+
+```js
+for await (const discoveryKey of store.list()) {
+  console.log(discoveryKey)
+}
+```
+
+#### `const auth = store.getAuth(discoveryKey)`
+
+- Signature: `const auth = store.getAuth(discoveryKey)`
+- Parameters: `discoveryKey` is the discovery key for a stored core.
+- Returns: The storage-layer auth metadata for that core, including manifest details when available.
+- Example:
+
+```js
+const auth = store.getAuth(core.discoveryKey)
+console.log(auth)
+```
+
+### Key derivation and maintenance
+
+#### `const keyPair = await store.createKeyPair(name, [namespace])`
+
+- Signature: `const keyPair = await store.createKeyPair(name, [namespace])`
+- Parameters: `name` is the deterministic label to derive from the store primary key. `namespace` optionally overrides the current namespace buffer instead of using `store.ns`.
+- Returns: A deterministic `{ publicKey, secretKey }` pair derived from the store seed and namespace.
+- Example:
+
+```js
+const keyPair = await store.createKeyPair('peer-rpc')
+console.log(keyPair.publicKey)
+```
+
+#### `const report = await store.audit([options])`
+
+- Signature: `const report = await store.audit([options])`
+- Parameters: `options` are forwarded to Corestore's audit helper.
+- Returns: An audit report describing the state of the backing store and any detected inconsistencies.
+- Example:
+
+```js
+const report = await store.audit()
+console.log(report)
+```
+
+#### `const staticCore = await store.staticify(core, [options])`
+
+- Signature: `const staticCore = await store.staticify(core, [options])`
+- Parameters: `core` is an opened Hypercore with data. `options` are forwarded to the follow-up `store.get(...)` call used to reopen the staticized core.
+- Returns: A reopened Hypercore whose manifest is converted into a static prologue-based manifest for the current data snapshot.
+- Example:
+
+```js
+const liveCore = store.get({ name: 'docs' })
+await liveCore.ready()
+await liveCore.append('snapshot me')
+
+const staticCore = await store.staticify(liveCore)
+await staticCore.ready()
+```
+
+### Watchers
+
+#### `store.watch(callback)`
+
+- Signature: `store.watch(callback)`
+- Parameters: `callback` receives each newly opened internal core object.
+- Returns: Nothing. The callback stays registered until you call `store.unwatch(callback)` or close the store.
+- Example:
+
+```js
+function onopen(core) {
+  console.log(core.discoveryKey)
+}
+
+store.watch(onopen)
+```
+
+#### `store.unwatch(callback)`
+
+- Signature: `store.unwatch(callback)`
+- Parameters: `callback` is the same function previously passed to `store.watch(...)`.
+- Returns: Nothing.
+- Example:
+
+```js
+store.unwatch(onopen)
+```
+
+## See also
+
+- [Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore) — the task-oriented guide that shows how to share one store across your app.
+- [Hypercore](/reference/building-blocks/hypercore) — the append-only log type Corestore opens and co-replicates.
+- [Hyperbee](/reference/building-blocks/hyperbee) — commonly layered on top of named Hypercores from one store.
+- [Hyperdrive](/reference/building-blocks/hyperdrive) — usually keeps filesystem metadata and content stores inside one shared Corestore.
+- [Autobase](/reference/building-blocks/autobase) — multi-writer views often coordinate their input cores through one Corestore.
+- [Hyperswarm](/reference/building-blocks/hyperswarm) — pass swarm connections to `store.replicate()` to co-replicate all managed cores over one stream.
+- [Upstream Corestore repository](https://github.com/holepunchto/corestore) — source, releases, and implementation details.

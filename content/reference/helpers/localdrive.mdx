@@ -1,8 +1,296 @@
 ---
 title: "Localdrive"
-description: "Local FS layer interoperable with Hyperdrive—upstream Localdrive repository."
+description: "Local filesystem adapter with a Hyperdrive-like API."
 docType: reference
 schemaType: APIReference
 ---
 
-[https://github.com/holepunchto/localdrive](https://github.com/holepunchto/localdrive)
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+`Localdrive` exposes a local directory through an API that closely matches [Hyperdrive](/reference/building-blocks/hyperdrive). It is the simplest way to mirror between on-disk files and distributed drives with [Mirrordrive](/reference/helpers/mirrordrive). For upstream implementation details, see the [Localdrive repository](https://github.com/holepunchto/localdrive).
+
+## Install
+
+```sh
+npm i localdrive
+```
+
+## Quickstart
+
+```js
+import Localdrive from 'localdrive'
+
+const drive = new Localdrive('./site')
+
+await drive.put('/index.html', Buffer.from('<h1>Hello</h1>'))
+const html = await drive.get('/index.html')
+
+console.log(html?.toString())
+console.log(await drive.entry('/index.html'))
+```
+
+## API Reference
+
+### Constructor and lifecycle
+
+#### `const drive = new Localdrive(root, [options])`
+
+- Signature: `const drive = new Localdrive(root, [options])`
+- Parameters: `root` is the local directory to expose. `options.followLinks` follows symlinks during entry resolution, `options.followExternalLinks` permits following symlinks that leave `root`, `options.metadata` can be either a `{ get, put, del }` hook object or a `Map`, and `options.atomic` writes through temporary files before renaming into place.
+- Returns: A `Localdrive` instance rooted at the resolved absolute path.
+- Example:
+
+```js
+const metadata = new Map()
+
+const drive = new Localdrive('./assets', {
+  atomic: true,
+  metadata
+})
+```
+
+#### `await drive.ready()`
+
+- Signature: `await drive.ready()`
+- Parameters: None.
+- Returns: A promise that resolves immediately. It exists for compatibility with drive-like APIs such as Hyperdrive.
+- Example:
+
+```js
+await drive.ready()
+```
+
+#### `await drive.close()`
+
+- Signature: `await drive.close()`
+- Parameters: None.
+- Returns: A promise that resolves immediately. Localdrive does not keep a background storage process open.
+- Example:
+
+```js
+await drive.close()
+```
+
+#### `await drive.flush()`
+
+- Signature: `await drive.flush()`
+- Parameters: None.
+- Returns: A promise that resolves immediately. It exists so code written for batched drive APIs can treat Localdrive as a drop-in target.
+- Example:
+
+```js
+await drive.flush()
+```
+
+### Drive properties
+
+#### `drive.root`
+
+- Returns: The resolved absolute filesystem path backing the drive.
+
+#### `drive.supportsMetadata`
+
+- Returns: `true` when metadata hooks were configured, otherwise `false`.
+
+### Compatibility helpers
+
+#### `const batch = drive.batch()`
+
+- Signature: `const batch = drive.batch()`
+- Parameters: None.
+- Returns: The same `Localdrive` instance. This lets batch-oriented code reuse a Localdrive target without branching.
+- Example:
+
+```js
+const batch = drive.batch()
+await batch.put('/a.txt', Buffer.from('a'))
+await batch.flush()
+```
+
+#### `const snapshot = drive.checkout()`
+
+- Signature: `const snapshot = drive.checkout()`
+- Parameters: None.
+- Returns: The same `Localdrive` instance. Unlike Hyperdrive, Localdrive does not expose historical versions.
+- Example:
+
+```js
+const snapshot = drive.checkout()
+console.log(snapshot === drive)
+```
+
+#### `const filename = drive.toPath(key)`
+
+- Signature: `const filename = drive.toPath(key)`
+- Parameters: `key` is a drive path such as `'/images/logo.png'`.
+- Returns: The resolved local filesystem path for that key under `drive.root`.
+- Example:
+
+```js
+console.log(drive.toPath('/images/logo.png'))
+```
+
+### Reading and writing entries
+
+#### `const entry = await drive.entry(key, [options])`
+
+- Signature: `const entry = await drive.entry(key, [options])`
+- Parameters: `key` is the drive path to inspect. `options.follow` follows symlink chains up to 16 hops before throwing a recursive-link error.
+- Returns: An entry object with `key`, `mtime`, and `value` fields (`executable`, `linkname`, `blob`, `metadata`), or `null` when the path is missing or resolves to a directory.
+- Example:
+
+```js
+const entry = await drive.entry('/index.html')
+console.log(entry?.value.blob?.byteLength)
+```
+
+#### `const buffer = await drive.get(key, [options])`
+
+- Signature: `const buffer = await drive.get(key, [options])`
+- Parameters: `key` is the path to read. `options` are forwarded to `drive.entry(...)`, including `follow` for symlink-aware lookups.
+- Returns: A `Buffer` containing the file contents, or `null` if the path is missing or points at a symlink rather than file data.
+- Example:
+
+```js
+const buffer = await drive.get('/index.html')
+console.log(buffer?.toString())
+```
+
+#### `await drive.put(key, buffer, [options])`
+
+- Signature: `await drive.put(key, buffer, [options])`
+- Parameters: `key` is the destination path. `buffer` is the file content to write. `options.executable` sets executable mode bits and `options.metadata` stores metadata through the configured metadata hooks.
+- Returns: A promise that resolves once the write stream closes and the file is fully persisted.
+- Example:
+
+```js
+await drive.put('/bin/run.sh', Buffer.from('#!/usr/bin/env sh\necho hi\n'), {
+  executable: true,
+  metadata: { type: 'shell' }
+})
+```
+
+#### `await drive.del(key)`
+
+- Signature: `await drive.del(key)`
+- Parameters: `key` is the path to remove.
+- Returns: A promise that resolves after the file is deleted. Missing files are ignored.
+- Example:
+
+```js
+await drive.del('/old/index.html')
+```
+
+#### `await drive.symlink(key, linkname)`
+
+- Signature: `await drive.symlink(key, linkname)`
+- Parameters: `key` is the symlink entry to create. `linkname` is the target path, either inside the drive or a relative path.
+- Returns: A promise that resolves after the symlink is created.
+- Example:
+
+```js
+await drive.symlink('/current', '/releases/v2')
+```
+
+#### `const exists = await drive.exists(key)`
+
+- Signature: `const exists = await drive.exists(key)`
+- Parameters: `key` is the path to check.
+- Returns: `true` when `drive.entry(key)` resolves to a non-null entry, otherwise `false`.
+- Example:
+
+```js
+const exists = await drive.exists('/index.html')
+```
+
+#### `const comparison = drive.compare(entryA, entryB)`
+
+- Signature: `const comparison = drive.compare(entryA, entryB)`
+- Parameters: `entryA` and `entryB` are entry objects returned by `drive.entry(...)` or yielded by `drive.list(...)`.
+- Returns: `1` when `entryA` is newer, `-1` when `entryB` is newer, or `0` when their modification times match.
+- Example:
+
+```js
+const previous = await drive.entry('/v1.txt')
+const current = await drive.entry('/v2.txt')
+
+console.log(drive.compare(previous, current))
+```
+
+### Listing and mirroring
+
+#### `const iterator = drive.list([folder], [options])`
+
+- Signature: `const iterator = drive.list([folder], [options])`
+- Parameters: `folder` optionally scopes the walk to one subtree. `options.ignore` can be a function, string, or array of paths to skip.
+- Returns: An async iterator of full entry objects for every non-directory entry under the requested subtree.
+- Example:
+
+```js
+for await (const entry of drive.list('/images', { ignore: '/images/tmp' })) {
+  console.log(entry.key)
+}
+```
+
+#### `const iterator = drive.readdir([folder])`
+
+- Signature: `const iterator = drive.readdir([folder])`
+- Parameters: `folder` optionally scopes the listing to one directory prefix.
+- Returns: An async iterator of child path names under that folder.
+- Example:
+
+```js
+for await (const name of drive.readdir('/images')) {
+  console.log(name)
+}
+```
+
+#### `const mirror = drive.mirror(out, [options])`
+
+- Signature: `const mirror = drive.mirror(out, [options])`
+- Parameters: `out` is another drive-like destination such as Hyperdrive or another Localdrive. `options` are passed to [Mirrordrive](/reference/helpers/mirrordrive).
+- Returns: A `MirrorDrive` instance. Call `await mirror.done()` or iterate over it to watch diffs as they apply.
+- Example:
+
+```js
+const mirror = drive.mirror(otherDrive, { prune: true })
+await mirror.done()
+```
+
+### Stream APIs
+
+#### `const rs = drive.createReadStream(key, [options])`
+
+- Signature: `const rs = drive.createReadStream(key, [options])`
+- Parameters: `key` is the file path to stream. `options.start`, `options.end`, and `options.length` select the byte range to read.
+- Returns: A readable stream for the target file.
+- Example:
+
+```js
+for await (const chunk of drive.createReadStream('/index.html')) {
+  console.log(chunk)
+}
+```
+
+#### `const ws = drive.createWriteStream(key, [options])`
+
+- Signature: `const ws = drive.createWriteStream(key, [options])`
+- Parameters: `key` is the file path to write. `options.executable` controls the output mode bits and `options.metadata` updates the metadata hooks when the stream finishes.
+- Returns: A writable stream that writes into the drive and, when `atomic` mode is enabled, renames a temporary file into place on close.
+- Example:
+
+```js
+const ws = drive.createWriteStream('/notes.txt', {
+  metadata: { section: 'docs' }
+})
+
+ws.end('hello from a stream')
+```
+
+## See also
+
+- [Create a full peer-to-peer filesystem with Hyperdrive](/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive) — shows Localdrive mirroring in a full writer/reader flow.
+- [Hyperdrive](/reference/building-blocks/hyperdrive) — the distributed filesystem API Localdrive is designed to interoperate with.
+- [Mirrordrive](/reference/helpers/mirrordrive) — the sync engine that copies between Localdrive and Hyperdrive.
+- [Drives](/reference/tools/drives) — CLI tool that mirrors between local directories and Hyperdrives using the same drive-like interface.
+- [Upstream Localdrive repository](https://github.com/holepunchto/localdrive) — source, releases, and implementation details.
