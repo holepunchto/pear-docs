@@ -20,6 +20,37 @@ export const customTree: Node[] = [
   { type: 'page', name: 'Pear by Holepunch', url: '/' },
   {
     type: 'folder',
+    name: 'Getting Started',
+    index: {
+      type: 'page',
+      name: 'Introduction',
+      url: '/getting-started',
+    },
+    children: [
+      {
+        type: 'page',
+        name: 'Build a peer-to-peer chat',
+        url: '/getting-started/chat',
+      },
+      {
+        type: 'page',
+        name: 'Add persistence with Corestore',
+        url: '/getting-started/production-shape',
+      },
+      {
+        type: 'page',
+        name: 'Ship your app',
+        url: '/getting-started/ship',
+      },
+      {
+        type: 'page',
+        name: 'Deploy over-the-air updates',
+        url: '/getting-started/update',
+      },
+    ],
+  },
+  {
+    type: 'folder',
     name: 'About Pear',
     index: { type: 'page', name: 'About Pear', url: '/explanation' },
     children: [
@@ -52,37 +83,6 @@ export const customTree: Node[] = [
         type: 'page',
         name: 'Dependencies and network',
         url: '/explanation/dependencies-and-network',
-      },
-    ],
-  },
-  {
-    type: 'folder',
-    name: 'Getting Started',
-    index: {
-      type: 'page',
-      name: 'Introduction',
-      url: '/getting-started',
-    },
-    children: [
-      {
-        type: 'page',
-        name: 'Build a peer-to-peer chat',
-        url: '/getting-started/chat',
-      },
-      {
-        type: 'page',
-        name: 'Add persistence with Corestore',
-        url: '/getting-started/production-shape',
-      },
-      {
-        type: 'page',
-        name: 'Ship your app',
-        url: '/getting-started/ship',
-      },
-      {
-        type: 'page',
-        name: 'Deploy over-the-air updates',
-        url: '/getting-started/update',
       },
     ],
   },
