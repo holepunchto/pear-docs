@@ -7,9 +7,45 @@ import {
 } from 'fumadocs-mdx/config';
 import lastModified from 'fumadocs-mdx/plugins/last-modified';
 import { metaSchema } from 'fumadocs-core/source/schema';
-import { tetherSeoFrontmatterSchema } from '@tetherto/docs-seo-schema';
+import { z } from 'zod';
 
 const execFile = promisify(execFileCb);
+
+// Inlined from `@tetherto/docs-seo-schema`. The package is published with raw
+// TypeScript as its entry (`main: ./src/index.ts`), and Node ≥24 refuses to
+// strip types from anything inside `node_modules` — so importing it from this
+// file (which fumadocs-mdx loads via raw Node, before Next's webpack /
+// `transpilePackages` get a chance) crashes the build with
+// `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`. Inlining keeps source.config.ts
+// pure-zod and decouples this file from the package's distribution shape.
+// Keep in sync with the upstream definition.
+const jsonLdSchemaTypeSchema = z.enum([
+  'TechArticle',
+  'APIReference',
+  'WebPage',
+]);
+
+const docTypeSchema = z.enum([
+  'tutorial',
+  'how-to',
+  'reference',
+  'explanation',
+  'page',
+  'faq',
+  'getting-started',
+]);
+
+const tetherSeoFrontmatterSchema = z.object({
+  description: z
+    .string()
+    .trim()
+    .min(1, 'description is required for SEO (meta, Open Graph, JSON-LD)'),
+  noIndex: z.boolean().optional(),
+  ogImage: z.string().optional(),
+  schemaType: jsonLdSchemaTypeSchema.optional(),
+  docType: docTypeSchema.optional(),
+  lastModified: z.union([z.string(), z.coerce.date()]).optional(),
+});
 
 /**
  * Resolve the last commit date for an MDX page, with three fallbacks the
