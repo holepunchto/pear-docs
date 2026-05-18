@@ -23,5 +23,7 @@ export function getDocsSeoConfig(): DocsSeoConfig {
     publisherName: 'Tether',
     publisherLogoUrl: process.env.NEXT_PUBLIC_DOCS_PUBLISHER_LOGO_URL,
     trailingSlash: true,
+    // Committed root-level OG image; used as fallback when SKIP_OG_BUILD=1.
+    staticOgImagePath: '/og/docs/image.webp',
   };
 }

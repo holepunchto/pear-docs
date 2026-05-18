@@ -6,12 +6,16 @@ import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import React from 'react';
-import {
-  precomputeTakumiOgImages,
-  type RenderTemplateContext,
-} from '@tetherto/docs-seo-og/build';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+// Minimal structural type for the template context. Defined locally so this
+// script typechecks even when the `src/lib/docs-template` submodule is absent.
+type RenderTemplateContext = {
+  title?: string | undefined;
+  description?: string | undefined;
+  site: string;
+};
 
 // Pear color tokens. Mirrors `src/app/global.css` and the `pear-1.svg` logo
 // so OG images match the docs site's dark-mode palette.
@@ -149,6 +153,42 @@ async function main(): Promise<void> {
     readFile(path.join(fontDir, 'poppins-latin-600-normal.woff')),
     readFile(path.join(fontDir, 'poppins-latin-700-normal.woff')),
   ]);
+
+  // Local structural type for the `@tetherto/docs-seo-og` wrapper.
+  // The package lives in the `src/lib/docs-template` git submodule and is
+  // linked via npm `workspaces`. Defining the shape here keeps this script
+  // resilient to a missing submodule (the dynamic import below falls back
+  // gracefully in that case) and decouples typechecking from the wrapper's
+  // own `.d.ts`.
+  type PrecomputeTakumiOgImages = (options: {
+    contentDocsDir: string;
+    publicDir: string;
+    site: string;
+    ogRouteBase: string;
+    concurrency: number;
+    renderTemplate: (ctx: RenderTemplateContext) => React.ReactElement;
+    imageResponseOptions: Record<string, unknown>;
+  }) => Promise<void>;
+
+  let precomputeTakumiOgImages: PrecomputeTakumiOgImages | undefined;
+  try {
+    // Using a variable for the import path prevents TS from statically
+    // resolving the workspace-linked dep at typecheck time, so this script
+    // still typechecks if the `src/lib/docs-template` submodule is missing.
+    const modPath = '@tetherto/docs-seo-og/build';
+    const mod = (await import(modPath)) as {
+      precomputeTakumiOgImages: PrecomputeTakumiOgImages;
+    };
+    precomputeTakumiOgImages = mod.precomputeTakumiOgImages;
+  } catch {
+    console.warn(
+      '[og] @tetherto/docs-seo-og could not be loaded — skipping per-page OG generation.\n' +
+        '     Pages will fall back to the committed OG images in public/og/docs/.\n' +
+        '     To regenerate, make sure the `src/lib/docs-template` submodule is checked out\n' +
+        '     (`git submodule update --init --recursive`), rerun `npm install`, then `npm run build:og`.',
+    );
+    return;
+  }
 
   await precomputeTakumiOgImages({
     contentDocsDir: path.join(root, 'content'),
