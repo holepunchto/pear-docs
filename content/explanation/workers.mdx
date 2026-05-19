@@ -40,7 +40,8 @@ IPC.write('hello')
 `IPC` is a [duplex stream](https://nodejs.org/api/stream.html#class-streamduplex): bytes the host writes show up on the worker side, and bytes the worker writes show up here. Inside the worker the other side of that same stream is `Bare.IPC`:
 
 ```js
-const Corestore = require('corestore')
+import Corestore from 'corestore'
+
 const storage = Bare.argv[2]
 
 Bare.IPC.on('data', (data) => console.log(data.toString()))
@@ -55,6 +56,53 @@ A few things about that snippet aren't obvious if you're new to Bare:
 - **`Bare.argv` indexing matches Node's `process.argv`.** `Bare.argv[0]` is the Bare binary, `Bare.argv[1]` is the worker script path, and `Bare.argv[2]` is the first argument *you* passed. Anything beyond that lands at `Bare.argv[3]`, `[4]`, and so on.
 - **The IPC stream carries bytes, not objects.** There's no built-in JSON or length-framing. Either send one message per `write()` (Bare's IPC preserves write boundaries on the receiving side when the message is small enough not to be split), or pick a framing format like newline-delimited JSON or [compact-encoding](/reference/helpers/compact-encoding) and stick to it on both ends.
 - **`pear.storage` is the recommended first argument.** It points at a per-app directory the host has already prepared (see [Storage and distribution](/explanation/storage-and-distribution)). Worker code stays portable as long as it treats `Bare.argv[2]` as "wherever the host says my storage is" rather than hard-coding a path.
+
+## Structured RPC over IPC
+
+Raw Inter-Process Communication (IPC) carries **bytes**, not typed messages. For a handful of one-off signals, length-preserving writes or newline-delimited JSON may be enough (see [Compact encoding](/reference/helpers/compact-encoding) for binary framing). As the host–worker protocol grows, manually pairing requests and responses becomes error-prone.
+
+**[bare-rpc](/reference/bare-modules)** adds a thin Remote Procedure Call (RPC) layer on top of a duplex stream. Each message has a numeric command id and a payload; handlers dispatch on `req.command`:
+
+```js
+import RPC from 'bare-rpc'
+
+export const RPC_MESSAGE = 1
+
+const rpc = new RPC(Bare.IPC, (req) => {
+  if (req.command === RPC_MESSAGE) {
+    console.log(req.data.toString())
+  }
+})
+
+const req = rpc.request(RPC_MESSAGE)
+req.send(Buffer.from('Hello from worker'))
+```
+
+Share command constants between host and worker (a shared `commands.mjs` module works well). `bare-rpc` scales to moderate protocols but still leaves schema, versioning, and method naming to you.
+
+**[hrpc](https://www.npmjs.com/package/hrpc)** generates typed client and server stubs from a schema. Define request and response types (often via [hyperschema](https://www.npmjs.com/package/hyperschema)), register methods, run the code generator, and import the result:
+
+```js
+import HRPC from './spec/hrpc/index.js'
+
+const rpc = new HRPC(Bare.IPC)
+
+rpc.onHello(({ world }) => ({
+  message: `Hello ${world}, from worker`
+}))
+
+await rpc.hello({ world: 'host' })
+```
+
+The host side constructs `new HRPC(IPC)` with the same generated module. Method names and encodings stay in sync because both sides compile from one definition.
+
+| Approach | Best for |
+| --- | --- |
+| Raw IPC | Prototypes, single-channel streaming |
+| bare-rpc | Small fixed command sets, mobile worklets |
+| HRPC | Many methods, evolving schemas, shared types |
+
+Stay on raw IPC until message pairing hurts; adopt HRPC when the protocol is large enough that hand-maintained command ids become a maintenance burden.
 
 ## Where the boundary should sit
 

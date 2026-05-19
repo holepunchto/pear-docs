@@ -61,6 +61,26 @@ export const customTree: Node[] = [
       },
       {
         type: 'page',
+        name: 'Dependencies and network',
+        url: '/explanation/dependencies-and-network',
+      },
+      {
+        type: 'page',
+        name: 'Peer-to-peer, demystified',
+        url: '/explanation/peer-to-peer-demystified',
+      },
+      {
+        type: 'page',
+        name: 'From append-only logs to files',
+        url: '/explanation/from-logs-to-files',
+      },
+      {
+        type: 'page',
+        name: 'Storage and distribution',
+        url: '/explanation/storage-and-distribution',
+      },
+      {
+        type: 'page',
         name: 'Workers',
         url: '/explanation/workers',
       },
@@ -71,18 +91,13 @@ export const customTree: Node[] = [
       },
       {
         type: 'page',
-        name: 'Storage and distribution',
-        url: '/explanation/storage-and-distribution',
+        name: 'Availability and blind peering',
+        url: '/explanation/availability-and-blind-peering',
       },
       {
         type: 'page',
         name: 'Release pipeline',
         url: '/explanation/release-pipeline',
-      },
-      {
-        type: 'page',
-        name: 'Dependencies and network',
-        url: '/explanation/dependencies-and-network',
       },
     ],
   },
