@@ -1,0 +1,143 @@
+---
+title: "Availability and blind peering"
+description: "Keeping Pear application data and bundles reachable when authors go offline — seeding, its limits, and blind peering as a cache layer."
+docType: explanation
+schemaType: WebPage
+---
+
+Peer-to-peer availability is not automatic. A new user can only download data that at least one online peer already holds. Pear applications therefore need an explicit strategy for [data availability](#data-availability) and [application availability](#application-availability).
+
+<Callout type="info">
+This page covers seeding, when it falls short, and **blind peering** — a service that replicates cores on your behalf without reading their contents. For the general distribution model, see [Storage and distribution](/explanation/storage-and-distribution).
+</Callout>
+
+## Two availability problems
+
+### Data availability
+
+Data availability means the [Hypercores](/reference/building-blocks/hypercore), [Autobases](/reference/building-blocks/autobase), or drives your application reads and writes remain reachable on the swarm. Chat history, shared documents, and room state all depend on someone seeding the relevant cores.
+
+### Application availability
+
+Application availability means the Pear app itself — its metadata core and content [Hyperdrive](/reference/building-blocks/hyperdrive) — can be discovered and installed. A `pear://` link is stable, but the bytes behind it still have to exist on at least one peer.
+
+Both problems share the same underlying constraint: replication requires a live source.
+
+## Seeding with `pear seed`
+
+The simplest way to keep an application bundle online is [seeding](#seeding-with-pear-seed), analogous to seeding a torrent. Running `pear seed pear://<app>` keeps the underlying cores announced and available for download.
+
+```bash
+pear seed pear://<app>
+```
+
+The process must stay running while you want to act as a guaranteed source. Anyone can open the link, but a first-time user needs at least one seeder with a complete copy.
+
+<Callout type="info">
+See [Storage and distribution](/explanation/storage-and-distribution#how-distribution-works) for how staging, seeding, and lazy replication fit together — this page does not repeat that model.
+</Callout>
+
+Seeding works well when you control an always-on machine and the cores you care about are ones you already possess. It has two practical limits:
+
+1. **Operational overhead** — You need a running `pear` (or equivalent replicator) per application you seed.
+2. **Scope** — You can only seed cores you have locally. A private room or direct-message thread you are not a member of cannot be seeded from your node.
+
+When authors go offline and no participant keeps seeding, data can become temporarily unreachable even though the cryptographic keys still exist.
+
+## Blind peering
+
+A **blind peer** is a dedicated replicator that stores and serves Hypercores **without decrypting or interpreting** their contents. It joins swarms on request and caches blocks so other peers can find a source. Blind peering separates "make this core findable" from "I personally hold the plaintext."
+
+The stack has three parts:
+
+1. **[blind-peer](https://github.com/holepunchto/blind-peer)** — server that accepts peering requests and replicates cores.
+2. **[blind-peering](https://github.com/holepunchto/blind-peering)** — client library used inside applications to register cores or Autobases with a blind peer.
+3. **[blind-peering-cli](https://github.com/holepunchto/blind-peering-cli)** — CLI for one-off seed requests (for example after staging an application).
+
+### Running a blind peer server
+
+Install and start the server:
+
+```bash
+npm i -g blind-peer
+blind-peer
+```
+
+On startup the process logs a **public key** — clients use this key to authorize replication requests. The default disk budget is 100 GB; cap it with `-m <size>` (megabytes).
+
+For production, run `blind-peer` under a service manager. Example systemd unit:
+
+```toml
+[Unit]
+Description=Blind Peer
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/blind-peer -m 10000 --trusted-peer <your-public-key>
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Pass `--trusted-peer <public-key>` when you want the CLI to submit seed requests authenticated as that identity. Obtain your public key from a machine that will make requests:
+
+```bash
+blind-peering identity
+```
+
+### Registering cores from an application
+
+Inside a Pear worker, wire the client to your existing [Hyperswarm](/reference/building-blocks/hyperswarm) and [Corestore](/reference/helpers/corestore):
+
+```js
+import BlindPeering from 'blind-peering'
+import Hyperswarm from 'hyperswarm'
+import Corestore from 'corestore'
+import Wakeup from 'protomux-wakeup'
+
+const store = new Corestore(Pear.config.storage)
+const swarm = new Hyperswarm()
+const wakeup = new Wakeup()
+
+const BLIND_PEER_KEYS = ['<blind-peer-public-key-hex>']
+const blind = new BlindPeering(swarm, store, { wakeup, mirrors: BLIND_PEER_KEYS })
+
+blind.addAutobaseBackground(autobase)
+blind.addCore(core, autobase.wakeupCapability.key)
+```
+<Callout type="tip">
+Prefer asynchronous registration for long-lived applications; synchronous paths can block startup on large cores.
+</Callout>
+
+Consider letting users configure which blind peers they trust — default infrastructure may not match privacy or jurisdiction requirements (for example location-sensitive data).
+
+### Seeding an application via CLI
+
+`pear info pear://<app>` prints the keys needed to replicate an application bundle:
+
+```bash
+pear info pear://<app>
+```
+
+The `project` and `content` rows identify the metadata core and content drive. Request blind peering for each:
+
+```bash
+blind-peering seed --core --blind-peer-key <blind-peer-key> <content-key>
+blind-peering seed --drive --blind-peer-key <blind-peer-key> <project-key>
+```
+
+## Trusted peers and discovery keys
+
+When a blind peer runs with `--trusted-peer`, it recognizes seed requests signed by that key and joins the swarm for the requested core. That is more targeted than broadcasting blindly: peers looking for a specific core use its **discovery key** as a Hyperswarm topic, so participants in that topic are likely to hold or want the same data.
+
+Blind peering does not replace end-to-end encryption or capability checks on the cores themselves; it only improves **reachability** by keeping an always-on replica on the network.
+
+## See also
+
+- [Storage and distribution](/explanation/storage-and-distribution) — on-disk layout and the `pear seed` distribution model.
+- [Deploy your application](/how-to/operate-an-app/deployment) — staging and announcing releases.
+- [Peer-to-peer, demystified](/explanation/peer-to-peer-demystified) — how peers find one another on the swarm.
+- [Autobase reference](/reference/building-blocks/autobase) — multi-writer cores often registered with blind peering.
+- [Hyperswarm reference](/reference/building-blocks/hyperswarm) — topic-based discovery blind peers participate in.
