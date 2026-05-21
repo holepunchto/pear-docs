@@ -1,8 +1,403 @@
 ---
 title: "Compact encoding"
-description: "Compact binary encodings—upstream compact-encoding repository."
+description: "Small binary encoding toolkit for protocol messages and storage formats."
 docType: reference
 schemaType: APIReference
 ---
 
-[https://github.com/holepunchto/compact-encoding](https://github.com/holepunchto/compact-encoding)
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+`compact-encoding` packages small binary codecs behind a shared encoder interface. It is commonly paired with [Protomux](/reference/helpers/protomux) message schemas and shows up in [Hypercore](/reference/building-blocks/hypercore) and other Holepunch protocol surfaces whenever structured binary payloads matter. For the upstream package and implementation details, see the [compact-encoding repository](https://github.com/holepunchto/compact-encoding).
+
+## Install
+
+```sh
+npm i compact-encoding
+```
+
+## Quickstart
+
+```js
+import cenc from 'compact-encoding'
+
+const state = cenc.state()
+
+cenc.uint.preencode(state, 42)
+cenc.string.preencode(state, 'hello')
+
+state.buffer = Buffer.allocUnsafe(state.end)
+state.start = 0
+
+cenc.uint.encode(state, 42)
+cenc.string.encode(state, 'hello')
+
+state.start = 0
+
+console.log(cenc.uint.decode(state))
+console.log(cenc.string.decode(state))
+```
+
+## API Reference
+
+### Encoder contract
+
+Every bundled encoder follows the same three-method contract. The top-level helpers and exported factories below all return or consume objects with this shape.
+
+#### `enc.preencode(state, value)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L12)
+- Signature: `enc.preencode(state, value)` ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L12))
+- Parameters: `state` is the mutable encoding state object. `value` is the value that will later be encoded. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L12))
+- Returns: Nothing. It updates `state.end` so you know how large the output buffer must be. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L12))
+- Example:
+
+```js
+const state = cenc.state()
+cenc.uint.preencode(state, 42)
+console.log(state.end)
+```
+
+#### `enc.encode(state, value)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L15)
+- Signature: `enc.encode(state, value)` ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L15))
+- Parameters: `state` is a state object with `buffer` set. `value` is the value to encode. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L15))
+- Returns: Nothing. It writes into `state.buffer` at `state.start` and advances `state.start`. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L15))
+- Example:
+
+```js
+const state = cenc.state()
+cenc.uint.preencode(state, 42)
+state.buffer = Buffer.allocUnsafe(state.end)
+cenc.uint.encode(state, 42)
+```
+
+#### `const value = enc.decode(state)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L28)
+- Signature: `const value = enc.decode(state)` ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L28))
+- Parameters: `state` is a state object whose `buffer` contains encoded bytes. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L28))
+- Returns: The decoded value. `state.start` advances past the consumed bytes. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L33))
+- Example:
+
+```js
+const state = cenc.state(0, buffer.byteLength, buffer)
+const value = cenc.uint.decode(state)
+```
+
+### State and convenience helpers
+
+#### `const state = cenc.state([start], [end], [buffer])`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L5)
+- Signature: `const state = cenc.state([start], [end], [buffer])` ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L5))
+- Parameters: `start` defaults to `0`, `end` defaults to `0`, and `buffer` defaults to `null`. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L5))
+- Returns: A mutable state object `{ start, end, buffer }` used by all encoders. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L6))
+- Example:
+
+```js
+const state = cenc.state()
+```
+
+#### `const buffer = cenc.encode(enc, value)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L15)
+- Signature: `const buffer = cenc.encode(enc, value)` ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L15))
+- Parameters: `enc` is any compact encoder. `value` is the value to serialize. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L15))
+- Returns: A freshly allocated buffer containing the encoded value. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L15))
+- Example:
+
+```js
+const buffer = cenc.encode(cenc.bool, true)
+```
+
+#### `const value = cenc.decode(enc, buffer)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L28)
+- Signature: `const value = cenc.decode(enc, buffer)` ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L28))
+- Parameters: `enc` is any compact encoder. `buffer` is the encoded byte sequence. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L28))
+- Returns: The decoded value. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L33))
+- Example:
+
+```js
+const value = cenc.decode(cenc.bool, buffer)
+```
+
+#### `const enc = cenc.from(encLike)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L922)
+- Signature: `const enc = cenc.from(encLike)` ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L922))
+- Parameters: `encLike` can be an existing compact encoder, a named raw string encoding such as `'utf8'` or `'json'`, a codec with `encode`/`decode`, or an abstract encoding with `encodingLength`. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L922))
+- Returns: A compact-encoding-compatible encoder object. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L926))
+- Example:
+
+```js
+const enc = cenc.from('utf8')
+const buffer = cenc.encode(enc, 'hello')
+```
+
+### Encoder factories
+
+#### `const enc = cenc.fixed(length)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L440)
+- Signature: `const enc = cenc.fixed(length)` ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L440))
+- Parameters: `length` is the exact byte length that every encoded value must have. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L440))
+- Returns: An encoder for fixed-size buffers. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L451))
+- Example:
+
+```js
+const keyEncoding = cenc.fixed(32)
+```
+
+#### `const enc = cenc.array(itemEncoding)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L502)
+- Signature: `const enc = cenc.array(itemEncoding)` ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L502))
+- Parameters: `itemEncoding` is the encoder used for each array element. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L502))
+- Returns: An encoder that prefixes arrays with their length and encodes each item in order. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L517))
+- Example:
+
+```js
+const listEncoding = cenc.array(cenc.string)
+const buffer = cenc.encode(listEncoding, ['a', 'b'])
+```
+
+#### `const enc = cenc.frame(innerEncoding)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L522)
+- Signature: `const enc = cenc.frame(innerEncoding)` ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L522))
+- Parameters: `innerEncoding` is the payload encoding to wrap. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L522))
+- Returns: An encoder that prefixes one encoded payload with its byte length. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L544))
+- Example:
+
+```js
+const framed = cenc.frame(cenc.string)
+```
+
+#### `const enc = cenc.record(keyEncoding, valueEncoding)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L875)
+- Signature: `const enc = cenc.record(keyEncoding, valueEncoding)` ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L875))
+- Parameters: `keyEncoding` encodes object keys and `valueEncoding` encodes object values. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L875))
+- Returns: An encoder for plain object records. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L899))
+- Example:
+
+```js
+const headerEncoding = cenc.record(cenc.string, cenc.string)
+```
+
+#### `cenc.stringRecord`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L904)
+- Returns: A prebuilt `record(cenc.string, cenc.string)` encoder for simple string maps. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L917))
+
+### Numeric encodings
+
+#### `cenc.uint`, `cenc.uint8`, `cenc.uint16`, `cenc.uint24`, `cenc.uint32`, `cenc.uint40`, `cenc.uint48`, `cenc.uint56`, `cenc.uint64`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L156)
+- Returns: Unsigned integer encoders. `cenc.uint` chooses a compact size automatically; the fixed-width variants always use the named byte width. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L168))
+- Example:
+
+```js
+const port = cenc.encode(cenc.uint16, 8080)
+```
+
+#### `cenc.int`, `cenc.int8`, `cenc.int16`, `cenc.int24`, `cenc.int32`, `cenc.int40`, `cenc.int48`, `cenc.int56`, `cenc.int64`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L180)
+- Returns: Signed integer encoders built on top of the unsigned variants with ZigZag encoding. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L204))
+- Example:
+
+```js
+const delta = cenc.encode(cenc.int, -12)
+```
+
+#### `cenc.biguint64`, `cenc.bigint64`, `cenc.biguint`, `cenc.bigint`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L247)
+- Returns: BigInt-aware integer encoders for fixed-width or variable-width large integer values. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L273))
+- Example:
+
+```js
+const buffer = cenc.encode(cenc.biguint64, 42n)
+```
+
+#### `cenc.float32`, `cenc.float64`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L277)
+- Returns: Floating-point encoders using IEEE-754 little-endian layouts. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L299))
+- Example:
+
+```js
+const sample = cenc.encode(cenc.float32, 3.14)
+```
+
+#### `cenc.lexint`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L249)
+- Returns: The exported lexicographic integer encoder family from the `./lexint` module. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L273))
+
+### Binary, buffer, and typed-array encodings
+
+#### `cenc.buffer`, `cenc.optionalBuffer`, `cenc.binary`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L334)
+- Returns: Buffer-oriented encoders. `buffer` length-prefixes a byte sequence, `optionalBuffer` maps zero length to `null`, and `binary` accepts either a string or buffer-like input. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L334))
+- Example:
+
+```js
+const payload = cenc.encode(cenc.buffer, Buffer.from('hello'))
+```
+
+#### `cenc.arraybuffer`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L346)
+- Returns: An encoder for `ArrayBuffer` instances. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L367))
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.arraybuffer, new Uint8Array([1, 2, 3]).buffer)
+```
+
+#### `cenc.uint8array`, `cenc.uint16array`, `cenc.uint32array`, `cenc.int8array`, `cenc.int16array`, `cenc.int32array`, `cenc.biguint64array`, `cenc.bigint64array`, `cenc.float32array`, `cenc.float64array`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L415)
+- Returns: Length-prefixed typed-array encoders that preserve the underlying element type. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L451))
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.uint32array, new Uint32Array([1, 2, 3]))
+```
+
+#### `cenc.fixed32`, `cenc.fixed64`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L500)
+- Returns: Prebuilt fixed-size buffer encoders for 32-byte and 64-byte values. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L517))
+- Example:
+
+```js
+const key = cenc.encode(cenc.fixed32, Buffer.alloc(32))
+```
+
+### Text encodings
+
+#### `cenc.string`, `cenc.utf8`, `cenc.ascii`, `cenc.hex`, `cenc.base64`, `cenc.utf16le`, `cenc.ucs2`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L467)
+- Returns: String encoders for the named text encoding. Each one also exposes `.fixed(length)` for fixed-size strings. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L478))
+- Example:
+
+```js
+const topic = cenc.encode(cenc.hex.fixed(64), '0123abcd'.repeat(8))
+```
+
+### Boolean, date, and structured-value encodings
+
+#### `cenc.bool`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L469)
+- Returns: A one-byte boolean encoder. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L478))
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.bool, true)
+```
+
+#### `cenc.date`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L549)
+- Returns: A `Date` encoder backed by the signed integer timestamp value from `date.getTime()`. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L557))
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.date, new Date())
+```
+
+#### `cenc.json`, `cenc.ndjson`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L573)
+- Returns: UTF-8 JSON encoders. `ndjson` appends a trailing newline before encoding. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L581))
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.json, { type: 'ping' })
+```
+
+#### `cenc.none`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L586)
+- Returns: A sentinel encoder that always decodes to `null` and writes no payload bytes. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L594))
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.none, null)
+```
+
+#### `cenc.any`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L664)
+- Returns: A schemaless tagged-value encoder for JSON-like values, arrays, objects, dates, strings, buffers, booleans, integers, and floats. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L678))
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.any, {
+  type: 'hello',
+  count: 3,
+  ok: true
+})
+```
+
+### Network encodings
+
+#### `cenc.port`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L682)
+- Returns: The same encoder as `cenc.uint16`, provided for protocol readability when encoding network ports. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L695))
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.port, 49737)
+```
+
+#### `cenc.ipv4`, `cenc.ipv6`, `cenc.ip`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L836)
+- Returns: Encoders for IPv4 addresses, IPv6 addresses, or either family with an embedded family tag. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L852))
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.ip, '127.0.0.1')
+```
+
+#### `cenc.ipv4Address`, `cenc.ipv6Address`, `cenc.ipAddress`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L856)
+- Returns: Address-object encoders for `{ host, family?, port }` shapes. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L867))
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.ipAddress, {
+  host: '127.0.0.1',
+  port: 49737
+})
+```
+
+### Raw variants
+
+#### `cenc.raw`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L9)
+- Returns: A namespace of non-length-prefixed variants for many buffer, string, array, JSON, and typed-array encodings such as `cenc.raw.buffer`, `cenc.raw.utf8`, `cenc.raw.array(enc)`, and `cenc.raw.json`. ([GitHub](https://github.com/holepunchto/compact-encoding/blob/main/index.js#L33))
+- Example:
+
+```js
+const encoded = cenc.encode(cenc.raw.utf8, 'hello')
+```
+
+## See also
+
+- [Protomux](/reference/helpers/protomux) — the most common higher-level protocol surface built directly on compact-encoding schemas.
+- [Hypercore](/reference/building-blocks/hypercore) — accepts compact encodings for structured values and message payloads.
+- [Upstream compact-encoding repository](https://github.com/holepunchto/compact-encoding) — source, releases, and implementation details.

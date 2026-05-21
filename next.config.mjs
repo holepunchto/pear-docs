@@ -57,7 +57,8 @@ const config = {
       // so the page-level redirect lands on the explanation index where a
       // lookup table maps each old anchor to its new home.
       { source: '/reference/faq', destination: '/explanation', permanent: true },
-      // Reference subdirs that are flat (no inner topic level), wildcards work.
+      // Building-block reference docs live at /reference/building-blocks/*.
+      // Keep /building-blocks/* as a legacy shortcut that redirects there.
       { source: '/building-blocks/:slug', destination: '/reference/building-blocks/:slug', permanent: true },
       { source: '/helpers/:slug', destination: '/reference/helpers/:slug', permanent: true },
       { source: '/tools/:slug', destination: '/reference/tools/:slug', permanent: true },

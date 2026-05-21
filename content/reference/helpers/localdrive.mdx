@@ -1,8 +1,317 @@
 ---
 title: "Localdrive"
-description: "Local FS layer interoperable with Hyperdrive—upstream Localdrive repository."
+description: "Local filesystem adapter with a Hyperdrive-like API."
 docType: reference
 schemaType: APIReference
 ---
 
-[https://github.com/holepunchto/localdrive](https://github.com/holepunchto/localdrive)
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+`Localdrive` exposes a local directory through an API that closely matches [Hyperdrive](/reference/building-blocks/hyperdrive). It is the simplest way to mirror between on-disk files and distributed drives with [Mirrordrive](/reference/helpers/mirrordrive). For upstream implementation details, see the [Localdrive repository](https://github.com/holepunchto/localdrive).
+
+## Install
+
+```sh
+npm i localdrive
+```
+
+## Quickstart
+
+```js
+import Localdrive from 'localdrive'
+
+const drive = new Localdrive('./site')
+
+await drive.put('/index.html', Buffer.from('<h1>Hello</h1>'))
+const html = await drive.get('/index.html')
+
+console.log(html?.toString())
+console.log(await drive.entry('/index.html'))
+```
+
+## API Reference
+
+### Constructor and lifecycle
+
+#### `const drive = new Localdrive(root, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L10)
+- Signature: `const drive = new Localdrive(root, [options])` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L10))
+- Parameters: `root` is the local directory to expose. `options.followLinks` follows symlinks during entry resolution, `options.followExternalLinks` permits following symlinks that leave `root`, `options.metadata` can be either a `{ get, put, del }` hook object or a `Map`, and `options.atomic` writes through temporary files before renaming into place. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L10))
+- Returns: A `Localdrive` instance rooted at the resolved absolute path. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L173))
+- Example:
+
+```js
+const metadata = new Map()
+
+const drive = new Localdrive('./assets', {
+  atomic: true,
+  metadata
+})
+```
+
+#### `await drive.ready()`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L22)
+- Signature: `await drive.ready()` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L22))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L22))
+- Returns: A promise that resolves immediately. It exists for compatibility with drive-like APIs such as Hyperdrive. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L22))
+- Example:
+
+```js
+await drive.ready()
+```
+
+#### `await drive.close()`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L25)
+- Signature: `await drive.close()` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L25))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L25))
+- Returns: A promise that resolves immediately. Localdrive does not keep a background storage process open. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L25))
+- Example:
+
+```js
+await drive.close()
+```
+
+#### `await drive.flush()`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L28)
+- Signature: `await drive.flush()` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L28))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L28))
+- Returns: A promise that resolves immediately. It exists so code written for batched drive APIs can treat Localdrive as a drop-in target. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L28))
+- Example:
+
+```js
+await drive.flush()
+```
+
+### Drive properties
+
+#### `drive.root`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L12)
+- Returns: The resolved absolute filesystem path backing the drive. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L12))
+
+#### `drive.supportsMetadata`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L14)
+- Returns: `true` when metadata hooks were configured, otherwise `false`. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L14))
+
+### Compatibility helpers
+
+#### `const batch = drive.batch()`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L32)
+- Signature: `const batch = drive.batch()` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L32))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L32))
+- Returns: The same `Localdrive` instance. This lets batch-oriented code reuse a Localdrive target without branching. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L33))
+- Example:
+
+```js
+const batch = drive.batch()
+await batch.put('/a.txt', Buffer.from('a'))
+await batch.flush()
+```
+
+#### `const snapshot = drive.checkout()`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L36)
+- Signature: `const snapshot = drive.checkout()` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L36))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L36))
+- Returns: The same `Localdrive` instance. Unlike Hyperdrive, Localdrive does not expose historical versions. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L37))
+- Example:
+
+```js
+const snapshot = drive.checkout()
+console.log(snapshot === drive)
+```
+
+#### `const filename = drive.toPath(key)`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L40)
+- Signature: `const filename = drive.toPath(key)` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L40))
+- Parameters: `key` is a drive path such as `'/images/logo.png'`. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L40))
+- Returns: The resolved local filesystem path for that key under `drive.root`. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L43))
+- Example:
+
+```js
+console.log(drive.toPath('/images/logo.png'))
+```
+
+### Reading and writing entries
+
+#### `const entry = await drive.entry(key, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L46)
+- Signature: `const entry = await drive.entry(key, [options])` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L46))
+- Parameters: `key` is the drive path to inspect. `options.follow` follows symlink chains up to 16 hops before throwing a recursive-link error. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L46))
+- Returns: An entry object with `key`, `mtime`, and `value` fields (`executable`, `linkname`, `blob`, `metadata`), or `null` when the path is missing or resolves to a directory. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L51))
+- Example:
+
+```js
+const entry = await drive.entry('/index.html')
+console.log(entry?.value.blob?.byteLength)
+```
+
+#### `const buffer = await drive.get(key, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L139)
+- Signature: `const buffer = await drive.get(key, [options])` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L139))
+- Parameters: `key` is the path to read. `options` are forwarded to `drive.entry(...)`, including `follow` for symlink-aware lookups. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L139))
+- Returns: A `Buffer` containing the file contents, or `null` if the path is missing or points at a symlink rather than file data. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L148))
+- Example:
+
+```js
+const buffer = await drive.get('/index.html')
+console.log(buffer?.toString())
+```
+
+#### `await drive.put(key, buffer, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L151)
+- Signature: `await drive.put(key, buffer, [options])` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L151))
+- Parameters: `key` is the destination path. `buffer` is the file content to write. `options.executable` sets executable mode bits and `options.metadata` stores metadata through the configured metadata hooks. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L151))
+- Returns: A promise that resolves once the write stream closes and the file is fully persisted. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L152))
+- Example:
+
+```js
+await drive.put('/bin/run.sh', Buffer.from('#!/usr/bin/env sh\necho hi\n'), {
+  executable: true,
+  metadata: { type: 'shell' }
+})
+```
+
+#### `await drive.del(key)`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L166)
+- Signature: `await drive.del(key)` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L166))
+- Parameters: `key` is the path to remove. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L166))
+- Returns: A promise that resolves after the file is deleted. Missing files are ignored. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L173))
+- Example:
+
+```js
+await drive.del('/old/index.html')
+```
+
+#### `await drive.symlink(key, linkname)`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L191)
+- Signature: `await drive.symlink(key, linkname)` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L191))
+- Parameters: `key` is the symlink entry to create. `linkname` is the target path, either inside the drive or a relative path. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L191))
+- Returns: A promise that resolves after the symlink is created. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L191))
+- Example:
+
+```js
+await drive.symlink('/current', '/releases/v2')
+```
+
+#### `const exists = await drive.exists(key)`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L291)
+- Signature: `const exists = await drive.exists(key)` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L291))
+- Parameters: `key` is the path to check. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L291))
+- Returns: `true` when `drive.entry(key)` resolves to a non-null entry, otherwise `false`. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L292))
+- Example:
+
+```js
+const exists = await drive.exists('/index.html')
+```
+
+#### `const comparison = drive.compare(entryA, entryB)`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L214)
+- Signature: `const comparison = drive.compare(entryA, entryB)` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L214))
+- Parameters: `entryA` and `entryB` are entry objects returned by `drive.entry(...)` or yielded by `drive.list(...)`. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L214))
+- Returns: `1` when `entryA` is newer, `-1` when `entryB` is newer, or `0` when their modification times match. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L216))
+- Example:
+
+```js
+const previous = await drive.entry('/v1.txt')
+const current = await drive.entry('/v2.txt')
+
+console.log(drive.compare(previous, current))
+```
+
+### Listing and mirroring
+
+#### `const iterator = drive.list([folder], [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L219)
+- Signature: `const iterator = drive.list([folder], [options])` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L219))
+- Parameters: `folder` optionally scopes the walk to one subtree. `options.ignore` can be a function, string, or array of paths to skip. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L219))
+- Returns: An async iterator of full entry objects for every non-directory entry under the requested subtree. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L232))
+- Example:
+
+```js
+for await (const entry of drive.list('/images', { ignore: '/images/tmp' })) {
+  console.log(entry.key)
+}
+```
+
+#### `const iterator = drive.readdir([folder])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L256)
+- Signature: `const iterator = drive.readdir([folder])` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L256))
+- Parameters: `folder` optionally scopes the listing to one directory prefix. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L256))
+- Returns: An async iterator of child path names under that folder. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L263))
+- Example:
+
+```js
+for await (const name of drive.readdir('/images')) {
+  console.log(name)
+}
+```
+
+#### `const mirror = drive.mirror(out, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L295)
+- Signature: `const mirror = drive.mirror(out, [options])` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L295))
+- Parameters: `out` is another drive-like destination such as Hyperdrive or another Localdrive. `options` are passed to [Mirrordrive](/reference/helpers/mirrordrive). ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L295))
+- Returns: A `MirrorDrive` instance. Call `await mirror.done()` or iterate over it to watch diffs as they apply. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L296))
+- Example:
+
+```js
+const mirror = drive.mirror(otherDrive, { prune: true })
+await mirror.done()
+```
+
+### Stream APIs
+
+#### `const rs = drive.createReadStream(key, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L299)
+- Signature: `const rs = drive.createReadStream(key, [options])` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L299))
+- Parameters: `key` is the file path to stream. `options.start`, `options.end`, and `options.length` select the byte range to read. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L299))
+- Returns: A readable stream for the target file. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L303))
+- Example:
+
+```js
+for await (const chunk of drive.createReadStream('/index.html')) {
+  console.log(chunk)
+}
+```
+
+#### `const ws = drive.createWriteStream(key, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L306)
+- Signature: `const ws = drive.createWriteStream(key, [options])` ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L306))
+- Parameters: `key` is the file path to write. `options.executable` controls the output mode bits and `options.metadata` updates the metadata hooks when the stream finishes. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L306))
+- Returns: A writable stream that writes into the drive and, when `atomic` mode is enabled, renames a temporary file into place on close. ([GitHub](https://github.com/holepunchto/localdrive/blob/main/index.js#L310))
+- Example:
+
+```js
+const ws = drive.createWriteStream('/notes.txt', {
+  metadata: { section: 'docs' }
+})
+
+ws.end('hello from a stream')
+```
+
+## See also
+
+- [Create a full peer-to-peer filesystem with Hyperdrive](/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive) — shows Localdrive mirroring in a full writer/reader flow.
+- [Hyperdrive](/reference/building-blocks/hyperdrive) — the distributed filesystem API Localdrive is designed to interoperate with.
+- [Mirrordrive](/reference/helpers/mirrordrive) — the sync engine that copies between Localdrive and Hyperdrive.
+- [Drives](/reference/tools/drives) — CLI tool that mirrors between local directories and Hyperdrives using the same drive-like interface.
+- [Upstream Localdrive repository](https://github.com/holepunchto/localdrive) — source, releases, and implementation details.

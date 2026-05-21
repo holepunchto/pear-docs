@@ -1,8 +1,356 @@
 ---
 title: "Hyperbee"
-description: "Append-only B-tree on Hypercore—upstream Hyperbee repository."
+description: "Append-only B-tree on Hypercore for sorted key/value data."
 docType: reference
 schemaType: APIReference
 ---
 
-[https://github.com/holepunchto/hyperbee](https://github.com/holepunchto/hyperbee)
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+`Hyperbee` stores sorted key/value entries in an append-only B-tree backed by [`Hypercore`](/reference/building-blocks/hypercore). Use it when you need ordered lookups, range scans, atomic batches, namespaces, and point-in-time snapshots over one replicated log.
+
+## Install
+
+```sh
+npm i hyperbee
+```
+
+## Quickstart
+
+```js
+import Hypercore from 'hypercore'
+import Hyperbee from 'hyperbee'
+
+const core = new Hypercore('./bee-storage')
+const db = new Hyperbee(core, {
+  keyEncoding: 'utf-8',
+  valueEncoding: 'json'
+})
+
+await db.ready()
+await db.put('config', { theme: 'dark', retries: 3 })
+
+const entry = await db.get('config')
+console.log(entry.value.theme)
+
+await db.close()
+```
+
+## API Reference
+
+### Constructor and readiness
+
+#### `new Hyperbee(core, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L404)
+- Signature: `const db = new Hyperbee(core, [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L404))
+- Parameters: `core` is the backing [`Hypercore`](/reference/building-blocks/hypercore); `options.keyEncoding` and `options.valueEncoding` accept `'binary'`, `'utf-8'`, `'ascii'`, `'json'`, or another abstract encoding. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L404))
+- Returns: A `Hyperbee` instance that reads and writes entries on top of the supplied core. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L593))
+- Example: `const db = new Hyperbee(core, { keyEncoding: 'utf-8', valueEncoding: 'json' })`
+
+Read and diff streams sort keys by their encoded byte values, so choose `keyEncoding` deliberately if lexicographic order matters.
+
+#### `await db.ready()`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L896)
+- Signature: `await db.ready()` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L896))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L896))
+- Returns: Resolves when the bee has loaded enough internal state for synchronous properties such as `db.version`. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L896))
+- Example: `await db.ready()`
+
+### Properties and identity
+
+#### `db.core`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L409)
+- Signature: `db.core` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L409))
+- Returns: The underlying [`Hypercore`](/reference/building-blocks/hypercore) instance. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L409))
+- Example: `swarm.join(db.core.discoveryKey)`
+
+#### `db.version`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L467)
+- Signature: `db.version` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L467))
+- Returns: The current modification count for the bee, which is useful as a version identifier for snapshots and diffs. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L467))
+- Example: `const snapshot = db.checkout(db.version)`
+
+#### `db.id`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L471)
+- Signature: `db.id` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L471))
+- Returns: A z-base-32 string derived from the public key that identifies this bee. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L471))
+- Example: `console.log(db.id)`
+
+#### `db.key`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L319)
+- Signature: `db.key` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L319))
+- Returns: The public key buffer for the bee. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L319))
+- Example: `console.log(db.key.toString('hex'))`
+
+#### `db.discoveryKey`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L479)
+- Signature: `db.discoveryKey` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L479))
+- Returns: A derived key suitable for peer discovery without exposing `db.key`. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L479))
+- Example: `swarm.join(db.discoveryKey)`
+
+#### `db.writable`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L483)
+- Signature: `db.writable` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L483))
+- Returns: `true` when this process can append writes to the backing core. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L483))
+- Example: `if (db.writable) await db.put('mode', 'writer')`
+
+#### `db.readable`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L487)
+- Signature: `db.readable` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L487))
+- Returns: `true` while the bee is open and readable. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L487))
+- Example: `if (!db.readable) throw new Error('bee is closed')`
+
+### Writes and batches
+
+#### `await db.put(key, [value], [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L647)
+- Signature: `await db.put(key, [value], [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L647))
+- Parameters: `key` uses `keyEncoding`; `value` is optional and uses `valueEncoding`; `options.cas(prev, next)` can accept or reject updates when a key already exists. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L647))
+- Returns: Resolves when the write has been appended. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L649))
+- Example: `await db.put('user:1', { name: 'Ada' })`
+
+The `cas` comparator receives the current node as `prev` and the potential new node as `next`. It runs only when the key already exists.
+
+#### `await db.del(key, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L656)
+- Signature: `await db.del(key, [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L656))
+- Parameters: `key` uses `keyEncoding`; `options.cas(prev)` can veto the delete when the current value should be preserved. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L656))
+- Returns: Resolves when the delete marker has been appended. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L658))
+- Example: `await db.del('user:1')`
+
+The delete comparator runs only when the key exists. Deleting a missing key succeeds without calling `cas`.
+
+#### `const batch = db.batch()`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L652)
+- Signature: `const batch = db.batch()` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L652))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L652))
+- Returns: A write batch that applies all queued operations atomically when flushed. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L653))
+- Example: `const batch = db.batch()`
+
+Use batches when you need grouped writes or lower overhead for many updates.
+
+#### `await batch.put(key, [value], [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L647)
+- Signature: `await batch.put(key, [value], [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L647))
+- Parameters: Same arguments and `cas` behavior as `db.put(...)`. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L647))
+- Returns: Resolves after queuing the write inside the batch. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L649))
+- Example: `await batch.put('settings', { retries: 3 })`
+
+#### `const entry = await batch.get(key)`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L49)
+- Signature: `const entry = await batch.get(key)` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L49))
+- Parameters: `key` uses the batch's key encoding. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L49))
+- Returns: The pending or committed entry visible within the batch, or `null` when missing. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L50))
+- Example: `const entry = await batch.get('settings')`
+
+#### `await batch.del(key, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L656)
+- Signature: `await batch.del(key, [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L656))
+- Parameters: Same arguments and `cas` behavior as `db.del(...)`. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L656))
+- Returns: Resolves after queuing the delete inside the batch. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L658))
+- Example: `await batch.del('settings')`
+
+#### `await batch.flush()`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1327)
+- Signature: `await batch.flush()` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1327))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1327))
+- Returns: Resolves after committing the queued operations and releasing the batch lock. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1336))
+- Example: `await batch.flush()`
+
+#### `await batch.close()`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278)
+- Signature: `await batch.close()` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278))
+- Returns: Resolves after discarding the batch and releasing any lock it holds. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1279))
+- Example: `await batch.close()`
+
+Call `batch.close()` when you want to abort a batch without writing it.
+
+### Reads and iteration
+
+#### `const entry = await db.get(key)`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L49)
+- Signature: `const entry = await db.get(key)` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L49))
+- Parameters: `key` uses `keyEncoding`. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L49))
+- Returns: `null` when the key is missing, otherwise `{ seq, key, value }`, where `seq` is the backing Hypercore block index. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L50))
+- Example: `const entry = await db.get('config')`
+
+#### `const entry = await db.getBySeq(seq, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L642)
+- Signature: `const entry = await db.getBySeq(seq, [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L642))
+- Parameters: `seq` is a Hypercore block index; `options` pass through to the underlying core lookup. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L642))
+- Returns: `null` when the block does not exist, otherwise the decoded `{ key, value }` entry stored at that sequence number. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L644))
+- Example: `const entry = await db.getBySeq(4)`
+
+#### `const stream = db.createReadStream([range], [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L543)
+- Signature: `const stream = db.createReadStream([range], [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L543))
+- Parameters: `range` can include `gt`, `gte`, `lt`, or `lte`; `options.reverse` flips sort order and `options.limit` caps the number of yielded entries. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L543))
+- Returns: An async iterable of `{ seq, key, value }` entries sorted by encoded key order. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L545))
+- Example: `for await (const entry of db.createReadStream({ gte: 'a', lt: 'd' })) {}`
+
+#### `const entry = await db.peek([range], [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L499)
+- Signature: `const entry = await db.peek([range], [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L499))
+- Parameters: Accepts the same `range` and `options` as `db.createReadStream(...)`. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L511))
+- Returns: The first matching entry, or `null` if the range is empty. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L500))
+- Example: `const first = await db.peek({ gte: 'user:' })`
+
+### History and change tracking
+
+#### `const stream = db.createHistoryStream([options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L548)
+- Signature: `const stream = db.createHistoryStream([options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L548))
+- Parameters: `options.live` keeps the stream open; `options.reverse` yields newest first; `gte`, `gt`, `lte`, and `lt` bound the sequence range; `limit` caps results. Negative sequence bounds are resolved relative to the current version. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L548))
+- Returns: An async iterable of change records shaped like `{ type, seq, key, value }`, where `type` is `'put'` or `'del'`. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L551))
+- Example: `for await (const entry of db.createHistoryStream({ reverse: true, limit: 1 })) {}`
+
+#### `const stream = db.createDiffStream(otherVersion, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L557)
+- Signature: `const stream = db.createDiffStream(otherVersion, [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L557))
+- Parameters: `otherVersion` is the version to compare against; `options` match `db.createReadStream(...)` except `reverse` is not supported. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L557))
+- Returns: An async iterable of `{ left, right }` pairs sorted by key, where each side is an entry or `null` when that side lacks the key. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L625))
+- Example: `for await (const diff of db.createDiffStream(previousVersion)) {}`
+
+Causally equal entries are omitted from the diff, so the stream only yields actual changes between versions.
+
+#### `const entryWatcher = await db.getAndWatch(key, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L666)
+- Signature: `const entryWatcher = await db.getAndWatch(key, [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L666))
+- Parameters: `key` selects one entry; `options.keyEncoding` and `options.valueEncoding` can override the bee defaults for the watched node. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L714))
+- Returns: A watcher whose `node` property always contains the latest entry for that key. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L677))
+- Example: `const entryWatcher = await db.getAndWatch('config')`
+
+Listen to `entryWatcher.on('update')` when you need push-style notifications for a single key.
+
+#### `await entryWatcher.close()`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278)
+- Signature: `await entryWatcher.close()` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278))
+- Returns: Resolves after stopping the watcher created by `db.getAndWatch(...)`. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1279))
+- Example: `await entryWatcher.close()`
+
+#### `const watcher = db.watch([range])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L661)
+- Signature: `const watcher = db.watch([range])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L661))
+- Parameters: `range` accepts the same bounds as `db.createReadStream(...)`, except `reverse`; `keyEncoding` and `valueEncoding` can override the yielded snapshot encodings. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L661))
+- Returns: An async iterable watcher that yields `[current, previous]` snapshot pairs each time the watched range changes. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L663))
+- Example: `for await (const [current, previous] of db.watch({ gte: 'user:' })) {}`
+
+Watchers are not supported on subs or checkouts. Use `range` to narrow the scope on the root bee instead.
+
+#### `await watcher.ready()`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L896)
+- Signature: `await watcher.ready()` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L896))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L896))
+- Returns: Resolves when a range watcher has loaded and is actively tracking changes. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L896))
+- Example: `await watcher.ready()`
+
+#### `await watcher.close()`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278)
+- Signature: `await watcher.close()` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278))
+- Returns: Resolves after stopping the range watcher. Breaking out of the async iterator also stops it. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1279))
+- Example: `await watcher.close()`
+
+### Snapshots and sub-bees
+
+#### `const snapshot = db.checkout(version)`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L762)
+- Signature: `const snapshot = db.checkout(version)` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L762))
+- Parameters: `version` is the modification count to read from. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L762))
+- Returns: A read-only `Hyperbee` view pinned to that version. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L773))
+- Example: `const beforeImport = db.checkout(10)`
+
+#### `const snapshot = db.snapshot()`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L786)
+- Signature: `const snapshot = db.snapshot()` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L786))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L786))
+- Returns: A read-only checkout pinned to the current `db.version`. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L787))
+- Example: `const current = db.snapshot()`
+
+#### `const sub = db.sub(prefix, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L793)
+- Signature: `const sub = db.sub(prefix, [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L793))
+- Parameters: `prefix` becomes the namespace prefix; `options.sep` sets the separator buffer; `options.keyEncoding` and `options.valueEncoding` can override the parent encodings for the sub-bee. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L793))
+- Returns: A new `Hyperbee` view that transparently prefixes all keys in that namespace. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L802))
+- Example: `const users = db.sub('users')`
+
+Sub-bees are useful when one Hyperbee needs multiple logical keyspaces without creating extra cores.
+
+#### `const header = await db.getHeader([options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L816)
+- Signature: `const header = await db.getHeader([options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L816))
+- Parameters: `options` are passed through to the underlying `core.get(...)` call. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L816))
+- Returns: The decoded header stored in the first block, or throws when the header cannot be decoded. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L819))
+- Example: `const header = await db.getHeader()`
+
+### Replication and lifecycle
+
+#### `const stream = db.replicate(isInitiatorOrStream)`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L491)
+- Signature: `const stream = db.replicate(isInitiatorOrStream)` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L491))
+- Parameters: Pass the same initiator flag or replication stream you would pass to the underlying Hypercore replication API. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L511))
+- Returns: The replication stream for the backing core. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L492))
+- Example: `const replicationStream = db.replicate(true)`
+
+In larger apps, replication is often handled through a shared [`Corestore`](/reference/helpers/corestore) rather than per-bee streams.
+
+#### `await db.close()`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278)
+- Signature: `await db.close()` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278))
+- Parameters: None. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1278))
+- Returns: Resolves after closing the bee and its backing core. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L1279))
+- Example: `await db.close()`
+
+### Static helpers
+
+#### `const isHyperbee = await Hyperbee.isHyperbee(core, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L853)
+- Signature: `const isHyperbee = await Hyperbee.isHyperbee(core, [options])` ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L853))
+- Parameters: `core` is the candidate Hypercore; `options` pass through to the first-block lookup. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L853))
+- Returns: `true` when the core contains a Hyperbee header, otherwise `false`. ([GitHub](https://github.com/holepunchto/hyperbee/blob/main/index.js#L863))
+- Example: `const ok = await Hyperbee.isHyperbee(core)`
+
+## See also
+
+- [Share append-only databases with Hyperbee](/how-to/store-and-replicate/share-append-only-databases-with-hyperbee) — replication walkthrough with reader and writer peers.
+- [Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore) — recommended multi-core replication pattern.
+- [Corestore](/reference/helpers/corestore) — manage many Hypercores and Hyperbees from one store.
+- [Hypercore](/reference/building-blocks/hypercore) — append-only log that stores Hyperbee nodes.
+- [Hyperdrive](/reference/building-blocks/hyperdrive) — filesystem abstraction that builds on Hyperbee-style metadata indexing.
