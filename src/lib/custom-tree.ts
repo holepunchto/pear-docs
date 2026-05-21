@@ -99,6 +99,11 @@ export const customTree: Node[] = [
         name: 'Release pipeline',
         url: '/explanation/release-pipeline',
       },
+      {
+        type: 'page',
+        name: 'Dependencies and network',
+        url: '/explanation/dependencies-and-network',
+      },
     ],
   },
 
