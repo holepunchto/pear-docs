@@ -23,21 +23,26 @@ interface Mismatch {
  * Top-level directory under content/ -> required docType for every .mdx
  * inside (recursive). Singular, matching the @tetherto/docs-seo-schema
  * docType enum.
+ *
+ * `getting-started/` is a template-specific helper, not one of the four
+ * Diátaxis quadrants. The Diátaxis skill classifies it as "tutorial in
+ * spirit"; we keep it as its own top-level directory so the page sits
+ * outside `tutorials/` (which is reserved for full multi-step lessons).
  */
 const QUADRANT_DOCTYPE: Record<string, string> = {
   tutorials: 'tutorial',
   'how-to': 'how-to',
   reference: 'reference',
   explanation: 'explanation',
+  'getting-started': 'getting-started',
 };
 
 /**
- * The site-root index is conceptually an explanation (it tells you what
- * Pear *is*) so it gets the explanation docType. ADR §8 calls this out
- * as a special case.
+ * The site-root index is a quadrant launcher, so it uses the generic page
+ * docType instead of pretending to be one of the four Diátaxis modes.
  */
 const ROOT_INDEX = 'content/index.mdx';
-const ROOT_INDEX_DOCTYPE = 'explanation';
+const ROOT_INDEX_DOCTYPE = 'page';
 
 /**
  * Files temporarily exempted from the dir<->docType rule. Empty today; the

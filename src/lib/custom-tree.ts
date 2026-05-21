@@ -18,6 +18,74 @@ import type { Node } from 'fumadocs-core/page-tree';
  */
 export const customTree: Node[] = [
   { type: 'page', name: 'Pear by Holepunch', url: '/' },
+  {
+    type: 'folder',
+    name: 'Getting Started',
+    index: {
+      type: 'page',
+      name: 'Introduction',
+      url: '/getting-started',
+    },
+    children: [
+      {
+        type: 'page',
+        name: 'Build a peer-to-peer chat',
+        url: '/getting-started/chat',
+      },
+      {
+        type: 'page',
+        name: 'Add persistence with Corestore',
+        url: '/getting-started/production-shape',
+      },
+      {
+        type: 'page',
+        name: 'Ship your app',
+        url: '/getting-started/ship',
+      },
+      {
+        type: 'page',
+        name: 'Deploy over-the-air updates',
+        url: '/getting-started/update',
+      },
+    ],
+  },
+  {
+    type: 'folder',
+    name: 'About Pear',
+    index: { type: 'page', name: 'About Pear', url: '/explanation' },
+    children: [
+      {
+        type: 'page',
+        name: 'Runtime and languages',
+        url: '/explanation/runtime-and-languages',
+      },
+      {
+        type: 'page',
+        name: 'Workers',
+        url: '/explanation/workers',
+      },
+      {
+        type: 'page',
+        name: 'Pear desktop architecture',
+        url: '/explanation/pear-desktop-architecture',
+      },
+      {
+        type: 'page',
+        name: 'Storage and distribution',
+        url: '/explanation/storage-and-distribution',
+      },
+      {
+        type: 'page',
+        name: 'Release pipeline',
+        url: '/explanation/release-pipeline',
+      },
+      {
+        type: 'page',
+        name: 'Dependencies and network',
+        url: '/explanation/dependencies-and-network',
+      },
+    ],
+  },
 
   {
     type: 'folder',
@@ -77,6 +145,11 @@ export const customTree: Node[] = [
           },
           {
             type: 'page',
+            name: 'Build desktop distributables',
+            url: '/how-to/operate-an-app/build-desktop-distributables',
+          },
+          {
+            type: 'page',
             name: 'Distribute as a binary',
             url: '/how-to/operate-an-app/distribute-as-binary',
           },
@@ -94,6 +167,11 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Apply recommended practices',
             url: '/how-to/operate-an-app/recommended-practices',
+          },
+          {
+            type: 'page',
+            name: 'Troubleshoot desktop releases',
+            url: '/how-to/operate-an-app/troubleshoot-desktop-releases',
           },
           {
             type: 'page',
@@ -117,6 +195,16 @@ export const customTree: Node[] = [
       },
       { type: 'page', name: 'Runtime', url: '/reference/runtime' },
       { type: 'page', name: 'Configuration', url: '/reference/configuration' },
+      {
+        type: 'page',
+        name: 'Release pipeline glossary',
+        url: '/reference/release-pipeline-glossary',
+      },
+      {
+        type: 'page',
+        name: 'Desktop release npm scripts',
+        url: '/reference/desktop-release-npm-scripts',
+      },
       {
         type: 'page',
         name: 'Application Programming Interface (API)',
@@ -218,29 +306,6 @@ export const customTree: Node[] = [
           { type: 'page', name: 'Hyperssh', url: '/reference/tools/hyperssh' },
           { type: 'page', name: 'Drives', url: '/reference/tools/drives' },
         ],
-      },
-    ],
-  },
-
-  {
-    type: 'folder',
-    name: 'Explanations',
-    index: { type: 'page', name: 'Explanations', url: '/explanation' },
-    children: [
-      {
-        type: 'page',
-        name: 'Runtime and languages',
-        url: '/explanation/runtime-and-languages',
-      },
-      {
-        type: 'page',
-        name: 'Storage and distribution',
-        url: '/explanation/storage-and-distribution',
-      },
-      {
-        type: 'page',
-        name: 'Dependencies and network',
-        url: '/explanation/dependencies-and-network',
       },
     ],
   },

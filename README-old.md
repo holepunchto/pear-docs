@@ -69,7 +69,7 @@ Pear's runtime binary is built on [Bare](https://github.com/holepunchto/bare), a
 
 ### Boilerplates<a name="boilerplates"></a>
 
-- Desktop: [Hello Pear Electron](https://github.com/holepunchto/hello-pear-electron)
+- Desktop: [Pear desktop architecture](content/explanation/pear-desktop-architecture.mdx) (template: `holepunchto/hello-pear-electron` on GitHub)
 - Mobile: [Hello Pear React-Native](https://github.com/holepunchto/hello-pear-react-native)
 
 ### How-tos<a name="howtos"></a>

@@ -27,6 +27,38 @@ In a running application, the path you'd write to is exposed as [`Pear.config.st
 
 A practical consequence of this layout: you can't browse the on-disk files with Finder or a file manager and expect to see the application's actual content. Everything is encoded inside hyperdrives. To read what an installed application actually distributed, use [`pear dump`](/reference/cli#pear-dump-flags-link-dir) — it materializes the hyperdrive's contents back into ordinary files.
 
+### Application storage in development vs production
+
+The directories above are the **platform**'s storage. An **application** embedded in [Electron](/getting-started/production-shape) — the `dir` field passed to `new PearRuntime({ dir, ... })` — lives in a different per-OS location, and it differs between development and packaged builds:
+
+| OS      | Packaged                                        | Development (no packaged app)      |
+| ------- | ----------------------------------------------- | ---------------------------------- |
+| macOS   | `~/Library/Application Support/<productName>`   | `<tmpdir>/pear/<productName>`      |
+| Linux   | `~/.config/<productName>`                       | `<tmpdir>/pear/<productName>`      |
+| Windows | `%USERPROFILE%\AppData\Local\<productName>`     | `<tmpdir>/pear/<productName>`      |
+
+The convention comes from [`hello-pear-electron`'s `getPear()`](https://github.com/holepunchto/hello-pear-electron/blob/main/electron/main.js): when `app.isPackaged` is `false`, the dir falls back to `os.tmpdir()`; otherwise it picks the OS-appropriate user-data folder. The Pear runtime then exposes that dir to the worker as `pear.storage`, and the worker passes it to [Corestore](/reference/helpers/corestore) as `storage`.
+
+### Running multiple application instances
+
+Because [Corestore](/reference/helpers/corestore) takes an exclusive file-system lock on its directory, two copies of the same packaged app cannot share `dir`. To run a second local instance you point it at a separate folder with the `--storage` flag (recognised by every Pear-shaped Electron app that wires `paparam` like the template):
+
+```bash
+# development
+npm start -- --storage /tmp/custom/storage
+
+# packaged macOS
+open -n PearChat.app --args --storage /tmp/custom/storage
+
+# packaged Linux
+./PearChat.AppImage --storage /tmp/custom/storage
+
+# packaged Windows
+.\PearChat.exe --storage C:\tmp\custom\storage
+```
+
+A second `--storage` instance behaves exactly like an instance running on another machine: a separate [Corestore](/reference/helpers/corestore), a separate Hyperswarm presence, the same `pear://` link. This is the simplest way to test peer-to-peer flows locally without involving a second device.
+
 ## How distribution works
 
 A Pear application's `pear://<key>` link is a stable identifier the swarm can route on. When you publish a new version with `pear stage` and announce it with `pear seed`, you're appending to the application's [Hyperdrive](/reference/building-blocks/hyperdrive) — peers tracking that drive get the new version on next sync.
@@ -45,6 +77,8 @@ The same model applies to the Pear platform itself: there's no Pear download ser
 
 ## See also
 
+- [Pear desktop application architecture](/explanation/pear-desktop-architecture) — how a typical Electron app maps `dir`, workers, and OTA into that layout.
+- [Release pipeline](/explanation/release-pipeline) — stage, provision, multisig, and release lines for shipping desktop builds.
 - [Manage installed applications](/how-to/operate-an-app/manage-installed-applications) — listing and dropping local application storage.
 - [Deploy your application](/how-to/operate-an-app/deployment) — staging and seeding new releases.
 - [Hypercore](/reference/building-blocks/hypercore) — the append-only log every other primitive composes.

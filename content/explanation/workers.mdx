@@ -1,0 +1,81 @@
+---
+title: "Workers"
+description: "Why a Pear app's peer-to-peer logic lives in a Bare worker behind a single IPC stream — what the pattern buys you, where to put the boundary, and how the host and worker halves talk."
+docType: explanation
+schemaType: WebPage
+---
+
+A Pear application splits into two halves: a UI (the renderer, terminal, or mobile shell) and a **worker** that owns everything peer-to-peer. The worker is a [Bare](/reference/bare-modules) process the host spawns at startup, and it's where [Hyperswarm](/reference/building-blocks/hyperswarm), [Corestore](/reference/helpers/corestore), [Hypercore](/reference/building-blocks/hypercore), and any native addons run. The two halves only ever see each other through a single [Inter-Process Communication (IPC)](#the-ipc-contract) duplex stream.
+
+This page is about the pattern, not the API. For the call signatures and IPC stream type, see [Running workers in the runtime reference](/reference/runtime#running-workers).
+
+## Workers as a local backend
+
+The mental model is **the worker is your application's local backend**. The renderer is a client to that backend in the same way a web app is a client to a remote API — it makes requests, it gets streaming events back, it doesn't own state. The difference is the "server" is a sibling process on the same machine, started and stopped by the host.
+
+In a desktop Pear app the host is the Electron main process; in a mobile Pear app it's the [Bare iOS / Bare Android](https://github.com/holepunchto) shell; in a terminal app it's the [`pear`](/reference/cli) CLI itself. The worker code is identical across all of them — only the UI half and the bridge that forwards IPC change.
+
+## Why the split
+
+Three concrete reasons to put peer-to-peer code in a worker rather than inline in the UI:
+
+- **Native addons stay out of the renderer.** Hypercore, Hyperswarm, sodium, and many other Pear building blocks load native modules. Electron's renderer cannot load native code under `sandbox: true`, and a `sandbox: false` renderer is a large attack surface. Keeping native code in the worker keeps the renderer untrusted.
+- **The renderer becomes portable.** Because the worker never imports DOM APIs and the UI never imports Corestore or Hyperswarm, you can swap the UI for a different framework (or a different platform's UI entirely) without rewriting the peer-to-peer logic. This is what makes Keet's identical experience across desktop, mobile, and terminal possible.
+- **One IPC channel, one place to audit.** Every byte that crosses from peers into your application crosses the IPC boundary first. Validation, framing decisions, rate limits, and observability all sit at that one chokepoint instead of being scattered across the UI.
+
+See [Runtime and languages](/explanation/runtime-and-languages#one-codebase-many-platforms-the-pear-end-pattern) for the wider "Pear-end / UI" framing and why it's the recommended app shape.
+
+## The IPC contract
+
+The host spawns a worker by calling [`pear.run`](/reference/runtime#running-workers) (or the static helper [`PearRuntime.run`](/reference/runtime#running-workers) for one-off cases) with the worker's entrypoint and a list of arguments:
+
+```js
+const IPC = pear.run('./workers/main.js', [pear.storage])
+IPC.on('data', (data) => {
+  console.log('data from worker', data)
+})
+IPC.write('hello')
+```
+
+`IPC` is a [duplex stream](https://nodejs.org/api/stream.html#class-streamduplex): bytes the host writes show up on the worker side, and bytes the worker writes show up here. Inside the worker the other side of that same stream is `Bare.IPC`:
+
+```js
+const Corestore = require('corestore')
+const storage = Bare.argv[2]
+
+Bare.IPC.on('data', (data) => console.log(data.toString()))
+Bare.IPC.write('Hello from worker')
+
+const corestore = new Corestore(storage)
+// ... open Hypercores, replicate over Hyperswarm, etc.
+```
+
+A few things about that snippet aren't obvious if you're new to Bare:
+
+- **`Bare.argv` indexing matches Node's `process.argv`.** `Bare.argv[0]` is the Bare binary, `Bare.argv[1]` is the worker script path, and `Bare.argv[2]` is the first argument *you* passed. Anything beyond that lands at `Bare.argv[3]`, `[4]`, and so on.
+- **The IPC stream carries bytes, not objects.** There's no built-in JSON or length-framing. Either send one message per `write()` (Bare's IPC preserves write boundaries on the receiving side when the message is small enough not to be split), or pick a framing format like newline-delimited JSON or [compact-encoding](/reference/helpers/compact-encoding) and stick to it on both ends.
+- **`pear.storage` is the recommended first argument.** It points at a per-app directory the host has already prepared (see [Storage and distribution](/explanation/storage-and-distribution)). Worker code stays portable as long as it treats `Bare.argv[2]` as "wherever the host says my storage is" rather than hard-coding a path.
+
+## Where the boundary should sit
+
+A pragmatic rule of thumb: anything that touches peers, storage, or cryptography belongs on the worker side; anything that touches a screen, a keyboard, or a window belongs on the UI side. When in doubt, ask "could this code run unchanged if I swapped Electron for a terminal UI?" — if yes, it's worker code; if not, it's UI code.
+
+The renderer in a typical Pear Electron app, then, owns very little: layout, event listeners, and a thin transport that posts user actions to the worker and renders whatever streams back. The worker is where the application actually lives.
+
+## Lifecycle and multiple workers
+
+A host can run more than one worker. Common patterns:
+
+- One **main worker** that owns the application's primary append-only logs and swarm membership. This is the usual shape and what [Add persistence with Corestore](/getting-started/production-shape) (part 2 of the getting started path) builds.
+- Additional **ephemeral workers** for one-off jobs — a heavy import, a video transcode, a synchronous CPU task — that exit when their work is done. These keep the main worker's event loop free.
+
+Each worker is its own Bare process, has its own `IPC` stream on the host side, and can be torn down independently. The host is responsible for cleaning up on `before-quit`; see how `getWorker()` registers an `app.on('before-quit', …)` listener in the production-shape tutorial for one way to wire that up.
+
+## See also
+
+- [Running workers in the runtime reference](/reference/runtime#running-workers) — `pear.run`, the `IPC` duplex stream, and `Bare.IPC` on the worker side.
+- [Runtime and languages](/explanation/runtime-and-languages) — the broader "Pear-end / UI" pattern, Bare's role, and how non-JavaScript code joins in via native addons.
+- [Pear desktop application architecture](/explanation/pear-desktop-architecture) — how workers, the preload bridge, and the OTA updater fit together in a real Electron app.
+- [Storage and distribution](/explanation/storage-and-distribution) — where `pear.storage` actually points on each operating system.
+- [Add persistence with Corestore](/getting-started/production-shape) — a tutorial that wires a real `pear-chat` worker behind a `window.bridge` API.
+- The upstream source: [`hello-pear-electron`'s Workers](https://github.com/holepunchto/hello-pear-electron#workers).
