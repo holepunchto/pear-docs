@@ -5,9 +5,12 @@ docType: how-to
 schemaType: TechArticle
 ---
 
-[`HyperDHT`](/reference/building-blocks/hyperdht) helps clients connect to a server peer with a known public key. HyperDHT uses a series of holepunching techniques to establish direct connections between the peers, even if they're located on home networks with tricky NATs.
+[`HyperDHT`](/reference/building-blocks/hyperdht) helps clients connect to a server peer with a known public key.
+HyperDHT uses a series of holepunching techniques to establish direct connections between the peers, even if they're located on home networks with tricky NATs.
 
-In the HyperDHT, peers are identified by a public key, not by an IP address. The public key is looked up in a decentralized hash table, which maps the key to an IP address and port. This means users can connect to each other irrespective of their location, even if they move between different networks.
+In the HyperDHT, peers are identified by a public key, not by an IP address.
+The public key is looked up in a decentralized hash table, which maps the key to an IP address and port.
+This means users can connect to each other irrespective of their location, even if they move between different networks.
 
 <Callout type="warn">
 HyperDHT's holepunching will fail if both the client peer and the server peer are on randomizing [NATs](https://en.wikipedia.org/wiki/Network_address_translation), in which case the connection must be relayed through a third peer. HyperDHT does not do any relaying by default.
@@ -15,24 +18,30 @@ HyperDHT's holepunching will fail if both the client peer and the server peer ar
 For example, Keet implements its relaying system wherein other call participants can serve as relays -- the more participants in the call, the stronger overall connectivity becomes.
 </Callout>
 
-Use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key. The example consists of two applications: [`client-app`](#create-the-client-app) and [`server-app`](#create-the-server-app).
+Use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key.
+The example consists of two applications: [`client-app`](#create-the-client-app) and [`server-app`](#create-the-server-app).
 
 ## Create the server app
 
 The `server-app` creates a key pair, starts a server listening on it, and logs the public key. Copy that key — the client uses it to connect.
 
+### Create the server project
+
 Create the `server-app` project with the following commands:
 
-```
+```sh example=hyperdht-chat step=setup
 mkdir server-app
 cd server-app
-pear init -y -t terminal
+npm init -y
+npm pkg set type="module"
 npm install hyperdht b4a bare-process
 ```
 
+### Add the server logic
+
 Alter `server-app/index.js` to the following:
 
-```javascript
+```javascript example=hyperdht-chat step=write file=server-app/index.js
 import DHT from 'hyperdht'
 import b4a from 'b4a'
 import process from 'bare-process'
@@ -41,62 +50,97 @@ const dht = new DHT()
 
 // This keypair is the peer identifier in the DHT
 const keyPair = DHT.keyPair()
+const name = b4a.toString(keyPair.publicKey, 'hex')
 
 const server = dht.createServer(conn => {
-  console.log('got connection!')
-  process.stdin.pipe(conn).pipe(process.stdout)
+  const peer = b4a.toString(conn.remotePublicKey, 'hex')
+  console.log('* got a connection from:', peer, '*')
+
+  conn.on('data', data => console.log(`${peer}: ${data}`))
+  process.stdin.on('data', d => {
+    console.log(`${name}: ${d}`)
+    conn.write(d)
+  })
 })
 
 server.listen(keyPair).then(() => {
-  console.log('listening on:', b4a.toString(keyPair.publicKey, 'hex'))
+  console.log('listening on:', name)
 })
 
-// Unnannounce the public key before exiting the process
-// (This is not a requirement, but it helps avoid DHT pollution)
-Pear.teardown(() => server.close())
+// Unannounce the public key before exiting the process
+// (Not strictly required, but it helps avoid DHT pollution.)
+process.once('SIGINT', () => server.close().then(() => process.exit(0)))
 ```
 
-Run the `server-app` with `bare server-app`.
+### Run the server
+
+To run the `server-app`, move one directory up and run the following command:
+
+```sh example=hyperdht-chat step=run process=server expect="listening on:" capture-key="listening on: ([0-9a-f]+)"
+bare server-app
+```
 
 ## Create the client app
 
+### Create the client project
+
 In another terminal create the `client-app` project with the following commands:
 
-```
+```sh example=hyperdht-chat step=setup
 mkdir client-app
 cd client-app
-pear init -y -t terminal
+npm init -y
+npm pkg set type="module"
 npm install hyperdht b4a bare-process
 ```
+
+### Add the client logic
+
 Alter `client-app/index.js` to the following:
 
-``` javascript
+```javascript example=hyperdht-chat step=write file=client-app/index.js
 import DHT from 'hyperdht'
 import b4a from 'b4a'
 import process from 'bare-process'
 
-const key = Pear.config.args[0]
+const key = Bare.argv[2]
 if (!key) throw new Error('provide a key')
 
 console.log('Connecting to:', key)
 const publicKey = b4a.from(key, 'hex')
 
 const dht = new DHT()
+const name = b4a.toString(dht.defaultKeyPair.publicKey, 'hex')
+
 const conn = dht.connect(publicKey)
-conn.once('open', () => console.log('got connection!'))
+conn.once('open', () => {
+  const peer = b4a.toString(conn.remotePublicKey, 'hex')
+  console.log('* got a connection from:', peer, '*')
+})
 
-process.stdin.pipe(conn).pipe(process.stdout)
+conn.on('data', data => {
+  const peer = b4a.toString(conn.remotePublicKey, 'hex')
+  console.log(`${peer}: ${data}`)
+})
+
+process.stdin.on('data', d => {
+  console.log(`${name}: ${d}`)
+  conn.write(d)
+})
 ```
 
-## Run the chat
+### Run the chat client
 
-Run the client passing it the key from the server:
+To run the `client-app`, move one directory up and run the following command:
 
-```
+```sh example=hyperdht-chat step=run process=client cmd="bare client-app ${key}" expect="Connecting to:" timeout=15000
 bare client-app <SUPPLY KEY HERE>
 ```
 
-The `client-app` will spin up a client, and the public key copied earlier must be supplied as a command line argument for connecting to the server. The client process will log `got connection` into the console when it connects to the server.
+{/* @harness example=hyperdht-chat step=expect process=server contains="got a connection from:" timeout=30000 */}
+
+The `client-app` will spin up a client, and the public key copied earlier must be supplied as a command line argument for connecting to the server.
+The client process will log `got connection` into the console when it connects to the server.
 
 Once it's connected, try typing in both terminals.
 

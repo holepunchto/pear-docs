@@ -114,7 +114,7 @@ export const customTree: Node[] = [
     children: [
       {
         type: 'folder',
-        name: 'Connecting peers',
+        name: 'Connect to peers',
         children: [
           {
             type: 'page',
@@ -130,7 +130,7 @@ export const customTree: Node[] = [
       },
       {
         type: 'folder',
-        name: 'Storage and replication',
+        name: 'Store and replicate',
         children: [
           {
             type: 'page',
@@ -156,7 +156,7 @@ export const customTree: Node[] = [
       },
       {
         type: 'folder',
-        name: 'Operating an app',
+        name: 'Operate your app',
         children: [
           {
             type: 'page',
@@ -205,7 +205,7 @@ export const customTree: Node[] = [
 
   {
     type: 'folder',
-    name: 'Reference',
+    name: 'References',
     index: { type: 'page', name: 'Reference', url: '/reference' },
     children: [
       {

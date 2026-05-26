@@ -80,6 +80,33 @@ it lives in (a how-to in `content/how-to/`, an explanation in
 npm run check:doctypes
 ```
 
+Validate (and optionally execute) the code examples in `content/how-to/**`.
+Every fenced block under `content/how-to/` must carry either `example=<id>`
+meta (runnable, grouped into a scenario) or `skip="<reason>"` meta
+(non-runnable in CI — live DHT, signed installer, sample output, etc.):
+```bash
+npm run check:examples:lint   # validate annotations only (fast, no runtimes needed)
+npm run check:examples        # scaffold each scenario, execute end-to-end, assert output
+```
+
+The full `check:examples` run scaffolds isolated projects under
+`.examples-tmp/` (gitignored) and requires `bash`, `npm`, `pear`, and `bare`
+on `PATH`. Install pear-runtime per the [Pear install guide](https://docs.pears.com/getting-started/install)
+and `bare` via `npm i -g bare-runtime`.
+
+Authoring conventions for code fences are documented at the top of
+[`scripts/check-examples.ts`](scripts/check-examples.ts). In short:
+
+- `example=<id> step=setup` — bash setup script (run as-is).
+- `example=<id> step=write file=<rel>` — overwrite a file in the scenario cwd.
+- `example=<id> step=run process=<name> [expect=...] [capture-<x>="regex"] [cmd=...]` —
+  spawn a long-lived process. The first non-empty line of the body is the
+  command unless overridden by `cmd=`.
+- `skip="reason"` — explicitly mark a block as not runnable in CI.
+- `{/* @harness example=<id> step=send|expect|copy ... */}` — JSX-comment
+  directives for orchestration steps that don't fit naturally as visible
+  code blocks (sends to stdin, cross-process asserts, fixture copies).
+
 ## Build
 
 Generate static website:
