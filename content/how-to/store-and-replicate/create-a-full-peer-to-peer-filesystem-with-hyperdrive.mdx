@@ -204,16 +204,19 @@ Run the `drive-reader-app` with `bare`, passing the key from the [`drive-writer-
 bare drive-reader-app <SUPPLY_KEY_HERE>
 ```
 
-`LocalDrive` does not create the directory passed to it until something has been written, so create the `drive-writer-app/writer-dir` (`mkdir writer-dir`) and then add/remove/modify files inside `drive-writer-app/writer-dir` then press `Enter` in the writer's terminal (to import the local changes into the writer's drive). Observe that all new changes mirror into `reader-app/reader-dir`.
+`LocalDrive` does not create the directory passed to it until something has been written, so create `writer-dir` (`mkdir writer-dir`) beside the app directories. Then add, remove, or modify files inside `writer-dir` and press `Enter` in the writer's terminal to import those local changes into the drive. Observe that the new changes mirror into `reader-dir`.
 
 Just as a Hyperbee is **just** a Hypercore, a Hyperdrive is **just** a Hyperbee - which is **just** a Hypercore.
 
 ## Test the filesystem
 
-A a third termina, add/remove/modify files inside the `drive-writer-app/writer-dir` directory and observe that all new changes mirror into the `drive-reader-app/reader-dir` directory.
+A a third terminal, add, remove, or modify files inside `writer-dir` and observe that the new changes mirror into `reader-dir`.
 
-```sh skip="existing-writer-process"
-echo "hello" | bare drive-writer-app
+For example, create one file in the writer directory:
+
+```sh example=hyperdrive-fs step=setup
+mkdir -p writer-dir
+printf 'hello from hyperdrive\n' > writer-dir/hello.txt
 ```
 
 {/* @harness example=hyperdrive-fs step=send process=writer data="\n" delay=500 */}
@@ -221,16 +224,19 @@ echo "hello" | bare drive-writer-app
 
 ## Inspect the Hyperdrive as a Hyperbee
 
+`Hyperdrive` exposes its metadata index as `drive.db`, which is the underlying Hyperbee backing the file structure.
+You can inspect that Hyperbee directly when you want to see the raw file-entry metadata that `drive.entry()` wraps, or when you want to access the metadata index directly.
+
 ### Create the `drive-bee-reader-app` directory and add dependencies
 
 In a new terminal, create the `drive-bee-reader-app` project with these commands:
 
-```sh skip="manual-walkthrough"
+```sh example=hyperdrive-fs step=setup
 mkdir drive-bee-reader-app
 cd drive-bee-reader-app
 npm init -y
 npm pkg set type="module"
-npm install corestore hyperswarm hyperdrive hyperbee b4a bare-process
+npm install corestore hyperswarm hyperdrive b4a bare-process
 ```
 This will install the following dependencies:
 
@@ -238,71 +244,74 @@ This will install the following dependencies:
 - [`hyperswarm`](/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
 - [`corestore`](/reference/helpers/corestore): A module for working with Corestore.
 - [`hyperdrive`](/reference/building-blocks/hyperdrive): A module for working with Hyperdrive.
-- [`hyperbee`](/reference/building-blocks/hyperbee): A module for working with Hyperbee.
 - [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
 
 ### Add the `drive-bee-reader-app` logic
 
 Create the `drive-bee-reader-app/index.js` file with the following content:
 
-```javascript skip="manual-walkthrough"
+```javascript example=hyperdrive-fs step=write file=drive-bee-reader-app/index.js
 import process from 'bare-process'
 import Hyperswarm from 'hyperswarm'
 import Hyperdrive from 'hyperdrive'
-import Localdrive from 'localdrive'
 import Corestore from 'corestore'
-import debounce from 'debounceify'
 import b4a from 'b4a'
 
 const key = Bare.argv[2]
 
 if (!key) throw new Error('provide a key')
 
-// create a Corestore instance
-const store = new Corestore('./drive-reader-storage')
+const store = new Corestore('./drive-bee-reader-storage')
 
 const swarm = new Hyperswarm()
 process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
 
-// replication of store on connection with other peers
 swarm.on('connection', conn => store.replicate(conn))
 
-// create a local copy of the remote drive
-const local = new Localdrive('./reader-dir')
-
-// create a hyperdrive using the public key passed as a command-line argument
 const drive = new Hyperdrive(store, b4a.from(key, 'hex'))
-
-// wait till all the properties of the drive are initialized
 await drive.ready()
+await drive.db.ready()
 
-const mirror = debounce(mirrorDrive)
+// Hyperdrive stores file metadata in the "files" sub-bee.
+const files = drive.db.sub('files', { keyEncoding: 'utf-8' })
 
-// call the mirror function whenever content gets appended 
-// to the Hypercore instance of the hyperdrive
-drive.core.on('append', mirror)
+const discovery = swarm.join(drive.discoveryKey, { client: true, server: false })
+await discovery.flushed()
 
-// join a topic
-swarm.join(drive.discoveryKey, { client: true, server: false })
-
-// start the mirroring process (i.e copying the contents from remote drive to local dir)
-mirror()
-
-async function mirrorDrive () {
-  console.log('started mirroring remote drive into \'./reader-dir\'...')
-  const mirror = drive.mirror(local)
-  await mirror.done()
-  console.log('finished mirroring:', mirror.count)
+let dbEntry = null
+for (let attempt = 0; attempt < 60; attempt++) {
+  await drive.update()
+  dbEntry = await files.peek()
+  if (dbEntry) break
+  await new Promise(resolve => setTimeout(resolve, 500))
 }
+
+if (!dbEntry) throw new Error('expected at least one file entry to appear in drive.db')
+
+const driveEntry = await drive.entry(dbEntry.key)
+
+console.log('hyperbee entry:', JSON.stringify({
+  key: dbEntry.key,
+  value: dbEntry.value
+}))
+
+console.log('drive entry:', JSON.stringify({
+  key: driveEntry.key,
+  value: driveEntry.value
+}))
+
+await swarm.destroy()
+await drive.close()
 ```
 
-Now the Hyperdrive can be inspected as though it were a Hyperbee, and log out some file metadata.
+This app joins the same drive as the other readers, then inspects `drive.db` directly as a Hyperbee.
+It fetches the first available file entry from the metadata index and logs the raw Hyperbee entry alongside the higher-level `drive.entry()` view of the same file.
 
 ### Run the `drive-bee-reader-app`
 
 Run the `drive-bee-reader-app` with `bare`, passing the key from the [`drive-writer-app`](#run-the-drive-writer-app):
 
-```sh skip="manual-walkthrough"
+```sh example=hyperdrive-fs step=run process=bee-reader cmd="bare drive-bee-reader-app ${key}" expect="hyperbee entry:" timeout=45000
 bare drive-bee-reader-app <SUPPLY_KEY_HERE>
 ```
 
