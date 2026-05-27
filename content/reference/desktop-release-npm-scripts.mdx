@@ -2,12 +2,12 @@
 title: Desktop release npm scripts
 description: >-
   Reference for common npm scripts in Pear Electron desktop repos — dev start,
-  lint, package, and per-OS make targets before pear-build.
+  lint, package, and make targets before pear-build.
 docType: reference
 schemaType: APIReference
 ---
 
-Pear Electron repositories wrap [`electron-forge`](https://www.electronforge.io/) (and on Linux, a small AppImage helper) behind `package.json` scripts so day-to-day work stays predictable. This page lists the script names used by [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron#scripts) — the template every snippet in [Ship your app](/getting-started/ship) and [Deploy over-the-air updates](/getting-started/update) is built from. Your project may rename them; read `package.json` locally.
+Pear Electron repositories wrap [`electron-forge`](https://www.electronforge.io/) behind `package.json` scripts so day-to-day work stays predictable. This page lists the script names used by [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron#scripts) — the template every snippet in [Ship your app](/getting-started/ship) and [Deploy over-the-air updates](/getting-started/update) is built from. Your project may rename them; read `package.json` locally.
 
 ## `npm start`
 
@@ -45,38 +45,24 @@ Runs `electron-forge package` to produce a packaged app **without** the per-OS d
 "package": "electron-forge package"
 ```
 
-## `npm run make:linux`
+## `npm run make`
 
-Packages the app and then runs the [`scripts/build-app-image.sh`](https://github.com/holepunchto/hello-pear-electron/blob/main/scripts/build-app-image.sh) helper to produce an **AppImage** via [`app-builder-lib`](https://www.npmjs.com/package/app-builder-lib). Run on Linux or in CI with a Linux worker:
-
-```sh
-# package.json
-"make:linux": "electron-forge package && ./scripts/build-app-image.sh"
-```
-
-Requires `jq` on the build host; the script reads `package.json` for the `productName`, version, description, and registered URL schemes that become the `.desktop` entry's `MimeType`.
-
-## `npm run make:darwin`
-
-Runs `electron-forge make --platform=darwin` on macOS to produce a `.app` and (with [`@electron-forge/maker-dmg`](https://www.npmjs.com/package/@electron-forge/maker-dmg)) a `.dmg`:
+Runs `electron-forge make` and produces platform-native installers for the **current host OS**, as defined in [`forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js):
 
 ```sh
 # package.json
-"make:darwin": "electron-forge make --platform=darwin"
+"make": "electron-forge make"
 ```
 
-Without code-signing environment variables (`MAC_CODESIGN_IDENTITY`, `APPLE_TEAM_ID`, `APPLE_ID`, `APPLE_PASSWORD`), the `.app` runs locally but is quarantined on every other machine. See [Build desktop distributables](/how-to/operate-an-app/build-desktop-distributables) for the signing configuration.
+| Host OS | Typical outputs (template makers) |
+| --- | --- |
+| macOS | `.app` (packager) + `.dmg` (`@electron-forge/maker-dmg`) |
+| Windows | `.msix` (`@electron-forge/maker-msix`) under `out/<AppName>-win32-<arch>/` |
+| Linux | `.AppImage` (`pear-electron-forge-maker-appimage`), plus Flatpak and Snap when configured |
 
-## `npm run make:win32`
+Run `npm run make` on each OS (or CI worker) you need before [`pear-build`](/how-to/operate-an-app/build-desktop-distributables#build-the-deployment-directory). There are no separate `make:darwin` / `make:linux` / `make:win32` scripts in the current template.
 
-Runs `electron-forge make --platform=win32` on Windows to produce an `.msix`:
-
-```sh
-# package.json
-"make:win32": "electron-forge make --platform=win32"
-```
-
-Requires the [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) and [PowerShell 7+](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows) on the build host. Without `WINDOWS_CERTIFICATE_FILE`, [`@electron-forge/maker-msix`](https://www.npmjs.com/package/@electron-forge/maker-msix) generates a self-signed development certificate that is cached locally but not portable across machines.
+Unsigned local builds are fine on the machine that made them; production paths need vendor signing — see [Build desktop distributables](/how-to/operate-an-app/build-desktop-distributables) for `MAC_CODESIGN_IDENTITY`, `KEYCHAIN_PROFILE`, and `WINDOWS_SIGN_HOOK`.
 
 ## Where to go next
 

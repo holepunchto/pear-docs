@@ -25,15 +25,15 @@ Complete these before you cut binaries you will ship to others:
 
 ## macOS
 
-1. On a Mac, run your project's macOS make script (often `npm run make:darwin` or `electron-forge make --platform=darwin`).
+1. On a Mac, run `npm run make` (runs `electron-forge make` with darwin makers from [`forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js)).
 2. Unsigned local `.app` bundles are fine for **your machine**; **other Macs** will quarantine unsigned builds. For OTA installs on other machines you need **code signing and notarization** with Apple credentials.
-3. Set the environment variables your template documents:
+3. Set the environment variables your [`forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js) reads:
 
    ```sh
-   MAC_CODESIGN_IDENTITY=identity APPLE_TEAM_ID=teamid APPLE_ID=id APPLE_PASSWORD=pw npm run make:darwin
+   MAC_CODESIGN_IDENTITY=identity KEYCHAIN_PROFILE=notary-profile npm run make
    ```
 
-   `APPLE_PASSWORD` is an [app-specific password](https://support.apple.com/en-us/102654), not your Apple ID login password.
+   `KEYCHAIN_PROFILE` is the [notarytool keychain profile](https://www.electronforge.io/guides/code-signing/code-signing-macos) name configured on the build host.
 
 4. Maintain `build/entitlements.mac.plist` for Hardened Runtime. Notarized apps require it; the defaults cover Bare native-addon compatibility:
 
@@ -53,14 +53,14 @@ Follow the [Electron Forge macOS code signing guide](https://www.electronforge.i
 ## Windows
 
 1. Install [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) and [PowerShell 7+](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows) on the build host.
-2. Run your Windows make script (often `npm run make:win32` or `electron-forge make --platform=win32`).
+2. On Windows, run `npm run make`.
 3. Without signing credentials, [`@electron-forge/maker-msix`](https://www.npmjs.com/package/@electron-forge/maker-msix) generates a **self-signed** development certificate matching the `Publisher` field in `build/AppxManifest.xml`. The certificate is cached locally and reused across builds on the same machine, but is **not portable** — building on a different machine or clearing the cert store generates a new one.
 4. Edit `build/AppxManifest.xml` so `Name`, `Publisher`, `DisplayName`, and the executable path are correct for your brand. Several of these are declared in multiple locations.
 5. Install with `Add-AppxPackage .\out\<AppName>-win32-x64\<AppName>.msix`; uninstall with `Get-AppxPackage -Name <AppName> | Remove-AppxPackage`.
-6. For production MSIX, supply a persistent code signing certificate (`WINDOWS_CERTIFICATE_FILE` and `WINDOWS_CERTIFICATE_PASSWORD`):
+6. For production MSIX, point `WINDOWS_SIGN_HOOK` at a signing hook module that loads your persistent certificate (see [`forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js)):
 
    ```sh
-   WINDOWS_CERTIFICATE_FILE=path/to/cert.pfx WINDOWS_CERTIFICATE_PASSWORD=password npm run make:win32
+   WINDOWS_SIGN_HOOK=path/to/sign-hook.js npm run make
    ```
 
    Keep the **`Publisher`** field in `AppxManifest.xml` exactly equal to the certificate's `CN` — Windows rejects MSIX updates when the publisher string drifts, breaking OTA. Use the same certificate across every release for the lifetime of the install base.
@@ -69,7 +69,7 @@ See [Microsoft's MSIX signing documentation](https://learn.microsoft.com/en-us/w
 
 ## Linux
 
-1. On Linux (or a Linux CI runner), run your Linux make script (often `npm run make:linux`).
+1. On Linux (or a Linux CI runner), run `npm run make`. The template [`forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js) also configures Flatpak and Snap makers via `pear-electron-forge-maker-flatpak` and `pear-electron-forge-maker-snap`.
 2. Verify the produced AppImage (or your chosen format) launches on a clean VM before you fold it into the deployment directory.
 
 ## Build the deployment directory
