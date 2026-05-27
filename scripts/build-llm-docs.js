@@ -1,11 +1,10 @@
 #!/usr/bin/env node
-'use strict'
 
-const fs = require('fs')
-const path = require('path')
+import fs from 'fs'
+import path from 'path'
 
 const BASE_URL = 'https://docs.pears.com'
-const ROOT = path.resolve(__dirname, '..')
+const ROOT = path.resolve(import.meta.dirname, '..')
 const SUMMARY = path.join(ROOT, 'SUMMARY.md')
 
 const HEADER = `# Pear by Holepunch
