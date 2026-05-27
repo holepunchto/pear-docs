@@ -99,11 +99,6 @@ export const customTree: Node[] = [
         name: 'Release pipeline',
         url: '/explanation/release-pipeline',
       },
-      {
-        type: 'page',
-        name: 'Dependencies and network',
-        url: '/explanation/dependencies-and-network',
-      },
     ],
   },
 
@@ -177,11 +172,6 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Manage installed applications',
             url: '/how-to/operate-an-app/manage-installed-applications',
-          },
-          {
-            type: 'page',
-            name: 'Migrate to a new release',
-            url: '/how-to/operate-an-app/migration',
           },
           {
             type: 'page',
