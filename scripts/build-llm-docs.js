@@ -23,14 +23,14 @@ function parseSummary () {
   let current = null
 
   for (const line of lines) {
-    const heading = line.match(/^#{1,3}\s+(.+)/)
+    const heading = line.match(/^#{1,3}\s+(.+)/) // ## Section
     if (heading) {
       current = { title: heading[1], entries: [] }
       sections.push(current)
       continue
     }
 
-    const entry = line.match(/^\s*\*\s+\[(.+?)\]\((.+?)\)/)
+    const entry = line.match(/^\s*\*\s+\[(.+?)\]\((.+?)\)/) // * [Title](path)
     if (entry && current) {
       const [, title, relPath] = entry
       if (relPath.startsWith('http')) continue
