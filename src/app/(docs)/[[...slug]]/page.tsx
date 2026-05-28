@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/mdx-components';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
-import { LLMCopyButton, ViewOptions } from '@/components/ai/page-actions';
+import { CopyPageButton, ViewOptions } from '@/components/ai/page-actions';
+import { pageMarkdownUrl } from '@/lib/page-markdown-url';
 import { gitConfig } from '@/lib/layout.shared';
 import {
   buildDocsMetadata,
@@ -24,6 +25,7 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
 
   const MDX = page.data.body;
   const markdownForCopy = await getLLMText(page);
+  const markdownUrl = pageMarkdownUrl(page.url);
   const githubUrl = `https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/content/${page.path}`;
 
   const seoConfig = getDocsSeoConfig();
@@ -36,7 +38,10 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
       <div className="flex flex-row gap-2 items-center border-b pb-6">
-        <LLMCopyButton markdown={markdownForCopy} />
+        <CopyPageButton
+          markdownUrl={markdownUrl}
+          fallbackMarkdown={markdownForCopy}
+        />
         <ViewOptions githubUrl={githubUrl} />
       </div>
       <DocsBody>
