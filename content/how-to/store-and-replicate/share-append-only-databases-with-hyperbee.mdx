@@ -5,40 +5,55 @@ docType: how-to
 schemaType: TechArticle
 ---
 
-[Hyperbee](/reference/building-blocks/hyperbee) is an append-only B-tree based on [Hypercore](/reference/building-blocks/hypercore). It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators. The example below uses [Corestore](/reference/helpers/corestore) and [Hyperswarm](/reference/building-blocks/hyperswarm) to manage and replicate the underlying core; see [Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore) if those are unfamiliar.
+[Hyperbee](/reference/building-blocks/hyperbee) is an append-only B-tree based on [Hypercore](/reference/building-blocks/hypercore).
+It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
+This guide uses [Corestore](/reference/helpers/corestore) and [Hyperswarm](/reference/building-blocks/hyperswarm) to manage and replicate the underlying core; see [Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore) if those concepts are unfamiliar.
 
-This How-to consists of three applications: [`bee-writer-app`](#create-the-bee-writer-app), [`bee-reader-app`](#create-the-bee-reader-app), and [`core-reader-app`](#inspect-the-hyperbee-as-a-hypercore).
+This guide consists of three applications:
+* [`bee-writer-app`](#create-the-bee-writer-app) - stores 100k entries from a given dictionary file into a Hyperbee instance.
+* [`bee-reader-app`](#create-the-bee-reader-app) - queries the Hyperbee instance for key/value pairs.
+* [`core-reader-app`](#inspect-the-hyperbee-as-a-hypercore) - inspects the Hyperbee as a Hypercore.
 
 ## Create the bee writer app
-
 The `bee-writer-app` stores 100k entries from a given dictionary file into a Hyperbee instance. The Corestore instance used to create the Hyperbee instance is replicated using Hyperswarm. This enables other peers to replicate their Corestore instance and sparsely (on-demand) download the dictionary data into their local Hyperbee instances.
 
+### Create the `bee-writer-app` directory and add dependencies
 Start the `bee-writer-app` project with the following commands:
 
-```
+```sh example=hyperbee-kv step=setup
 mkdir bee-writer-app
 cd bee-writer-app
-pear init -y -t terminal
-npm install corestore hyperswarm hyperbee b4a bare-fs
+npm init -y
+npm pkg set type="module"
+npm install corestore hyperswarm hyperbee b4a bare-fs bare-process
 ```
 
-[Click here to save `dict.json`](/dict.json).
+This will install the following dependencies:
 
-Save it into `bee-writer-app` directory. The `dict.json` file contains 100K dictionary words.
+- [`bare-fs`](https://www.npmjs.com/package/bare-fs): A module for working with file systems.
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`hyperswarm`](/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`corestore`](/reference/helpers/corestore): A module for working with Corestore.
+- [`hyperbee`](/reference/building-blocks/hyperbee): A module for working with Hyperbee.
+- [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
 
-Alter the generated `bee-writer-app/index.js` file to the following
 
-```javascript
+### Add the `bee-writer-app` logic
+
+Create the `bee-writer-app/index.js` file with the following content:
+
+```javascript example=hyperbee-kv step=write file=bee-writer-app/index.js
 import fsp from 'bare-fs/promises'
+import process from 'bare-process'
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
 // create a corestore instance with the given location
-const store = new Corestore(Pear.config.storage)
+const store = new Corestore('./bee-writer-storage')
 
 const swarm = new Hyperswarm()
-Pear.teardown(() => swarm.destroy())
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
 
 // replication of corestore instance
 swarm.on('connection', conn => store.replicate(conn))
@@ -67,7 +82,9 @@ discovery.flushed().then(() => {
 // The first block will always be the Hyperbee header block
 if (core.length <= 1) {
   console.log('importing dictionary...')
-  const dict = JSON.parse(await fsp.readFile('./dict.json'))
+  const dict = JSON.parse(
+    await fsp.readFile(new URL('./dict.json', import.meta.url))
+  )
   const batch = bee.batch()
   for (const { key, value } of dict) {
     await batch.put(key, value)
@@ -78,45 +95,71 @@ if (core.length <= 1) {
   console.log('seeding dictionary...')
 }
 ```
+### Save the `dict.json` file
 
-Run the app with:
+Save the `dict.json` file to the `bee-writer-app` directory. The `dict.json` file contains 100,000 dictionary words. This file holds the data that will be stored in the Hyperbee instance, and will be imported into the Hyperbee instance if it is the first time the script is run.
 
-```
+<Callout type="info">
+[Click here to save `dict.json`](/dict.json).
+</Callout>
+
+{/* @harness example=hyperbee-kv step=copy from=public/dict.json to=bee-writer-app/dict.json */}
+
+### Run the `bee-writer-app`
+
+In one terminal, run `bee-writer-app` with `bare`.
+
+```sh example=hyperbee-kv step=run process=writer expect="bee key:" capture-key="bee key: ([0-9a-f]+)" timeout=60000
 bare bee-writer-app
 ```
 
 ## Create the bee reader app
 
-Start the `bee-reader-app` project in a new terminal with the following commands:
-
-```
-mkdir bee-reader-app
-cd bee-reader-app
-pear init -y -t terminal
-npm install corestore hyperswarm hyperbee b4a bare-pipe
-```
-
 The `bee-reader-app` creates a `Corestore` instance and replicates it using the `Hyperswarm` instance to the same topic as `bee-writer-app`. On every word entered in the command line, it will download the respective data to the local `Hyperbee` instance.
 
+### Create the `bee-reader-app` directory and add dependencies
+
+Create the `bee-reader-app` project with the following commands:
+
+```sh example=hyperbee-kv step=setup
+mkdir bee-reader-app
+cd bee-reader-app
+npm init -y
+npm pkg set type="module"
+npm install corestore hyperswarm hyperbee b4a bare-pipe bare-process
+```
+
+This will install the following dependencies:
+
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`hyperswarm`](/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`corestore`](/reference/helpers/corestore): A module for working with Corestore.
+- [`hyperbee`](/reference/building-blocks/hyperbee): A module for working with Hyperbee.
+- [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
+
+### Add the `bee-reader-app` logic
+
+Create the `bee-reader-app/index.js` file with the following content:
 
 Alter the generated `bee-reader-app/index.js` file to the following
 
-```javascript
+```javascript example=hyperbee-kv step=write file=bee-reader-app/index.js
+import process from 'bare-process'
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hyperbee from 'hyperbee'
 import Pipe from 'bare-pipe'
 import b4a from 'b4a'
 
-const key = Pear.config.args[0]
+const key = Bare.argv[2]
 
 if (!key) throw new Error('provide a key')
 
 // creation of a corestore instance 
-const store = new Corestore(Pear.config.storage)
+const store = new Corestore('./bee-reader-storage')
 
 const swarm = new Hyperswarm()
-Pear.teardown(() => swarm.destroy())
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
 
 // replication of the corestore instance on connection with other peers
 swarm.on('connection', (conn) => store.replicate(conn))
@@ -152,47 +195,73 @@ stdin.on('data', (data) => {
 })
 ```
 
-Open the `bee-reader-app` and pass it the core key:
+### Run the `bee-reader-app`
 
+In another terminal, run the `bee-reader-app` with `bare` and pass it the core key from the [`bee-writer-app`](#run-the-bee-writer-app).
+
+```sh example=hyperbee-kv step=run process=reader cmd="bare bee-reader-app ${key}" expect="core key here is:" timeout=45000
+bare bee-reader-app <SUPPLY THE KEY HERE>
 ```
-bare bee-reader-app <SUPPLY KEY HERE>
-```
 
-Query the database by entering a key to lookup into the `bee-reader-app` terminal and hitting return.
+{/* @harness example=hyperbee-kv step=send process=reader data="hello\n" delay=3000 */}
+{/* @harness example=hyperbee-kv step=expect process=reader contains="hello" timeout=30000 */}
 
-Each application has dedicated storage at `Pear.config.storage`. Try logging out `Pear.config.storage` for the `bee-reader-app` and then look at the disk space for that storage path after each query. Notice that it's significantly smaller than `bee-writer-app`! This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature we call **sparse downloading.**
+Query the database by entering a key from the [`dict file`](#save-the-dictjson-file) to lookup into the `bee-reader-app` terminal and hitting return.
 
-Importantly, a Hyperbee is **just** a Hypercore, where the tree nodes are stored as Hypercore blocks.
+<Callout type="info">
+Each application has dedicated storage at `Pear.config.storage`.
+Try logging out `Pear.config.storage` for the `bee-reader-app` and then look at the disk space for that storage path after each query.
+Notice that it's significantly smaller than `bee-writer-app`.
+This is because Hyperbee only downloads the Hypercore blocks it needs to satisfy each query, a feature called **sparse downloading**.
+</Callout>
+
+<Callout type="tip">
+Hyperbee is a Hypercore with the tree nodes stored as Hypercore blocks.
+This means that the Hyperbee instance is a Hypercore instance, and the tree nodes are stored as Hypercore blocks.
+</Callout>
 
 ## Inspect the Hyperbee as a Hypercore
 
-Finally create a `core-reader-app` project:
+### Create the `core-reader-app` directory and add dependencies
 
-```
+Finally create the `core-reader-app` project with the following commands:
+
+```sh skip="manual-walkthrough"
 mkdir core-reader-app
 cd core-reader-app
-pear init -y -t terminal
-npm install corestore hyperswarm hyperbee b4a
+npm init -y
+npm pkg set type="module"
+npm install corestore hyperswarm hyperbee b4a bare-process
 ```
 
+This will install the following dependencies:
 
-Alter the generated `core-reader-app/index.js` file to the following
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`hyperswarm`](/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`corestore`](/reference/helpers/corestore): A module for working with Corestore.
+- [`hyperbee`](/reference/building-blocks/hyperbee): A module for working with Hyperbee.
+- [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
 
-```javascript
+### Add the `core-reader-app` logic
+
+Create the `core-reader-app/index.js` file with the following content:
+
+```javascript example=hyperbee-kv step=write file=core-reader-app/index.js
+import process from 'bare-process'
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import b4a from 'b4a'
-
 import { Node } from 'hyperbee/lib/messages.js'
 
-const key = Pear.config.args[0]
+const key = Bare.argv[2]
+
 if (!key) throw new Error('provide a key')
 
 // creation of a corestore instance 
 const store = new Corestore('./reader-storage')
 
 const swarm = new Hyperswarm()
-Pear.teardown(() => swarm.destroy())
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
 
 // replication of the corestore instance on connection with other peers
 swarm.on('connection', conn => store.replicate(conn))
@@ -217,15 +286,18 @@ console.log(`Raw Block ${seq}:`, lastBlock)
 console.log(`Decoded Block ${seq}`, Node.decode(lastBlock))
 ```
 
-Run the `core-reader-app` with `bare`, passing the core key to it:
+### Run the `core-reader-app`
 
-```
+In another terminal, run the `core-reader-app` with `bare`, passing the core key from the [`bee-writer-app`](#run-the-bee-writer-app):
+
+```sh skip="manual-walkthrough"
 bare core-reader-app <SUPPLY KEY HERE>
 ```
 
-Now we can examine the Hyperbee as if it were just a Hypercore.
+You can now examine the Hyperbee as if it were just a Hypercore.
 
-The `core-reader-app` will continually download and log the last block of the Hypercore containing the Hyperbee data. Note that these blocks are encoded using Hyperbee's `Node` encoding, which has been imported directly from `Hyperbee` here for the purposes of explanation.
+The `core-reader-app` will continually download and log the last block of the Hypercore containing the Hyperbee data.
+Note that these blocks are encoded using Hyperbee's `Node` encoding, which has been imported directly from `Hyperbee` for the purposes of explanation.
 
 ## See also
 

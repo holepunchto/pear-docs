@@ -91,7 +91,7 @@ This rewrites `package.json` (`1.0.0` → `1.0.1`) and creates a git tag. From n
 
 ### Make distributables
 
-A "distributable" is the platform-native installer — `.app` on macOS, `.msix` on Windows, `.AppImage` on Linux. Pear uses [`electron-forge`](https://www.electronforge.io/) for `.app`/`.msix` and a small shell script (`build-app-image.sh`) for `.AppImage`.
+A "distributable" is the platform-native installer — `.app` on macOS, `.msix` on Windows, `.AppImage` on Linux. Pear uses [`electron-forge`](https://www.electronforge.io/) with a single [`forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js) that configures makers for every platform, including Linux AppImage via [`pear-electron-forge-maker-appimage`](https://www.npmjs.com/package/pear-electron-forge-maker-appimage).
 
 #### Install `electron-forge` and the makers you need
 
@@ -100,7 +100,9 @@ npm install --save-dev \
   @electron-forge/cli@^7.11.1 \
   @electron-forge/maker-dmg@^7.11.1 \
   @electron-forge/maker-msix@^7.11.1 \
-  app-builder-lib@^26.8.1 \
+  pear-electron-forge-maker-appimage@^2.0.0 \
+  pear-electron-forge-maker-flatpak@^0.0.4 \
+  pear-electron-forge-maker-snap@^0.0.10 \
   electron-forge-plugin-universal-prebuilds@^1.0.0 \
   electron-forge-plugin-prune-prebuilds@^1.0.0
 ```
@@ -110,232 +112,39 @@ Two electron-forge plugins matter:
 - [`electron-forge-plugin-universal-prebuilds`](https://www.npmjs.com/package/electron-forge-plugin-universal-prebuilds) — bundles native prebuilds for every supported architecture.
 - [`electron-forge-plugin-prune-prebuilds`](https://www.npmjs.com/package/electron-forge-plugin-prune-prebuilds) — trims the prebuilds you do not need for the current platform, keeping installers small.
 
-#### Add the make scripts to `package.json`
+#### Add scripts to `package.json`
 
-The Linux maker is a shell script because AppImage build tooling is not in the electron-forge ecosystem:
+Use one make entry point on every OS — Forge runs only the makers whose `platforms` match the host:
 
 ```json
 "scripts": {
-  "start": "electron . --no-updates",
-  "make:darwin": "electron-forge make --platform=darwin",
-  "make:win32": "electron-forge make --platform=win32",
-  "make:linux": "electron-forge package && ./scripts/build-app-image.sh"
-},
-```
-
-#### Create `forge.config.js`
-
-Create a `forge.config.js` file for your project next to `package.json` — this is the file `electron-forge` reads to configure:
-* makers (`.app`/`.msix`/`.AppImage`)
-* packager options
-* code-signing hooks
-* a Windows MSIX version-rewrite step
-
-```js
-const fs = require('fs')
-const path = require('path')
-const pkg = require('./package.json')
-const appName = pkg.productName ?? pkg.name
-const { isWindows } = require('which-runtime')
-
-function getWindowsKitVersion() {
-  const programFiles = process.env['PROGRAMFILES(X86)'] || process.env.PROGRAMFILES
-  if (!programFiles) return undefined
-  const kitsDir = path.join(programFiles, 'Windows Kits')
-  try {
-    for (const kit of fs.readdirSync(kitsDir).sort().reverse()) {
-      const binDir = path.join(kitsDir, kit, 'bin')
-      if (!fs.existsSync(binDir)) continue
-      const version = fs
-        .readdirSync(binDir)
-        .filter((d) => /^\d+\.\d+\.\d+\.\d+$/.test(d))
-        .sort()
-        .pop()
-      if (version) return version
-    }
-  } catch {
-    return undefined
-  }
-}
-
-let packagerConfig = {
-  icon: 'build/icon',
-  protocols: [{ name: appName, schemes: [pkg.name] }],
-  derefSymlinks: true
-}
-
-if (process.env.MAC_CODESIGN_IDENTITY) {
-  packagerConfig = {
-    ...packagerConfig,
-    osxSign: {
-      identity: process.env.MAC_CODESIGN_IDENTITY,
-      optionsForFile: () => ({
-        entitlements: path.join(__dirname, 'build', 'entitlements.mac.plist')
-      })
-    },
-    osxNotarize: {
-      appleId: process.env.APPLE_ID,
-      appleIdPassword: process.env.APPLE_PASSWORD,
-      teamId: process.env.APPLE_TEAM_ID
-    }
-  }
-}
-
-module.exports = {
-  packagerConfig,
-  makers: [
-    { name: '@electron-forge/maker-dmg', platforms: ['darwin'], config: {} },
-    {
-      name: '@electron-forge/maker-msix',
-      platforms: ['win32'],
-      config: {
-        appManifest: path.join(__dirname, 'build', 'AppxManifest.xml'),
-        windowsKitVersion: getWindowsKitVersion(),
-        ...(process.env.WINDOWS_CERTIFICATE_FILE
-          ? {
-              windowsSignOptions: {
-                certificateFile: process.env.WINDOWS_CERTIFICATE_FILE,
-                certificatePassword: process.env.WINDOWS_CERTIFICATE_PASSWORD
-              }
-            }
-          : {})
-      }
-    }
-  ],
-  hooks: {
-    preMake: async () => {
-      fs.rmSync(path.join(__dirname, 'out', 'make'), { recursive: true, force: true })
-      const manifest = path.join(__dirname, 'build', 'AppxManifest.xml')
-      if (!fs.existsSync(manifest)) return
-      const msixVersion = pkg.version.replace(/^(\d+\.\d+\.\d+)$/, '$1.0')
-      const xml = fs.readFileSync(manifest, 'utf-8')
-      fs.writeFileSync(manifest, xml.replace(/Version="[^"]*"/, `Version="${msixVersion}"`))
-    },
-    postMake: async (_forgeConfig, results) => {
-      for (const result of results) {
-        if (result.platform !== 'win32') continue
-        for (const artifact of result.artifacts) {
-          if (!artifact.endsWith('.msix')) continue
-          const standardDir = path.join(__dirname, 'out', `${appName}-win32-${result.arch}`)
-          fs.mkdirSync(standardDir, { recursive: true })
-          const dest = path.join(standardDir, path.basename(artifact))
-          fs.renameSync(artifact, dest)
-          result.artifacts[result.artifacts.indexOf(artifact)] = dest
-        }
-      }
-      if (isWindows) {
-        fs.rmSync(path.join(__dirname, 'out', 'make'), { recursive: true, force: true })
-      }
-    }
-  },
-  plugins: [
-    { name: 'electron-forge-plugin-universal-prebuilds', config: {} },
-    { name: 'electron-forge-plugin-prune-prebuilds', config: {} }
-  ]
+  "start": "electron-forge start -- --no-updates",
+  "package": "electron-forge package",
+  "make": "electron-forge make"
 }
 ```
 
-#### Create `scripts/build-app-image.sh`
+#### Add `forge.config.js`
 
-Save `scripts/build-app-image.sh` next to the project root and run `chmod +x scripts/build-app-image.sh` to make it executable.
+Copy or diff against the canonical [`hello-pear-electron` `forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js) rather than maintaining a separate inline copy in this tutorial. That file configures:
 
-It uses the already installed [`app-builder-lib`](https://www.npmjs.com/package/app-builder-lib) and [`jq`](https://jqlang.github.io/jq/) to assemble a `.AppImage` whose desktop entry advertises the `pear-chat://` URL scheme so deep links route to your installed binary. The script looks like this:
+- **Packager** — `build/icon`, URL schemes from `package.json` `name`, optional macOS signing when `MAC_CODESIGN_IDENTITY` is set (notarization via `KEYCHAIN_PROFILE`).
+- **Makers** — `@electron-forge/maker-dmg` (darwin), `@electron-forge/maker-msix` (win32), and Pear makers for Linux AppImage, Flatpak, and Snap.
+- **Hooks** — `preMake` rewrites `build/AppxManifest.xml` version for MSIX; `postMake` moves Windows `.msix` artifacts into `out/<AppName>-win32-<arch>/`.
+- **Plugins** — universal-prebuilds and prune-prebuilds.
 
+You also need the template `build/` assets (`AppxManifest.xml`, `entitlements.mac.plist`, icon set under `build/icon/`, and Linux Flatpak/Snap metadata). See the [`hello-pear-electron` `build/` tree](https://github.com/holepunchto/hello-pear-electron/tree/main/build).
 
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
+#### Run the maker on your OS
 
-ROOT="$(pwd)"
-PKG="$ROOT/package.json"
-
-[ -f "$PKG" ] || { echo "package.json not found in $ROOT"; exit 1; }
-command -v jq >/dev/null 2>&1 || { echo "jq is required"; exit 1; }
-
-UNAME_ARCH=$(uname -m)
-case "$UNAME_ARCH" in
-  x86_64) ARCH="x64" ;;
-  aarch64 | arm64) ARCH="arm64" ;;
-  *) echo "Unsupported architecture: $UNAME_ARCH"; exit 1 ;;
-esac
-
-APP_BUILDER="$(node -e "
-  const path = require('path')
-  const pkg = require.resolve('app-builder-bin/package.json')
-  console.log(path.join(path.dirname(pkg), 'linux', process.argv[1], 'app-builder'))
-" "$ARCH")"
-
-APP_NAME=$(jq -r '.productName // .name' "$PKG")
-VERSION=$(jq -r '.version' "$PKG")
-DESCRIPTION=$(jq -r '.description // ""' "$PKG")
-
-APP_DIR="$ROOT/out/${APP_NAME}-linux-${ARCH}"
-STAGE_DIR="$ROOT/out/make/__appImage-${ARCH}"
-OUTPUT="$ROOT/out/make/${APP_NAME}.AppImage"
-
-rm -rf "$STAGE_DIR"
-mkdir -p "$STAGE_DIR"
-
-DESKTOP_ENTRY="[Desktop Entry]
-Name=${APP_NAME}
-Exec=${APP_NAME}
-Terminal=false
-Type=Application
-Icon=${APP_NAME}
-StartupWMClass=undefined
-X-AppImage-Version=${VERSION}
-Comment=${DESCRIPTION}
-Categories=Utility"
-
-MIME_TYPES=$(jq -r '
-  (.build?.protocols // .protocols // [])
-  | map(.schemes[])
-  | map("x-scheme-handler/" + ascii_downcase)
-  | join(";")
-' "$PKG")
-
-if [ -n "$MIME_TYPES" ]; then
-  DESKTOP_ENTRY="${DESKTOP_ENTRY}"$'\n'"MimeType=${MIME_TYPES}"
-fi
-
-ICON_BASE="$ROOT/node_modules/app-builder-lib/templates/icons/electron-linux"
-ICON_JSON="[ \
-  {\"file\":\"$ICON_BASE/16x16.png\",\"size\":16}, \
-  {\"file\":\"$ICON_BASE/32x32.png\",\"size\":32}, \
-  {\"file\":\"$ICON_BASE/48x48.png\",\"size\":48}, \
-  {\"file\":\"$ICON_BASE/64x64.png\",\"size\":64}, \
-  {\"file\":\"$ICON_BASE/128x128.png\",\"size\":128}, \
-  {\"file\":\"$ICON_BASE/256x256.png\",\"size\":256} \
-]"
-
-CONFIG_JSON=$(jq -n \
-  --arg name "$APP_NAME" \
-  --arg desktop "$DESKTOP_ENTRY" \
-  --argjson icons "$ICON_JSON" \
-  '{ productName: $name, productFilename: $name, desktopEntry: $desktop, executableName: $name, icons: $icons, fileAssociations: [] }')
-
-"$APP_BUILDER" appimage \
-  --stage "$STAGE_DIR" \
-  --arch "$ARCH" \
-  --output "$OUTPUT" \
-  --app "$APP_DIR" \
-  --configuration "$CONFIG_JSON"
-
-echo "→ AppImage built at: $OUTPUT"
-```
-
-#### Run the maker for whichever OS you are on
-
-Then run the maker for whichever OS you are on.
+`npm run make` builds distributables for the **current host OS** only. Run it on macOS, Linux, and Windows (or on CI runners per OS) when you need a multi-arch deployment directory.
 
 <Callout type="warning">
-On macOS you also need an icon at `build/icon.icns` (any 1024×1024 PNG converted with `iconutil` works for the tutorial). You can use the one in the [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron/blob/main/build/icon.icns) template.
+Brand icons before you make: `build/icon.icns` (macOS), `build/icon.ico` (Windows), `build/icon.png` plus sized PNGs under `build/icon/` (Linux makers). You can copy the set from [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron/tree/main/build).
 </Callout>
 
 ```bash
-npm run make:darwin   # macOS — .app + .dmg
-# npm run make:linux  # Linux — .AppImage
-# npm run make:win32  # Windows — .msix
+npm run make   # .app + .dmg on macOS; .AppImage (+ Flatpak/Snap) on Linux; .msix on Windows
 ```
 
 The output lands in `out/PearChat-darwin-arm64/PearChat.app` (or the matching path for your platform).
@@ -440,7 +249,7 @@ You now have a `pear://` link with your first build published behind it:
 | `pear stage` | Append-only sync into the staged Hypercore | History is permanent; updates are not |
 | `pear release` | Advances the discoverable release pointer | Yes — re-release a different length |
 
-Every release iteration after this is the same six commands: `npm version patch`, `npm run make:<os>`, `pear-build`, `pear stage --dry-run`, `pear stage`, `pear release`. Part 4 puts that loop on a running app and shows the OTA cycle from both sides.
+Every release iteration after this is the same six commands: `npm version patch`, `npm run make` (on each OS you ship), `pear-build`, `pear stage --dry-run`, `pear stage`, `pear release`. Part 4 puts that loop on a running app and shows the OTA cycle from both sides.
 
 ## Where to go next
 

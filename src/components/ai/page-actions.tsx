@@ -1,44 +1,188 @@
 'use client';
-import { useMemo, useState } from 'react';
-import { Check, ChevronDown, Copy, ExternalLinkIcon } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  ExternalLinkIcon,
+  FileText,
+} from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { useCopyButton } from 'fumadocs-ui/utils/use-copy-button';
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from 'fumadocs-ui/components/ui/popover';
+import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTrigger,
+} from 'fumadocs-ui/components/ui/popover';
 
-export function LLMCopyButton({
-  /**
-   * Markdown/Markdown-derived text baked in at build time (static export has no per-page `.mdx` URLs).
-   */
-  markdown,
+const markdownCache = new Map<string, string>();
+
+const optionClassName =
+  'text-sm p-2 rounded-lg inline-flex items-center gap-2 hover:text-fd-accent-foreground hover:bg-fd-accent [&_svg]:size-4';
+
+function MarkdownIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      role="img"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <title>Markdown</title>
+      <path d="M22.27 19.385H1.73A1.73 1.73 0 0 1 0 17.655V6.345a1.73 1.73 0 0 1 1.73-1.73h20.54A1.73 1.73 0 0 1 24 6.345v11.308a1.73 1.73 0 0 1-1.73 1.731zM5.769 15.923v-4.5l2.308 2.885 2.307-2.885v4.5h2.308V8.078h-2.308l-2.307 2.885-2.308-2.885H3.461v7.846zm15.462-3.923h-2.308V8.077h-2.307V12h-2.308l3.461 4.039z" />
+    </svg>
+  );
+}
+
+type CopyState = 'idle' | 'copying' | 'copied' | 'failed';
+
+const COPY_LABELS: Record<CopyState, string> = {
+  idle: 'Copy page',
+  copying: 'Copying…',
+  copied: 'Copied',
+  failed: 'Copy failed',
+};
+
+const COPY_RESET_MS = 2000;
+
+/**
+ * Copy page as Markdown (from qvac/docs). Fetches `markdownUrl` (static
+ * `out/<path>.md` after build). Uses `fallbackMarkdown` when fetch fails
+ * (e.g. `next dev` before postbuild).
+ */
+export function CopyPageButton({
+  markdownUrl,
+  fallbackMarkdown,
 }: {
-  markdown: string;
+  markdownUrl: string;
+  fallbackMarkdown?: string;
 }) {
-  const [isLoading, setLoading] = useState(false);
-  const [checked, onClick] = useCopyButton(async () => {
-    setLoading(true);
+  const [state, setState] = useState<CopyState>('idle');
+  const resetTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current) window.clearTimeout(resetTimeoutRef.current);
+    };
+  }, []);
+
+  function scheduleReset() {
+    if (resetTimeoutRef.current) window.clearTimeout(resetTimeoutRef.current);
+    resetTimeoutRef.current = window.setTimeout(() => {
+      setState('idle');
+      resetTimeoutRef.current = null;
+    }, COPY_RESET_MS);
+  }
+
+  async function copy() {
+    setState('copying');
     try {
-      await navigator.clipboard.writeText(markdown);
+      let text = markdownCache.get(markdownUrl);
+      if (text === undefined) {
+        const res = await fetch(markdownUrl);
+        if (res.ok) {
+          text = await res.text();
+          markdownCache.set(markdownUrl, text);
+        }
+      }
+      if (text === undefined && fallbackMarkdown !== undefined) {
+        text = fallbackMarkdown;
+      }
+      if (text === undefined) {
+        throw new Error(`Failed to load ${markdownUrl}`);
+      }
+      await navigator.clipboard.writeText(text);
+      setState('copied');
+    } catch {
+      setState('failed');
     } finally {
-      setLoading(false);
+      scheduleReset();
     }
-  });
+  }
+
+  const label = COPY_LABELS[state];
+  const isBusy = state === 'copying';
 
   return (
-    <button
-      disabled={isLoading}
-      className={cn(
-        buttonVariants({
-          color: 'secondary',
-          size: 'sm',
-          className: 'gap-2 [&_svg]:size-3.5 [&_svg]:text-fd-muted-foreground',
-        }),
-      )}
-      onClick={onClick}
-    >
-      {checked ? <Check /> : <Copy />}
-      Copy Markdown
-    </button>
+    <div className="relative inline-flex">
+      <button
+        type="button"
+        aria-label="Copy page as Markdown"
+        disabled={isBusy}
+        onClick={copy}
+        className={cn(
+          buttonVariants({
+            color: 'secondary',
+            size: 'sm',
+            className: 'rounded-r-none border-r-0 gap-1.5 font-normal',
+          }),
+        )}
+      >
+        <MarkdownIcon className="size-3.5 text-fd-muted-foreground" />
+        <span className="font-normal" aria-live="polite">
+          {label}
+        </span>
+      </button>
+
+      <Popover>
+        <PopoverTrigger
+          aria-label="Copy page actions"
+          className={cn(
+            buttonVariants({
+              color: 'secondary',
+              size: 'sm',
+              className: 'rounded-l-none px-2',
+            }),
+          )}
+        >
+          <ChevronDown className="size-3.5 text-fd-muted-foreground" />
+        </PopoverTrigger>
+
+        <PopoverContent className="flex flex-col">
+          <PopoverClose asChild>
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={copy}
+              className={cn(optionClassName)}
+            >
+              <Copy className="text-fd-muted-foreground" />
+              Copy page as Markdown
+            </button>
+          </PopoverClose>
+
+          <PopoverClose asChild>
+            <button
+              type="button"
+              onClick={() =>
+                window.open(markdownUrl, '_blank', 'noopener,noreferrer')
+              }
+              className={cn(optionClassName)}
+            >
+              <FileText className="text-fd-muted-foreground" />
+              View page as Markdown
+              <ExternalLinkIcon className="text-fd-muted-foreground size-3.5 ms-auto" />
+            </button>
+          </PopoverClose>
+
+          <PopoverClose asChild>
+            <button
+              type="button"
+              onClick={() =>
+                window.open('/llms-full.txt', '_blank', 'noopener,noreferrer')
+              }
+              className={cn(optionClassName)}
+            >
+              <FileText className="text-fd-muted-foreground" />
+              View full docs dump
+              <ExternalLinkIcon className="text-fd-muted-foreground size-3.5 ms-auto" />
+            </button>
+          </PopoverClose>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
 

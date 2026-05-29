@@ -99,11 +99,6 @@ export const customTree: Node[] = [
         name: 'Release pipeline',
         url: '/explanation/release-pipeline',
       },
-      {
-        type: 'page',
-        name: 'Dependencies and network',
-        url: '/explanation/dependencies-and-network',
-      },
     ],
   },
 
@@ -114,7 +109,7 @@ export const customTree: Node[] = [
     children: [
       {
         type: 'folder',
-        name: 'Connecting peers',
+        name: 'Connect to peers',
         children: [
           {
             type: 'page',
@@ -130,7 +125,7 @@ export const customTree: Node[] = [
       },
       {
         type: 'folder',
-        name: 'Storage and replication',
+        name: 'Store and replicate',
         children: [
           {
             type: 'page',
@@ -156,7 +151,7 @@ export const customTree: Node[] = [
       },
       {
         type: 'folder',
-        name: 'Operating an app',
+        name: 'Operate your app',
         children: [
           {
             type: 'page',
@@ -180,11 +175,6 @@ export const customTree: Node[] = [
           },
           {
             type: 'page',
-            name: 'Migrate to a new release',
-            url: '/how-to/operate-an-app/migration',
-          },
-          {
-            type: 'page',
             name: 'Apply recommended practices',
             url: '/how-to/operate-an-app/recommended-practices',
           },
@@ -205,7 +195,7 @@ export const customTree: Node[] = [
 
   {
     type: 'folder',
-    name: 'Reference',
+    name: 'References',
     index: { type: 'page', name: 'Reference', url: '/reference' },
     children: [
       {

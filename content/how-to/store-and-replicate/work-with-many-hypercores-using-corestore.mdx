@@ -5,11 +5,12 @@ docType: how-to
 schemaType: TechArticle
 ---
 
-An append-only log is powerful on its own, but it's most useful as a building-block for constructing larger data structures, such as databases or filesystems. Building these data structures often requires many cores, each with different responsibilities. For example, [Hyperdrive](/reference/building-blocks/hyperdrive) uses one core to store file metadata and another to store file contents.
+An append-only log like Hypercore is powerful on its own, but it's most useful as a building-block for constructing larger data structures, such as databases or filesystems.
+ Building these data structures often requires many cores, each with different responsibilities. For example, [Hyperdrive](/reference/building-blocks/hyperdrive) uses one core to store file metadata and another to store file contents.
 
-[`Corestore`](/reference/helpers/corestore) is a [Hypercore](/reference/building-blocks/hypercore) factory that makes it easier to manage large collections of named Hypercores. This how-to demonstrates a pattern often in use: co-replicating many cores using Corestore, where several 'internal cores' are linked to from a primary core. Only the primary core is announced on the swarm -- the keys for the others are recorded inside of that core.
+[`Corestore`](/reference/helpers/corestore) is a [Hypercore](/reference/building-blocks/hypercore) factory that makes it easier to manage large collections of named Hypercores. This guide demonstrates a pattern often in use: co-replicating many cores using Corestore, where several 'internal cores' are linked to from a primary core. Only the primary core is announced on the swarm — the keys for the others are recorded inside that core.
 
-In [Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore), only single Hypercore instance was replicated. But in this how-to, we will replicate a single Corestore instance, which will internally manage the replication of a collection of Hypercores. We will achieve this with two Pear Terminal Applications: [`multicore-writer-app`](#create-the-multicore-writer-app) and [`multicore-reader-app`](#create-the-multicore-reader-app).
+In [Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore), only a single Hypercore instance was replicated. But in this guide, you'll replicate a single Corestore instance, which will internally manage the replication of a collection of Hypercores. You'll achieve this with two Pear Terminal Applications: [`multicore-writer-app`](#create-the-multicore-writer-app) and [`multicore-reader-app`](#create-the-multicore-reader-app).
 
 <Callout type="info">
 Only one Corestore per application is needed. This is a recommended best practice for efficient Hypercore management and to avoid pitfalls from multiple Corestores. A single Corestore:
@@ -21,26 +22,37 @@ Only one Corestore per application is needed. This is a recommended best practic
 
 ## Create the multicore writer app
 
+### Create the multicore writer app directory and add dependencies
+
 Create the `multicore-writer-app` project with these commands:
 
-```
+```sh example=corestore-multi step=setup
 mkdir multicore-writer-app
 cd multicore-writer-app
-pear init -y -t terminal
+npm init -y
+npm pkg set type="module"
 npm install bare-process corestore hyperswarm b4a
 ```
+This will install the following dependencies:
 
-Alter the generated `multicore-writer-app/index.js` file to the following
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`corestore`](/reference/helpers/corestore): A module for working with Corestore.
+- [`hyperswarm`](/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
 
-```javascript
+### Add the multicore writer app logic
+
+Create the `multicore-writer-app/index.js` file with the following content:
+
+```javascript example=corestore-multi step=write file=multicore-writer-app/index.js
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import b4a from 'b4a'
 import process from 'bare-process'
 
-const store = new Corestore(Pear.config.storage)
+const store = new Corestore('./multicore-writer-storage')
 const swarm = new Hyperswarm()
-Pear.teardown(() => swarm.destroy())
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
 
 // A name is a purely-local, and maps to a key pair. It's not visible to readers.
 // Since a name always corresponds to a key pair, these are all writable
@@ -48,6 +60,16 @@ const core1 = store.get({ name: 'core-1', valueEncoding: 'json' })
 const core2 = store.get({ name: 'core-2' })
 const core3 = store.get({ name: 'core-3' })
 await Promise.all([core1.ready(), core2.ready(), core3.ready()])
+
+// Since Corestore does not exchange keys, they need to be exchanged elsewhere.
+// Here, we'll record the other keys in the first block of core1. Do this
+// *before* announcing on the swarm so that as soon as a reader connects,
+// `core1.get(0)` resolves and the bootstrap key list is available.
+if (core1.length === 0) {
+  await core1.append({
+    otherKeys: [core2, core3].map((core) => b4a.toString(core.key, 'hex'))
+  })
+}
 
 console.log('main core key:', b4a.toString(core1.key, 'hex'))
 
@@ -58,14 +80,6 @@ swarm.join(core1.discoveryKey)
 // Corestore replication internally manages to replicate every loaded core
 // Corestore *does not* exchange keys (read capabilities) during replication.
 swarm.on('connection', (conn) => store.replicate(conn))
-
-// Since Corestore does not exchange keys, they need to be exchanged elsewhere.
-// Here, we'll record the other keys in the first block of core1.
-if (core1.length === 0) {
-  await core1.append({
-    otherKeys: [core2, core3].map((core) => b4a.toString(core.key, 'hex'))
-  })
-}
 
 // Record all short messages in core2, and all long ones in core3
 process.stdin.on('data', (data) => {
@@ -79,35 +93,53 @@ process.stdin.on('data', (data) => {
 })
 ```
 
-The `multicore-writer-app` uses a Corestore instance to create three Hypercores, which are then replicated with other peers using `Hyperswarm`. The keys for the second and third cores are stored in the first core (the first core bootstraps the system). Messages entered into the command line are written into the second and third cores, depending on the length of the message. The main core key is logged into the command line so that it can be passed to the `multicore-reader-app`.
+The `multicore-writer-app` uses a Corestore instance to create three Hypercores, which are then replicated with other peers using `Hyperswarm`:
+* The first core bootstraps the system. The keys for the second and third cores are stored in the first core. 
+* Messages entered into the command line are written into the second and third cores, depending on the length of the message. 
+* The main core key is logged into the command line so that it can be passed to the [`multicore-reader-app`](#create-the-multicore-reader-app) when it runs.
 
 ## Create the multicore reader app
 
 The `multicore-reader-app` connects to the previous peer with `Hyperswarm` and replicates the local `Corestore` instance to receive the data from it. This requires the copied key to be supplied as an argument when executing the file, which will then be used to create a core with the same public key as the other peer (i.e., the same discovery key for both the reader and writer peers).
 
-```
+### Create the multicore reader app directory and add dependencies
+
+Create the `multicore-reader-app` project with these commands:
+
+```sh example=corestore-multi step=setup
 mkdir multicore-reader-app
 cd multicore-reader-app
-pear init -y -t terminal
-npm install corestore hyperswarm b4a
+npm init -y
+npm pkg set type="module"
+npm install corestore hyperswarm b4a bare-process
 ```
 
-Alter the generated `multicore-reader-app/index.js` file to the following
+This will install the following dependencies:
 
-```javascript
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`corestore`](/reference/helpers/corestore): A module for working with Corestore.
+- [`hyperswarm`](/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
+
+### Add the multicore reader app logic
+
+Create the `multicore-reader-app/index.js` file with the following content:
+
+```javascript example=corestore-multi step=write file=multicore-reader-app/index.js
+import process from 'bare-process'
 import Corestore from 'corestore'
 import Hyperswarm from 'hyperswarm'
 import b4a from 'b4a'
 
-if (!Pear.config.args[0]) throw new Error('provide a key')
+if (!Bare.argv[2]) throw new Error('provide a key')
 
-const key = b4a.from(Pear.config.args[0], 'hex')
+const key = b4a.from(Bare.argv[2], 'hex')
 
-const store = new Corestore(Pear.config.storage)
+const store = new Corestore('./multicore-reader-storage')
 await store.ready()
 
 const swarm = new Hyperswarm()
-Pear.teardown(() => swarm.destroy())
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
 
 // replication of corestore instance on every connection
 swarm.on('connection', (conn) => store.replicate(conn))
@@ -144,19 +176,26 @@ for (const key of otherKeys) {
 
 ## Run the writer and reader
 
+### Run the multicore writer app
+
 In one terminal, run `multicore-writer-app` with `bare`.
 
-```
+```sh example=corestore-multi step=run process=writer expect="main core key:" capture-key="main core key: ([0-9a-f]+)" timeout=20000
 bare multicore-writer-app
 ```
 
 The `multicore-writer-app` will output the main core key.
 
+### Run the multicore reader app
+
 In another terminal, open the `multicore-reader-app` and pass it the key:
 
-```
+```sh example=corestore-multi step=run process=reader cmd="bare multicore-reader-app ${key}" expect-alive=8000 timeout=45000
 bare multicore-reader-app <SUPPLY THE KEY HERE>
 ```
+
+{/* @harness example=corestore-multi step=send process=writer data="this is a longer message\n" delay=2000 */}
+{/* @harness example=corestore-multi step=expect process=reader contains="Block 0 in Core" timeout=30000 */}
 
 As inputs are made to the terminal running the writer application, outputs should be shown in the terminal running the reader application.
 
