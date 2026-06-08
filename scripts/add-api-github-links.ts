@@ -50,6 +50,15 @@ const UPSTREAM_DIR: Record<string, string> = {
   secretstream: 'hyperswarm-secret-stream',
 };
 
+// CLI tool docs: `## `<command>`` sections link to the command's bin entry file.
+const TOOL_REPOS: Record<string, RepoConfig> = {
+  drives: { org: 'holepunchto', repo: 'drives' },
+  hyperbeam: { org: 'holepunchto', repo: 'hyperbeam' },
+  hypershell: { org: 'holepunchto', repo: 'hypershell' },
+  hyperssh: { org: 'holepunchto', repo: 'hyperssh', branch: 'master' },
+  hypertele: { org: 'bitfinexcom', repo: 'hypertele' },
+};
+
 const API_DEF_LINK = /^\[API definition on GitHub\]\([^)]+\)\s*$/;
 const GITHUB_SUFFIX = /\s*\(\[GitHub\]\([^)]+\)\)\s*$/;
 const GITHUB_IN_LABEL = /\s*\(\[GitHub\]\([^)]+\)\)(?=:\s*$)/;
@@ -470,6 +479,71 @@ function processMdx(
   return { updated, missed };
 }
 
+const CLI_DEF_LINK = /^\[Command source on GitHub\]\([^)]+\)\s*$/;
+const CLI_HEADING = /^## `([^`]+)`\s*$/;
+
+/** Reads the `bin` map from an upstream package.json (name -> entry file). */
+function readBinMap(upstreamDir: string): Record<string, string> {
+  try {
+    const pkg = JSON.parse(readFileSync(join(upstreamDir, 'package.json'), 'utf8'));
+    if (typeof pkg.bin === 'string') return { [pkg.name]: pkg.bin };
+    return pkg.bin ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * CLI tool docs: under each `## `<command>`` heading, link to the bin entry file
+ * for that command's executable (the first token of the heading), pinned to the tag.
+ */
+function processCliMdx(
+  mdxPath: string,
+  cfg: RepoConfig,
+  upstreamDir: string,
+  pinRef: string
+): { updated: number; missed: string[] } {
+  const bin = readBinMap(upstreamDir);
+  const content = readFileSync(mdxPath, 'utf8');
+  const lines = content.split('\n');
+  const out: string[] = [];
+  const missed: string[] = [];
+  let updated = 0;
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const m = line.match(CLI_HEADING);
+    if (m) {
+      out.push(line);
+      i++;
+      while (i < lines.length && lines[i].trim() === '') i++;
+      if (i < lines.length && CLI_DEF_LINK.test(lines[i].trim())) i++;
+      while (i < lines.length && lines[i].trim() === '') i++;
+
+      const exec = m[1].trim().split(/\s+/)[0];
+      const entry = bin[exec];
+      if (!entry) {
+        missed.push(m[1]);
+      } else {
+        const file = entry.replace(/^\.\//, '');
+        const url = githubBlobUrl(cfg, pinRef, file, 0).replace(/#L0$/, '');
+        out.push('');
+        out.push(`[Command source on GitHub](${url})`);
+        out.push('');
+        updated++;
+      }
+      continue;
+    }
+    out.push(line);
+    i++;
+  }
+
+  const next = out.join('\n');
+  if (WRITE && next !== content) writeFileSync(mdxPath, next);
+  return { updated, missed };
+}
+
 const dirs = [
   'content/reference/building-blocks',
   'content/reference/helpers',
@@ -498,6 +572,33 @@ for (const dir of dirs) {
     if (result.missed.length) allMissed[slug] = result.missed;
     console.log(
       `${slug} @ ${pinRef}: ${result.updated} links${result.missed.length ? `, ${result.missed.length} unmatched` : ''}`
+    );
+    if (VERBOSE && result.missed.length) {
+      for (const h of result.missed) console.log(`    ? ${h}`);
+    }
+  }
+}
+
+// CLI tool docs.
+const toolsDir = join(process.cwd(), 'content/reference/tools');
+if (existsSync(toolsDir)) {
+  for (const file of readdirSync(toolsDir).filter((f) => f.endsWith('.mdx'))) {
+    const slug = basename(file, '.mdx');
+    const cfg = TOOL_REPOS[slug];
+    if (!cfg) continue;
+
+    const upstreamDir = join(UPSTREAM_ROOT, slug);
+    if (!existsSync(upstreamDir)) {
+      console.warn(`skip ${slug}: missing ${upstreamDir}`);
+      continue;
+    }
+
+    const pinRef = resolvePinRef(upstreamDir, cfg);
+    const result = processCliMdx(join(toolsDir, file), cfg, upstreamDir, pinRef);
+    totalUpdated += result.updated;
+    if (result.missed.length) allMissed[slug] = result.missed;
+    console.log(
+      `${slug} @ ${pinRef}: ${result.updated} command links${result.missed.length ? `, ${result.missed.length} unmatched` : ''}`
     );
     if (VERBOSE && result.missed.length) {
       for (const h of result.missed) console.log(`    ? ${h}`);
