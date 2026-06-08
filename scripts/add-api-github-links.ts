@@ -482,6 +482,8 @@ function processMdx(
 const CLI_DEF_LINK = /^\[Command source on GitHub\]\([^)]+\)\s*$/;
 const CLI_HEADING = /^## `([^`]+)`\s*$/;
 
+type CliResolver = (headingCommand: string) => SourceHit | null;
+
 /** Reads the `bin` map from an upstream package.json (name -> entry file). */
 function readBinMap(upstreamDir: string): Record<string, string> {
   try {
@@ -493,17 +495,51 @@ function readBinMap(upstreamDir: string): Record<string, string> {
   }
 }
 
+/** Tool docs: heading's executable (first token) -> its bin entry file. */
+function binResolver(upstreamDir: string): CliResolver {
+  const bin = readBinMap(upstreamDir);
+  return (heading) => {
+    const exec = heading.split(/\s+/)[0];
+    const entry = bin[exec];
+    return entry ? { file: entry.replace(/^\.\//, ''), line: 0 } : null;
+  };
+}
+
 /**
- * CLI tool docs: under each `## `<command>`` heading, link to the bin entry file
- * for that command's executable (the first token of the heading), pinned to the tag.
+ * Pear CLI: `pear <cmd>` -> `cmd/<cmd>.js`, falling back to the registration line
+ * in `cmd/index.js` (e.g. `build: require('pear-build')`). Unmapped commands (e.g.
+ * a documented command that no longer exists upstream) are reported as misses.
+ */
+function pearResolver(upstreamDir: string): CliResolver {
+  const indexRel = 'cmd/index.js';
+  const indexPath = join(upstreamDir, indexRel);
+  const indexLines = existsSync(indexPath) ? readFileSync(indexPath, 'utf8').split('\n') : [];
+  return (heading) => {
+    const cmd = heading.split(/\s+/)[1];
+    if (!cmd) return null;
+    if (existsSync(join(upstreamDir, 'cmd', `${cmd}.js`))) return { file: `cmd/${cmd}.js`, line: 0 };
+    for (let i = 0; i < indexLines.length; i++) {
+      if (
+        new RegExp(`^\\s*${cmd}:\\s*require`).test(indexLines[i]) ||
+        new RegExp(`command\\('${cmd}'`).test(indexLines[i])
+      ) {
+        return { file: indexRel, line: i + 1 };
+      }
+    }
+    return null;
+  };
+}
+
+/**
+ * CLI docs: under each `## `<command>`` heading, insert one `[Command source on
+ * GitHub]` link resolved by `resolve`, pinned to the tag/SHA.
  */
 function processCliMdx(
   mdxPath: string,
   cfg: RepoConfig,
-  upstreamDir: string,
-  pinRef: string
+  pinRef: string,
+  resolve: CliResolver
 ): { updated: number; missed: string[] } {
-  const bin = readBinMap(upstreamDir);
   const content = readFileSync(mdxPath, 'utf8');
   const lines = content.split('\n');
   const out: string[] = [];
@@ -521,13 +557,14 @@ function processCliMdx(
       if (i < lines.length && CLI_DEF_LINK.test(lines[i].trim())) i++;
       while (i < lines.length && lines[i].trim() === '') i++;
 
-      const exec = m[1].trim().split(/\s+/)[0];
-      const entry = bin[exec];
-      if (!entry) {
+      const hit = resolve(m[1].trim());
+      if (!hit) {
         missed.push(m[1]);
       } else {
-        const file = entry.replace(/^\.\//, '');
-        const url = githubBlobUrl(cfg, pinRef, file, 0).replace(/#L0$/, '');
+        const url =
+          hit.line > 0
+            ? githubBlobUrl(cfg, pinRef, hit.file, hit.line)
+            : githubBlobUrl(cfg, pinRef, hit.file, 0).replace(/#L0$/, '');
         out.push('');
         out.push(`[Command source on GitHub](${url})`);
         out.push('');
@@ -594,7 +631,7 @@ if (existsSync(toolsDir)) {
     }
 
     const pinRef = resolvePinRef(upstreamDir, cfg);
-    const result = processCliMdx(join(toolsDir, file), cfg, upstreamDir, pinRef);
+    const result = processCliMdx(join(toolsDir, file), cfg, pinRef, binResolver(upstreamDir));
     totalUpdated += result.updated;
     if (result.missed.length) allMissed[slug] = result.missed;
     console.log(
@@ -604,6 +641,20 @@ if (existsSync(toolsDir)) {
       for (const h of result.missed) console.log(`    ? ${h}`);
     }
   }
+}
+
+// Pear CLI doc (content/reference/cli.mdx -> holepunchto/pear cmd/*.js).
+const cliPath = join(process.cwd(), 'content/reference/cli.mdx');
+const pearDir = join(UPSTREAM_ROOT, 'pear');
+if (existsSync(cliPath) && existsSync(pearDir)) {
+  const cfg: RepoConfig = { org: 'holepunchto', repo: 'pear' };
+  const pinRef = resolvePinRef(pearDir, cfg);
+  const result = processCliMdx(cliPath, cfg, pinRef, pearResolver(pearDir));
+  totalUpdated += result.updated;
+  if (result.missed.length) allMissed['cli'] = result.missed;
+  console.log(
+    `cli @ ${pinRef}: ${result.updated} command links${result.missed.length ? `, ${result.missed.length} unmatched` : ''}`
+  );
 }
 
 if (Object.keys(allMissed).length) {

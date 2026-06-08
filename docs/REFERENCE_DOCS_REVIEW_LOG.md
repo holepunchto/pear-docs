@@ -48,12 +48,41 @@ definition links. 0 `blob/main` links remain.
 The audit's `searchUpstream` is word-boundary over the first ~80 files, so async-iterator
 examples, callback-option signatures, and multi-word CLI subcommands read as "not found".
 
+## Status — top-level docs
+
+| Doc | Repo @ pin | Links | Status |
+| --- | --- | --- | --- |
+| cli | holepunchto/pear @ v2.6.5 | 18 command links (→ `cmd/<cmd>.js`; `build` → `cmd/index.js`) | ⚠ see findings |
+| modules | individual `pear-*` repos | 36 module links, all resolve 200 | ✅ |
+| bare-modules | holepunchto/bare + `bare-*` | 56 module links, all resolve 200 | ✅ |
+| runtime | holepunchto/pear-runtime @ v1.1.4 | 3 symbol links (`Pear` ctor, `pear.run`, `pear.storage`) | ✅ |
+| configuration | (pear dependency) | deferred — see below | ⏳ |
+| api | (deprecated) | deferred — see below | ⏳ |
+
+### Accuracy findings — cli.mdx (vs holepunchto/pear @ v2.6.5)
+
+- **`pear install <link>` is stale** — not a registered command in `cmd/index.js` (the
+  command registry), absent from the README, and not provided by `pear-cmd`. The only
+  doc command with no resolvable definition. Recommend removing the section (or verifying
+  against a newer pear if `install` was reintroduced).
+- **`pear multisig` is missing** — it *is* a registered command (`cmd/multisig.js`,
+  `cmd/index.js:60`) and is documented in the multisig how-tos, but cli.mdx has no
+  `## `pear multisig`` section. Recommend adding it.
+- `pear data`, `pear gc`, `pear sidecar` have upstream subcommands (`cmd/index.js:363-479`)
+  not enumerated in the doc — minor.
+
+### Deferred (with reason)
+
+- **configuration.mdx** — the `pear.*` `package.json` keys are parsed in a pear dependency
+  (not `holepunchto/pear` directly), so there is no single clean source file to link per
+  key. Needs investigation of which package (`pear-api`?) owns config parsing.
+- **api.mdx** — deprecated `Pear.app.*` property catalog; folded into the Phase 3
+  deprecation/demotion work rather than deep-linking a page that is being demoted.
+
 ## Outstanding
 
-- **Top-level docs not yet linked** (different shapes; Phase 1 remainder):
-  `cli` (→ holepunchto/pear @ v2.6.5), `runtime` (→ pear-runtime @ v1.1.4),
-  `api` (deprecated), `configuration` (pear `package.json` keys),
-  `modules` (`pear-*` catalog), `bare-modules` (holepunchto/bare @ v1.28.6 + `bare-*`).
+- **cli.mdx accuracy fixes:** remove stale `pear install`, add `pear multisig` (above).
+- **configuration.mdx linking:** resolve the config-parsing package, then link keys.
 - **Reverse-accuracy pass:** this log confirms no *documented* symbol is missing/renamed
   upstream. The inverse — are there *new* upstream APIs the docs omit? — still needs a
   per-repo README/changelog diff for the high-traffic blocks (hypercore, hyperdrive,
