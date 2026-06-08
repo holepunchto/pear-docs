@@ -11,7 +11,7 @@ import { Steps, Step } from 'fumadocs-ui/components/steps'
 
 This guide shows you how to **stream a live camera feed peer-to-peer** by adapting the [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) scaffold to push camera frames through [Hyperblobs](https://www.npmjs.com/package/hyperblobs) and serve them via [`hypercore-blob-server`](https://www.npmjs.com/package/hypercore-blob-server). The reference implementation is [`pear-live-cam`](https://github.com/holepunchto/pear-docs/tree/feat/more-how-tos/examples/how-to/stream-and-share-media/live-cam).
 
-<include>../_pear-end-portability-callout.mdx</include>
+<include>../../_snippets/_pear-end-portability-callout.mdx</include>
 
 This is a **delta-only** how-to. The shared scaffold is explained in the [Start from the hello-pear-electron template](/getting-started/start-from-hello-pear-electron) tutorial — read it first.
 
@@ -49,9 +49,9 @@ npm install hyperblobs hypercore-blob-server hypercore-id-encoding
 
 ### Differentiate creator vs. viewer at startup
 
-In `workers/index.js` the example derives a role based on whether `--invite` was passed; the worker then sends that role to the renderer as a JSON `role` message over the pipe:
+In `workers/index.js` the example fetches the room's pairing invite (L32) and derives a role: anyone who passed `--invite` is a `viewer`, otherwise they own the camera as the `creator` (L33). The worker then surfaces that role so the renderer can branch on it:
 
-```js file=<rootDir>/examples/how-to/stream-and-share-media/live-cam/workers/index.js#L30-L33 title="workers/index.js"
+```js file=<rootDir>/examples/how-to/stream-and-share-media/live-cam/workers/index.js#L30-L33 title="workers/index.js" lineNumbers {32-33}
 ```
 
 The renderer listens for the `role` message and either opens the camera (creator) or plays the replicated fragments (viewer).
@@ -62,9 +62,9 @@ The renderer listens for the `role` message and either opens the camera (creator
 
 ### Build the room around Hyperblobs
 
-`workers/live-cam-room.js` (`LiveCamRoom`) uses Autobase + pairing plumbing, and adds a Hyperblobs core plus a `hypercore-blob-server` (both constructed in the constructor and opened in `_open`). Each camera fragment is written as one blob, then recorded in the view tagged with a `session` id and an incrementing `fragIdx` — that ordering is what lets viewers reassemble a continuous stream. `getVideos` attaches a blob-server `link` to every fragment so the renderer can fetch it:
+`workers/live-cam-room.js` (`LiveCamRoom`) uses Autobase + pairing plumbing, and adds a Hyperblobs core plus a `hypercore-blob-server` (both constructed in the constructor and opened in `_open`). `addFragment` (L194–L208) writes each camera fragment as one blob (L195–L198), then appends a view entry tagged with a `session` id and an incrementing `fragIdx` (L203–L205) — that ordering is what lets viewers reassemble a continuous stream. On the read side, `getVideos` (L178–L192) lazily opens and joins the swarm for each fragment's blob core (L181–L186), attaches a blob-server `link` to every fragment (L188–L190), and returns them sorted by `session` then `fragIdx` (L191) so the renderer can fetch and replay them in order:
 
-```js file=<rootDir>/examples/how-to/stream-and-share-media/live-cam/workers/live-cam-room.js#L178-L208 title="workers/live-cam-room.js"
+```js file=<rootDir>/examples/how-to/stream-and-share-media/live-cam/workers/live-cam-room.js#L178-L208 title="workers/live-cam-room.js" lineNumbers {181-186,188-191,195-198,203-205}
 ```
 
 Pairing still uses [`blind-pairing`](https://www.npmjs.com/package/blind-pairing) — viewers join the creator's swarm via an invite code exactly as in the getting-started chat path.
@@ -75,9 +75,9 @@ Pairing still uses [`blind-pairing`](https://www.npmjs.com/package/blind-pairing
 
 ### Wire MediaRecorder in the renderer
 
-In the creator path (`renderer/app.js`), request the camera and feed each `dataavailable` chunk into the worker. Video frames are large, so the renderer sends them as raw bytes over the worker pipe (tagged with a one-byte frame kind) rather than as JSON — only small control/event messages are JSON-encoded. Chromium reliably encodes WebM/VP8 only (`video/webm; codecs="vp8"`), so the example pins that mime type:
+In the creator path (`renderer/app.js`), guard on the pinned mime type (L123–L125) — Chromium reliably encodes WebM/VP8 only (`video/webm; codecs="vp8"`) — then request the camera (L126) and start a `MediaRecorder` on the stream (L132), emitting a chunk every `TIMESLICE_MS` (L147). Video frames are large, so each `dataavailable` chunk is converted to raw bytes and sent over the worker pipe (L140–L141) rather than as JSON — only small control/event messages are JSON-encoded:
 
-```js file=<rootDir>/examples/how-to/stream-and-share-media/live-cam/renderer/app.js#L123-L147 title="renderer/app.js — creator"
+```js file=<rootDir>/examples/how-to/stream-and-share-media/live-cam/renderer/app.js#L123-L147 title="renderer/app.js — creator" lineNumbers {123-126,132,140-141,147}
 ```
 
 In the viewer path, each replicated fragment carries an `info.link` from the blob server. The player appends them to a `MediaSource` strictly in `session` + `fragIdx` order — WebM/VP8 is one continuous stream, so a gap or out-of-order append puts the `<video>` element into a permanent error state.
@@ -105,7 +105,7 @@ The creator's camera preview shows in their window; the viewer's window plays th
 
 ## Where to go next
 
-- [Store and serve large media with Hyperblobs](/how-to/store-and-replicate/store-and-serve-large-media-with-hyperblobs) — the Pear/Bare blob primitive behind this app, with no UI.
+- [Store and serve large media with Hyperblobs](/how-to/stream-and-share-media/store-and-serve-large-media-with-hyperblobs) — the Pear/Bare blob primitive behind this app, with no UI.
 - [Stream stored video in a peer-to-peer app](/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app) — same blob mechanics for finished video files.
 - [Back up photos in a peer-to-peer app](/how-to/stream-and-share-media/back-up-photos-in-a-peer-to-peer-app) — the same scaffold with `bare-ffmpeg`/`bare-media` for media decoding.
 - [Hypercore](/reference/building-blocks/hypercore) — the append-only log that backs Hyperblobs.

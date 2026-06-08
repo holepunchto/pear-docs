@@ -158,26 +158,22 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Share append-only databases with Hyperbee',
             url: '/how-to/store-and-replicate/share-append-only-databases-with-hyperbee',
-          },
-          {
-            type: 'page',
-            name: 'Create a full peer-to-peer filesystem with Hyperdrive',
-            url: '/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive',
-          },
-          {
-            type: 'page',
-            name: 'Store and serve large media with Hyperblobs',
-            url: '/how-to/store-and-replicate/store-and-serve-large-media-with-hyperblobs',
-          },
+          },         
+        ],
+      },
+      {
+        type: 'folder',
+        name: 'Blind peering',
+        children: [
           {
             type: 'page',
             name: 'Keep data available with blind peering',
-            url: '/how-to/store-and-replicate/keep-data-available-with-blind-peering',
+            url: '/how-to/blind-peering/keep-data-available-with-blind-peering',
           },
           {
             type: 'page',
             name: 'Add blind peering to a chat app',
-            url: '/how-to/store-and-replicate/add-blind-peering-to-a-chat-app',
+            url: '/how-to/blind-peering/add-blind-peering-to-a-chat-app',
           },
         ],
       },
@@ -201,6 +197,16 @@ export const customTree: Node[] = [
         type: 'folder',
         name: 'Stream and share media',
         children: [
+          {
+            type: 'page',
+            name: 'Create a full peer-to-peer filesystem with Hyperdrive',
+            url: '/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive',
+          },
+          {
+            type: 'page',
+            name: 'Store and serve large media with Hyperblobs',
+            url: '/how-to/stream-and-share-media/store-and-serve-large-media-with-hyperblobs',
+          },
           {
             type: 'page',
             name: 'Share files in a peer-to-peer app',

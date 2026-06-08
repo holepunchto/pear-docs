@@ -83,6 +83,7 @@ interface Scenario {
 
 const CONNECT = 'how-to/connect-to-peers';
 const STORE = 'how-to/store-and-replicate';
+const STREAM = 'how-to/stream-and-share-media';
 
 const SCENARIOS: Scenario[] = [
   {
@@ -233,7 +234,7 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: 'hyperdrive-fs',
-    dir: `${STORE}/create-a-full-peer-to-peer-filesystem-with-hyperdrive`,
+    dir: `${STREAM}/create-a-full-peer-to-peer-filesystem-with-hyperdrive`,
     installs: ['drive-writer-app', 'drive-reader-app', 'drive-bee-reader-app'],
     artifacts: [
       'drive-writer-app/drive-writer-storage',

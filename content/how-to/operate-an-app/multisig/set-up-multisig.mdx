@@ -1,6 +1,6 @@
 ---
 title: "Set up multisig"
-description: "One-time setup for a multisig production drive: generate signing keys, write multisig.json, compute the multisig link, and point upgrade at it."
+description: "One-time setup for a multisig production drive: generate signing keys, configure pear.json, compute the multisig link, and point upgrade at it."
 docType: how-to
 schemaType: TechArticle
 ---
@@ -10,47 +10,50 @@ Production releases are gated by a **multisig** drive — a [Hypercore](/referen
 This guide is the **one-time setup**. Once it is done, every release uses the repeatable signing flow in [Sign with multisig](/how-to/operate-an-app/multisig/sign-with-multisig).
 
 <Callout type="info">
-This is the production gate of the desktop release flow. You need a working [provision link](/how-to/operate-an-app/manual-deployment/deployment#6-provision) before you set up multisig — the multisig config points at the provision drive as its source.
+This is the production gate of the desktop release flow. You need a working [provision link](/how-to/operate-an-app/manual-deployment/deployment#6-provision) before you set up multisig — provision is the source drive that signing requests are prepared and committed against.
 </Callout>
 
 ## Create signing keys
 
-Every signer runs:
+Every signer generates a signing key with Pear:
 
 ```sh skip="release-flow"
-npm i -g hypercore-sign
-hypercore-sign-generate-keys
+pear multisig keys get
 ```
 
-The public key lands at `~/.hypercore-sign/default.public`. Each signer shares their public key with whoever is assembling the multisig config.
+Each signer takes note of the printed public key and shares it with whoever is assembling the multisig config. The same key can sign many builds.
 
 ## Create the multisig config
 
-Write `multisig.json` with every signer's public key, a quorum count, an arbitrary namespace, and the provision link's key as `srcKey`:
+In your project — the same directory as `package.json` — create or edit `pear.json` and set the `multisig` property to an object with every signer's public key, a `quorum` count, and an arbitrary `namespace` string:
 
 ```json skip="release-flow"
 {
-  "type": "drive",
-  "publicKeys": ["pubkey-signer-1", "pubkey-signer-2", "pubkey-signer-3"],
-  "namespace": "pear-chat",
-  "quorum": 2,
-  "srcKey": "q9sopzoqgas9usoiq7uzkkwngm5pzj4zo3n4esjwwbmw6offis8o"
+  "multisig": {
+    "publicKeys": ["pubkey-signer-1", "pubkey-signer-2", "pubkey-signer-3"],
+    "namespace": "pear-chat",
+    "quorum": 2
+  }
 }
 ```
 
-This example needs two of three signers to release. The `quorum` is the minimum number of signers whose responses must agree before a release can be committed.
+This example needs two of three signers to release. The `quorum` is the minimum number of signers whose responses must agree before a release can be committed. The multisig link is derived from the `namespace`, `publicKeys`, and `quorum` alone — the provision (source) link is not part of the config; it is supplied later, when you prepare and commit each signing request.
 
 ## Set upgrade to the multisig link
 
-Install `hyper-multisig-cli` and compute the multisig link:
+From the same directory, compute the multisig link:
 
 ```sh skip="release-flow"
-npm i -g hyper-multisig-cli
-hyper-multisig link
+pear multisig link
 # pear://69qwbihxj4c8te15wt3skj4j1g3ufmbo3mperedjqr1hb55mspoo
 ```
 
-Set `upgrade` to that link ([step 1](/how-to/operate-an-app/manual-deployment/deployment#1-set-the-upgrade-link)), bump `version` ([step 2](/how-to/operate-an-app/manual-deployment/deployment#2-version)), make, `pear build`, and `pear stage`. Then provision again with the multisig link as the third argument:
+Then finish the release cycle:
+
+1. [Set the upgrade link](/how-to/operate-an-app/manual-deployment/deployment#1-set-the-upgrade-link) in `package.json` to the multisig link from above.
+2. [Bump `version`](/how-to/operate-an-app/manual-deployment/deployment#2-version).
+3. Run [`npm run make`](/how-to/operate-an-app/manual-deployment/deployment#3-make-distributables), [`pear build`](/how-to/operate-an-app/manual-deployment/deployment#4-build-the-deployment-directory), and [`pear stage`](/how-to/operate-an-app/manual-deployment/deployment#5-stage).
+4. [Provision](/how-to/operate-an-app/manual-deployment/deployment#6-provision) again with the multisig link as the third argument:
 
 ```sh skip="release-flow"
 pear provision pear://0.1082.qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o pear://q9sopzoqgas9usoiq7uzkkwngm5pzj4zo3n4esjwwbmw6offis8o pear://0.0.69qwbihxj4c8te15wt3skj4j1g3ufmbo3mperedjqr1hb55mspoo

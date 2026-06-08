@@ -5,58 +5,80 @@ docType: how-to
 schemaType: TechArticle
 ---
 
-Once [multisig is set up](/how-to/operate-an-app/multisig/set-up-multisig), every production release runs the same four steps: **prepare a request**, **sign** it with a quorum of signers, **verify** the responses, and **commit** the production drive. The request and responses are portable — the commit does not have to run on the machine that prepared the request.
+Once [multisig is set up](/how-to/operate-an-app/multisig/set-up-multisig), every production release runs the same four steps:
+
+1. [Prepare the request](#prepare-the-request)
+2. [Sign](#sign) it with a quorum of signers
+3. [Verify](#verify) the responses
+4. [Commit](#commit) the production drive
+
+The request and responses are portable — the commit does not have to run on the machine that prepared the request.
 
 <Callout type="info">
-This assumes the multisig drive already exists. If you have not generated signing keys, written `multisig.json`, and pointed `upgrade` at the multisig link yet, do [Set up multisig](/how-to/operate-an-app/multisig/set-up-multisig) first.
+This assumes the multisig drive already exists. If you have not generated signing keys, configured `pear.json`, and pointed `upgrade` at the multisig link yet, do [Set up multisig](/how-to/operate-an-app/multisig/set-up-multisig) first.
 </Callout>
 
 ## Prepare the request
 
 ```sh skip="release-flow"
-hyper-multisig request <length>
+pear multisig request <versioned-provision-link>
 ```
 
-`<length>` is the current length of the provision Hypercore (from the most recent `pear stage` output). `hyper-multisig` refuses to issue a request if the source drive is not healthily seeded — see [Troubleshoot multisig](/how-to/operate-an-app/multisig/troubleshoot-multisig#request-refused-source-not-healthily-seeded) if it does.
+`<versioned-provision-link>` is the seeded provision link in `pear://<fork>.<length>.<key>` form — the link from your most recent `pear provision`. For example:
+
+```sh skip="release-flow"
+pear multisig request pear://0.856.q9sopzoqgas9usoiq7uzkkwngm5pzj4zo3n4esjwwbmw6offis8o
+```
+
+`pear multisig request` runs safety checks before issuing the request. One of them ensures the source drive is healthily seeded; if it is not, the request is refused — see [Troubleshoot multisig](/how-to/operate-an-app/multisig/troubleshoot-multisig#request-refused-source-not-healthily-seeded). It returns a signing request.
 
 ## Sign
 
-Each signer runs:
+Each signer confirms the build is the one they intend to release, then signs the request:
 
 ```sh skip="release-flow"
-hypercore-sign <signing request>
+pear multisig sign <signing request>
 ```
 
-and shares the response. Once a [quorum](/how-to/operate-an-app/multisig/set-up-multisig#create-the-multisig-config) of responses exists, the build is ready to verify.
+and shares the response. `pear multisig` guards against formal mistakes, but it is up to each signer to verify they are signing the correct build. Once a [quorum](/how-to/operate-an-app/multisig/set-up-multisig#create-the-multisig-config) of responses exists, the build is ready to verify.
 
 ## Verify
 
+Check for formal mistakes before committing. Run `verify` first on the request alone, then again with the collected responses appended:
+
 ```sh skip="release-flow"
-hyper-multisig verify [--first-commit] <signing request> <response-1> <response-2> ...
+pear multisig verify <source-link> <signing request> [...responses]
 ```
 
-`--first-commit` is required only the first time you commit to a fresh multisig drive. **Never** commit a request that fails `verify`.
+`<source-link>` is the provisioned link (a staged link also works). **Never** sign or commit a request that fails `verify`.
 
 ## Commit
 
+Only commit after verifying the request and all responses:
+
 ```sh skip="release-flow"
-hyper-multisig commit [--first-commit] <signing request> <response-1> <response-2> ...
+pear multisig commit <source-link> <signing request> [...responses]
 ```
 
-The commit waits for at least two seeders to fully download the multisig drive before signalling success. Watch the output:
+As with `verify`, `<source-link>` is the provisioned (or staged) link. The committer does not have to be a signer — the request and responses are enough to generate the build, which is why `pear multisig` insists the source drive is well seeded, and why the commit can run on a different machine than the one that prepared the request.
 
-```text skip="sample-output"
-Committing the core...
-Committed the core (key <target key>)
-Waiting for remote seeders to pick up the changes...
-Please add this key to the seeders now. The logs here will notify you when it is picked up by them. Do not shut down until that happens.
+The commit is not safely finished until the new multisig drive's key is seeded by peers. Make sure it is seeding:
+
+```sh skip="release-flow"
+pear seed <multisig-link>
 ```
 
-Once two seeders confirm, it is safe to `Ctrl+C`.
+Once the program detects that at least two seeders have fully downloaded the multisig drive, it is safe to stop it with `Ctrl+C`.
 
 <Callout type="warning">
 **Do not abort a running commit.** An interrupted commit leaves the production build in an intermediate state. See [Recover from an interrupted commit](/how-to/operate-an-app/multisig/troubleshoot-multisig#interrupted-or-aborted-commit) before retrying.
 </Callout>
+
+To inspect which signing keys and quorum a multisig link enforces:
+
+```sh skip="release-flow"
+pear info --multisig <multisig-link>
+```
 
 ## See also
 

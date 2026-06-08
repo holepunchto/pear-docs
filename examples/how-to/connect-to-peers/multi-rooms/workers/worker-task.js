@@ -18,7 +18,7 @@ class WorkerTask extends ReadyResource {
     this.swarm = new Hyperswarm()
     this.swarm.on('connection', (conn) => this.store.replicate(conn))
 
-    this.account = new ChatAccount(this.store, this.swarm, this.invite)
+    this.account = new ChatAccount(this.store, this.swarm)
     this.debounceRooms = debounce(() => this._rooms())
     this.account.on('update', () => this.debounceRooms())
     this.account.on('messages', (roomId, messages) => {
@@ -29,6 +29,10 @@ class WorkerTask extends ReadyResource {
   async _open () {
     await this.store.ready()
     await this.account.ready()
+
+    if (this.invite) {
+      await this.account.joinRoom(this.invite)
+    }
 
     this.pipe.on('data', async (data) => {
       let message

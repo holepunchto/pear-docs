@@ -11,7 +11,7 @@ import { Steps, Step } from 'fumadocs-ui/components/steps'
 
 This guide shows you how to **back up photos peer-to-peer** by adapting the [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) scaffold to decode local images with [`bare-ffmpeg`](https://www.npmjs.com/package/bare-ffmpeg)/[`bare-media`](https://www.npmjs.com/package/bare-media) and push them into a [Hyperblobs](https://www.npmjs.com/package/hyperblobs) store. The reference implementation is [`pear-photo-backup`](https://github.com/holepunchto/pear-docs/tree/feat/more-how-tos/examples/how-to/stream-and-share-media/photo-backup).
 
-<include>../_pear-end-portability-callout.mdx</include>
+<include>../../_snippets/_pear-end-portability-callout.mdx</include>
 
 This is a **delta-only** how-to. The shared scaffold is explained in the [Start from the hello-pear-electron template](/getting-started/start-from-hello-pear-electron) tutorial — read it first.
 
@@ -51,14 +51,14 @@ npm install bare-ffmpeg bare-media get-mime-type hyperblobs hypercore-blob-serve
 
 ### Store the file and generate a preview inside the worker
 
-`workers/video-room.js` (`VideoRoom`, shared with the video-stream how-to but extended for images) reads the user-selected file off disk, checks the MIME type with [`get-mime-type`](https://www.npmjs.com/package/get-mime-type), streams the full bytes into a Hyperblobs core, then generates a small inline preview before recording the entry:
+`workers/video-room.js` (`VideoRoom`, shared with the video-stream how-to but extended for images) defines `addVideo` (L181), which checks the MIME type with [`get-mime-type`](https://www.npmjs.com/package/get-mime-type) and rejects anything that is not an image or video (L183–L186). It then streams the full file bytes into a Hyperblobs write stream (L188–L194) and captures the resulting blob id (L195). Only then does it generate a small inline preview — `bare-media` for images, `bare-ffmpeg` for video (L197) — and append the record to the base (L200–L202):
 
-```js file=<rootDir>/examples/how-to/stream-and-share-media/photo-backup/workers/video-room.js#L181-L203 title="workers/video-room.js"
+```js file=<rootDir>/examples/how-to/stream-and-share-media/photo-backup/workers/video-room.js#L181-L203 title="workers/video-room.js" lineNumbers {181,183-186,188-194,195,197,200-202}
 ```
 
-The preview is a base64 `data:` URL kept inline in the record's `info`, so the grid can paint immediately without fetching the full blob. Images are resized with `bare-media`:
+The preview is a base64 `data:` URL kept inline in the record's `info`, so the grid can paint immediately without fetching the full blob. Images are resized with `bare-media`: `createPreviewImage` decodes the file, resizes it to a 256×256 bound, and re-encodes it as WebP (L6–L9), then returns the bytes as a base64 `data:` URL (L10):
 
-```js file=<rootDir>/examples/how-to/stream-and-share-media/photo-backup/workers/create-preview-image.js title="workers/create-preview-image.js"
+```js file=<rootDir>/examples/how-to/stream-and-share-media/photo-backup/workers/create-preview-image.js title="workers/create-preview-image.js" lineNumbers {6-9,10}
 ```
 
 `workers/create-preview-video.js` is the `bare-ffmpeg` counterpart for video files. Both preview helpers are worker-side modules (they call `bare-media`/`bare-ffmpeg`), so they live alongside the worker in `workers/`, not in the renderer. Each record stored in the view is `{ id, name, type, blob, info: { preview, ... } }` — small metadata plus a blob id pointing at the full bytes.
@@ -103,7 +103,7 @@ The friend's app replicates the room's Hyperblobs and shows the same grid. Origi
 
 ## Where to go next
 
-- [Store and serve large media with Hyperblobs](/how-to/store-and-replicate/store-and-serve-large-media-with-hyperblobs) — the Pear/Bare blob primitive behind this app, with no UI.
+- [Store and serve large media with Hyperblobs](/how-to/stream-and-share-media/store-and-serve-large-media-with-hyperblobs) — the Pear/Bare blob primitive behind this app, with no UI.
 - [Stream a live camera in a peer-to-peer app](/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app) — the same Hyperblobs + blob-server pattern for live frames.
 - [Stream stored video in a peer-to-peer app](/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app) — the same blob mechanics for stored video.
 - [Bare modules](/reference/bare-modules) — what `bare-ffmpeg` and `bare-media` ship and why they live in the worker.

@@ -146,7 +146,7 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // the standalone page is gone; land legacy links on the how-to index.
   out.push({ from: '/reference/recommended-practices/', to: '/how-to/' });
 
-  out.sort((a, b) => a.from.localeCompare(b.from));
+   out.sort((a, b) => a.from.localeCompare(b.from));
   return out;
 }
 

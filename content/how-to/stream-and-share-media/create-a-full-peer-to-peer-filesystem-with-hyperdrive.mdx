@@ -56,18 +56,16 @@ This will install the following dependencies:
 
 Create the `drive-writer-app/index.js` file with the following content:
 
-```javascript file=<rootDir>/examples/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive/drive-writer-app/index.js title="drive-writer-app/index.js" lineNumbers
+```javascript file=<rootDir>/examples/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive/drive-writer-app/index.js title="drive-writer-app/index.js" lineNumbers {11-16,19-23,26,31-34,39-42,45-49}
 ```
+
+The `drive-writer-app` creates a [`Corestore`](/reference/helpers/corestore) and replicates it over [`Hyperswarm`](/reference/building-blocks/hyperswarm) so other peers can fetch the data (L11–L16). It wraps the local `./writer-dir` directory in a [`Localdrive`](/reference/helpers/localdrive) and creates the [`Hyperdrive`](/reference/building-blocks/hyperdrive) on top of the store (L19–L23), then waits for it to initialize (L26). After joining the swarm on the drive's discovery key, it prints the drive key that [`drive-reader-app`](#create-the-drive-reader-app) will need (L31–L34). Pressing `Enter` in the terminal triggers a debounced mirror (L39–L42), and `mirrorDrive` copies the contents of `./writer-dir` into the drive (L45–L49).
 
 Run the `drive-writer-app` with:
 
 ```sh example=hyperdrive-fs step=run process=writer expect="drive key:" capture-key="drive key: ([0-9a-f]+)" timeout=45000
 bare drive-writer-app
 ```
-
-The `drive-writer-app` creates a `LocalDrive` instance for a local directory and then mirrors the `LocalDrive` into the Hyperdrive instance. 
-
-The store used to create the Hyperdrive instance is replicated using Hyperswarm to make the data of Hyperdrive accessible to other peers. 
 
 It outputs a key which will be passed to [`drive-reader-app`](#create-the-drive-reader-app) upon execution.
 
@@ -99,11 +97,10 @@ This will install the following dependencies:
 
 Create the `drive-reader-app/index.js` file with the following content:
 
-```javascript file=<rootDir>/examples/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive/drive-reader-app/index.js title="drive-reader-app/index.js" lineNumbers
+```javascript file=<rootDir>/examples/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive/drive-reader-app/index.js title="drive-reader-app/index.js" lineNumbers {10-12,15-21,24-27,32-36,39-42,44-48}
 ```
 
-The `drive-reader-app` creates a `LocalDrive` instance for a local directory and then mirrors the contents of the local Hyperdrive instance into the `LocalDrive` instance, which will write the contents to the local directory.
-The `drive-reader-app` will output a message when the mirroring process is complete.
+The `drive-reader-app` reads the writer's drive key from the command-line arguments (L10–L12) and replicates a [`Corestore`](/reference/helpers/corestore) over [`Hyperswarm`](/reference/building-blocks/hyperswarm) (L15–L21). It wraps the local `./reader-dir` directory in a [`Localdrive`](/reference/helpers/localdrive) and opens the remote [`Hyperdrive`](/reference/building-blocks/hyperdrive) from that key (L24–L27). It re-runs a debounced mirror whenever new content is appended to the drive's core (L32–L36), joins the swarm as a client and runs the first mirror immediately (L39–L42). `mirrorDrive` copies the contents of the remote drive into `./reader-dir` and logs when each pass completes (L44–L48).
 
 ### Run the `drive-reader-app`
 
@@ -159,11 +156,10 @@ This will install the following dependencies:
 
 Create the `drive-bee-reader-app/index.js` file with the following content:
 
-```javascript file=<rootDir>/examples/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive/drive-bee-reader-app/index.js title="drive-bee-reader-app/index.js" lineNumbers
+```javascript file=<rootDir>/examples/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive/drive-bee-reader-app/index.js title="drive-bee-reader-app/index.js" lineNumbers {8-10,12-17,19-21,24,29-37,39,41-49}
 ```
 
-This app joins the same drive as the other readers, then inspects `drive.db` directly as a Hyperbee.
-It fetches the first available file entry from the metadata index and logs the raw Hyperbee entry alongside the higher-level `drive.entry()` view of the same file.
+Like the reader, this app reads the drive key from the command line (L8–L10) and replicates a [`Corestore`](/reference/helpers/corestore) over [`Hyperswarm`](/reference/building-blocks/hyperswarm) (L12–L17). It opens the [`Hyperdrive`](/reference/building-blocks/hyperdrive) and awaits both `drive.ready()` and `drive.db.ready()` (L19–L21), then reaches into the metadata index directly: file entries live in the `files` sub-[Hyperbee](/reference/building-blocks/hyperbee) (L24). It polls `drive.update()` until the first entry replicates in (L29–L37), looks the same file up through the higher-level `drive.entry()` API (L39), and logs both the raw Hyperbee entry and the `drive.entry()` view side by side (L41–L49).
 
 ### Run the `drive-bee-reader-app`
 
