@@ -59,6 +59,27 @@ const TOOL_REPOS: Record<string, RepoConfig> = {
   hypertele: { org: 'bitfinexcom', repo: 'hypertele' },
 };
 
+// Configuration doc: each documented `package.json` `pear.*` field links to where
+// its value is consumed upstream. Fields span two repos — the `pear` block is parsed
+// by `pear-state`; the `pear.stage.*` build options and `pear.assets` are consumed by
+// `pear`'s sidecar staging op. Each field resolves by a code-search pattern (anchored
+// to a specific file) so line numbers self-heal when the repos are re-pinned. Anchors
+// not listed here (e.g. prose sections, or keys handled in UI-integration libraries
+// like `pear.gui`/`pear.pre`) are intentionally left unlinked.
+type ConfigField = { anchor: string; repo: string; file: string; pattern: RegExp };
+const CONFIG_FIELDS: ConfigField[] = [
+  { anchor: 'pear', repo: 'pear-state', file: 'index.js', pattern: /state\.options\s*=\s*state\.pkg\?\.pear/ },
+  { anchor: 'pear-name', repo: 'pear-state', file: 'index.js', pattern: /pkg\?\.pear\?\.name/ },
+  { anchor: 'pear-stage-entrypoints', repo: 'pear-state', file: 'index.js', pattern: /options\.stage\?\.entrypoints/ },
+  { anchor: 'pear-routes', repo: 'pear-state', file: 'index.js', pattern: /state\.options\.routes/ },
+  { anchor: 'pear-unrouted', repo: 'pear-state', file: 'index.js', pattern: /options\.unrouted/ },
+  { anchor: 'pear-links', repo: 'pear-state', file: 'index.js', pattern: /state\.options\.links/ },
+  { anchor: 'pear-stage-ignore', repo: 'pear', file: 'subsystems/sidecar/ops/stage.js', pattern: /options\?\.stage\?\.ignore/ },
+  { anchor: 'pear-stage-include', repo: 'pear', file: 'subsystems/sidecar/ops/stage.js', pattern: /options\?\.stage\?\.include\b/ },
+  { anchor: 'pear-stage-defer', repo: 'pear', file: 'subsystems/sidecar/ops/stage.js', pattern: /options\?\.stage\?\.defer/ },
+  { anchor: 'pear-assets', repo: 'pear', file: 'subsystems/sidecar/lib/pod.js', pattern: /pkg\?\.pear\?\.assets/ },
+];
+
 const API_DEF_LINK = /^\[API definition on GitHub\]\([^)]+\)\s*$/;
 const GITHUB_SUFFIX = /\s*\(\[GitHub\]\([^)]+\)\)\s*$/;
 const GITHUB_IN_LABEL = /\s*\(\[GitHub\]\([^)]+\)\)(?=:\s*$)/;
@@ -581,6 +602,60 @@ function processCliMdx(
   return { updated, missed };
 }
 
+/** Returns the first line in `upstreamDir/file` matching `pattern` (1-based), or null. */
+function findInFile(upstreamDir: string, file: string, pattern: RegExp): SourceHit | null {
+  const p = join(upstreamDir, file);
+  if (!existsSync(p)) return null;
+  const lines = readFileSync(p, 'utf8').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    if (pattern.test(lines[i])) return { file, line: i + 1 };
+  }
+  return null;
+}
+
+const CONFIG_DEF_LINK = /^\[Field source on GitHub\]\([^)]+\)\s*$/;
+const ANCHOR_LINE = /^<a name="([^"]+)"><\/a>\s*$/;
+
+/**
+ * Configuration doc: under each mapped `<a name="…">` field anchor, insert one
+ * `[Field source on GitHub]` link resolved from `urls`. Anchors absent from `urls`
+ * (prose sections, UI-library-defined keys) are left untouched.
+ */
+function processConfigMdx(
+  mdxPath: string,
+  urls: Map<string, string>
+): { updated: number; missed: string[] } {
+  const content = readFileSync(mdxPath, 'utf8');
+  const lines = content.split('\n');
+  const out: string[] = [];
+  let updated = 0;
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const am = line.match(ANCHOR_LINE);
+    const url = am ? urls.get(am[1]) : undefined;
+    if (am && url) {
+      out.push(line);
+      i++;
+      while (i < lines.length && lines[i].trim() === '') i++;
+      if (i < lines.length && CONFIG_DEF_LINK.test(lines[i].trim())) i++;
+      while (i < lines.length && lines[i].trim() === '') i++;
+      out.push('');
+      out.push(`[Field source on GitHub](${url})`);
+      out.push('');
+      updated++;
+      continue;
+    }
+    out.push(line);
+    i++;
+  }
+
+  const next = out.join('\n');
+  if (WRITE && next !== content) writeFileSync(mdxPath, next);
+  return { updated, missed: [] };
+}
+
 const dirs = [
   'content/reference/building-blocks',
   'content/reference/helpers',
@@ -654,6 +729,34 @@ if (existsSync(cliPath) && existsSync(pearDir)) {
   if (result.missed.length) allMissed['cli'] = result.missed;
   console.log(
     `cli @ ${pinRef}: ${result.updated} command links${result.missed.length ? `, ${result.missed.length} unmatched` : ''}`
+  );
+}
+
+// Configuration doc (content/reference/pear/configuration.mdx -> pear-state + pear).
+const configPath = join(process.cwd(), 'content/reference/pear/configuration.mdx');
+if (existsSync(configPath)) {
+  const urls = new Map<string, string>();
+  const configMissed: string[] = [];
+  for (const f of CONFIG_FIELDS) {
+    const dir = join(UPSTREAM_ROOT, f.repo);
+    if (!existsSync(dir)) {
+      console.warn(`skip config field ${f.anchor}: missing ${dir}`);
+      continue;
+    }
+    const cfg: RepoConfig = { org: 'holepunchto', repo: f.repo };
+    const pinRef = resolvePinRef(dir, cfg);
+    const hit = findInFile(dir, f.file, f.pattern);
+    if (!hit) {
+      configMissed.push(f.anchor);
+      continue;
+    }
+    urls.set(f.anchor, githubBlobUrl(cfg, pinRef, hit.file, hit.line));
+  }
+  const result = processConfigMdx(configPath, urls);
+  totalUpdated += result.updated;
+  if (configMissed.length) allMissed['configuration'] = configMissed;
+  console.log(
+    `configuration: ${result.updated} field links${configMissed.length ? `, ${configMissed.length} unresolved` : ''}`
   );
 }
 

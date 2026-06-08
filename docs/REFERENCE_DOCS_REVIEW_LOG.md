@@ -25,7 +25,7 @@ confirmed present (see notes) — they are shallow-search artifacts, not drift.
 | building-blocks/hyperdrive | holepunchto/hyperdrive @ v13.3.2 | 45/45 | 45 | ✅ |
 | building-blocks/hyperswarm | holepunchto/hyperswarm @ v4.17.0 | 25/25 | 25 | ✅ |
 | helpers/compact-encoding | holepunchto/compact-encoding @ v3.2.0 | 31/31 | 31 | ✅ |
-| helpers/corestore | holepunchto/corestore @ v7.10.1 | 22/22 | 22 | ✅ |
+| helpers/corestore | holepunchto/corestore @ v7.10.1 | 24/24 | 24 | ✅ (notifyGroup added, reverse pass) |
 | helpers/localdrive | holepunchto/localdrive @ v2.2.1 | 21/21 | 21 | ✅ |
 | helpers/mirrordrive | holepunchto/mirror-drive @ v1.14.2 | 25/25¹ | 25 | ✅ |
 | helpers/protomux | holepunchto/protomux @ v3.11.0 | 38/38² | 38 | ✅ |
@@ -36,8 +36,9 @@ confirmed present (see notes) — they are shallow-search artifacts, not drift.
 | tools/hyperssh | holepunchto/hyperssh @ v5.0.4 (master) | 2/2 | 2 | ✅ |
 | tools/hypertele | bitfinexcom/hypertele @ 0432686 (no tags) | 2/2 | 2 | ✅ |
 
-**Totals:** 398 documented symbols, 398 confirmed present upstream, 398 tag-pinned
-definition links. 0 `blob/main` links remain.
+**Totals:** 400 documented symbols (398 original + 2 corestore `notifyGroup` headings added
+by the reverse pass), all confirmed present upstream and tag-pinned. 0 `blob/main` links
+remain. Plus 10 `configuration.mdx` field links (two repos) and 19 `cli.mdx` command links.
 
 ### Manually verified "misses" (audit false positives)
 
@@ -56,7 +57,7 @@ examples, callback-option signatures, and multi-word CLI subcommands read as "no
 | modules | individual `pear-*` repos | 36 module links, all resolve 200 | ✅ |
 | bare-modules | holepunchto/bare + `bare-*` | 56 module links, all resolve 200 | ✅ |
 | runtime | holepunchto/pear-runtime @ v1.1.4 | 3 symbol links (`Pear` ctor, `pear.run`, `pear.storage`) | ✅ |
-| configuration | (pear dependency) | deferred — see below | ⏳ |
+| configuration | holepunchto/pear-state @ v1.1.0 + pear @ v2.6.5 | 10 field links (2 repos) | ✅ |
 | api | (deprecated) | deferred — see below | ⏳ |
 
 ### Accuracy findings — cli.mdx (vs holepunchto/pear @ v2.6.5)
@@ -71,21 +72,66 @@ examples, callback-option signatures, and multi-word CLI subcommands read as "no
 - `pear data`, `pear gc`, `pear sidecar` have upstream subcommands (`cmd/index.js:363-479`)
   not all enumerated in the doc — minor.
 
+### Accuracy + linking — configuration.mdx (vs pear-state @ v1.1.0, pear @ v2.6.5)
+
+Config keys are parsed across **two** repos: the `package.json` `pear` block is read by
+`pear-state` (`index.js`); the `pear.stage.*` build options and `pear.assets` are consumed
+by `pear`'s sidecar staging op. The generator now has a configuration pass (a per-field
+code-search map, so line numbers self-heal on re-pin) linking **10 fields**:
+
+- `pear-state @ v1.1.0`: `pear` block (`index.js:66`), `pear.name` (`:53`),
+  `pear.stage.entrypoints` (`:83`), `pear.routes` (`:86`), `pear.unrouted` (`:87`),
+  `pear.links` (`:80`).
+- `pear @ v2.6.5`: `pear.stage.ignore` (`stage.js:71`), `pear.stage.include` (`stage.js:115`),
+  `pear.stage.defer` (`stage.js:135`), `pear.assets` (`pod.js:650`).
+
+Unlinked anchors are intentional: prose sections (`package-json`, `version`, `upgrade`) and
+keys owned by UI-integration libraries (`pear.pre`, `pear.gui`, `pear.userAgent` — defined in
+`pear-electron`, not core).
+
+- 🔴 **`pear.stage.includes` → `pear.stage.include` (renamed; doc was stale).** Current `pear`
+  (v2.6.5) reads **only** `state.options?.stage?.include` (singular) at `stage.js:115`; no
+  plural `includes` is read anywhere in the repo, so the documented plural key was silently
+  ignored. The build-distributables how-to already scopes `includes` to `pear` ≤ v2.2.15,
+  confirming a rename. **Fixed:** renamed the heading/anchor to `pear.stage.include`, added a
+  version note, and repointed the `prefetch` deprecation cross-reference.
+
 ### Deferred (with reason)
 
-- **configuration.mdx** — the `pear.*` `package.json` keys are parsed in a pear dependency
-  (not `holepunchto/pear` directly), so there is no single clean source file to link per
-  key. Needs investigation of which package (`pear-api`?) owns config parsing.
 - **api.mdx** — deprecated `Pear.app.*` property catalog; folded into the Phase 3
   deprecation/demotion work rather than deep-linking a page that is being demoted.
 
-## Outstanding
+## Reverse-accuracy pass — are there *new* upstream APIs the docs omit?
 
-- **configuration.mdx linking:** resolve the config-parsing package, then link keys.
-- **Reverse-accuracy pass:** this log confirms no *documented* symbol is missing/renamed
-  upstream. The inverse — are there *new* upstream APIs the docs omit? — still needs a
-  per-repo README/changelog diff for the high-traffic blocks (hypercore, hyperdrive,
-  autobase, corestore).
+**Method:** diff each high-traffic building-block doc against its upstream README at the
+pinned tag (the README is the canonical public surface). Compare both heading entries
+**and** bullet entries (our docs document properties/events/sub-objects as bullets, e.g.
+autobase `base.key`/`base.on(...)` and corestore handle methods), and skip structural
+class-header labels (`AutoStore`, `AutobaseHostCalls`) whose real API is their sub-methods.
+
+| Doc | README sigs | Doc coverage | Result |
+| --- | --- | --- | --- |
+| hypercore | 65 | complete | ✅ no omissions |
+| hyperbee | 32 | complete | ✅ no omissions |
+| hyperdrive | 45 | complete | ✅ no omissions |
+| hyperswarm | 24 | complete | ✅ no omissions |
+| hyperdht | 23 | complete | ✅ no omissions |
+| autobase | 40 | complete | ✅ no omissions (properties + 9 events documented as bullets) |
+| corestore | 17 | **gap found** | 🔧 fixed (see below) |
+
+- 🔧 **corestore `notifyGroup` API was undocumented — now added.** corestore is pinned at
+  v7.10.1, which ships an (experimental) group-notification API absent from the doc:
+  `store.notifyGroup(topic)` (`index.js:306`) → a handle with `handle.updates([opts])`
+  (`lib/notify.js:12`), `handle.destroy()` (`:20`), `handle.on('update')`, plus the
+  `store.on('group-active', (topic) => {})` event (`index.js:298`). Added a *Group
+  notifications (experimental)* section: `notifyGroup` + `group-active` as generator-linked
+  `####` headings; the handle's sub-methods as bullets (deliberate — `handle.destroy()`
+  collides with two earlier `destroy()` defs in `index.js`, so a `####` heading would
+  mis-resolve; bullets are not touched by the generator).
+- Note: the corestore README heading writes `handle.update(opts)` (singular) but the
+  implemented method — and its own example — use `handle.updates()` (plural,
+  `lib/notify.js:12`). The doc documents the working name, `updates`.
+
 ## Phase 3 — IA restructure (ADR 0001 amended)
 
 ADR 0001 originally kept `reference/{api,cli,configuration,runtime}` and `modules.mdx`
@@ -106,8 +152,8 @@ then executed:
 
 ## Outstanding
 
-- **configuration.mdx linking:** resolve the config-parsing package, then link keys.
-- **Reverse-accuracy pass:** this log confirms no *documented* symbol is missing/renamed
-  upstream. The inverse — are there *new* upstream APIs the docs omit? — still needs a
-  per-repo README/changelog diff for the high-traffic blocks (hypercore, hyperdrive,
-  autobase, corestore).
+- **api.mdx** — deep-linking deferred (deprecated page, demoted in Phase 3).
+- **Reverse-accuracy pass** covered the 7 high-traffic building-blocks/helpers via README
+  diff. Remaining repos (other helpers, tools, `pear-runtime`) not yet reverse-checked —
+  forward linking confirms nothing *documented* is stale there, but a README diff could
+  still surface *new* undocumented APIs if desired.
