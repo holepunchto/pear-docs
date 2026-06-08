@@ -20,9 +20,6 @@ const config = [
       // Static export output (already covered by next defaults, listed here
       // for clarity and so future tooling sees the full set in one place).
       'out/**',
-      // Legacy Pear Book scaffolding — slated for removal alongside the
-      // Pear Book workflow; not part of the Fumadocs site.
-      'pearbook/**',
     ],
   },
   {

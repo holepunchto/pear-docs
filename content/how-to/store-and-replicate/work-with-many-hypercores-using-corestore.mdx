@@ -13,11 +13,14 @@ An append-only log like Hypercore is powerful on its own, but it's most useful a
 In [Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore), only a single Hypercore instance was replicated. But in this guide, you'll replicate a single Corestore instance, which will internally manage the replication of a collection of Hypercores. You'll achieve this with two Pear Terminal Applications: [`multicore-writer-app`](#create-the-multicore-writer-app) and [`multicore-reader-app`](#create-the-multicore-reader-app).
 
 <Callout type="info">
-Only one Corestore per application is needed. This is a recommended best practice for efficient Hypercore management and to avoid pitfalls from multiple Corestores. A single Corestore:
+**Use one Corestore instance per application.** Multiple Corestores over the same storage cause file-locking errors and duplicate core storage. A single Corestore:
 
-- Manages multiple sessions for the same Hypercore.
+- Reduces open file handles.
+- Reduces storage by deduping Hypercore storage.
 - Requires only one replication stream per peer connection.
 - Simplifies referring to Hypercores by name.
+
+If named cores collide across components, namespace them (`store.namespace('a')`) — retrieving cores by `key` is unaffected by namespacing.
 </Callout>
 
 ## Create the multicore writer app
@@ -44,59 +47,15 @@ This will install the following dependencies:
 
 Create the `multicore-writer-app/index.js` file with the following content:
 
-```javascript example=corestore-multi step=write file=multicore-writer-app/index.js
-import Hyperswarm from 'hyperswarm'
-import Corestore from 'corestore'
-import b4a from 'b4a'
-import process from 'bare-process'
-
-const store = new Corestore('./multicore-writer-storage')
-const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
-
-// A name is a purely-local, and maps to a key pair. It's not visible to readers.
-// Since a name always corresponds to a key pair, these are all writable
-const core1 = store.get({ name: 'core-1', valueEncoding: 'json' })
-const core2 = store.get({ name: 'core-2' })
-const core3 = store.get({ name: 'core-3' })
-await Promise.all([core1.ready(), core2.ready(), core3.ready()])
-
-// Since Corestore does not exchange keys, they need to be exchanged elsewhere.
-// Here, we'll record the other keys in the first block of core1. Do this
-// *before* announcing on the swarm so that as soon as a reader connects,
-// `core1.get(0)` resolves and the bootstrap key list is available.
-if (core1.length === 0) {
-  await core1.append({
-    otherKeys: [core2, core3].map((core) => b4a.toString(core.key, 'hex'))
-  })
-}
-
-console.log('main core key:', b4a.toString(core1.key, 'hex'))
-
-// Here we'll only join the swarm with the core1's discovery key
-// We don't need to announce core2 and core3, because they'll be replicated with core1
-swarm.join(core1.discoveryKey)
-
-// Corestore replication internally manages to replicate every loaded core
-// Corestore *does not* exchange keys (read capabilities) during replication.
-swarm.on('connection', (conn) => store.replicate(conn))
-
-// Record all short messages in core2, and all long ones in core3
-process.stdin.on('data', (data) => {
-  if (data.length < 5) {
-    console.log('appending short data to core2')
-    core2.append(data)
-  } else {
-    console.log('appending long data to core3')
-    core3.append(data)
-  }
-})
-```
-
 The `multicore-writer-app` uses a Corestore instance to create three Hypercores, which are then replicated with other peers using `Hyperswarm`:
-* The first core bootstraps the system. The keys for the second and third cores are stored in the first core. 
-* Messages entered into the command line are written into the second and third cores, depending on the length of the message. 
-* The main core key is logged into the command line so that it can be passed to the [`multicore-reader-app`](#create-the-multicore-reader-app) when it runs.
+* One Corestore and one Hyperswarm back the whole app (L7–L8). `core1` bootstraps the system — its first block records the keys of `core2` and `core3` (L22–L26), so a reader only needs `core1`'s key to discover the rest. Writing the bootstrap list before announcing on the swarm ensures `core1.get(0)` resolves as soon as a reader connects.
+* The three named cores are created up front (L13–L15); names map to local key pairs and are never sent to readers.
+* Only `core1`'s discovery key is announced on the swarm (L32) — `core2` and `core3` ride along because `store.replicate(conn)` replicates every loaded core over a single stream (L36).
+* The main core key is logged so it can be passed to the [`multicore-reader-app`](#create-the-multicore-reader-app) (L28).
+* Terminal input is routed by length: short messages append to `core2`, long ones to `core3` (L39–L46).
+
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/work-with-many-hypercores-using-corestore/multicore-writer-app/index.js title="multicore-writer-app/index.js" lineNumbers {7-8,13-15,22-26,28,32,36,39-46}
+```
 
 ## Create the multicore reader app
 
@@ -123,55 +82,9 @@ This will install the following dependencies:
 
 ### Add the multicore reader app logic
 
-Create the `multicore-reader-app/index.js` file with the following content:
+Create the `multicore-reader-app/index.js` file with the following content. The reader takes the writer's main core key as a command-line argument (L6–L8) and opens its own Corestore (L10–L11). On each connection it replicates the whole store (L17), then gets `core1` from the supplied key and joins the swarm on its discovery key (L20–L25). After `core.update()`, an empty core means the writer was never reached (L28–L32). It reads the bootstrap key list from the first block (L35) and, for every key, gets the corresponding core and logs each new block as it is appended (L36–L46):
 
-```javascript example=corestore-multi step=write file=multicore-reader-app/index.js
-import process from 'bare-process'
-import Corestore from 'corestore'
-import Hyperswarm from 'hyperswarm'
-import b4a from 'b4a'
-
-if (!Bare.argv[2]) throw new Error('provide a key')
-
-const key = b4a.from(Bare.argv[2], 'hex')
-
-const store = new Corestore('./multicore-reader-storage')
-await store.ready()
-
-const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
-
-// replication of corestore instance on every connection
-swarm.on('connection', (conn) => store.replicate(conn))
-
-// creation/getting of a hypercore instance using the key passed
-const core = store.get({ key, valueEncoding: 'json' })
-// wait till all the properties of the hypercore instance are initialized
-await core.ready()
-
-swarm.join(core.discoveryKey)
-await swarm.flush()
-
-// update the meta-data of the hypercore instance
-await core.update()
-
-if (core.length === 0) {
-  throw new Error('Could not connect to the writer peer')
-}
-
-// getting cores using the keys stored in the first block of main core
-const { otherKeys } = await core.get(0)
-for (const key of otherKeys) {
-  const core = store.get({ key: b4a.from(key, 'hex') })
-  // on every append to the hypercore, 
-  // download the latest block of the core and log it to the console
-  core.on('append', () => {
-    const seq = core.length - 1
-    core.get(seq).then(block => {
-      console.log(`Block ${seq} in Core ${key}: ${block}`) 
-    })
-  })
-}
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/work-with-many-hypercores-using-corestore/multicore-reader-app/index.js title="multicore-reader-app/index.js" lineNumbers {6-8,10-11,17,20-25,28-32,35,36-46}
 ```
 
 ## Run the writer and reader
@@ -202,7 +115,7 @@ As inputs are made to the terminal running the writer application, outputs shoul
 ## See also
 
 - [Share append-only databases with Hyperbee](/how-to/store-and-replicate/share-append-only-databases-with-hyperbee) — key/value store on top of Hypercore.
-- [Create a full peer-to-peer filesystem with Hyperdrive](/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive) — filesystem on top of two Hypercores.
-- [Apply recommended practices](/how-to/operate-an-app/recommended-practices) — the Corestore-per-app guidance in context.
+- [Create a full peer-to-peer filesystem with Hyperdrive](/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive) — filesystem on top of two Hypercores.
+- [Host multiple rooms in one chat app](/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app) — this co-replication pattern applied in a full app, where one Corestore backs many rooms.
 - [Corestore reference](/reference/helpers/corestore) — full API for the store factory, namespacing, and replication surface used here.
 - [Hypercore reference](/reference/building-blocks/hypercore) — full API for the individual append-only log each Corestore session manages.

@@ -1,16 +1,21 @@
 /**
- * Adds or refreshes GitHub links on library reference API entries:
+ * Adds or refreshes a single GitHub definition link per library reference API entry:
  *
- *   - `[API definition on GitHub]` under each `#### \`...\`` heading
- *   - `([GitHub](url))` on Signature, Parameters, and Returns bullets
+ *   - `[API definition on GitHub]` under each `#### \`...\`` heading (one per method)
+ *   - any legacy `([GitHub](url))` suffixes on Signature/Parameters/Returns bullets
+ *     are stripped — the heading link is the single source of truth.
  *
- * All links target upstream **source files only** (index.js, lib/*.js, bin.js).
+ * Links target upstream **source files only** (index.js, lib/*.js, bin.js) and are
+ * pinned to the cloned **release tag** (via `git describe --tags`), falling back to
+ * the checked-out commit SHA when a repo has no tags (e.g. bitfinexcom/hypertele).
+ * Clone each upstream repo at its tag before running (see the review plan, Phase 0).
  *
  * Usage:
- *   UPSTREAM_ROOT=/tmp/pear-upstream npm run add-api-github-links
+ *   UPSTREAM_ROOT=/tmp/pear-upstream npm run add-api-github-links -- --write
  */
 
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { join, basename } from 'node:path';
 
 const WRITE = process.argv.includes('--write');
@@ -45,6 +50,36 @@ const UPSTREAM_DIR: Record<string, string> = {
   secretstream: 'hyperswarm-secret-stream',
 };
 
+// CLI tool docs: `## `<command>`` sections link to the command's bin entry file.
+const TOOL_REPOS: Record<string, RepoConfig> = {
+  drives: { org: 'holepunchto', repo: 'drives' },
+  hyperbeam: { org: 'holepunchto', repo: 'hyperbeam' },
+  hypershell: { org: 'holepunchto', repo: 'hypershell' },
+  hyperssh: { org: 'holepunchto', repo: 'hyperssh', branch: 'master' },
+  hypertele: { org: 'bitfinexcom', repo: 'hypertele' },
+};
+
+// Configuration doc: each documented `package.json` `pear.*` field links to where
+// its value is consumed upstream. Fields span two repos — the `pear` block is parsed
+// by `pear-state`; the `pear.stage.*` build options and `pear.assets` are consumed by
+// `pear`'s sidecar staging op. Each field resolves by a code-search pattern (anchored
+// to a specific file) so line numbers self-heal when the repos are re-pinned. Anchors
+// not listed here (e.g. prose sections, or keys handled in UI-integration libraries
+// like `pear.gui`/`pear.pre`) are intentionally left unlinked.
+type ConfigField = { anchor: string; repo: string; file: string; pattern: RegExp };
+const CONFIG_FIELDS: ConfigField[] = [
+  { anchor: 'pear', repo: 'pear-state', file: 'index.js', pattern: /state\.options\s*=\s*state\.pkg\?\.pear/ },
+  { anchor: 'pear-name', repo: 'pear-state', file: 'index.js', pattern: /pkg\?\.pear\?\.name/ },
+  { anchor: 'pear-stage-entrypoints', repo: 'pear-state', file: 'index.js', pattern: /options\.stage\?\.entrypoints/ },
+  { anchor: 'pear-routes', repo: 'pear-state', file: 'index.js', pattern: /state\.options\.routes/ },
+  { anchor: 'pear-unrouted', repo: 'pear-state', file: 'index.js', pattern: /options\.unrouted/ },
+  { anchor: 'pear-links', repo: 'pear-state', file: 'index.js', pattern: /state\.options\.links/ },
+  { anchor: 'pear-stage-ignore', repo: 'pear', file: 'subsystems/sidecar/ops/stage.js', pattern: /options\?\.stage\?\.ignore/ },
+  { anchor: 'pear-stage-include', repo: 'pear', file: 'subsystems/sidecar/ops/stage.js', pattern: /options\?\.stage\?\.include\b/ },
+  { anchor: 'pear-stage-defer', repo: 'pear', file: 'subsystems/sidecar/ops/stage.js', pattern: /options\?\.stage\?\.defer/ },
+  { anchor: 'pear-assets', repo: 'pear', file: 'subsystems/sidecar/lib/pod.js', pattern: /pkg\?\.pear\?\.assets/ },
+];
+
 const API_DEF_LINK = /^\[API definition on GitHub\]\([^)]+\)\s*$/;
 const GITHUB_SUFFIX = /\s*\(\[GitHub\]\([^)]+\)\)\s*$/;
 const GITHUB_IN_LABEL = /\s*\(\[GitHub\]\([^)]+\)\)(?=:\s*$)/;
@@ -62,14 +97,6 @@ function isSectionBoundary(line: string): boolean {
 
 function stripGithubLink(line: string): string {
   return line.replace(GITHUB_SUFFIX, '').replace(GITHUB_IN_LABEL, '');
-}
-
-function withGithubLink(line: string, url: string): string {
-  const base = stripGithubLink(line).trimEnd();
-  if (/^- Parameters:\s*$/.test(base)) {
-    return `- Parameters ([GitHub](${url})):`;
-  }
-  return `${base} ([GitHub](${url}))`;
 }
 
 function apiTokens(text: string): string[] {
@@ -111,9 +138,22 @@ function classNameFromHeading(heading: string): string | null {
   return ctor[1];
 }
 
-function githubBlobUrl(cfg: RepoConfig, file: string, line: number): string {
-  const branch = cfg.branch ?? 'main';
-  return `https://github.com/${cfg.org}/${cfg.repo}/blob/${branch}/${file}#L${line}`;
+function resolvePinRef(upstreamDir: string, cfg: RepoConfig): string {
+  const run = (cmd: string): string | null => {
+    try {
+      return execSync(cmd, { cwd: upstreamDir, stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString()
+        .trim();
+    } catch {
+      return null;
+    }
+  };
+  // Prefer the release tag the repo was cloned at; fall back to the commit SHA.
+  return run('git describe --tags --exact-match') ?? run('git rev-parse HEAD') ?? cfg.branch ?? 'main';
+}
+
+function githubBlobUrl(cfg: RepoConfig, ref: string, file: string, line: number): string {
+  return `https://github.com/${cfg.org}/${cfg.repo}/blob/${ref}/${file}#L${line}`;
 }
 
 function collectImplFiles(upstreamDir: string): { path: string; lines: string[] }[] {
@@ -389,7 +429,8 @@ function resolveApiTargets(
 function processMdx(
   mdxPath: string,
   cfg: RepoConfig,
-  upstreamDir: string
+  upstreamDir: string,
+  pinRef: string
 ): { updated: number; missed: string[] } {
   const implFiles = collectImplFiles(upstreamDir);
   const content = readFileSync(mdxPath, 'utf8');
@@ -422,7 +463,7 @@ function processMdx(
       if (!targets.signature) {
         missed.push(heading);
       } else {
-        const url = githubBlobUrl(cfg, targets.signature.file, targets.signature.line);
+        const url = githubBlobUrl(cfg, pinRef, targets.signature.file, targets.signature.line);
         out.push('');
         out.push(`[API definition on GitHub](${url})`);
         updated++;
@@ -437,27 +478,14 @@ function processMdx(
       continue;
     }
 
-    if (targets?.signature) {
-      if (/^- Signature:\s*/.test(line)) {
-        const url = githubBlobUrl(cfg, targets.signature.file, targets.signature.line);
-        out.push(withGithubLink(line, url));
-        updated++;
-        i++;
-        continue;
-      }
-      if (/^- Parameters(?::|\s+\(\[GitHub\])/.test(line)) {
-        const hit = targets.params ?? targets.signature;
-        const url = githubBlobUrl(cfg, hit.file, hit.line);
-        out.push(withGithubLink(line, url));
-        updated++;
-        i++;
-        continue;
-      }
-      if (/^- Returns:\s*/.test(line)) {
-        const hit = targets.returns ?? targets.signature;
-        const url = githubBlobUrl(cfg, hit.file, hit.line);
-        out.push(withGithubLink(line, url));
-        updated++;
+    // One link per method: strip any legacy per-bullet GitHub links inside a method block.
+    if (targets) {
+      if (
+        /^- Signature:\s*/.test(line) ||
+        /^- Parameters(?::|\s+\(\[GitHub\])/.test(line) ||
+        /^- Returns:\s*/.test(line)
+      ) {
+        out.push(stripGithubLink(line));
         i++;
         continue;
       }
@@ -470,6 +498,162 @@ function processMdx(
   const next = before + out.join('\n');
   if (WRITE && next !== content) writeFileSync(mdxPath, next);
   return { updated, missed };
+}
+
+const CLI_DEF_LINK = /^\[Command source on GitHub\]\([^)]+\)\s*$/;
+const CLI_HEADING = /^## `([^`]+)`\s*$/;
+
+type CliResolver = (headingCommand: string) => SourceHit | null;
+
+/** Reads the `bin` map from an upstream package.json (name -> entry file). */
+function readBinMap(upstreamDir: string): Record<string, string> {
+  try {
+    const pkg = JSON.parse(readFileSync(join(upstreamDir, 'package.json'), 'utf8'));
+    if (typeof pkg.bin === 'string') return { [pkg.name]: pkg.bin };
+    return pkg.bin ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/** Tool docs: heading's executable (first token) -> its bin entry file. */
+function binResolver(upstreamDir: string): CliResolver {
+  const bin = readBinMap(upstreamDir);
+  return (heading) => {
+    const exec = heading.split(/\s+/)[0];
+    const entry = bin[exec];
+    return entry ? { file: entry.replace(/^\.\//, ''), line: 0 } : null;
+  };
+}
+
+/**
+ * Pear CLI: `pear <cmd>` -> `cmd/<cmd>.js`, falling back to the registration line
+ * in `cmd/index.js` (e.g. `build: require('pear-build')`). Unmapped commands (e.g.
+ * a documented command that no longer exists upstream) are reported as misses.
+ */
+function pearResolver(upstreamDir: string): CliResolver {
+  const indexRel = 'cmd/index.js';
+  const indexPath = join(upstreamDir, indexRel);
+  const indexLines = existsSync(indexPath) ? readFileSync(indexPath, 'utf8').split('\n') : [];
+  return (heading) => {
+    const cmd = heading.split(/\s+/)[1];
+    if (!cmd) return null;
+    if (existsSync(join(upstreamDir, 'cmd', `${cmd}.js`))) return { file: `cmd/${cmd}.js`, line: 0 };
+    for (let i = 0; i < indexLines.length; i++) {
+      if (
+        new RegExp(`^\\s*${cmd}:\\s*require`).test(indexLines[i]) ||
+        new RegExp(`command\\('${cmd}'`).test(indexLines[i])
+      ) {
+        return { file: indexRel, line: i + 1 };
+      }
+    }
+    return null;
+  };
+}
+
+/**
+ * CLI docs: under each `## `<command>`` heading, insert one `[Command source on
+ * GitHub]` link resolved by `resolve`, pinned to the tag/SHA.
+ */
+function processCliMdx(
+  mdxPath: string,
+  cfg: RepoConfig,
+  pinRef: string,
+  resolve: CliResolver
+): { updated: number; missed: string[] } {
+  const content = readFileSync(mdxPath, 'utf8');
+  const lines = content.split('\n');
+  const out: string[] = [];
+  const missed: string[] = [];
+  let updated = 0;
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const m = line.match(CLI_HEADING);
+    if (m) {
+      out.push(line);
+      i++;
+      while (i < lines.length && lines[i].trim() === '') i++;
+      if (i < lines.length && CLI_DEF_LINK.test(lines[i].trim())) i++;
+      while (i < lines.length && lines[i].trim() === '') i++;
+
+      const hit = resolve(m[1].trim());
+      if (!hit) {
+        missed.push(m[1]);
+      } else {
+        const url =
+          hit.line > 0
+            ? githubBlobUrl(cfg, pinRef, hit.file, hit.line)
+            : githubBlobUrl(cfg, pinRef, hit.file, 0).replace(/#L0$/, '');
+        out.push('');
+        out.push(`[Command source on GitHub](${url})`);
+        out.push('');
+        updated++;
+      }
+      continue;
+    }
+    out.push(line);
+    i++;
+  }
+
+  const next = out.join('\n');
+  if (WRITE && next !== content) writeFileSync(mdxPath, next);
+  return { updated, missed };
+}
+
+/** Returns the first line in `upstreamDir/file` matching `pattern` (1-based), or null. */
+function findInFile(upstreamDir: string, file: string, pattern: RegExp): SourceHit | null {
+  const p = join(upstreamDir, file);
+  if (!existsSync(p)) return null;
+  const lines = readFileSync(p, 'utf8').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    if (pattern.test(lines[i])) return { file, line: i + 1 };
+  }
+  return null;
+}
+
+const CONFIG_DEF_LINK = /^\[Field source on GitHub\]\([^)]+\)\s*$/;
+const ANCHOR_LINE = /^<a name="([^"]+)"><\/a>\s*$/;
+
+/**
+ * Configuration doc: under each mapped `<a name="…">` field anchor, insert one
+ * `[Field source on GitHub]` link resolved from `urls`. Anchors absent from `urls`
+ * (prose sections, UI-library-defined keys) are left untouched.
+ */
+function processConfigMdx(
+  mdxPath: string,
+  urls: Map<string, string>
+): { updated: number; missed: string[] } {
+  const content = readFileSync(mdxPath, 'utf8');
+  const lines = content.split('\n');
+  const out: string[] = [];
+  let updated = 0;
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const am = line.match(ANCHOR_LINE);
+    const url = am ? urls.get(am[1]) : undefined;
+    if (am && url) {
+      out.push(line);
+      i++;
+      while (i < lines.length && lines[i].trim() === '') i++;
+      if (i < lines.length && CONFIG_DEF_LINK.test(lines[i].trim())) i++;
+      while (i < lines.length && lines[i].trim() === '') i++;
+      out.push('');
+      out.push(`[Field source on GitHub](${url})`);
+      out.push('');
+      updated++;
+      continue;
+    }
+    out.push(line);
+    i++;
+  }
+
+  const next = out.join('\n');
+  if (WRITE && next !== content) writeFileSync(mdxPath, next);
+  return { updated, missed: [] };
 }
 
 const dirs = [
@@ -494,16 +678,86 @@ for (const dir of dirs) {
       continue;
     }
 
-    const result = processMdx(join(fullDir, file), cfg, upstreamDir);
+    const pinRef = resolvePinRef(upstreamDir, cfg);
+    const result = processMdx(join(fullDir, file), cfg, upstreamDir, pinRef);
     totalUpdated += result.updated;
     if (result.missed.length) allMissed[slug] = result.missed;
     console.log(
-      `${slug}: ${result.updated} links${result.missed.length ? `, ${result.missed.length} unmatched` : ''}`
+      `${slug} @ ${pinRef}: ${result.updated} links${result.missed.length ? `, ${result.missed.length} unmatched` : ''}`
     );
     if (VERBOSE && result.missed.length) {
       for (const h of result.missed) console.log(`    ? ${h}`);
     }
   }
+}
+
+// CLI tool docs.
+const toolsDir = join(process.cwd(), 'content/reference/tools');
+if (existsSync(toolsDir)) {
+  for (const file of readdirSync(toolsDir).filter((f) => f.endsWith('.mdx'))) {
+    const slug = basename(file, '.mdx');
+    const cfg = TOOL_REPOS[slug];
+    if (!cfg) continue;
+
+    const upstreamDir = join(UPSTREAM_ROOT, slug);
+    if (!existsSync(upstreamDir)) {
+      console.warn(`skip ${slug}: missing ${upstreamDir}`);
+      continue;
+    }
+
+    const pinRef = resolvePinRef(upstreamDir, cfg);
+    const result = processCliMdx(join(toolsDir, file), cfg, pinRef, binResolver(upstreamDir));
+    totalUpdated += result.updated;
+    if (result.missed.length) allMissed[slug] = result.missed;
+    console.log(
+      `${slug} @ ${pinRef}: ${result.updated} command links${result.missed.length ? `, ${result.missed.length} unmatched` : ''}`
+    );
+    if (VERBOSE && result.missed.length) {
+      for (const h of result.missed) console.log(`    ? ${h}`);
+    }
+  }
+}
+
+// Pear CLI doc (content/reference/cli.mdx -> holepunchto/pear cmd/*.js).
+const cliPath = join(process.cwd(), 'content/reference/pear/cli.mdx');
+const pearDir = join(UPSTREAM_ROOT, 'pear');
+if (existsSync(cliPath) && existsSync(pearDir)) {
+  const cfg: RepoConfig = { org: 'holepunchto', repo: 'pear' };
+  const pinRef = resolvePinRef(pearDir, cfg);
+  const result = processCliMdx(cliPath, cfg, pinRef, pearResolver(pearDir));
+  totalUpdated += result.updated;
+  if (result.missed.length) allMissed['cli'] = result.missed;
+  console.log(
+    `cli @ ${pinRef}: ${result.updated} command links${result.missed.length ? `, ${result.missed.length} unmatched` : ''}`
+  );
+}
+
+// Configuration doc (content/reference/pear/configuration.mdx -> pear-state + pear).
+const configPath = join(process.cwd(), 'content/reference/pear/configuration.mdx');
+if (existsSync(configPath)) {
+  const urls = new Map<string, string>();
+  const configMissed: string[] = [];
+  for (const f of CONFIG_FIELDS) {
+    const dir = join(UPSTREAM_ROOT, f.repo);
+    if (!existsSync(dir)) {
+      console.warn(`skip config field ${f.anchor}: missing ${dir}`);
+      continue;
+    }
+    const cfg: RepoConfig = { org: 'holepunchto', repo: f.repo };
+    const pinRef = resolvePinRef(dir, cfg);
+    const hit = findInFile(dir, f.file, f.pattern);
+    if (!hit) {
+      configMissed.push(f.anchor);
+      continue;
+    }
+    urls.set(f.anchor, githubBlobUrl(cfg, pinRef, hit.file, hit.line));
+  }
+  const result = processConfigMdx(configPath, urls);
+  totalUpdated += result.updated;
+  if (configMissed.length) allMissed['configuration'] = configMissed;
+  console.log(
+    `configuration: ${result.updated} field links${configMissed.length ? `, ${configMissed.length} unresolved` : ''}`
+  );
 }
 
 if (Object.keys(allMissed).length) {

@@ -1,0 +1,88 @@
+---
+title: pear-ci GitHub Action
+description: >-
+  Reference for the holepunchto/actions/pear-ci GitHub Action — inputs, outputs,
+  validation, and the underlying pear-ci CLI for staging a Pear app from CI.
+docType: reference
+schemaType: APIReference
+---
+
+The [`pear-ci` GitHub Action](https://github.com/holepunchto/actions/blob/main/pear-ci/action.yml) stages a directory from your repository into a Hyperdrive on every run, producing a stable `pear://` link your app can use as its [`upgrade`](/reference/pear/configuration) field. For the task-oriented setup, see [Publish with GitHub Actions](/how-to/operate-an-app/github-actions/publish-with-github-actions).
+
+It is a composite action that installs the [`pear-ci`](https://www.npmjs.com/package/pear-ci) npm tool, fetches the committed snapshot from `main`, stages, and commits the updated snapshot back.
+
+## Usage
+
+```yaml
+- uses: holepunchto/actions/pear-ci@main
+  with:
+    primary-key: ${{ secrets.PEAR_PRIMARY_KEY }}
+    namespace: my-app
+    target: dist
+    dry-run: false
+```
+
+## Inputs
+
+| Input | Required | Default | Description |
+| --- | --- | --- | --- |
+| `primary-key` | Yes | — | 32-byte (64 hex character) key for the Corestore identity. Determines the drive's `pear://` link across runs. Store it as a secret. |
+| `namespace` | Yes | — | Drive namespace name. Combined with `primary-key` to derive the drive. Only letters, numbers, dots, hyphens, and underscores. |
+| `target` | Yes | — | Repo-relative path of the directory to stage. Must not be absolute or contain `..`. |
+| `dry-run` | No | `false` | When `true`, computes and logs the diff without writing to the drive or committing the snapshot. Must be `true` or `false`. |
+| `github-token` | No | `${{ github.token }}` | Token used to fetch and commit `ci/snapshot.json`. |
+| `app-slug` | No | — | When set, the snapshot commit is attributed to the matching GitHub App bot identity instead of `github-actions[bot]`. |
+
+## Outputs
+
+| Output | Description |
+| --- | --- |
+| `pr-url` | URL of the PR created if a direct push of the snapshot to `main` failed; empty otherwise. |
+
+## Input validation
+
+The action rejects malformed inputs before staging:
+
+- `primary-key` must match `^[a-fA-F0-9]{64}$`.
+- `namespace` must match `^[a-zA-Z0-9._-]+$`.
+- `target` must contain only `[a-zA-Z0-9_./-]`, must not be an absolute path, and must not contain `..` (no directory traversal).
+- `dry-run` must be exactly `true` or `false`.
+
+## Snapshot commits
+
+The action reads `ci/snapshot.json` from `main` before staging and writes it back afterward. The snapshot records each core's length so subsequent runs sync only what changed. When `dry-run` is `true`, no commit is made. If pushing the snapshot directly to `main` fails, the action pushes a `pear-ci/snapshot-<run-id>` branch and opens a PR, exposing its URL via the `pr-url` output.
+
+Grant the workflow `contents: write` (and `pull-requests: write` if you want the PR fallback) so the snapshot commit can land.
+
+## Underlying CLI
+
+Outside of Actions, the same staging runs through the [`pear-ci`](https://www.npmjs.com/package/pear-ci) CLI:
+
+```bash
+npm install -g pear-ci
+pear-ci \
+  --primary-key <64-hex-key> \
+  --name my-app \
+  --target ./dist \
+  --snapshot ci/snapshot.json \
+  --storage /tmp/store
+```
+
+| Flag | Description |
+| --- | --- |
+| `--primary-key` | 32-byte hex key for the Corestore. |
+| `--name` | Namespace name used to derive the drive. |
+| `--target` | Local directory to mirror into the drive. |
+| `--snapshot` | Path to read/write the JSON snapshot. |
+| `--storage` | Corestore storage path. |
+| `--dry-run` | Compute the diff without writing to the drive. |
+
+The CLI logs the drive key it stages to (`starting stage for key <drive-key>`) — that key is your `pear://` link. See the [`pear-ci` README](https://github.com/holepunchto/pear-ci#readme) for the programmatic API and snapshot format.
+
+## See also
+
+- [Publish with GitHub Actions](/how-to/operate-an-app/github-actions/publish-with-github-actions) — step-by-step setup.
+- [Holepunch GitHub Actions](/reference/ci-and-release/github-actions) — the full catalog of shared actions this is part of.
+- [Configuration](/reference/pear/configuration) — the `upgrade` field this link feeds.
+- [Hyperdrive](/reference/building-blocks/hyperdrive) and [Hyperswarm](/reference/building-blocks/hyperswarm) — the building blocks `pear-ci` stages and replicates over.
+- [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment) — the manual staging flow.

@@ -28,24 +28,19 @@ export const customTree: Node[] = [
     },
     children: [
       {
-        type: 'page',
+        type: 'folder',
         name: 'Build a peer-to-peer chat',
-        url: '/getting-started/chat',
+        children: [
+          { type: 'page', name: 'Introduction', url: '/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat' },
+          { type: 'page', name: 'Reshape into a production app', url: '/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app' },
+          { type: 'page', name: 'Ship your app', url: '/getting-started/build-a-peer-to-peer-chat/ship' },
+          { type: 'page', name: 'Deploy over-the-air updates', url: '/getting-started/build-a-peer-to-peer-chat/update' },
+        ],
       },
       {
         type: 'page',
-        name: 'Add persistence with Corestore',
-        url: '/getting-started/production-shape',
-      },
-      {
-        type: 'page',
-        name: 'Ship your app',
-        url: '/getting-started/ship',
-      },
-      {
-        type: 'page',
-        name: 'Deploy over-the-air updates',
-        url: '/getting-started/update',
+        name: 'Start from the hello-pear-electron template',
+        url: '/getting-started/start-from-hello-pear-electron',
       },
     ],
   },
@@ -55,53 +50,70 @@ export const customTree: Node[] = [
     index: { type: 'page', name: 'About Pear', url: '/explanation' },
     children: [
       {
-        type: 'page',
-        name: 'Runtime and languages',
-        url: '/explanation/runtime-and-languages',
+        type: 'folder',
+        name: 'Platform foundations',
+        children: [
+          {
+            type: 'page',
+            name: 'Peer-to-peer, demystified',
+            url: '/explanation/peer-to-peer-demystified',
+          },
+          {
+            type: 'page',
+            name: 'Runtime and languages',
+            url: '/explanation/runtime-and-languages',
+          },
+          {
+            type: 'page',
+            name: 'Dependencies and network',
+            url: '/explanation/dependencies-and-network',
+          },
+        ],
       },
       {
-        type: 'page',
-        name: 'Dependencies and network',
-        url: '/explanation/dependencies-and-network',
+        type: 'folder',
+        name: 'Storing & replicating data',
+        children: [
+          {
+            type: 'page',
+            name: 'From append-only logs to files',
+            url: '/explanation/from-logs-to-files',
+          },
+          {
+            type: 'page',
+            name: 'Storage and distribution',
+            url: '/explanation/storage-and-distribution',
+          },
+          {
+            type: 'page',
+            name: 'Availability and blind peering',
+            url: '/explanation/availability-and-blind-peering',
+          },
+        ],
       },
       {
-        type: 'page',
-        name: 'Peer-to-peer, demystified',
-        url: '/explanation/peer-to-peer-demystified',
-      },
-      {
-        type: 'page',
-        name: 'From append-only logs to files',
-        url: '/explanation/from-logs-to-files',
-      },
-      {
-        type: 'page',
-        name: 'Storage and distribution',
-        url: '/explanation/storage-and-distribution',
-      },
-      {
-        type: 'page',
-        name: 'Workers',
-        url: '/explanation/workers',
-      },
-      {
-        type: 'page',
-        name: 'Pear desktop architecture',
-        url: '/explanation/pear-desktop-architecture',
-      },
-      {
-        type: 'page',
-        name: 'Availability and blind peering',
-        url: '/explanation/availability-and-blind-peering',
-      },
-      {
-        type: 'page',
-        name: 'Release pipeline',
-        url: '/explanation/release-pipeline',
+        type: 'folder',
+        name: 'Building & shipping apps',
+        children: [
+          {
+            type: 'page',
+            name: 'Pear desktop architecture',
+            url: '/explanation/pear-desktop-architecture',
+          },
+          {
+            type: 'page',
+            name: 'Workers',
+            url: '/explanation/workers',
+          },
+          {
+            type: 'page',
+            name: 'Release pipeline',
+            url: '/explanation/release-pipeline',
+          },
+        ],
       },
     ],
   },
-
   {
     type: 'folder',
     name: 'How To',
@@ -120,6 +132,11 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Connect to many peers by topic with Hyperswarm',
             url: '/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm',
+          },
+          {
+            type: 'page',
+            name: 'Host multiple rooms in one chat app',
+            url: '/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app',
           },
         ],
       },
@@ -141,54 +158,166 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Share append-only databases with Hyperbee',
             url: '/how-to/store-and-replicate/share-append-only-databases-with-hyperbee',
+          },         
+        ],
+      },
+      {
+        type: 'folder',
+        name: 'Blind peering',
+        children: [
+          {
+            type: 'page',
+            name: 'Keep data available with blind peering',
+            url: '/how-to/blind-peering/keep-data-available-with-blind-peering',
           },
           {
             type: 'page',
-            name: 'Create a full peer-to-peer filesystem with Hyperdrive',
-            url: '/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive',
+            name: 'Add blind peering to a chat app',
+            url: '/how-to/blind-peering/add-blind-peering-to-a-chat-app',
           },
         ],
       },
       {
         type: 'folder',
-        name: 'Operate your app',
+        name: 'Manage identity',
         children: [
           {
             type: 'page',
-            name: 'Deploy your application',
-            url: '/how-to/operate-an-app/deployment',
+            name: 'Create a portable identity with Keet identity keys',
+            url: '/how-to/manage-identity/create-a-portable-identity-with-keet-identity-key',
           },
           {
             type: 'page',
-            name: 'Build desktop distributables',
-            url: '/how-to/operate-an-app/build-desktop-distributables',
-          },
-          {
-            type: 'page',
-            name: 'Distribute as a binary',
-            url: '/how-to/operate-an-app/distribute-as-binary',
-          },
-          {
-            type: 'page',
-            name: 'Manage installed applications',
-            url: '/how-to/operate-an-app/manage-installed-applications',
-          },
-          {
-            type: 'page',
-            name: 'Apply recommended practices',
-            url: '/how-to/operate-an-app/recommended-practices',
-          },
-          {
-            type: 'page',
-            name: 'Troubleshoot desktop releases',
-            url: '/how-to/operate-an-app/troubleshoot-desktop-releases',
-          },
-          {
-            type: 'page',
-            name: 'Troubleshoot common issues',
-            url: '/how-to/operate-an-app/troubleshooting',
+            name: 'Add Keet identity to a chat app',
+            url: '/how-to/manage-identity/add-keet-identity-to-a-chat-app',
           },
         ],
+      },
+      {
+        type: 'folder',
+        name: 'Stream and share media',
+        children: [
+          {
+            type: 'page',
+            name: 'Create a full peer-to-peer filesystem with Hyperdrive',
+            url: '/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive',
+          },
+          {
+            type: 'page',
+            name: 'Store and serve large media with Hyperblobs',
+            url: '/how-to/stream-and-share-media/store-and-serve-large-media-with-hyperblobs',
+          },
+          {
+            type: 'page',
+            name: 'Share files in a peer-to-peer app',
+            url: '/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app',
+          },
+          {
+            type: 'page',
+            name: 'Back up photos in a peer-to-peer app',
+            url: '/how-to/stream-and-share-media/back-up-photos-in-a-peer-to-peer-app',
+          },
+          {
+            type: 'page',
+            name: 'Stream stored video in a peer-to-peer app',
+            url: '/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app',
+          },
+          {
+            type: 'page',
+            name: 'Stream a live camera in a peer-to-peer app',
+            url: '/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app',
+          },
+        ],
+      },
+      {
+        type: 'folder',
+        name: 'Release & distribute your app',
+        children: [
+          {
+            type: 'folder',
+            name: 'CI/CD with GitHub Actions',
+            children: [
+              {
+                type: 'page',
+                name: 'Build and sign desktop apps',
+                url: '/how-to/operate-an-app/github-actions/build-and-sign-in-ci',
+              },
+              {
+                type: 'page',
+                name: 'Publish your app',
+                url: '/how-to/operate-an-app/github-actions/publish-with-github-actions',
+              },
+            ],
+          },
+          {
+            type: 'folder',
+            name: 'Build & package',
+            children: [
+              {
+                type: 'page',
+                name: 'Build desktop distributables',
+                url: '/how-to/operate-an-app/build-and-package/build-desktop-distributables',
+              },
+              {
+                type: 'page',
+                name: 'Distribute as a binary',
+                url: '/how-to/operate-an-app/build-and-package/distribute-as-binary',
+              },
+            ],
+          },
+          {
+            type: 'folder',
+            name: 'Manual deployment',
+            children: [
+              {
+                type: 'page',
+                name: 'Deploy your application',
+                url: '/how-to/operate-an-app/manual-deployment/deployment',
+              },
+              {
+                type: 'page',
+                name: 'Troubleshoot desktop releases',
+                url: '/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases',
+              },
+            ],
+          },
+          {
+            type: 'folder',
+            name: 'Multisig',
+            children: [
+              {
+                type: 'page',
+                name: 'Set up multisig',
+                url: '/how-to/operate-an-app/multisig/set-up-multisig',
+              },
+              {
+                type: 'page',
+                name: 'Sign with multisig',
+                url: '/how-to/operate-an-app/multisig/sign-with-multisig',
+              },
+              {
+                type: 'page',
+                name: 'Troubleshoot multisig',
+                url: '/how-to/operate-an-app/multisig/troubleshoot-multisig',
+              },
+            ],
+          },
+          {
+            type: 'page',
+            name: 'Migrate from pear run to pear-runtime',
+            url: '/how-to/operate-an-app/migration',
+          },
+        ],
+      },
+      {
+        type: 'page',
+        name: 'Manage installed applications',
+        url: '/how-to/manage-installed-applications',
+      },
+      {
+        type: 'page',
+        name: 'Troubleshoot common issues',
+        url: '/how-to/troubleshooting',
       },
     ],
   },
@@ -199,29 +328,64 @@ export const customTree: Node[] = [
     index: { type: 'page', name: 'Reference', url: '/reference' },
     children: [
       {
-        type: 'page',
-        name: 'Command Line Interface (CLI)',
-        url: '/reference/cli',
+        type: 'folder',
+        name: 'Pear',
+        children: [
+          {
+            type: 'page',
+            name: 'Command Line Interface (CLI)',
+            url: '/reference/pear/cli',
+          },
+          { type: 'page', name: 'Runtime', url: '/reference/pear/runtime' },
+          {
+            type: 'page',
+            name: 'Configuration',
+            url: '/reference/pear/configuration',
+          },
+          {
+            type: 'page',
+            name: 'Application Programming Interface (API)',
+            url: '/reference/pear/api',
+          },
+        ],
       },
-      { type: 'page', name: 'Runtime', url: '/reference/runtime' },
-      { type: 'page', name: 'Configuration', url: '/reference/configuration' },
       {
-        type: 'page',
-        name: 'Release pipeline glossary',
-        url: '/reference/release-pipeline-glossary',
+        type: 'folder',
+        name: 'CI & release',
+        children: [
+          {
+            type: 'page',
+            name: 'Desktop release npm scripts',
+            url: '/reference/ci-and-release/desktop-release-npm-scripts',
+          },
+          {
+            type: 'page',
+            name: 'Holepunch GitHub Actions',
+            url: '/reference/ci-and-release/github-actions',
+          },
+          {
+            type: 'page',
+            name: 'pear-ci GitHub Action',
+            url: '/reference/ci-and-release/pear-ci-action',
+          },
+        ],
       },
       {
-        type: 'page',
-        name: 'Desktop release npm scripts',
-        url: '/reference/desktop-release-npm-scripts',
+        type: 'folder',
+        name: 'Modules',
+        children: [
+          {
+            type: 'page',
+            name: 'Pear modules',
+            url: '/reference/modules/pear-modules',
+          },
+          {
+            type: 'page',
+            name: 'Bare modules',
+            url: '/reference/modules/bare-modules',
+          },
+        ],
       },
-      {
-        type: 'page',
-        name: 'Application Programming Interface (API)',
-        url: '/reference/api',
-      },
-      { type: 'page', name: 'Modules', url: '/reference/modules' },
-      { type: 'page', name: 'Bare modules', url: '/reference/bare-modules' },
       {
         type: 'folder',
         name: 'Building blocks',

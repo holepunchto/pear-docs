@@ -42,58 +42,9 @@ This will install the following dependencies:
 
 Create the `bee-writer-app/index.js` file with the following content:
 
-```javascript example=hyperbee-kv step=write file=bee-writer-app/index.js
-import fsp from 'bare-fs/promises'
-import process from 'bare-process'
-import Hyperswarm from 'hyperswarm'
-import Corestore from 'corestore'
-import Hyperbee from 'hyperbee'
-import b4a from 'b4a'
-// create a corestore instance with the given location
-const store = new Corestore('./bee-writer-storage')
+A [Corestore](/reference/helpers/corestore) holds the backing core (L8), and a [Hyperswarm](/reference/building-blocks/hyperswarm) replicates it on every connection (L10–L14). The Hyperbee is built on a named core (L17) with UTF-8 key/value encoding (L20–L23). Once the core is ready (L26) it joins the swarm on the core's discovery key (L29), and the writable key is printed only after the topic is announced to the DHT (L32–L34). On the first run (`core.length <= 1`), the dictionary is loaded and inserted in a single atomic batch (L38–L47); on later runs it just re-seeds the existing data (L48–L50).
 
-const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
-
-// replication of corestore instance
-swarm.on('connection', conn => store.replicate(conn))
-
-// creation of Hypercore instance (if not already created)
-const core = store.get({ name: 'my-bee-core' })
-
-// creation of Hyperbee instance using the core instance 
-const bee = new Hyperbee(core, {
-  keyEncoding: 'utf-8',
-  valueEncoding: 'utf-8'
-})
-
-// wait till all the properties of the hypercore are initialized
-await core.ready()
-
-// join a topic
-const discovery = swarm.join(core.discoveryKey)
-
-// Only display the key once the Hyperbee has been announced to the DHT
-discovery.flushed().then(() => {
-  console.log('bee key:', b4a.toString(core.key, 'hex'))
-})
-
-// Only import the dictionary the first time this script is executed
-// The first block will always be the Hyperbee header block
-if (core.length <= 1) {
-  console.log('importing dictionary...')
-  const dict = JSON.parse(
-    await fsp.readFile(new URL('./dict.json', import.meta.url))
-  )
-  const batch = bee.batch()
-  for (const { key, value } of dict) {
-    await batch.put(key, value)
-  }
-  await batch.flush()
-} else {
-  // Otherwise just seed the previously-imported dictionary
-  console.log('seeding dictionary...')
-}
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/share-append-only-databases-with-hyperbee/bee-writer-app/index.js title="bee-writer-app/index.js" lineNumbers {8,10-14,17,20-23,26,29,32-34,38-47}
 ```
 ### Save the `dict.json` file
 
@@ -143,56 +94,9 @@ Create the `bee-reader-app/index.js` file with the following content:
 
 Alter the generated `bee-reader-app/index.js` file to the following
 
-```javascript example=hyperbee-kv step=write file=bee-reader-app/index.js
-import process from 'bare-process'
-import Hyperswarm from 'hyperswarm'
-import Corestore from 'corestore'
-import Hyperbee from 'hyperbee'
-import Pipe from 'bare-pipe'
-import b4a from 'b4a'
+The reader takes the writer's public key as a command-line argument (L8–L10) and opens that core through its own [Corestore](/reference/helpers/corestore) (L13), replicated over [Hyperswarm](/reference/building-blocks/hyperswarm) (L15–L19). The core is reopened from the supplied key (L22) and wrapped in a Hyperbee with matching UTF-8 encoding (L25–L28). After `ready()` (L31) it joins the same topic (L37) and reads words from stdin (L39): each query calls `bee.get(word)` and prints the value, downloading only the blocks needed to satisfy it (L41–L48).
 
-const key = Bare.argv[2]
-
-if (!key) throw new Error('provide a key')
-
-// creation of a corestore instance 
-const store = new Corestore('./bee-reader-storage')
-
-const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
-
-// replication of the corestore instance on connection with other peers
-swarm.on('connection', (conn) => store.replicate(conn))
-
-// create or get the hypercore using the public key supplied as command-line argument
-const core = store.get({ key: b4a.from(key, 'hex') })
-
-// create a hyperbee instance using the hypercore instance
-const bee = new Hyperbee(core, {
-  keyEncoding: 'utf-8',
-  valueEncoding: 'utf-8'
-})
-
-// wait till the hypercore properties to be initialized
-await core.ready()
-
-// logging the public key of the hypercore instance
-console.log('core key here is:', core.key.toString('hex'))
-
-// Attempt to connect to peers
-swarm.join(core.discoveryKey)
-
-const stdin = new Pipe(0)
-
-stdin.on('data', (data) => {
-  const word = data.toString().trim()
-  if (!word.length) return
-  bee.get(word).then(node => {
-    if (!node || !node.value) console.log(`No dictionary entry for ${word}`)
-    else console.log(`${word} -> ${node.value}`)
-    setImmediate(console.log) // flush hack
-  }, console.error)
-})
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/share-append-only-databases-with-hyperbee/bee-reader-app/index.js title="bee-reader-app/index.js" lineNumbers {8-10,13,15-19,22,25-28,31,37,39,41-48}
 ```
 
 ### Run the `bee-reader-app`
@@ -246,44 +150,9 @@ This will install the following dependencies:
 
 Create the `core-reader-app/index.js` file with the following content:
 
-```javascript example=hyperbee-kv step=write file=core-reader-app/index.js
-import process from 'bare-process'
-import Hyperswarm from 'hyperswarm'
-import Corestore from 'corestore'
-import b4a from 'b4a'
-import { Node } from 'hyperbee/lib/messages.js'
+This app treats the Hyperbee purely as a Hypercore. It imports Hyperbee's `Node` encoding directly so it can decode tree nodes (L6), takes the writer's key as an argument (L8–L10), and opens the core through a [Corestore](/reference/helpers/corestore) (L13) replicated over [Hyperswarm](/reference/building-blocks/hyperswarm) (L15–L19). The core is reopened from the key and made ready (L22–L24), then joins the topic and waits for the swarm to flush (L27–L28). After pulling the latest metadata with `core.update()` (L31), it fetches the last block by sequence number (L33–L34) and logs it both raw and decoded through `Node.decode` (L37–L38).
 
-const key = Bare.argv[2]
-
-if (!key) throw new Error('provide a key')
-
-// creation of a corestore instance 
-const store = new Corestore('./reader-storage')
-
-const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
-
-// replication of the corestore instance on connection with other peers
-swarm.on('connection', conn => store.replicate(conn))
-
-// create or get the hypercore using the public key supplied as command-line argument
-const core = store.get({ key: b4a.from(key, 'hex') })
-// wait till the properties of the hypercore instance are initialized
-await core.ready()
-
-// join a topic
-swarm.join(core.discoveryKey)
-await swarm.flush()
-
-// update the meta-data information of the hypercore instance
-await core.update()
-
-const seq = core.length - 1
-const lastBlock = await core.get(core.length - 1)
-
-// print the information about the last block or the latest block of the hypercore instance
-console.log(`Raw Block ${seq}:`, lastBlock)
-console.log(`Decoded Block ${seq}`, Node.decode(lastBlock))
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/share-append-only-databases-with-hyperbee/core-reader-app/index.js title="core-reader-app/index.js" lineNumbers {6,8-10,13,15-19,22-24,27-28,31,33-34,37-38}
 ```
 
 ### Run the `core-reader-app`
@@ -301,7 +170,7 @@ Note that these blocks are encoded using Hyperbee's `Node` encoding, which has b
 
 ## See also
 
-- [Create a full peer-to-peer filesystem with Hyperdrive](/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive) — a richer data structure built on the same Hyperbee primitive.
+- [Create a full peer-to-peer filesystem with Hyperdrive](/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive) — a richer data structure built on the same Hyperbee primitive.
 - [Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore) — the Corestore patterns this guide builds on.
 - [Hyperbee reference](/reference/building-blocks/hyperbee) — full API.
 - [Corestore reference](/reference/helpers/corestore) — full API for the store used to manage and replicate the backing core.

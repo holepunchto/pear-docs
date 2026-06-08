@@ -21,6 +21,10 @@ For example, Keet implements its relaying system wherein other call participants
 Use the HyperDHT to create a basic CLI chat app where a client peer connects to a server peer by public key.
 The example consists of two applications: [`client-app`](#create-the-client-app) and [`server-app`](#create-the-server-app).
 
+<Callout type="info">
+This guide is a terminal-only walkthrough. For the **desktop equivalent** — the same peer connection wired into an Electron + Bare worker shell — follow the [Getting Started path](/getting-started), which builds a `pear://` chat app on top of the [`hello-pear-electron` template](/getting-started/start-from-hello-pear-electron).
+</Callout>
+
 ## Create the server app
 
 The `server-app` creates a key pair, starts a server listening on it, and logs the public key. Copy that key — the client uses it to connect.
@@ -39,37 +43,11 @@ npm install hyperdht b4a bare-process
 
 ### Add the server logic
 
-Alter `server-app/index.js` to the following:
+Alter `server-app/index.js` to the following.
 
-```javascript example=hyperdht-chat step=write file=server-app/index.js
-import DHT from 'hyperdht'
-import b4a from 'b4a'
-import process from 'bare-process'
+The server starts a DHT node (L5) and generates a key pair that serves as its identity in the DHT (L8), then derives a hex string `name` from the public key to print and share (L9). `dht.createServer` registers a connection handler (L11–L13) that logs each connecting peer, wires incoming data to the console, and forwards local stdin to the connection (L15–L19). Finally, `server.listen(keyPair)` announces the key on the DHT and logs the public key for the client to copy (L22–L24):
 
-const dht = new DHT()
-
-// This keypair is the peer identifier in the DHT
-const keyPair = DHT.keyPair()
-const name = b4a.toString(keyPair.publicKey, 'hex')
-
-const server = dht.createServer(conn => {
-  const peer = b4a.toString(conn.remotePublicKey, 'hex')
-  console.log('* got a connection from:', peer, '*')
-
-  conn.on('data', data => console.log(`${peer}: ${data}`))
-  process.stdin.on('data', d => {
-    console.log(`${name}: ${d}`)
-    conn.write(d)
-  })
-})
-
-server.listen(keyPair).then(() => {
-  console.log('listening on:', name)
-})
-
-// Unannounce the public key before exiting the process
-// (Not strictly required, but it helps avoid DHT pollution.)
-process.once('SIGINT', () => server.close().then(() => process.exit(0)))
+```javascript file=<rootDir>/examples/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht/server-app/index.js title="server-app/index.js" lineNumbers {5,8-9,11-13,15-19,22-24}
 ```
 
 ### Run the server
@@ -96,37 +74,11 @@ npm install hyperdht b4a bare-process
 
 ### Add the client logic
 
-Alter `client-app/index.js` to the following:
+Alter `client-app/index.js` to the following.
 
-```javascript example=hyperdht-chat step=write file=client-app/index.js
-import DHT from 'hyperdht'
-import b4a from 'b4a'
-import process from 'bare-process'
+The client reads the server's public key from the command-line argument and fails fast if it is missing (L6–L7), then decodes it from hex (L10). It starts its own DHT node (L12–L13) and calls `dht.connect(publicKey)` to begin hole punching toward the server (L15). The `open` handler logs the connected peer once the link is established (L16–L19), the `data` handler prints incoming messages (L21–L24), and local stdin is written to the connection (L26–L29):
 
-const key = Bare.argv[2]
-if (!key) throw new Error('provide a key')
-
-console.log('Connecting to:', key)
-const publicKey = b4a.from(key, 'hex')
-
-const dht = new DHT()
-const name = b4a.toString(dht.defaultKeyPair.publicKey, 'hex')
-
-const conn = dht.connect(publicKey)
-conn.once('open', () => {
-  const peer = b4a.toString(conn.remotePublicKey, 'hex')
-  console.log('* got a connection from:', peer, '*')
-})
-
-conn.on('data', data => {
-  const peer = b4a.toString(conn.remotePublicKey, 'hex')
-  console.log(`${peer}: ${data}`)
-})
-
-process.stdin.on('data', d => {
-  console.log(`${name}: ${d}`)
-  conn.write(d)
-})
+```javascript file=<rootDir>/examples/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht/client-app/index.js title="client-app/index.js" lineNumbers {6-7,10,12-13,15,16-19,21-24,26-29}
 ```
 
 ### Run the chat client

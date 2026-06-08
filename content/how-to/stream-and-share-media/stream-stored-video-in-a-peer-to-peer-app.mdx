@@ -1,0 +1,104 @@
+---
+title: "Stream stored video in a peer-to-peer app"
+description: >-
+  Serve stored video files over hypercore-blob-server so peers can stream them
+  with range requests on top of the hello-pear-electron scaffold.
+docType: how-to
+schemaType: TechArticle
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+This guide shows you how to **stream a stored video file peer-to-peer** by adapting the [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) scaffold to publish video blobs through [Hyperblobs](https://www.npmjs.com/package/hyperblobs) and serve them with [`hypercore-blob-server`](https://www.npmjs.com/package/hypercore-blob-server). The reference implementation is [`pear-video-stream`](https://github.com/holepunchto/pear-docs/tree/feat/more-how-tos/examples/how-to/stream-and-share-media/video-stream).
+
+<include>../../_snippets/_pear-end-portability-callout.mdx</include>
+
+This is a **delta-only** how-to. The shared scaffold is explained in the [Start from the hello-pear-electron template](/getting-started/start-from-hello-pear-electron) tutorial — read it first.
+
+- [Stream a live camera in a peer-to-peer app](/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app) — the live counterpart that builds on the same blob plumbing.
+
+## Before you begin
+
+- A working clone of `hello-pear-electron` (or your own app built from the getting-started path).
+- A stored video file (`.mp4`, `.webm`) you want to share.
+
+## What changes
+
+| Layer | Change |
+| --- | --- |
+| Dependencies | Add [`hyperblobs`](https://www.npmjs.com/package/hyperblobs), [`hypercore-blob-server`](https://www.npmjs.com/package/hypercore-blob-server), [`hypercore-id-encoding`](https://www.npmjs.com/package/hypercore-id-encoding), and [`get-mime-type`](https://www.npmjs.com/package/get-mime-type). |
+| Worker | Add a Hyperblobs core in the worker; store each video as one blob and attach a blob-server link to every entry. |
+| Worker transport | Add an `add-video` ingest (an `{ type: 'add-video', filePath }` control message) and a `videos` snapshot whose entries carry a playable link. |
+| Renderer | Render a video player on the selected entry's link. |
+
+The Electron shell, preload bridge, packaging, and graceful teardown stay as in hello-pear-electron.
+
+## Steps
+
+<Steps>
+
+<Step>
+
+### Add the dependencies
+
+```bash skip="desktop-gui"
+npm install hyperblobs hypercore-blob-server hypercore-id-encoding get-mime-type
+```
+
+</Step>
+
+<Step>
+
+### Publish each video as a Hyperblob
+
+`workers/video-room.js` (`VideoRoom`) keeps the tutorial's Autobase + pairing, and constructs a Hyperblobs core plus a `hypercore-blob-server`. `addVideo` resolves the file name and checks the MIME type with [`get-mime-type`](https://www.npmjs.com/package/get-mime-type), rejecting anything that is not a `video/*` type (L180–L184). It then pipes the file off disk into a blobs write stream (L186–L192), captures the resulting `blob` descriptor (the blobs core key plus the write stream's byte id, L193), and appends `{ id, name, type, blob, info }` to the base so the view records it (L196–L198):
+
+```js file=<rootDir>/examples/how-to/stream-and-share-media/video-stream/workers/video-room.js#L179-L199 title="workers/video-room.js" lineNumbers {180-184,186-193,196-198}
+```
+
+</Step>
+
+<Step>
+
+### Serve the blob locally
+
+The server speaks HTTP **range requests**, so the player handles seeking without downloading the whole file. `getVideos` reads the stored entries from the view (L164), and for each one whose blobs core it has not seen yet, opens that core and joins its swarm topic on demand (L165–L172). It then maps every entry to attach a playable `info.link` from `blobServer.getLink` before returning to the renderer (L173–L176):
+
+```js file=<rootDir>/examples/how-to/stream-and-share-media/video-stream/workers/video-room.js#L163-L177 title="workers/video-room.js" lineNumbers {164,165-172,173-176}
+```
+
+</Step>
+
+<Step>
+
+### Render a `<video>` element
+
+In the renderer, create a `<video controls>` element and set its `src` to `video.info.link` for the selected entry. The first peer who clicks Play triggers a range request, the worker pulls the byte range from the Hyperblob, and the player streams.
+
+</Step>
+
+</Steps>
+
+## Run it
+
+```bash skip="desktop-gui"
+npm run build
+
+# host
+npm start -- --storage /tmp/video-host --name host
+```
+
+Drop a video file into the window (the renderer forwards the path via `webUtils.getPathForFile`). In a second terminal:
+
+```bash skip="desktop-gui"
+npm start -- --storage /tmp/video-viewer --name viewer --invite <invite>
+```
+
+The viewer sees the entry, clicks Play, and the player streams range by range over the replicated Hyperblobs.
+
+## Where to go next
+
+- [Store and serve large media with Hyperblobs](/how-to/stream-and-share-media/store-and-serve-large-media-with-hyperblobs) — the Pear/Bare blob primitive behind this app, with no UI.
+- [Stream a live camera in a peer-to-peer app](/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app) — same blob mechanics for live frames.
+- [Back up photos in a peer-to-peer app](/how-to/stream-and-share-media/back-up-photos-in-a-peer-to-peer-app) — same scaffold with `bare-ffmpeg`/`bare-media` for media decoding.
+- [Storage and distribution](/explanation/storage-and-distribution) — why range-served blobs scale well in a P2P swarm.

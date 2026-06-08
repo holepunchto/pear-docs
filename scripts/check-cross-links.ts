@@ -64,19 +64,18 @@ const EXEMPT_FROM_ORPHAN = new Set<string>([
   '/how-to',
   '/reference',
   '/explanation',
-  '/tutorials',
 ]);
 
 const STRICT = process.argv.includes('--strict');
 
 /** Curated canonical terms for pages whose title isn't a single distinctive word. */
 const CURATED_CANONICALS: Canonical[] = [
-  { slug: '/reference/cli', term: 'Pear CLI', aliases: ['`pear` CLI'] },
-  { slug: '/reference/runtime', term: '`pear-runtime`', aliases: ['pear-runtime module'] },
-  { slug: '/reference/configuration', term: 'Pear configuration' },
-  { slug: '/reference/api', term: 'Pear API' },
-  { slug: '/reference/modules', term: 'Pear modules' },
-  { slug: '/reference/bare-modules', term: 'Bare modules' },
+  { slug: '/reference/pear/cli', term: 'Pear CLI', aliases: ['`pear` CLI'] },
+  { slug: '/reference/pear/runtime', term: '`pear-runtime`', aliases: ['pear-runtime module'] },
+  { slug: '/reference/pear/configuration', term: 'Pear configuration' },
+  { slug: '/reference/pear/api', term: 'Pear API' },
+  { slug: '/reference/modules/pear-modules', term: 'Pear modules' },
+  { slug: '/reference/modules/bare-modules', term: 'Bare modules' },
   { slug: '/explanation/runtime-and-languages', term: 'Runtime and languages' },
   { slug: '/explanation/storage-and-distribution', term: 'Storage and distribution' },
   { slug: '/explanation/dependencies-and-network', term: 'Dependencies and network' },

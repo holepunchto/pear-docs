@@ -1,0 +1,132 @@
+---
+title: "Add blind peering to a chat app"
+description: >-
+  Keep a chat room reachable when none of its writers are online by attaching a
+  blind-peering relay on top of the pear-chat scaffold.
+docType: how-to
+schemaType: TechArticle
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+This guide shows you how to **layer [blind peering](/explanation/availability-and-blind-peering) on top of [`pear-chat`](https://github.com/holepunchto/pear-docs/tree/feat/more-how-tos/examples/getting-started/pear-chat)** so the room stays reachable even when none of its writers are connected. The reference implementation is [`pear-chat-blind-peering`](https://github.com/holepunchto/pear-docs/tree/feat/more-how-tos/examples/how-to/blind-peering/add-blind-peering-to-a-chat-app).
+
+<include>../../_snippets/_pear-end-portability-callout.mdx</include>
+
+<include>../../_snippets/_delta-only-callout.mdx</include>
+
+- [Availability and blind peering](/explanation/availability-and-blind-peering) — why you want a third party that replicates without being able to read.
+
+## Before you begin
+
+- A working clone of `pear-chat` (or your own app built from [Reshape into a production app](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app)).
+- Comfort with [Autobase](/reference/building-blocks/autobase) and [Hyperswarm](/reference/building-blocks/hyperswarm).
+
+## What changes
+
+| Layer | Change |
+| --- | --- |
+| Dependencies | Add [`blind-peering`](https://www.npmjs.com/package/blind-peering). |
+| Worker entrypoint | Declare a `--blind-peer-key` flag in `workers/index.js` so the key(s) reach the worker. |
+| Worker | Instantiate a `BlindPeering` client against the swarm, point it at one or more blind-peer public keys, register the room's Autobase, and tear it down before the room. |
+| Renderer | Optional: surface the configured blind-peer keys, or let users supply their own. |
+
+Everything else — `electron/`, `spec/`, the vanilla `renderer/`, the forge config, the build assets — stays as in the getting-started chat app.
+
+## Steps
+
+<Steps>
+
+<Step>
+
+### Add the dependency
+
+```bash skip="desktop-gui"
+npm install blind-peering
+```
+
+</Step>
+
+<Step>
+
+### Declare the `--blind-peer-key` flag
+
+The worker only sees the flags `workers/index.js` declares with [`paparam`](https://www.npmjs.com/package/paparam). Add `--blind-peer-key` to the `command(...)` block so the key(s) you pass on the command line reach `WorkerTask` — without this, the runtime bails with `UNKNOWN_FLAG: blind-peer-key`:
+
+```diff title="workers/index.js"
+ const cmd = command('pear-chat',
++  flag('--blind-peer-key|-b <blindPeerKey>', 'Blind peer key').multiple(),
+   flag('--invite|-i <invite>', 'Room invite'),
+   flag('--name|-n <name>', 'Your name'),
+   flag('--reset', 'Reset')
+ )
+```
+
+`.multiple()` lets the flag repeat, so `cmd.flags.blindPeerKey` is an **array** of keys. `cmd.flags` is already passed to `WorkerTask`, which reads it as `opts.blindPeerKey` in the next step.
+
+</Step>
+
+<Step>
+
+### Wire a `BlindPeering` into `WorkerTask`
+
+In `workers/worker-task.js`, instantiate [`BlindPeering`](https://www.npmjs.com/package/blind-peering) against the swarm and a [Corestore](/reference/helpers/corestore) namespace, pointing it at the public keys of the blind peers you want to mirror to (L23–L25, reading the keys collected from `opts.blindPeerKey` at L15). Register the room's Autobase once it is open (L36). Close it **before** the room so its connections release cleanly (L55):
+
+```js file=<rootDir>/examples/how-to/blind-peering/add-blind-peering-to-a-chat-app/workers/worker-task.js title="workers/worker-task.js" lineNumbers {1,15,23-25,36,55}
+```
+The blind peers replicate and seed the room's encrypted [Autobase](/reference/building-blocks/autobase) without holding its read key. Point the client at blind-peer keys you run yourself (the [`blind-peer`](https://github.com/holepunchto/blind-peer-cli) CLI prints `Listening at <key>` on startup) or shared ones. See [Availability and blind peering](/explanation/availability-and-blind-peering) for the threat model (a blind peer replicates encrypted data but never holds the room encryption key).
+
+<Callout type="info">
+See [Availability and blind peering](/explanation/availability-and-blind-peering) for the threat model (a blind peer replicates encrypted data but never holds the room encryption key).
+</Callout>
+</Step>
+
+<Step>
+
+### Confirm the teardown order
+
+The order in `_close` matters (L52–L57): the room holds [`blind-pairing`](https://www.npmjs.com/package/blind-pairing) handles that depend on the swarm, and the blind-peering client holds its own connections to the blind peers. Always close the client first (L53), then the room, then the swarm, then the store (L54–L56).
+
+</Step>
+
+</Steps>
+
+## Run it
+
+You need three processes: 
+1. A **blind peer** that stays online to keep the room available, and 
+2. **two chat peers** (`user1` and `user2`) that can come and go. Open a terminal for each.
+
+### 1. Start a blind peer
+
+Run one with [`blind-peer-cli`](https://github.com/holepunchto/blind-peer-cli) (or point at a shared one you trust). On startup it logs a `Listening at <key>` line — copy that key, you pass it to both users as `--blind-peer-key`.
+
+```bash skip="blind-peer"
+npm install -g blind-peer-cli
+blind-peer
+# {"level":30, ... ,"msg":"Listening at es4n7ty45odd1udfqyi9xz58mrbheuhdnxgdufsn9gz6e5uhsqco"}
+```
+
+### 2. Start `user1` (creates the room)
+
+Pass the blind-peer key so the room's Autobase is mirrored. The app prints an `Invite:` line on stdout — copy it for `user2`:
+
+```bash skip="desktop-gui"
+npm run build
+npm start -- --storage /tmp/bp-user1 --name user1 --blind-peer-key <BLIND_PEER_KEY>
+```
+
+**3. Start `user2`** (joins the room). Pass the invite from `user1` and the same blind-peer key:
+
+```bash skip="desktop-gui"
+npm start -- --storage /tmp/bp-user2 --name user2 --invite <INVITE> --blind-peer-key <BLIND_PEER_KEY>
+```
+
+Both peers register the room's Autobase with the blind peer (you can repeat `--blind-peer-key` to use several). Now quit `user1`: `user2` still receives the existing history and stays in sync, because the blind peer keeps replicating the encrypted room even though neither writer is online. Restart `user1` and it catches up from the blind peer too — without ever handing it the room's read key.
+
+## Where to go next
+
+- [Keep data available with blind peering](/how-to/blind-peering/keep-data-available-with-blind-peering) — the same `blind-peering` client on its own, without the Electron shell.
+- [Availability and blind peering](/explanation/availability-and-blind-peering) — why a third-party replicator does not need to be trusted.
+- [Add Keet identity to a chat app](/how-to/manage-identity/add-keet-identity-to-a-chat-app) — keep your relay's identity portable.
+- [Build desktop distributables](/how-to/operate-an-app/build-and-package/build-desktop-distributables) — package the relay app for macOS, Windows, and Linux.
