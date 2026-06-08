@@ -1,16 +1,21 @@
 /**
- * Adds or refreshes GitHub links on library reference API entries:
+ * Adds or refreshes a single GitHub definition link per library reference API entry:
  *
- *   - `[API definition on GitHub]` under each `#### \`...\`` heading
- *   - `([GitHub](url))` on Signature, Parameters, and Returns bullets
+ *   - `[API definition on GitHub]` under each `#### \`...\`` heading (one per method)
+ *   - any legacy `([GitHub](url))` suffixes on Signature/Parameters/Returns bullets
+ *     are stripped — the heading link is the single source of truth.
  *
- * All links target upstream **source files only** (index.js, lib/*.js, bin.js).
+ * Links target upstream **source files only** (index.js, lib/*.js, bin.js) and are
+ * pinned to the cloned **release tag** (via `git describe --tags`), falling back to
+ * the checked-out commit SHA when a repo has no tags (e.g. bitfinexcom/hypertele).
+ * Clone each upstream repo at its tag before running (see the review plan, Phase 0).
  *
  * Usage:
- *   UPSTREAM_ROOT=/tmp/pear-upstream npm run add-api-github-links
+ *   UPSTREAM_ROOT=/tmp/pear-upstream npm run add-api-github-links -- --write
  */
 
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { join, basename } from 'node:path';
 
 const WRITE = process.argv.includes('--write');
@@ -64,14 +69,6 @@ function stripGithubLink(line: string): string {
   return line.replace(GITHUB_SUFFIX, '').replace(GITHUB_IN_LABEL, '');
 }
 
-function withGithubLink(line: string, url: string): string {
-  const base = stripGithubLink(line).trimEnd();
-  if (/^- Parameters:\s*$/.test(base)) {
-    return `- Parameters ([GitHub](${url})):`;
-  }
-  return `${base} ([GitHub](${url}))`;
-}
-
 function apiTokens(text: string): string[] {
   const tokens: string[] = [];
   const ctor = text.match(/new\s+([A-Za-z_$][\w$]*)/);
@@ -111,9 +108,22 @@ function classNameFromHeading(heading: string): string | null {
   return ctor[1];
 }
 
-function githubBlobUrl(cfg: RepoConfig, file: string, line: number): string {
-  const branch = cfg.branch ?? 'main';
-  return `https://github.com/${cfg.org}/${cfg.repo}/blob/${branch}/${file}#L${line}`;
+function resolvePinRef(upstreamDir: string, cfg: RepoConfig): string {
+  const run = (cmd: string): string | null => {
+    try {
+      return execSync(cmd, { cwd: upstreamDir, stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString()
+        .trim();
+    } catch {
+      return null;
+    }
+  };
+  // Prefer the release tag the repo was cloned at; fall back to the commit SHA.
+  return run('git describe --tags --exact-match') ?? run('git rev-parse HEAD') ?? cfg.branch ?? 'main';
+}
+
+function githubBlobUrl(cfg: RepoConfig, ref: string, file: string, line: number): string {
+  return `https://github.com/${cfg.org}/${cfg.repo}/blob/${ref}/${file}#L${line}`;
 }
 
 function collectImplFiles(upstreamDir: string): { path: string; lines: string[] }[] {
@@ -389,7 +399,8 @@ function resolveApiTargets(
 function processMdx(
   mdxPath: string,
   cfg: RepoConfig,
-  upstreamDir: string
+  upstreamDir: string,
+  pinRef: string
 ): { updated: number; missed: string[] } {
   const implFiles = collectImplFiles(upstreamDir);
   const content = readFileSync(mdxPath, 'utf8');
@@ -422,7 +433,7 @@ function processMdx(
       if (!targets.signature) {
         missed.push(heading);
       } else {
-        const url = githubBlobUrl(cfg, targets.signature.file, targets.signature.line);
+        const url = githubBlobUrl(cfg, pinRef, targets.signature.file, targets.signature.line);
         out.push('');
         out.push(`[API definition on GitHub](${url})`);
         updated++;
@@ -437,27 +448,14 @@ function processMdx(
       continue;
     }
 
-    if (targets?.signature) {
-      if (/^- Signature:\s*/.test(line)) {
-        const url = githubBlobUrl(cfg, targets.signature.file, targets.signature.line);
-        out.push(withGithubLink(line, url));
-        updated++;
-        i++;
-        continue;
-      }
-      if (/^- Parameters(?::|\s+\(\[GitHub\])/.test(line)) {
-        const hit = targets.params ?? targets.signature;
-        const url = githubBlobUrl(cfg, hit.file, hit.line);
-        out.push(withGithubLink(line, url));
-        updated++;
-        i++;
-        continue;
-      }
-      if (/^- Returns:\s*/.test(line)) {
-        const hit = targets.returns ?? targets.signature;
-        const url = githubBlobUrl(cfg, hit.file, hit.line);
-        out.push(withGithubLink(line, url));
-        updated++;
+    // One link per method: strip any legacy per-bullet GitHub links inside a method block.
+    if (targets) {
+      if (
+        /^- Signature:\s*/.test(line) ||
+        /^- Parameters(?::|\s+\(\[GitHub\])/.test(line) ||
+        /^- Returns:\s*/.test(line)
+      ) {
+        out.push(stripGithubLink(line));
         i++;
         continue;
       }
@@ -494,11 +492,12 @@ for (const dir of dirs) {
       continue;
     }
 
-    const result = processMdx(join(fullDir, file), cfg, upstreamDir);
+    const pinRef = resolvePinRef(upstreamDir, cfg);
+    const result = processMdx(join(fullDir, file), cfg, upstreamDir, pinRef);
     totalUpdated += result.updated;
     if (result.missed.length) allMissed[slug] = result.missed;
     console.log(
-      `${slug}: ${result.updated} links${result.missed.length ? `, ${result.missed.length} unmatched` : ''}`
+      `${slug} @ ${pinRef}: ${result.updated} links${result.missed.length ? `, ${result.missed.length} unmatched` : ''}`
     );
     if (VERBOSE && result.missed.length) {
       for (const h of result.missed) console.log(`    ? ${h}`);
