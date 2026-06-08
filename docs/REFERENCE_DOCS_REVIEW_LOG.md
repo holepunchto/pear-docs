@@ -86,24 +86,23 @@ examples, callback-option signatures, and multi-word CLI subcommands read as "no
   upstream. The inverse — are there *new* upstream APIs the docs omit? — still needs a
   per-repo README/changelog diff for the high-traffic blocks (hypercore, hyperdrive,
   autobase, corestore).
-## Phase 3 — IA (reconciled with ADR 0001)
+## Phase 3 — IA restructure (ADR 0001 amended)
 
-Mid-restructure, `.local/decisions/0001-adopt-diataxis-ia.md` (Accepted) was found to
-**explicitly forbid the high-churn regroup**: §"Out of scope" keeps
-`reference/{api,cli,configuration,runtime}` flat ("those four pages stay where they are;
-no redirect needed"), and §1/§4 keep `modules.mdx` flat at the reference root. The
-`pear/` + `modules/` subfolder move (≈180 internal links across ≈50 files) would violate
-that decision, so it was **not done**.
+ADR 0001 originally kept `reference/{api,cli,configuration,runtime}` and `modules.mdx`
+flat. It was **amended (2026-06-08)** to nest reference pages by topic; the regroup was
+then executed:
 
-ADR-compatible IA changes applied:
-
-- **Orphans fixed** — `github-actions` and `pear-ci-action` were absent from
-  `reference/index.mdx`. Added a **"CI & release"** index subsection grouping
-  `desktop-release-npm-scripts`, `github-actions`, `pear-ci-action` (index-level grouping,
-  no file moves — matches how the ADR groups via the index/sidebar).
+- **Topic subfolders.** Moved the 9 flat pages into `reference/pear/` (cli, runtime,
+  configuration, api), `reference/modules/` (pear-modules ← modules, bare-modules), and
+  `reference/ci-and-release/` (desktop-release-npm-scripts, github-actions, pear-ci-action).
+- **184 internal links** rewritten across 40 content files. No redirects added for the
+  moved pages (per decision) — legacy `/reference/{cli,api,…}` URLs are not preserved.
+- **Nav** (`src/lib/custom-tree.ts`) regrouped under **Pear**, **CI & release**, **Modules**;
+  `check-cross-links.ts` canonical slugs and the generator's `cliPath` updated.
 - **api.mdx deprecation** — replaced the contradictory `## DEPRECATED` heading + `stable`
-  badge with a top-of-page deprecation `Callout` pointing to `pear-runtime`; page stays
-  put per ADR §"Out of scope".
+  badge with a top-of-page deprecation `Callout` pointing to `pear-runtime`.
+- Verified: `npm run build` succeeds; internal-links, doctypes, cross-links, and
+  types:check all pass.
 
 ## Outstanding
 
@@ -112,5 +111,3 @@ ADR-compatible IA changes applied:
   upstream. The inverse — are there *new* upstream APIs the docs omit? — still needs a
   per-repo README/changelog diff for the high-traffic blocks (hypercore, hyperdrive,
   autobase, corestore).
-- **Optional, needs ADR amendment:** the `pear/` + `modules/` regroup and any
-  `pear-ci-action`→`github-actions` content merge. Only pursue if ADR 0001 is amended.

@@ -328,34 +328,64 @@ export const customTree: Node[] = [
     index: { type: 'page', name: 'Reference', url: '/reference' },
     children: [
       {
-        type: 'page',
-        name: 'Command Line Interface (CLI)',
-        url: '/reference/cli',
+        type: 'folder',
+        name: 'Pear',
+        children: [
+          {
+            type: 'page',
+            name: 'Command Line Interface (CLI)',
+            url: '/reference/pear/cli',
+          },
+          { type: 'page', name: 'Runtime', url: '/reference/pear/runtime' },
+          {
+            type: 'page',
+            name: 'Configuration',
+            url: '/reference/pear/configuration',
+          },
+          {
+            type: 'page',
+            name: 'Application Programming Interface (API)',
+            url: '/reference/pear/api',
+          },
+        ],
       },
-      { type: 'page', name: 'Runtime', url: '/reference/runtime' },
-      { type: 'page', name: 'Configuration', url: '/reference/configuration' },
       {
-        type: 'page',
-        name: 'Desktop release npm scripts',
-        url: '/reference/desktop-release-npm-scripts',
+        type: 'folder',
+        name: 'CI & release',
+        children: [
+          {
+            type: 'page',
+            name: 'Desktop release npm scripts',
+            url: '/reference/ci-and-release/desktop-release-npm-scripts',
+          },
+          {
+            type: 'page',
+            name: 'Holepunch GitHub Actions',
+            url: '/reference/ci-and-release/github-actions',
+          },
+          {
+            type: 'page',
+            name: 'pear-ci GitHub Action',
+            url: '/reference/ci-and-release/pear-ci-action',
+          },
+        ],
       },
       {
-        type: 'page',
-        name: 'pear-ci GitHub Action',
-        url: '/reference/pear-ci-action',
+        type: 'folder',
+        name: 'Modules',
+        children: [
+          {
+            type: 'page',
+            name: 'Pear modules',
+            url: '/reference/modules/pear-modules',
+          },
+          {
+            type: 'page',
+            name: 'Bare modules',
+            url: '/reference/modules/bare-modules',
+          },
+        ],
       },
-      {
-        type: 'page',
-        name: 'Holepunch GitHub Actions',
-        url: '/reference/github-actions',
-      },
-      {
-        type: 'page',
-        name: 'Application Programming Interface (API)',
-        url: '/reference/api',
-      },
-      { type: 'page', name: 'Modules', url: '/reference/modules' },
-      { type: 'page', name: 'Bare modules', url: '/reference/bare-modules' },
       {
         type: 'folder',
         name: 'Building blocks',

@@ -9,19 +9,19 @@ A Pear application splits into two halves:
 1. a UI (the renderer, terminal, or mobile shell) and
 2. a **worker** that owns everything peer-to-peer. 
 
-The worker is a [Bare](/reference/bare-modules) process the host spawns at startup, and it's where [Hyperswarm](/reference/building-blocks/hyperswarm), [Corestore](/reference/helpers/corestore), [Hypercore](/reference/building-blocks/hypercore), and any native addons run.
+The worker is a [Bare](/reference/modules/bare-modules) process the host spawns at startup, and it's where [Hyperswarm](/reference/building-blocks/hyperswarm), [Corestore](/reference/helpers/corestore), [Hypercore](/reference/building-blocks/hypercore), and any native addons run.
 
 The two halves only ever see each other through a single [Inter-Process Communication (IPC)](/explanation/workers#the-ipc-contract) duplex stream.
 
 <Callout type="info">
-This page is about the pattern, not the API. For the call signatures and IPC stream type, see [Running workers in the runtime reference](/reference/runtime#running-workers).
+This page is about the pattern, not the API. For the call signatures and IPC stream type, see [Running workers in the runtime reference](/reference/pear/runtime#running-workers).
 </Callout>
 
 ## Workers as a local backend
 
 The mental model is **the worker is your application's local backend**. The renderer is a client to that backend in the same way a web app is a client to a remote API — it makes requests, it gets streaming events back, it doesn't own state. The difference is the "server" is a sibling process on the same machine, started and stopped by the host.
 
-In a desktop Pear app the host is the Electron main process; in a mobile Pear app it's the [Bare iOS / Bare Android](https://github.com/holepunchto) shell; in a terminal app it's the [`pear`](/reference/cli) CLI itself. The worker code is identical across all of them — only the UI half and the bridge that forwards [IPC](/explanation/workers#the-ipc-contract) change.
+In a desktop Pear app the host is the Electron main process; in a mobile Pear app it's the [Bare iOS / Bare Android](https://github.com/holepunchto) shell; in a terminal app it's the [`pear`](/reference/pear/cli) CLI itself. The worker code is identical across all of them — only the UI half and the bridge that forwards [IPC](/explanation/workers#the-ipc-contract) change.
 
 ## Why the split
 
@@ -42,7 +42,7 @@ See [Runtime and languages](/explanation/runtime-and-languages#one-codebase-many
 
 ## The IPC contract
 
-The host spawns a worker by calling [`pear.run`](/reference/runtime#running-workers) (or the static helper [`PearRuntime.run`](/reference/runtime#running-workers) for one-off cases) with the worker's entrypoint and a list of arguments:
+The host spawns a worker by calling [`pear.run`](/reference/pear/runtime#running-workers) (or the static helper [`PearRuntime.run`](/reference/pear/runtime#running-workers) for one-off cases) with the worker's entrypoint and a list of arguments:
 
 ```js
 const IPC = pear.run('./workers/main.js', [pear.storage])
@@ -84,7 +84,7 @@ It points at a per-app directory the host has already prepared (see [Storage and
 
 Raw Inter-Process Communication (IPC) carries **bytes**, not typed messages. For a handful of one-off signals, length-preserving writes or newline-delimited JSON may be enough (see [Compact encoding](/reference/helpers/compact-encoding) for binary framing). As the host–worker protocol grows, manually pairing requests and responses becomes error-prone.
 
-**[bare-rpc](/reference/bare-modules)** adds a thin Remote Procedure Call (RPC) layer on top of a duplex stream. Each message has a numeric command id and a payload; handlers dispatch on `req.command`:
+**[bare-rpc](/reference/modules/bare-modules)** adds a thin Remote Procedure Call (RPC) layer on top of a duplex stream. Each message has a numeric command id and a payload; handlers dispatch on `req.command`:
 
 ```js
 import RPC from 'bare-rpc'
@@ -165,11 +165,11 @@ A host can run more than one worker. Common patterns:
 - One **main worker** that owns the application's primary append-only logs and swarm membership. This is the usual shape and what [Reshape into a production app](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app) (part 2 of the getting started path) builds.
 - Additional **ephemeral workers** for one-off jobs — a heavy import, a video transcode, a synchronous CPU task — that exit when their work is done. These keep the main worker's event loop free.
 
-Each worker is its own [Bare](/reference/bare-modules) process, has its own [`IPC`](/reference/runtime#running-workers) stream on the host side — the duplex returned by [`PearRuntime.run`](/reference/runtime#running-workers) — and can be torn down independently. The host is responsible for cleaning up on Electron's [`before-quit`](https://www.electronjs.org/docs/latest/api/app#event-before-quit) event; see how [`getWorker()`](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app#read-the-electron-main-process) registers an `app.on('before-quit', …)` listener in the pear-chat tutorial for one way to wire that up.
+Each worker is its own [Bare](/reference/modules/bare-modules) process, has its own [`IPC`](/reference/pear/runtime#running-workers) stream on the host side — the duplex returned by [`PearRuntime.run`](/reference/pear/runtime#running-workers) — and can be torn down independently. The host is responsible for cleaning up on Electron's [`before-quit`](https://www.electronjs.org/docs/latest/api/app#event-before-quit) event; see how [`getWorker()`](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app#read-the-electron-main-process) registers an `app.on('before-quit', …)` listener in the pear-chat tutorial for one way to wire that up.
 
 ## See also
 
-- [Running workers in the runtime reference](/reference/runtime#running-workers) — `pear.run`, the `IPC` duplex stream, and `Bare.IPC` on the worker side.
+- [Running workers in the runtime reference](/reference/pear/runtime#running-workers) — `pear.run`, the `IPC` duplex stream, and `Bare.IPC` on the worker side.
 - [Runtime and languages](/explanation/runtime-and-languages) — the broader "Pear-end / UI" pattern, Bare's role, and how non-JavaScript code joins in via native addons.
 - [Pear desktop application architecture](/explanation/pear-desktop-architecture) — how workers, the preload bridge, and the OTA updater fit together in a real Electron app.
 - [Storage and distribution](/explanation/storage-and-distribution) — where `pear.storage` actually points on each operating system.

@@ -122,11 +122,11 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // task-oriented operating-an-app how-to section.
   out.push({
     from: '/how-to/operate-an-app/desktop-release-npm-scripts/',
-    to: '/reference/desktop-release-npm-scripts/',
+    to: '/reference/ci-and-release/desktop-release-npm-scripts/',
   });
   out.push({
     from: '/howto/desktop-release-npm-scripts/',
-    to: '/reference/desktop-release-npm-scripts/',
+    to: '/reference/ci-and-release/desktop-release-npm-scripts/',
   });
 
   // Release pipeline glossary was folded into the release-pipeline explanation

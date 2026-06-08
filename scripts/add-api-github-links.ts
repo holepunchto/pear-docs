@@ -644,7 +644,7 @@ if (existsSync(toolsDir)) {
 }
 
 // Pear CLI doc (content/reference/cli.mdx -> holepunchto/pear cmd/*.js).
-const cliPath = join(process.cwd(), 'content/reference/cli.mdx');
+const cliPath = join(process.cwd(), 'content/reference/pear/cli.mdx');
 const pearDir = join(UPSTREAM_ROOT, 'pear');
 if (existsSync(cliPath) && existsSync(pearDir)) {
   const cfg: RepoConfig = { org: 'holepunchto', repo: 'pear' };
