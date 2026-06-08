@@ -52,7 +52,7 @@ examples, callback-option signatures, and multi-word CLI subcommands read as "no
 
 | Doc | Repo @ pin | Links | Status |
 | --- | --- | --- | --- |
-| cli | holepunchto/pear @ v2.6.5 | 18 command links (→ `cmd/<cmd>.js`; `build` → `cmd/index.js`) | ⚠ see findings |
+| cli | holepunchto/pear @ v2.6.5 | 19 command links (→ `cmd/<cmd>.js`; `build` → `cmd/index.js`) | ✅ (multisig added) |
 | modules | individual `pear-*` repos | 36 module links, all resolve 200 | ✅ |
 | bare-modules | holepunchto/bare + `bare-*` | 56 module links, all resolve 200 | ✅ |
 | runtime | holepunchto/pear-runtime @ v1.1.4 | 3 symbol links (`Pear` ctor, `pear.run`, `pear.storage`) | ✅ |
@@ -61,15 +61,15 @@ examples, callback-option signatures, and multi-word CLI subcommands read as "no
 
 ### Accuracy findings — cli.mdx (vs holepunchto/pear @ v2.6.5)
 
-- **`pear install <link>` is stale** — not a registered command in `cmd/index.js` (the
-  command registry), absent from the README, and not provided by `pear-cmd`. The only
-  doc command with no resolvable definition. Recommend removing the section (or verifying
-  against a newer pear if `install` was reintroduced).
-- **`pear multisig` is missing** — it *is* a registered command (`cmd/multisig.js`,
-  `cmd/index.js:60`) and is documented in the multisig how-tos, but cli.mdx has no
-  `## `pear multisig`` section. Recommend adding it.
+- **`pear multisig` was missing — now added.** It is a registered command
+  (`cmd/multisig.js`, `cmd/index.js:151-295`) and is documented in the multisig how-tos,
+  but cli.mdx had no section. Added a `## `pear multisig [command]`` section with the
+  `keys get/list/add/remove`, `link`, `request`, `sign`, `verify`, `commit` subcommands.
+- **`pear install` is intentional, not stale.** The section is marked *upcoming* and
+  states it is not yet part of the CLI, pointing at the `pear-install` preview package —
+  so the generator correctly leaves it unlinked (no source in `pear` yet). Kept as-is.
 - `pear data`, `pear gc`, `pear sidecar` have upstream subcommands (`cmd/index.js:363-479`)
-  not enumerated in the doc — minor.
+  not all enumerated in the doc — minor.
 
 ### Deferred (with reason)
 
@@ -81,7 +81,6 @@ examples, callback-option signatures, and multi-word CLI subcommands read as "no
 
 ## Outstanding
 
-- **cli.mdx accuracy fixes:** remove stale `pear install`, add `pear multisig` (above).
 - **configuration.mdx linking:** resolve the config-parsing package, then link keys.
 - **Reverse-accuracy pass:** this log confirms no *documented* symbol is missing/renamed
   upstream. The inverse — are there *new* upstream APIs the docs omit? — still needs a
