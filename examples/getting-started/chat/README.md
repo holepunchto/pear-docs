@@ -8,7 +8,7 @@
 
 Step-by-step walkthrough: [Build a peer-to-peer chat](https://docs.pears.com/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat) (part 1 of the getting started path).
 
-> **Next:** [Reshape into a production app](https://docs.pears.com/getting-started/build-a-peer-to-peer-chat/production-shape) adds persistence, pairing, OTA wiring, and the full `hello-pear-electron` scaffold.
+> **Next:** [Reshape into a production app](https://docs.pears.com/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app) adds persistence, pairing, OTA wiring, and the full `hello-pear-electron` scaffold.
 
 ## Usage
 

@@ -1,19 +1,19 @@
 ---
 title: "Ship your app"
-description: "Third of four onboarding steps: pear touch, an upgrade link, electron-forge make, pear build, and pear stage to publish your first version."
+description: "Third of four onboarding steps: pear touch, an upgrade link, electron-forge make, pear build, pear stage, and pear provision to publish your first version."
 docType: getting-started
 schemaType: TechArticle
 ---
 
 import { Steps, Step } from 'fumadocs-ui/components/steps'
 
-This is **part 3 of 4** in the [getting started path](/getting-started). You take the production-shaped app from [part 2](/getting-started/build-a-peer-to-peer-chat/production-shape) and walk it through the first half of Pear's release pipeline:
+This is **part 3 of 4** in the [getting started path](/getting-started). You take the production-shaped app from [part 2](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app) and walk it through the first half of Pear's release pipeline:
 1. [Minting a `pear://` link](#touch-set-the-upgrade-link-and-seed)
 2. [Building per-OS distributables](#make-distributables)
-3. [Staging the very first version onto that link](#stage-and-release-the-first-version)
+3. [Staging and provisioning the first version onto those links](#stage-and-provision-the-first-version)
 
 <Callout type="info">
-[Deploy over-the-air updates](/getting-started/build-a-peer-to-peer-chat/update) (part 4 of 4) continues from here and demonstrates the live OTA cycle, plus a tour of `pear provision` and multisig.
+[Deploy over-the-air updates](/getting-started/build-a-peer-to-peer-chat/update) (part 4 of 4) continues from here and demonstrates the live OTA cycle on the provision link, plus a tour of multisig.
 </Callout>
 
 
@@ -30,7 +30,7 @@ flowchart LR
   P --> MS["7. Multisig"]
 ```
 
-This part stops after step 5 — the first `pear stage` plus `pear release`. You do not need cosigners, a Windows machine, or Apple signing credentials. The deeper guides cover the production-only material:
+This part stops after step 6 — the first `pear stage` plus `pear provision`. You do not need cosigners, a Windows machine, or Apple signing credentials. The deeper guides cover the production-only material:
 
 - [Deploy a Pear desktop app](/how-to/operate-an-app/manual-deployment/deployment) — every command, every release line.
 - [Build desktop distributables](/how-to/operate-an-app/build-and-package/build-desktop-distributables) — code-signing, notarization, MSIX publisher details.
@@ -41,7 +41,7 @@ This part stops after step 5 — the first `pear stage` plus `pear release`. You
 ## Before you start
 
 You need:
-1. The working production-shaped app from [part 2](/getting-started/build-a-peer-to-peer-chat/production-shape).
+1. The working production-shaped app from [part 2](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app).
 2. [`pear`](/reference/cli):
     - Install it with `npm i -g pear` or run via `npx pear`.
     - Every `pear` command in this part also works as `npx pear ...`. This is useful if you want to run the commands from a different directory than the one you installed `pear` in.
@@ -53,30 +53,30 @@ You need:
 
 ### Touch, set the upgrade link, and seed
 
-[`pear touch`](/reference/cli) mints a **new `pear://` link you own** — one backed by a fresh [Hypercore](/reference/building-blocks/hypercore) whose write key is stored locally on this machine. This is the link you stage and release to. (The link you set in part 2 was a public placeholder so the app would boot; you replace it now with your own.)
+[`pear touch`](/reference/cli) mints a **new `pear://` link you own** — one backed by a fresh [Hypercore](/reference/building-blocks/hypercore) whose write key is stored locally on this machine. This becomes your **stage link**: the append-only core you sync builds into before each provision. (The link you set in part 2 was a public placeholder so the app would boot; you replace it now with your own.)
 
 ```bash
 pear touch
-# pear://<your-pear-link>
+# pear://<stage-link>
 ```
 
 <Callout type="warning">
-Stage and release only work against a link you **own** — one you minted on this machine with `pear touch`. If you stage to someone else's link (for example the public placeholder from part 2), `pear stage --dry-run` prints `🍐 Staging null` with an empty diff and the real `pear stage`/`pear release` cannot advance it. Always use the link `pear touch` just printed.
+Stage and provision only work against links you **own** — ones you minted on this machine with `pear touch`. If you stage to someone else's link (for example the public placeholder from part 2), `pear stage --dry-run` prints `🍐 Staging null` with an empty diff and `pear provision` has nothing to sync. Always use the link `pear touch` just printed.
 </Callout>
 
-Point `package.json#upgrade` at the link you just minted so the packaged app polls **your** core for updates:
+Point `package.json#upgrade` at the stage link for now — you will switch it to the **provision link** after the first provision:
 
 ```bash
-npm pkg set upgrade=pear://<your-pear-link>
+npm pkg set upgrade=pear://<stage-link>
 ```
 
 [`pear seed`](/reference/cli#pear-seed) keeps that core online so other peers can fetch updates from you.
 Your output will be different.
 
 ```bash
-pear seed pear://<your-pear-link>
+pear seed pear://<stage-link>
 --------------------------------------------------------  
-Pear Link:     pear://<your-pear-link>
+Pear Link:     pear://<stage-link>
 Drive Key:     73d02bee8bb356402592cafe0bd9c993202742223943a830332d237fae2173b7 
 Discovery Key: 127512b795163f8c13aa3e718ef9995d40d2ae7533e485c2c363a92adb8c8a9c 
 Content Key:    
@@ -151,7 +151,7 @@ In your project's root, copy or diff against the canonical [`hello-pear-electron
 - **Hooks** — `preMake` rewrites `build/AppxManifest.xml` version for MSIX; `postMake` moves Windows `.msix` artifacts into `out/<AppName>-win32-<arch>/`.
 - **Plugins** — universal-prebuilds and prune-prebuilds.
 
-```js file=<rootDir>/examples/getting-started/production-shape/forge.config.js title="forge.config.js"
+```js file=<rootDir>/examples/getting-started/pear-chat/forge.config.js title="forge.config.js"
 ```
 
 #### Add the template `build/` assets to your project
@@ -230,13 +230,36 @@ PearChat-1.0.1/
 
 <Step>
 
-### Stage and release the first version
 
-`pear stage` syncs the deployment directory into the [Hypercore](/reference/building-blocks/hypercore) behind your `pear://` link. Always run `--dry-run` first and read the file-by-file diff:
+### Stage and provision the first version
+
+Run these from the **parent directory** of your app (same place you ran `pear build`) unless noted. [`pear stage`](/reference/cli) syncs the deployment directory into the [Hypercore](/reference/building-blocks/hypercore) behind your **stage link**.
+
+#### 1. Dry-run the stage
+
+Always run `--dry-run` first and read the file-by-file diff:
 
 ```bash
-pear stage --dry-run pear://<your-pear-link> ./pear-chat-1.0.1
+pear stage --dry-run pear://<stage-link> ./pear-chat-1.0.1
 ```
+
+Your keys and byte counts will differ; the shape looks like this:
+
+```text
+🍐 Staging pear://<stage-link>
++ package.json                         2.1 kB
++ electron/main.js                    12.4 kB
++ workers/chat-room.js                 8.7 kB
++ renderer/index.html                  3.2 kB
++ by-arch/darwin-arm64/app/PearChat   48.2 MB
+  ... more files ...
+pear://0.<length>.<stage-key>
+```
+
+How to read it:
+
+- **`+` lines** — files that would be written or updated. Scan for surprises before you run without `--dry-run`.
+- **Last line** — a **versioned link** (`pear://0.<length>.<stage-key>`). The `<length>` is the Hypercore length after this stage; you need the full string for `pear provision` in the next step. On a first stage, `<length>` is usually a few hundred to a few thousand — not `0`.
 
 Look for:
 
@@ -244,23 +267,110 @@ Look for:
 - No surprise additions — stray `.DS_Store`, editor swap files, secrets, the deployment directory itself.
 - Sensible byte counts — if a file is suddenly 100 MB, something is wrong.
 
+#### 2. Stage for real
+
 If the diff looks right, drop the `--dry-run` flag and run it for real:
 
 ```bash
-pear stage pear://<your-pear-link> ./pear-chat-1.0.1
+pear stage pear://<stage-link> ./pear-chat-1.0.1
 ```
 
-`pear stage` writes the new content into the Hypercore but does **not** advance the `release` pointer that peers actually poll. Until you advance it, peers cannot fetch anything new. Run `pear release` after every stage you want peers to fetch:
+The live output should match the dry-run diff. Copy the **versioned link** — `pear://0.<length>.<stage-key>`. It appears twice in the output; either copy works:
+
+```text
+🍐 Staging pear-chat
+
+[  pear://<stage-link>  ]
+pear://0.<length>.<stage-key>
+
+Current: <length>
+Release: 0 [UNRELEASED]
+
+✔ Skipping warmup (no changes)
+
+Staging complete!
+
+^Latest: <length>
+Release: 0 [UNRELEASED]
+
+pear://0.1426.9mdt6h676phg7nuwp1urs7457nsz3juyeuqcbw4h7r1tqz8e84ay
+```
+
+Use that full versioned string as the first argument to `pear provision` below (not the unversioned `<stage-link>` you passed to `pear stage`).
+
+#### 3. Mint the provision link
+
+Peers should not poll the stage link directly — it keeps the full append-only history. [`pear provision`](/reference/cli#pear-provision) block-syncs the staged snapshot onto a lean **provision link** that packaged apps poll instead. That target is a **second** link — mint it now with another `pear touch` (the first touch in step 1 was only for staging). Cwd does not matter; `pear touch` does not read your project:
 
 ```bash
-pear release pear://<your-pear-link>
+pear touch
+# pear://<provision-link>   ← different key from <stage-link>
 ```
 
-<Callout type="warning">
-`pear release` is marked deprecated in `pear --help` ("use `pear provision` and `pear multisig`"), but it remains the simplest way to advance a stage link's release pointer for development OTA. Production deployments use [`pear provision`](/getting-started/build-a-peer-to-peer-chat/update#provision-production-preview) and `pear multisig` instead, which both manage their own release pointers.
-</Callout>
+`pear touch` prints the link on its own line — copy the whole `pear://…` string.
 
-Your first version is now published. Peers running an app with the same `upgrade` link will see it on their next poll.
+#### 4. Provision onto the provision link
+
+Dry-run first, then run for real. Fill the three arguments like this:
+
+| Argument | What to paste |
+| --- | --- |
+| `<source-verlink>` | The versioned link from `pear stage` — `pear://0.<length>.<stage-key>` |
+| `<target-link>` | The unversioned provision link from `pear touch` — `pear://<provision-link>` |
+| `<production-verlink>` | On first ship: `pear://0.0.<provision-key>` where `<provision-key>` is everything after `pear://` in `<provision-link>` |
+
+Paste all three links on **one line** — backslash continuations are easy to break if a line has trailing spaces:
+
+```bash
+pear provision --dry-run pear://0.<length>.<stage-key> pear://<provision-link> pear://0.0.<provision-key>
+
+pear provision pear://0.<length>.<stage-key> pear://<provision-link> pear://0.0.<provision-key>
+```
+
+Example with concrete keys (yours will differ):
+
+```bash
+pear provision --dry-run pear://0.1426.9mdt6h676phg7nuwp1urs7457nsz3juyeuqcbw4h7r1tqz8e84ay pear://o11z79iogfzx1ckthrhwoeyk7pyxxhy7par4edq5sy1dmwieutso pear://0.0.o11z79iogfzx1ckthrhwoeyk7pyxxhy7par4edq5sy1dmwieutso
+```
+
+Provision output is another file diff, then confirmation on the target link:
+
+```text
+🍐 Provisioning pear://0.1079.qxenz5... → pear://q9sopzoq...
++ package.json                         2.1 kB
+  ... same files as stage ...
+pear://q9sopzoqgas9usoiq7uzkkwngm5pzj4zo3n4esjwwbmw6offis8o
+```
+
+The diff should mirror what you just staged. The last line is the provision link peers will poll — set `upgrade` to that unversioned link, not the versioned stage link.
+
+#### 5. Switch `upgrade` to the provision link
+
+From the **app root** (`pear-chat/`), point `package.json#upgrade` at the provision link and seed it — this is what shipped binaries poll:
+
+```bash
+npm pkg set upgrade=pear://<provision-link>
+pear seed pear://<provision-link>
+```
+
+#### 6. Rebuild once
+
+Rebuild so the packaged app embeds the new `upgrade` field (the provision link already holds v1.0.1 — no restage needed):
+
+```bash
+npm run make
+cd ..
+pear build \
+  --package=./pear-chat/package.json \
+  --darwin-arm64-app ./pear-chat/out/PearChat-darwin-arm64/PearChat.app \
+  --target pear-chat-1.0.1
+```
+
+Your first version is now published on the provision link. Peers running a build with that `upgrade` field will see it on their next poll.
+
+<Callout type="info">
+Keep both links: **stage** for `pear stage` on every iteration; **provision** for what apps install and poll. Part 4 repeats `pear stage` → `pear provision` for v1.0.2. The full operator reference is [Deploy your application — provision](/how-to/operate-an-app/manual-deployment/deployment#6-provision).
+</Callout>
 
 </Step>
 
@@ -268,20 +378,20 @@ Your first version is now published. Peers running an app with the same `upgrade
 
 ## What you've learned
 
-You now have a `pear://` link with your first build published behind it:
+You now have a stage link and a provision link with your first build published:
 
 | Stage | What it is | Reversible? |
 | --- | --- | --- |
 | `pear touch` | Mints a new `pear://` link | Yes — just abandon it |
 | Make + `pear build` | Per-OS distributable folded into a Deployment Directory | Yes — rebuild |
-| `pear stage` | Append-only sync into the staged Hypercore | History is permanent; updates are not |
-| `pear release` | Advances the discoverable release pointer | Yes — re-release a different length |
+| `pear stage` | Append-only sync into the stage Hypercore | History is permanent; updates are not |
+| `pear provision` | Block-sync onto the provision link peers poll | Yes — reprovision from a different stage length |
 
-Every release iteration after this is the same six commands: `npm version patch`, `npm run make` (on each OS you ship), `pear build`, `pear stage --dry-run`, `pear stage`, `pear release`. Part 5 puts that loop on a running app and shows the OTA cycle from both sides.
+Every release iteration after this is the same pattern: `npm version patch`, `npm run make` (on each OS you ship), `pear build`, `pear stage --dry-run`, `pear stage`, `pear provision`. Part 4 puts that loop on a running app and shows the OTA cycle from both sides.
 
 ## Where to go next
 
-- **Continue the path:** [Deploy over-the-air updates](/getting-started/build-a-peer-to-peer-chat/update) (part 4 of 4) — run the installed build, ship a second version, watch OTA fire end-to-end, and preview `pear provision` and multisig.
+- **Continue the path:** [Deploy over-the-air updates](/getting-started/build-a-peer-to-peer-chat/update) (part 4 of 4) — run the installed build, ship a second version, watch OTA fire end-to-end, and preview multisig.
 - **Automate it:** [Publish with GitHub Actions](/how-to/operate-an-app/github-actions/publish-with-github-actions) — skip the manual staging and let CI stage a stable `pear://` link on every push.
 - [Deploy a Pear desktop app](/how-to/operate-an-app/manual-deployment/deployment) — the canonical how-to with every command, every flag, and every recovery procedure.
 - [Build desktop distributables](/how-to/operate-an-app/build-and-package/build-desktop-distributables) — code-signing, notarization, MSIX publisher details.

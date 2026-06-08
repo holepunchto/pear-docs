@@ -1,4 +1,4 @@
-# pear-chat (production shape)
+# pear-chat
 
 - Production-shaped peer-to-peer desktop chat: Bare chat worker, Autobase room with blind-pairing invites, on-disk persistence, separate OTA updater worker, and Tailwind UI.
 
@@ -6,7 +6,7 @@
 
 ## Documentation
 
-Step-by-step walkthrough: [Reshape into a production app](https://docs.pears.com/getting-started/build-a-peer-to-peer-chat/production-shape) (part 2 of the getting started path).
+Step-by-step walkthrough: [Reshape into a production app](https://docs.pears.com/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app) (part 2 of the getting started path).
 
 This is the **shared scaffold** that chat-family and media how-to examples extend. Read it before adapting any delta under `examples/how-to/`.
 

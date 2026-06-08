@@ -76,7 +76,7 @@ Part 1 was type-along in five files. The production scaffold is ~14 files and a 
 
 ```bash skip="desktop-gui"
 git clone https://github.com/holepunchto/pear-docs
-cd pear-docs/examples/getting-started/production-shape
+cd pear-docs/examples/getting-started/pear-chat
 npm install
 npm run build
 ```
@@ -86,28 +86,28 @@ npm run build
 - `build:db` runs `node schema.js` to generate the `spec/` directory (HyperSchema records, the HyperDB view, and the HyperDispatch encoders).
 - `build:tailwind` compiles `input.css` into `renderer/build/output.css` with the [Tailwind CLI](https://tailwindcss.com/docs/installation) — replacing part 1's in-browser CDN script.
 
-You should now have a `production-shape/` directory laid out like this:
+You should now have a `pear-chat/` directory laid out like this:
 
 ```text
-production-shape/
-├─ package.json          # app metadata, scripts, deps
-├─ pear.json             # multisig namespace for OTA releases
-├─ forge.config.js       # Electron Forge makers + signing hooks
+pear-chat/
 ├─ build/                # icons + per-OS packaging assets
 ├─ electron/
 │  ├─ main.js            # spawns the chat worker + the updater worker
 │  └─ preload.js         # contextBridge exposing window.bridge
-├─ workers/
-│  ├─ main.js            # Bare updater worker (PearRuntime OTA)
-│  ├─ index.js           # Bare chat worker entrypoint
-│  ├─ worker-task.js     # WorkerTask: Corestore + Hyperswarm + ChatRoom
-│  └─ chat-room.js       # Autobase + blind-pairing room
-├─ spec/                 # generated HyperDispatch + HyperDB schemas
-├─ schema.js             # regenerates spec/ from schema definitions
 ├─ renderer/
-│  ├─ index.html         # chat shell (Tailwind classes)
-│  └─ app.js             # vanilla DOM + worker bridge
-└─ input.css             # Tailwind v4 entrypoint
+│  ├─ app.js             # vanilla DOM + worker bridge
+│  └─ index.html         # chat shell (Tailwind classes)
+├─ spec/                 # generated HyperDispatch + HyperDB schemas
+├─ workers/
+│  ├─ chat-room.js       # Autobase + blind-pairing room
+│  ├─ index.js           # Bare chat worker entrypoint
+│  ├─ main.js            # Bare updater worker (PearRuntime OTA)
+│  └─ worker-task.js     # WorkerTask: Corestore + Hyperswarm + ChatRoom
+├─ forge.config.js       # Electron Forge makers + signing hooks
+├─ input.css             # Tailwind v4 entrypoint
+├─ package.json          # app metadata, scripts, deps
+├─ pear.json             # multisig namespace for OTA releases
+└─ schema.js             # regenerates spec/ from schema definitions
 ```
 
 The four "moving parts" are `electron/`, `workers/`, `spec/`, and `renderer/`. Everything else is plumbing or build config.
@@ -122,7 +122,7 @@ The worker is the **only** place P2P code lives. The renderer never imports Hype
 
 Open `workers/index.js`. It is the Bare-side entrypoint and is intentionally tiny:
 
-```js file=<rootDir>/examples/getting-started/production-shape/workers/index.js title="workers/index.js" lineNumbers {9-13,15-16,23-24,26-27,29-30,32-34,37-40}
+```js file=<rootDir>/examples/getting-started/pear-chat/workers/index.js title="workers/index.js" lineNumbers {9-13,15-16,23-24,26-27,29-30,32-34,37-40}
 ```
 
 Things to notice:
@@ -141,7 +141,7 @@ Things to notice:
 
 Open `workers/worker-task.js`. This is the worker's "main object" — it owns a Corestore, a Hyperswarm, and a `ChatRoom`, and it speaks JSON to the renderer over the pipe:
 
-```js file=<rootDir>/examples/getting-started/production-shape/workers/worker-task.js title="workers/worker-task.js" lineNumbers {18-28,42-49,58-61,63-67}
+```js file=<rootDir>/examples/getting-started/pear-chat/workers/worker-task.js title="workers/worker-task.js" lineNumbers {18-28,42-49,58-61,63-67}
 ```
 
 The lifecycle is canonical Pear shape:
@@ -174,22 +174,22 @@ These come together when peer **B** joins peer **A**'s room.
 
 **1. A creates an invite.** `getInvite()` appends a `@pear-chat/add-invite` record to the Autobase and returns a [z32](https://www.npmjs.com/package/z32)-encoded invite code (this is the string the worker pushes to the renderer's copy button):
 
-```js file=<rootDir>/examples/getting-started/production-shape/workers/chat-room.js#L127-L137 title="workers/chat-room.js"
+```js file=<rootDir>/examples/getting-started/pear-chat/workers/chat-room.js#L127-L137 title="workers/chat-room.js"
 ```
 
 **2. B pairs as a candidate.** In `_open`, an empty local core *and* an `--invite` means the room uses [`blind-pairing`](https://www.npmjs.com/package/blind-pairing) as a candidate to reach **A** over the swarm and receive the Autobase keys:
 
-```js file=<rootDir>/examples/getting-started/production-shape/workers/chat-room.js#L37-L47 title="workers/chat-room.js"
+```js file=<rootDir>/examples/getting-started/pear-chat/workers/chat-room.js#L37-L47 title="workers/chat-room.js"
 ```
 
 **3. A confirms and adds B as a writer.** A's `pairing.addMember` `onadd` handler resolves the invite, calls `addWriter(B.key)`, and hands back the Autobase root and encryption keys:
 
-```js file=<rootDir>/examples/getting-started/production-shape/workers/chat-room.js#L72-L85 title="workers/chat-room.js"
+```js file=<rootDir>/examples/getting-started/pear-chat/workers/chat-room.js#L72-L85 title="workers/chat-room.js"
 ```
 
 **4. B opens the shared Autobase.** With those keys, **B** opens the base, joins the discovery topic on the swarm, and waits for the writable signal before replicating:
 
-```js file=<rootDir>/examples/getting-started/production-shape/workers/chat-room.js#L52-L68 title="workers/chat-room.js"
+```js file=<rootDir>/examples/getting-started/pear-chat/workers/chat-room.js#L52-L68 title="workers/chat-room.js"
 ```
 
 Any message either peer adds is appended to its local Autobase core, replicated through the swarm, and applied to the shared HyperDB view. The room emits `update` on every Autobase update; `WorkerTask` debounces those into a single `{ type: 'messages', messages }` write back to the renderer.
@@ -208,17 +208,17 @@ The `spec/` directory holds **generated** code — that's why `npm run build` ha
 
 `spec/schema/` — the canonical record shapes (`writer`, `invite`, `message`) registered with HyperSchema:
 
-```js file=<rootDir>/examples/getting-started/production-shape/schema.js#L9-L34 title="schema.js — records"
+```js file=<rootDir>/examples/getting-started/pear-chat/schema.js#L9-L34 title="schema.js — records"
 ```
 
 `spec/db/` — typed HyperDB collections (`@pear-chat/messages`, `@pear-chat/invites`), each keyed by `id`:
 
-```js file=<rootDir>/examples/getting-started/production-shape/schema.js#L36-L48 title="schema.js — collections"
+```js file=<rootDir>/examples/getting-started/pear-chat/schema.js#L36-L48 title="schema.js — collections"
 ```
 
 `spec/dispatch/` — typed Autobase append-payload encoders, one per record type:
 
-```js file=<rootDir>/examples/getting-started/production-shape/schema.js#L50-L55 title="schema.js — dispatch"
+```js file=<rootDir>/examples/getting-started/pear-chat/schema.js#L50-L55 title="schema.js — dispatch"
 ```
 
 You do not normally edit files under `spec/`. To change a message shape or add a record type, edit `schema.js` and re-run `npm run build:db`. For why P2P apps benefit from schema-first design, see [Schema-first design](/explanation/workers#schema-first-design).
@@ -235,7 +235,7 @@ Open `electron/main.js`. The whole app is CommonJS — mirroring [`hello-pear-el
 
 The chat worker (`workers/index.js`) owns the Corestore, swarm, and `ChatRoom`. The main process spawns it and relays its byte streams to every window. Because `Bare.IPC` is a raw byte stream, the main process wraps the worker in a [`FramedStream`](https://www.npmjs.com/package/framed-stream) and forwards deframed frames:
 
-```js file=<rootDir>/examples/getting-started/production-shape/electron/main.js#L101-L138 title="electron/main.js — chat worker"
+```js file=<rootDir>/examples/getting-started/pear-chat/electron/main.js#L101-L138 title="electron/main.js — chat worker"
 ```
 
 `getWorker` spawns the worker with the `PearRuntime.run` shortcut and fans four named IPC channels out to every window (`pear:worker:ipc`, `:stdout`, `:stderr`, `:exit`), plus a `pear:worker:writeIPC` handler the renderer calls to send bytes back.
@@ -244,19 +244,19 @@ The chat worker (`workers/index.js`) owns the Corestore, swarm, and `ChatRoom`. 
 
 The updater worker (`workers/main.js`) runs the `pear-runtime` OTA updater with its **own** swarm and Corestore, downloads new application drives from peers, and emits `updating`/`updated`. The main process does **not** embed `new PearRuntime({ ... })`; like the template, it keeps the updater in its own Bare worker so update traffic never blocks the chat. The main process only spawns it, wraps it in a `FramedStream`, and relays `pear:event:updating` / `pear:event:updated`:
 
-```js file=<rootDir>/examples/getting-started/production-shape/electron/main.js#L142-L179 title="electron/main.js — updater worker"
+```js file=<rootDir>/examples/getting-started/pear-chat/electron/main.js#L142-L179 title="electron/main.js — updater worker"
 ```
 
 `applyUpdate` swaps the app on disk; `app:afterUpdate` relaunches the process. The renderer wires both into a button:
 
-```js file=<rootDir>/examples/getting-started/production-shape/electron/main.js#L215-L247 title="electron/main.js — apply + relaunch"
+```js file=<rootDir>/examples/getting-started/pear-chat/electron/main.js#L215-L247 title="electron/main.js — apply + relaunch"
 ```
 
 ### Single-instance lock + deep links
 
 `requestSingleInstanceLock` makes a `pear-chat://` deep link from the OS go to the running instance instead of spawning a second one. `setAsDefaultProtocolClient(protocol)` registers the scheme:
 
-```js file=<rootDir>/examples/getting-started/production-shape/electron/main.js#L253-L292 title="electron/main.js — single instance"
+```js file=<rootDir>/examples/getting-started/pear-chat/electron/main.js#L253-L292 title="electron/main.js — single instance"
 ```
 
 </Step>
@@ -267,10 +267,12 @@ The updater worker (`workers/main.js`) runs the `pear-runtime` OTA updater with 
 
 The renderer never sees the worker handle directly. It only sees `window.bridge`:
 
-```js file=<rootDir>/examples/getting-started/production-shape/electron/preload.js title="electron/preload.js" {8,16,27-39}
+```js file=<rootDir>/examples/getting-started/pear-chat/electron/preload.js title="electron/preload.js" {8,16,27-39}
 ```
 
-This is the **single door** between the HTML renderer and the Bare workers. It is intentionally narrow — `startWorker`, `writeWorkerIPC`, `onWorkerIPC`, `onWorkerExit` for the worker, `onPearEvent` / `applyUpdate` / `appAfterUpdate` for OTA, and one extra this part adds: **`writeClipboard`** (line 8), which the copy-invite button calls. The renderer sends `{ type: 'add-message', text }` and receives `{ type: 'messages' }`, `{ type: 'peers' }`, and `{ type: 'invite' }` — all plain JSON over the bridge.
+This is the **single door** between the HTML renderer and the Bare workers. It is intentionally narrow — `startWorker`, `writeWorkerIPC`, `onWorkerIPC`, `onWorkerExit` for the worker, `onPearEvent` / `applyUpdate` / `appAfterUpdate` for OTA, and one extra this part adds:
+* `writeClipboard` (line 8), which the copy-invite button calls.
+* The renderer sends `{ type: 'add-message', text }` and receives `{ type: 'messages' }`, `{ type: 'peers' }`, and `{ type: 'invite' }` — all plain JSON over the bridge.
 
 <Callout type="info">
 For *why* this split exists, read [the process model](/explanation/pear-desktop-architecture#process-model).
@@ -286,26 +288,32 @@ The renderer is **vanilla HTML + JavaScript** — no framework, no bundler — s
 
 ### `renderer/index.html`
 
-The static chat shell: a header with the Pear logo, a peer-status dot, a **Copy invite** button, an "Update ready" button (hidden until OTA fires), a scrollable message list, and a composer form. Every class is a Tailwind utility scanned out of the markup at build time:
+The static chat shell: 
+* a header with the Pear logo, a peer-status dot,
+* a **Copy invite** button,
+* an "Update ready" button (hidden until OTA fires),
+* a scrollable message list,
+* a composer form, and
+* every class is a Tailwind utility scanned out of the markup at build time:
 
-```html file=<rootDir>/examples/getting-started/production-shape/renderer/index.html#L12-L47 title="renderer/index.html — header"
+```html file=<rootDir>/examples/getting-started/pear-chat/renderer/index.html#L12-L47 title="renderer/index.html — header"
 ```
 
 ### `renderer/app.js`
 
 The entrypoint. It talks to the worker entirely through `window.bridge`. The composer sends `{ type: 'add-message', text }`; the worker pushes back `messages`, `peers`, and `invite` frames:
 
-```js file=<rootDir>/examples/getting-started/production-shape/renderer/app.js#L90-L105 title="renderer/app.js — worker IPC"
+```js file=<rootDir>/examples/getting-started/pear-chat/renderer/app.js#L90-L105 title="renderer/app.js — worker IPC"
 ```
 
 The copy button writes the cached invite to the clipboard through the bridge:
 
-```js file=<rootDir>/examples/getting-started/production-shape/renderer/app.js#L73-L78 title="renderer/app.js — copy invite"
+```js file=<rootDir>/examples/getting-started/pear-chat/renderer/app.js#L73-L78 title="renderer/app.js — copy invite"
 ```
 
 And the OTA banner is driven entirely by `bridge.onPearEvent` — inert in development, live once [part 4](/getting-started/build-a-peer-to-peer-chat/update) ships a second version:
 
-```js file=<rootDir>/examples/getting-started/production-shape/renderer/app.js#L80-L88 title="renderer/app.js — OTA banner"
+```js file=<rootDir>/examples/getting-started/pear-chat/renderer/app.js#L80-L88 title="renderer/app.js — OTA banner"
 ```
 
 Peer-supplied text is always written with `textContent`, never `innerHTML`, so a message can't inject markup.
@@ -329,7 +337,7 @@ npm start -- --storage /tmp/pear-chat-user1 --name user1
 
 Watch the terminal for an `Invite: …` line — or click **Copy invite** in the window. Copy that z32-encoded string.
 
-In a second terminal, still in `production-shape/`:
+In a second terminal, still in `pear-chat/`:
 
 ```bash skip="desktop-gui"
 npm start -- --storage /tmp/pear-chat-user2 --name user2 --invite <paste-invite>

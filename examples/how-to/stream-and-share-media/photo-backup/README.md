@@ -8,7 +8,7 @@
 
 Delta walkthrough: [Back up photos in a peer-to-peer app](https://docs.pears.com/how-to/stream-and-share-media/back-up-photos-in-a-peer-to-peer-app).
 
-Build the shared scaffold first: [Reshape into a production app](https://docs.pears.com/getting-started/build-a-peer-to-peer-chat/production-shape).
+Build the shared scaffold first: [Reshape into a production app](https://docs.pears.com/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app).
 
 > **Note:** This example was migrated off the deprecated `pear run` workflow. The app
 > is now an Electron app that embeds `pear-runtime` as a library, following the
