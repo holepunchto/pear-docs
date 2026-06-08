@@ -1,0 +1,81 @@
+---
+title: "Keep data available with blind peering"
+description: "Use a blind-peering client to ask blind peers to keep your Hypercores and Autobases available even when no writer is online — the Pear/Bare logic, no UI required."
+docType: how-to
+schemaType: TechArticle
+---
+
+<Callout type="info">
+
+**This guide focuses on the Pear/Bare logic.** It shows the [`blind-peering`](https://www.npmjs.com/package/blind-peering) client on its own — no Electron, no UI. For the same capability wired into a full desktop app with a chat front end, see the worked example [`pear-chat-blind-peering`](https://github.com/holepunchto/pear-docs/tree/main/examples/how-to/store-and-replicate/blind-peering) and its walkthrough, [Add blind peering to a chat app](/how-to/store-and-replicate/add-blind-peering-to-a-chat-app).
+
+</Callout>
+
+A peer-to-peer core is only available while a peer that has it is online. [Blind peering](/explanation/availability-and-blind-peering) closes that gap: a **blind peer** is an always-on server that replicates and seeds your [Hypercore](/reference/building-blocks/hypercore) or [Autobase](/reference/building-blocks/autobase) **without holding the read capability** — it stores and forwards encrypted blocks it cannot decrypt. Your data stays reachable even when none of its writers are connected.
+
+This is purely Pear-end logic: it lives in a [Bare](/reference/bare-modules) worker (or any Bare/Node process) and never touches a UI.
+
+## Two roles
+
+| Role | What it runs | Holds read key? |
+| --- | --- | --- |
+| **Blind peer** | An always-on server (the [`blind-peer`](https://github.com/holepunchto/blind-peer) daemon) with its own key pair. Seeds whatever it is asked to. | No |
+| **Client** | Your app, using the `blind-peering` module to ask one or more blind peers (by public key) to keep specific cores available. | Yes |
+
+You point the client at the **public keys** of the blind peers you want to mirror to. Those can be blind peers you run yourself, or shared ones.
+
+## Add the dependency
+
+```sh
+npm install blind-peering
+```
+
+## Wire the client
+
+Create the `BlindPeering` client against your swarm and a [Corestore](/reference/helpers/corestore) namespace, passing the blind peers' public keys as `keys`. Then register the cores or Autobases you want kept available:
+
+```js
+import Hyperswarm from 'hyperswarm'
+import Corestore from 'corestore'
+import BlindPeering from 'blind-peering'
+
+const swarm = new Hyperswarm()
+const store = new Corestore('./store')
+swarm.on('connection', (conn) => store.replicate(conn))
+
+// Public keys of the blind peers to mirror to (z32 or hex).
+const blindPeerKeys = [/* 'a1b2c3…' */]
+
+const blinds = new BlindPeering(swarm, store.namespace('blind-peering'), {
+  keys: blindPeerKeys
+})
+
+// Ask the blind peers to keep a single Hypercore available…
+await blinds.addCore(core)
+
+// …or a whole Autobase (all of its writer and view cores).
+await blinds.addAutobase(base)
+```
+
+`addCore` / `addAutobase` connect to the closest configured blind peers and request that they replicate and seed the given cores. The blind peer downloads the encrypted blocks and serves them to other peers on demand — without ever being able to read them.
+
+## Tear it down
+
+Close the client before the swarm and store so its connections release cleanly:
+
+```js
+await blinds.close()
+await swarm.destroy()
+await store.close()
+```
+
+## Run your own blind peer
+
+To control availability yourself rather than relying on shared blind peers, run the [`blind-peer`](https://github.com/holepunchto/blind-peer) daemon on an always-on machine. It prints a public key — pass that key in the client's `keys` array.
+
+## See also
+
+- [Availability and blind peering](/explanation/availability-and-blind-peering) — the threat model: why a blind peer never needs to be trusted with your data.
+- [Add blind peering to a chat app](/how-to/store-and-replicate/add-blind-peering-to-a-chat-app) — the same client wired into a full desktop app with a UI.
+- [Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore) — the store the client namespaces into.
+- [Autobase reference](/reference/building-blocks/autobase) — the multi-writer log `addAutobase` keeps available.

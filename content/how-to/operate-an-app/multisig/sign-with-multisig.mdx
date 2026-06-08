@@ -1,0 +1,66 @@
+---
+title: "Sign with multisig"
+description: "The repeatable multisig release flow: prepare a signing request, collect a quorum of signatures, verify, and commit the production drive."
+docType: how-to
+schemaType: TechArticle
+---
+
+Once [multisig is set up](/how-to/operate-an-app/multisig/set-up-multisig), every production release runs the same four steps: **prepare a request**, **sign** it with a quorum of signers, **verify** the responses, and **commit** the production drive. The request and responses are portable — the commit does not have to run on the machine that prepared the request.
+
+<Callout type="info">
+This assumes the multisig drive already exists. If you have not generated signing keys, written `multisig.json`, and pointed `upgrade` at the multisig link yet, do [Set up multisig](/how-to/operate-an-app/multisig/set-up-multisig) first.
+</Callout>
+
+## Prepare the request
+
+```sh skip="release-flow"
+hyper-multisig request <length>
+```
+
+`<length>` is the current length of the provision Hypercore (from the most recent `pear stage` output). `hyper-multisig` refuses to issue a request if the source drive is not healthily seeded — see [Troubleshoot multisig](/how-to/operate-an-app/multisig/troubleshoot-multisig#request-refused-source-not-healthily-seeded) if it does.
+
+## Sign
+
+Each signer runs:
+
+```sh skip="release-flow"
+hypercore-sign <signing request>
+```
+
+and shares the response. Once a [quorum](/how-to/operate-an-app/multisig/set-up-multisig#create-the-multisig-config) of responses exists, the build is ready to verify.
+
+## Verify
+
+```sh skip="release-flow"
+hyper-multisig verify [--first-commit] <signing request> <response-1> <response-2> ...
+```
+
+`--first-commit` is required only the first time you commit to a fresh multisig drive. **Never** commit a request that fails `verify`.
+
+## Commit
+
+```sh skip="release-flow"
+hyper-multisig commit [--first-commit] <signing request> <response-1> <response-2> ...
+```
+
+The commit waits for at least two seeders to fully download the multisig drive before signalling success. Watch the output:
+
+```text skip="sample-output"
+Committing the core...
+Committed the core (key <target key>)
+Waiting for remote seeders to pick up the changes...
+Please add this key to the seeders now. The logs here will notify you when it is picked up by them. Do not shut down until that happens.
+```
+
+Once two seeders confirm, it is safe to `Ctrl+C`.
+
+<Callout type="warning">
+**Do not abort a running commit.** An interrupted commit leaves the production build in an intermediate state. See [Recover from an interrupted commit](/how-to/operate-an-app/multisig/troubleshoot-multisig#interrupted-or-aborted-commit) before retrying.
+</Callout>
+
+## See also
+
+- [Set up multisig](/how-to/operate-an-app/multisig/set-up-multisig) — the one-time setup this flow depends on.
+- [Troubleshoot multisig](/how-to/operate-an-app/multisig/troubleshoot-multisig) — request refused, interrupted commits, and `INCOMPATIBLE_SOURCE_AND_TARGET`.
+- [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment) — the full eight-step release flow.
+- [Release pipeline](/explanation/release-pipeline) — conceptual diagrams for stage, provision, and multisig.

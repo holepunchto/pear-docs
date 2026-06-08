@@ -4,7 +4,7 @@ description: "Mirror local folders into Hyperdrive and replicate with reader pee
 docType: how-to
 schemaType: TechArticle
 ---
-This guide will show you how to create a full peer-to-peer filesystem with Hyperdrive. 
+This guide will show you how to create a full peer-to-peer filesystem with Hyperdrive.
 
 [Hyperdrive](/reference/building-blocks/hyperdrive) is a wrapper around two [Hypercores](/reference/building-blocks/hypercore):
 * one is a [Hyperbee](/reference/building-blocks/hyperbee) index for storing file metadata, and
@@ -21,6 +21,12 @@ When the writer modifies its drive — adding, removing, or changing files — t
 * [`LocalDrive`](/reference/helpers/localdrive): a tool for syncing changes between a Hyperdrive and a local directory.
 
 These tools handle all interactions between Hyperdrives and the local filesystem.
+
+<Callout type="info">
+
+**This guide focuses on the Pear/Bare logic** — plain terminal apps, no UI. For the same file-sharing capability wired into a full desktop app with a front end, see [Share files in a peer-to-peer app](/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app) and its worked example [`pear-file-sharing`](https://github.com/holepunchto/pear-docs/tree/main/examples/how-to/stream-and-share-media/file-sharing). The drive logic is identical; only the UI half changes.
+
+</Callout>
 
 ## Create the `drive-writer-app`
 
@@ -50,56 +56,7 @@ This will install the following dependencies:
 
 Create the `drive-writer-app/index.js` file with the following content:
 
-```javascript example=hyperdrive-fs step=write file=drive-writer-app/index.js
-import process from 'bare-process'
-import Hyperswarm from 'hyperswarm'
-import Hyperdrive from 'hyperdrive'
-import Localdrive from 'localdrive'
-import Corestore from 'corestore'
-import debounce from 'debounceify'
-import b4a from 'b4a'
-
-// create a Corestore instance 
-const store = new Corestore('./drive-writer-storage')
-const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
-
-// replication of the corestore instance on connection with other peers
-swarm.on('connection', conn => store.replicate(conn))
-
-// A local drive provides a Hyperdrive interface to a local directory
-const local = new Localdrive('./writer-dir')
-
-// A Hyperdrive takes a Corestore because it needs to create many cores
-// One for a file metadata Hyperbee, and one for a content Hypercore
-const drive = new Hyperdrive(store)
-
-// wait till the properties of the hyperdrive instance are initialized
-await drive.ready()
-
-// Import changes from the local drive into the Hyperdrive
-const mirror = debounce(mirrorDrive)
-
-const discovery = swarm.join(drive.discoveryKey)
-await discovery.flushed()
-
-console.log('drive key:', b4a.toString(drive.key, 'hex'))
-
-// start the mirroring process (i.e copying) of content from writer-dir to the drive
-// whenever something is entered (other than '/n' or Enter )in the command-line
-process.stdin.setEncoding('utf-8')
-process.stdin.on('data', (data) => {
-  if (!data.match('\n')) return
-  mirror()
-})
-
-// this function copies the contents from writer-dir directory to the drive
-async function mirrorDrive () {
-  console.log('started mirroring changes from \'./writer-dir\' into the drive...')
-  const mirror = local.mirror(drive)
-  await mirror.done()
-  console.log('finished mirroring:', mirror.count)
-}
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive/drive-writer-app/index.js title="drive-writer-app/index.js" lineNumbers
 ```
 
 Run the `drive-writer-app` with:
@@ -142,55 +99,7 @@ This will install the following dependencies:
 
 Create the `drive-reader-app/index.js` file with the following content:
 
-```javascript example=hyperdrive-fs step=write file=drive-reader-app/index.js
-import process from 'bare-process'
-import Hyperswarm from 'hyperswarm'
-import Hyperdrive from 'hyperdrive'
-import Localdrive from 'localdrive'
-import Corestore from 'corestore'
-import debounce from 'debounceify'
-import b4a from 'b4a'
-
-const key = Bare.argv[2]
-
-if (!key) throw new Error('provide a key')
-
-// create a Corestore instance
-const store = new Corestore('./drive-reader-storage')
-
-const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
-
-// replication of store on connection with other peers
-swarm.on('connection', conn => store.replicate(conn))
-
-// create a local copy of the remote drive
-const local = new Localdrive('./reader-dir')
-
-// create a hyperdrive using the public key passed as a command-line argument
-const drive = new Hyperdrive(store, b4a.from(key, 'hex'))
-
-// wait till all the properties of the drive are initialized
-await drive.ready()
-
-const mirror = debounce(mirrorDrive)
-
-// call the mirror function whenever content gets appended 
-// to the Hypercore instance of the hyperdrive
-drive.core.on('append', mirror)
-
-// join a topic
-swarm.join(drive.discoveryKey, { client: true, server: false })
-
-// start the mirroring process (i.e copying the contents from remote drive to local dir)
-mirror()
-
-async function mirrorDrive () {
-  console.log('started mirroring remote drive into \'./reader-dir\'...')
-  const mirror = drive.mirror(local)
-  await mirror.done()
-  console.log('finished mirroring:', mirror.count)
-}
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive/drive-reader-app/index.js title="drive-reader-app/index.js" lineNumbers
 ```
 
 The `drive-reader-app` creates a `LocalDrive` instance for a local directory and then mirrors the contents of the local Hyperdrive instance into the `LocalDrive` instance, which will write the contents to the local directory.
@@ -250,58 +159,7 @@ This will install the following dependencies:
 
 Create the `drive-bee-reader-app/index.js` file with the following content:
 
-```javascript example=hyperdrive-fs step=write file=drive-bee-reader-app/index.js
-import process from 'bare-process'
-import Hyperswarm from 'hyperswarm'
-import Hyperdrive from 'hyperdrive'
-import Corestore from 'corestore'
-import b4a from 'b4a'
-
-const key = Bare.argv[2]
-
-if (!key) throw new Error('provide a key')
-
-const store = new Corestore('./drive-bee-reader-storage')
-
-const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
-
-swarm.on('connection', conn => store.replicate(conn))
-
-const drive = new Hyperdrive(store, b4a.from(key, 'hex'))
-await drive.ready()
-await drive.db.ready()
-
-// Hyperdrive stores file metadata in the "files" sub-bee.
-const files = drive.db.sub('files', { keyEncoding: 'utf-8' })
-
-const discovery = swarm.join(drive.discoveryKey, { client: true, server: false })
-await discovery.flushed()
-
-let dbEntry = null
-for (let attempt = 0; attempt < 60; attempt++) {
-  await drive.update()
-  dbEntry = await files.peek()
-  if (dbEntry) break
-  await new Promise(resolve => setTimeout(resolve, 500))
-}
-
-if (!dbEntry) throw new Error('expected at least one file entry to appear in drive.db')
-
-const driveEntry = await drive.entry(dbEntry.key)
-
-console.log('hyperbee entry:', JSON.stringify({
-  key: dbEntry.key,
-  value: dbEntry.value
-}))
-
-console.log('drive entry:', JSON.stringify({
-  key: driveEntry.key,
-  value: driveEntry.value
-}))
-
-await swarm.destroy()
-await drive.close()
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive/drive-bee-reader-app/index.js title="drive-bee-reader-app/index.js" lineNumbers
 ```
 
 This app joins the same drive as the other readers, then inspects `drive.db` directly as a Hyperbee.
@@ -317,8 +175,9 @@ bare drive-bee-reader-app <SUPPLY_KEY_HERE>
 
 ## See also
 
+- [Share files in a peer-to-peer app](/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app) — the same Hyperdrive sharing wrapped in a desktop UI.
 - [Storage and distribution](/explanation/storage-and-distribution) — where these drives live on disk and how peers receive new versions.
-- [Deploy your application](/how-to/operate-an-app/deployment) — staging and seeding when you're ready to ship.
+- [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment) — staging and seeding when you're ready to ship.
 - [Hyperdrive reference](/reference/building-blocks/hyperdrive) — full API for the distributed filesystem used in this guide.
 - [Corestore reference](/reference/helpers/corestore) — full API for the shared storage and replication manager passed to Hyperdrive.
 - [Localdrive reference](/reference/helpers/localdrive) — full API for the local filesystem adapter mirrored to and from Hyperdrive.

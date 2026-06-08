@@ -49,29 +49,7 @@ Ths commnad installs the following dependencies:
 Create the `writer-app/index.js` file with the following content:
 
 
-```javascript example=hypercore-replicate step=write file=writer-app/index.js
-import path from 'bare-path'
-import process from 'bare-process'
-import Hyperswarm from 'hyperswarm'
-import Hypercore from 'hypercore'
-import b4a from 'b4a'
-
-const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
-
-const core = new Hypercore(path.join('./storage', 'writer-storage'))
-
-// core.key and core.discoveryKey will only be set after core.ready resolves
-await core.ready()
-console.log('hypercore key:', b4a.toString(core.key, 'hex'))
-
-// Append all stdin data as separate blocks to the core
-process.stdin.on('data', (data) => core.append(data))
-
-// core.discoveryKey is *not* a read capability for the core
-// It's only used to discover other peers who *might* have the core
-swarm.join(core.discoveryKey)
-swarm.on('connection', conn => core.replicate(conn))
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/replicate-and-persist-with-hypercore/writer-app/index.js title="writer-app/index.js" lineNumbers
 ```
 
 ## Create the reader app
@@ -101,31 +79,7 @@ Ths command installs the following dependencies:
 
 Create the `reader-app/index.js` file with the following content:
 
-```javascript example=hypercore-replicate step=write file=reader-app/index.js
-import path from 'bare-path'
-import process from 'bare-process'
-import Hyperswarm from 'hyperswarm'
-import Hypercore from 'hypercore'
-
-const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
-
-const core = new Hypercore(path.join('./storage', 'reader-storage'), Bare.argv[2])
-await core.ready()
-
-swarm.join(core.discoveryKey)
-swarm.on('connection', conn => core.replicate(conn))
-
-// swarm.flush() will wait until *all* discoverable peers have been connected to
-await swarm.flush()
-
-await core.update()
-
-let position = core.length
-console.log(`Skipping ${core.length} earlier blocks...`)
-for await (const block of core.createReadStream({ start: core.length, live: true })) {
-  console.log(`Block ${position++}: ${block}`)
-}
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/replicate-and-persist-with-hypercore/reader-app/index.js title="reader-app/index.js" lineNumbers
 ```
 
 ## Run the writer and reader

@@ -1,0 +1,82 @@
+name: Examples
+
+# Smoke-tests every example under examples/:
+#   - desktop-build:    the 10 Electron/Pear desktop apps (npm install + build).
+#   - terminal-examples: the 13 terminal Bare apps, grouped into 6 scenarios,
+#                        run on the latest Bare runtime with output assertions.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'examples/**'
+      - 'scripts/test-examples.ts'
+      - '.github/workflows/examples.yml'
+  pull_request:
+    paths:
+      - 'examples/**'
+      - 'scripts/test-examples.ts'
+      - '.github/workflows/examples.yml'
+  workflow_dispatch:
+
+jobs:
+  desktop-build:
+    name: build ${{ matrix.dir }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir:
+          - getting-started/chat
+          - getting-started/production-shape
+          - how-to/store-and-replicate/blind-peering
+          - how-to/stream-and-share-media/file-sharing
+          - how-to/manage-identity/keet-identity
+          - how-to/stream-and-share-media/live-cam
+          - how-to/connect-to-peers/multi-rooms
+          - how-to/stream-and-share-media/photo-backup
+          - how-to/stream-and-share-media/video-stream
+    env:
+      # The build is display-free (tailwind + esbuild); we never launch Electron,
+      # so skip the (large) Electron binary download.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      # The repo .npmrc references ${GITHUB_TOKEN} for the @tetherto registry.
+      # The examples use only public packages, so an empty token parses fine.
+      GITHUB_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        working-directory: examples/${{ matrix.dir }}
+        run: npm install --no-audit --no-fund
+      - name: Build (if a build script exists)
+        working-directory: examples/${{ matrix.dir }}
+        run: npm run build --if-present
+
+  terminal-examples:
+    name: run ${{ matrix.scenario }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - hyperdht-chat
+          - hyperswarm-chat
+          - hypercore-replicate
+          - corestore-multi
+          - hyperbee-kv
+          - hyperdrive-fs
+    env:
+      GITHUB_TOKEN: ''
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install the latest Bare runtime and tsx
+        run: npm i -g bare-runtime tsx
+      - name: Run scenario
+        run: tsx scripts/test-examples.ts --filter=${{ matrix.scenario }}

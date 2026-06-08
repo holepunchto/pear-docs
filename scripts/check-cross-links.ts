@@ -64,7 +64,6 @@ const EXEMPT_FROM_ORPHAN = new Set<string>([
   '/how-to',
   '/reference',
   '/explanation',
-  '/tutorials',
 ]);
 
 const STRICT = process.argv.includes('--strict');

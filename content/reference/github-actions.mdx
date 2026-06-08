@@ -1,0 +1,67 @@
+---
+title: Holepunch GitHub Actions
+description: >-
+  Reference for the shared composite GitHub Actions in holepunchto/actions —
+  Pear app CI, release publishing, recovery, and the Bare native-addon prebuild
+  pipeline.
+docType: reference
+schemaType: APIReference
+---
+
+[`holepunchto/actions`](https://github.com/holepunchto/actions) is a collection of reusable composite GitHub Actions for building, signing, publishing, and recovering Pear applications and Holepunch modules. Reference one with:
+
+```yaml
+- uses: holepunchto/actions/<name>@v1
+```
+
+<Callout type="info">
+There is no project-scaffolding action. To bootstrap a new Pear project use [`pear init`](/reference/cli#pear-init) or the [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) template. The actions below automate CI/CD once a project exists.
+</Callout>
+
+## Pear app CI/CD
+
+| Action | Purpose | Key inputs / outputs |
+| --- | --- | --- |
+| <a name="pear-base"></a>`pear-base` | Configure a Pear project on a runner: checkout, install Node, `npm install`, install Pear (`npx -y pear`), and add Pear to `PATH`. | `force-install` |
+| <a name="make-pear-app"></a>`make-pear-app` | Run `npm run make` for the host OS with code signing and notarization, then upload distributables as artifacts. See [Build and sign desktop apps in CI](/how-to/operate-an-app/github-actions/build-and-sign-in-ci). | In: `channel` (required), `upgrade_key`, macOS signing/notarization (`macos_certificate_base64`, `macos_p12_password`, `macos_codesign_identity`, `macos_notarization_method` = `appstore_connect` \| `apple_id_password`, plus the matching API-key or Apple-ID fields), Windows signing (`windows_signing_method` = `windows_cert_sha1` \| `windows_cert_pfx`, plus cert fields), `linux_set_up_snapcraft`. Out: `artifact-links` |
+| `pear-ci` | Stage a directory into a Hyperdrive on every run, producing a stable `pear://` link. Documented in full at [pear-ci GitHub Action](/reference/pear-ci-action). | `primary-key`, `namespace`, `target`, `dry-run`; out: `pr-url` |
+| `pear-provision-recover` | Recover a provision drive from the network into a new writable drive (runs the `pear-provision-recover` CLI). Used to rebuild write access — see [Recovering from lost write access](/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#recovering-from-lost-write-access). | `path`, `key`, `length`, `blobs-length`, `primary-key`, `name` (all required) |
+
+## Release
+
+| Action | Purpose | Key inputs |
+| --- | --- | --- |
+| `publish` | `npm publish` (honoring dist-tag and workspaces) then create a GitHub release via `create-release`. | `tag` (default `latest`), `workspaces`, `include-workspace-root`, `node-auth-token` |
+| `create-release` | `npm pack` the package(s) and attach the tarballs to a `gh release create` for the current ref. | `workspaces`, `include-workspace-root` |
+| `trigger-canary` | Dispatch a `release` event to the `holepunchto/canary-tests` repo so downstream canary tests run against a new release. | `repository`, `ref`, `token` (all required) |
+
+## Bare native-addon prebuilds
+
+For authors of native [Bare](/reference/bare-modules) addons who build prebuilt binaries across platforms in CI. The typical shape is a build matrix where each job runs `compile-prebuilds`, then a final job merges the per-platform artifacts.
+
+| Action | Purpose | Key inputs |
+| --- | --- | --- |
+| `compile-prebuilds` | Install `bare-make`, then `generate` / `build` / `install` a native prebuild for one platform + arch, optionally uploading it. | `platform` (required), `arch` (required), `flags`, `tags`, `prefix` (default `prebuilds`), `upload` |
+| `upload-prebuilds` | Upload a compiled prebuild as an artifact named `<platform>-<arch><tags>`. | `platform` (required), `arch` (required), `tags`, `prefix` |
+| `download-prebuilds` | Download all prebuild artifacts into one directory (`merge-multiple`). | `prefix` (default `prebuilds`) |
+| `merge-prebuilds` | Download every per-platform prebuild artifact and re-upload them as a single `prebuilds` artifact. | — |
+
+### Project and toolchain setup
+
+These are the building blocks the prebuild and release actions compose; you can also use them directly.
+
+| Action | Purpose |
+| --- | --- |
+| `checkout` | `actions/checkout` with `persist-credentials: false`. |
+| `setup-node` | Install Node.js LTS and configure the npm registry/scope for auth. |
+| `node-base` | `checkout` + `setup-node` + `npm install` (with `allow-git`, `force-install`, registry/scope/auth options). |
+| `setup-bare` | Install the `bare-runtime` globally. |
+| `bare-base` | `node-base` + `setup-bare`: configure a Bare project on a runner. |
+| `setup-llvm`, `setup-nasm`, `setup-swift`, `swift-base`, `setup-socket`, `setup-mininet` | Install compilers and toolchains used when compiling native prebuilds and platform-specific code. |
+
+## See also
+
+- [Build and sign desktop apps in CI](/how-to/operate-an-app/github-actions/build-and-sign-in-ci) — `pear-base` + `make-pear-app` walkthrough.
+- [Publish with GitHub Actions](/how-to/operate-an-app/github-actions/publish-with-github-actions) and [pear-ci GitHub Action](/reference/pear-ci-action) — staging with `pear-ci`.
+- [Build desktop distributables](/how-to/operate-an-app/build-and-package/build-desktop-distributables) — the manual signing flow `make-pear-app` automates.
+- [Bare modules](/reference/bare-modules) — the runtime the prebuild pipeline targets.

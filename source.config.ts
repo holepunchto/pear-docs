@@ -7,7 +7,12 @@ import {
 } from 'fumadocs-mdx/config';
 import lastModified from 'fumadocs-mdx/plugins/last-modified';
 import { metaSchema } from 'fumadocs-core/source/schema';
-import { remarkMdxMermaid } from 'fumadocs-core/mdx-plugins';
+import {
+  remarkMdxMermaid,
+  rehypeCodeDefaultOptions,
+} from 'fumadocs-core/mdx-plugins';
+import { transformerMetaHighlight } from '@shikijs/transformers';
+import codeImport from 'remark-code-import';
 import { z } from 'zod';
 
 const execFile = promisify(execFileCb);
@@ -123,6 +128,17 @@ export default defineConfig({
   // On Vercel, set `VERCEL_DEEP_CLONE=true` so git history is available.
   plugins: [lastModified({ versionControl: gitLastModified })],
   mdxOptions: {
+    // Extend Fumadocs' default Shiki transformers (notation highlight/diff/focus/word)
+    // with meta-range highlighting, so ` ```js {16,22-23} ` highlights those lines.
+    // This is the only way to highlight `file=`-imported snippets without polluting the
+    // runnable example source with `// [!code highlight]` comments.
+    rehypeCodeOptions: {
+      ...rehypeCodeDefaultOptions,
+      transformers: [
+        ...(rehypeCodeDefaultOptions.transformers ?? []),
+        transformerMetaHighlight(),
+      ],
+    },
     // `remarkImage` rewrites `![alt](url)` to `mdxJsxFlowElement` inside paragraphs.
     // That breaks `remark-structure` → mdast-util-to-markdown when building processed
     // markdown (postprocess.includeProcessedMarkdown). Use plain markdown images, or
@@ -130,6 +146,13 @@ export default defineConfig({
     remarkImageOptions: false,
     // Convert ` ```mermaid ` fenced code blocks into `<Mermaid chart="…" />`
     // JSX so they render via the client component in `src/components/mermaid.tsx`.
-    remarkPlugins: (v) => [remarkMdxMermaid, ...v],
+    // `remark-code-import` lets fences pull their body from a file via
+    // ` ```js file=<rootDir>/examples/... ` so doc code stays in sync with the
+    // runnable apps under `examples/`. `<rootDir>` resolves to the project root.
+    remarkPlugins: (v) => [
+      remarkMdxMermaid,
+      [codeImport, { rootDir: process.cwd() }],
+      ...v,
+    ],
   },
 });

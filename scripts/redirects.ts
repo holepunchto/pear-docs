@@ -29,8 +29,6 @@ export interface Redirect {
  */
 const MISFILED_HOWTOS: ReadonlySet<string> = new Set([
   'deployment',
-  'troubleshooting',
-  'recommended-practices',
   'migration',
 ]);
 
@@ -130,6 +128,23 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
     from: '/howto/desktop-release-npm-scripts/',
     to: '/reference/desktop-release-npm-scripts/',
   });
+
+  // Release pipeline glossary was folded into the release-pipeline explanation
+  // as a "Glossary" section, so the standalone reference page is gone.
+  out.push({
+    from: '/reference/release-pipeline-glossary/',
+    to: '/explanation/release-pipeline/#glossary',
+  });
+
+  // Troubleshooting and manage-installed-applications were promoted to
+  // top-level how-tos (out of operate-an-app), so they're no longer
+  // topic-nested and need explicit legacy redirects.
+  out.push({ from: '/reference/troubleshooting/', to: '/how-to/troubleshooting/' });
+
+  // "Apply recommended practices" was split into callouts on the Corestore
+  // and Hyperswarm how-tos and the dependencies-and-network explanation, so
+  // the standalone page is gone; land legacy links on the how-to index.
+  out.push({ from: '/reference/recommended-practices/', to: '/how-to/' });
 
   out.sort((a, b) => a.from.localeCompare(b.from));
   return out;

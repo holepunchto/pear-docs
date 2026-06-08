@@ -1,0 +1,121 @@
+---
+title: "Store and serve large media with Hyperblobs"
+description: "Store large files and media as blobs on a Hypercore, replicate them over Hyperswarm, and serve them to a UI over local HTTP with range requests — the Pear/Bare logic, no UI required."
+docType: how-to
+schemaType: TechArticle
+---
+
+<Callout type="info">
+
+**This guide focuses on the Pear/Bare logic.** It shows [`hyperblobs`](https://www.npmjs.com/package/hyperblobs) and [`hypercore-blob-server`](https://www.npmjs.com/package/hypercore-blob-server) on their own — no Electron, no UI. For the same blob plumbing wired into full desktop apps, see [Stream stored video in a peer-to-peer app](/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app), [Stream a live camera in a peer-to-peer app](/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app), and [Back up photos in a peer-to-peer app](/how-to/stream-and-share-media/back-up-photos-in-a-peer-to-peer-app). The blob logic is identical across all three; only the UI and the frame/file source change.
+
+</Callout>
+
+A [Hypercore](/reference/building-blocks/hypercore) is an append-only log of small blocks — great for messages, awkward for a 200&nbsp;MB video. [`Hyperblobs`](https://www.npmjs.com/package/hyperblobs) solves that: it chunks arbitrarily large binary data across a Hypercore and hands back a small **blob id** that addresses it. [`hypercore-blob-server`](https://www.npmjs.com/package/hypercore-blob-server) then serves any blob over local HTTP (`127.0.0.1`) so a `<video>` or `<img>` tag — or any HTTP client — can stream it **with range requests**, fetching only the bytes it needs.
+
+This is purely Pear-end logic: it runs in a [Bare](/reference/bare-modules) worker (or any Bare/Node process) and never touches a UI.
+
+## How addressing works
+
+Writing a blob returns an **id** describing where the bytes live in the core:
+
+```js
+{ byteOffset, blockOffset, blockLength, byteLength }
+```
+
+Combine that id with the blobs **core key** and you have everything a peer needs to fetch the blob — directly as bytes, or through a blob-server link.
+
+## Add the dependencies
+
+```sh
+npm install corestore hyperswarm hyperblobs hypercore-blob-server hypercore-id-encoding
+```
+
+## Write and seed a blob
+
+The writer stores a file as a blob, replicates the blobs core over [Hyperswarm](/reference/building-blocks/hyperswarm), and prints the `{ key, ...id }` other peers need:
+
+```js
+import Corestore from 'corestore'
+import Hyperswarm from 'hyperswarm'
+import Hyperblobs from 'hyperblobs'
+import idEnc from 'hypercore-id-encoding'
+import fs from 'bare-fs'
+
+const store = new Corestore('./writer-store')
+const swarm = new Hyperswarm()
+swarm.on('connection', (conn) => store.replicate(conn))
+
+const blobs = new Hyperblobs(store.get({ name: 'blobs' }))
+await blobs.ready()
+swarm.join(blobs.core.discoveryKey, { server: true, client: false })
+
+const ws = blobs.createWriteStream()
+fs.createReadStream('./clip.mp4').pipe(ws)
+await new Promise((resolve, reject) => {
+  ws.on('error', reject)
+  ws.on('close', resolve)
+})
+
+// Share this with readers — the core key plus the blob id.
+const blob = { key: idEnc.normalize(blobs.core.key), ...ws.id }
+console.log('blob:', JSON.stringify(blob))
+```
+
+## Read or serve the blob on another peer
+
+A reader replicates the blobs core by key, then either pulls the bytes directly or serves them over local HTTP for a UI to stream:
+
+```js
+import Corestore from 'corestore'
+import Hyperswarm from 'hyperswarm'
+import Hyperblobs from 'hyperblobs'
+import BlobServer from 'hypercore-blob-server'
+import idEnc from 'hypercore-id-encoding'
+
+const blob = JSON.parse(process.argv[2]) // { key, byteOffset, blockOffset, blockLength, byteLength }
+
+const store = new Corestore('./reader-store')
+const swarm = new Hyperswarm()
+swarm.on('connection', (conn) => store.replicate(conn))
+
+const core = store.get({ key: idEnc.decode(blob.key) })
+await core.ready()
+swarm.join(core.discoveryKey, { client: true, server: false })
+
+// Option A — read the raw bytes.
+const blobs = new Hyperblobs(core)
+const bytes = await blobs.get({
+  byteOffset: blob.byteOffset,
+  blockOffset: blob.blockOffset,
+  blockLength: blob.blockLength,
+  byteLength: blob.byteLength
+})
+
+// Option B — serve over local HTTP so a <video>/<img> can stream it with range requests.
+const server = new BlobServer(store.session())
+await server.listen()
+const link = server.getLink(blob.key, { blob, type: 'video/mp4' })
+console.log('stream from:', link)
+```
+
+Option B is what desktop apps use: the worker hands the `link` to the renderer, and the browser streams the media straight from `hypercore-blob-server`, requesting byte ranges as the user scrubs.
+
+## Tear it down
+
+Close the server and blobs before the swarm and store:
+
+```js
+await server.close()
+await blobs.close()
+await swarm.destroy()
+await store.close()
+```
+
+## See also
+
+- [Stream stored video in a peer-to-peer app](/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app) — this primitive behind a desktop video player.
+- [Stream a live camera in a peer-to-peer app](/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app) — the same blobs, fed by live camera frames.
+- [Back up photos in a peer-to-peer app](/how-to/stream-and-share-media/back-up-photos-in-a-peer-to-peer-app) — decode images with `bare-ffmpeg` before storing them as blobs.
+- [From append-only logs to files](/explanation/from-logs-to-files) — how Hypercore, Hyperblobs, and Hyperdrive relate.
+- [Hypercore reference](/reference/building-blocks/hypercore) — the append-only log Hyperblobs chunks data across.

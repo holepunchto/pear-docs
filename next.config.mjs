@@ -49,14 +49,17 @@ const config = {
       { source: '/howto/share-append-only-databases-with-hyperbee', destination: '/how-to/store-and-replicate/share-append-only-databases-with-hyperbee', permanent: true },
       { source: '/howto/create-a-full-peer-to-peer-filesystem-with-hyperdrive', destination: '/how-to/store-and-replicate/create-a-full-peer-to-peer-filesystem-with-hyperdrive', permanent: true },
       // Misfiled how-tos that lived under /reference/ before subtask 2.
-      { source: '/reference/deployment', destination: '/how-to/operate-an-app/deployment', permanent: true },
+      { source: '/reference/deployment', destination: '/how-to/operate-an-app/manual-deployment/deployment', permanent: true },
       { source: '/reference/migration', destination: '/how-to/operate-an-app/migration', permanent: true },
-      { source: '/reference/recommended-practices', destination: '/how-to/operate-an-app/recommended-practices', permanent: true },
-      { source: '/reference/troubleshooting', destination: '/how-to/operate-an-app/troubleshooting', permanent: true },
+      { source: '/reference/recommended-practices', destination: '/how-to', permanent: true },
+      { source: '/reference/troubleshooting', destination: '/how-to/troubleshooting', permanent: true },
       // FAQ deconstructed in subtask 9; most entries became explanations,
       // so the page-level redirect lands on the explanation index where a
       // lookup table maps each old anchor to its new home.
       { source: '/reference/faq', destination: '/explanation', permanent: true },
+      // Release pipeline glossary was folded into the release-pipeline
+      // explanation as a "Glossary" section (subtask: glossary merge).
+      { source: '/reference/release-pipeline-glossary', destination: '/explanation/release-pipeline#glossary', permanent: true },
       // Building-block reference docs live at /reference/building-blocks/*.
       // Keep /building-blocks/* as a legacy shortcut that redirects there.
       { source: '/building-blocks/:slug', destination: '/reference/building-blocks/:slug', permanent: true },
