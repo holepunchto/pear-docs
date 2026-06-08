@@ -96,10 +96,22 @@ keys owned by UI-integration libraries (`pear.pre`, `pear.gui`, `pear.userAgent`
   confirming a rename. **Fixed:** renamed the heading/anchor to `pear.stage.include`, added a
   version note, and repointed the `prefetch` deprecation cross-reference.
 
-### Deferred (with reason)
+### api.mdx — kept, deprecated entries now point forward
 
-- **api.mdx** — deprecated `Pear.app.*` property catalog; folded into the Phase 3
-  deprecation/demotion work rather than deep-linking a page that is being demoted.
+The page is **half-deprecated**: `## global.Pear` is superseded by `pear-runtime`, but
+`## global.Bare` is **stable, current, and documented nowhere else** (the live Bare runtime
+API — process control, lifecycle events, `Bare.Addon`, `Bare.Thread`). So the page is kept,
+not deleted. Instead of source-linking a deprecated page, the deprecated `global.Pear`
+entries now link to their replacements:
+
+- Process methods → same-page Bare equivalents: `Pear.argv`→`Bare.argv`, `Pear.pid`→`Bare.pid`,
+  `Pear.exitCode`→`Bare.exitCode`, `Pear.exit`→`Bare.exit`.
+- `Pear.app` (and all `Pear.app.*`) → the [`pear-runtime`](/reference/pear/runtime) instance API
+  (one parent pointer; `pear-runtime` exposes no per-property equivalents, so no false 1:1s).
+- The remaining `Pear.*` methods already linked to their `pear-*` module replacements
+  (`pear-restart`, `pear-messages`, `pear-electron ui.*`, etc.) — left as-is.
+- Entries with no documented replacement (`Pear.teardown`, `Pear.checkpoint`, `Pear.versions`,
+  `Pear.constructor.CUTOVER`/`IPC`) are left pointing only to the page-level banner.
 
 ## Reverse-accuracy pass — are there *new* upstream APIs the docs omit?
 
@@ -152,7 +164,6 @@ then executed:
 
 ## Outstanding
 
-- **api.mdx** — deep-linking deferred (deprecated page, demoted in Phase 3).
 - **Reverse-accuracy pass** covered the 7 high-traffic building-blocks/helpers via README
   diff. Remaining repos (other helpers, tools, `pear-runtime`) not yet reverse-checked —
   forward linking confirms nothing *documented* is stale there, but a README diff could
