@@ -22,7 +22,7 @@ In [Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-
 - Requires only one replication stream per peer connection.
 - Simplifies referring to Hypercores by name.
 
-If named cores collide across components, namespace them (`store.namespace('a')`)—retrieving cores by `key` is unaffected by namespacing.
+If named cores collide across components, namespace them ([`store.namespace('a')`](/reference/helpers/corestore#const-namespacedstore--storenamespacename-options))—retrieving cores by `key` is unaffected by namespacing.
 </Callout>
 
 ## Create the multicore writer app
@@ -52,7 +52,7 @@ Create the `multicore-writer-app/index.js` file with the following content:
 The `multicore-writer-app` uses a Corestore instance to create three Hypercores, which are then replicated with other peers using `Hyperswarm`:
 * One Corestore and one Hyperswarm back the whole app (L7–L8). `core1` bootstraps the system—its first block records the keys of `core2` and `core3` (L22–L26), so a reader only needs `core1`'s key to discover the rest. Writing the bootstrap list before announcing on the swarm ensures `core1.get(0)` resolves as soon as a reader connects.
 * The three named cores are created up front (L13–L15); names map to local key pairs and are never sent to readers.
-* Only `core1`'s discovery key is announced on the swarm (L32)—`core2` and `core3` ride along because `store.replicate(conn)` replicates every loaded core over a single stream (L36).
+* Only `core1`'s discovery key is announced on the swarm (L32)—`core2` and `core3` ride along because [`store.replicate(conn)`](/reference/helpers/corestore#const-stream--storereplicateisinitiatororstream-options) replicates every loaded core over a single stream (L36).
 * The main core key is logged so it can be passed to the [`multicore-reader-app`](#create-the-multicore-reader-app) (L28).
 * Terminal input is routed by length: short messages append to `core2`, long ones to `core3` (L39–L46).
 
@@ -84,7 +84,7 @@ This will install the following dependencies:
 
 ### Add the multicore reader app logic
 
-Create the `multicore-reader-app/index.js` file with the following content. The reader takes the writer's main core key as a command-line argument (L6–L8) and opens its own Corestore (L10–L11). On each connection it replicates the whole store (L17), then gets `core1` from the supplied key, joins the swarm on its discovery key, and flushes discovery (L20–L25). `core.get(0)` then blocks until the writer's first block—the bootstrap key list—has actually replicated; unlike `core.update()` it waits for the data itself, and a timeout surfaces a clear error if the writer is never reachable instead of reading an empty core or hanging (L27–L36). It reads the bootstrap key list from that block (L39) and, for every key, gets the corresponding core and logs each new block as it is appended (L40–L50):
+Create the `multicore-reader-app/index.js` file with the following content. The reader takes the writer's main core key as a command-line argument (L6–L8) and opens its own Corestore (L10–L11). On each connection it replicates the whole store (L17), then gets `core1` from the supplied key, joins the swarm on its discovery key, and flushes discovery (L20–L25). [`core.get(0)`](/reference/building-blocks/hypercore#await-coregetindex-options) then blocks until the writer's first block—the bootstrap key list—has actually replicated; unlike [`core.update()`](/reference/building-blocks/hypercore#await-coreupdateoptions) it waits for the data itself, and a timeout surfaces a clear error if the writer is never reachable instead of reading an empty core or hanging (L27–L36). It reads the bootstrap key list from that block (L39) and, for every key, gets the corresponding core and logs each new block as it is appended (L40–L50):
 
 ```javascript file=<rootDir>/examples/how-to/store-and-replicate/work-with-many-hypercores-using-corestore/multicore-reader-app/index.js title="multicore-reader-app/index.js" lineNumbers {6-8,10-11,17,20-25,27-36,39,40-50} skip="example-import"
 ```
