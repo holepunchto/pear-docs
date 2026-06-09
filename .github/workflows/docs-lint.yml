@@ -55,24 +55,23 @@ jobs:
   vale:
     name: vale prose lint
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      checks: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v6
-      - name: Vale
-        uses: errata-ai/vale-action@reviewdog
-        with:
-          # Pin the Vale binary so CI matches local runs. "latest" drifts and
-          # can fail the gate with no code change when a new rule ships. The
-          # Google package version is pinned in .vale.ini. Bump both together.
-          version: "3.14.2"
-          # Only lint the docs source, not examples/ or node_modules.
-          files: content
-          # Lint every targeted file, not just lines changed in the diff.
-          filter_mode: nofilter
-          # Fail the job on error-level alerts (per MinAlertLevel in .vale.ini).
-          fail_on_error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Install Vale directly rather than via errata-ai/vale-action: the action
+      # resolves StylesPath differently from `vale sync`'s package location on
+      # Linux runners, so lint fails with "style 'Google' does not exist on
+      # StylesPath". Running the pinned binary ourselves keeps sync and lint on
+      # the same StylesPath and matches local runs exactly. The version is
+      # pinned to match the Google package pinned in .vale.ini — bump both
+      # together (and re-run `vale sync && vale content` locally first).
+      - name: Install Vale
+        run: |
+          curl -sSL https://github.com/errata-ai/vale/releases/download/v3.14.2/vale_3.14.2_Linux_64-bit.tar.gz \
+            | sudo tar -xz -C /usr/local/bin vale
+          vale --version
+      # Fetch the pinned Google package into Vale's data dir.
+      - name: Sync Vale styles
+        run: vale sync
+      # Fail the job on error-level alerts (per MinAlertLevel in .vale.ini).
+      - name: Lint content
+        run: vale --minAlertLevel=error content
