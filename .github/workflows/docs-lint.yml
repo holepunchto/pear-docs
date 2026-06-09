@@ -37,13 +37,20 @@ jobs:
         with:
           node-version: 22
       # The checker only needs tsx + github-slugger, both public on npm. We
-      # install them globally and run the script with NODE_PATH so we can skip
-      # the token-gated root install of the private @tetherto/* packages
-      # (this repo lives in holepunchto/, the packages in tetherto/).
-      - name: Install tsx + github-slugger
-        run: npm i -g tsx github-slugger
+      # can't run a normal `npm install` here because package.json pulls
+      # token-gated @tetherto/* packages from GitHub Packages (this repo lives
+      # in holepunchto/, the packages in tetherto/, so the repo token can't
+      # read them). github-slugger is imported as an ESM bare specifier, and
+      # ESM resolution ignores NODE_PATH — so a global install isn't found.
+      # Install just the checker deps into a throwaway prefix and copy them
+      # into ./node_modules, where ESM resolution can find them.
+      - name: Install link-checker deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
       - name: Check internal links
-        run: NODE_PATH="$(npm root -g)" tsx scripts/check-internal-links.ts
+        run: ./node_modules/.bin/tsx scripts/check-internal-links.ts
 
   vale:
     name: vale prose lint

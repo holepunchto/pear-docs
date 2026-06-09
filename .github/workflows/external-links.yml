@@ -25,9 +25,13 @@ jobs:
         with:
           node-version: 22
       # Only needs tsx + github-slugger (both public) — see the note in
-      # docs-lint.yml for why we avoid the token-gated root install.
-      - name: Install tsx + github-slugger
-        run: npm i -g tsx github-slugger
+      # docs-lint.yml for why we install them in isolation and copy them into
+      # ./node_modules rather than installing globally or running the root install.
+      - name: Install link-checker deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
 
       # Capture the report but don't fail the step yet — we want to file an
       # issue first, then fail the job at the end.
@@ -35,7 +39,7 @@ jobs:
         id: check
         run: |
           set +e
-          NODE_PATH="$(npm root -g)" tsx scripts/check-external-links.ts 2>&1 | tee link-report.txt
+          ./node_modules/.bin/tsx scripts/check-external-links.ts 2>&1 | tee link-report.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Open or update tracking issue
