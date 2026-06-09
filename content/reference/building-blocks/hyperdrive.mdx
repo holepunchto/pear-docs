@@ -47,11 +47,11 @@ await drive.close()
 
 ### Constructor and lifecycle
 
-#### `new Hyperdrive(store, [key])`
+#### `new Hyperdrive(store, [key], [options])`
 
 [API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L20)
-- Signature: `new Hyperdrive(store, [key])`
-- Parameters: `store` is the `Corestore` used for metadata and blob storage; `key` optionally opens an existing drive by public key instead of using the default named core.
+- Signature: `new Hyperdrive(store, [key], [options])`
+- Parameters: `store` is the `Corestore` used for metadata and blob storage; `key` optionally opens an existing drive by public key instead of using the default named core. `options` may be passed in place of `key` and supports `encryptionKey` to encrypt the backing cores, `onwait` for a per-core wait hook, and `active` (defaults to `true`) to control whether the drive keeps its cores active.
 - Returns: A `Hyperdrive` instance.
 - Example:
 
@@ -254,11 +254,11 @@ await drive.clear('/videos/demo.mp4', { diff: true })
 await drive.clearAll({ diff: true })
 ```
 
-#### `await drive.symlink(path, linkname)`
+#### `await drive.symlink(path, linkname, [options])`
 
 [API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L388)
-- Signature: `await drive.symlink(path, linkname)`
-- Parameters: `path` is the symlink entry to create; `linkname` is the destination path inside the drive.
+- Signature: `await drive.symlink(path, linkname, [options])`
+- Parameters: `path` is the symlink entry to create; `linkname` is the destination path inside the drive; `options.metadata` optionally stores arbitrary JSON metadata on the symlink entry.
 - Returns: A promise that resolves after the symlink entry is written.
 - Example:
 
@@ -284,7 +284,7 @@ for await (const chunk of drive.createReadStream('/hello.txt')) {
 
 [API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L579)
 - Signature: `const ws = drive.createWriteStream(path, [options])`
-- Parameters: `path` is the file path to write; `options.executable` marks the file executable and `options.metadata` stores arbitrary JSON metadata.
+- Parameters: `path` is the file path to write; `options.executable` marks the file executable, `options.metadata` stores arbitrary JSON metadata, and `options.dedup` (defaults to `false`) reuses the existing blob when the new contents match the current entry.
 - Returns: A writable stream that commits the file when closed.
 - Example:
 
@@ -323,16 +323,16 @@ for await (const name of drive.readdir('/images')) {
 }
 ```
 
-#### `const stream = await drive.entries([range], [options])`
+#### `const stream = drive.entries([range], [options])`
 
 [API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L471)
-- Signature: `const stream = await drive.entries([range], [options])`
-- Parameters: `range` limits the key space to read; `options` follows the same stream options as the underlying Hyperbee read stream.
+- Signature: `const stream = drive.entries([range], [options])`
+- Parameters: `range` limits the key space to read; `options` follows the same stream options as the underlying Hyperbee read stream and accepts `options.ignore` to skip matching keys.
 - Returns: A read stream of drive entries in key order.
 - Example:
 
 ```js
-for await (const entry of await drive.entries()) {
+for await (const entry of drive.entries()) {
   console.log(entry.key)
 }
 ```
@@ -342,7 +342,7 @@ for await (const entry of await drive.entries()) {
 [API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L344)
 - Signature: `const comparison = drive.compare(entryA, entryB)`
 - Parameters: `entryA` and `entryB` are entry objects returned by Hyperdrive.
-- Returns: `0` when the entries match, `1` when `entryA` is older, and `-1` when `entryB` is older.
+- Returns: `0` when the entries are equal, `1` when `entryA` is newer (higher `seq`), and `-1` when `entryA` is older (lower `seq`).
 - Example:
 
 ```js
@@ -391,7 +391,7 @@ await batch.flush()
 [API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L187)
 - Signature: `await batch.flush()`
 - Parameters: None.
-- Returns: A promise that resolves when the staged batch mutations are committed to the underlying drive.
+- Returns: A promise that resolves once the staged batch mutations are committed to the underlying drive and the batch session is closed.
 - Example:
 
 ```js
@@ -506,11 +506,11 @@ const done = drive.findingPeers()
 swarm.flush().then(done, done)
 ```
 
-#### `const stream = drive.replicate(isInitiatorOrStream)`
+#### `const stream = drive.replicate(isInitiator, [options])`
 
 [API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L147)
-- Signature: `const stream = drive.replicate(isInitiatorOrStream)`
-- Parameters: Pass a replication stream or the initiator/options form accepted by the underlying Corestore replication API.
+- Signature: `const stream = drive.replicate(isInitiator, [options])`
+- Parameters: Pass an existing replication stream, or an `isInitiator` boolean with optional `options`. Both forms are forwarded to the underlying Corestore replication API.
 - Returns: The replication stream for the drive and its loaded backing data.
 - Example:
 

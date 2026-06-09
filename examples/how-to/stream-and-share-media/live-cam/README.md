@@ -1,8 +1,8 @@
 # pear-live-cam
 
-- P2P live camera streaming app. Each peer captures from a local webcam via ffmpeg (fragmented MP4) and streams the H.264 fragments over Hypercore. Running in an Electron desktop shell with embedded `pear-runtime`.
+- P2P live camera streaming app. The creator captures its webcam in the renderer via the browser `getUserMedia` + `MediaRecorder` APIs (WebM/VP8) and uploads the raw WebM fragments as Hyperblobs. Viewers replicate the fragments, fetch them from `hypercore-blob-server`, and reassemble the stream with `MediaSource`. Running in an Electron desktop shell with embedded `pear-runtime`.
 
-- Stack: holepunch, bare, electron, pear-runtime, corestore, hyperswarm, blind-pairing, hyperdb, hrpc, autobase, hyperblobs, hypercore-blob-server, bare-ffmpeg, bare-subprocess
+- Stack: holepunch, bare, electron, pear-runtime, corestore, hyperswarm, blind-pairing, hyperdb, hyperdispatch, autobase, hyperblobs, hypercore-blob-server
 
 ## Documentation
 
@@ -16,15 +16,12 @@ Build the shared scaffold first: [Reshape into a production app](https://docs.pe
 
 ## Prerequisites
 
-Install `ffmpeg` so the worker can fall back to a system ffmpeg if `bare-ffmpeg` fails.
+The creator captures video with the browser `getUserMedia` API, so the host
+machine needs a webcam. Capture is video-only (`audio: false`), so no microphone
+is required.
 
-```shell
-brew install ffmpeg          # macOS
-apt-get install -y ffmpeg    # Debian/Ubuntu
-```
-
-On macOS, the first launch will prompt for camera and microphone access. Grant both
-and restart the app so ffmpeg can open the AVFoundation device.
+On macOS, the first launch prompts for camera access. Grant it and restart the
+app if the prompt appeared after capture already started.
 
 ## Usage
 

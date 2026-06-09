@@ -51,10 +51,14 @@ await client.flush()
 [API definition on GitHub](https://github.com/holepunchto/hyperswarm/blob/v4.17.0/index.js#L23)
 - Signature: `const swarm = new Hyperswarm(opts)`
 - Parameters:
-  - `opts.keyPair`: Noise key pair to use for DHT listen and connect operations. Defaults to a new key pair.
+  - `opts.keyPair`: Noise key pair to use for DHT listen and connect operations. Defaults to a key pair derived from `opts.seed`, or a random one.
   - `opts.seed`: 32-byte seed used to derive a deterministic key pair.
-  - `opts.maxPeers`: Maximum number of peer connections to keep open.
-  - `opts.firewall`: Synchronous function `(remotePublicKey) => boolean` that rejects a peer when it returns `true`.
+  - `opts.maxPeers`: Maximum number of peer connections to keep open. Defaults to `64`.
+  - `opts.maxClientConnections`: Maximum number of outbound (client) connections. Defaults to `Infinity`.
+  - `opts.maxServerConnections`: Maximum number of inbound (server) connections. Defaults to `Infinity`.
+  - `opts.maxParallel`: Maximum number of connection attempts running in parallel. Defaults to `3`.
+  - `opts.firewall`: Synchronous function `(remotePublicKey, payload) => boolean` that rejects a peer when it returns `true`. Defaults to allowing all peers.
+  - `opts.relayThrough`: Public key (or function returning one) of a node to relay connections through when direct hole-punching fails.
   - `opts.dht`: Existing `hyperdht` instance to reuse instead of creating one internally.
 - Returns: A new `Hyperswarm` instance.
 - Example:
@@ -157,8 +161,10 @@ Leaving a topic stops new discovery work but does not close already-open connect
 
 ```js
 const discovery = swarm.status(topic)
-if (discovery) await discovery.refresh({ client: true, server: true })
+if (discovery) await discovery.refresh()
 ```
+
+`status(topic)` returns the underlying `PeerDiscovery`, whose `refresh()` takes no arguments and reannounces or re-looks up with the topic's existing client/server configuration. The object returned by `swarm.join(...)` is a session over that discovery and accepts `{ client, server }` on `refresh(...)`.
 
 #### `await swarm.flush()`
 
@@ -321,11 +327,12 @@ await discovery.flushed()
 #### `await discovery.refresh({ client, server })`
 
 [API definition on GitHub](https://github.com/holepunchto/hyperswarm/blob/v4.17.0/lib/peer-discovery.js#L159)
-- Signature: `await discovery.refresh({ client, server })`
+- Signature: `await discovery.refresh({ client, server, limit })`
 - Parameters:
-  - `client`: Optional boolean to enable or disable client lookups.
-  - `server`: Optional boolean to enable or disable server announcements.
-- Returns: A promise that resolves after the topic configuration is refreshed.
+  - `client`: Optional boolean to enable or disable client lookups. Defaults to the session's current value.
+  - `server`: Optional boolean to enable or disable server announcements. Defaults to the session's current value.
+  - `limit`: Optional maximum number of peers to connect to for this topic. Defaults to `Infinity`.
+- Returns: A promise that resolves after the topic configuration is refreshed. Throws if both `client` and `server` are `false`.
 - Example:
 
 ```js
@@ -373,7 +380,7 @@ for (const topic of peerInfo.topics) console.log(topic)
 
 [API definition on GitHub](https://github.com/holepunchto/hyperswarm/blob/v4.17.0/lib/peer-info.js#L52)
 - Signature: `peerInfo.prioritized`
-- Returns: `true` when the swarm should reconnect to the peer aggressively.
+- Returns: `true` when the peer's connection priority is at or above normal, meaning the swarm still considers it a candidate for connection.
 - Example:
 
 ```js

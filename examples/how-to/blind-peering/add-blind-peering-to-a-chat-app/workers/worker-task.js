@@ -20,8 +20,8 @@ class WorkerTask extends ReadyResource {
     this.swarm = new Hyperswarm()
     this.swarm.on('connection', (conn) => this.store.replicate(conn))
 
-    this.blindPeering = new BlindPeering(this.swarm, this.store.namespace('blind-peering'), {
-      mirrors: this.blindPeerKeys
+    this.blindPeering = new BlindPeering(this.swarm.dht, this.store.namespace('blind-peering'), {
+      keys: this.blindPeerKeys
     })
 
     this.room = new ChatRoom(this.store, this.swarm, this.invite)

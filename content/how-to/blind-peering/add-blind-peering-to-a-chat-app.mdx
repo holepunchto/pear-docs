@@ -9,13 +9,13 @@ schemaType: TechArticle
 
 import { Steps, Step } from 'fumadocs-ui/components/steps'
 
-This guide shows you how to **layer [blind peering](/explanation/availability-and-blind-peering) on top of [`pear-chat`](https://github.com/holepunchto/pear-docs/tree/feat/more-how-tos/examples/getting-started/pear-chat)** so the room stays reachable even when none of its writers are connected. The reference implementation is [`pear-chat-blind-peering`](https://github.com/holepunchto/pear-docs/tree/feat/more-how-tos/examples/how-to/blind-peering/add-blind-peering-to-a-chat-app).
+This guide shows you how to **layer [blind peering](/explanation/availability-and-blind-peering) on top of [`pear-chat`](https://github.com/holepunchto/pear-docs/tree/preview/examples/getting-started/pear-chat)** so the room stays reachable even when none of its writers are connected. The reference implementation is [`pear-chat-blind-peering`](https://github.com/holepunchto/pear-docs/tree/preview/examples/how-to/blind-peering/add-blind-peering-to-a-chat-app).
 
 <include>../../_snippets/_pear-end-portability-callout.mdx</include>
 
 <include>../../_snippets/_delta-only-callout.mdx</include>
 
-- [Availability and blind peering](/explanation/availability-and-blind-peering) — why you want a third party that replicates without being able to read.
+- [Keep data available with blind peering](/how-to/blind-peering/keep-data-available-with-blind-peering) — the standalone `blind-peering` client this guide layers onto the chat scaffold.
 
 ## Before you begin
 
@@ -54,7 +54,7 @@ npm install blind-peering
 The worker only sees the flags `workers/index.js` declares with [`paparam`](https://www.npmjs.com/package/paparam). Add `--blind-peer-key` to the `command(...)` block so the key(s) you pass on the command line reach `WorkerTask` — without this, the runtime bails with `UNKNOWN_FLAG: blind-peer-key`:
 
 ```diff title="workers/index.js"
- const cmd = command('pear-chat',
+ const cmd = command('pear-chat-blind-peering',
 +  flag('--blind-peer-key|-b <blindPeerKey>', 'Blind peer key').multiple(),
    flag('--invite|-i <invite>', 'Room invite'),
    flag('--name|-n <name>', 'Your name'),
@@ -74,7 +74,7 @@ In `workers/worker-task.js`, instantiate [`BlindPeering`](https://www.npmjs.com/
 
 ```js file=<rootDir>/examples/how-to/blind-peering/add-blind-peering-to-a-chat-app/workers/worker-task.js title="workers/worker-task.js" lineNumbers {1,15,23-25,36,55}
 ```
-The blind peers replicate and seed the room's encrypted [Autobase](/reference/building-blocks/autobase) without holding its read key. Point the client at blind-peer keys you run yourself (the [`blind-peer`](https://github.com/holepunchto/blind-peer-cli) CLI prints `Listening at <key>` on startup) or shared ones. See [Availability and blind peering](/explanation/availability-and-blind-peering) for the threat model (a blind peer replicates encrypted data but never holds the room encryption key).
+The blind peers replicate and seed the room's encrypted [Autobase](/reference/building-blocks/autobase) without holding its read key. Point the client at blind-peer keys you run yourself (the [`blind-peer`](https://github.com/holepunchto/blind-peer-cli) CLI prints `Listening at <key>` on startup) or shared ones.
 
 <Callout type="info">
 See [Availability and blind peering](/explanation/availability-and-blind-peering) for the threat model (a blind peer replicates encrypted data but never holds the room encryption key).
@@ -85,7 +85,7 @@ See [Availability and blind peering](/explanation/availability-and-blind-peering
 
 ### Confirm the teardown order
 
-The order in `_close` matters (L52–L57): the room holds [`blind-pairing`](https://www.npmjs.com/package/blind-pairing) handles that depend on the swarm, and the blind-peering client holds its own connections to the blind peers. Always close the client first (L53), then the room, then the swarm, then the store (L54–L56).
+The order in `_close` matters (L54–L58): the room holds [`blind-pairing`](https://www.npmjs.com/package/blind-pairing) handles that depend on the swarm, and the blind-peering client holds its own connections to the blind peers. Always close the client first (L55), then the room, then the swarm, then the store (L56–L58).
 
 </Step>
 
@@ -116,7 +116,9 @@ npm run build
 npm start -- --storage /tmp/bp-user1 --name user1 --blind-peer-key <BLIND_PEER_KEY>
 ```
 
-**3. Start `user2`** (joins the room). Pass the invite from `user1` and the same blind-peer key:
+### 3. Start `user2` (joins the room)
+
+Pass the invite from `user1` and the same blind-peer key:
 
 ```bash skip="desktop-gui"
 npm start -- --storage /tmp/bp-user2 --name user2 --invite <INVITE> --blind-peer-key <BLIND_PEER_KEY>

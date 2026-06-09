@@ -54,7 +54,7 @@ Restarting the running app is a quick workaround without recompiling: a restart 
 
 ### Worker did not exit cleanly
 
-Bare workers spawned through [`pear-runtime`](https://github.com/holepunchto/pear-runtime) (or `hello-pear-electron`-shaped `getWorker(...)` helpers) are plain OS child processes. Electron does **not** signal them on exit, so any code path that quits without running `worker.destroy()` leaves the worker running. The worker keeps an exclusive lock on `<storage>/<core-name>-corestore`, and the next launch hangs forever on `await store.ready()`.
+Bare workers spawned through [`pear-runtime`](https://github.com/holepunchto/pear-runtime) (`PearRuntime.run(...)`, as in the `hello-pear-electron`-shaped `getWorker(...)` helper) are plain OS child processes. Electron does **not** signal them on exit, so any code path that quits without tearing the worker down leaves it running. The worker keeps an exclusive lock on its Corestore directory, and the next launch hangs forever on `await store.ready()`.
 
 Look for the symptom in `ps`:
 
@@ -70,24 +70,26 @@ kill <pid>
 
 Then fix the host so it can't recur:
 
-1. In every code path that quits, destroy workers first. The `app:afterUpdate` IPC handler must `await destroyWorkers()` before `app.exit(0)`.
-2. Hook `before-quit` so user-driven quits also clean up. `evt.preventDefault()` defers the quit until every worker emits `exit`, then call `app.quit()`.
-3. Avoid `app.exit(0)` on signal handlers without a destroy step — `app.exit` skips Electron's clean-shutdown path entirely.
+1. Register a `before-quit` listener per worker that destroys its IPC pipe (`pipe.destroy()`), so any quit tears every worker down. Remove the listener when the worker emits `exit`.
+2. Relaunch through `app.quit()`, not `app.exit()`. `app.quit()` runs `before-quit` and lets each worker shut down; `app.exit()` skips Electron's clean-shutdown path entirely, so the `before-quit` listeners never fire and the workers leak.
 
-The reference wiring lives in [Replace `electron/main.js` with the instance form](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app#read-the-electron-main-process) (the `destroyWorkers` helper and the `before-quit` listener).
+The reference wiring lives in [Read the Electron main process](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app#read-the-electron-main-process) (the per-worker `before-quit` listeners and the `app:afterUpdate` handler that calls `app.relaunch()` then `app.quit()`).
 
 ### Apply finishes the swap before relaunch
 
-`pear.updater.applyUpdate()` is **async** — it atomically swaps the new app bundle on disk and removes the staging copy. If you wire it into an IPC handler, await it before relaunching the process:
+`pear.updater.applyUpdate()` is **async** — it atomically swaps the new app bundle on disk and removes the staging copy. The renderer's **Update ready!** button must wait for the swap to finish before triggering the relaunch. In the example, the updater worker awaits `applyUpdate()` and only then writes `pear:updateApplied` back over the IPC pipe; the main process resolves the `pear:applyUpdate` handler on that message, and the renderer calls `app:afterUpdate` afterwards:
 
 ```js skip="snippet-illustration"
-ipcMain.handle('pear:applyUpdate', async () => {
-  const pear = getPear()
-  await pear.updater.applyUpdate()
+// updater worker (workers/main.js)
+pipe.on('data', async (data) => {
+  if (data.toString() === 'pear:applyUpdate') {
+    await pear.updater.applyUpdate()
+    pipe.write('pear:updateApplied')
+  }
 })
 ```
 
-If the handler returns before the swap completes, `app.exit(0)` can fire mid-swap, and the relaunch may load the previous bundle. The symptom is that clicking **Update ready!** appears to do nothing, but quitting the app manually and reopening it shows the new version.
+If the relaunch fires before the swap completes, it may load the previous bundle. The symptom is that clicking **Update ready!** appears to do nothing, but quitting the app manually and reopening it shows the new version.
 
 ### Confirm the `upgrade` link
 
