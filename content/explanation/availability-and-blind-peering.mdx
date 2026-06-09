@@ -50,20 +50,20 @@ A **blind peer** is a dedicated replicator that stores and serves Hypercores **w
 
 The stack has three parts:
 
-1. **[blind-peer](https://github.com/holepunchto/blind-peer)** — server that accepts peering requests and replicates cores.
+1. **[blind-peer](https://github.com/holepunchto/blind-peer)** — server library that accepts peering requests and replicates cores.
 2. **[blind-peering](https://github.com/holepunchto/blind-peering)** — client library used inside applications to register cores or Autobases with a blind peer.
-3. **[blind-peering-cli](https://github.com/holepunchto/blind-peering-cli)** — CLI for one-off seed requests (for example after staging an application).
+3. **[blind-peer-cli](https://github.com/holepunchto/blind-peer-cli)** — CLI that runs a blind peer as a standalone server (provides the `blind-peer` command).
 
 ### Running a blind peer server
 
-Install and start the server:
+Install the CLI and start the server:
 
 ```bash
-npm i -g blind-peer
+npm i -g blind-peer-cli
 blind-peer
 ```
 
-On startup the process logs a **public key** — clients use this key to authorize replication requests. The default disk budget is 100 GB; cap it with `-m <size>` (megabytes).
+On startup the process logs (as ndjson) a `Listening at <key>` line — that public key is the blind peer's identity, and clients use it as one of their configured `keys`. The default disk budget is 100 GB; cap it with `-m <size>` (megabytes).
 
 For production, run `blind-peer` under a service manager. Example systemd unit:
 
@@ -81,11 +81,7 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
-Pass `--trusted-peer <public-key>` when you want the CLI to submit seed requests authenticated as that identity. Obtain your public key from a machine that will make requests:
-
-```bash
-blind-peering identity
-```
+Pass `--trusted-peer <public-key>` to authorize a specific peer to announce on the blind peer (set `announce: true` on its requests). The public key here is the identity of the peer that will make those requests — the `Listening at <key>` value logged by that peer's own swarm node.
 
 ### Registering cores from an application
 
@@ -95,38 +91,37 @@ Inside a Pear worker, wire the client to your existing [Hyperswarm](/reference/b
 import BlindPeering from 'blind-peering'
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
-import Wakeup from 'protomux-wakeup'
 
 const store = new Corestore(Pear.config.storage)
 const swarm = new Hyperswarm()
-const wakeup = new Wakeup()
+swarm.on('connection', (conn) => store.replicate(conn))
 
 const BLIND_PEER_KEYS = ['<blind-peer-public-key-hex>']
-const blind = new BlindPeering(swarm, store, { wakeup, mirrors: BLIND_PEER_KEYS })
+const blinds = new BlindPeering(swarm.dht, store.namespace('blind-peering'), {
+  keys: BLIND_PEER_KEYS
+})
 
-blind.addAutobaseBackground(autobase)
-blind.addCore(core, autobase.wakeupCapability.key)
+// Ask the blind peers to keep a single Hypercore available…
+await blinds.addCore(core)
+
+// …or a whole Autobase (all of its writer and view cores).
+await blinds.addAutobase(base)
 ```
 <Callout type="tip">
-Prefer asynchronous registration for long-lived applications; synchronous paths can block startup on large cores.
+`addCore` / `addAutobase` connect to the closest configured blind peers and request that they replicate and seed the given cores — without the blind peer ever being able to read them.
 </Callout>
 
 Consider letting users configure which blind peers they trust — default infrastructure may not match privacy or jurisdiction requirements (for example location-sensitive data).
 
-### Seeding an application via CLI
+### Finding the keys to keep available
 
-`pear info pear://<app>` prints the keys needed to replicate an application bundle:
+`pear info pear://<app>` prints the keys behind an application bundle:
 
 ```bash
 pear info pear://<app>
 ```
 
-The `project` and `content` rows identify the metadata core and content drive. Request blind peering for each:
-
-```bash
-blind-peering seed --core --blind-peer-key <blind-peer-key> <content-key>
-blind-peering seed --drive --blind-peer-key <blind-peer-key> <project-key>
-```
+The `project` and `content` rows identify the metadata core and content drive. To keep them available, open the corresponding cores in a replicator process and register them with the client library shown above — `blinds.addCore(core)` for a single Hypercore, `blinds.addAutobase(base)` for an Autobase and all of its writer and view cores.
 
 ## Trusted peers and discovery keys
 

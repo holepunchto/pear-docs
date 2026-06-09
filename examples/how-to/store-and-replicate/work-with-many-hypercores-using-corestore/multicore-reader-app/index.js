@@ -24,15 +24,19 @@ await core.ready()
 swarm.join(core.discoveryKey)
 await swarm.flush()
 
-// update the meta-data of the hypercore instance
-await core.update()
-
-if (core.length === 0) {
+// core.get(0) blocks until the writer's first block (the bootstrap key list) has
+// replicated from a connected peer — unlike core.update(), it waits for the data
+// itself rather than just peer discovery. The timeout surfaces a clear error if
+// the writer is never reachable, instead of leaving the reader hanging forever.
+let firstBlock
+try {
+  firstBlock = await core.get(0, { timeout: 30000 })
+} catch {
   throw new Error('Could not connect to the writer peer')
 }
 
-// getting cores using the keys stored in the first block of main core
-const { otherKeys } = await core.get(0)
+// read the bootstrap key list (the other core keys) from the first block
+const { otherKeys } = firstBlock
 for (const key of otherKeys) {
   const core = store.get({ key: b4a.from(key, 'hex') })
   // on every append to the hypercore, 

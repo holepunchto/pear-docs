@@ -41,57 +41,49 @@ Example:
 
 ## Instantiate
 
-In an applications entrypoint create an instance of [`Pear`](https://github.com/holepunchto/pear-runtime/blob/v1.1.4/index.js#L8):
+In an applications entrypoint create an instance of [`PearRuntime`](https://github.com/holepunchto/pear-runtime/blob/v1.1.4/index.js#L8):
 
-```sh
+```js
 const path = require('path')
-const pkg = require('./package.json')
-const Pear = require('pear-runtime')
-const dir = path.join('path', 'to', 'app', 'storage') // eg ~/.config/{pkg.productName}
+const { version, upgrade, name } = require('./package.json')
+const PearRuntime = require('pear-runtime')
+const dir = path.join('path', 'to', 'app', 'storage') // eg ~/.config/{name}
 const app = path.join('application', 'path') // eg process.execPath, may also be null
-const pear = new Pear({ ...pkg, dir, app })
+const pear = new PearRuntime({ dir, version, upgrade, name, app })
+pear.on('error', console.error) // network errors etc.
 ```
 
 ## Updates
 
 An update occurs when a seeded application drive is written to - see [Deployment](/how-to/operate-an-app/manual-deployment/deployment).
 
-When an update occurs, the instance will emit two events `updating` and `updated`.
+Update events are emitted by the instance's `updater`. When an update occurs it emits `updating`, then `updated` once the new version is staged. Apply the staged update with `pear.updater.applyUpdate()`.
 
 ```js
-pear.on('updating', () => {
+pear.updater.on('updating', () => {
   // update view to indicate updating in progress
 })
 ```
 
 ```js
-pear.on('updated', () => {
-  // update view to indicate application updated
+pear.updater.on('updated', () => {
+  // update view to indicate application updated, then apply it
+  pear.updater.applyUpdate()
 })
 ```
 
 ### Disabling Updates
 
-To opt-out of updates set `updates` option to `false`.
+To opt-out of updates set the `updates` option to `false`:
 
 ```js
-const pear = new Pear({ ...pkg, dir, app, updates: false })
+const pear = new PearRuntime({ dir, version, upgrade, name, app, updates: false })
 ```
 
 Perhaps support a `--no-updates` flag:
 
 ```js
-const pear = new Pear({ ...pkg, dir, app, updates: !NO_UPDATES_FLAG })
-```
-
-To disable updates as an application default, ensure that the package.json is spread into the options (`{...pkg, ...}`) and set the `updates` field to `false`:
-
-```json
-{
-  "version": "1.0.0",
-  "updates": false
-  ...
-}
+const pear = new PearRuntime({ dir, version, upgrade, name, app, updates: !NO_UPDATES_FLAG })
 ```
 
 ## Storage
@@ -105,7 +97,7 @@ For local development, specifying different `dir` values for different running i
 For example, an application could support `--storage|-s` flag:
 
 ```js
-const pear = new Pear({ ...pkg, app, dir: STORAGE_FLAG })
+const pear = new PearRuntime({ dir: STORAGE_FLAG, version, upgrade, name, app })
 ```
 
 Then pass `-s /tmp/storage-a` to one instance and `-s /tmp/storage-b` to another.
@@ -114,10 +106,10 @@ The separate application instances can then interact without conflicting.
 
 ## Running Workers
 
-To run a Bare worker, [`pear.run`](https://github.com/holepunchto/pear-runtime/blob/v1.1.4/index.js#L49) takes its entrypoint with any args: 
+To run a Bare worker, [`PearRuntime.run`](https://github.com/holepunchto/pear-runtime/blob/v1.1.4/index.js#L9) takes its entrypoint with any args. It is a **static** method (so it can be called directly, e.g. from an Electron main process); the instance exposes [`pear.run`](https://github.com/holepunchto/pear-runtime/blob/v1.1.4/index.js#L49) as an alias for it:
 
 ```js
-const IPC = pear.run('./path/to/js/file.js', ['some', 'args'])
+const IPC = PearRuntime.run('./path/to/js/file.js', ['some', 'args'])
 ```
 
 `IPC` is a duplex stream for Inter-Process Communication. Use this to communicate with the worker.
