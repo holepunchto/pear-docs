@@ -1,0 +1,67 @@
+name: Docs lint
+
+# Gates docs changes on every PR (and on push to main):
+#   - internal-links: the in-repo link/anchor/asset checker.
+#   - vale:           Google-style prose linting of content/.
+# External links are network-flaky, so they run on a schedule instead
+# (see .github/workflows/external-links.yml).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'content/**'
+      - 'scripts/check-internal-links.ts'
+      - 'scripts/helpers.ts'
+      - '.vale.ini'
+      - '.github/styles/**'
+      - '.github/workflows/docs-lint.yml'
+  pull_request:
+    paths:
+      - 'content/**'
+      - 'scripts/check-internal-links.ts'
+      - 'scripts/helpers.ts'
+      - '.vale.ini'
+      - '.github/styles/**'
+      - '.github/workflows/docs-lint.yml'
+  workflow_dispatch:
+
+jobs:
+  internal-links:
+    name: internal links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # The checker only needs tsx + github-slugger, both public on npm. We
+      # install them globally and run the script with NODE_PATH so we can skip
+      # the token-gated root install of the private @tetherto/* packages
+      # (this repo lives in holepunchto/, the packages in tetherto/).
+      - name: Install tsx + github-slugger
+        run: npm i -g tsx github-slugger
+      - name: Check internal links
+        run: NODE_PATH="$(npm root -g)" tsx scripts/check-internal-links.ts
+
+  vale:
+    name: vale prose lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Vale
+        uses: errata-ai/vale-action@reviewdog
+        with:
+          # Only lint the docs source, not examples/ or node_modules.
+          files: content
+          # Lint every targeted file, not just lines changed in the diff.
+          filter_mode: nofilter
+          # Fail the job on error-level alerts (per MinAlertLevel in .vale.ini).
+          fail_on_error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

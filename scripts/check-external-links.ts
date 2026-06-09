@@ -8,6 +8,22 @@ const CONCURRENCY = 5;
 // Request timeout in milliseconds (10 seconds)
 const TIMEOUT = 10000;
 
+// URLs to skip checking entirely. Use for links that are intentionally kept
+// despite returning a non-200 (e.g. a repo that is expected to be (re)published
+// under this org). Entries may be an exact string or a RegExp. Keep this list
+// short and comment each entry with the reason it's exempt.
+const IGNORE_LIST: (string | RegExp)[] = [
+  // Kept intentionally: the package lives upstream at mafintosh/graceful-goodbye,
+  // but we link the holepunchto namespace where it's expected to be re-homed.
+  'https://github.com/holepunchto/graceful-goodbye',
+];
+
+function isIgnored(url: string): boolean {
+  return IGNORE_LIST.some((rule) =>
+    typeof rule === 'string' ? rule === url : rule.test(url)
+  );
+}
+
 interface LinkResult {
   link: string;
   files: string[];
@@ -119,6 +135,7 @@ async function main() {
   // Map of link → list of files containing that link
   // This helps us report which files have broken links
   const linkMap = new Map<string, string[]>();
+  const ignored = new Set<string>();
 
   // Collect all external links from all files
   for (const file of files) {
@@ -126,6 +143,11 @@ async function main() {
     const { external } = extractLinks(content);
 
     for (const link of external) {
+      // Skip explicitly ignored URLs (see IGNORE_LIST).
+      if (isIgnored(link)) {
+        ignored.add(link);
+        continue;
+      }
       if (!linkMap.has(link)) {
         linkMap.set(link, []);
       }
@@ -134,6 +156,11 @@ async function main() {
   }
 
   console.log(`Found ${linkMap.size} unique external links\n`);
+  if (ignored.size > 0) {
+    console.log(`Skipping ${ignored.size} ignored link(s):`);
+    for (const link of ignored) console.log(`   ⏭️  ${link}`);
+    console.log('');
+  }
 
   // Convert map to array for batch processing
   const links = Array.from(linkMap.entries());
