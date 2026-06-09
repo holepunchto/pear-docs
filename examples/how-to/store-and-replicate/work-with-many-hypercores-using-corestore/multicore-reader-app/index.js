@@ -22,9 +22,11 @@ const core = store.get({ key, valueEncoding: 'json' })
 await core.ready()
 
 swarm.join(core.discoveryKey)
-await swarm.flush()
-
-// update the meta-data of the hypercore instance
+// swarm.flush() only resolves the swarm announce. findingPeers() keeps
+// core.update() waiting until a connected peer has actually supplied the
+// latest length, so we don't read an empty core before replication catches up.
+const done = core.findingPeers()
+swarm.flush().then(done, done)
 await core.update()
 
 if (core.length === 0) {
