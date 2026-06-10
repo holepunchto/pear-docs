@@ -38,9 +38,25 @@ export const customTree: Node[] = [
         ],
       },
       {
-        type: 'page',
-        name: 'Start from the hello-pear-electron template',
-        url: '/getting-started/start-from-hello-pear-electron',
+        type: 'folder',
+        name: 'Start from a template',
+        index: {
+          type: 'page',
+          name: 'Start from a template',
+          url: '/getting-started/from-a-template',
+        },
+        children: [
+          {
+            type: 'page',
+            name: 'Start from the hello-pear-electron template',
+            url: '/getting-started/from-a-template/start-from-hello-pear-electron',
+          },
+          {
+            type: 'page',
+            name: 'Start from the hello-pear-bare template',
+            url: '/getting-started/from-a-template/start-from-hello-pear-bare',
+          },
+        ],
       },
     ],
   },

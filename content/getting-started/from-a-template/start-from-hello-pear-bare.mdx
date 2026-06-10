@@ -1,0 +1,186 @@
+---
+title: "Start from the hello-pear-bare template"
+description: >-
+  An alternative getting started path for terminal apps: clone the
+  hello-pear-bare boilerplate and learn how a standalone Bare process wires
+  pear-runtime over-the-air updates, Corestore, and Hyperswarm—then build it
+  into a cross-platform binary.
+docType: getting-started
+schemaType: TechArticle
+---
+
+This is the terminal counterpart to [Start from the hello-pear-electron template](/getting-started/from-a-template/start-from-hello-pear-electron). Instead of a desktop window, you start from a finished command-line boilerplate and learn how a single [Bare](/reference/modules/bare-modules) process wires peer-to-peer updates and replication—then ship it as a standalone binary.
+
+[`holepunchto/hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare) is Holepunch's official boilerplate for peer-to-peer terminal applications. Where the Electron template embeds [`pear-runtime`](/reference/pear/runtime) into Electron, this template embeds it into [Bare](/reference/modules/bare-modules), the zero-core embeddable JavaScript runtime. The application and runtime compile into a single standalone executable per OS and architecture with no peer dependencies—no Node.js, and no Bare or Pear CLI required on the user's machine.
+
+With this shape you can build CLIs, REPLs, TUIs, services and daemons, or transport hooks—anything headless—and ship it with peer-to-peer over-the-air (OTA) updates. The upcoming Pear CLI v3 is built on this same architecture: a Bare standalone executable that updates itself peer-to-peer through `pear-runtime`.
+
+Take this path when you want to distribute a terminal app as a single executable and update it over the air.
+If you want to build a desktop app instead, follow the [hello-pear-electron template](/getting-started/from-a-template/start-from-hello-pear-electron).
+
+## Clone and run
+
+### 1. Clone the repository
+
+Clone the repository and install dependencies with the following commands:
+
+```bash
+git clone https://github.com/holepunchto/hello-pear-bare
+cd hello-pear-bare
+npm install
+```
+
+### 2. Create a valid `upgrade` link
+
+The template ships with a placeholder `upgrade` link in `package.json`. Until you replace it, startup fails with `INVALID_URL`. Create a real link with [`pear touch`](/reference/pear/cli#pear-touch-flags):
+
+```bash
+pear touch
+```
+
+This prints a link, for example: `pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o`.
+
+### 3. Set the `upgrade` link in `package.json`
+
+Set the `upgrade` field in `package.json` to the link you just created:
+
+```json
+"upgrade": "pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o"
+```
+
+### 4. Run the app
+
+`npm start` runs `bare bin.js --no-updates`: the process starts in development mode with over-the-air updates disabled, so a live release never swaps the binary while you work.
+
+```bash
+npm start
+```
+
+To exercise the updater locally, opt back in:
+
+```bash
+npm start -- --updates
+```
+
+## Map the template
+
+| Path | What it is | Do you edit it? |
+| --- | --- | --- |
+| [`bin.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/bin.js) | The entrypoint—CLI flag parsing, the storage path, and the Corestore + Hyperswarm + `pear-runtime` updater wiring. | Yes—this is your app. |
+| [`package.json`](https://github.com/holepunchto/hello-pear-bare/blob/main/package.json) | App metadata, scripts, the `upgrade` link, and the per-platform `make:*` build targets. | Yes—branding and release link. |
+| [`scripts/make.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/scripts/make.js) | Detects the host OS and architecture and runs the matching `make:` target. | Rarely. |
+| [`test/index.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/test/index.js) | The [`brittle`](https://github.com/holepunchto/brittle) test entry, run by `npm test`. | Yes—your tests. |
+
+Unlike the Electron template, there's no renderer, preload bridge, or separate worker. A single Bare process in `bin.js` owns everything.
+
+## How it's wired
+
+`bin.js` runs as a single [Bare](/reference/modules/bare-modules) process. It parses two flags with [`paparam`](https://github.com/holepunchto/paparam):
+
+```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.js#L13-L17 title="bin.js"
+```
+
+Then it picks a storage directory, opens a [Corestore](/reference/helpers/corestore) and a [Hyperswarm](/reference/building-blocks/hyperswarm), and constructs the [`pear-runtime`](/reference/pear/runtime) instance from the `upgrade` link and version in `package.json`. In development (launched with `bare`) storage is a temporary directory; a packaged binary uses the persistent per-app directory from [`bare-storage`](/reference/modules/bare-modules), and `--storage` overrides both—see [Storage and distribution](/explanation/storage-and-distribution):
+
+```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.js#L21-L45 title="bin.js"
+```
+
+When updates are enabled, it replicates the store on every swarm connection and joins the update drive's discovery key as a client to pull new releases:
+
+```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.js#L58-L63 title="bin.js"
+```
+
+The updater runs on `pear.updater`: on an `updated` event it applies the downloaded release with `applyUpdate()`, and `SIGHUP`, `SIGINT`, `SIGQUIT`, and `SIGTERM` handlers close `pear` cleanly before exit. For the model behind these updates, see [Runtime](/reference/pear/runtime#updates).
+
+```mermaid
+flowchart LR
+  cli["bin.js (Bare process)"] --> updater["pear-runtime updater"]
+  cli --> store["Corestore"]
+  cli --> swarm["Hyperswarm"]
+  updater --> swarm
+  swarm <-->|"replicate update drive"| peers((seeding peers))
+```
+
+## Build a standalone binary
+
+[`bare-build`](https://github.com/holepunchto/bare-build) compiles `bin.js` and its dependencies into a single standalone executable with no peer dependencies—users don't need Node.js, Bare, or the Pear CLI installed. Build for your current host with:
+
+```bash
+npm run make
+```
+
+`scripts/make.js` detects your OS and architecture and runs the matching target, writing the binary to `out/<platform>-<arch>`. To build for a specific target—for example, in CI—call that target directly:
+
+```bash
+npm run make:darwin-arm64
+```
+
+The template ships a target for every supported platform:
+
+- **macOS** — `darwin-arm64`, `darwin-x64`
+- **Linux** — `linux-arm64`, `linux-x64`
+- **Windows** — `win32-arm64`, `win32-x64`
+
+Build each platform's binary on a matching host.
+
+## Install over the air
+
+Distribute the executable through the usual channels—a download on your website, `apt`, or Homebrew.
+You can also install it peer-to-peer: once your `upgrade` link is [seeding](/explanation/availability-and-blind-peering#seeding-with-pear-seed) a release, pull it directly with the preview [`pear install`](/reference/pear/cli#pear-install) command:
+
+```bash
+npx pear-install pear://<key>
+```
+
+After the first install, new releases reach users through the swarm—no reinstall needed. For how staging and seeding work, see [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment) and [Installing applications](/explanation/storage-and-distribution#installing-applications).
+
+## Example: add a flag
+
+The boilerplate is a minimal CLI plus updater, and `bin.js` is where your logic goes. Flags are parsed with `paparam`, so adding one is a two-line change. Add a `--name` flag to the command definition:
+
+```diff
+ const cmd = command(
+   appName,
+   flag('--storage <dir>', 'custom storage directory for pear-runtime'),
+-  flag('--no-updates', 'disable OTA updates for this run')
++  flag('--no-updates', 'disable OTA updates for this run'),
++  flag('--name <name>', 'who to greet on startup')
+ )
+```
+
+Then log the greeting after the other startup logs:
+
+```diff
+ console.log(`${appName} v${pkg.version}`)
+ console.log(`Updates: ${updates === false ? 'disabled' : 'enabled'}`)
++
++if (cmd.flags.name) console.log(`Hello, ${cmd.flags.name}!`)
+```
+
+Run `npm start -- --name YourName`, and the process greets you on boot. From here, build real peer-to-peer features on the `store` and `swarm` the template already creates: 
+* open a [Corestore](/reference/helpers/corestore) core, 
+* join a [Hyperswarm](/reference/building-blocks/hyperswarm) topic, and 
+* run your protocol. 
+
+Reuse the same storage directory so your data lands alongside the updater's—see [Storage and distribution](/explanation/storage-and-distribution).
+
+## Customize for your brand
+
+Before you ship, set your identity in `package.json`:
+
+- `name`, `productName`, `description`, `author`, and `license`.
+- the `upgrade` `pear://` link (see [Create a valid upgrade link](#2-create-a-valid-upgrade-link)).
+
+`bin.js` reads `productName || name` for both the binary name and the persistent storage directory, so set these before your first release. Then build with `npm run make` and release with [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment).
+
+## Where to go next
+
+- [Start from a template](/getting-started/from-a-template)—both boilerplates, side by side.
+- [Start from the hello-pear-electron template](/getting-started/from-a-template/start-from-hello-pear-electron)—the desktop counterpart, with a renderer, preload bridge, and Bare worker.
+- [Runtime and languages](/explanation/runtime-and-languages)—where Bare fits among Pear's runtimes.
+- [Bare modules](/reference/modules/bare-modules)—the Bare standard library this template builds on.
+- [Runtime](/reference/pear/runtime)—the `pear-runtime` API behind the updater.
+- [Migrate from pear run to pear-runtime](/how-to/operate-an-app/migration)—if you're moving an existing app onto `pear-runtime`.
+- [Publish with GitHub Actions](/how-to/operate-an-app/github-actions/publish-with-github-actions)—stage a stable `pear://` link on every push with the `pear-ci` action.
+- [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment)—the full-control manual path for staging, provisioning, and release lines.
+- [Seeding with `pear seed`](/explanation/availability-and-blind-peering#seeding-with-pear-seed)—keep your `pear://` link online so peers can fetch releases.
