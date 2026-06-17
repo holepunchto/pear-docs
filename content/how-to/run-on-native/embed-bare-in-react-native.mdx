@@ -1,0 +1,93 @@
+---
+title: "Embed Bare in a React Native app"
+description: "Run a Bare worklet from a React Native or Expo app and exchange messages with it over the bare-kit IPC channel."
+docType: how-to
+schemaType: TechArticle
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+This guide runs a [Bare](/explanation/bare-runtime) core inside a React Native app using [`react-native-bare-kit`](/reference/bare/bare-kit), and wires a two-way message channel between the UI and the core. This is the practical version of the pattern described in [One core, many platforms](/explanation/bare-on-native): your peer-to-peer logic lives in the worklet, your UI stays native.
+
+You'll need an existing React Native or Expo project to add this to.
+
+<Steps>
+
+<Step>
+
+### Install the kit
+
+```sh skip="install-instruction"
+npm i react-native-bare-kit b4a
+```
+
+For Expo, follow the [`bare-expo`](https://github.com/holepunchto/bare-expo) example, which shows the config-plugin setup; the worklet code below is identical.
+
+</Step>
+
+<Step>
+
+### Write the Bare core
+
+The worklet entry script runs on its own thread. It reaches the host through the `BareKit.IPC` channel—an instance of [`Bare.IPC`](/reference/bare/runtime#bareipc). Here it echoes back whatever it receives:
+
+```js skip="snippet-illustration"
+// app.js — runs inside the worklet
+const { IPC } = BareKit
+
+IPC.on('data', (data) => {
+  const message = data.toString()
+  IPC.write(Buffer.from(`echo: ${message}`))
+})
+```
+
+This is ordinary Bare code: it can `require` any [`bare-*` module](/reference/modules/bare-modules) and open a [Hyperswarm](/reference/building-blocks/hyperswarm) or [Corestore](/reference/helpers/corestore) just as it would on the desktop.
+
+</Step>
+
+<Step>
+
+### Start the worklet from React Native
+
+In your React Native component—for example `App.tsx`, not the worklet's `/app.js`—create a `Worklet`, start it with the core's source, and read and write the `IPC` object it exposes:
+
+```js skip="snippet-illustration"
+import { Worklet } from 'react-native-bare-kit'
+import b4a from 'b4a'
+
+const source = `
+const { IPC } = BareKit
+IPC.on('data', (data) => IPC.write(Buffer.from('echo: ' + data.toString())))
+`
+
+const worklet = new Worklet()
+worklet.start('/app.js', source)
+
+const { IPC } = worklet
+IPC.on('data', (data) => console.log(b4a.toString(data)))
+IPC.write(b4a.from('Hello from React Native!'))
+```
+
+The worklet honours the Bare [lifecycle](/reference/bare/runtime#lifecycle), so call `worklet.suspend()` and `worklet.resume()` from your app's background/foreground handlers to keep the core in step with the OS.
+
+</Step>
+
+<Step>
+
+### Run it
+
+Build and run on a simulator or device with your usual React Native toolchain. Worklet `console.*` output is written to the system log under the `bare` identifier—view it with the platform's native logging tools (Console.app on iOS, `logcat` on Android).
+
+```text skip="sample-output"
+echo: Hello from React Native!
+```
+
+</Step>
+
+</Steps>
+
+## Next steps
+
+- Inlining source is fine for a snippet, but real apps ship a prebuilt bundle. See [Bundle a Bare app](/how-to/run-on-native/bundle-a-bare-app) to produce a `.bundle` and load it with `worklet.start('/app.bundle', bundle)`.
+- Passing raw bytes gets unwieldy fast. See [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge) to put typed, schema-generated methods on top of this IPC channel.
+- For the full Worklet and IPC API, see the [`bare-kit` reference](/reference/bare/bare-kit).

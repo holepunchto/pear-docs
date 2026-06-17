@@ -1,0 +1,121 @@
+---
+title: "Bare Kit"
+description: "Reference for bare-kit and react-native-bare-kit: the Worklet API for running an isolated Bare thread inside a native app, and the IPC channel between host and worklet."
+docType: reference
+schemaType: APIReference
+---
+
+[`bare-kit`](https://github.com/holepunchto/bare-kit) embeds [Bare](/reference/bare/runtime) in native application development. It provides a web-worker-like API for starting and managing isolated Bare threads—called **worklets**—each exposing an IPC channel with bindings for several languages. [`react-native-bare-kit`](https://github.com/holepunchto/react-native-bare-kit) wraps the same API for React Native and Expo. For the architecture this enables, see [One core, many platforms](/explanation/bare-on-native).
+
+<Callout type="info">
+A *worklet* is an isolated Bare thread managed by the host app. The name avoids confusion with the worker threads of [`bare-worker`](/reference/modules/bare-modules).
+</Callout>
+
+## Worklet
+
+A worklet runs a Bare entry script on a background thread. Create one, start it with an entry filename and source, and manage its [lifecycle](/reference/bare/runtime#lifecycle).
+
+### Actions
+
+- `start(filename, source[, arguments])` — start the worklet running `source` as `filename`.
+- `suspend()` — suspend execution.
+- `suspend(linger)` — suspend, keeping the process alive for `linger` milliseconds before it fully exits.
+- `resume()` — resume a suspended worklet.
+- `terminate()` — terminate the worklet.
+
+A configuration object can optionally set a `memoryLimit` or attach assets.
+
+### React Native
+
+```js
+import { Worklet } from 'react-native-bare-kit'
+import b4a from 'b4a'
+
+const worklet = new Worklet()
+
+const source = `
+const { IPC } = BareKit
+
+IPC.on('data', (data) => console.log(data.toString()))
+IPC.write(Buffer.from('Hello from Bare!'))
+`
+
+worklet.start('/app.js', source)
+
+const { IPC } = worklet
+IPC.on('data', (data) => console.log(b4a.toString(data)))
+IPC.write(b4a.from('Hello from React Native!'))
+```
+
+### iOS
+
+```objc
+#import <BareKit/BareKit.h>
+
+BareWorkletConfiguration *options = [BareWorkletConfiguration defaultWorkletConfiguration];
+options.memoryLimit = 1024 * 1024 * 24; // 24 MiB
+
+BareWorklet *worklet = [[BareWorklet alloc] initWithConfiguration:options];
+
+NSString *source = @"console.log('hello from the worklet')";
+[worklet start:@"/app.js" source:[source dataUsingEncoding:NSUTF8StringEncoding] arguments:@[]];
+```
+
+### Android
+
+```java
+import to.holepunch.bare.kit.Worklet;
+import java.nio.charset.StandardCharsets;
+
+Worklet.Options options = new Worklet.Options()
+  .memoryLimit(24 * 1024 * 1024); // 24 MiB
+
+Worklet worklet = new Worklet(options);
+
+String source = "console.log('hello from the worklet')";
+worklet.start("/app.js", source, StandardCharsets.UTF_8, null);
+```
+
+## IPC
+
+Bare Kit provides an IPC abstraction for communication between the host app and a worklet, with both synchronous and asynchronous read/write.
+
+<Callout type="warn">
+IPC operations are **non-blocking** regardless of which API you use. They may return partial results—for example writing fewer bytes than requested—and require polling to complete.
+</Callout>
+
+The interface is callback-driven:
+
+- `readable` — callback invoked when data is available to read.
+- `writable` — callback invoked when data can be written.
+- `read()` — synchronously read available data; returns nothing when none is available.
+- `write(data)` — synchronously write data; returns the number of bytes written.
+
+Inside the worklet the channel is reached through the `BareKit.IPC` global (an instance of [`Bare.IPC`](/reference/bare/runtime#bareipc)); on the host it's a `BareIPC` (iOS) or the `IPC` object on the React Native `Worklet`.
+
+For typed, schema-generated messaging over this channel instead of raw bytes, layer [`bare-rpc`](/reference/modules/bare-modules) on top—see [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge).
+
+## Loading a bundle
+
+Instead of inline source, a worklet can start from a bundle produced by [`bare-pack`](/reference/modules/bare-modules). The entry filename's extension must be `.bundle`:
+
+```js
+import { Worklet } from 'react-native-bare-kit'
+import bundle from './my.bundle.js' // output by bare-pack
+
+const worklet = new Worklet()
+worklet.start('/app.bundle', bundle)
+```
+
+See [Bundle a Bare app](/how-to/run-on-native/bundle-a-bare-app) for producing the bundle.
+
+## Logging
+
+`console.*` calls inside the worklet write to the system log (via [`liblog`](https://github.com/holepunchto/liblog)) under the `bare` identifier, so worklet output shows up in the platform's native logging tools.
+
+## See also
+
+- [One core, many platforms](/explanation/bare-on-native)—the shell/seam/core pattern this enables.
+- [Embed Bare in a React Native app](/how-to/run-on-native/embed-bare-in-react-native)—a step-by-step walkthrough.
+- [Bare runtime API](/reference/bare/runtime)—the `Bare` global and lifecycle the worklet runs.
+- [Bare modules](/reference/modules/bare-modules)—`bare-rpc`, `bare-pack`, and the rest of the userland.

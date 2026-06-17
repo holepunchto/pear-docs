@@ -71,6 +71,11 @@ export const customTree: Node[] = [
         children: [
           {
             type: 'page',
+            name: 'The Pears stack',
+            url: '/explanation/the-pears-stack',
+          },
+          {
+            type: 'page',
             name: 'Peer-to-peer, demystified',
             url: '/explanation/peer-to-peer-demystified',
           },
@@ -78,6 +83,21 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Runtime and languages',
             url: '/explanation/runtime-and-languages',
+          },
+          {
+            type: 'page',
+            name: 'Using Bare on its own',
+            url: '/explanation/use-bare-standalone',
+          },
+          {
+            type: 'page',
+            name: 'Inside Bare',
+            url: '/explanation/bare-runtime',
+          },
+          {
+            type: 'page',
+            name: 'One core, many platforms',
+            url: '/explanation/bare-on-native',
           },
           {
             type: 'page',
@@ -247,6 +267,27 @@ export const customTree: Node[] = [
       },
       {
         type: 'folder',
+        name: 'Run on mobile & native',
+        children: [
+          {
+            type: 'page',
+            name: 'Embed Bare in a React Native app',
+            url: '/how-to/run-on-native/embed-bare-in-react-native',
+          },
+          {
+            type: 'page',
+            name: 'Type a native RPC bridge',
+            url: '/how-to/run-on-native/type-a-native-rpc-bridge',
+          },
+          {
+            type: 'page',
+            name: 'Bundle a Bare app',
+            url: '/how-to/run-on-native/bundle-a-bare-app',
+          },
+        ],
+      },
+      {
+        type: 'folder',
         name: 'Release & distribute your app',
         children: [
           {
@@ -362,6 +403,65 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Application Programming Interface (API)',
             url: '/reference/pear/api',
+          },
+        ],
+      },
+      {
+        type: 'folder',
+        name: 'Bare',
+        children: [
+          {
+            type: 'page',
+            name: 'Bare runtime API',
+            url: '/reference/bare/runtime',
+          },
+          { type: 'page', name: 'Bare CLI', url: '/reference/bare/cli' },
+          {
+            type: 'page',
+            name: 'Bare Kit',
+            url: '/reference/bare/bare-kit',
+          },
+          {
+            type: 'folder',
+            name: 'Modules',
+            children: [
+              { type: 'page', name: 'bare-fs', url: '/reference/bare/modules/bare-fs' },
+              { type: 'page', name: 'bare-os', url: '/reference/bare/modules/bare-os' },
+              { type: 'page', name: 'bare-stream', url: '/reference/bare/modules/bare-stream' },
+              { type: 'page', name: 'bare-tcp', url: '/reference/bare/modules/bare-tcp' },
+              { type: 'page', name: 'bare-fetch', url: '/reference/bare/modules/bare-fetch' },
+              { type: 'page', name: 'bare-crypto', url: '/reference/bare/modules/bare-crypto' },
+              { type: 'page', name: 'bare-subprocess', url: '/reference/bare/modules/bare-subprocess' },
+              { type: 'page', name: 'bare-rpc', url: '/reference/bare/modules/bare-rpc' },
+              { type: 'page', name: 'bare-sqlite', url: '/reference/bare/modules/bare-sqlite' },
+              { type: 'page', name: 'bare-broadcast-channel', url: '/reference/bare/modules/bare-broadcast-channel' },
+              { type: 'page', name: 'bare-sdl', url: '/reference/bare/modules/bare-sdl' },
+              { type: 'page', name: 'bare-module-resolve', url: '/reference/bare/modules/bare-module-resolve' },
+              { type: 'page', name: 'bare-module-traverse', url: '/reference/bare/modules/bare-module-traverse' },
+              { type: 'page', name: 'bare-addon-resolve', url: '/reference/bare/modules/bare-addon-resolve' },
+              { type: 'page', name: 'bare-bluetooth-android', url: '/reference/bare/modules/bare-bluetooth-android' },
+              { type: 'page', name: 'bare-bluetooth-apple', url: '/reference/bare/modules/bare-bluetooth-apple' },
+              { type: 'page', name: 'bare-module', url: '/reference/bare/modules/bare-module' },
+              { type: 'page', name: 'bare-url', url: '/reference/bare/modules/bare-url' },
+              { type: 'page', name: 'bare-atomics', url: '/reference/bare/modules/bare-atomics' },
+              { type: 'page', name: 'bare-pipe', url: '/reference/bare/modules/bare-pipe' },
+              { type: 'page', name: 'bare-semver', url: '/reference/bare/modules/bare-semver' },
+              { type: 'page', name: 'bare-form-data', url: '/reference/bare/modules/bare-form-data' },
+              { type: 'page', name: 'bare-channel', url: '/reference/bare/modules/bare-channel' },
+              { type: 'page', name: 'bare-tls', url: '/reference/bare/modules/bare-tls' },
+              { type: 'page', name: 'bare-console', url: '/reference/bare/modules/bare-console' },
+              { type: 'page', name: 'bare-structured-clone', url: '/reference/bare/modules/bare-structured-clone' },
+              { type: 'page', name: 'bare-ipc', url: '/reference/bare/modules/bare-ipc' },
+              { type: 'page', name: 'bare-inspector', url: '/reference/bare/modules/bare-inspector' },
+              { type: 'page', name: 'bare-make', url: '/reference/bare/modules/bare-make' },
+              { type: 'page', name: 'bare-prom-client', url: '/reference/bare/modules/bare-prom-client' },
+              { type: 'page', name: 'bare-posix', url: '/reference/bare/modules/bare-posix' },
+              { type: 'page', name: 'bare-mdns-discovery', url: '/reference/bare/modules/bare-mdns-discovery' },
+              { type: 'page', name: 'bare-sidecar', url: '/reference/bare/modules/bare-sidecar' },
+              { type: 'page', name: 'bare-union-bundle', url: '/reference/bare/modules/bare-union-bundle' },
+              { type: 'page', name: 'bare-mime', url: '/reference/bare/modules/bare-mime' },
+              { type: 'page', name: 'bare-apk', url: '/reference/bare/modules/bare-apk' },
+            ],
           },
         ],
       },
