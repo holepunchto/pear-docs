@@ -1,0 +1,1361 @@
+---
+title: "Hypercore"
+description: "Secure distributed append-only log for large datasets and realtime streams."
+docType: reference
+schemaType: APIReference
+---
+
+<Status level="stable" />
+
+Hypercore is a secure, distributed append-only log for sharing large datasets and realtime streams. It supports sparse replication, verified reads, optional block encryption, and session-based workflows for building higher-level local-first and peer-to-peer data structures.
+
+<Callout type="info">
+For how Hypercore relates to Hyperblobs and Hyperdrive, see [From append-only logs to files](/explanation/from-logs-to-files).
+</Callout>
+
+## Install
+
+```sh
+npm i hypercore
+```
+
+## Quickstart
+
+```js
+import Hypercore from 'hypercore'
+
+const core = new Hypercore('./my-first-core', { valueEncoding: 'utf-8' })
+await core.ready()
+
+await core.append('hello')
+await core.append('from hypercore')
+
+console.log('length:', core.length)
+console.log('first block:', await core.get(0))
+console.log('second block:', await core.get(1))
+
+for await (const block of core.createReadStream()) {
+  console.log('streamed:', block)
+}
+
+await core.close()
+```
+
+## API Reference
+
+### Constructors and sessions
+
+#### `const core = new Hypercore(storage, [key], [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L226)
+
+Make a new Hypercore instance.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `storage` | `string\|object` | — | should be set to a directory where you want to store the data and core metadata. |
+| `key` | [`Buffer\|string`](https://nodejs.org/api/buffer.html#class-buffer) | — | can be set to a Hypercore key which is a hash of Hypercore's internal auth manifest, describing how to validate the Hypercore. |
+| `opts` | [`HypercoreOptions`](#hypercoreoptions) | — | `options` |
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `createIfMissing` | `true` | create a new Hypercore key pair if none was present in storage |
+| `overwrite` | `false` | overwrite any old Hypercore that might already exist |
+| `force` | `false` | Advanced option. Will force overwrite even if the header's key & the passed key don't match |
+| `valueEncoding` | — | defaults to binary |
+| `encodeBatch` | — | optionally apply an encoding to complete batches |
+| `keyPair` | `kp` | optionally pass the public key and secret key as a key pair |
+| `encryption` | — | the block encryption key |
+| `onwait` | — | hook that is called if gets are waiting for download |
+| `timeout` | `0` | wait at max some milliseconds (0 means no timeout) |
+| `writable` | `true` | disable appends and truncates |
+| `inflightRange` | `null` | Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading. |
+| `ongc` | — | A callback called when the session is garbage collected |
+| `onseq` | — | A callback called when core.get(index) is called. |
+| `notDownloadingLinger` | `20000` | How many milliseconds to wait after downloading finishes keeping the connection open. Defaults to a random number between 20-40s |
+| `allowFork` | `true` | Enables updating core when it forks |
+| `userData` | — | An object to assign to the local User Data storage |
+| `manifest` | `undefined` | Advanced option. Set the manifest when creating the hypercore. See Manifest section for more info |
+| `preload` | `undefined` | Advanced option. A promise that returns constructor options overrides before the core is opened |
+| `storage` | `undefined` | An alternative to passing storage as a dedicated argument |
+| `key` | `null` | An alternative to passing key as a dedicated argument |
+
+```js
+const core = new Hypercore('./directory') // store data in ./directory
+```
+
+User Data is a local-only key/value store with string keys and string or `Buffer` values. It is not replicated and is useful for peer-specific metadata such as encryption keys or app state.
+
+The manifest controls how a core is authenticated, including `version`, `hash`, `quorum`, `signers`, `prologue`, `linked`, and manifest-level `userData`. Changing the manifest changes the resulting Hypercore key.
+
+#### `const session = core.session([options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L504)
+
+Creates a new Hypercore instance that shares the same underlying core.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | [`SessionOptions`](#sessionoptions) | `{}` | Options are inherited from the parent instance, unless they are re-set. |
+
+- Returns: [`Hypercore`](/reference/building-blocks/hypercore) — A new Hypercore session sharing the same underlying storage.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `weak` | `false` | Creates the session as a "weak ref" which closes when all non-weak sessions are closed |
+| `exclusive` | `false` | Create a session with exclusive access to the core. Creating an exclusive session on a core with other exclusive sessions, will wait for the session with access to close before the next exclusive session is `ready` |
+| `checkout` | `undefined` | A index to checkout the core at. Checkout sessions must be an atom or a named session |
+| `atom` | `undefined` | A storage atom for making atomic batch changes across hypercores |
+| `name` | `null` | Name the session creating a persisted branch of the core. Still beta so may break in the future |
+
+```js
+const core = new Hypercore('./atom-example')
+await core.ready()
+
+await core.append('block 1')
+
+const atom = core.state.storage.createAtom()
+const atomicSession = core.session({ atom })
+
+await core.append('block 2') // Add blocks not using the atom
+
+await atomicSession.append('atom block 2') // Add different block to atom
+await atom.flush()
+
+console.log((await core.get(core.length - 1)).toString()) // prints 'atom block 2' not 'block 2'
+```
+
+#### `const { byteLength, length } = await core.commit(session, opts = {})`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L894)
+
+Attempt to apply blocks from the session to the `core`. `core` must be a default core, aka a non-named session.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `session` | [`Hypercore`](/reference/building-blocks/hypercore) | — | The named or atom session whose staged blocks should be committed. |
+| `opts` | [`CommitOptions`](#commitoptions) | `{}` | includes |
+
+- Returns: [`Promise<{length: number, byteLength: number}\|null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — `null` if committing failed.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `length` | — | the core's length after committing the blocks |
+| `treeLength` | — | The expected length of the core's merkle tree prior to commit |
+| `keyPair` | — | The keypair to use when committing |
+| `signature` | `undefined` | The signature for the blocks being committed |
+
+#### `const snapshot = core.snapshot([options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L476)
+
+Same as [`core.session(options)`](#const-session--coresessionoptions), but backed by a storage snapshot so will not truncate nor append.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | [`SessionOptions`](#sessionoptions) | — | Options forwarded to `core.session()` with `snapshot: true` set automatically. |
+
+- Returns: [`Hypercore`](/reference/building-blocks/hypercore) — A new read-only Hypercore session locked to the current length.
+
+```js
+const snap = core.snapshot()
+console.log(snap.length) // frozen at the moment snapshot() was called
+```
+
+### Writing and local mutation
+
+#### `const { length, byteLength } = await core.append(block, options = {})`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1730)
+
+Append a block of data (or an array of blocks) to the core. Returns the new length and byte length of the core.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `blocks` | [`Buffer\|Array<Buffer>`](https://nodejs.org/api/buffer.html#class-buffer) | — | A single block, or an array of blocks, to append. |
+| `opts` | [`AppendOptions`](#appendoptions) | `{}` | `options` |
+
+- Returns: [`Promise<{length: number, byteLength: number}>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — The new `length` and `byteLength` of the core after appending.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `writable` | `false` | Enabled ignores writable check. Does not override whether core is writable. |
+| `maxLength` | `undefined` | The maximum resulting length of the core after appending |
+| `keyPair` | — | KeyPair used to sign the block(s) |
+| `signature` | `null` | Set signature for block(s) |
+
+```js
+// simple call append with a new block of data
+await core.append(Buffer.from('I am a block of data'))
+
+// pass an array to append multiple blocks as a batch
+await core.append([Buffer.from('batch block 1'), Buffer.from('batch block 2')])
+```
+
+#### `const stream = core.createWriteStream()`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1639)
+
+Make a write stream to append chunks as blocks.
+
+- Returns: `object` — A Writable stream; each chunk written becomes one block appended to the core.
+
+```js
+const ws = core.createWriteStream()
+
+// Listen for stream finishing
+const done = new Promise((resolve) => ws.on('finish', resolve))
+
+for (const data of ['hello', 'world']) ws.write(data)
+ws.end()
+
+await done
+
+console.log(await core.get(core.length - 2)) // 'hello'
+console.log(await core.get(core.length - 1)) // 'world'
+```
+
+#### `const cleared = await core.clear(start, [end], [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1397)
+
+Clear stored blocks between `start` and `end`, reclaiming storage when possible.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `start` | `number` | — | Zero-based index of the first block to clear. |
+| `end` | `number` | `start + 1` | Exclusive end index (defaults to |
+| `opts` | [`ClearOptions`](#clearoptions) | — | `options` |
+
+- Returns: [`Promise<{blocks: number}\|null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — `{ blocks }` with the count of cleared blocks when `opts.diff` is true, otherwise `null`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `diff` | `false` | Returned `cleared` bytes object is null unless you enable this |
+
+```js
+await core.clear(4) // clear block 4 from your local cache
+await core.clear(0, 10) // clear block 0-10 from your local cache
+```
+
+#### `await core.truncate(newLength, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1695)
+
+Truncate the core to a smaller length.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `newLength` | `number` | `0` | =0] - The target length to truncate to (must be ≤ current `core.length`). |
+| `opts` | [`TruncateOptions`](#truncateoptions) | `{}` | `options` |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the truncation has been signed and written to storage.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `fork` | — | The new fork id after truncating |
+| `keyPair` | — | Key pair used for signing the truncation |
+| `signature` | `null` | Set signature for truncation |
+
+### Reading, streams, and proofs
+
+#### `const block = await core.get(index, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1355)
+
+Get a block of data. If the data is not available locally this method will prioritize and wait for the data to be downloaded.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `index` | `number` | — | Zero-based index of the block to retrieve. |
+| `opts` | [`GetOptions`](#getoptions) | — | `options` |
+
+- Returns: [`Promise<Buffer\|null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — The block value (decoded per `valueEncoding`), or `null` if the block is not available and `wait` is `false`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `wait` | `true` | wait for block to be downloaded |
+| `onwait` | — | hook that is called if the get is waiting for download |
+| `timeout` | `0` | wait at max some milliseconds (0 means no timeout) |
+| `activeRequests` | `undefined` | Advanced option. Pass BlockRequest for replicating the block |
+| `valueEncoding` | — | defaults to the core's valueEncoding |
+| `decrypt` | `true` | automatically decrypts the block if encrypted |
+| `raw` | `false` | Return block without decoding |
+
+```js
+// get block #42
+const block = await core.get(42)
+
+// get block #43, but only wait 5s
+const blockIfFast = await core.get(43, { timeout: 5000 })
+
+// get block #44, but only if we have it locally
+const blockLocal = await core.get(44, { wait: false })
+```
+
+#### `const has = await core.has(start, [end])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1307)
+
+Check if the core has all blocks between `start` and `end`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `start` | `number` | — | Zero-based index of the first block to check. |
+| `end` | `number` | `start + 1` | Exclusive end index (defaults to |
+
+- Returns: [`Promise<boolean>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — `true` if every block in `[start, end)` is available locally.
+
+```js
+const hasBlock = await core.has(5)
+const hasRange = await core.has(0, 10)
+```
+
+#### `const updated = await core.update([options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1211)
+
+Waits for initial proof of the new core length until all `findingPeers` calls have finished.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | [`UpdateOptions`](#updateoptions) | — | `options` |
+
+- Returns: [`Promise<boolean>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — `true` if the core was updated to a new length, `false` otherwise.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `wait` | `false` |  |
+| `activeRequests` | `undefined` | Advanced option. Pass requests for replicating blocks |
+| `force` | `false` | Force an update even if core is writable. |
+
+```js
+const updated = await core.update()
+
+console.log('core was updated?', updated, 'length is', core.length)
+```
+
+#### `const [index, relativeOffset] = await core.seek(byteOffset, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1256)
+
+Seek to a byte offset.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bytes` | `number` | — | The byte offset to seek to (zero-based). |
+| `opts` | [`SeekOptions`](#seekoptions) | — | Options controlling wait and timeout behaviour. |
+
+- Returns: [`Promise<[number, number]>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — `[index, relativeOffset]`, where `index` is the data block the `byteOffset` is contained in and `relativeOffset` is the relative byte offset in the data block.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `wait` | `true` | wait for data to be downloaded |
+| `timeout` | `0` | wait at max some milliseconds (0 means no timeout) |
+| `activeRequests` | `undefined` | Advanced option. Pass requests for replicating blocks |
+
+```js
+await core.append([Buffer.from('abc'), Buffer.from('d'), Buffer.from('efg')])
+
+const first = await core.seek(1) // returns [0, 1]
+const second = await core.seek(3) // returns [1, 0]
+const third = await core.seek(5) // returns [2, 1]
+```
+
+#### `const stream = core.createReadStream([options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1618)
+
+Make a read stream to read a range of data out at once.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | [`ReadStreamOptions`](#readstreamoptions) | — | `options` |
+
+- Returns: `object` — A Readable stream that emits decoded blocks.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `start` | `0` |  |
+| `end` | — |  |
+| `wait` | — | Whether to wait for updates from peers |
+| `timeout` | — | How long to wait for updates from peers |
+| `live` | `false` | Wait for next block keeping stream open / live |
+| `snapshot` | `true` | auto set end to core.length on open or update it on every read |
+
+```js
+// read the full core
+const fullStream = core.createReadStream()
+
+// read from block 10-14
+const partialStream = core.createReadStream({ start: 10, end: 15 })
+
+// pipe the stream somewhere using the .pipe method on Node.js or consume it as
+// an async iterator
+
+for await (const data of fullStream) {
+  console.log('data:', data)
+}
+```
+
+#### `const bs = core.createByteStream([options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1662)
+
+Make a byte stream to read a range of bytes.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | [`ByteStreamOptions`](#bytestreamoptions) | — | `options` |
+
+- Returns: `object` — A Readable stream that emits raw Buffer chunks spanning the requested byte range.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `byteOffset` | `0` | Offset where to start from |
+| `byteLength` | — | How many bytes to read |
+| `prefetch` | `32` | How many bytes to download at a time |
+
+```js
+// Read the full core
+const fullStream = core.createByteStream()
+
+// Read from byte 3, and from there read 50 bytes
+const partialStream = core.createByteStream({ byteOffset: 3, byteLength: 50 })
+
+// Consume it as an async iterator
+for await (const data of fullStream) {
+  console.log('data:', data)
+}
+
+// Or pipe it somewhere like any stream:
+partialStream.pipe(process.stdout)
+```
+
+#### `const hash = await core.treeHash([length])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1795)
+
+Get the Merkle Tree hash of the core at a given length, defaulting to the current length of the core.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `length` | `number` | `-1` | Tree length to hash at (defaults to `core.length`). |
+
+- Returns: [`Promise<Buffer>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — A 32-byte BLAKE2b hash of the Merkle tree roots at the given length.
+
+```js
+const hash = await core.treeHash()
+console.log(hash.toString('hex'))
+```
+
+#### `const proof = await core.proof(opts)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1816)
+
+Generate a proof (a `TreeProof` instance) for the request `opts`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | [`ProofOptions`](#proofoptions) | — | include |
+
+- Returns: [`Promise<object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — A settled `TreeProof` object that can be serialised and sent to a remote peer.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `block` | — | Block request |
+| `hash` | — | Hash Request |
+| `seek` | — | Seek Request |
+| `upgrade` | — | Upgrade request |
+
+#### `const batch = await core.verifyFullyRemote(proof)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1841)
+
+Note that you cannot seek & provide a block / hash request when upgrading.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `proof` | `object` | — | A proof object as produced by a remote core's `core.proof()`. |
+
+- Returns: [`Promise<object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — the merkle tree batch from the proof.
+
+```js
+const batch = await core.verifyFullyRemote(remoteProof)
+```
+
+#### `const buffer = await core.signable([length], [fork])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1778)
+
+Produce the signable payload for a given tree state. The payload encodes the
+core's `key`, tree hash (`core.treeHash()`), `length`, and `fork`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `length` | `number` | `-1` | The length to sign for (defaults to `core.length`). |
+| `fork` | `number` | `-1` | The fork ID to include (defaults to `core.fork`). |
+
+- Returns: [`Promise<Buffer>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — a buffer which encodes the core's `key`, tree hash (`core.treeHash()`), `length`, & `fork`.
+
+```js
+const payload = await core.signable()
+const sig = sodium.crypto_sign_detached(payload, secretKey)
+```
+
+#### `const range = core.download([range])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1673)
+
+Download a range of data.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `range` | [`DownloadRange`](#downloadrange) | — | The block range to download. Omit to download the entire core. |
+
+- Returns: `object` — A Download handle with a `.done()` promise and a `.destroy()` method to cancel.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `start` | `startIndex` |  |
+| `end` | `nonInclusiveEndIndex` |  |
+| `blocks` | — |  |
+| `linear` | `false` | download range linearly and not randomly |
+| `activeRequests` | `undefined` | Advanced option. Pass requests for replicating blocks |
+
+```js
+await range.done()
+```
+
+```js
+// Note that this will never be considered downloaded as the range
+// will keep waiting for new blocks to be appended.
+core.download({ start: 0, end: -1 })
+```
+
+```js
+core.download({ blocks: [4, 9, 7] })
+```
+
+```js
+// will stop downloading now
+range.destroy()
+```
+
+### Extensions and replication
+
+#### `const ext = core.registerExtension(name, handlers = {})`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1913)
+
+Register a custom protocol extension. This is a legacy implementation and is no longer recommended. Creating a [`Protomux`](https://github.com/holepunchto/protomux) protocol is recommended instead.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The unique name that identifies this extension across peers. |
+| `handlers` | `object` | `{}` | include |
+
+- Returns: `object` — The extension object with `send(message, peer)`, `broadcast(message)`, and `destroy()` methods.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `encoding` | — | Compact encoding to use for messages. Defaults to buffer |
+| `onmessage` | — | Callback for when a message for the extension is received |
+
+This extension API is documented as legacy. For new protocol work, the upstream README recommends creating a `Protomux` protocol instead.
+
+#### `ext.send(message, peer)`
+
+Sends the `message` to a specific `peer`.
+
+#### `ext.broadcast(message)`
+
+Sends the `message` to all peers.
+
+#### `ext.destroy()`
+
+Unregister and remove extension from the hypercore.
+
+#### `const stream = core.replicate(isInitiatorOrReplicationStream, opts = {})`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L919)
+
+Create a replication stream. You should pipe this to another Hypercore instance.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `isInitiator` | `boolean\|object` | — | `true`/`false` for the noise handshake role, or an existing stream / Protomux to attach to. |
+| `opts` | [`ProtocolStreamOptions`](#protocolstreamoptions) | `{}` | are same as [`Hypercore.createProtocolStream()`](#const-stream--hypercorecreateprotocolstreamisinitiator-opts--). |
+
+- Returns: `object` — The replication stream (a raw duplex stream with a Protomux attached).
+
+```js
+// assuming we have two cores, localCore + remoteCore, sharing the same key
+// on a server
+const net = require('net')
+const server = net.createServer(function (socket) {
+  socket.pipe(remoteCore.replicate(false)).pipe(socket)
+})
+
+// on a client
+const socket = net.connect(...)
+socket.pipe(localCore.replicate(true)).pipe(socket)
+```
+
+#### `const done = core.findingPeers()`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1158)
+
+Create a hook that tells Hypercore you are finding peers for this core in the background. Call `done` when your current discovery iteration is done. If you're using Hyperswarm, you'd normally call this after a `swarm.flush()` finishes.
+
+- Returns: `function` — A `done()` callback to call when peer discovery is complete.
+
+```js
+const done = core.findingPeers()
+swarm.flush().then(done, done)
+```
+
+### Storage inspection and mark-and-sweep
+
+#### `const info = await core.info([options])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1195)
+
+Get information about this core, such as its total size in bytes.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | [`InfoOptions`](#infooptions) | — | `options` |
+
+- Returns: [`Promise<object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — An `Info` object with `key`, `discoveryKey`, `length`, `contiguousLength`, `byteLength`, `fork`, `padding`, and optional `storage` fields.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `storage` | `false` | get storage estimates in bytes, disabled by default |
+
+```js
+Info {
+  key: Buffer(...),
+  discoveryKey: Buffer(...),
+  length: 18,
+  contiguousLength: 16,
+  byteLength: 742,
+  fork: 0,
+  padding: 8,
+  storage: {
+    oplog: 8192,
+    tree: 4096,
+    blocks: 4096,
+    bitfield: 4096
+  }
+}
+```
+
+#### `await core.startMarking()`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1549)
+
+This enables marking mode for the "mark & sweep" approach to clear hypercore storage. When called the current markings are cleared.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once marking mode is active and previous marks are cleared.
+
+```js
+await core.startMarking()
+await core.get(2)
+await core.get(4)
+await core.sweep() // All blocks but blocks 2 & 4 are cleared
+```
+
+#### `await core.markBlock(start, end = start + 1)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1509)
+
+Manually mark a block or range of blocks to be retained when sweeping. Useful to mark blocks without loading them into memory. `end` is non-inclusive and defaults to `start + 1` so `core.markBlock(index)` only marks the block at `index`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `start` | `number` | — | Zero-based index of the first block to mark. |
+| `end` | `number` | `start + 1` |  |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once all marks in the range have been written to storage.
+
+```js
+await core.markBlock(5)       // mark block 5
+await core.markBlock(0, 10)   // mark blocks 0–9
+```
+
+#### `await core.clearMarkings()`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1530)
+
+Manually remove all markings. Automatically called when calling `core.startMarking()`.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once all marks have been cleared from storage.
+
+```js
+await core.clearMarkings()
+```
+
+#### `await core.sweep(opts)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1570)
+
+Clear all unmarked blocks from storage.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `options` | [`SweepOptions`](#sweepoptions) | `{}` | `opts` |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once all unmarked blocks have been cleared.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `batchSize` | `1000` | How frequently to flush clears to storage. |
+
+The README describes the full mark-and-sweep flow as `startMarking()`, read or manually mark the blocks you want to keep, then `sweep()` to clear everything else.
+
+### Lifecycle and local configuration
+
+#### `await core.close([{ error }])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L825)
+
+Fully close this core. Passing an error via `{ error }` is optional and all pending replicator requests will be rejected with the error.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `options` | [`CloseOptions`](#closeoptions) | `{}` | Optional close options. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the session (and underlying core if no other sessions remain) is fully closed.
+
+```js
+await core.close()
+```
+
+#### `await core.ready()`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1086)
+
+Wait for the core to fully open.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the core is ready for reading and writing.
+
+```js
+const core = new Hypercore('./storage')
+await core.ready()
+console.log(core.key) // now available
+```
+
+#### `await core.setEncryption(encryption)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L562)
+
+Set the encryption, which should satisfy the [HypercoreEncryption](https://github.com/holepunchto/hypercore-encryption) interface.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `encryption` | `object\|null` | — | An encryption provider with `padding`, `encrypt`, and `decrypt` methods, or `null` to disable encryption. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the encryption provider has been installed.
+
+```js
+await core.setEncryption(new DefaultEncryption(encryptionKey, core.key))
+```
+
+#### `await core.setEncryptionKey(key, [opts])`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L547)
+
+Set the encryption key.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | The 32-byte encryption key to use for block encryption/decryption. |
+| `opts` | [`SetEncryptionKeyOptions`](#setencryptionkeyoptions) | — | includes |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the encryption provider has been installed.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `block` | `false` | Whether the key is for block encryption |
+
+#### `core.setKeyPair(keyPair)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L598)
+
+Update the core's `keyPair`. Advanced as the `keyPair` is used throughout Hypercore, e.g. verifying blocks, identifying the core, etc.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keyPair` | [`{publicKey: Buffer, secretKey: Buffer}`](https://nodejs.org/api/buffer.html#class-buffer) | — | The new Ed25519 key pair to use for signing. |
+
+- Returns: `void`
+
+```js
+core.setKeyPair({ publicKey: pubKey, secretKey: secKey })
+```
+
+#### `core.setActive(active)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L610)
+
+Set the core to be active or not. A core is considered 'active' if it should linger to download blocks from peers.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bool` | `boolean` | — | Pass `true` to mark the core as active, `false` to deactivate. |
+
+- Returns: `void`
+
+```js
+core.setActive(false) // stop lingering for peer downloads
+```
+
+#### `await core.setGroup(topic)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L585)
+
+Set the group `topic` that the hypercore belongs to. Useful for grouping hypercores together that need to update a larger data structure (eg. `autobee`) that is comprised of them. See `corestore`'s `store.notifyGroup(topic)` for more details.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `topic` | — | — | is a 32 byte buffer. |
+
+#### `await core.setUserData(key, value)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1103)
+
+Set a key in the User Data key-value store.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `string` | — | is a string and |
+| `value` | [`Buffer\|string`](https://nodejs.org/api/buffer.html#class-buffer) | — | The value to store (Buffer or UTF-8 string). |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the value has been persisted to storage.
+
+```js
+await core.setUserData('version', Buffer.from('1.0'))
+```
+
+#### `const value = await core.getUserData(key)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1118)
+
+`key` is a string.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `string` | — |  |
+
+- Returns: [`Promise<Buffer\|null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — the value for a key in the User Data key-value store.
+
+```js
+const value = await core.getUserData('version')
+console.log(value && value.toString()) // '1.0'
+```
+
+### Properties
+
+#### `core.writable`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L268)
+
+Can we append to or truncate this core?
+
+- Returns: `boolean`
+
+#### `core.readable`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L263)
+
+Can we read from this core? After closing the core this will be false.
+
+- Returns: `boolean`
+
+#### `core.id`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L960)
+
+String containing the id (z-base-32 of the public key) identifying this core.
+
+- Returns: `string\|null` — The z-base-32 encoded public key, or `null` before the core is opened.
+
+#### `core.key`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L968)
+
+Buffer containing the public key identifying this core.
+
+- Returns: [`Buffer\|null`](https://nodejs.org/api/buffer.html#class-buffer) — The 32-byte public key, or `null` before the core is opened.
+
+#### `core.keyPair`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L258)
+
+Object containing buffers of the core's public and secret key
+
+- Returns: [`{publicKey: Buffer, secretKey: Buffer\|null}\|null`](https://nodejs.org/api/buffer.html#class-buffer)
+
+#### `core.discoveryKey`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L979)
+
+Buffer containing a key derived from the core's public key. In contrast to `core.key` this key does not allow you to verify the data but can be used to announce or look for peers that are sharing the same core, without leaking the core key.
+
+- Returns: [`Buffer\|null`](https://nodejs.org/api/buffer.html#class-buffer) — The 32-byte discovery key, or `null` before the core is opened.
+
+#### `core.length`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L991)
+
+How many blocks of data are available on this core.
+
+- Returns: `number` — The total number of blocks in the core (0 before the core is opened).
+
+#### `core.signedLength`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1002)
+
+How many blocks of data are available on this core that have been signed by a quorum. This is equal to `core.length` for Hypercores with a single signer.
+
+- Returns: `number` — The number of quorum-signed blocks (0 before the core is opened).
+
+#### `core.contiguousLength`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1031)
+
+How many blocks are contiguously available starting from the first block of this core.
+
+- Returns: `number` — The local contiguous length (0 before the core is opened).
+
+#### `core.remoteContiguousLength`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1021)
+
+How many blocks are contiguously available starting from the first block of this core on any known remote. This is only updated when a remote thinks it is fully contiguous such that they have all known blocks.
+
+- Returns: `number` — The remote contiguous length (0 before the core is opened).
+
+#### `core.fork`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1044)
+
+What is the current fork id of this core?
+
+- Returns: `number` — The current fork counter (incremented on each truncation; 0 before the core is opened).
+
+#### `core.padding`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1054)
+
+How much padding is applied to each block of this core? Will be `0` unless block encryption is enabled.
+
+- Returns: `number` — Number of padding bytes prepended to each block (0 when encryption is disabled).
+
+#### `core.peers`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1066)
+
+Array of current peers the core is replicating with.
+
+- Returns: [`Array<object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) — Live array of Replicator peer objects (empty before the core is opened).
+
+### Events
+
+#### `core.on('close')`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L656)
+
+Emitted when the core has been fully closed.
+
+#### `core.on('ready')`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L669)
+
+Emitted after the core has initially opened all its internal state.
+
+#### `core.on('append')`
+
+Emitted when the core has been appended to (i.e. has a new length / byteLength), either locally or remotely.
+
+#### `core.on('truncate', ancestors, forkId)`
+
+Emitted when the core has been truncated, either locally or remotely.
+
+#### `core.on('peer-add')`
+
+Emitted when a new connection has been established with a peer.
+
+#### `core.on('peer-remove')`
+
+Emitted when a peer's connection has been closed.
+
+#### `core.on('upload', index, byteLength, peer)`
+
+Emitted when a block is uploaded to a peer.
+
+#### `core.on('download', index, byteLength, peer)`
+
+Emitted when a block is downloaded from a peer.
+
+#### `core.on('remote-contiguous-length', length)`
+
+Emitted when the max known contiguous `length` from a remote, ie `core.remoteContiguousLength`, is updated. Note this is not emitted when core is truncated.
+
+### Static helpers
+
+#### `Hypercore.MAX_SUGGESTED_BLOCK_SIZE`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L313)
+
+The constant for max size (15MB) for blocks appended to Hypercore. This max ensures blocks are replicated smoothly.
+
+- Returns: `number`
+
+#### `const key = Hypercore.key(manifest, options = {})`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L336)
+
+`options` include:
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `manifest` | [`Buffer\|object`](https://nodejs.org/api/buffer.html#class-buffer) | — | A 32-byte public key Buffer, or a full manifest object with a `signers` array. |
+| `options` | [`KeyOptions`](#keyoptions) | `{}` |  |
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) — the key for a given manifest.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `compat` | `false` | Whether the manifest has a single signer whose public key is the key |
+| `version` | — | Manifest version if the manifest argument is the public key of a single signer |
+| `namespace` | — | The signer namespace if the manifest argument is the public key of a single signer |
+
+#### `const dKey = Hypercore.discoveryKey(key)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L351)
+
+Derive the discovery key from a Hypercore public key. The discovery key
+can safely be shared to announce the core without exposing the read key.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | The 32-byte Hypercore public key. |
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) — the discovery key for the provided `key`.
+
+```js
+const dKey = Hypercore.discoveryKey(core.key)
+```
+
+#### `const bkey = Hypercore.blockEncryptionKey(key, encryptionKey)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L364)
+
+Derive a block-level encryption key from the Hypercore public key and a
+master encryption key using BLAKE2b.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | The 32-byte Hypercore public key. |
+| `encryptionKey` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | The 32-byte master encryption |
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) — a block encryption key derived from the `key` and `encryptionKey`.
+
+```js
+const blockKey = Hypercore.blockEncryptionKey(core.key, encryptionKey)
+```
+
+#### `const mux = Hypercore.getProtocolMuxer(stream)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L376)
+
+Extract the Protomux instance attached to a Hypercore protocol stream.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `stream` | `object` | — | A Hypercore protocol stream (as returned by `core.replicate()` or `Hypercore.createProtocolStream()`). |
+
+- Returns: `object` — a protomux instance from the provided `stream` Hypercore protocol stream.
+
+```js
+const stream = core.replicate(true)
+const mux = Hypercore.getProtocolMuxer(stream)
+```
+
+#### `const core = Hypercore.createCore(storage, opts)`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L389)
+
+Create the raw internal Core object directly, bypassing the Hypercore
+session layer. Useful for low-level tooling that needs direct storage access.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `storage` | `string\|object` | — | Path to a storage directory, or a CoreStorage instance. |
+| `opts` | [`HypercoreOptions`](#hypercoreoptions) | — | Options forwarded to the Core constructor. |
+
+- Returns: `object` — the internal core using the `storage` and `opts` without creating a full Hypercore instance.
+
+```js
+const core = Hypercore.createCore('./storage', { key: myKey })
+```
+
+#### `const stream = Hypercore.createProtocolStream(isInitiator, opts = {})`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L403)
+
+Create an encrypted noise stream with a protomux instance attached used for Hypercore's replication protocol.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `isInitiator` | `boolean\|object` | — | can be a framed stream, a protomux or a boolean for whether the stream should be the initiator in the noise handshake. |
+| `opts` | [`ProtocolStreamOptions`](#protocolstreamoptions) | `{}` | can |
+
+- Returns: `object` — The outer raw stream with a `.noiseStream.userData` Protomux attached.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `ondiscoverykey` | — | A handler for when a discovery key is set over the stream for corestore management |
+
+#### `const storage = Hypercore.defaultStorage(storage, opts = {})`
+
+[API definition on GitHub](https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L446)
+
+Wrap a path or existing CoreStorage object into a CoreStorage instance.
+Called internally by the constructor; exposed for advanced use.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `storage` | `string\|object` | — | Directory path string or an existing CoreStorage instance (returned as-is). |
+| `opts` | [`DefaultStorageOptions`](#defaultstorageoptions) | `{}` | Extra options forwarded to the CoreStorage constructor. |
+
+- Returns: `object` — a default hypercore storage.
+
+```js
+const storage = Hypercore.defaultStorage('./my-core')
+```
+
+## Types
+
+### HypercoreOptions
+
+Options for creating or opening a Hypercore instance.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | The public key of the core (32 bytes). Omit to create a new writable core. |
+| `keyPair` | [`{publicKey: Buffer, secretKey: Buffer}`](https://nodejs.org/api/buffer.html#class-buffer) | — | Ed25519 key pair for signing appended blocks. |
+| `encryptionKey` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | A 32-byte key to enable block encryption. |
+| `encryption` | `object` | — | Custom encryption provider satisfying the HypercoreEncryption interface. |
+| `valueEncoding` | `string\|object` | — | Encoding for block values (e.g. `'utf8'`, `'json'`, a compact-encoding codec). |
+| `writable` | `boolean` | `true` | Set `false` to open the session read-only. |
+| `sparse` | `boolean` | `true` | Download blocks on demand instead of eagerly. |
+| `weak` | `boolean` | `false` | Do not keep the underlying core alive when this session is the last one. |
+| `snapshot` | `boolean` | `false` | Snapshot the core length at open time; blocks beyond that length are invisible. |
+| `timeout` | `number` | `0` | Default timeout in ms for `get()` / `seek()` (0 = no timeout). |
+| `wait` | `boolean` | `true` | Wait for blocks to download when `get()` / `seek()` are called. |
+| `onwait` | `function` | — | Called whenever `get()` triggers a network wait: `onwait(index, core)`. |
+| `onseq` | `function` | — | Called on each `get()` call with the block index: `onseq(index, core)`. |
+| `compat` | `boolean` | `false` | Enable legacy (v9) manifest compatibility mode. |
+| `exclusive` | `boolean` | `false` | Acquire an exclusive write lock on the core. |
+
+### KeyOptions
+
+Options for Hypercore.key() static method.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `compat` | `boolean` | `false` | If `true`, returns the first signer's raw public key instead of the manifest hash. |
+| `version` | `number` | — | Manifest version number (used when building the manifest from a raw key). |
+| `namespace` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | Namespace buffer to include in the manifest when building from a raw key. |
+
+### ProtocolStreamOptions
+
+Options for Hypercore.createProtocolStream().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `stream` | `object` | — | An existing raw stream to wrap; avoids creating a new NoiseSecretStream. |
+| `ondiscoverykey` | `function` | — | Called with a discovery key Buffer when a remote announces a new core. |
+| `keepAlive` | `boolean` | `true` | Send keep-alive pings every 5 s to prevent idle disconnection. |
+
+### DefaultStorageOptions
+
+Options for Hypercore.defaultStorage().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `sparse` | `boolean` | `true` | Use sparse file storage (holes instead of zero-filled regions). |
+
+### SessionOptions
+
+Options for core.session() / core.snapshot().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `valueEncoding` | `string\|object` | — | Override the value encoding for this session only. |
+| `writable` | `boolean` | — | Override the writable flag for this session. |
+| `snapshot` | `boolean` | `false` | Lock the visible length to the current core length. |
+| `sparse` | `boolean` | `true` | Download blocks on demand. |
+| `timeout` | `number` | — | Per-session get/seek timeout in ms. |
+| `wait` | `boolean` | — | Whether to wait for remote blocks by default. |
+| `weak` | `boolean` | — | Do not keep the core alive when this session is the last one. |
+| `exclusive` | `boolean` | `false` | Acquire an exclusive write lock on the core. |
+| `atom` | `object` | — | A storage atom to stage writes against. |
+| `name` | `string` | — | Named session; writes are staged under this name. |
+| `checkout` | `number` | — | Roll back a named/atom session to this length after opening. |
+
+### SetEncryptionKeyOptions
+
+Options for core.setEncryptionKey().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `block` | `boolean` | `false` | Treat the supplied key as a raw block-level key rather than deriving one. |
+
+### GetOptions
+
+Options for core.get().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `wait` | `boolean` | `true` | Wait for the block to be downloaded from a peer if not available locally. |
+| `timeout` | `number` | `0` | Max ms to wait for replication (0 = use core default). |
+| `valueEncoding` | `string\|object` | — | Decode the block with this encoding instead of the core's default. |
+| `decrypt` | `boolean` | `true` | Decrypt the block when encryption is enabled. |
+| `raw` | `boolean` | `false` | Return the raw Buffer without decoding or decrypting. |
+| `onwait` | `function` | — | Called if this specific get triggers a network wait: `onwait(index, core)`. |
+
+### SeekOptions
+
+Options for core.seek().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `wait` | `boolean` | `true` | Wait for the necessary block(s) to download if not local. |
+| `timeout` | `number` | `0` | Max ms to wait (0 = use core default). |
+
+### ClearOptions
+
+Options for core.clear().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `diff` | `boolean` | `false` | Return a `{ blocks: number }` object counting cleared blocks instead of `null`. |
+
+### UpdateOptions
+
+Options for core.update().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `wait` | `boolean` | `true` | Wait for remote peers to send a new signed length proof. |
+| `force` | `boolean` | `false` | Force an update even when the core is writable. |
+
+### TruncateOptions
+
+Options for core.truncate().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `fork` | `number` | — | The fork ID to assign after truncation (defaults to `state.fork + 1`). |
+| `keyPair` | [`{publicKey: Buffer, secretKey: Buffer}`](https://nodejs.org/api/buffer.html#class-buffer) | — | Key pair to sign the truncation (defaults to `core.keyPair`). |
+| `signature` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | Pre-computed signature for the truncation. |
+
+### AppendOptions
+
+Options for core.append().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keyPair` | [`{publicKey: Buffer, secretKey: Buffer}`](https://nodejs.org/api/buffer.html#class-buffer) | — | Key pair to sign the batch (defaults to `core.keyPair`). |
+| `signature` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | Pre-computed signature. |
+| `maxLength` | `number` | — | Refuse to append if the resulting length would exceed this value. |
+
+### InfoOptions
+
+Options for core.info().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `storage` | `boolean` | `false` | Include per-file storage byte counts in the result. |
+
+### ReadStreamOptions
+
+Options for core.createReadStream().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `start` | `number` | `0` | Index of the first block to read. |
+| `end` | `number` | — | Index of the block to stop at (exclusive). |
+| `live` | `boolean` | `false` | Keep streaming new blocks as they are appended. |
+| `snapshot` | `boolean` | `true` | Snap the end to the current length at open time (ignored when `live` is true). |
+| `wait` | `boolean` | `true` | Wait for blocks to download. |
+| `timeout` | `number` | `0` | Per-block timeout in ms (0 = use core default). |
+
+### ByteStreamOptions
+
+Options for core.createByteStream().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `byteOffset` | `number` | `0` | Start reading from this byte position. |
+| `byteLength` | `number` | — | Number of bytes to read (-1 = until end of core). |
+| `prefetch` | `number` | `32` | Number of blocks to prefetch ahead. |
+
+### DownloadRange
+
+Download range descriptor for core.download().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `start` | `number` | `0` | First block index to download. |
+| `end` | `number` | — | Last block index to download (exclusive; defaults to `core.length`). |
+| `linear` | `boolean` | `false` | Download blocks in sequential order. |
+
+### ProofOptions
+
+Options for core.proof().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `block` | `object` | — | Request a block proof: `{ index: number }`. |
+| `hash` | `object` | — | Request a hash proof: `{ index: number }`. |
+| `seek` | `object` | — | Request a seek proof: `{ bytes: number }`. |
+| `upgrade` | `object` | — | Request an upgrade proof: `{ start: number, length: number }`. |
+| `manifest` | `object` | — | Include a manifest proof. |
+
+### CommitOptions
+
+Options for core.commit().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keyPair` | [`{publicKey: Buffer, secretKey: Buffer}`](https://nodejs.org/api/buffer.html#class-buffer) | — | Key pair used to sign the committed blocks. |
+
+### SweepOptions
+
+Options for core.sweep().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `batchSize` | `number` | `1000` | Number of clear operations to run in parallel per sweep iteration. |
+
+### CloseOptions
+
+Options for core.close().
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `error` | `Error` | — | Error to reject pending replication requests with. |
+
+## See also
+
+- [Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore)—pair a single core with peer discovery and replication.
+- [Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended pattern when one process manages multiple cores.
+- [Corestore](/reference/helpers/corestore)—helper reference for creating, naming, and co-replicating groups of Hypercores.
+- [Hyperbee](/reference/building-blocks/hyperbee)—sorted key/value B-tree built directly on top of a Hypercore.
+- [Hyperdrive](/reference/building-blocks/hyperdrive)—filesystem abstraction whose metadata and blob stores are Hypercore-backed.
+- [Compact encoding](/reference/helpers/compact-encoding)—binary encoding toolkit used to structure Hypercore block payloads.

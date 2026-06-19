@@ -1,0 +1,2125 @@
+{
+  "slug": "autobase",
+  "repo": {
+    "org": "holepunchto",
+    "repo": "autobase"
+  },
+  "description": "A multiwriter data structure for Hypercore",
+  "tag": "v7.28.1",
+  "sha": "14cf8f2aea42d847a3247cb0189468bd2ae71e81",
+  "generatedAt": "2026-06-11T12:36:50.001Z",
+  "sections": [
+    {
+      "title": "Install",
+      "markdown": "## Install\n\n`npm i autobase`"
+    },
+    {
+      "title": "Usage",
+      "markdown": "## Usage\n\n```js\nconst Corestore = require('corestore')\nconst Autobase = require('autobase')\n\nconst store = new Corestore('./some-dir')\nconst local = new Autobase(store, remote.key, { apply, open })\nawait local.ready()\n\n// on remote base\n// remote.append({ addWriter: local.local.key })\n\nawait local.append('local 0')\n\n// remote.append('remote 0')\n// remote.append('remote 1')\n\nawait local.update()\nawait local.append('local 1')\n\nfor (let i = 0; i < local.view.length; i++) {\n  console.log(await local.view.get(i))\n\n  /*\n  local 0\n  remote 0\n  remote 1\n  local 1\n  */\n}\n\n// create the view\nfunction open(store) {\n  return store.get('test')\n}\n\n// use apply to handle to updates\nasync function apply(nodes, view, host) {\n  for (const { value } of nodes) {\n    if (value.addWriter) {\n      await host.addWriter(value.addWriter, { indexer: true })\n      continue\n    }\n\n    await view.append(value)\n  }\n}\n```\n\n### Ordering\n\nAutobase writer nodes explicitly reference previous nodes creating a causal directed acyclic graph (DAG). The nodes are linearized by analyzing the causal references so:\n\n1. Nodes never precede nodes they reference.\n2. Ordering is eventually consistent.\n\n### Reordering\n\nAs new causal information comes in, existing nodes may be reordered when causal forks occur. Any changes to the view will be undone and reapplied on top of the new ordering.\n\n### Signed Length\n\nThe linearizing algorithm is able to define checkpoints after which the ordering of the graph will never change. This point advances continually, so long as a majority set of indexers are writing messages. These checkpoints allow peers who are behind to catchup quickly and reduce the need to reorder nodes.\n\n### Views\n\nA view is one or more hypercores whose contents are created by deterministically applying the linearized nodes from writers. The view represents the combined history of all writers' inputs or the current state of the system as a whole.\n\nAutobase accepts an `open` function for creating views and an `apply` function that can be used to update the views based on the writer nodes.\n\n```js\nfunction open(store) {\n  return store.get('my-view')\n}\n```\n\n```js\nasync function apply(nodes, view, host) {\n  for (const n of nodes) await view.append(n)\n}\n```\n\n_IMPORTANT_: Autobase messages may be reordered as new data becomes available. Updates will be undone and reapplied internally. So it is important that the `open` handler returns a data structure only derived from its `store` object argument and that while updating the view in the `apply` function, the `view` argument is the only data structure being update and that its fully deterministic. If any external data structures are used, these updates will not be correctly undone."
+    }
+  ],
+  "classes": [
+    {
+      "name": "Autobase",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "const base = new Autobase(store, bootstrap, opts)",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "store",
+              "optional": false,
+              "description": "The Corestore that holds the system, writer, and view cores.",
+              "type": "Corestore"
+            },
+            {
+              "name": "bootstrap",
+              "optional": false,
+              "description": "Key of an existing Autobase to load; omit or pass `null` to create a new one.",
+              "type": "Buffer|string"
+            },
+            {
+              "name": "handlers",
+              "optional": true,
+              "default": "{}",
+              "description": "Configuration: `open`, `apply`, `close`, `valueEncoding`, `ackInterval`, `fastForward`, `encrypt`/`encryptionKey`, `optimistic`, and more (see the options table).",
+              "type": "object"
+            }
+          ],
+          "description": "Instantiate an Autobase.",
+          "options": [
+            {
+              "name": "open",
+              "description": "create the view"
+            },
+            {
+              "name": "apply",
+              "description": "handle nodes to update view"
+            },
+            {
+              "name": "optimistic",
+              "default": "false",
+              "description": "Autobase supports optimistic appends"
+            },
+            {
+              "name": "close",
+              "description": "close the view"
+            },
+            {
+              "name": "valueEncoding",
+              "description": "encoding"
+            },
+            {
+              "name": "ackInterval",
+              "default": "1000",
+              "description": "enable auto acking with the interval"
+            },
+            {
+              "name": "encryptionKey",
+              "description": "Key to encrypt the base"
+            },
+            {
+              "name": "encrypt",
+              "default": "false",
+              "description": "Encrypt the base if unencrypted & no encryptionKey is set"
+            },
+            {
+              "name": "encrypted",
+              "default": "false",
+              "description": "Expect the base to be encrypted, will throw an error otherwise, defaults to true if encryptionKey is set"
+            },
+            {
+              "name": "fastForward",
+              "default": "true",
+              "description": "Enable fast forwarding. If passing { key: base.core.key }, they autobase will fastforward to that key first."
+            },
+            {
+              "name": "wakeup",
+              "description": "Set a custom wakeup protocol for hinting which writers are active, see `protomux-wakeup` for protocol details"
+            },
+            {
+              "name": "bigBatches",
+              "default": "false",
+              "description": "Enable big batches. See `base.setBigBatches()` for details."
+            }
+          ],
+          "examples": [
+            "{\n  open: (store, host) => { ... }, // create the view\n  apply: async (nodes, view, host) => { ... }, // handle nodes to update view\n  optimistic: false, // Autobase supports optimistic appends\n  close: async view => { ... }, // close the view\n  valueEncoding, // encoding\n  ackInterval: 1000 // enable auto acking with the interval\n  encryptionKey: Promise<buffer> | buffer, // Key to encrypt the base\n  encrypt: false, // Encrypt the base if unencrypted & no encryptionKey is set\n  encrypted: false, // Expect the base to be encrypted, will throw an error otherwise, defaults to true if encryptionKey is set\n  fastForward: true, // Enable fast forwarding. If passing { key: base.core.key }, they autobase will fastforward to that key first.\n  wakeup: new ProtomuxWakeup(), // Set a custom wakeup protocol for hinting which writers are active, see `protomux-wakeup` for protocol details\n  bigBatches: false, // Enable big batches. See `base.setBigBatches()` for details.\n}",
+            "const base = new Autobase(store, bootstrap, {\n  optimistic: true,\n  async apply(nodes, view, host) {\n    for (const node of nodes) {\n      const { value } = node\n      // Verify block\n      if (value.password !== 'secrets') continue\n\n      // Acknowledge only even numbers\n      if (value.num % 2 === 0) await host.ackWriter(node.from.key)\n\n      await view.append(value.num)\n    }\n  }\n})\n\n// Passing the password 'secrets' represents being verifiable\nawait base.append({ num: 3, password: 'secrets' }, { optimistic: true }) // will not be applied because `ackWriter` isnt called\nawait base.append({ num: 2, password: 'secrets' }, { optimistic: true }) // will be applied\nawait base.append({ num: 4, password: 'incorrect' }, { optimistic: true }) // will not be applied because the block isn't verifiable"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L94",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "bootstrap",
+          "signature": "base.bootstrap",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L267",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "bootstraps",
+          "signature": "base.bootstraps",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L272",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "appending",
+          "signature": "base.appending",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L276",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "writable",
+          "signature": "base.writable",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "boolean",
+          "description": "Whether the instance is a writer for the autobase.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L284",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "ackable",
+          "signature": "base.ackable",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L288",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "signedLength",
+          "signature": "base.signedLength",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "number",
+          "description": "The index of the system core that has been signed by a quorum of indexers. The system up until this point will not change.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L296",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "indexedLength",
+          "signature": "base.indexedLength",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L300",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "length",
+          "signature": "base.length",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "number",
+          "description": "The length of the system core. This is neither the length of the local writer nor the length of the view. The system core tracks the autobase as a whole.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L308",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "flushing",
+          "signature": "base.flushing",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L312",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "hash",
+          "signature": "const hash = await base.hash()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "Returns the hash of the system core's merkle tree roots.",
+          "returnType": "Promise<Buffer>",
+          "description": "Merkle-tree hash of the system core at its current length.",
+          "examples": [
+            "const hash = await base.hash()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L322",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "getSystemKey",
+          "signature": "base.getSystemKey()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L327",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "system",
+          "signature": "base.system",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L331",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getIndexedInfo",
+          "signature": "await base.getIndexedInfo()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L336",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "replicate",
+          "signature": "const stream = base.replicate(isInitiator || stream, opts)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "isInitiator",
+              "optional": false,
+              "description": "`true`/`false` to open a new stream, or an existing replication stream to attach to.",
+              "type": "boolean|Stream"
+            },
+            {
+              "name": "opts",
+              "optional": false,
+              "description": "Replication options forwarded to the underlying Corestore.",
+              "type": "object"
+            }
+          ],
+          "returns": "The replication stream.",
+          "returnType": "Stream",
+          "description": "Creates a replication stream for replicating the autobase. Arguments are the same as [corestores's `.replicate()`](https://github.com/holepunchto/corestore?tab=readme-ov-file#const-stream--storereplicateoptsorstream).",
+          "examples": [
+            "const swarm = new Hyperswarm()\n\n// Join a topic\nswarm.join(base.discoveryKey)\n\nswarn.on('connection', (connection) => store.replicate(connection))"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L353",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "heads",
+          "signature": "const heads = base.heads()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "The head nodes (empty until the base is ready).",
+          "returnType": "Array<object>",
+          "description": "Gets the current writer heads. A writer head is a node which has no causal dependents, aka it is the latest write. If there is more than one head, there is a causal fork which is pretty common.",
+          "examples": [
+            "const heads = base.heads()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L365",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "export",
+          "signature": "await base.export()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L373",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "hintWakeup",
+          "signature": "base.hintWakeup(hints)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "hints",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L384",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "setBigBatches",
+          "signature": "base.setBigBatches(enable = true)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "bool",
+              "optional": true,
+              "default": "true",
+              "description": "=true] - Whether to enable big batches.",
+              "type": "boolean"
+            }
+          ],
+          "returnType": "void",
+          "description": "Set the autobase to enable or disable big batches. Big batches allow autobase to run the `apply` function on more blocks at once at the expense of being slower and less responsive.",
+          "examples": [
+            "base.setBigBatches(true)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L401",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "setLocal",
+          "signature": "await base.setLocal(key, options = {})",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            },
+            {
+              "name": "options",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L564",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "setWakeup",
+          "signature": "base.setWakeup(cap, discoveryKey)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "cap",
+              "optional": false
+            },
+            {
+              "name": "discoveryKey",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L593",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getBootRecord",
+          "signature": "await Autobase.getBootRecord(store, key)",
+          "kind": "method",
+          "static": true,
+          "async": true,
+          "params": [
+            {
+              "name": "store",
+              "optional": false
+            },
+            {
+              "name": "key",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L735",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "flush",
+          "signature": "await base.flush()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L749",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "advance",
+          "signature": "await base.advance()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L754",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "recouple",
+          "signature": "base.recouple()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L759",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getLastError",
+          "signature": "base.getLastError()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L903",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "update",
+          "signature": "await base.update()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "returns": "Resolves once the linearizer has advanced.",
+          "returnType": "Promise<void>",
+          "description": "Fetch all available data and update the linearizer.",
+          "examples": [
+            "await base.update()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L975",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "isFastForwarding",
+          "signature": "base.isFastForwarding()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1006",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "ack",
+          "signature": "await base.ack(bg = false)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "bg",
+              "optional": true,
+              "default": "false",
+              "description": "If `bg` is set to `true`, the ack will not be appended immediately but will set the automatic ack timer to trigger as soon as possible.",
+              "type": "boolean"
+            }
+          ],
+          "returns": "Resolves once the ack has been handled.",
+          "returnType": "Promise<void>",
+          "description": "Manually acknowledge the current state by appending a `null` node that references known head nodes. `null` nodes are ignored by the `apply` handler and only serve as a way to acknowledge the current linearized state. Only indexers can ack.",
+          "examples": [
+            "await base.ack()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1023",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "views",
+          "signature": "base.views()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1090",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "batch",
+          "signature": "base.batch()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1095",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "append",
+          "signature": "await base.append(value, opts)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "value",
+              "optional": false,
+              "description": "The value, or array of values, to append.",
+              "type": "*|Array<*>"
+            },
+            {
+              "name": "opts",
+              "optional": false,
+              "description": "Append options.",
+              "type": "AppendOptions"
+            }
+          ],
+          "returns": "Resolves once the value is appended locally.",
+          "returnType": "Promise<void>",
+          "description": "Append a new entry to the autobase.",
+          "options": [
+            {
+              "name": "optimistic",
+              "default": "false",
+              "description": "Allow appending on an optimistic autobase while not a writer"
+            }
+          ],
+          "examples": [
+            "{\n  optimistic: false // Allow appending on an optimistic autobase while not a writer\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1108",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "decodeValue",
+          "signature": "Autobase.decodeValue(value, opts)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "value",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1173",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "encodeValue",
+          "signature": "Autobase.encodeValue(value, opts)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "value",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1177",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getLocalKey",
+          "signature": "await Autobase.getLocalKey(store, opts = {})",
+          "kind": "method",
+          "static": true,
+          "async": true,
+          "params": [
+            {
+              "name": "store",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1181",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getLocalCore",
+          "signature": "const core = Autobase.getLocalCore(store, handlers, encryptionKey)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "store",
+              "optional": false,
+              "description": "The Corestore to open the core from.",
+              "type": "Corestore"
+            },
+            {
+              "name": "handlers",
+              "optional": false,
+              "description": "`handlers` are any options passed to `store` to get the core.",
+              "type": "object"
+            },
+            {
+              "name": "encryptionKey",
+              "optional": false,
+              "description": "Encryption key, when the core is encrypted.",
+              "type": "Buffer"
+            }
+          ],
+          "returns": "The local writer core.",
+          "returnType": "Hypercore",
+          "description": "Generate a local core to be used for an Autobase.",
+          "examples": [
+            "const core = Autobase.getLocalCore(store)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1200",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "getUserData",
+          "signature": "const { referrer, view } = await Autobase.getUserData(core)",
+          "kind": "method",
+          "static": true,
+          "async": true,
+          "params": [
+            {
+              "name": "core",
+              "optional": false,
+              "description": "The bootstrap/local core to read from.",
+              "type": "Hypercore"
+            }
+          ],
+          "returns": "The referrer and view name.",
+          "returnType": "Promise<{referrer: Buffer, view: string|null}>",
+          "description": "Get user data associated with an autobase `core`. `referrer` is the `.key` of the autobase the `core` is from. `view` is the `name` of the view.",
+          "examples": [
+            "const { referrer, view } = await Autobase.getUserData(core)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1220",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "isAutobase",
+          "signature": "const isBase = await Autobase.isAutobase(core, opts)",
+          "kind": "method",
+          "static": true,
+          "async": true,
+          "params": [
+            {
+              "name": "core",
+              "optional": false,
+              "description": "The core to inspect.",
+              "type": "Hypercore"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "description": "`opts` are the same options as [core.get(index, opts)](https://github.com/holepunchto/hypercore?tab=readme-ov-file#const-block--await-coregetindex-options).",
+              "type": "object"
+            }
+          ],
+          "returns": "Returns whether the core is an autobase core.",
+          "returnType": "Promise<boolean>",
+          "description": "Detect whether a core's first block is an Autobase oplog message.",
+          "examples": [
+            "const isBase = await Autobase.isAutobase(core)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1237",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "setUserData",
+          "signature": "await base.setUserData(key, value)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "`key` is a string.",
+              "type": "string"
+            },
+            {
+              "name": "val",
+              "optional": false,
+              "description": "`value` can be either a string or a buffer.",
+              "type": "Buffer|string"
+            }
+          ],
+          "returns": "Resolves once written.",
+          "returnType": "Promise<void>",
+          "description": "Sets the [User Data](https://github.com/holepunchto/hypercore#user-data) value for the provided `key`. `key` is a string. `value` can be either a string or a buffer.",
+          "examples": [
+            "await base.setUserData('nickname', 'alice')"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1259",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "getUserData",
+          "signature": "const value = await base.getUserData(key)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "`key` is a string.",
+              "type": "string"
+            }
+          ],
+          "returns": "Returns the [User Data](https://github.com/holepunchto/hypercore#user-data) value for the provided `key`.",
+          "returnType": "Promise<Buffer|null>",
+          "description": "Read a local-only value previously stored with `setUserData()`.",
+          "examples": [
+            "const nickname = await base.getUserData('nickname')"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1273",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "getWriterEncryption",
+          "signature": "base.getWriterEncryption()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1366",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "repair",
+          "signature": "await base.repair()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1508",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "forceFastForward",
+          "signature": "await base.forceFastForward()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1512",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "pause",
+          "signature": "await base.pause()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "void",
+          "description": "Pauses the autobase prevent the next apply from running.",
+          "examples": [
+            "base.pause()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L2126",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "resume",
+          "signature": "await base.resume()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "void",
+          "description": "Resumes a paused autobase and will check for an update.",
+          "examples": [
+            "base.resume()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L2136",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "waitForWritable",
+          "signature": "base.waitForWritable()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L2141",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "removeable",
+          "signature": "host.removeable(key)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The writer's key.",
+              "type": "Buffer"
+            }
+          ],
+          "returns": "Returns whether the writer for the given `key` can be removed.",
+          "returnType": "boolean",
+          "description": "Whether the writer with `key` can be removed without leaving the system\nwithout a removable indexer set.",
+          "examples": [
+            "if (base.removeable(writerKey)) await host.removeWriter(writerKey)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L2346",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "ready",
+          "signature": "await base.ready()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "close",
+          "signature": "await base.close()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "opened",
+          "signature": "base.opened",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "closed",
+          "signature": "base.closed",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "signature": "base.on(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "once",
+          "signature": "base.once(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "off",
+          "signature": "base.off(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "emit",
+          "signature": "base.emit(event, [...args])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "...args",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "id",
+          "signature": "base.id",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L106",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "key",
+          "signature": "base.key",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "Buffer",
+          "description": "The primary key of the autobase.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L111",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "discoveryKey",
+          "signature": "base.discoveryKey",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "Buffer",
+          "description": "The discovery key associated with the autobase.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L116",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "backoff",
+          "signature": "base.backoff",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L117",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "keyPair",
+          "signature": "base.keyPair",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L119",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "valueEncoding",
+          "signature": "base.valueEncoding",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L120",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "store",
+          "signature": "base.store",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L121",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "globalCache",
+          "signature": "base.globalCache",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L122",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "migrated",
+          "signature": "base.migrated",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L123",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "encrypted",
+          "signature": "base.encrypted",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L125",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "encrypt",
+          "signature": "base.encrypt",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L126",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "encryptionKey",
+          "signature": "base.encryptionKey",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L127",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "encryption",
+          "signature": "base.encryption",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L128",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "blindEncryption",
+          "signature": "base.blindEncryption",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L129",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "activeBatch",
+          "signature": "base.activeBatch",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L131",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "local",
+          "signature": "base.local",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L133",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "localWriter",
+          "signature": "base.localWriter",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L134",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "isIndexer",
+          "signature": "base.isIndexer",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "boolean",
+          "description": "Whether the instance is an indexer.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L139",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "activeWriters",
+          "signature": "base.activeWriters",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L141",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "linearizer",
+          "signature": "base.linearizer",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L142",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "updating",
+          "signature": "base.updating",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L143",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "nukeTip",
+          "signature": "base.nukeTip",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L145",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "wakeupOwner",
+          "signature": "base.wakeupOwner",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L147",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "wakeupCapability",
+          "signature": "base.wakeupCapability",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L148",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "wakeupProtocol",
+          "signature": "base.wakeupProtocol",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L149",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "wakeupSession",
+          "signature": "base.wakeupSession",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L150",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "fastForwardEnabled",
+          "signature": "base.fastForwardEnabled",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L154",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "fastForwarding",
+          "signature": "base.fastForwarding",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L155",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "fastForwardTo",
+          "signature": "base.fastForwardTo",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L156",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "fastForwardFailedAt",
+          "signature": "base.fastForwardFailedAt",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L157",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "fastForwardMinimum",
+          "signature": "base.fastForwardMinimum",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L158",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "bigBatches",
+          "signature": "base.bigBatches",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L160",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "paused",
+          "signature": "base.paused",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "Returns `true` if the autobase is currently paused, otherwise returns `false`.",
+          "returnType": "boolean",
+          "description": "Whether linearization is currently paused (see `pause()` / `resume()`).",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L199",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "view",
+          "signature": "base.view",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "*",
+          "description": "The view of the autobase derived from writer inputs. The view is created in the `open` handler and can have any shape. The most common `view` is a [hyperbee](https://github.com/holepunchto/hyperbee).",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L225",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "core",
+          "signature": "base.core",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L226",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "version",
+          "signature": "base.version",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L227",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "interrupted",
+          "signature": "base.interrupted",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L228",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "recoveries",
+          "signature": "base.recoveries",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L229",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "rotate-local-writer",
+          "signature": "base.on('rotate-local-writer', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L561",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "interrupt",
+          "signature": "base.on('interrupt', (reason) => { ... })",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "interrupted",
+              "optional": false
+            }
+          ],
+          "description": "Triggered when `host.interrupt(reason)` is called in the `apply` handler. See [`host.interrupt(reason)`](#hostinterruptreason) for when interrupts are used.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L913",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "update",
+          "signature": "base.on('update', () => { ... })",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Triggered when the autobase view updates after `apply` has finished running.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L914",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "error",
+          "signature": "base.on('error', (err) => { ... })",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "err",
+              "optional": false
+            }
+          ],
+          "description": "Triggered when an error is triggered while updating the autobase.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L927",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "fast-forward",
+          "signature": "base.on('fast-forward', (to, from) => { ... })",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "to",
+              "optional": false
+            },
+            {
+              "name": "from",
+              "optional": true,
+              "default": "> { ... }"
+            }
+          ],
+          "description": "Triggered when the autobase fast forwards to a state already with a quorum. `to` and `from` are the `.signedLength` after and before the fast forward respectively.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1639",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "reboot",
+          "signature": "base.on('reboot', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1821",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "is-indexer",
+          "signature": "base.on('is-indexer', () => { ... })",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Triggered when the autobase instance is an indexer.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1849",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "is-non-indexer",
+          "signature": "base.on('is-non-indexer', () => { ... })",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Triggered when the autobase instance is not an indexer.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1860",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "writable",
+          "signature": "base.on('writable', () => { ... })",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "'writable'",
+              "optional": false
+            },
+            {
+              "name": "()",
+              "optional": true,
+              "default": "> { ... }"
+            }
+          ],
+          "description": "Triggered when the autobase instance is now a writer.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "unwritable",
+          "signature": "base.on('unwritable', () => { ... })",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "'unwritable'",
+              "optional": false
+            },
+            {
+              "name": "()",
+              "optional": true,
+              "default": "> { ... }"
+            }
+          ],
+          "description": "Triggered when the autobase instance is no longer a writer.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "warning",
+          "signature": "base.on('warning', (warning) => { ... })",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "'warning'",
+              "optional": false
+            },
+            {
+              "name": "(warning)",
+              "optional": true,
+              "default": "> { ... }"
+            }
+          ],
+          "description": "Triggered when a warning is triggered.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "get",
+          "signature": "const core = store.get(name || { name, valueEncoding })",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "name || { name, valueEncoding }",
+              "optional": false
+            }
+          ],
+          "description": "Load a `Hypercore` by name (passed as `name`). `name` should be passed as a string.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "addWriter",
+          "signature": "await host.addWriter(key, { indexer = true })",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            },
+            {
+              "name": "{ indexer",
+              "optional": true,
+              "default": "true }"
+            }
+          ],
+          "description": "Add a writer with the given `key` to the autobase allowing their local core to append. If `indexer` is `true`, it will be added as an indexer.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "removeWriter",
+          "signature": "await host.removeWriter(key)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            }
+          ],
+          "description": "Remove a writer from the autobase. This will throw if the writer cannot be removed.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "ackWriter",
+          "signature": "await host.ackWriter(key)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            }
+          ],
+          "description": "Acknowledge a writer even if they haven't been added before. This is most useful for applying `optimistic` blocks from writers that are not currently a writer.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "interrupt",
+          "signature": "host.interrupt(reason)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "reason",
+              "optional": false
+            }
+          ],
+          "description": "Interrupt the applying of writer blocks optionally giving a `reason`. This will emit an `interrupt` event passing the `reason` to the callback and close the autobase.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "WakeupHandler",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "new WakeupHandler(base, discoveryKey)",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "base",
+              "optional": false
+            },
+            {
+              "name": "discoveryKey",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L51",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "onpeeractive",
+          "signature": "wakeupHandler.onpeeractive(peer, session)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "peer",
+              "optional": false
+            },
+            {
+              "name": "session",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L57",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "onlookup",
+          "signature": "wakeupHandler.onlookup(req, peer, session)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "req",
+              "optional": false
+            },
+            {
+              "name": "peer",
+              "optional": false
+            },
+            {
+              "name": "session",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L61",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "onannounce",
+          "signature": "wakeupHandler.onannounce(wakeup, peer, session)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "wakeup",
+              "optional": false
+            },
+            {
+              "name": "peer",
+              "optional": false
+            },
+            {
+              "name": "session",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L67",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "active",
+          "signature": "wakeupHandler.active",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L52",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "discoveryKey",
+          "signature": "wakeupHandler.discoveryKey",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L53",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "base",
+          "signature": "wakeupHandler.base",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L54",
+          "source": [
+            "ast"
+          ]
+        }
+      ]
+    }
+  ],
+  "typedefs": [
+    {
+      "name": "AppendOptions",
+      "description": "Options for `base.append()`.",
+      "properties": [
+        {
+          "name": "optimistic",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Allow appending on an optimistic Autobase while not a writer; the block is only applied if validated in `apply`."
+        }
+      ]
+    }
+  ]
+}
