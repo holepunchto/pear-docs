@@ -27,10 +27,12 @@ const config = {
   // The PRODUCTION redirects come from:
   //   - out/<from>/index.html — meta-refresh + canonical stubs (zero-
   //     config; works on any static host).
-  //   - out/_redirects        — Sevalla / Netlify / Cloudflare-Pages
-  //     compatible 308 rules (true 308s once deployed).
-  // Both are emitted by scripts/generate-redirect-stubs.ts during the
-  // postbuild step. scripts/redirects.ts is the single source of truth.
+  //   - out/_redirects        — Sevalla / Netlify / Cloudflare-Pages rules.
+  //     Follows the qvac docs strategy: public/_redirects is the authored
+  //     source (markdown negotiation, catch-all 404) and is copied into out/
+  //     by `next build`; scripts/generate-redirect-stubs.ts prepends IA 308
+  //     rules ahead of that file during postbuild.
+  // scripts/redirects.ts is the single source of truth for IA redirects.
   // See decisions/0001-adopt-diataxis-ia.md §6.
   async redirects() {
     return [

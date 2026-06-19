@@ -7,6 +7,7 @@
  *   2. The HTML contains `meta http-equiv="refresh"` pointing at the new URL.
  *   3. The HTML contains `link rel="canonical"` pointing at the new URL.
  *   4. out/_redirects contains a line like `<from> <to> 308`.
+ *   5. out/_redirects ends with the catch-all 404 rule from public/_redirects.
  *
  * Designed to be wired into CI alongside check:internal-links so the IA
  * can't drift back. See decisions/0001-adopt-diataxis-ia.md §6.
@@ -38,8 +39,25 @@ function main(): void {
     process.exit(1);
   }
   const redirectsFile = readFileSync(redirectsPath, 'utf-8');
+  const catchAllRule = '/*   /404.html   404';
 
   const failures: Failure[] = [];
+
+  if (!redirectsFile.includes(catchAllRule)) {
+    failures.push({
+      from: catchAllRule,
+      to: '/404.html',
+      reason: 'catch-all 404 rule from public/_redirects is missing',
+    });
+  }
+
+  if (!redirectsFile.trimEnd().endsWith(catchAllRule)) {
+    failures.push({
+      from: catchAllRule,
+      to: '/404.html',
+      reason: 'catch-all 404 rule must be the last active rule in out/_redirects',
+    });
+  }
 
   for (const { from, to } of redirects) {
     const stubPath = join(OUT_DIR, from, 'index.html');

@@ -1,4 +1,67 @@
-# Catch-all 404 — must be the last rule in out/_redirects.
-# Sevalla serves /404.html for unresolved paths with HTTP 200; this forces
-# a real 404 status while rendering the same page body.
-/*    /404.html    404
+# Markdown content negotiation — serve the `.md` sibling of a page when
+# the client requests it via `Accept: text/markdown`. Home maps to
+# `/index.md`; every other page `/a/b/.../z/` maps to `/a/b/.../z.md`.
+#
+# Three properties of these rules and why they are required:
+#
+#  1. `!` (force) — the source path has an underlying static file (the
+#     HTML page) that would otherwise be served; the force flag is what
+#     lets the rule fire at all.
+#
+#  2. `303` (See Other) — the rule MUST be a 3xx redirect, not a 2xx
+#     rewrite. With a 2xx rewrite the response body for the `.md` content
+#     gets cached by Cloudflare under the page's URL key (Cloudflare does
+#     not honour `Vary: Accept`), poisoning the cache for subsequent
+#     HTML clients. A redirect is fetched anew by the client, so the
+#     Markdown response is cached under the `.md` URL key and the HTML
+#     response stays cached under the page URL key. Among 3xx codes,
+#     `303` is the semantically correct match for content negotiation
+#     ("the representation you asked for lives at another URI").
+#
+#  3. One rule per nesting depth, no splat. `_redirects` placeholders
+#     (`:name`) match a single path segment — verified empirically
+#     against Sevalla (a single `/:slug/` rule served HTML, not Markdown,
+#     for `/ai-capabilities/text-generation/`). Covering the site
+#     therefore requires one rule per depth. The splat form
+#     (`/* /:splat.md`) would be greedy but empirically crashes the
+#     Sevalla edge worker (HTTP 1101) when combined with `Header:Accept`
+#     — bug in their parser. Current site max depth is 3 segments; one
+#     extra level is included as headroom.
+#
+# Loop safety: the source pattern always ends in `/`, the rewrite target
+# always ends in `.md` (no slash). Those two URL spaces are disjoint, so
+# the client's follow-up `GET /foo.md` does not re-match the rule. This
+# only holds because all incoming page requests carry a trailing slash
+# (Sevalla's Pretty URLs normalizes bare paths first) AND because Pretty
+# URLs skips paths whose final segment contains a dot — so `/foo.md` is
+# never normalized into `/foo.md/`, which would otherwise loop.
+/                       /index.md                  303!   Header:Accept=text/markdown
+/:a/                    /:a.md                     303!   Header:Accept=text/markdown
+/:a/:b/                 /:a/:b.md                  303!   Header:Accept=text/markdown
+/:a/:b/:c/              /:a/:b/:c.md               303!   Header:Accept=text/markdown
+/:a/:b/:c/:d/           /:a/:b/:c/:d.md            303!   Header:Accept=text/markdown
+
+# ======================================================================
+# CATCH-ALL 404 — MUST BE THE LAST RULE
+# ----------------------------------------------------------------------
+# Sevalla serves /404.html automatically for unresolved paths, but with
+# HTTP 200, which breaks SEO, link checkers, analytics and HTTP clients.
+# This explicit rule forces a real `404 Not Found` status while still
+# rendering the same /404.html body. Reached in two distinct cases:
+#
+#   1. No static file matches the request AND no earlier rule matches.
+#   2. An earlier `200` rewrite points at a target that doesn't exist
+#      (e.g. `/reference/api/notaversion/` → rewrite to
+#      `/reference/api/notaversion/index.html` which isn't built).
+#      Sevalla's pipeline continues evaluating rules in this case, and
+#      this catch-all gives those orphaned rewrites a clean 404 instead
+#      of falling back to Sevalla's soft-200 default.
+#
+# Known edge case (intentionally not fixed): a direct request to
+# `/404.html` returns 200 because Sevalla's static-file resolution runs
+# before `_redirects` and serves the file as-is, bypassing this rule.
+# `/404.html` is not in the sitemap, not linked from any page, and not
+# referenced in any external surface; practical traffic to it is zero.
+# ======================================================================
+
+/*   /404.html   404

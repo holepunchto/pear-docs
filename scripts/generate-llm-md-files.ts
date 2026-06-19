@@ -2,6 +2,9 @@
  * Post-build: reads `out/llm-md-manifest.json` and writes per-page `.md` files
  * so clients can fetch Markdown via `pageMarkdownUrl()` (e.g. `/ship.md`).
  *
+ * The `Accept: text/markdown` content-negotiation flow is configured in
+ * `public/_redirects` (same strategy as qvac docs).
+ *
  * Run after `next build`: `tsx scripts/generate-llm-md-files.ts`
  */
 import { readFile, writeFile, mkdir, unlink } from 'fs/promises';
