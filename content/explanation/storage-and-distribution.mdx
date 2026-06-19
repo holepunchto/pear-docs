@@ -1,0 +1,117 @@
+---
+title: "Storage and distribution"
+description: "Where Pear keeps applications and their data on disk, why it's structured that way, and how the swarm gets new versions to your peers."
+docType: explanation
+schemaType: WebPage
+---
+
+Pear stores everything—the runtime itself, every installed application, and each application's persistent data—under a single per-OS directory. New versions of an application reach users through the same peer-to-peer swarm that distributes data inside the application; there is no central server. This page explains the on-disk layout and the distribution model, and the trade-offs that motivate both.
+
+## On-disk layout
+
+The top-level directory depends on the operating system:
+
+| OS      | Pear directory                       |
+| ------- | ------------------------------------ |
+| macOS   | `~/Library/Application Support/pear` |
+| Linux   | `~/.config/pear`                     |
+| Windows | `%USERPROFILE%\AppData\Roaming\pear` |
+
+Inside that directory:
+
+- **`current`**—a symlink to the Pear platform binary that's currently active. The platform itself is delivered the same way an application is: by the swarm. Updating Pear means re-pointing this symlink.
+- **`corestores/`**—every installed application, stored as a [Corestore](/reference/helpers/corestore) of [Hyperdrives](/reference/building-blocks/hyperdrive). One corestore per application; one Hyperdrive per logical bundle (binaries plus assets).
+- **`app-storage/`**—application-private persistent data, keyed by the application's `dkey` (derived from its `pear://` link). This is where chat history, drafts, settings, and user content live. Each subdirectory is its own corestore again, scoped to one application.
+
+In a running application, the path you'd write to is exposed as [`Pear.config.storage`](/reference/pear/api#pearconfig-object); the platform root is [`Pear.config.pearDir`](/reference/pear/api#pearconfig-object).
+
+A practical consequence of this layout: you can't browse the on-disk files with Finder or a file manager and expect to see the application's actual content. Everything is encoded inside hyperdrives. To read what an installed application actually distributed, use [`pear dump`](/reference/pear/cli#pear-dump-flags-link-dir)—it materializes the hyperdrive's contents back into ordinary files.
+
+### Application storage in development vs production
+
+The directories above are the **platform**'s storage. An **application** embedded in [Electron](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app)—the `dir` field passed to `new PearRuntime({ dir, ... })`—lives in a different per-OS location, and it differs between development and packaged builds:
+
+| OS      | Packaged                                        | Development (no packaged app)      |
+| ------- | ----------------------------------------------- | ---------------------------------- |
+| macOS   | `~/Library/Application Support/<productName>`   | `<tmpdir>/pear/<productName>`      |
+| Linux   | `~/.config/<productName>`                       | `<tmpdir>/pear/<productName>`      |
+| Windows | `%USERPROFILE%\AppData\Local\<productName>`     | `<tmpdir>/pear/<productName>`      |
+
+The convention comes from the getting-started [pear-chat `getStorageDir()` helper](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app): when `app.isPackaged` is `false`, the dir falls back to `os.tmpdir()`; otherwise it picks the OS-appropriate user-data folder. (In the [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron/blob/main/electron/main.js) template the same logic lives in `getWorker()`, which passes `dir` to the Bare worker that constructs the runtime.) The Pear runtime exposes that dir as `pear.storage`, which the worker passes to [Corestore](/reference/helpers/corestore) as `storage`.
+
+On Windows the docs and examples deliberately use `AppData\Local` (machine-local), not the `AppData\Roaming` the upstream template defaults to: a [Corestore](/reference/helpers/corestore) holds a per-device peer keypair and can grow large, so it should stay machine-bound rather than sync across roaming profiles.
+
+### Running multiple application instances
+
+Because [Corestore](/reference/helpers/corestore) takes an exclusive file-system lock on its directory, two copies of the same packaged app cannot share `dir`. To run a second local instance you point it at a separate folder with the `--storage` flag (recognised by every Pear-shaped Electron app that wires `paparam` like the template):
+
+```bash
+# development
+npm start -- --storage /tmp/custom/storage
+
+# packaged macOS
+open -n PearChat.app --args --storage /tmp/custom/storage
+
+# packaged Linux
+./PearChat.AppImage --storage /tmp/custom/storage
+
+# packaged Windows
+.\PearChat.exe --storage C:\tmp\custom\storage
+```
+
+A second `--storage` instance behaves exactly like an instance running on another machine: a separate [Corestore](/reference/helpers/corestore), a separate Hyperswarm presence, the same `pear://` link. This is the simplest way to test peer-to-peer flows locally without involving a second device.
+
+## How distribution works
+
+A Pear application's `pear://<key>` link is a stable identifier the swarm can route on. When you publish a new version with `pear stage` and announce it with `pear seed`, you're appending to the application's [Hyperdrive](/reference/building-blocks/hyperdrive)—peers tracking that drive pick up the new version while they're connected to the swarm, replicating only the blocks they actually need rather than the whole drive.
+
+The swarm replicates lazily: a peer that runs your app becomes a source for it. Once you have a few users running an application, distribution scales without any central infrastructure on your end. The original author can go offline and the application keeps spreading, as long as at least one peer with a copy is reachable.
+
+The `pear seed <link>` command keeps a peer online and announcing as a source for a given link. It's not strictly required—any peer running the app contributes—but it's the recommended way to guarantee availability for a release. A handful of seeders is usually enough; very popular apps reach the long-tail-availability sweet spot quickly.
+
+The same model applies to the Pear platform itself: there's no Pear download server, only a swarm.
+
+### Installing applications
+
+For a long time the way to launch a Pear application was `pear run pear://<key>`—the runtime fetched the bundle from the swarm and ran it in place. 
+
+That runtime capability is being unbundled from the CLI: `pear run` is deprecated in favour of the embeddable [`pear-runtime`](/reference/pear/runtime) library, so any JavaScript project can carry peer-to-peer over-the-air updates without depending on the CLI. The CLI's remaining focus is deployment and, now, installation. The full rationale is in [Pear Evolution](https://pears.com/news/pear-evolution/).
+
+Installing replaces "run from a link" with a first-class on-disk install. [`pear install pear://<key>`](/reference/pear/cli#pear-install) pulls an application built with [`pear build`](https://github.com/holepunchto/hello-pear-electron#deploying) from the swarm and sets it up locally, the same way the platform binary arrives—there is still no download server, only peers. The command works for both applications and standalone binaries.
+
+<Callout type="info">
+`pear install` is upcoming. You can preview it today with the standalone [`pear-install`](https://www.npmjs.com/package/pear-install) module:
+</Callout>
+
+```bash
+# install Keet peer-to-peer (preview)
+npx pear-install pear://17pwkcszz18deaccarhrrixhzf1f5ko1b1dz6j3pxhexebutjwzy
+```
+
+The same mechanism bootstraps Pear itself. The CLI is becoming a standalone binary that updates over the swarm through `pear-runtime`, so `npx pear-install` installs `pear`, and `npx pear` resolves to `npx pear-install`—collapsing the install path for the platform and for the apps it distributes into one model. A mobile counterpart, `pear-mobile`, with the same over-the-air update story, is in development.
+
+Because installed applications already live as [Corestores](/reference/helpers/corestore) of [Hyperdrives](/reference/building-blocks/hyperdrive) under the platform directory (see [On-disk layout](#on-disk-layout)), an install is just another entry in that tree, and updates flow through the same lazy swarm replication described above.
+
+### When seeding is not enough
+
+Self-seeding with `pear seed` only covers cores you hold locally and requires an always-on process per application. Private rooms, direct-message threads, and offline authors create gaps where no participant seeds the data a new peer needs.
+
+<Callout type="info">
+[Availability and blind peering](/explanation/availability-and-blind-peering) describes blind peers—dedicated replicators that cache cores without reading them—as one way to close that gap.
+</Callout>
+
+## Why this shape
+
+- **No infrastructure.** The author of an application doesn't run servers, doesn't pay for bandwidth, doesn't have a single point of failure. The cost of serving the app is amortized across users.
+- **Versioning is built in.** Each Hyperdrive is backed by an append-only Hypercore log, so an application's history is preserved automatically and rollbacks are routine—even though the drive itself still supports deletes and updates on top of that log.
+- **Same primitives for code and data.** Application storage and the application itself are both corestores, which means the same replication, encryption, and update mechanics apply to both.
+
+## See also
+
+- [Pear desktop application architecture](/explanation/pear-desktop-architecture)—how a typical Electron app maps `dir`, workers, and OTA into that layout.
+- [Release pipeline](/explanation/release-pipeline)—stage, provision, multisig, and release lines for shipping desktop builds.
+- [Manage installed applications](/how-to/manage-installed-applications)—listing and dropping local application storage.
+- [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment)—staging and seeding new releases.
+- [Hypercore](/reference/building-blocks/hypercore)—the append-only log every other primitive composes.
+- [Hyperdrive](/reference/building-blocks/hyperdrive)—file-system layer used for application bundles and assets.
+- [Corestore](/reference/helpers/corestore)—the storage manager whose on-disk format backs every installed application and app-storage directory.

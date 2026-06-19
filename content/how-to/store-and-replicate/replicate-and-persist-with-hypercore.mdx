@@ -1,0 +1,118 @@
+---
+title: "Replicate and persist with Hypercore"
+description: "Persist messages and streams with append-only Hypercore replication."
+docType: how-to
+schemaType: TechArticle
+---
+
+{/* <Cards>
+  <Card title="Build with Pear - Episode 05: Replication and Persistence" href="https://www.youtube.com/watch?v=5t2mOi0BeDg" external />
+</Cards> */}
+
+In this guide you'll extend the ephemeral chat example in [Connect Many Peers](/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm) by using Hypercore to add two significant new features:
+
+* **Persistence**: The owner of the Hypercore can add messages at any time, and they'll be persisted to disk. Whenever they come online, readers can replicate these messages over Hyperswarm.
+* **Many Readers:** New messages added to the Hypercore will be broadcast to interested readers. The owner gives each reader a reading capability ([`core.key`](/reference/building-blocks/hypercore#corekey)) and a corresponding discovery key ([`core.discoveryKey`](/reference/building-blocks/hypercore#corediscoverykey)). The former is used to authorize the reader, ensuring that they have permission to read messages, and the latter is used to discover the owner (and other readers) on the swarm.
+
+[`Hypercore`](/reference/building-blocks/hypercore) is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. 
+It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
+
+The following example consists of two Pear Terminal Applications: [`writer-app`](#create-the-writer-app) and [`reader-app`](#create-the-reader-app).
+When these two applications are opened, two peers are created and connected to each other. Hypercore stores the data entered into the command line.
+
+<include>../../_snippets/_from-a-template-callout.mdx</include>
+
+## Create the writer app
+
+The `writer-app` stores command-line input to a Hypercore instance and replicates that instance to other peers over [Hyperswarm](/reference/building-blocks/hyperswarm).
+
+### Create the writer-app directory and add dependencies
+
+Create the `writer-app` project with these commands:
+
+```sh example=hypercore-replicate step=setup
+mkdir writer-app
+cd writer-app
+npm init -y
+npm pkg set type="module"
+npm install bare-path bare-process hypercore hyperswarm b4a
+```
+
+This command installs the following dependencies:
+
+- [`bare-path`](https://www.npmjs.com/package/bare-path): A module for working with paths.
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`hyperswarm`](/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`hypercore`](/reference/building-blocks/hypercore): A module for working with Hypercore.
+- [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
+
+### Add the app logic
+
+Create the `writer-app/index.js` file with the following content.
+
+The writer creates a Hyperswarm and destroys it cleanly on `SIGINT` (L8–L9), then opens a local Hypercore backed by `./storage/writer-storage` (L11). `core.key` and `core.discoveryKey` are only available after [`core.ready()`](/reference/building-blocks/hypercore#await-coreready) resolves, so it awaits that before logging the hex-encoded key readers will need (L14–L15). Every chunk of stdin is appended as its own block (L18). Finally it joins the swarm on the `discoveryKey` and replicates the core to each incoming connection (L22–L23):
+
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/replicate-and-persist-with-hypercore/writer-app/index.js title="writer-app/index.js" lineNumbers {8-9,11,14-15,18,22-23} skip="example-import"
+```
+
+## Create the reader app
+
+The `reader-app` uses Hyperswarm to connect to the writer peer and synchronize its local Hypercore with the writer's Hypercore.
+
+### Create the reader-app directory and add dependencies
+
+Create the `reader-app` project with these commands:
+
+```sh example=hypercore-replicate step=setup
+mkdir reader-app
+cd reader-app
+npm init -y
+npm pkg set type="module"
+npm install bare-path bare-process hypercore hyperswarm
+```
+
+This command installs the following dependencies:
+
+- [`bare-path`](https://www.npmjs.com/package/bare-path): A module for working with paths.
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`hyperswarm`](/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`hypercore`](/reference/building-blocks/hypercore): A module for working with Hypercore.
+
+### Add the reader-app logic
+
+Create the `reader-app/index.js` file with the following content.
+
+Like the writer, the reader sets up a Hyperswarm with `SIGINT` cleanup (L7–L8). It opens its Hypercore with the writer's key passed on the command line (`Bare.argv[2]`), which makes it a read-only replica, and awaits `core.ready()` (L10–L11). It joins the swarm on the same `discoveryKey` and replicates over each connection (L13–L14), then [`swarm.flush()`](/reference/building-blocks/hyperswarm#await-swarmflush) waits until all discoverable peers are connected (L17) before [`core.update()`](/reference/building-blocks/hypercore#await-coreupdateoptions) pulls the latest length from the writer (L19). It records the current [`core.length`](/reference/building-blocks/hypercore#corelength) and tails the core from that point with a live read stream, logging each new block as it arrives (L21–L24):
+
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/replicate-and-persist-with-hypercore/reader-app/index.js title="reader-app/index.js" lineNumbers {7-8,10-11,13-14,17,19,21-24} skip="example-import"
+```
+
+## Run the writer and reader
+
+In one terminal, run `writer-app` with `bare`:
+
+```sh example=hypercore-replicate step=run process=writer expect="hypercore key:" capture-key="hypercore key: ([0-9a-f]+)" timeout=20000
+bare writer-app
+```
+
+The `writer-app` will output the Hypercore key.
+
+In another terminal, open the `reader-app` and pass it the key:
+
+```sh example=hypercore-replicate step=run process=reader cmd="bare reader-app ${key}" expect="Skipping" timeout=45000
+bare reader-app <SUPPLY THE KEY HERE>
+```
+
+{/* @harness example=hypercore-replicate step=send process=writer data="hello\n" delay=2000 */}
+{/* @harness example=hypercore-replicate step=expect process=reader contains="hello" timeout=30000 */}
+
+As inputs are made to the terminal running the writer application, outputs should be shown in the terminal running the reader application.
+
+## See also
+
+- [Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended pattern when you need more than one core per process.
+- [From append-only logs to files](/explanation/from-logs-to-files)—how Hypercore, Hyperblobs, and Hyperdrive relate.
+- [Share append-only databases with Hyperbee](/how-to/store-and-replicate/share-append-only-databases-with-hyperbee)—key/value store built on Hypercore.
+- [Storage and distribution](/explanation/storage-and-distribution)—where these cores live on disk.
+- [Hypercore reference](/reference/building-blocks/hypercore)—full API for the append-only log used in this guide.
+- [Hyperswarm reference](/reference/building-blocks/hyperswarm)—full API for the topic-based discovery and replication used here.

@@ -1,0 +1,77 @@
+name: Docs lint
+
+# Gates docs changes on every PR (and on push to main):
+#   - internal-links: the in-repo link/anchor/asset checker.
+#   - vale:           Google-style prose linting of content/.
+# External links are network-flaky, so they run on a schedule instead
+# (see .github/workflows/external-links.yml).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'content/**'
+      - 'scripts/check-internal-links.ts'
+      - 'scripts/helpers.ts'
+      - '.vale.ini'
+      - '.github/styles/**'
+      - '.github/workflows/docs-lint.yml'
+  pull_request:
+    paths:
+      - 'content/**'
+      - 'scripts/check-internal-links.ts'
+      - 'scripts/helpers.ts'
+      - '.vale.ini'
+      - '.github/styles/**'
+      - '.github/workflows/docs-lint.yml'
+  workflow_dispatch:
+
+jobs:
+  internal-links:
+    name: internal links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # The checker only needs tsx + github-slugger, both public on npm. We
+      # can't run a normal `npm install` here because package.json pulls
+      # token-gated @tetherto/* packages from GitHub Packages (this repo lives
+      # in holepunchto/, the packages in tetherto/, so the repo token can't
+      # read them). github-slugger is imported as an ESM bare specifier, and
+      # ESM resolution ignores NODE_PATH — so a global install isn't found.
+      # Install just the checker deps into a throwaway prefix and copy them
+      # into ./node_modules, where ESM resolution can find them.
+      - name: Install link-checker deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+      - name: Check internal links
+        run: ./node_modules/.bin/tsx scripts/check-internal-links.ts
+
+  vale:
+    name: vale prose lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # Install Vale directly rather than via errata-ai/vale-action: the action
+      # resolves StylesPath differently from `vale sync`'s package location on
+      # Linux runners, so lint fails with "style 'Google' does not exist on
+      # StylesPath". Running the pinned binary ourselves keeps sync and lint on
+      # the same StylesPath and matches local runs exactly. The version is
+      # pinned to match the Google package pinned in .vale.ini — bump both
+      # together (and re-run `vale sync && vale content` locally first).
+      - name: Install Vale
+        run: |
+          curl -sSL https://github.com/errata-ai/vale/releases/download/v3.14.2/vale_3.14.2_Linux_64-bit.tar.gz \
+            | sudo tar -xz -C /usr/local/bin vale
+          vale --version
+      # Fetch the pinned Google package into Vale's data dir.
+      - name: Sync Vale styles
+        run: vale sync
+      # Fail the job on error-level alerts (per MinAlertLevel in .vale.ini).
+      - name: Lint content
+        run: vale --minAlertLevel=error content

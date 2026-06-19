@@ -1,0 +1,93 @@
+name: Watch boilerplate upstreams
+
+# The docs vendor read-only snapshots of the hello-pear-* boilerplates under
+# examples/getting-started/ and import code from them with remark-code-import
+# (```js file=<rootDir>/examples/getting-started/<name>/...). GitHub won't let
+# us subscribe to another org's repo events, so instead of a true webhook
+# "watcher" this job polls the upstream default branches on a schedule and opens
+# a tracking issue when a vendored snapshot falls behind upstream — the cue to
+# refresh the files and re-check the imported line ranges.
+#
+# When you refresh a snapshot, bump the matching `pinned` SHA below (and the
+# snapshot's README); the next run sees no drift and auto-closes the issue.
+
+on:
+  schedule:
+    # Weekly, Mondays 09:00 UTC. Boilerplate drift isn't urgent; bump the
+    # cadence here if you want prompter notice.
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: check ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: hello-pear-bare
+            repo: holepunchto/hello-pear-bare
+            pinned: c62e69bc47ec8b926587fd6979ab9b7e8a16d6fb
+            path: examples/getting-started/hello-pear-bare
+          - name: hello-pear-electron
+            repo: holepunchto/hello-pear-electron
+            pinned: 9e8085a7ae0313150d05fd9d5ad6c0ba8b297243
+            path: examples/getting-started/hello-pear-electron
+    steps:
+      - name: Compare upstream HEAD to the vendored snapshot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ matrix.repo }}
+          NAME: ${{ matrix.name }}
+          PINNED: ${{ matrix.pinned }}
+          VENDOR_PATH: ${{ matrix.path }}
+        run: |
+          set -euo pipefail
+
+          branch=$(gh api "repos/${REPO}" --jq '.default_branch')
+          head_sha=$(gh api "repos/${REPO}/commits/${branch}" --jq '.sha')
+          title="Refresh vendored snapshot: ${NAME}"
+
+          # An open tracking issue for this snapshot, if one already exists
+          # (exact title match) — keeps reruns from filing duplicates.
+          existing=$(gh issue list --repo "${GITHUB_REPOSITORY}" --state open --limit 100 \
+            --json number,title \
+            | jq -r --arg t "${title}" 'map(select(.title == $t)) | (.[0].number // empty)')
+
+          if [ "${head_sha}" = "${PINNED}" ]; then
+            echo "${NAME}: in sync (${head_sha})."
+            if [ -n "${existing}" ]; then
+              gh issue close "${existing}" --repo "${GITHUB_REPOSITORY}" \
+                --comment "Vendored snapshot is back in sync with upstream \`${head_sha}\`. Closing."
+            fi
+            exit 0
+          fi
+
+          echo "${NAME}: drift — pinned ${PINNED}, upstream ${head_sha}."
+          if [ -n "${existing}" ]; then
+            echo "Tracking issue #${existing} already open; nothing to do."
+            exit 0
+          fi
+
+          compare="https://github.com/${REPO}/compare/${PINNED}...${head_sha}"
+          body=$(printf '%s\n' \
+            "[\`${REPO}\`](https://github.com/${REPO}) has new commits since the snapshot vendored at \`${VENDOR_PATH}\`." \
+            "" \
+            "- Pinned: \`${PINNED}\`" \
+            "- Upstream \`${branch}\`: \`${head_sha}\`" \
+            "- Changes: ${compare}" \
+            "" \
+            "The docs import code from this snapshot via \`remark-code-import\`. To refresh:" \
+            "" \
+            "1. Copy the imported upstream files into \`${VENDOR_PATH}\` at \`${head_sha}\`." \
+            "2. Re-check the \`#L…\` ranges in the importing \`.mdx\`." \
+            "3. Update the \`pinned\` SHA for \`${NAME}\` in \`.github/workflows/watch-boilerplates.yml\` and the snapshot README." \
+            "" \
+            "_Opened automatically by the Watch boilerplate upstreams workflow._")
+
+          gh issue create --repo "${GITHUB_REPOSITORY}" --title "${title}" --body "${body}"

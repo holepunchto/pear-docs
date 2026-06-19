@@ -1,0 +1,287 @@
+---
+title: "Mirrordrive"
+description: "Diff and sync engine for copying between drive-like APIs."
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+`Mirrordrive` computes diffs between two drive-like APIs and applies them efficiently. It is the helper that powers sync flows between [Hyperdrive](/reference/building-blocks/hyperdrive) and [Localdrive](/reference/helpers/localdrive), including the `drive.mirror(...)` shortcut on Hyperdrive. For source and release notes, see the [mirror-drive repository](https://github.com/holepunchto/mirror-drive).
+
+## Install
+
+```sh
+npm i mirror-drive
+```
+
+## Quickstart
+
+```js
+import Corestore from 'corestore'
+import Hyperdrive from 'hyperdrive'
+import Localdrive from 'localdrive'
+import MirrorDrive from 'mirror-drive'
+
+const store = new Corestore('./storage')
+const src = new Localdrive('./site')
+const dst = new Hyperdrive(store)
+
+await dst.ready()
+
+const mirror = new MirrorDrive(src, dst, { prune: true })
+
+for await (const diff of mirror) {
+  console.log(diff)
+}
+```
+
+## API Reference
+
+### Constructor and lifecycle
+
+#### `const mirror = new MirrorDrive(src, dst, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L71)
+- Signature: `const mirror = new MirrorDrive(src, dst, [options])`
+- Parameters: `src` and `dst` are drive-like objects that expose methods such as `ready()`, `list()`, `entry()`, `createReadStream()`, `createWriteStream()`, and optionally `getBlobs()` or `putEntry()`. `options.prefix` scopes the sync to one path or an array of paths, `dedup` enables destination-side blob deduping when supported, `dryRun` computes diffs without writing, `prune` removes entries missing from the source, `preload` prefetches blob maps before copying, `progress` enables transfer stats, `includeEquals` yields unchanged entries too, `filter` decides which keys to keep, `metadataEquals` customizes metadata comparison, `batch` uses `dst.batch()` and `flush()`, `entries` provides a fixed entry list, `ignore` skips paths, and `transformers` applies stream transforms while copying.
+- Returns: A `MirrorDrive` instance that is both an async iterator of diffs and a controller for progress/state.
+- Example:
+
+```js
+const mirror = new MirrorDrive(src, dst, {
+  prefix: '/',
+  prune: true,
+  progress: true
+})
+```
+
+#### `await mirror.done()`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L131)
+- Signature: `await mirror.done()`
+- Parameters: None.
+- Returns: A promise that resolves after the entire diff and copy pass has finished.
+- Example:
+
+```js
+const mirror = new MirrorDrive(src, dst)
+await mirror.done()
+console.log(mirror.count)
+```
+
+#### `for await (const diff of mirror)`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L109)
+- Signature: `for await (const diff of mirror)`
+- Parameters: None.
+- Returns: An async sequence of diff objects shaped like `{ op, key, bytesRemoved, bytesAdded }`, where `op` is one of `add`, `change`, `remove`, or `equal` when `includeEquals` is enabled.
+- Example:
+
+```js
+for await (const diff of mirror) {
+  console.log(diff.op, diff.key)
+}
+```
+
+### Mirror state
+
+#### `mirror.count`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L90)
+- Returns: An object shaped like `{ files, add, remove, change }` that tracks how many entries were processed and how many writes were performed.
+
+#### `mirror.bytesAdded`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L92)
+- Returns: The total number of bytes copied into the destination so far.
+
+#### `mirror.bytesRemoved`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L91)
+- Returns: The total number of bytes removed from the destination so far.
+
+#### `mirror.finished`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L94)
+- Returns: `true` once the mirror pass has completed.
+
+#### `mirror.preloaded`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L25)
+- Returns: `true` once any configured preload phase has finished fetching the blob ranges or block maps it needs.
+
+#### `mirror.peers`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L113)
+- Returns: The source drive's current peer list when `src.core` exists, otherwise an empty array.
+
+#### `mirror.downloadProgress`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L117)
+- Returns: A `0..1` estimate of preload/download progress when progress tracking is enabled.
+
+#### `mirror.downloadedBlocks`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L96)
+- Returns: The number of blob blocks downloaded from the source during the current run.
+
+#### `mirror.downloadedBytes`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L98)
+- Returns: The number of blob bytes downloaded from the source during the current run.
+
+#### `mirror.uploadedBlocks`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L101)
+- Returns: The number of destination blob blocks uploaded or written during the current run.
+
+#### `mirror.uploadedBytes`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L102)
+- Returns: The number of destination blob bytes uploaded or written during the current run.
+
+### Monitoring progress
+
+#### `const monitor = mirror.monitor([options])`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L124)
+- Signature: `const monitor = mirror.monitor([options])`
+- Parameters: `options.interval` controls how often stats snapshots are emitted, in milliseconds. The default is `250`.
+- Returns: A monitor object that emits progress updates and exposes the latest `stats` snapshot.
+- Example:
+
+```js
+const monitor = mirror.monitor({ interval: 500 })
+
+monitor.on('update', (stats) => {
+  console.log(stats.download.progress)
+})
+
+await mirror.done()
+monitor.destroy()
+```
+
+#### `monitor.stats`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L19)
+- Returns: The most recent immutable stats snapshot, shaped like:
+  `{
+    peers,
+    download: { bytes, blocks, speed, progress },
+    upload: { bytes, blocks, speed }
+  }`
+
+#### `monitor.preloaded`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L25)
+- Returns: `true` when the parent mirror has finished its preload phase.
+
+#### `monitor.destroyed`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L29)
+- Returns: `true` after the monitor has been torn down.
+
+#### `monitor.destroy()`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L55)
+- Signature: `monitor.destroy()`
+- Parameters: None.
+- Returns: Nothing. Stops update polling and detaches the monitor from the mirror.
+- Example:
+
+```js
+const monitor = mirror.monitor()
+monitor.destroy()
+```
+
+#### `monitor.on('update', listener)`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L52)
+- Signature: `monitor.on('update', listener)`
+- Parameters: `listener` receives the latest `monitor.stats` snapshot every `interval` milliseconds.
+- Returns: The monitor itself, following Node's `EventEmitter` behavior.
+- Example:
+
+```js
+monitor.on('update', (stats) => {
+  console.log(stats.upload.bytes)
+})
+```
+
+#### `monitor.on('preloaded', listener)`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L187)
+- Signature: `monitor.on('preloaded', listener)`
+- Parameters: `listener` fires once preload has completed.
+- Returns: The monitor itself.
+- Example:
+
+```js
+monitor.on('preloaded', () => {
+  console.log('blob maps are ready')
+})
+```
+
+#### `monitor.on('destroy', listener)`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L67)
+- Signature: `monitor.on('destroy', listener)`
+- Parameters: `listener` fires when `monitor.destroy()` runs or when the parent mirror finishes and cleans up remaining monitors.
+- Returns: The monitor itself.
+- Example:
+
+```js
+monitor.on('destroy', () => {
+  console.log('monitor stopped')
+})
+```
+
+### Option patterns
+
+#### `transformers`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L88)
+- Returns: A copy pipeline hook. Each transformer is a function `(key) => stream | null`; returning `null` skips that transform for the current file.
+- Example:
+
+```js
+const mirror = new MirrorDrive(src, dst, {
+  transformers: [
+    (key) => key.endsWith('.txt') ? myTransformStream() : null
+  ]
+})
+```
+
+#### `entries`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L87)
+- Returns: A fixed list of entries to mirror instead of reading them from `src.list(...)`. When this option is used, `prefix` is ignored.
+- Example:
+
+```js
+const entries = [{ key: '/index.html' }, { key: '/styles.css' }]
+const mirror = new MirrorDrive(src, dst, { entries })
+```
+
+#### `metadataEquals`
+
+[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L85)
+- Returns: A predicate used to decide whether metadata changes should count as a diff when both drives support metadata.
+- Example:
+
+```js
+const mirror = new MirrorDrive(src, dst, {
+  metadataEquals(left, right) {
+    return JSON.stringify(left) === JSON.stringify(right)
+  }
+})
+```
+
+## See also
+
+- [Create a full peer-to-peer filesystem with Hyperdrive](/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—end-to-end workflow that mirrors between Localdrive and Hyperdrive.
+- [Hyperdrive](/reference/building-blocks/hyperdrive)—exposes `drive.mirror(...)` and is the canonical distributed destination/source for Mirrordrive.
+- [Localdrive](/reference/helpers/localdrive)—the local filesystem companion API most often paired with Mirrordrive.
+- [Drives](/reference/tools/drives)—CLI tool whose `drives mirror` command is powered by the same sync logic.
+- [Upstream mirror-drive repository](https://github.com/holepunchto/mirror-drive)—source, releases, and implementation details.

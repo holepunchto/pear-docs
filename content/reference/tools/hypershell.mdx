@@ -1,0 +1,216 @@
+---
+title: "Hypershell"
+description: "Reference for the Hypershell CLI tools: key generation, remote shell access, file copy, and tunneling."
+docType: reference
+schemaType: APIReference
+---
+
+Hypershell is a set of CLI tools for encrypted shell access, file transfer, and local port forwarding over HyperDHT. This page documents the public binaries installed by [`hypershell`](https://github.com/holepunchto/hypershell).
+
+## System support
+
+Desktop only: macOS, Linux, and Windows are supported. Hypershell is not available on Android or iOS.
+
+## Install
+
+```sh
+npm i -g hypershell
+```
+
+Installing the package adds four binaries:
+
+- `hypershell-keygen`
+- `hypershell-server`
+- `hypershell`
+- `hypershell-copy`
+
+## `hypershell-keygen`
+
+[Command source on GitHub](https://github.com/holepunchto/hypershell/blob/v0.0.15/bin/keygen.js)
+
+Create an Ed25519 seed file for Hypershell and other HyperDHT-based tools.
+
+```sh
+hypershell-keygen [-f <filename>] [-c <comment>]
+```
+
+Flags:
+
+- `-f <filename>`: write the seed to a specific file.
+  Default: if omitted, the CLI prompts and suggests `~/.hypershell/peer`.
+- `-c <comment>`: append `# <comment>` to the saved seed line.
+- `-h, --help`: show help.
+
+Notes:
+
+- The generated file is written with owner-only permissions on non-Windows systems.
+- The command prints the derived public key after creating the seed file.
+
+Example:
+
+```sh
+hypershell-keygen -f ~/.hypershell/work-laptop -c "work laptop"
+```
+
+## `hypershell-server`
+
+[Command source on GitHub](https://github.com/holepunchto/hypershell/blob/v0.0.15/bin/server.js)
+
+Start a Hypershell server that can expose remote shell access, upload, download, and TCP tunneling.
+
+```sh
+hypershell-server [options]
+```
+
+Flags:
+
+- `-f <filename>`: server seed key file.
+  Default: `~/.hypershell/peer`
+- `--firewall <filename>`: file containing allowed public keys, one per line.
+  Default: `~/.hypershell/authorized_peers`
+- `--disable-firewall`: allow any peer to connect.
+  Default: off
+- `--protocol <name...>`: restrict the enabled protocols to one or more of `shell`, `upload`, `download`, or `tunnel`.
+  Default: all four protocols are enabled
+- `--tunnel-host <address...>`: allowlist tunneled destination hosts.
+  Default: any host
+- `--tunnel-port <port...>`: allowlist tunneled destination ports.
+  Default: any port
+- `--testnet`: use the local testnet bootstrap node.
+  Default: off
+- `-h, --help`: show help.
+
+Notes:
+
+- If the key file does not exist, the server creates it automatically.
+- If the firewall file does not exist, the server creates it and starts with no authorized peers until you add them.
+- The firewall file is watched live, so adding or removing keys takes effect without restarting the server.
+
+Example:
+
+```sh
+hypershell-server --protocol tunnel --tunnel-host 127.0.0.1 --tunnel-port 3000
+```
+
+## `hypershell`
+
+[Command source on GitHub](https://github.com/holepunchto/hypershell/blob/v0.0.15/bin/client.js)
+
+Connect to a Hypershell server by raw public key or by a name stored in `~/.hypershell/known_peers`.
+
+```sh
+hypershell <server-public-key-or-name> [options]
+```
+
+Flags:
+
+- `-f <filename>`: client seed key file.
+  Default: `~/.hypershell/peer`
+- `-L <[address:]port:host:hostport...>`: open one or more local forwarding tunnels.
+  Default: no tunnels
+- `--testnet`: use the local testnet bootstrap node.
+  Default: off
+- `-h, --help`: show help.
+
+Notes:
+
+- If the client key file does not exist, the CLI creates it automatically.
+- When the `address:` prefix is omitted from `-L`, the local listener binds to all interfaces.
+- A `known_peers` entry lets you use a short alias instead of a raw public key.
+
+Example:
+
+```sh
+hypershell home -L 127.0.0.1:2020:127.0.0.1:3000
+```
+
+## `hypershell-copy`
+
+[Command source on GitHub](https://github.com/holepunchto/hypershell/blob/v0.0.15/bin/copy.js)
+
+Upload files or directories to a remote peer, or download them back to the local machine.
+
+```sh
+hypershell-copy <source> <target> [options]
+```
+
+Remote paths use one of these forms:
+
+- `@name:/path`
+- `<public-key>:/path`
+
+Flags:
+
+- `-f <filename>`: client seed key file.
+  Default: `~/.hypershell/peer`
+- `--testnet`: use the local testnet bootstrap node.
+  Default: off
+- `-h, --help`: show help.
+
+Notes:
+
+- If the source is remote, the command downloads.
+- If the target is remote, the command uploads.
+- Directories are copied recursively.
+
+Example:
+
+```sh
+hypershell-copy ./backup @home-server:/srv/backups/backup
+```
+
+## Common workflows
+
+### Provision a server key and authorize a client
+
+Create a server identity, start the server, then add the client's public key to the firewall file:
+
+```sh
+hypershell-keygen -f ~/.hypershell/server
+hypershell-server -f ~/.hypershell/server --firewall ~/.hypershell/authorized_peers
+```
+
+On the server, add the allowed client public key to `~/.hypershell/authorized_peers`. The running server reloads that file automatically.
+
+### Save a peer alias and connect by name
+
+Store a server key in `~/.hypershell/known_peers`, one entry per line in `<name> <public-key>` form. The public key is the value printed by `hypershell-keygen` (or by `hypershell-server` on start)—a 64-character hex string, for example:
+
+```txt
+home 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+```
+
+Then connect with the alias:
+
+```sh
+hypershell home
+```
+
+### Upload, download, and tunnel in one toolchain
+
+Upload a local directory:
+
+```sh
+hypershell-copy ./site @home:/srv/site
+```
+
+Download it back later:
+
+```sh
+hypershell-copy @home:/srv/site ./site-copy
+```
+
+Forward a remote web service to a local port:
+
+```sh
+hypershell home -L 127.0.0.1:2020:127.0.0.1:3000
+```
+
+## See also
+
+- [HyperDHT](/reference/building-blocks/hyperdht)
+- [Hyperssh—`hyperssh`](/reference/tools/hyperssh#hyperssh)
+- [Hypertele—expose a local TCP service](/reference/tools/hypertele#expose-a-local-tcp-service-to-a-client-side-local-port)
+- [Hyperbeam—one-to-one encrypted pipe](/reference/tools/hyperbeam#hyperbeam)
+- [Drives—`drives mirror`](/reference/tools/drives#drives-mirror-src-dst)
+- [Pear CLI](/reference/pear/cli)

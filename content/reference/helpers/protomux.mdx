@@ -1,0 +1,467 @@
+---
+title: "Protomux"
+description: "Multiplex multiple framed protocols over one transport stream."
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+`Protomux` multiplexes multiple message-oriented subprotocols over one framed stream. It is typically layered on top of [Secretstream](/reference/helpers/secretstream) and uses [Compact encoding](/reference/helpers/compact-encoding) for message schemas. For source and releases, see the [Protomux repository](https://github.com/holepunchto/protomux).
+
+## Install
+
+```sh
+npm i protomux
+```
+
+## Quickstart
+
+```js
+import Protomux from 'protomux'
+import cenc from 'compact-encoding'
+
+const mux = new Protomux(aFramedEncryptedStream)
+
+const channel = mux.createChannel({
+  protocol: 'chat',
+  onopen() {
+    console.log('chat channel opened')
+  }
+})
+
+const message = channel.addMessage({
+  encoding: cenc.string,
+  onmessage(text) {
+    console.log(text)
+  }
+})
+
+channel.open()
+message.send('hello')
+```
+
+## API Reference
+
+### Constructor and mux helpers
+
+#### `const mux = new Protomux(stream, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L330)
+- Signature: `const mux = new Protomux(stream, [options])`
+- Parameters: `stream` is a framed stream that preserves message boundaries. `options.alloc` optionally overrides the buffer allocator used for outgoing frames.
+- Returns: A `Protomux` instance bound to that stream.
+- Example:
+
+```js
+const mux = new Protomux(secretStream)
+```
+
+#### `const mux = Protomux.from(streamOrMux, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L365)
+- Signature: `const mux = Protomux.from(streamOrMux, [options])`
+- Parameters: `streamOrMux` is either an existing Protomux instance or a framed stream. `options` are forwarded when a new mux has to be created.
+- Returns: An existing mux when one is already attached, otherwise a new `Protomux`.
+- Example:
+
+```js
+const mux = Protomux.from(secretStream)
+```
+
+#### `const isMux = Protomux.isProtomux(value)`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L334)
+- Signature: `const isMux = Protomux.isProtomux(value)`
+- Parameters: `value` is any unknown object.
+- Returns: `true` when `value` looks like a Protomux instance.
+- Example:
+
+```js
+console.log(Protomux.isProtomux(mux))
+```
+
+#### `mux.cork()`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L234)
+- Signature: `mux.cork()`
+- Parameters: None.
+- Returns: Nothing. Subsequent control and message frames are buffered into one batch until `mux.uncork()` runs.
+- Example:
+
+```js
+mux.cork()
+messageA.send('a')
+messageB.send('b')
+mux.uncork()
+```
+
+#### `mux.uncork()`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L238)
+- Signature: `mux.uncork()`
+- Parameters: None.
+- Returns: Nothing. Flushes the current batch when the cork depth returns to zero.
+- Example:
+
+```js
+mux.uncork()
+```
+
+#### `const idle = mux.isIdle()`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L381)
+- Signature: `const idle = mux.isIdle()`
+- Parameters: None.
+- Returns: `true` when there are currently no open local channels.
+- Example:
+
+```js
+console.log(mux.isIdle())
+```
+
+#### `for (const channel of mux)`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L375)
+- Signature: `for (const channel of mux)`
+- Parameters: None.
+- Returns: An iterator over the currently tracked local channels.
+- Example:
+
+```js
+for (const channel of mux) {
+  console.log(channel.protocol)
+}
+```
+
+### Pairing and channel discovery
+
+#### `mux.pair({ protocol, [id] }, notify)`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L407)
+- Signature: `mux.pair({ protocol, [id] }, notify)`
+- Parameters: `protocol` is the protocol name to match, `id` optionally narrows the match to one binary channel identifier, and `notify` is called whenever the remote side requests that channel.
+- Returns: Nothing.
+- Example:
+
+```js
+mux.pair({ protocol: 'chat' }, async () => {
+  console.log('remote requested chat')
+})
+```
+
+#### `mux.unpair({ protocol, [id] })`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L411)
+- Signature: `mux.unpair({ protocol, [id] })`
+- Parameters: `protocol` and optional `id` identify the pairing callback to remove.
+- Returns: Nothing.
+- Example:
+
+```js
+mux.unpair({ protocol: 'chat' })
+```
+
+#### `const opened = mux.opened({ protocol, [id] })`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L33)
+- Signature: `const opened = mux.opened({ protocol, [id] })`
+- Parameters: `protocol` and optional `id` identify the channel family to inspect.
+- Returns: `true` if at least one matching channel is currently open.
+- Example:
+
+```js
+console.log(mux.opened({ protocol: 'chat' }))
+```
+
+#### `const channel = mux.getLastChannel({ protocol, [id] })`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L400)
+- Signature: `const channel = mux.getLastChannel({ protocol, [id] })`
+- Parameters: `protocol` and optional `id` identify the channel family to inspect.
+- Returns: The most recently opened matching channel, or `null` if none is open.
+- Example:
+
+```js
+const latest = mux.getLastChannel({ protocol: 'chat' })
+```
+
+### Creating channels
+
+#### `const channel = mux.createChannel(options)`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L421)
+- Signature: `const channel = mux.createChannel(options)`
+- Parameters: `options.protocol` names the protocol, `id` optionally distinguishes multiple channels under one protocol, `aliases` adds alternate protocol names, `unique` defaults to `true`, `handshake` supplies an optional compact encoder for open-time handshake payloads, `messages` pre-registers message descriptors, `userData` stores arbitrary metadata, and `onopen`, `onclose`, `ondestroy`, and `ondrain` register lifecycle callbacks.
+- Returns: A `Channel` instance, or `null` when a unique channel already exists or the remote has already rejected/closed the matching request.
+- Example:
+
+```js
+const channel = mux.createChannel({
+  protocol: 'chat',
+  handshake: cenc.string,
+  onopen(handshake) {
+    console.log(handshake)
+  }
+})
+```
+
+### Mux properties
+
+#### `mux.stream`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L335)
+- Returns: The framed transport stream backing this mux.
+
+#### `mux.drained`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L62)
+- Returns: The current writable backpressure state from the underlying stream.
+
+### Channel lifecycle
+
+#### `channel.open([handshake])`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L87)
+- Signature: `channel.open([handshake])`
+- Parameters: `handshake` is encoded with the channel's configured handshake encoder when one was supplied.
+- Returns: Nothing. It allocates a local channel id and sends the open control message.
+- Example:
+
+```js
+channel.open('hello-handshake')
+```
+
+#### `const opened = await channel.fullyOpened()`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L66)
+- Signature: `const opened = await channel.fullyOpened()`
+- Parameters: None.
+- Returns: A promise resolving to `true` when the channel fully opens or `false` if it closes first.
+- Example:
+
+```js
+channel.open()
+const opened = await channel.fullyOpened()
+```
+
+#### `await channel.fullyClosed()`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L77)
+- Signature: `await channel.fullyClosed()`
+- Parameters: None.
+- Returns: A promise resolving once the channel has been destroyed and all pending async handlers have finished.
+- Example:
+
+```js
+channel.close()
+await channel.fullyClosed()
+```
+
+#### `channel.close()`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L242)
+- Signature: `channel.close()`
+- Parameters: None.
+- Returns: Nothing. Sends a close control frame and marks the channel closed locally.
+- Example:
+
+```js
+channel.close()
+```
+
+#### `channel.cork()`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L234)
+- Signature: `channel.cork()`
+- Parameters: None.
+- Returns: Nothing. Delegates to `mux.cork()` so this channel's writes can be batched.
+- Example:
+
+```js
+channel.cork()
+message.send('a')
+channel.uncork()
+```
+
+#### `channel.uncork()`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L238)
+- Signature: `channel.uncork()`
+- Parameters: None.
+- Returns: Nothing. Delegates to `mux.uncork()`.
+- Example:
+
+```js
+channel.uncork()
+```
+
+### Registering and sending messages
+
+#### `const message = channel.addMessage([options])`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L259)
+- Signature: `const message = channel.addMessage([options])`
+- Parameters: `options.encoding` is the compact encoder for the message payload, `options.onmessage` handles incoming payloads, and `options.autoBatch` defaults to `true`.
+- Returns: A message descriptor with `.send(...)`, `.encoding`, and `.onmessage`.
+- Example:
+
+```js
+const ping = channel.addMessage({
+  encoding: cenc.string,
+  onmessage(text) {
+    console.log(text)
+  }
+})
+```
+
+#### `const drained = message.send(data, [session])`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L278)
+- Signature: `const drained = message.send(data, [session])`
+- Parameters: `data` is the payload to encode. `session` optionally targets another channel instance that uses the same message descriptor; it defaults to the channel the message was registered on.
+- Returns: The mux backpressure boolean. It returns `false` if the target channel is already closed or if the underlying stream applied backpressure.
+- Example:
+
+```js
+ping.send('hello')
+```
+
+#### `message.encoding`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L264)
+- Returns: The compact encoder associated with this message type.
+
+#### `message.onmessage`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L265)
+- Returns: The handler that runs when a message of this type arrives.
+
+### Channel properties
+
+#### `channel.userData`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L26)
+- Returns: The arbitrary metadata value passed to `mux.createChannel(...)`.
+
+#### `channel.protocol`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L27)
+- Returns: The channel protocol name.
+
+#### `channel.aliases`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L28)
+- Returns: The list of alternate protocol names registered for this channel family.
+
+#### `channel.id`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L29)
+- Returns: The optional binary identifier distinguishing this channel family.
+
+#### `channel.handshake`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L30)
+- Returns: The decoded handshake payload after the channel fully opens, or `null` when no handshake encoder was configured.
+
+#### `channel.messages`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L31)
+- Returns: The array of registered message descriptors in type order.
+
+#### `channel.opened`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L33)
+- Returns: `true` after the channel has fully opened.
+
+#### `channel.closed`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L34)
+- Returns: `true` after either side closes the channel.
+
+#### `channel.destroyed`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L35)
+- Returns: `true` after the close lifecycle and pending handlers have fully drained.
+
+#### `channel.drained`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L62)
+- Returns: The current mux backpressure state for this channel's transport.
+
+### Lifecycle callbacks
+
+#### `onopen(handshake, channel)`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L37)
+- Signature: `onopen(handshake, channel)`
+- Parameters: `handshake` is the decoded open payload or `null`. `channel` is the channel instance.
+- Returns: The callback return value is ignored, but async promises are tracked and awaited before destruction.
+- Example:
+
+```js
+const channel = mux.createChannel({
+  protocol: 'chat',
+  onopen(handshake) {
+    console.log('opened with', handshake)
+  }
+})
+```
+
+#### `onclose(isRemote, channel)`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L38)
+- Signature: `onclose(isRemote, channel)`
+- Parameters: `isRemote` is `true` when the remote side initiated the close. `channel` is the channel instance.
+- Returns: The callback return value is ignored, but async promises are tracked.
+- Example:
+
+```js
+const channel = mux.createChannel({
+  protocol: 'chat',
+  onclose(isRemote) {
+    console.log('closed by remote?', isRemote)
+  }
+})
+```
+
+#### `ondestroy(channel)`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L39)
+- Signature: `ondestroy(channel)`
+- Parameters: `channel` is the destroyed channel instance.
+- Returns: The callback return value is ignored, but async promises are tracked.
+- Example:
+
+```js
+const channel = mux.createChannel({
+  protocol: 'chat',
+  ondestroy() {
+    console.log('channel fully destroyed')
+  }
+})
+```
+
+#### `ondrain(channel)`
+
+[API definition on GitHub](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L40)
+- Signature: `ondrain(channel)`
+- Parameters: `channel` is the channel whose underlying mux became writable again.
+- Returns: The callback return value is ignored, but async promises are tracked.
+- Example:
+
+```js
+const channel = mux.createChannel({
+  protocol: 'chat',
+  ondrain() {
+    console.log('ready for more writes')
+  }
+})
+```
+
+## See also
+
+- [Secretstream](/reference/helpers/secretstream)—the encrypted framed stream most commonly used underneath Protomux.
+- [Compact encoding](/reference/helpers/compact-encoding)—the schema toolkit Protomux uses for handshakes and message payloads.
+- [Hyperswarm](/reference/building-blocks/hyperswarm)—common peer-transport entry point before you layer on Secretstream and Protomux.
+- [Upstream Protomux repository](https://github.com/holepunchto/protomux)—source, releases, and implementation details.

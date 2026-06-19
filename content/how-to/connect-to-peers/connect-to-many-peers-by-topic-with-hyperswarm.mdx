@@ -1,0 +1,68 @@
+---
+title: "Connect to many peers by topic with Hyperswarm"
+description: "Discover peers on a topic and keep connections alive with Hyperswarm."
+docType: how-to
+schemaType: TechArticle
+---
+
+In [Connect two peers by key with HyperDHT](/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht), two peers connected directly using the first peer's public key.
+Hyperswarm helps to discover peers swarming a common topic, and connect to as many of them as possible.
+This will become clearer in [Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore),
+but it's the best way to distribute peer-to-peer data structures.
+
+The [Hyperswarm](/reference/building-blocks/hyperswarm) module provides a higher-level interface over the underlying [HyperDHT](/reference/building-blocks/hyperdht),
+abstracting away the mechanics of establishing and maintaining connections.
+Instead, 'join' topics, and the swarm discovers peers automatically. It also handles reconnection in the event of failures.
+
+In [Connect two peers by key with HyperDHT](/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht),
+we needed to explicitly indicate which peer was the server and which was the client.
+By using Hyperswarm, we create two peers, have them join a common topic, and let the swarm deal with connections.
+
+<include>../../_snippets/_from-a-template-callout.mdx</include>
+
+## Create the `peer-app` project
+
+Create the `peer-app` project with the following commands:
+
+```sh example=hyperswarm-chat step=setup
+mkdir peer-app
+cd peer-app
+npm init -y
+npm pkg set type="module"
+npm install hyperswarm hypercore-crypto b4a bare-process
+```
+
+Alter the peer-app/index.js file to the following. Create a single [Hyperswarm](/reference/building-blocks/hyperswarm) instance (L7). On each `connection` event, track the connection and log incoming data from that peer (L13–L20). Broadcast anything typed on stdin to every open connection (L23–L28). Then join a common topic as both client and server—reusing a topic passed on the command line, or generating a fresh one (L31–L32). The [`discovery.flushed()`](/reference/building-blocks/hyperswarm#await-discoveryflushed) promise resolves once the topic has been announced to the DHT, at which point the topic is logged for other peers to copy (L35–L37).
+
+```javascript file=<rootDir>/examples/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm/peer-app/index.js title="peer-app/index.js" lineNumbers {7,13-20,23-28,31-32,35-37} skip="example-import"
+```
+
+## Run the swarm
+
+In one terminal, move one directory up and run `peer-app` with `bare`:
+
+```sh example=hyperswarm-chat step=run process=peer1 expect="joined topic:" capture-topic="joined topic: ([0-9a-f]+)" timeout=45000
+bare peer-app
+```
+
+This will display the topic. Copy/paste that topic into as many additional terminals as desired:
+
+```sh example=hyperswarm-chat step=run process=peer2 cmd="bare peer-app ${topic}" expect="got a connection from:" timeout=45000
+bare peer-app <SUPPLY TOPIC HERE>
+```
+
+Each peer will log information about the other connected peers. Start typing into any terminal, and it will be broadcast to all connected peers.
+
+<Callout type="info">
+**Use one Hyperswarm instance per application.** A single swarm can join multiple topics and dedups peer connections shared between them. This speeds up connections by reducing [HyperDHT](/reference/building-blocks/hyperdht) records per topic and simplifies managing the maximum number of connections your app makes.
+</Callout>
+
+Connections established here are ephemeral—once both peers go offline the conversation is lost.
+
+## See also
+
+- [Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore)—persist messages so a reader catches up after the writer disconnects.
+- [Peer-to-peer, demystified](/explanation/peer-to-peer-demystified)—how topic discovery and hole punching work under Hyperswarm.
+- [Connect two peers by key with HyperDHT](/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht)—direct one-to-one connection by public key.
+- [Hyperswarm reference](/reference/building-blocks/hyperswarm)—full API for topic joins, connection events, and peer management.
+- [HyperDHT reference](/reference/building-blocks/hyperdht)—the lower-level DHT layer Hyperswarm is built on.

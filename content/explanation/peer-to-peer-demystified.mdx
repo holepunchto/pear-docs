@@ -1,0 +1,95 @@
+---
+title: "Peer-to-peer, demystified"
+description: "What changes when Pear applications connect without a central server—hole punching, public-key identity, and the roles of HyperDHT and Hyperswarm."
+docType: explanation
+schemaType: WebPage
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card'
+
+Pear applications replicate data and connect to one another without a central server. Peers exchange bytes directly over encrypted streams; there is no single host that routes every message or stores every copy. That model changes how discovery, connectivity, and privacy work compared with a traditional client–server application—but it does not remove the need for careful application design.
+
+<Callout type="info">
+This page explains networking concepts. For step-by-step connection guides, see [Connect two peers by key with HyperDHT](/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht) and [Connect to many peers by topic with Hyperswarm](/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm).
+</Callout>
+
+<Cards>
+  <Card title="Peer-to-peer networking with Holepunch (video)" href="https://www.youtube.com/watch?v=QWWHKLyCFTU" external />
+</Cards>
+
+## What changes without a server
+
+In a client–server design, clients know where to connect: a hostname or IP address, often fronted by a load balancer. In Pear, **peers are identified by cryptographic public keys**, not by fixed network locations. A peer can move between Wi‑Fi networks, cellular connections, or countries and still be reachable at the same key.
+
+Replication and chat still need **at least one peer online** with a copy of the data you want—Pear does not magically materialize files from nowhere. What changes is *who* can serve that copy: any participant in the swarm, not only the original author.
+
+What does **not** change: you still need to think about availability, authorization, and what metadata leaks at the transport layer.
+
+<Callout type="info">
+- [Storage and distribution](/explanation/storage-and-distribution)—how application bundles and user data reach peers over the same primitives.
+- [Dependencies and network](/explanation/dependencies-and-network)—what peers can infer from your IP when you join a swarm.
+</Callout>
+
+## Hole punching and NAT traversal
+
+Most devices sit behind home routers or carrier-grade network address translation (NAT). Two peers cannot open a Transmission Control Protocol (TCP) connection to each other simply by knowing each other's keys—neither side has a stable, publicly routable address that the other can dial first.
+
+**User Datagram Protocol (UDP) hole punching** coordinates both peers through a rendezvous point so that each opens a path through its local firewall. Once the "hole" exists, Pear's transport can carry encrypted traffic over it. Hole punching works on most consumer networks; it is not guaranteed on every corporate or symmetric-NAT setup, which is why Pear also supports relay paths when direct connectivity fails.
+
+[HyperDHT](#hyperdht-discovery-and-encrypted-connections) implements this discovery and connection machinery. You rarely call hole punching directly; you create a DHT node or join a Hyperswarm topic and the stack handles traversal.
+
+## HyperDHT: discovery and encrypted connections
+
+[HyperDHT](/reference/building-blocks/hyperdht) is a distributed hash table. It is the layer that finds peers and establishes **end-to-end encrypted** connections using Noise streams (via [Secretstream](/reference/helpers/secretstream)).
+
+Core mechanisms:
+
+1. **Peer identification**—Connections are addressed by public key, not IP address. Location and network changes do not invalidate identity.
+2. **Hole punching**—UDP techniques to connect through NATs and firewalls on typical networks.
+3. **Encrypted streams**—Every connection is encrypted; intermediaries see traffic volume and endpoints, not payload.
+4. **Bootstrapping**—Default bootstrap nodes help a new node join the public DHT; isolated networks can use custom bootstrap lists.
+5. **Announcement and discovery**—Peers announce themselves under 32-byte topics; others look up who is listening on a topic. Peers with a known public key can also connect directly without topic lookup.
+
+<Callout type="info">
+  See [Connect two peers by key with HyperDHT](/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht) for a walkthrough of how to use HyperDHT.
+</Callout>
+
+HyperDHT also supports limited mutable and immutable storage in the DHT itself. Most Pear applications instead replicate structured data over Hypercore once a connection exists; the DHT's primary job is **finding and connecting**, not long-term storage.
+
+## Hyperswarm: topic-based connection management
+
+[Hyperswarm](/reference/building-blocks/hyperswarm) wraps HyperDHT with a higher-level API oriented around **topics**—arbitrary 32-byte identifiers, often a Hypercore's `discoveryKey`. Where HyperDHT exposes servers, clients, announce streams, and lookup streams, Hyperswarm exposes `join`, `leave`, and a single `connection` event. 
+
+<Callout type="info">
+  [Connect to many peers by topic with Hyperswarm](/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm) for a walkthrough of how to use Hyperswarm.
+</Callout>
+
+Hyperswarm adds:
+
+- **Automatic reconnection** when peers drop off the network.
+- **Connection limits and firewall hooks** to cap fan-out or reject unwanted keys.
+- **Client/server roles per topic**—a peer can announce only, discover only, or both.
+- **Direct peer joins** via `joinPeer(publicKey)` when you already know whom to reach.
+
+For replication workflows—chat rooms, file sync, application updates—Hyperswarm is usually the right default: you join the discovery key of the core or drive you care about and let the swarm maintain connections. HyperDHT remains the right choice when you need fine-grained control over server lifecycle, custom DHT storage, or minimal dependencies.
+
+## Choosing between HyperDHT and Hyperswarm
+
+| Concern | HyperDHT | Hyperswarm |
+| --- | --- | --- |
+| API surface | Low-level: nodes, servers, sockets | High-level: topics, connections |
+| Reconnection | Your responsibility | Built in |
+| Typical use | Custom protocols, direct key connections | Hypercore replication, multi-peer apps |
+| Underlying transport | UDX + hole punching | Same (uses HyperDHT internally) |
+
+If you are replicating a Hypercore or Hyperdrive, start with Hyperswarm unless you have a specific reason to manage DHT nodes yourself.
+
+## See also
+
+- [Connect two peers by key with HyperDHT](/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht)—minimal two-peer connection walkthrough.
+- [Connect to many peers by topic with Hyperswarm](/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm)—topic-based discovery and chat.
+- [Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore)—persistence once peers are connected.
+- [Dependencies and network](/explanation/dependencies-and-network)—IP disclosure and NPM's role at install time.
+- [From append-only logs to files](/explanation/from-logs-to-files)—how replicated data is structured above the transport layer.
+- [HyperDHT reference](/reference/building-blocks/hyperdht)—full API.
+- [Hyperswarm reference](/reference/building-blocks/hyperswarm)—full API.
