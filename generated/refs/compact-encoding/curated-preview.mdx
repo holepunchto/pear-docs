@@ -1,0 +1,564 @@
+---
+title: "compact-encoding"
+description: "Small binary encoding toolkit for protocol messages and storage formats."
+docType: reference
+schemaType: APIReference
+---
+
+<Status level="stable" />
+
+`compact-encoding` packages small binary codecs behind a shared encoder interface. It is commonly paired with [Protomux](/reference/helpers/protomux) message schemas and shows up in [Hypercore](/reference/building-blocks/hypercore) and other Holepunch protocol surfaces whenever structured binary payloads matter. For the upstream package and implementation details, see the [compact-encoding repository](https://github.com/holepunchto/compact-encoding).
+
+## Install
+
+```sh
+npm i compact-encoding
+```
+
+## Quickstart
+
+```js
+import cenc from 'compact-encoding'
+
+const state = cenc.state()
+
+cenc.uint.preencode(state, 42)
+cenc.string.preencode(state, 'hello')
+
+state.buffer = Buffer.allocUnsafe(state.end)
+state.start = 0
+
+cenc.uint.encode(state, 42)
+cenc.string.encode(state, 'hello')
+
+state.start = 0
+
+console.log(cenc.uint.decode(state))
+console.log(cenc.string.decode(state))
+```
+
+## API Reference
+
+### Encoder contract
+
+Every bundled encoder follows the same three-method contract. The top-level helpers and exported factories below all return or consume objects with this shape.
+
+#### `enc.preencode(state, val)`
+
+Does a fast preencode dry-run that only sets state.end. Use this to figure out how big of a buffer you need.
+
+#### `enc.encode(state, val)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1685)
+
+Encodes `val` into `state.buffer` at position `state.start`. Updates `state.start` to point after the encoded value when done.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enc` | `object` | — | A compact-encoding encoder with `preencode` and `encode` methods. |
+| `m` | `*` | — | The value to encode. |
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) — A newly allocated buffer containing the encoded value.
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.uint, 42)
+// buf is a 1-byte Buffer containing the encoded uint
+```
+
+#### `val = enc.decode(state)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1704)
+
+Decodes a value from `state.buffer` as position `state.start`. Updates `state.start` to point after the decoded value when done in the buffer.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enc` | `object` | — | A compact-encoding encoder with a `decode` method. |
+| `buffer` | [`Buffer\|Uint8Array`](https://nodejs.org/api/buffer.html#class-buffer) | — | The buffer to decode from. |
+
+- Returns: `*` — The decoded value.
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.bool, true)
+const val = cenc.decode(cenc.bool, buf) // true
+```
+
+### State and convenience helpers
+
+#### `cenc.state(start = 0, end = 0, buffer = null)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L27)
+
+A mutable state object `{ start, end, buffer }` used by all encoders.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `start` | `number` | `0` | =0] - Initial read/write offset. |
+| `end` | `number` | `0` | =0] - Initial end offset (set by preencode to determine required |
+| `buffer` | [`Buffer\|Uint8Array\|null`](https://nodejs.org/api/buffer.html#class-buffer) | `null` | =null] - Underlying buffer; allocate after preencoding. |
+
+- Returns: [`State`](#state) — A new state object `{ start, end, buffer }`.
+
+```js
+const cenc = require('compact-encoding')
+const state = cenc.state()
+cenc.uint.preencode(state, 42)
+cenc.string.preencode(state, 'hi')
+state.buffer = Buffer.allocUnsafe(state.end)
+cenc.uint.encode(state, 42)
+cenc.string.encode(state, 'hi')
+```
+
+#### `enc.encode(state, val)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1685)
+
+Encodes `val` into `state.buffer` at position `state.start`. Updates `state.start` to point after the encoded value when done.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enc` | `object` | — | A compact-encoding encoder with `preencode` and `encode` methods. |
+| `m` | `*` | — | The value to encode. |
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) — A newly allocated buffer containing the encoded value.
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.uint, 42)
+// buf is a 1-byte Buffer containing the encoded uint
+```
+
+#### `val = enc.decode(state)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1704)
+
+Decodes a value from `state.buffer` as position `state.start`. Updates `state.start` to point after the decoded value when done in the buffer.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enc` | `object` | — | A compact-encoding encoder with a `decode` method. |
+| `buffer` | [`Buffer\|Uint8Array`](https://nodejs.org/api/buffer.html#class-buffer) | — | The buffer to decode from. |
+
+- Returns: `*` — The decoded value.
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.bool, true)
+const val = cenc.decode(cenc.bool, buf) // true
+```
+
+#### `cenc.from(enc)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1604)
+
+Coerces `encLike` — an existing compact encoder, a named raw string encoding such as `'utf8'` or `'json'`, a codec with `encode`/`decode`, or an abstract encoding with `encodingLength` — into a compact-encoding-compatible encoder object.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enc` | `string\|object` | — | An encoding name, compact encoder, abstract-encoding, or codec. |
+
+- Returns: `object` — A compact-encoding encoder with `preencode`, `encode`, and `decode`.
+
+```js
+const cenc = require('compact-encoding')
+const enc = cenc.from('utf-8')
+const buf = cenc.encode(enc, 'hello')
+const val = cenc.decode(enc, buf) // 'hello'
+```
+
+### Encoder factories
+
+#### `cenc.fixed(n)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L979)
+
+An encoder for fixed-size buffers, where `length` is the exact byte length every encoded value must have.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `n` | `number` | — | Exact number of bytes to encode/decode. |
+
+- Returns: `object` — An encoder that reads and writes exactly `n` bytes.
+
+```js
+const cenc = require('compact-encoding')
+const enc = cenc.fixed(4)
+const buf = cenc.encode(enc, Buffer.alloc(4, 0xff))
+const val = cenc.decode(enc, buf) // <Buffer ff ff ff ff>
+```
+
+#### `cenc.array(enc)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1029)
+
+An encoder that prefixes arrays with their length and encodes each item in order using `itemEncoding`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enc` | `object` | — | An encoder with `preencode`, `encode`, and `decode` methods. |
+
+- Returns: `object` — An encoder for arrays of values handled by `enc`.
+
+```js
+const cenc = require('compact-encoding')
+const enc = cenc.array(cenc.uint)
+const buf = cenc.encode(enc, [1, 2, 3])
+const val = cenc.decode(enc, buf) // [1, 2, 3]
+```
+
+#### `cenc.frame(enc)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1061)
+
+An encoder that prefixes one encoded payload with its byte length.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enc` | `object` | — | An encoder with `preencode`, `encode`, and `decode` methods. |
+
+- Returns: `object` — An encoder that wraps each value in a byte-length frame.
+
+```js
+const cenc = require('compact-encoding')
+const enc = cenc.frame(cenc.string)
+const buf = cenc.encode(enc, 'hello')
+const val = cenc.decode(enc, buf) // 'hello'
+```
+
+#### `cenc.record(keyEncoding, valueEncoding)`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1533)
+
+An encoder for plain object records, with `keyEncoding` for object keys and `valueEncoding` for object values.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keyEncoding` | `object` | — | Encoder used for each object key. |
+| `valueEncoding` | `object` | — | Encoder used for each object value. |
+
+- Returns: `object` — An encoder that reads/writes plain objects as key-value pairs.
+
+```js
+const cenc = require('compact-encoding')
+const enc = cenc.record(cenc.string, cenc.uint)
+const buf = cenc.encode(enc, { a: 1, b: 2 })
+const val = cenc.decode(enc, buf) // { a: 1, b: 2 }
+```
+
+#### `cenc.stringRecord`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1571)
+
+A prebuilt `record(cenc.string, cenc.string)` encoder for simple string maps.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.stringRecord, { name: 'alice', role: 'admin' })
+const val = cenc.decode(cenc.stringRecord, buf) // { name: 'alice', role: 'admin' }
+```
+
+### Numeric encodings
+
+#### `cenc.uint64`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L300)
+
+Unsigned integer encoders (`cenc.uint`, `cenc.uint8`, `cenc.uint16`, `cenc.uint24`, `cenc.uint32`, `cenc.uint40`, `cenc.uint48`, `cenc.uint56`, `cenc.uint64`). `cenc.uint` chooses a compact size automatically; the fixed-width variants always use the named byte width.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.uint64, 2 ** 32)
+const val = cenc.decode(cenc.uint64, buf) // 4294967296
+```
+
+#### `cenc.int64`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L429)
+
+Signed integer encoders (`cenc.int`, `cenc.int8` … `cenc.int64`) built on top of the unsigned variants with ZigZag encoding.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.int64, -4294967296)
+const val = cenc.decode(cenc.int64, buf) // -4294967296
+```
+
+#### `cenc.bigint`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L528)
+
+BigInt-aware integer encoders (`cenc.biguint64`, `cenc.bigint64`, `cenc.biguint`, `cenc.bigint`) for fixed-width or variable-width large integer values.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.bigint, -(2n ** 128n))
+const val = cenc.decode(cenc.bigint, buf) // -340282366920938463463374607431768211456n
+```
+
+#### `cenc.float64`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L584)
+
+Floating-point encoders (`cenc.float32`, `cenc.float64`) using IEEE-754 little-endian layouts.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.float64, Math.PI)
+const val = cenc.decode(cenc.float64, buf) // 3.141592653589793
+```
+
+#### `cenc.lexint`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L540)
+
+The exported lexicographic integer encoder family from the `./lexint` module.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.lexint, 1000)
+const val = cenc.decode(cenc.lexint, buf) // 1000
+```
+
+### Binary, buffer, and typed-array encodings
+
+#### `cenc.binary`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L668)
+
+Buffer-oriented encoders. `buffer` length-prefixes a byte sequence, `optionalBuffer` maps zero length to `null`, and `binary` accepts either a string or buffer-like input.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.binary, 'hello')
+const val = cenc.decode(cenc.binary, buf) // <Buffer 68 65 6c 6c 6f>
+```
+
+#### `cenc.arraybuffer`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L689)
+
+An encoder for `ArrayBuffer` instances.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const ab = new ArrayBuffer(4)
+const buf = cenc.encode(cenc.arraybuffer, ab)
+const val = cenc.decode(cenc.arraybuffer, buf) // ArrayBuffer { byteLength: 4 }
+```
+
+#### `cenc.float64array`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L844)
+
+Length-prefixed typed-array encoders (`cenc.uint8array`, `cenc.uint16array`, `cenc.uint32array`, `cenc.int8array`, `cenc.int16array`, `cenc.int32array`, `cenc.biguint64array`, `cenc.bigint64array`, `cenc.float32array`, `cenc.float64array`) that preserve the underlying element type.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.float64array, new Float64Array([Math.PI]))
+const val = cenc.decode(cenc.float64array, buf) // Float64Array [3.141592653589793]
+```
+
+#### `cenc.fixed64`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1016)
+
+Prebuilt fixed-size buffer encoders (`cenc.fixed32`, `cenc.fixed64`) for 32-byte and 64-byte values.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const sig = Buffer.alloc(64)
+const buf = cenc.encode(cenc.fixed64, sig)
+const val = cenc.decode(cenc.fixed64, buf) // <Buffer 00 00 ... (64 bytes)>
+```
+
+### Text encodings
+
+#### `cenc.ucs2`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L945)
+
+String encoders for the named text encoding (`cenc.string`, `cenc.utf8`, `cenc.ascii`, `cenc.hex`, `cenc.base64`, `cenc.utf16le`, `cenc.ucs2`). Each one also exposes `.fixed(length)` for fixed-size strings.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.ucs2, 'hi')
+const val = cenc.decode(cenc.ucs2, buf) // 'hi'
+```
+
+### Boolean, date, and structured-value encodings
+
+#### `cenc.bool`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L955)
+
+A one-byte boolean encoder.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.bool, true)
+const val = cenc.decode(cenc.bool, buf) // true
+```
+
+#### `cenc.date`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1096)
+
+A `Date` encoder backed by the signed integer timestamp value from `date.getTime()`.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.date, new Date('2024-01-01'))
+const val = cenc.decode(cenc.date, buf) // Date object for 2024-01-01
+```
+
+#### `cenc.ndjson`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1136)
+
+UTF-8 JSON encoders (`cenc.json`, `cenc.ndjson`). `ndjson` appends a trailing newline before encoding.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.ndjson, { a: 1 })
+const val = cenc.decode(cenc.ndjson, buf) // { a: 1 }
+```
+
+#### `cenc.none`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1158)
+
+A sentinel encoder that always decodes to `null` and writes no payload bytes.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.none, null)
+const val = cenc.decode(cenc.none, buf) // null
+```
+
+#### `cenc.any`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1246)
+
+A schemaless tagged-value encoder for JSON-like values, arrays, objects, dates, strings, buffers, booleans, integers, and floats.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.any, { n: 42, flag: true })
+const val = cenc.decode(cenc.any, buf) // { n: 42, flag: true }
+```
+
+### Network encodings
+
+#### `cenc.port`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1273)
+
+The same encoder as `cenc.uint16`, provided for protocol readability when encoding network ports.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.port, 8080)
+const val = cenc.decode(cenc.port, buf) // 8080
+```
+
+#### `cenc.ip`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1472)
+
+Encoders for IPv4 addresses, IPv6 addresses, or either family with an embedded family tag (`cenc.ipv4`, `cenc.ipv6`, `cenc.ip`).
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf4 = cenc.encode(cenc.ip, '1.2.3.4')
+cenc.decode(cenc.ip, buf4) // '1.2.3.4'
+const buf6 = cenc.encode(cenc.ip, '::1')
+cenc.decode(cenc.ip, buf6) // '0:0:0:0:0:0:0:1'
+```
+
+#### `cenc.ipAddress`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L1501)
+
+Address-object encoders (`cenc.ipv4Address`, `cenc.ipv6Address`, `cenc.ipAddress`) for `{ host, family?, port }` shapes.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+const buf = cenc.encode(cenc.ipAddress, { host: '1.2.3.4', port: 8080 })
+const val = cenc.decode(cenc.ipAddress, buf) // { host: '1.2.3.4', family: 4, port: 8080 }
+```
+
+### Raw variants
+
+#### `cenc.raw`
+
+[API definition on GitHub](https://github.com/holepunchto/compact-encoding/blob/v3.2.0/index.js#L45)
+
+A namespace of non-length-prefixed variants for many buffer, string, array, JSON, and typed-array encodings such as `cenc.raw.buffer`, `cenc.raw.utf8`, `cenc.raw.array(enc)`, and `cenc.raw.json`.
+
+- Returns: `object`
+
+```js
+const cenc = require('compact-encoding')
+// copy raw bytes into state
+const buf = Buffer.from([1, 2, 3])
+const state = cenc.state()
+cenc.raw.preencode(state, buf)
+state.buffer = Buffer.allocUnsafe(state.end)
+cenc.raw.encode(state, buf)
+```
+
+## Types
+
+### State
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `start` | `number` | — | Byte offset to read/write from. Advances after each encode/decode call. |
+| `end` | `number` | — | Byte offset marking the end of valid data. Advances during preencode. |
+| `buffer` | [`Buffer\|Uint8Array\|null`](https://nodejs.org/api/buffer.html#class-buffer) | — | The underlying byte buffer. Set to `null` until allocation. |
+
+## See also
+
+- [Protomux](/reference/helpers/protomux)—the most common higher-level protocol surface built directly on compact-encoding schemas.
+- [Hypercore](/reference/building-blocks/hypercore)—accepts compact encodings for structured values and message payloads.
+- [Upstream compact-encoding repository](https://github.com/holepunchto/compact-encoding)—source, releases, and implementation details.

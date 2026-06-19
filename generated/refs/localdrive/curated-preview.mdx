@@ -1,0 +1,455 @@
+---
+title: "Localdrive"
+description: "Local filesystem adapter with a Hyperdrive-like API."
+docType: reference
+schemaType: APIReference
+---
+
+<Status level="stable" />
+
+`Localdrive` exposes a local directory through an API that closely matches [Hyperdrive](/reference/building-blocks/hyperdrive). It is the simplest way to mirror between on-disk files and distributed drives with [Mirrordrive](/reference/helpers/mirrordrive). For upstream implementation details, see the [Localdrive repository](https://github.com/holepunchto/localdrive).
+
+## Install
+
+```sh
+npm i localdrive
+```
+
+## Quickstart
+
+```js
+import Localdrive from 'localdrive'
+
+const drive = new Localdrive('./site')
+
+await drive.put('/index.html', Buffer.from('<h1>Hello</h1>'))
+const html = await drive.get('/index.html')
+
+console.log(html?.toString())
+console.log(await drive.entry('/index.html'))
+```
+
+## API Reference
+
+### Constructor and lifecycle
+
+#### `const drive = new Localdrive(root, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L85)
+
+Creates a drive based on a `root` directory. `root` can be relative or absolute.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `root` | `string` | — |  |
+| `opts` | [`LocaldriveOptions`](#localdriveoptions) | `{}` | Configuration options. |
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `followLinks` | `false` | If enabled then `entry(key)` will follow the `linkname` |
+| `metadata` | — |  |
+| `atomic` | `false` | Enable atomicity for file writing (tmp file and rename) |
+| `roots` | — | For mapping key prefixes to different roots |
+
+#### `await drive.ready()`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L111)
+
+Resolves immediately. It exists for compatibility with drive-like APIs such as Hyperdrive.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves immediately.
+
+```js
+await drive.ready()
+```
+
+#### `await drive.close()`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L121)
+
+Resolves immediately. Localdrive does not keep a background storage process open.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves immediately.
+
+```js
+await drive.close()
+```
+
+#### `await drive.flush()`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L131)
+
+Resolves immediately. It exists so code written for batched drive APIs can treat Localdrive as a drop-in target.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves immediately.
+
+```js
+await drive.flush()
+```
+
+### Drive properties
+
+#### `drive.root`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L90)
+
+String with the resolved (absolute) drive path.
+
+- Returns: `string`
+
+#### `drive.supportsMetadata`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L97)
+
+Boolean that indicates if the drive handles or not metadata. Default `false`.
+
+- Returns: `boolean`
+
+### Compatibility helpers
+
+#### `drive.batch()`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L144)
+
+Returns the same `Localdrive` instance. This lets batch-oriented code reuse a Localdrive target without branching.
+
+- Returns: [`Localdrive`](/reference/helpers/localdrive) — This drive instance.
+
+```js
+const batch = drive.batch()
+await batch.put('/file.txt', Buffer.from('hello'))
+// on Localdrive, batch === drive
+```
+
+#### `drive.checkout()`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L156)
+
+Returns the same `Localdrive` instance. Unlike Hyperdrive, Localdrive does not expose historical versions.
+
+- Returns: [`Localdrive`](/reference/helpers/localdrive) — This drive instance.
+
+```js
+const snapshot = drive.checkout()
+// on Localdrive, snapshot === drive
+```
+
+#### `drive.toPath(key)`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L169)
+
+Resolves a drive path such as `'/images/logo.png'` to its local filesystem path under `drive.root`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `string` | — | Drive key to convert (e.g. `/images/logo.png`). |
+
+- Returns: `string` — Absolute filesystem path for the given key.
+
+```js
+const drive = new Localdrive('/srv/data')
+drive.toPath('/images/logo.png') // => '/srv/data/images/logo.png'
+```
+
+### Reading and writing entries
+
+#### `const entry = await drive.entry(key, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L185)
+
+Available `options`:
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | Drive key to look up (e.g. `/file.txt`). |
+| `opts` | [`EntryOptions`](#entryoptions) | — | Entry lookup options. |
+
+- Returns: [`Promise<object\|null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — the entry at `key` path in the drive.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `key` | `String` |  |
+| `value` | — |  |
+| `mtime` | `Number` |  |
+
+#### `const buffer = await drive.get(key, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L289)
+
+It also returns null for symbolic links.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `string` | — | Drive key of the file to read (e.g. `/blob.txt`). |
+| `opts` | [`GetOptions`](#getoptions) | — | `options` are the same as in `drive.entry` method. |
+
+- Returns: [`Promise<Buffer\|null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — the blob at `key` path in the drive.
+
+```js
+const buffer = await drive.get('/blob.txt')
+console.log(buffer.toString()) // => 'example'
+```
+
+#### `await drive.put(key, buffer, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L313)
+
+Creates a file at `key` path in the drive. `options` are the same as in `createWriteStream`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `string` | — | Drive key of the file to write (e.g. `/images/logo.png`). |
+| `buffer` | [`Buffer\|string`](https://nodejs.org/api/buffer.html#class-buffer) | — | Data to write. |
+| `opts` | [`WriteStreamOptions`](#writestreamoptions) | — |  |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves when the file has been fully written and closed.
+
+```js
+await drive.put('/blob.txt', Buffer.from('example'))
+await drive.put('/images/logo.png', Buffer.from('..'), { executable: false })
+```
+
+#### `await drive.del(key)`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L336)
+
+Deletes the file at `key` path from the drive.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `string` | — | Drive key of the file to delete (e.g. `/images/old-logo.png`). |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves when the file and any empty parent directories have been removed.
+
+```js
+await drive.del('/images/old-logo.png')
+```
+
+#### `await drive.symlink(key, linkname)`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L372)
+
+Creates an entry in drive at `key` path that points to the entry at `linkname`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `string` | — | Drive key where the symlink will be created. |
+| `linkname` | `string` | — | Target path the symlink should point to. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves when the symlink entry has been created.
+
+```js
+await drive.symlink('/images/logo.shortcut', '/images/logo.png')
+```
+
+#### `await drive.exists(name)`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L514)
+
+Resolves to `true` when `drive.entry(key)` resolves to a non-null entry, otherwise `false`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | Drive key to check (e.g. `/file.txt`). |
+
+- Returns: [`Promise<boolean>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Whether an entry exists at the given path.
+
+```js
+const found = await drive.exists('/blob.txt')
+console.log(found) // => true or false
+```
+
+#### `const comparison = drive.compare(entryA, entryB)`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L406)
+
+Compares two drive entries by modification time.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `a` | `object` | — | First entry (must have an `mtime` property in milliseconds). |
+| `b` | `object` | — | Second entry (must have an `mtime` property in milliseconds). |
+
+- Returns: `number` — `0` if entries are the same, `1` if `entryA` is older, and `-1` if `entryB` is older.
+
+```js
+const entryA = await drive.entry('/file-a.txt')
+const entryB = await drive.entry('/file-b.txt')
+const result = drive.compare(entryA, entryB)
+// result: 0 (same), 1 (a is newer), or -1 (b is newer)
+```
+
+### Listing and mirroring
+
+#### `const iterator = await drive.list([folder], [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L423)
+
+Available `options`:
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `folder` | `string` | — | Unix-style path prefix to list (e.g. `/images`). |
+| `opts` | [`ListOptions`](#listoptions) | `{}` | Listing options. |
+
+- Returns: `AsyncIterable<object>` — a stream of all entries in the drive inside of specified `folder`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `ignore` | — | Ignore file and folders by name. |
+
+#### `const iterator = await drive.readdir([folder])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L471)
+
+Returns an async iterator that yields the immediate child names (not
+full paths) under `folder`. Only non-empty sub-directories and files with
+a valid entry are included.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `folder` | `string` | — | Unix-style path prefix to read (e.g. `/images`). |
+
+- Returns: `AsyncIterable<string>` — a stream of all subpaths of entries in drive stored at paths prefixed by `folder`.
+
+```js
+for await (const name of drive.readdir('/images')) {
+  console.log(name) // => 'logo.png', 'banner.jpg', ...
+}
+```
+
+#### `const mirror = drive.mirror(out, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L531)
+
+Efficiently mirror this drive into another. Returns a [`MirrorDrive`](https://github.com/holepunchto/mirror-drive#api) instance constructed with `options`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `out` | `object` | — | Destination drive (must implement the same drive API). |
+| `opts` | [`MirrorOptions`](#mirroroptions) | — | Options forwarded to `MirrorDrive`. |
+
+- Returns: [`MirrorDrive`](/reference/helpers/mirrordrive) — A MirrorDrive instance that runs the mirror operation.
+
+```js
+const src = new Localdrive('./source')
+const dst = new Localdrive('./destination')
+const mirror = src.mirror(dst)
+await mirror.done()
+```
+
+### Stream APIs
+
+#### `const rs = drive.createReadStream(key, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L551)
+
+Available `options`:
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `string` | — | Drive key of the file to stream (e.g. `/blob.txt`). |
+| `opts` | [`ReadStreamOptions`](#readstreamoptions) | — | Range options. |
+
+- Returns: `FileReadStream` — a stream to read out the blob stored in the drive at `key` path.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `start` | `Number` |  |
+| `end` | `Number` |  |
+| `length` | `Number` |  |
+
+#### `const ws = drive.createWriteStream(key, [options])`
+
+[API definition on GitHub](https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L572)
+
+Stream a blob into the drive at `key` path.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `key` | `string` | — | Drive key of the file to write (e.g. `/blob.txt`). |
+| `opts` | [`WriteStreamOptions`](#writestreamoptions) | — | Write options. |
+
+- Returns: `FileWriteStream` — Writable stream targeting the given key.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `executable` | `Boolean` |  |
+
+## Types
+
+### LocaldriveOptions
+
+Options for creating a Localdrive instance.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `followLinks` | `boolean` | `false` | If enabled, `entry(key)` follows the `linkname` for symlinks. |
+| `followExternalLinks` | `boolean` | `false` | If enabled, symlinks pointing outside the root are followed. |
+| `metadata` | [`object\|Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map) | — | Hook functions called when metadata is read/written/deleted. |
+| `metadata.get` | `function` | — | Called with `(key)` to retrieve metadata for a file. |
+| `metadata.put` | `function` | — | Called with `(key, value)` to store metadata for a file. |
+| `metadata.del` | `function` | — | Called with `(key)` to delete metadata for a file. |
+| `atomic` | `boolean` | `false` | Enable atomic file writes (write to a tmp file then rename). |
+
+### EntryOptions
+
+Options for `drive.entry()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `follow` | `boolean` | `false` | Follow symlinks (up to 16 levels deep). |
+
+### GetOptions
+
+Options for `drive.get()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `follow` | `boolean` | `false` | Follow symlinks when resolving the key. |
+
+### WriteStreamOptions
+
+Options for `drive.put()` and `drive.createWriteStream()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `executable` | `boolean` | `false` | Mark the written file as executable (chmod 0o755). |
+| `metadata` | `*` | — | Arbitrary metadata value stored via the metadata hook. |
+
+### ListOptions
+
+Options for `drive.list()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ignore` | [`string\|Array<string>\|function`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | — | File/folder paths to exclude. May be a path string, an array of path strings, or a predicate function `(key) => boolean`. |
+
+### ReadStreamOptions
+
+Options for `drive.createReadStream()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `start` | `number` | `0` | Byte offset to start reading from (inclusive). |
+| `end` | `number` | — | Byte offset to stop reading at (inclusive). Ignored when `length` is set. |
+| `length` | `number` | — | Number of bytes to read. Overrides `end`. |
+
+### MirrorOptions
+
+Options for `drive.mirror()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `dryRun` | `boolean` | `false` | List differences without writing any changes. |
+| `prune` | `boolean` | `true` | Remove files in the destination that are not in the source. |
+| `filter` | `function` | — | Predicate `(key) => boolean` to include only matching entries. |
+| `batch` | `boolean` | `false` | Use batched writes on a Hyperdrive destination. |
+
+## See also
+
+- [Create a full peer-to-peer filesystem with Hyperdrive](/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—shows Localdrive mirroring in a full writer/reader flow.
+- [Hyperdrive](/reference/building-blocks/hyperdrive)—the distributed filesystem API Localdrive is designed to interoperate with.
+- [Mirrordrive](/reference/helpers/mirrordrive)—the sync engine that copies between Localdrive and Hyperdrive.
+- [Drives](/reference/tools/drives)—CLI tool that mirrors between local directories and Hyperdrives using the same drive-like interface.
+- [Upstream Localdrive repository](https://github.com/holepunchto/localdrive)—source, releases, and implementation details.

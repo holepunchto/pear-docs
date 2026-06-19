@@ -1,0 +1,2779 @@
+{
+  "slug": "hyperbee",
+  "repo": {
+    "org": "holepunchto",
+    "repo": "hyperbee"
+  },
+  "description": "An append-only B-tree running on a Hypercore.",
+  "tag": "v2.27.3",
+  "sha": "de90efc77b07938c0c9f0702ba24b3a46590a9b1",
+  "generatedAt": "2026-06-11T12:36:51.644Z",
+  "sections": [
+    {
+      "title": "Usage",
+      "markdown": "## Usage\n\n```js\nconst Hyperbee = require('hyperbee')\nconst Hypercore = require('hypercore')\n\nconst core = new Hypercore('./storage')\nconst db = new Hyperbee(core, { keyEncoding: 'utf-8', valueEncoding: 'binary' })\n\n// If you own the core\nawait db.put('key1', 'value1')\nawait db.put('key2', 'value2')\nawait db.del('some-key')\n\n// If you want to insert/delete batched values\nconst batch = db.batch()\n\nawait batch.put('key', 'value')\nawait batch.del('some-key')\nawait batch.flush() // Execute the batch\n\n// Query the core\nconst entry = await db.get('key') // => null or { key, value }\n\n// Read all entries\nfor await (const entry of db.createReadStream()) {\n  // ..\n}\n\n// Read a range\nfor await (const entry of db.createReadStream({ gte: 'a', lt: 'd' })) {\n  // Anything >=a and <d\n}\n\n// Get the last written entry\nfor await (const entry of db.createHistoryStream({ reverse: true, limit: 1 })) {\n  // ..\n}\n```\n\nIt works with sparse cores, only a small subset of the full core is downloaded to satisfy your queries."
+    }
+  ],
+  "classes": [
+    {
+      "name": "Hyperbee",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "const db = new Hyperbee(core, [options])",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "core",
+              "optional": false,
+              "description": "`core` should be a [Hypercore](https://github.com/holepunchto/hypercore).",
+              "type": "Hypercore"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "description": "`options` include:",
+              "type": "HyperbeeOptions"
+            }
+          ],
+          "description": "Make a new Hyperbee instance. `core` should be a [Hypercore](https://github.com/holepunchto/hypercore).",
+          "options": [
+            {
+              "name": "keyEncoding",
+              "default": "'binary'",
+              "description": "\"binary\" (default), \"utf-8\", \"ascii\", \"json\", or an abstract-encoding"
+            },
+            {
+              "name": "valueEncoding",
+              "default": "'binary'",
+              "description": "Same options as keyEncoding like \"json\", etc"
+            }
+          ],
+          "examples": [
+            "{\n  keyEncoding: 'binary', // \"binary\" (default), \"utf-8\", \"ascii\", \"json\", or an abstract-encoding\n  valueEncoding: 'binary' // Same options as keyEncoding like \"json\", etc\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L522",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "version",
+          "signature": "db.version",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "number",
+          "description": "Number that indicates how many modifications were made, useful as a version identifier.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L593",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "id",
+          "signature": "db.id",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "string",
+          "description": "String containing the id (z-base-32 of the public key) identifying this bee.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L601",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "key",
+          "signature": "db.key",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "Buffer",
+          "description": "Buffer containing the public key identifying this bee.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L609",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "discoveryKey",
+          "signature": "db.discoveryKey",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "Buffer",
+          "description": "Buffer containing a key derived from `db.key`.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L617",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "writable",
+          "signature": "db.writable",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "boolean",
+          "description": "Boolean indicating if we can put or delete data in this bee.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L625",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "readable",
+          "signature": "db.readable",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "boolean",
+          "description": "Boolean indicating if we can read from this bee. After closing the bee this will be `false`.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L634",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "replicate",
+          "signature": "const stream = db.replicate(isInitiatorOrStream)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "isInitiator",
+              "optional": false,
+              "description": "`true`/`false` to open a fresh replication stream, or an existing stream to replicate over.",
+              "type": "boolean|Stream"
+            },
+            {
+              "name": "opts",
+              "optional": false,
+              "description": "Replication options, forwarded to `core.replicate`.",
+              "type": "object"
+            }
+          ],
+          "returns": "The replication stream.",
+          "returnType": "Stream",
+          "description": "See more about how replicate works at core.replicate.",
+          "examples": [
+            "const stream = db.replicate(true)\nstream.pipe(remoteStream).pipe(stream)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L647",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "update",
+          "signature": "db.update(opts)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "opts",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L651",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "peek",
+          "signature": "const { seq, key, value } = await db.peek([range], [options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "range",
+              "optional": true,
+              "description": "Range bounds to search within.",
+              "type": "Range"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "Read options (`reverse` selects the last entry instead of the first).",
+              "type": "ReadStreamOptions"
+            }
+          ],
+          "returns": "The first matching entry, or `null` if the range is empty.",
+          "returnType": "Promise<Entry|null>",
+          "description": "Similar to doing a read stream and returning the first value, but a bit faster than that.",
+          "examples": [
+            "const first = await db.peek({ gte: 'a', lt: 'd' })"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L664",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "createRangeIterator",
+          "signature": "db.createRangeIterator(range, opts = {})",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "range",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L668",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "createReadStream",
+          "signature": "const stream = db.createReadStream([range], [options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "range",
+              "optional": true,
+              "description": "`range` should specify the range you want to read and looks like this:",
+              "type": "Range"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "`options` include:",
+              "type": "ReadStreamOptions"
+            }
+          ],
+          "returns": "A stream of `Entry` objects.",
+          "returnType": "Readable",
+          "description": "Make a read stream. Sort order is based on the binary value of the keys.",
+          "options": [
+            {
+              "name": "gt",
+              "default": "'only return keys > than this'"
+            },
+            {
+              "name": "gte",
+              "default": "'only return keys >= than this'"
+            },
+            {
+              "name": "lt",
+              "default": "'only return keys < than this'"
+            },
+            {
+              "name": "lte",
+              "default": "'only return keys <= than this'"
+            }
+          ],
+          "examples": [
+            "{\n  gt: 'only return keys > than this',\n  gte: 'only return keys >= than this',\n  lt: 'only return keys < than this',\n  lte: 'only return keys <= than this'\n}",
+            "{\n  reverse: false // Set to true to get them in reverse order,\n  limit: -1 // Set to the max number of entries you want\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L718",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "createHistoryStream",
+          "signature": "const stream = db.createHistoryStream([options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "`options` include:",
+              "type": "HistoryStreamOptions"
+            }
+          ],
+          "returns": "A stream of `Entry` objects, each with an added `type` (`'put'` or `'del'`).",
+          "returnType": "Readable",
+          "description": "Create a stream of all entries ever inserted or deleted from the db.",
+          "options": [
+            {
+              "name": "live",
+              "default": "false",
+              "description": "If true the stream will wait for new data and never end"
+            },
+            {
+              "name": "reverse",
+              "default": "false",
+              "description": "If true get from the newest to the oldest"
+            },
+            {
+              "name": "gte",
+              "default": "seq",
+              "description": "Start with this seq (inclusive)"
+            },
+            {
+              "name": "gt",
+              "default": "seq",
+              "description": "Start after this index"
+            },
+            {
+              "name": "lte",
+              "default": "seq",
+              "description": "Stop after this index"
+            },
+            {
+              "name": "lt",
+              "default": "seq",
+              "description": "Stop before this index"
+            },
+            {
+              "name": "limit",
+              "default": "-1",
+              "description": "Set to the max number of entries you want"
+            }
+          ],
+          "examples": [
+            "{\n  live: false, // If true the stream will wait for new data and never end\n  reverse: false, // If true get from the newest to the oldest\n  gte: seq, // Start with this seq (inclusive)\n  gt: seq, // Start after this index\n  lte: seq, // Stop after this index\n  lt: seq, // Stop before this index\n  limit: -1 // Set to the max number of entries you want\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L733",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "createDiffStream",
+          "signature": "const stream = db.createDiffStream(otherVersion, [options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "right",
+              "optional": false,
+              "description": "The other version to diff against: a version number, or another bee/snapshot.",
+              "type": "number|Hyperbee"
+            },
+            {
+              "name": "range",
+              "optional": true,
+              "description": "`options` are the same as `db.createReadStream`, except for `reverse`.",
+              "type": "Range"
+            },
+            {
+              "name": "opts",
+              "optional": false,
+              "description": "Read options.",
+              "type": "ReadStreamOptions"
+            }
+          ],
+          "returns": "A stream of `{ left, right }` pairs, where each side is an `Entry` or `null`.",
+          "returnType": "Readable",
+          "description": "Efficiently create a stream of the shallow changes between two versions of the db.",
+          "options": [
+            {
+              "name": "left",
+              "default": "Object",
+              "description": "The entry in the `db`"
+            },
+            {
+              "name": "right",
+              "default": "Object",
+              "description": "The entry in `otherVersion`"
+            }
+          ],
+          "examples": [
+            "{\n  left: Object, // The entry in the `db`\n  right: Object // The entry in `otherVersion`\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L756",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "get",
+          "signature": "const { seq, key, value } = await db.get(key)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The key to look up (encoded per `keyEncoding`).",
+              "type": "*"
+            },
+            {
+              "name": "opts",
+              "optional": false,
+              "description": "Read options.",
+              "type": "GetOptions"
+            }
+          ],
+          "returns": "The entry, or `null` if the key is not present.",
+          "returnType": "Promise<Entry|null>",
+          "description": "Get a key's value. Returns `null` if key doesn't exists.",
+          "examples": [
+            "const entry = await db.get('key') // => { seq, key, value } or null"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L844",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "getBySeq",
+          "signature": "const { key, value } = await db.getBySeq(seq, [options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "seq",
+              "optional": false,
+              "description": "`seq` is the Hypercore index.",
+              "type": "number"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "Read options.",
+              "type": "GetOptions"
+            }
+          ],
+          "returns": "The block's key and value, or `null` if the block doesn't exist.",
+          "returnType": "Promise<{key: *, value: *}|null>",
+          "description": "Get the key and value from a block number.",
+          "examples": [
+            "const { key, value } = await db.getBySeq(1)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L857",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "put",
+          "signature": "await db.put(key, [value], [options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The key to insert (encoded per `keyEncoding`).",
+              "type": "*"
+            },
+            {
+              "name": "value",
+              "optional": true,
+              "description": "Value can be optional.",
+              "type": "*"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "`options` includes:",
+              "type": "PutOptions"
+            }
+          ],
+          "returns": "Resolves once the write is committed to the core.",
+          "returnType": "Promise<void>",
+          "description": "Insert a new key. Value can be optional.",
+          "examples": [
+            "{\n  cas (prev, next) { return true }\n}",
+            "await db.put('number', '123', { cas })\nconsole.log(await db.get('number')) // => { seq: 1, key: 'number', value: '123' }\n\nawait db.put('number', '123', { cas })\nconsole.log(await db.get('number')) // => { seq: 1, key: 'number', value: '123' }\n// Without cas this would have been { seq: 2, ... }, and the next { seq: 3 }\n\nawait db.put('number', '456', { cas })\nconsole.log(await db.get('number')) // => { seq: 2, key: 'number', value: '456' }\n\nfunction cas(prev, next) {\n  // You can use same-data or same-object lib, depending on the value complexity\n  return prev.value !== next.value\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L884",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "batch",
+          "signature": "const batch = db.batch()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "opts",
+              "optional": false,
+              "type": "BatchOptions",
+              "description": "Batch options."
+            }
+          ],
+          "returns": "A new batch; queue writes on it and call `flush()` to commit.",
+          "returnType": "Batch",
+          "description": "Make a new atomic batch that is either fully processed or not processed at all.",
+          "examples": [
+            "const batch = db.batch()\nawait batch.put('key', 'value')\nawait batch.flush()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L899",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "del",
+          "signature": "await db.del(key, [options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The key to delete (encoded per `keyEncoding`).",
+              "type": "*"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "`options` include:",
+              "type": "PutOptions"
+            }
+          ],
+          "returns": "Resolves once the deletion is committed to the core.",
+          "returnType": "Promise<void>",
+          "description": "Delete a key.",
+          "examples": [
+            "{\n  cas (prev, next) { return true }\n}",
+            "// This won't get deleted\nawait db.del('number', { cas })\nconsole.log(await db.get('number')) // => { seq: 1, key: 'number', value: 'value' }\n\n// Change the value so the next time we try to delete it then \"cas\" will return true\nawait db.put('number', 'can-be-deleted')\n\nawait db.del('number', { cas })\nconsole.log(await db.get('number')) // => null\n\nfunction cas(prev) {\n  return prev.value === 'can-be-deleted'\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L923",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "watch",
+          "signature": "const watcher = db.watch([range])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "range",
+              "optional": true,
+              "description": "Range bounds to narrow what changes are watched; same as `db.createReadStream` except `reverse`.",
+              "type": "Range"
+            },
+            {
+              "name": "opts",
+              "optional": false,
+              "description": "Watch options.",
+              "type": "WatchOptions"
+            }
+          ],
+          "returns": "Returns a new value after a change, `current` and `previous` are snapshots that are auto-closed before next value.",
+          "returnType": "Watcher",
+          "description": "Listens to changes that are on the optional `range`.",
+          "examples": [
+            "for await (const [current, previous] of watcher) {\n  console.log(current.version)\n  console.log(previous.version)\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L940",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "getAndWatch",
+          "signature": "const entryWatcher = await db.getAndWatch(key, [options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The key to watch (encoded per `keyEncoding`).",
+              "type": "*"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "Watch options.",
+              "type": "EntryWatchOptions"
+            }
+          ],
+          "returns": "Returns a watcher which listens to changes on the given key.",
+          "returnType": "Promise<EntryWatcher>",
+          "description": "`entryWatcher.node` contains the current entry in the same format as the result of `bee.get(key)`, and will be updated as it changes.",
+          "examples": [
+            "const w = await db.getAndWatch('config')\nw.on('update', () => console.log(w.node.value))"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L957",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "clearUnlinked",
+          "signature": "await db.clearUnlinked(options = {})",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "options",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1002",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "checkout",
+          "signature": "const snapshot = db.checkout(version)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "version",
+              "optional": false,
+              "description": "The version (see `db.version`) to check out.",
+              "type": "number"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "description": "Snapshot options.",
+              "type": "CheckoutOptions"
+            }
+          ],
+          "returns": "A read-only bee pinned to that version.",
+          "returnType": "Hyperbee",
+          "description": "Get a read-only snapshot of a previous version.",
+          "examples": [
+            "const old = db.checkout(5)\nconst entry = await old.get('key')"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1062",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "signature": "const snapshot = db.snapshot()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "opts",
+              "optional": false,
+              "type": "CheckoutOptions",
+              "description": "Snapshot options."
+            }
+          ],
+          "returns": "A read-only bee pinned to the current version.",
+          "returnType": "Hyperbee",
+          "description": "Shorthand for getting a checkout for the current version.",
+          "examples": [
+            "const snap = db.snapshot()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1093",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "sub",
+          "signature": "const sub = db.sub('sub-prefix', options = {})",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "prefix",
+              "optional": false,
+              "description": "The namespace prefix applied to every key.",
+              "type": "string|Buffer"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "description": "`options` include:",
+              "type": "SubOptions"
+            }
+          ],
+          "returns": "A bee scoped to the prefixed keyspace.",
+          "returnType": "Hyperbee",
+          "description": "Create a sub-database where all entries will be prefixed by a given value.",
+          "options": [
+            {
+              "name": "sep",
+              "description": "A namespace separator"
+            },
+            {
+              "name": "valueEncoding",
+              "description": "Optional sub valueEncoding (defaults to the parents)"
+            },
+            {
+              "name": "keyEncoding",
+              "description": "Optional sub keyEncoding (defaults to the parents)"
+            }
+          ],
+          "examples": [
+            "{\n  sep: Buffer.alloc(1), // A namespace separator\n  valueEncoding, // Optional sub valueEncoding (defaults to the parents)\n  keyEncoding // Optional sub keyEncoding (defaults to the parents)\n}",
+            "const root = new Hyperbee(core)\nconst sub = root.sub('a')\n\n// In root, this will have the key ('a' + separator + 'b')\nawait sub.put('b', 'hello')\n\n// Returns => { key: 'b', value: 'hello')\nawait sub.get('b')"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1115",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "getHeader",
+          "signature": "const header = await db.getHeader([options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "`options` are the same as the `core.get` method.",
+              "type": "GetOptions"
+            }
+          ],
+          "returns": "Returns the header contained in the first block.",
+          "returnType": "Promise<object>",
+          "description": "`options` are the same as the `core.get` method.",
+          "examples": [
+            "const header = await db.getHeader()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1145",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "isHyperbee",
+          "signature": "const isHyperbee = await Hyperbee.isHyperbee(core, [options])",
+          "kind": "method",
+          "static": true,
+          "async": true,
+          "params": [
+            {
+              "name": "core",
+              "optional": false,
+              "description": "The core to inspect.",
+              "type": "Hypercore"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "`options` are the same as the `core.get` method.",
+              "type": "GetOptions"
+            }
+          ],
+          "returns": "Returns `true` if the core contains a Hyperbee, `false` otherwise.",
+          "returnType": "Promise<boolean>",
+          "description": "This requests the first block on the core, so it can throw depending on the options.",
+          "examples": [
+            "if (await Hyperbee.isHyperbee(core)) {\n  const db = new Hyperbee(core)\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1194",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "ready",
+          "signature": "await db.ready()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "description": "Waits until internal state is loaded.",
+          "examples": [],
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "close",
+          "signature": "await db.close()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "description": "Fully close this bee, including its core.",
+          "examples": [],
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "opened",
+          "signature": "db.opened",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "closed",
+          "signature": "db.closed",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "signature": "db.on(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "once",
+          "signature": "db.once(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "off",
+          "signature": "db.off(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "emit",
+          "signature": "db.emit(event, [...args])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "...args",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "feed",
+          "signature": "db.feed",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L525",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "core",
+          "signature": "db.core",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "Hypercore",
+          "description": "The underlying Hypercore backing this bee.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L530",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "keyEncoding",
+          "signature": "db.keyEncoding",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L532",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "valueEncoding",
+          "signature": "db.valueEncoding",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L533",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "extension",
+          "signature": "db.extension",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L534",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "metadata",
+          "signature": "db.metadata",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L535",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "lock",
+          "signature": "db.lock",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L536",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "sep",
+          "signature": "db.sep",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L537",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "readonly",
+          "signature": "db.readonly",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L538",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "prefix",
+          "signature": "db.prefix",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L539",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "alwaysDuplicate",
+          "signature": "db.alwaysDuplicate",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L542",
+          "source": [
+            "ast"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Batch",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "new Batch(tree, core, batchLock, cache, options = {})",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "tree",
+              "optional": false
+            },
+            {
+              "name": "core",
+              "optional": false
+            },
+            {
+              "name": "batchLock",
+              "optional": false
+            },
+            {
+              "name": "cache",
+              "optional": false
+            },
+            {
+              "name": "options",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1210",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "ready",
+          "signature": "await batch.ready()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1237",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "lock",
+          "signature": "await batch.lock()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1242",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "version",
+          "signature": "batch.version",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1247",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getRoot",
+          "signature": "await batch.getRoot(ensureHeader)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "ensureHeader",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1252",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getKey",
+          "signature": "await batch.getKey(seq)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "seq",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1272",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getBlock",
+          "signature": "await batch.getBlock(seq)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "seq",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1304",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "peek",
+          "signature": "batch.peek(range, opts)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "range",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1342",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "createRangeIterator",
+          "signature": "batch.createRangeIterator(range, opts = {})",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "range",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1346",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "createReadStream",
+          "signature": "batch.createReadStream(range, opts)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "range",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1358",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getBySeq",
+          "signature": "await batch.getBySeq(seq, opts)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "seq",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1363",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "get",
+          "signature": "const { seq, key, value } = await batch.get(key)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The key to look up (encoded per the batch's `keyEncoding`).",
+              "type": "*"
+            },
+            {
+              "name": "opts",
+              "optional": false,
+              "description": "Read options.",
+              "type": "GetOptions"
+            }
+          ],
+          "returns": "The pending or committed entry visible in the batch, or `null` if missing.",
+          "returnType": "Promise<Entry|null>",
+          "description": "Get a key, value out of a batch.",
+          "examples": [
+            "const entry = await batch.get('key')"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1382",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "links",
+          "signature": "await batch.links(key, seq)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            },
+            {
+              "name": "seq",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1433",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "put",
+          "signature": "await batch.put(key, [value], [options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The key to insert (encoded per the batch's `keyEncoding`).",
+              "type": "*"
+            },
+            {
+              "name": "value",
+              "optional": true,
+              "description": "The value to store (encoded per the batch's `valueEncoding`); optional.",
+              "type": "*"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "`options` are the same as `db.put` method.",
+              "type": "PutOptions"
+            }
+          ],
+          "returns": "Resolves once the write is queued in the batch.",
+          "returnType": "Promise<void>",
+          "description": "Insert a key into a batch.",
+          "examples": [
+            "await batch.put('key', 'value')"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1475",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "del",
+          "signature": "await batch.del(key, [options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The key to delete (encoded per the batch's `keyEncoding`).",
+              "type": "*"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "`options` are the same as `db.del` method.",
+              "type": "PutOptions"
+            }
+          ],
+          "returns": "Resolves once the deletion is queued in the batch.",
+          "returnType": "Promise<void>",
+          "description": "Delete a key into the batch.",
+          "examples": [
+            "await batch.del('key')"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1572",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "close",
+          "signature": "await batch.close()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "returns": "Resolves once the batch is discarded and its lock released.",
+          "returnType": "Promise<void>",
+          "description": "Destroy a batch, and releases any locks it has acquired on the db.",
+          "examples": [
+            "await batch.close()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1651",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "destroy",
+          "signature": "batch.destroy()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1660",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "toBlocks",
+          "signature": "batch.toBlocks()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1665",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "flush",
+          "signature": "await batch.flush()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "Resolves once the queued operations are committed and the lock released.",
+          "returnType": "Promise<void>",
+          "description": "Commit the batch to the database, and releases any locks it has acquired.",
+          "examples": [
+            "await batch.flush()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1706",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "tree",
+          "signature": "batch.tree",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1211",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "feed",
+          "signature": "batch.feed",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1213",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "core",
+          "signature": "batch.core",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1214",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "index",
+          "signature": "batch.index",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1215",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "blocks",
+          "signature": "batch.blocks",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1216",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "autoFlush",
+          "signature": "batch.autoFlush",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1217",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "maxBlocksCached",
+          "signature": "batch.maxBlocksCached",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1218",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "rootSeq",
+          "signature": "batch.rootSeq",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1219",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "root",
+          "signature": "batch.root",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1220",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "length",
+          "signature": "batch.length",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1221",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "checkout",
+          "signature": "batch.checkout",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1222",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "options",
+          "signature": "batch.options",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1223",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "locked",
+          "signature": "batch.locked",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1224",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "batchLock",
+          "signature": "batch.batchLock",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1225",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "onseq",
+          "signature": "batch.onseq",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1226",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "appending",
+          "signature": "batch.appending",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1227",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "isSnapshot",
+          "signature": "batch.isSnapshot",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1228",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "shouldUpdate",
+          "signature": "batch.shouldUpdate",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1229",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "updating",
+          "signature": "batch.updating",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1230",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "encoding",
+          "signature": "batch.encoding",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1231",
+          "source": [
+            "ast"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Watcher",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "new Watcher(bee, range, opts = {})",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "bee",
+              "optional": false
+            },
+            {
+              "name": "range",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1837",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "next",
+          "signature": "await watcher.next()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1917",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "return",
+          "signature": "await watcher.return()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1988",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "destroy",
+          "signature": "watcher.destroy()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L2013",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "ready",
+          "signature": "await watcher.ready()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "close",
+          "signature": "await watcher.close()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "opened",
+          "signature": "watcher.opened",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "closed",
+          "signature": "watcher.closed",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "signature": "watcher.on(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "once",
+          "signature": "watcher.once(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "off",
+          "signature": "watcher.off(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "emit",
+          "signature": "watcher.emit(event, [...args])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "...args",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "keyEncoding",
+          "signature": "watcher.keyEncoding",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1840",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "valueEncoding",
+          "signature": "watcher.valueEncoding",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1841",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "index",
+          "signature": "watcher.index",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1842",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "bee",
+          "signature": "watcher.bee",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1843",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "core",
+          "signature": "watcher.core",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1844",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "latestDiff",
+          "signature": "watcher.latestDiff",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1846",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "range",
+          "signature": "watcher.range",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1847",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "map",
+          "signature": "watcher.map",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1848",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "current",
+          "signature": "watcher.current",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1850",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "previous",
+          "signature": "watcher.previous",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1851",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "currentMapped",
+          "signature": "watcher.currentMapped",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1852",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "previousMapped",
+          "signature": "watcher.previousMapped",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1853",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "stream",
+          "signature": "watcher.stream",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1854",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "update",
+          "signature": "watcher.on('update', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1984",
+          "source": [
+            "ast"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EntryWatcher",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "new EntryWatcher(bee, key, opts = {})",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "bee",
+              "optional": false
+            },
+            {
+              "name": "key",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1773",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "ready",
+          "signature": "await entryWatcher.ready()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "close",
+          "signature": "await entryWatcher.close()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "opened",
+          "signature": "entryWatcher.opened",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "closed",
+          "signature": "entryWatcher.closed",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "signature": "entryWatcher.on(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "once",
+          "signature": "entryWatcher.once(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "off",
+          "signature": "entryWatcher.off(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "emit",
+          "signature": "entryWatcher.emit(event, [...args])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "...args",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "keyEncoding",
+          "signature": "entryWatcher.keyEncoding",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1776",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "valueEncoding",
+          "signature": "entryWatcher.valueEncoding",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1777",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "index",
+          "signature": "entryWatcher.index",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1779",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "bee",
+          "signature": "entryWatcher.bee",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1780",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "key",
+          "signature": "entryWatcher.key",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1782",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "node",
+          "signature": "entryWatcher.node",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1783",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "error",
+          "signature": "entryWatcher.on('error', e)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "e",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1825",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "update",
+          "signature": "entryWatcher.on('update', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hyperbee/blob/v2.27.3/index.js#L1831",
+          "source": [
+            "ast"
+          ]
+        }
+      ]
+    }
+  ],
+  "typedefs": [
+    {
+      "name": "Entry",
+      "description": "A single entry as returned by reads such as `db.get()`, `db.peek()`, and the\nread stream. `key` and `value` are decoded with the bee's `keyEncoding` /\n`valueEncoding` (raw `Buffer`s when no encoding is set).",
+      "properties": [
+        {
+          "name": "seq",
+          "optional": false,
+          "type": "number",
+          "description": "Hypercore index (block number) at which this entry was inserted."
+        },
+        {
+          "name": "key",
+          "optional": false,
+          "type": "*",
+          "description": "The entry's key, decoded per `keyEncoding`."
+        },
+        {
+          "name": "value",
+          "optional": false,
+          "type": "*",
+          "description": "The entry's value, decoded per `valueEncoding` (`null` for a deletion)."
+        }
+      ]
+    },
+    {
+      "name": "HyperbeeOptions",
+      "description": "Options for `new Hyperbee()`.",
+      "properties": [
+        {
+          "name": "keyEncoding",
+          "optional": true,
+          "default": "'binary'",
+          "type": "string|object",
+          "description": "Key encoding: `\"binary\"` (default), `\"utf-8\"`, `\"ascii\"`, `\"json\"`, or an abstract-encoding instance."
+        },
+        {
+          "name": "valueEncoding",
+          "optional": true,
+          "default": "'binary'",
+          "type": "string|object",
+          "description": "Value encoding; same options as `keyEncoding`."
+        }
+      ]
+    },
+    {
+      "name": "PutOptions",
+      "description": "Options for `db.put()`, `db.del()` and their batch equivalents.",
+      "properties": [
+        {
+          "name": "cas",
+          "optional": true,
+          "type": "CASComparator",
+          "description": "Compare-and-swap comparator; the write only proceeds when it returns `true`."
+        }
+      ]
+    },
+    {
+      "name": "Range",
+      "description": "Range bounds for read, diff, and watch streams. Keys are compared by their\nencoded byte value.",
+      "properties": [
+        {
+          "name": "gt",
+          "optional": true,
+          "type": "*",
+          "description": "Only return keys greater than this."
+        },
+        {
+          "name": "gte",
+          "optional": true,
+          "type": "*",
+          "description": "Only return keys greater than or equal to this."
+        },
+        {
+          "name": "lt",
+          "optional": true,
+          "type": "*",
+          "description": "Only return keys less than this."
+        },
+        {
+          "name": "lte",
+          "optional": true,
+          "type": "*",
+          "description": "Only return keys less than or equal to this."
+        }
+      ]
+    },
+    {
+      "name": "ReadStreamOptions",
+      "description": "Options for `db.createReadStream()` and `db.peek()`.",
+      "properties": [
+        {
+          "name": "reverse",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Yield entries in reverse (descending) order."
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "default": "-1",
+          "type": "number",
+          "description": "Maximum number of entries to return (`-1` for no limit)."
+        }
+      ]
+    },
+    {
+      "name": "HistoryStreamOptions",
+      "description": "Options for `db.createHistoryStream()`.",
+      "properties": [
+        {
+          "name": "live",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Keep the stream open and wait for new data instead of ending."
+        },
+        {
+          "name": "reverse",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Iterate from newest to oldest."
+        },
+        {
+          "name": "gte",
+          "optional": true,
+          "type": "number",
+          "description": "Start at this seq (inclusive); negative values are added to the current version."
+        },
+        {
+          "name": "gt",
+          "optional": true,
+          "type": "number",
+          "description": "Start after this seq."
+        },
+        {
+          "name": "lte",
+          "optional": true,
+          "type": "number",
+          "description": "Stop at this seq (inclusive)."
+        },
+        {
+          "name": "lt",
+          "optional": true,
+          "type": "number",
+          "description": "Stop before this seq."
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "default": "-1",
+          "type": "number",
+          "description": "Maximum number of entries to return (`-1` for no limit)."
+        }
+      ]
+    },
+    {
+      "name": "SubOptions",
+      "description": "Options for `db.sub()`.",
+      "properties": [
+        {
+          "name": "sep",
+          "optional": true,
+          "type": "Buffer",
+          "description": "Namespace separator placed between the prefix and key (defaults to the parent's separator)."
+        },
+        {
+          "name": "keyEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Key encoding for the sub (defaults to the parent's)."
+        },
+        {
+          "name": "valueEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Value encoding for the sub (defaults to the parent's)."
+        }
+      ]
+    },
+    {
+      "name": "GetOptions",
+      "description": "Options for point reads such as `db.get()` and `db.getBySeq()`. The encoding\noverrides apply to this call only; remaining options are forwarded to the\nunderlying `core.get()`.",
+      "properties": [
+        {
+          "name": "keyEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Override the key encoding for this read."
+        },
+        {
+          "name": "valueEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Override the value encoding for this read."
+        },
+        {
+          "name": "wait",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Wait for the block to download from a peer if it isn't local."
+        },
+        {
+          "name": "timeout",
+          "optional": true,
+          "default": "0",
+          "type": "number",
+          "description": "Max milliseconds to wait for a block (`0` = no timeout)."
+        }
+      ]
+    },
+    {
+      "name": "BatchOptions",
+      "description": "Options for `db.batch()`.",
+      "properties": [
+        {
+          "name": "keyEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Override the key encoding for this batch."
+        },
+        {
+          "name": "valueEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Override the value encoding for this batch."
+        },
+        {
+          "name": "update",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Update the underlying core before the first operation resolves."
+        }
+      ]
+    },
+    {
+      "name": "WatchOptions",
+      "description": "Options for `db.watch()`.",
+      "properties": [
+        {
+          "name": "keyEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Key encoding for the yielded snapshots (defaults to the bee's)."
+        },
+        {
+          "name": "valueEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Value encoding for the yielded snapshots (defaults to the bee's)."
+        }
+      ]
+    },
+    {
+      "name": "EntryWatchOptions",
+      "description": "Options for `db.getAndWatch()`.",
+      "properties": [
+        {
+          "name": "keyEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Key encoding for the watched entry (defaults to the bee's)."
+        },
+        {
+          "name": "valueEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Value encoding for the watched entry (defaults to the bee's)."
+        }
+      ]
+    },
+    {
+      "name": "CheckoutOptions",
+      "description": "Options for `db.checkout()` and `db.snapshot()`.",
+      "properties": [
+        {
+          "name": "keyEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Key encoding for the snapshot (defaults to the bee's)."
+        },
+        {
+          "name": "valueEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Value encoding for the snapshot (defaults to the bee's)."
+        }
+      ]
+    }
+  ]
+}
