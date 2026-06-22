@@ -146,7 +146,108 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // the standalone page is gone; land legacy links on the how-to index.
   out.push({ from: '/reference/recommended-practices/', to: '/how-to/' });
 
-   out.sort((a, b) => a.from.localeCompare(b.from));
+  // Stale Google-indexed paths from pre-reorganisation structure.
+  // /pear-runtime/* was the old top-level section for runtime docs.
+  out.push({ from: '/pear-runtime/api/', to: '/reference/pear/api/' });
+  out.push({ from: '/pear-runtime/troubleshooting/', to: '/how-to/troubleshooting/' });
+  // FAQ content was explanation-shaped; consistent with /reference/faq/ -> /explanation/.
+  out.push({ from: '/pear-runtime/faq/', to: '/explanation/' });
+  // /guides/best-practices/ was the old how-to landing page.
+  out.push({ from: '/guides/best-practices/', to: '/how-to/' });
+  // /reference/api/ was an ambiguous alias; canonical path is /reference/pear/api/.
+  out.push({ from: '/reference/api/', to: '/reference/pear/api/' });
+  // /examples/react-app-using-pear/ no longer exists; closest equivalent is the
+  // hello-pear-electron template walkthrough.
+  out.push({
+    from: '/examples/react-app-using-pear/',
+    to: '/getting-started/from-a-template/start-from-hello-pear-electron/',
+  });
+
+  // /reference/{cli,configuration,runtime}/ moved under /reference/pear/ in the
+  // pear/ subfolder pass. Confirmed by both gitbook main branch and content/ renames.
+  out.push({ from: '/reference/cli/', to: '/reference/pear/cli/' });
+  out.push({ from: '/reference/configuration/', to: '/reference/pear/configuration/' });
+  out.push({ from: '/reference/runtime/', to: '/reference/pear/runtime/' });
+
+  // Other /reference/ structural moves from content/ renames.
+  out.push({ from: '/reference/bare-modules/', to: '/reference/modules/bare-modules/' });
+  // /reference/modules/ was a single pear-modules page before the modules/ subdir was created.
+  out.push({ from: '/reference/modules/', to: '/reference/modules/pear-modules/' });
+  out.push({
+    from: '/reference/desktop-release-npm-scripts/',
+    to: '/reference/ci-and-release/desktop-release-npm-scripts/',
+  });
+
+  // Gitbook-era /reference/ pages with no direct successor; land on closest current equivalent.
+  // node-compat and bare-overview are both covered by the runtime-and-languages explanation.
+  out.push({ from: '/reference/node-compat/', to: '/explanation/runtime-and-languages/' });
+  out.push({ from: '/reference/bare-overview/', to: '/explanation/runtime-and-languages/' });
+  // templates page covered `pear init` template authoring, now part of the CLI reference.
+  out.push({ from: '/reference/templates/', to: '/reference/pear/cli/' });
+
+  // /getting-started/ restructure: flat pages moved into subdirectories.
+  out.push({
+    from: '/getting-started/start-from-hello-pear-electron/',
+    to: '/getting-started/from-a-template/start-from-hello-pear-electron/',
+  });
+  out.push({
+    from: '/getting-started/chat/',
+    to: '/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat/',
+  });
+  out.push({
+    from: '/getting-started/production-shape/',
+    to: '/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app/',
+  });
+  out.push({ from: '/getting-started/ship/', to: '/getting-started/build-a-peer-to-peer-chat/ship/' });
+  out.push({ from: '/getting-started/update/', to: '/getting-started/build-a-peer-to-peer-chat/update/' });
+
+  // /how-to/operate-an-app/ internal restructure: pages moved into sub-sections.
+  out.push({
+    from: '/how-to/operate-an-app/manage-installed-applications/',
+    to: '/how-to/manage-installed-applications/',
+  });
+  out.push({ from: '/how-to/operate-an-app/troubleshooting/', to: '/how-to/troubleshooting/' });
+  out.push({
+    from: '/how-to/operate-an-app/build-desktop-distributables/',
+    to: '/how-to/operate-an-app/build-and-package/build-desktop-distributables/',
+  });
+  out.push({
+    from: '/how-to/operate-an-app/distribute-as-binary/',
+    to: '/how-to/operate-an-app/build-and-package/distribute-as-binary/',
+  });
+  out.push({
+    from: '/how-to/operate-an-app/deployment/',
+    to: '/how-to/operate-an-app/manual-deployment/deployment/',
+  });
+  out.push({
+    from: '/how-to/operate-an-app/troubleshoot-desktop-releases/',
+    to: '/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases/',
+  });
+  out.push({ from: '/how-to/operate-an-app/recommended-practices/', to: '/how-to/' });
+
+  // Gitbook-era /guide/ paths. No operate-an-app index exists, so release/sharing
+  // guides fall back to the how-to index.
+  out.push({ from: '/guide/getting-started/', to: '/getting-started/' });
+  out.push({
+    from: '/guide/starting-a-pear-desktop-project/',
+    to: '/getting-started/from-a-template/start-from-hello-pear-electron/',
+  });
+  out.push({
+    from: '/guide/making-a-pear-desktop-app/',
+    to: '/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat/',
+  });
+  out.push({ from: '/guide/starting-a-pear-terminal-project/', to: '/getting-started/' });
+  out.push({ from: '/guide/making-a-pear-terminal-app/', to: '/getting-started/' });
+  out.push({
+    from: '/guide/making-a-bare-mobile-app/',
+    to: '/getting-started/from-a-template/start-from-hello-pear-bare/',
+  });
+  out.push({ from: '/guide/releasing-a-pear-app/', to: '/how-to/' });
+  out.push({ from: '/guide/sharing-a-pear-app/', to: '/how-to/' });
+  out.push({ from: '/guide/debugging-a-pear-terminal-app/', to: '/how-to/troubleshooting/' });
+  out.push({ from: '/guide/creating-a-pear-init-template/', to: '/reference/pear/cli/' });
+
+  out.sort((a, b) => a.from.localeCompare(b.from));
   return out;
 }
 
