@@ -27,7 +27,7 @@ By abstracting the JavaScript engine behind the `libjs` ABI and platform I/O beh
 
 A server runtime can assume it owns the process and runs until it's killed. A runtime embedded in a mobile app can't: the operating system suspends apps that move to the background and may reclaim them entirely. Bare models this explicitly with a process lifecycle that an embedder—or your JavaScript—can drive.
 
-The key states are **active**, **suspended**, and **idle**. Calling `Bare.suspend()` emits a `suspend` event, signalling that outstanding work (network activity, file access) should be deferred or paused. When the loop runs out of work it emits `idle` and blocks rather than exiting, keeping the process alive but quiet. `Bare.resume()` emits `resume` and lets the loop continue; `Bare.wakeup()` allows a bounded burst of work during suspension before the process settles back to idle.
+Calling `Bare.suspend()` emits a `suspend` event, signalling that outstanding work (network activity, file access) should be deferred or paused. When the loop runs out of work it emits `idle` and blocks rather than exiting, keeping the process alive but quiet. `Bare.resume()` emits `resume` and lets the loop continue; `Bare.wakeup()` allows a bounded burst of work (**awake** state) during suspension before the process settles back to idle.
 
 ```mermaid
 stateDiagram-v2
@@ -35,7 +35,10 @@ stateDiagram-v2
   [*] --> Active
   Active --> Suspending: Bare.suspend()
   Suspending --> Active: Bare.resume()
+  Suspending --> Awake: Bare.wakeup()
   Suspending --> Idle
+  Awake --> Active: Bare.resume()
+  Awake --> Idle
   Idle --> Active: Bare.resume()
   Active --> Terminated: Bare.exit()
   Terminated --> [*]
