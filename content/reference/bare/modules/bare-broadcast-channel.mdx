@@ -1,0 +1,90 @@
+---
+title: "bare-broadcast-channel"
+description: "Reference for bare-broadcast-channel: multi-producer, multi-consumer inter-thread broadcast messaging for Bare."
+docType: reference
+schemaType: APIReference
+---
+
+[`bare-broadcast-channel`](https://github.com/holepunchto/bare-broadcast-channel) provides multi-producer, multi-consumer broadcast messaging between Bare threads. A channel exposes a transferable `handle`, so other [threads](/reference/bare/runtime#barethread) can join the same channel and exchange structured-cloned values over per-thread ports. It's a native addon.
+
+```sh
+npm i bare-broadcast-channel
+```
+
+## Usage
+
+```js
+const BroadcastChannel = require('bare-broadcast-channel')
+const { Thread } = Bare
+
+const channel = new BroadcastChannel()
+
+const consumer = (label) =>
+  new Thread(__filename, { data: { handle: channel.handle, label } }, async ({ handle, label }) => {
+    const BroadcastChannel = require('bare-broadcast-channel')
+    const port = BroadcastChannel.from(handle).connect()
+    console.log(label, 'got', await port.read())
+    await port.close()
+  })
+
+const a = consumer('a')
+const b = consumer('b')
+
+const port = channel.connect()
+
+while (port.peers < 2) await new Promise((r) => setTimeout(r, 10))
+
+await port.write('hello')
+await port.close()
+
+a.join()
+b.join()
+```
+
+## API
+
+### BroadcastChannel
+
+#### `const channel = new BroadcastChannel([options])`
+
+Create a channel. `BroadcastChannel.MAX_PORTS` is the maximum number of connected ports.
+
+#### `const channel = BroadcastChannel.from(handle[, options])`
+
+Reconstruct a channel from a transferred `channel.handle` (pass `handle` to a thread via its `data`).
+
+#### `channel.handle` · `channel.interfaces`
+
+The transferable handle, and the channel's interfaces.
+
+#### `const port = channel.connect()`
+
+Connect to the channel, returning a `Port` for this thread.
+
+### Port
+
+#### `await port.write(value)` · `port.writeSync(value)`
+
+Broadcast a structured-cloneable `value` to peers; returns whether the write flushed.
+
+#### `const value = await port.read()` · `port.readSync()`
+
+Read the next broadcast value.
+
+#### `port.createReadStream([options])` · `port.createWriteStream([options])` · `port.createStream([options])`
+
+Stream interfaces over the port.
+
+#### `port.peers` · `port.ref()` · `port.unref()` · `await port.close()`
+
+Peer count, event-loop references, and teardown. Ports emit `peers` and `close`.
+
+## Related modules
+
+Builds on `bare-events`, [`bare-stream`](/reference/bare/modules/bare-stream), and `bare-structured-clone` (see [Bare modules](/reference/modules/bare-modules)).
+
+## See also
+
+- [`bare-channel`](/reference/modules/bare-modules)—point-to-point inter-thread messaging.
+- [Bare runtime API](/reference/bare/runtime#barethread)—`Bare.Thread`, the threads this broadcasts between.
+- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.

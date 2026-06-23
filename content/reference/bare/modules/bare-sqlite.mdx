@@ -1,0 +1,96 @@
+---
+title: "bare-sqlite"
+description: "Reference for bare-sqlite: synchronous SQLite bindings for Bare, with a DatabaseSync/Statement API close to Node.js node:sqlite."
+docType: reference
+schemaType: APIReference
+---
+
+[`bare-sqlite`](https://github.com/holepunchto/bare-sqlite) provides SQLite bindings for [Bare](/reference/bare/runtime). The API mirrors Node.js's [`node:sqlite`](https://nodejs.org/api/sqlite.html) (`DatabaseSync` + prepared statements). It's a native addon.
+
+```sh
+npm i bare-sqlite
+```
+
+## Usage
+
+```js
+const { DatabaseSync } = require('bare-sqlite')
+
+const db = new DatabaseSync(':memory:')
+
+db.exec(`
+  CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT);
+  INSERT INTO books (title) VALUES ('Dune'), ('Foundation');
+`)
+
+for (const row of db.prepare('SELECT id, title FROM books').iterate()) {
+  console.log(row)
+}
+
+db.close()
+```
+
+## API
+
+### DatabaseSync
+
+#### `const db = new DatabaseSync(location[, options])`
+
+Open (or create) a database at `location` (a file path or `':memory:'`).
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `open` | `true` | Open the database immediately on construction. Pass `false` to defer until `db.open()` is called. |
+| `readOnly` | `false` | Open in read-only mode. |
+| `enableForeignKeyConstraints` | `true` | Enable SQLite foreign-key enforcement (`PRAGMA foreign_keys`). |
+| `enableDoubleQuotedStringLiterals` | `false` | Allow double-quoted identifiers to fall back to string literals (SQLite quirk; disabled by default for correctness). |
+| `allowExtension` | `false` | Allow loading native extensions via `db.enableLoadExtension()` / `db.loadExtension()`. |
+| `timeout` | `0` | Busy-wait timeout in milliseconds when the database is locked. `0` means fail immediately. |
+
+#### `db.isOpen` · `db.open()` · `db.close()`
+
+Connection state and lifecycle.
+
+#### `db.exec(sql)`
+
+Execute one or more statements without returning rows.
+
+#### `const stmt = db.prepare(sql)`
+
+Compile a SQL statement into a reusable `Statement`.
+
+#### `db.enableLoadExtension(allow)` · `db.loadExtension(path[, entryPoint])`
+
+Opt into and load SQLite extensions.
+
+#### `const sql = db.createTagStore([maxSize])`
+
+Create a tagged-template SQL helper bound to this database.
+
+### Statement
+
+#### `const rows = stmt.all(...params)` · `stmt.values(...params)` · `const row = stmt.get(...params)`
+
+Run a query and return all rows, raw value arrays, or the first row.
+
+#### `const result = stmt.run(...params)`
+
+Execute a write and return the change count and last insert row id.
+
+#### `for (const row of stmt.iterate(...params)) { ... }`
+
+Iterate rows lazily.
+
+#### `stmt.columns()` · `stmt.sourceSQL` · `stmt.expandedSQL`
+
+Column metadata and the statement's source/expanded SQL.
+
+#### `stmt.setReadBigInts(enabled)` · `stmt.setAllowBareNamedParameters(allow)` · `stmt.setAllowUnknownNamedParameters(allow)`
+
+Tune integer and named-parameter handling. Parameters bind positionally (`?`) or by name; see the [repository README](https://github.com/holepunchto/bare-sqlite) for the binding rules.
+
+## See also
+
+- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
+- [`bare-fs`](/reference/bare/modules/bare-fs)—file access alongside an on-disk database.
+- [Bare runtime API](/reference/bare/runtime)—the runtime these bindings run on.

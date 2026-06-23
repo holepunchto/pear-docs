@@ -1,0 +1,97 @@
+---
+title: "bare-ipc"
+description: "Reference for bare-ipc: lightweight pipe-based inter-process communication for Bare, with structured-clone message ports."
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-ipc`](https://github.com/holepunchto/bare-ipc) provides lightweight pipe-based inter-process communication for [Bare](/reference/bare/runtime). It pairs two ports over [`bare-pipe`](/reference/bare/modules/bare-pipe) and exchanges structured-cloned messages between them. It's pure JavaScript. (For the host↔worklet channel in native apps, see [`bare-kit`](/reference/bare/bare-kit) instead.)
+
+```sh
+npm i bare-ipc
+```
+
+## Usage
+
+```js
+const IPC = require('bare-ipc')
+
+const [portA, portB] = IPC.open()
+
+const a = portA.connect()
+const b = portB.connect()
+
+a.on('data', (data) => { /* received from b */ }).end('hello b')
+```
+
+## API
+
+### `IPC`
+
+#### `const [portA, portB] = IPC.open()`
+
+Create a connected pair of `IPCPort`s.
+
+#### `const ipc = new IPC(port)`
+
+Returns a duplex stream using the provided `port`. See [`bare-stream`](/reference/bare/modules/bare-stream)'s `Duplex` for the full duplex stream API.
+
+Errors emitted by the underlying incoming or outgoing pipes are propagated to the stream as `error` events, after which the stream is destroyed.
+
+#### `ipc.incoming`
+
+The underlying [`bare-pipe`](/reference/bare/modules/bare-pipe) `Pipe` used for reading. Read-only.
+
+#### `ipc.outgoing`
+
+The underlying [`bare-pipe`](/reference/bare/modules/bare-pipe) `Pipe` used for writing. Read-only.
+
+#### `ipc.ref()`
+
+Increase the reference count for the IPC to keep the event loop alive.
+
+A common pattern is to call `ipc.ref()` on resume and `ipc.unref()` on suspend:
+
+```js
+Bare.on('suspend', () => ipc.unref()).on('resume', () => ipc.ref())
+```
+
+#### `ipc.unref()`
+
+Decrease the reference count for the IPC to allow the event loop to exit.
+
+See [`ipc.ref()`](#ipcref) for the common pattern.
+
+### `IPCPort`
+
+#### `const port = new IPCPort(incoming, outgoing)`
+
+Constructs a port from a pair of file handles. `incoming` is the read file handle; `outgoing` is the write file handle.
+
+#### `const ipc = port.connect()`
+
+Returns an `IPC` connected to the port and marks the port as detached. Once detached, the port cannot be transferred again.
+
+#### `port.incoming`
+
+The read file handle. Read-only.
+
+#### `port.outgoing`
+
+The write file handle. Read-only.
+
+#### `port.detached`
+
+A boolean indicating whether the port is detached. A port becomes detached once it is connected or transferred.
+
+## Related modules
+
+Builds on [`bare-pipe`](/reference/bare/modules/bare-pipe), [`bare-stream`](/reference/bare/modules/bare-stream), and `bare-structured-clone` (see [Bare modules](/reference/modules/bare-modules)).
+
+## See also
+
+- [`bare-channel`](/reference/bare/modules/bare-channel)—inter-*thread* messaging (same idea, within a process).
+- [`bare-kit`](/reference/bare/bare-kit)—the host↔worklet IPC channel in native apps.
+- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.

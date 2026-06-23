@@ -1,0 +1,139 @@
+---
+title: "bare-pipe"
+description: "Reference for bare-pipe: native I/O pipes for Bare—duplex pipe streams over file descriptors and named pipes, with a server for accepting connections."
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-pipe`](https://github.com/holepunchto/bare-pipe) provides native I/O pipes for [Bare](/reference/bare/runtime): duplex streams over file descriptors (such as standard I/O) and named pipes / Unix domain sockets, plus a server for accepting connections. Pipes are [`bare-stream`](/reference/bare/modules/bare-stream) duplex streams. It's a native addon and requires Bare `>=1.16.0`.
+
+```sh
+npm i bare-pipe
+```
+
+## Usage
+
+```js
+const Pipe = require('bare-pipe')
+
+const stdout = new Pipe(1)
+stdout.write('Hello world!\n')
+```
+
+## API
+
+### Pipe
+
+#### `const pipe = new Pipe([path][, options])`
+
+Create a pipe. Pass a file descriptor or a named-pipe `path`.
+
+Options include:
+
+```js
+options = {
+  readBufferSize: 65536,
+  allowHalfOpen: true,
+  eagerOpen: true,
+  ipc: false
+}
+```
+
+Set `ipc: true` to enable IPC handle passing. See [IPC handle passing](#ipc-handle-passing).
+
+#### `pipe.open(fd[, options][, onconnect])` · `pipe.connect(path[, options][, onconnect])`
+
+Open over an existing descriptor, or connect to a named pipe.
+
+#### `pipe.write(chunk[, encoding][, handle][, cb])` · `pipe.accept(target)`
+
+Write data (optionally passing a `handle`), or accept a transferred handle. Properties: `connecting`, `pending`, `readyState`. Pipes emit `connect` and `handle`.
+
+#### `pipe.ref()` · `pipe.unref()`
+
+Manage the event-loop reference.
+
+### Server
+
+#### `const server = Pipe.createServer([options][, onconnection])`
+
+Create a pipe server: `server.listen(path[, backlog[, options]][, onlistening])`, `server.address()`, `server.close([onclose])`, `server.ref()` / `server.unref()`, and `server.listening`. Emits `listening`, `connection`, `close`, `error`.
+
+#### `Pipe.createConnection(path[, options][, onconnect])` · `Pipe.pipe()` · `Pipe.constants`
+
+Connection shorthand, a connected pipe pair, and constants.
+
+## IPC handle passing
+
+Pipes created with `ipc: true` can transfer libuv handles (named pipes, TCP sockets, UDP sockets) to a peer alongside the byte stream. The peer receives a `'handle'` event for each transferred handle, in arrival order, before the corresponding `'data'` event.
+
+### `event: 'handle'`
+
+Emitted on the receiving side for each pending handle when the pipe was created with `ipc: true`. The argument is the handle type—one of `Pipe.constants.handle.NAMED_PIPE`, `Pipe.constants.handle.TCP`, or `Pipe.constants.handle.UDP`. The listener must call `pipe.accept(target)` synchronously to claim the handle.
+
+### `pipe.accept(target)`
+
+Accept a pending handle into `target`. `target` must implement the [`IPCAcceptable`](#ipcacceptable-protocol) protocol. Must be called synchronously inside the `'handle'` event listener. Throws `INVALID_IPC_TARGET` if `target` does not implement the protocol.
+
+### Sender and receiver examples
+
+**Sender:**
+
+```js
+const left = new Pipe(fd, { ipc: true })
+const socket = tcp.createConnection(port)
+
+socket.on('connect', () => {
+  left.write(Buffer.from('here'), socket)
+})
+```
+
+**Receiver:**
+
+```js
+const right = new Pipe(fd, { ipc: true })
+
+right.on('handle', (type) => {
+  if (type === Pipe.constants.handle.TCP) {
+    const socket = new tcp.Socket()
+    right.accept(socket)
+    socket.on('data', console.log)
+  }
+})
+```
+
+### `IPCAcceptable` protocol
+
+Any object passed to `pipe.write(chunk, handle, ...)` or `pipe.accept(target)` must implement two well-known symbols:
+
+```js
+const ipcHandle = Symbol.for('bare.ipc.handle')
+const ipcAccept = Symbol.for('bare.ipc.accept')
+
+class MyTarget {
+  get [ipcHandle]() {
+    return this._handle // An ArrayBuffer backing a libuv uv_*_t struct
+  }
+
+  [ipcAccept]() {
+    // Optional: called synchronously after the handle has been transferred
+  }
+}
+```
+
+- `Symbol.for('bare.ipc.handle')` (required): A getter returning the underlying libuv handle (an `ArrayBuffer` whose first bytes are a `uv_stream_t` / `uv_udp_t`).
+- `Symbol.for('bare.ipc.accept')` (optional): A method called synchronously after the handle has been transferred. Use it to initialize per-handle state (e.g. address lookup).
+
+`Pipe`, `bare-tcp`'s `Socket`, and any compatible package implement this protocol natively, so a `bare-tcp` socket can be passed and received via `bare-pipe` IPC without extra glue code.
+
+## Related modules
+
+Builds on `bare-events` and [`bare-stream`](/reference/bare/modules/bare-stream) (see [Bare modules](/reference/modules/bare-modules)).
+
+## See also
+
+- [`bare-tcp`](/reference/bare/modules/bare-tcp)—the same stream shape over TCP.
+- [`bare-subprocess`](/reference/bare/modules/bare-subprocess)—uses pipes for child-process stdio.
+- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
