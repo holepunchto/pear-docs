@@ -87,10 +87,13 @@ Bare.on('resume', () => startServer())
 See [`bare-tcp`](/reference/bare/modules/bare-tcp) for the full server and socket API.
 </Callout>
 
-### Stop Hyperswarm
+### Suspend Hyperswarm
 
-Each `connection` event gives you a live socket stream. Hyperswarm tracks them internally; calling
-[`swarm.destroy()`](/reference/building-blocks/hyperswarm#await-swarmdestroy-force---) closes all connections and the underlying DHT socket in one step.
+Each `connection` event gives you a live socket stream that Hyperswarm tracks internally. Rather than
+tearing the swarm down, call [`swarm.suspend()`](/reference/building-blocks/hyperswarm#await-swarmsuspend-log---)
+to pause its connections, listening server, and discovery, and
+[`swarm.resume()`](/reference/building-blocks/hyperswarm#await-swarmresume-log---) to bring them
+back—the swarm instance and its joined topics survive the cycle.
 
 ```js skip="snippet-illustration"
 const Hyperswarm = require('hyperswarm')
@@ -98,29 +101,24 @@ const Corestore = require('corestore')
 
 const store = new Corestore('./data')
 const topic = Buffer.alloc(32) // your 32-byte topic
-let swarm = null
 
-async function startSwarm () {
-  swarm = new Hyperswarm()
-  swarm.on('connection', (conn) => store.replicate(conn))
-  await swarm.join(topic, { server: true, client: true }).flushed()
-}
-
-await startSwarm()
+const swarm = new Hyperswarm()
+swarm.on('connection', (conn) => store.replicate(conn))
+await swarm.join(topic, { server: true, client: true }).flushed()
 
 Bare.on('suspend', async () => {
-  await swarm.destroy() // closes connections + DHT socket
-  swarm = null
+  await swarm.suspend() // pause connections, server, and discovery
   await store.suspend() // flush buffered writes to disk
 })
 
 Bare.on('resume', async () => {
   await store.resume()
-  await startSwarm()
+  await swarm.resume() // reconnect and rejoin discovery
 })
 ```
 
-Destroying the swarm stops the replication streams—the only handles it holds in the loop. The
+Suspending the swarm stops the replication streams and DHT socket—the handles it holds in the
+loop—while keeping the swarm and its joined topics, so `resume` reconnects without rejoining. The
 `store` does not keep the loop referenced while idle, but it may hold buffered writes that have not
 yet reached disk. Call [`store.suspend()`](/reference/helpers/corestore#await-storesuspendoptions)
 to flush them before the process suspends, and [`store.resume()`](/reference/helpers/corestore#await-storeresume)
