@@ -284,6 +284,11 @@ export const customTree: Node[] = [
             name: 'Bundle a Bare app',
             url: '/how-to/run-on-native/bundle-a-bare-app',
           },
+          {
+            type: 'page',
+            name: 'Handle app suspension',
+            url: '/how-to/run-on-native/handle-app-suspension',
+          },
         ],
       },
       {
@@ -444,6 +449,7 @@ export const customTree: Node[] = [
               { type: 'page', name: 'bare-module', url: '/reference/bare/modules/bare-module' },
               { type: 'page', name: 'bare-url', url: '/reference/bare/modules/bare-url' },
               { type: 'page', name: 'bare-atomics', url: '/reference/bare/modules/bare-atomics' },
+              { type: 'page', name: 'bare-timers', url: '/reference/bare/modules/bare-timers' },
               { type: 'page', name: 'bare-pipe', url: '/reference/bare/modules/bare-pipe' },
               { type: 'page', name: 'bare-semver', url: '/reference/bare/modules/bare-semver' },
               { type: 'page', name: 'bare-form-data', url: '/reference/bare/modules/bare-form-data' },
