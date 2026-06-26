@@ -1,0 +1,114 @@
+---
+title: "bare-timers"
+description: "Reference for bare-timers: native setTimeout, setInterval, setImmediate, and their clear functions for Bare, plus ref/unref control over event-loop references."
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-timers`](https://github.com/holepunchto/bare-timers) provides the timer functions for [Bare](/reference/bare/runtime)—`setTimeout`, `setInterval`, `setImmediate`, and their `clear*` counterparts. The shape mirrors the Node.js [`timers`](https://nodejs.org/api/timers.html) API. Inside Bare these functions are installed as globals, so most code calls them directly without importing anything. It's a native addon and requires Bare `>=1.7.0`.
+
+Require the module explicitly only to be version-specific or to reach the [promise-based API](#promise-based-timers):
+
+```sh
+npm i bare-timers
+```
+
+## Usage
+
+```js
+// Globals — no import needed inside Bare
+const timer = setInterval(() => console.log('tick'), 1000)
+
+setTimeout(() => clearInterval(timer), 5000)
+```
+
+```js
+// Or require the module explicitly
+const timers = require('bare-timers')
+
+timers.setTimeout(() => console.log('hello world'), 100)
+```
+
+## API
+
+The signatures match Node.js. The Bare-specific points are called out below: a timer handle is an object rather than a numeric id, every handle is [referenced](#timer-handles) by default, and the maximum delay is much larger than Node's.
+
+### Timers
+
+#### `setTimeout(callback, delay[, ...args])`
+
+Schedule `callback` to run once after `delay` milliseconds. Any extra `args` are forwarded to `callback`. Returns a `Timeout` [handle](#timer-handles).
+
+`delay` is floored to an integer. A `delay` that is less than `1`, `NaN`, non-numeric, or greater than `Number.MAX_SAFE_INTEGER` is clamped to `1` ms. (Node caps the maximum at `2147483647`; Bare's ceiling is `Number.MAX_SAFE_INTEGER`.)
+
+#### `setInterval(callback, delay[, ...args])`
+
+Like [`setTimeout`](#settimeoutcallback-delay-args), but re-runs `callback` every `delay` milliseconds until cleared. Returns a `Timeout` [handle](#timer-handles). The same `delay` clamping applies.
+
+#### `setImmediate(callback[, ...args])`
+
+Schedule `callback` to run after the current operation completes, ahead of any pending timeouts. There is no delay argument. Extra `args` are forwarded to `callback`. Returns an `Immediate` [handle](#timer-handles).
+
+#### `clearTimeout(timer)` · `clearInterval(timer)` · `clearImmediate(immediate)`
+
+Cancel a pending handle. Passing `null`, `undefined`, or a non-object is a no-op, as is clearing a handle that has already fired or been cleared. All three delegate to the same routine, so any one can cancel any handle—but use the matching name for clarity.
+
+### Timer handles
+
+`setTimeout` and `setInterval` return a `Timeout`; `setImmediate` returns an `Immediate`. Unlike browsers—where the timer functions return a numeric id—Bare returns an object handle, as Node.js does. Keep the handle to clear, re-reference, or refresh the timer. Every handle also implements `[Symbol.dispose]()`, so a `using timer = setTimeout(…)` declaration cancels the timer when the scope exits.
+
+A handle is **referenced** when created. While it is active and referenced it keeps the [event loop](/explanation/bare-runtime#the-lifecycle) alive—which is exactly what prevents a backgrounded app from going [`idle`](/reference/bare/runtime#lifecycle). See [Handle app suspension](/how-to/run-on-native/handle-app-suspension#clear-timers) for why this matters on mobile.
+
+#### `timer.ref()`
+
+Mark the handle as keeping the event loop alive. Handles start referenced, so this only matters after a previous [`unref()`](#timerunref). Returns the handle. No-op if the handle is already referenced or no longer active.
+
+#### `timer.unref()`
+
+Remove the handle from the loop's reference count without canceling it. The callback still fires if something else keeps the loop alive, but the timer alone will no longer prevent the loop from going `idle`. Returns the handle. No-op if the handle is already unreferenced or no longer active.
+
+The usual suspension pattern is to clear timers outright on `suspend`; `unref()` is the alternative for a timer that must keep running across the cycle—the same pattern [`bare-ipc`](/reference/bare/modules/bare-ipc#ipcunref) uses for its channel.
+
+#### `timer.hasRef()`
+
+Return `true` if the handle currently holds a reference on the event loop.
+
+#### `timer.refresh()`
+
+Reschedule a `Timeout` to fire `delay` milliseconds from now, reusing the same handle, callback, and `args`; reactivates the handle if it had been cleared. Returns the handle. Available on `setTimeout` and `setInterval` handles only—`Immediate` has no `refresh()`.
+
+### Promise-based timers
+
+`require('bare-timers').promises` (also reachable as `require('bare-timers/promises')`) exposes promise-returning variants. Each accepts an `options` object with `ref` (set to `false` to [`unref()`](#timerunref) the underlying timer) and `signal` (an [`AbortSignal`](https://github.com/holepunchto/bare-abort-controller) that cancels the timer when aborted).
+
+#### `await timers.promises.setTimeout([delay][, value][, options])`
+
+Resolve with `value` after `delay` milliseconds (default `1`).
+
+#### `timers.promises.setInterval([delay][, value][, options])`
+
+Return an async iterator that yields `value` every `delay` milliseconds. Drive it with `for await`; breaking out of the loop or aborting the `signal` stops it.
+
+#### `await timers.promises.setImmediate([value][, options])`
+
+Resolve with `value` after the current operation completes.
+
+```js
+const { setTimeout } = require('bare-timers').promises
+
+await setTimeout(1000) // sleep for one second
+```
+
+## Related modules
+
+Hooks into the [Bare runtime](/reference/bare/runtime)'s lifecycle events (`idle`, `resume`, `wakeup`) to pause and restart the underlying native timer. The [promise-based API](#promise-based-timers) integrates with [`bare-abort-controller`](https://github.com/holepunchto/bare-abort-controller)—an optional peer dependency—for `signal`-based cancellation. See [Bare modules](/reference/modules/bare-modules).
+
+## See also
+
+- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime#lifecycle)—the `idle`, `suspend`, and `resume` events timer references interact with.
+- [Handle app suspension](/how-to/run-on-native/handle-app-suspension#clear-timers)—clearing or unref-ing timers so a backgrounded app can suspend.
+- [`bare-ipc`](/reference/bare/modules/bare-ipc)—another handle with `ref()` / `unref()` for the same suspension pattern.
+- [Inside Bare](/explanation/bare-runtime#the-lifecycle)—the event-loop lifecycle behind referenced handles.

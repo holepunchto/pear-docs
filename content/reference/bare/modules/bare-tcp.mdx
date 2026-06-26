@@ -1,0 +1,125 @@
+---
+title: "bare-tcp"
+description: "Reference for bare-tcp: native TCP sockets and servers for Bare, with an API close to the Node.js net module."
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-tcp`](https://github.com/holepunchto/bare-tcp) provides native TCP sockets and servers for [Bare](/reference/bare/runtime). The shape mirrors the Node.js [`net`](https://nodejs.org/api/net.html) module. Sockets are [`bare-stream`](/reference/bare/modules/bare-stream) duplex streams. It's a native addon and requires Bare `>=1.16.0`.
+
+```sh
+npm i bare-tcp
+```
+
+## Usage
+
+```js
+const tcp = require('bare-tcp')
+
+const server = tcp.createServer((socket) => {
+  socket.write('hello\n')
+  socket.end()
+})
+
+server.listen(3000, () => {
+  const socket = tcp.createConnection(3000)
+  socket.on('data', (data) => console.log(data.toString()))
+})
+```
+
+## API
+
+### Socket
+
+#### `const socket = new tcp.Socket([options])`
+
+Create a TCP socket (a duplex stream).
+
+```js
+options = {
+  readBufferSize: 65536,
+  allowHalfOpen: true,
+  eagerOpen: true
+}
+```
+
+#### `socket.connect(port[, host[, options]][, onconnect])`
+
+Connect to a remote endpoint. `host` defaults to `localhost`.
+
+```js
+options = {
+  lookup: dns.lookup,
+  hints: null,
+  family: 0,
+  keepAlive: false,
+  keepAliveInitialDelay: 0,
+  noDelay: false,
+  timeout: null
+}
+```
+
+If `host` is a hostname, `options.lookup` resolves it (defaults to `bare-dns`). Set `options.family` to `4` or `6` to restrict to IPv4 or IPv6.
+
+#### `socket.setKeepAlive([enable][, delay])` · `socket.setNoDelay([enable])` · `socket.setTimeout(ms[, ontimeout])`
+
+Tune keep-alive, Nagle's algorithm, and the idle timeout.
+
+#### `socket.ref()` · `socket.unref()`
+
+Keep the event loop alive for this socket, or release it.
+
+Properties include `socket.connecting`, `socket.pending`, `socket.readyState`, `socket.timeout`, and the local/remote address, family, and port. Sockets emit `connect`, `lookup`, and `timeout` (in addition to the usual stream events).
+
+### Server
+
+#### `const server = tcp.createServer([options][, onconnection])`
+
+Create a TCP server. `onconnection` is added as a `connection` listener. Options are applied to each incoming socket.
+
+```js
+options = {
+  readBufferSize: 65536,
+  allowHalfOpen: true,
+  keepAlive: false,
+  keepAliveInitialDelay: 0,
+  noDelay: false,
+  pauseOnConnect: false
+}
+```
+
+#### `server.listen([port[, host[, backlog[, options]]]][, onlistening])`
+
+Start listening for connections.
+
+#### `server.address()` · `server.close([onclose])` · `server.ref()` · `server.unref()`
+
+`server.address()` returns `{ address, family, port }`, or `null` if the server is not listening. `server.close()` stops accepting new connections and emits `close` once all existing connections have ended.
+
+Properties include `server.listening`, `server.closing`, and `server.connections` (a `Set` of active connections). Servers emit `listening`, `connection`, `close`, `error`, and `lookup`.
+
+### Helpers
+
+#### `const socket = tcp.createConnection(port[, host[, options]][, onconnect])`
+
+Shorthand for creating a `Socket` and calling `connect()`.
+
+#### `tcp.isIP(host)` · `tcp.isIPv4(host)` · `tcp.isIPv6(host)`
+
+Classify a string as an IPv4/IPv6 address. `isIP()` returns `4` for IPv4, `6` for IPv6, or `0` otherwise. `isIPv4()` and `isIPv6()` return a boolean.
+
+#### `tcp.constants` · `tcp.errors`
+
+Constant and error tables.
+
+## Related modules
+
+Builds on `bare-dns`, `bare-events`, and [`bare-stream`](/reference/bare/modules/bare-stream) (see [Bare modules](/reference/modules/bare-modules)).
+
+## See also
+
+- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
+- [`bare-stream`](/reference/bare/modules/bare-stream)—the stream interface sockets implement.
+- [`bare-fetch`](/reference/bare/modules/bare-fetch)—a higher-level HTTP client.

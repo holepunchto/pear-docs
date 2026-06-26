@@ -1,0 +1,156 @@
+---
+title: "bare-subprocess"
+description: "Reference for bare-subprocess: native process spawning for Bare, with an API close to the Node.js child_process module."
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-subprocess`](https://github.com/holepunchto/bare-subprocess) spawns and manages child processes from [Bare](/reference/bare/runtime). The API follows the Node.js [`child_process`](https://nodejs.org/api/child_process.html) module. It's a native addon and requires Bare `>=1.7.0`; it's available on desktop (Windows, macOS, Linux).
+
+```sh
+npm i bare-subprocess
+```
+
+## Usage
+
+```js
+const { spawn } = require('bare-subprocess')
+
+const subprocess = spawn('echo', ['hello', 'world'], { stdio: 'inherit' })
+
+subprocess.on('exit', () => console.log('done'))
+```
+
+## API
+
+### Spawning
+
+#### `const subprocess = spawn(file[, args][, options])`
+
+Spawn `file` as a new subprocess with the given `args`. Returns a `Subprocess`. `args` may be `null` or omitted; if omitted, the second argument is treated as `options`.
+
+Options include:
+
+```js
+options = {
+  cwd: os.cwd(),
+  env: process.env,
+  stdio: [],
+  shell: false,
+  detached: false,
+  uid: -1,
+  gid: -1,
+  windowsHide: false,
+  windowsVerbatimArguments: false,
+  serialization: 'json'
+}
+```
+
+`stdio` may be an array of slot descriptors or a single string applied to all of `stdin`, `stdout`, and `stderr`. Each slot may be one of:
+
+| Value | Description |
+| --- | --- |
+| `'pipe'` | Open a pipe between parent and child. |
+| `'overlapped'` | Like `'pipe'` but opens the pipe in overlapped mode on Windows. |
+| `'inherit'` | Inherit the parent's corresponding file descriptor (or `'ignore'` for fds beyond 2). |
+| `'ignore'` | Do not open the file descriptor in the child. |
+| `'ipc'` | Open an IPC channel between parent and child. At most one slot may use this. |
+
+`serialization` selects how IPC messages are framed:
+
+| Mode | Description |
+| --- | --- |
+| `'json'` | Newline-delimited JSON. Only JSON-serializable values are supported. Default. |
+| `'advanced'` | Length-prefixed structured clone via `bare-structured-clone`. Supports `Date`, `Map`, `Buffer`, etc. |
+| `'binary'` | Raw pipe with no framing. `subprocess.channel` is `undefined`; use `subprocess.stdio[fd]` directly. |
+
+`shell` may be a string identifying the shell to use, or `true` to use the platform default (`/bin/sh`, `/system/bin/sh` on Android, or `cmd.exe` on Windows).
+
+#### `const result = spawnSync(file[, args][, options])`
+
+Synchronously spawn `file` and wait for it to exit. Returns an object:
+
+```js
+result = {
+  pid,
+  status,
+  signal,
+  output,
+  stdout,
+  stderr,
+  error
+}
+```
+
+Accepts all `spawn` options plus:
+
+```js
+options = {
+  input: null,
+  maxBuffer: 1024 * 1024
+}
+```
+
+`input` is written to the child's `stdin` before it starts. `maxBuffer` is the size of the buffer allocated to capture each `'pipe'` stdio slot.
+
+### Subprocess
+
+A `Subprocess` exposes `pid`, `spawnfile`, `spawnargs`, `stdio`, `stdin`, `stdout`, `stderr`, `exitCode`, `signalCode`, `killed`, `connected`, and `channel`.
+
+#### `subprocess.kill([signum])`
+
+Send a signal to the child (default `SIGTERM`).
+
+#### `subprocess.send(message[, handle][, callback])` · `subprocess.disconnect()`
+
+Send a message (and optionally a handle) over the IPC channel, or close it.
+
+#### `subprocess.ref()` · `subprocess.unref()`
+
+Keep the event loop alive for the child, or release it.
+
+A `Subprocess` emits `exit`, `close`, `message`, `disconnect`, and `error`.
+
+### class SubprocessParentChannel
+
+Available as `require('bare-subprocess/parent')`. Constructed inside the child process to access the parent end of the IPC channel. The serialization mode is selected automatically from the `BARE_CHANNEL_SERIALIZATION_MODE` environment variable, which is set by `spawn` in the parent.
+
+```js
+const ParentChannel = require('bare-subprocess/parent')
+
+const parent = new ParentChannel()
+
+parent.on('message', (message, handle) => {
+  parent.send({ echoed: message })
+})
+```
+
+#### `parent.connected`
+
+`true` while the channel is open.
+
+#### `parent.send(message[, handle][, callback])` · `parent.disconnect()`
+
+Same semantics as the corresponding `Subprocess` method.
+
+#### `parent.ref()` · `parent.unref()`
+
+Same semantics as the corresponding `Subprocess` method.
+
+A `SubprocessParentChannel` emits `message`, `disconnect`, and `error` — the same semantics as the corresponding `Subprocess` events.
+
+### constants
+
+Re-exports the signal constants from `bare-os` (`os.constants.signals`). Also available as `require('bare-subprocess/constants')`.
+
+## Related modules
+
+Builds on `bare-env`, `bare-events`, [`bare-os`](/reference/bare/modules/bare-os), `bare-pipe`, `bare-structured-clone`, [`bare-tcp`](/reference/bare/modules/bare-tcp), and `bare-url` (see [Bare modules](/reference/modules/bare-modules)).
+
+## See also
+
+- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
+- [`bare-os`](/reference/bare/modules/bare-os)—process IDs, signals, and environment.
+- [Bare runtime API](/reference/bare/runtime)—`Bare.Thread` for in-process concurrency instead of child processes.

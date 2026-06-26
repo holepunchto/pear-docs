@@ -168,3 +168,129 @@ then executed:
   diff. Remaining repos (other helpers, tools, `pear-runtime`) not yet reverse-checked —
   forward linking confirms nothing *documented* is stale there, but a README diff could
   still surface *new* undocumented APIs if desired.
+
+## Status — Bare reference modules (2026-06-23)
+
+**Method:** a fan-out verification pass (one agent per page) diffed each Bare reference
+doc against its upstream `holepunchto/bare-*` repo at the repo's **latest release tag**
+(forward check on every documented signature/option/default + a lighter reverse check for
+undocumented public APIs). Real affirmative-false-claim findings were re-verified directly
+against source before fixing. **All 39 Bare docs are now checked** (across two runs);
+the newly-added `bare/cli`, `bare/runtime`, `bare-kit`, `bare-url`, and `bare-stream` are
+accurate (PASS / forward-check PASS), and `bare-union-bundle` had real default-value errors
+(now fixed). The guide pass is partially complete (28/40) — see below.
+
+**Runnable how-to code is independently verified:** `npm run test:examples` passes **6/6**
+scenarios (hyperdht, hyperswarm, hypercore, corestore, hyperbee, hyperdrive) — real
+`npm install` + live P2P execution against current upstream libs.
+
+### Fixed — affirmative false claims (verified against source)
+
+- 🔴 **`bare-sdl`** — doc documented two classes, **`Rect`** and **`Rect.F`**, that do not
+  exist in the package (`index.js` exports only `constants, AudioDevice, Camera, AudioStream,
+  Event, Poller, Renderer, Texture, Window`). It also gave `renderer.texture(texture[, src[,
+  dst]])` and `texture.update(buffer, pitch[, rect])` optional rect args the source does not
+  accept (`texture(texture)`; `update(buffer, pitch)` with `// TODO: expose SDL_Rect`).
+  **Fixed:** removed the `Rect`/`Rect.F` bullets, corrected both signatures, and added the
+  real but undocumented `Camera` / `AudioStream` exports. (`bare-sdl @ v1.0.0-5`)
+- 🔴 **`bare-addon-resolve`** — listed `resolve.preresolved` as an exposed sub-generator, but
+  it is **not exported** (it belongs to the `bare-module-resolve` dependency and is only
+  called internally). **Fixed:** dropped `resolve.preresolved`, added the real
+  `resolve.constants` export, and softened the "iOS and Android" linked-platform claim
+  (source also handles darwin/linux/win32). (`bare-addon-resolve @ v1.10.0`)
+- 🟠 **`bare-sqlite`** — the prepared-statement class was called `Statement` (heading + prose
+  + frontmatter), but upstream exports it as **`StatementSync`** (`index.js:7`). **Fixed:**
+  renamed to `StatementSync` throughout. (`bare-sqlite @ v0.1.4`)
+- 🟠 **`bare-bluetooth-apple`** — presented `` `Constants` `` as a named export, but there is
+  no `Constants` symbol; constants are static properties on `PeripheralManager` /
+  `Characteristic` / related classes. **Fixed:** reworded. (`bare-bluetooth-apple @ v0.2.3`)
+- 🔴 **`bare-union-bundle`** — three option defaults were wrong types: `add` `skipModules`
+  and `load` `skipModules` were documented as arrays defaulting to `[]`, but are **booleans
+  defaulting to `true`** (skip `node_modules` deps); `load` `cache` was `true`, but is the
+  **module cache object, defaulting to `require.cache`**. **Fixed** all three.
+  (`bare-union-bundle @ v1.1.1`, `index.js:57,93`)
+
+### Fixed — guides
+
+- 🔴 **`how-to/.../build-desktop-distributables`** — used `pear.stage.includes` (plural) in
+  prose and the JSON example; the real key is **`pear.stage.include`** (singular) in *every*
+  pear version (verified `include` at both v2.2.15 `stage.js:150` and v2.6.5 `stage.js:115`;
+  no plural key exists). A plural block is silently ignored. **Fixed.**
+
+### Accurate (PASS) — 21 docs
+
+`bare-apk`, `bare-bluetooth-android`, `bare-broadcast-channel`, `bare-crypto`, `bare-fetch`,
+`bare-form-data`, `bare-fs`, `bare-ipc`, `bare-mime`, `bare-module`, `bare-module-resolve`,
+`bare-module-traverse`, `bare-os`, `bare-posix`, `bare-prom-client`, `bare-semver`,
+`bare-sidecar`, `bare-structured-clone`, `bare-subprocess`, `bare-tcp` — all documented
+signatures/options/defaults verified present and correct at the latest release tag.
+
+### Documented omissions (not wrong, mirror upstream README; optional to add)
+
+These docs are accurate for what they document but omit an option/export that exists in
+source (and, in most cases, is likewise absent from the upstream README):
+`bare-atomics` (`recursive` Mutex option) · `bare-channel` (`transfer` write option) ·
+`bare-console` (`bare-console/global` subpath) · `bare-inspector` (`Server` export,
+`onpaused` ctor arg, `post` callback arg) · `bare-make` (`stdio` option) ·
+`bare-mdns-discovery` (`MDNS_ADDR`/`MDNS_PORT`, `query` default, `service` event shape) ·
+`bare-pipe` (server options) · `bare-rpc` (`event()` fire-and-forget API — medium;
+`valueEncoding` option) · `bare-tls` (Unix-socket `path` connect overload).
+
+### Guides — complete (40/40 checked)
+
+All 40 code-bearing guide docs were API-checked against upstream; 2 had drift (both fixed):
+
+- 🔴 `build-desktop-distributables` — `pear.stage.includes` → `pear.stage.include` (**fixed**, above).
+- 🟠 `migration.mdx` — (1) `global.Pear.run()` does not exist on the global Pear API; worker
+  spawning is `Pear.worker.run(link, args)` (`pear-api @ v1.29.2 index.js:64-74`). (2) the
+  `updating`/`updated` events fire on `pear.updater`, not the runtime instance
+  (`pear-runtime @ v1.2.0`, README usage `pear.updater.on('updating'|'updated', …)`).
+  **Fixed** both tables. (pear-runtime `run()` does exist, so that mapping was left as-is.)
+
+The final 12 guides (`build-a-peer-to-peer-chat`, `reshape-into-a-production-app`, `ship`,
+`update`, `start-from-hello-pear-bare`, `start-from-hello-pear-electron`,
+`stream-stored-video-in-a-peer-to-peer-app`, and explanations
+`availability-and-blind-peering`, `dependencies-and-network`, `from-logs-to-files`,
+`storage-and-distribution`, `workers`) were verified directly in the main loop on a focused
+checkable surface: **every `pear`/`bare` CLI command, `pear.*` config key, and `pear-runtime`
+instance API** they use. Result: **no drift on API surface** (one external-link fix below).
+
+- All `pear` subcommands used (`stage`, `build`, `seed`, `provision`, `touch`, `run`, `info`,
+  `dump`, `multisig`) map to a real `cmd/*.js` in `holepunchto/pear @ v2.6.5`.
+- `pear.run`, `pear.storage`, `pear.updater.on('updating'|'updated')`, and
+  `pear.updater.applyUpdate()` match `pear-runtime @ v1.2.0` (`index.js` + README usage).
+- Building-block API usage in these tutorials (Hyperswarm / Hypercore / corestore) is the
+  same surface proven runnable by `test:examples` (6/6).
+
+### Fixed — start-from-hello-pear-bare (external-link fix, 2026-06-24)
+
+- 🔴 **`start-from-hello-pear-bare.mdx`** — the file table linked
+  `https://github.com/holepunchto/hello-pear-bare/blob/main/bin.js` (404). The boilerplate
+  renamed its entrypoint to **`bin.mjs`** (confirmed via `gh api
+  repos/holepunchto/hello-pear-bare/contents/`; `package.json` `start` script and all
+  `make:*` targets reference `bin.mjs`). **Fixed:** updated the GitHub link and its display
+  text to `bin.mjs`, updated the `npm start` command description (`bare bin.js` →
+  `bare bin.mjs`), and corrected all other prose/diagram references to the entrypoint
+  filename (`bin.js` → `bin.mjs`) throughout the page. Local example file embeds
+  (`examples/getting-started/hello-pear-bare/bin.js`) are a CJS adaptation kept as-is.
+
+### Validation run (2026-06-24, completion pass)
+
+- ✅ `check:internal-links` — 121 files, all internal links/assets valid.
+- ✅ `check:cross-links` — complete; every page has ≥2 inbound links.
+- ✅ `check:doctypes` — 121/121 declare the right docType.
+- ✅ `audit:reference-docs` — 17/17 pages pass structural checks. (The "0/400 symbols
+  matched" line is an artifact of verifying via `gh api` instead of local `UPSTREAM_ROOT`
+  clones — the audit's text search has no local tree to match against; not real drift. The
+  hyperssh/hypertele REVIEW notes are the known shallow-search false positives from round 1.)
+- ✅ `check:redirects` — 80 redirects, all stubs and `_redirects` entries valid.
+- ✅ `types:check` — MDX types generated; `tsc --noEmit` clean.
+- ✅ `npm run build` — full static export succeeded: 121 pages, 80 redirect stubs, LLM `.md`
+  files all written.
+- ✅ `check:external-links` — all external links valid (fixed `bin.js` → `bin.mjs` above).
+
+### Outstanding
+
+- Optional: add the documented *omissions* listed earlier (mirror upstream READMEs; not wrong).
+- Optional: machine-generate tag-pinned `Defined in:` source links for the 39 Bare pages
+  (extend `scripts/add-api-github-links.ts` with a `bare-*` repo map — currently 0 such links).

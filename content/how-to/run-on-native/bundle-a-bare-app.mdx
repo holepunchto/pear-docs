@@ -1,0 +1,67 @@
+---
+title: "Bundle a Bare app"
+description: "Package a Bare program two ways: an embeddable bundle for worklets with bare-pack, and a standalone executable for desktop and terminal with bare-build."
+docType: how-to
+schemaType: TechArticle
+---
+
+A Bare program ships in one of two shapes depending on where it runs: as an **embeddable bundle** loaded by a [worklet](/how-to/run-on-native/embed-bare-in-react-native) inside a native app, or as a **standalone executable** with no peer dependencies. This guide covers both, plus where native addons fit in.
+
+## Embeddable bundle with bare-pack
+
+[`bare-pack`](/reference/modules/bare-modules) traverses your module graph and produces a single [`bare-bundle`](https://github.com/holepunchto/bare-bundle) with import specifiers pre-resolved and addons and assets embedded. Build one for the platform you're embedding into:
+
+```sh skip="install-instruction"
+npm i -g bare-pack
+```
+
+```console skip="native-build"
+bare-pack --linked --host ios --out app.bundle.mjs app.js
+```
+
+Two flags matter for mobile: `--host <platform>[-<arch>[-<environment>]]` targets a specific system (pass it more than once for a combined bundle), and `--linked` makes addons resolve to `linked:` specifiers—required on iOS and Android, which link native code ahead of time rather than loading it from disk at runtime.
+
+Load the result in a worklet by giving `start()` a filename with the `.bundle` extension:
+
+```js skip="snippet-illustration"
+import { Worklet } from 'react-native-bare-kit'
+import bundle from './app.bundle.mjs'
+
+const worklet = new Worklet()
+worklet.start('/app.bundle', bundle)
+```
+
+## Standalone executable with bare-build
+
+[`bare-build`](https://github.com/holepunchto/bare-build) packages your code as a native application bundle or a standalone executable for desktop and mobile. It ships portable runtimes for every supported system, so the output runs with no Node.js, Bare, or Pear CLI installed:
+
+```sh skip="install-instruction"
+npm i -g bare-build
+```
+
+```console skip="native-build"
+bare-build \
+  --host darwin-arm64 --host darwin-x64 \
+  --standalone \
+  --identifier com.example.App \
+  app.js
+```
+
+The output format depends on platform and mode—`--standalone` emits a self-extracting executable (Mach-O on macOS/iOS, ELF on Linux/Android, PE on Windows), while `--package` emits an installer (`.pkg`, `.AppImage`, `.msix`, …).
+
+<Callout type="info">
+The portable runtimes run only Bare's I/O event loop, which suits headless CLIs and services. A native GUI app needs tight integration with the system event loop—pass a native runtime such as `--runtime bare-app-kit/runtime` (macOS) or `--runtime bare-ndk/runtime` (Android) instead.
+</Callout>
+
+This is the path the [`hello-pear-bare`](/getting-started/from-a-template/start-from-hello-pear-bare) template wires behind `npm run make`, which detects your host and builds the matching target.
+
+## Native addons and prebuilt runtimes
+
+Native addons are compiled separately with [`bare-make`](https://github.com/holepunchto/bare-make) (a CMake-based generator using Ninja + Clang); `bare-pack` then embeds the results. To build addons for every platform you ship to, the [Bare native-addon prebuild actions](/reference/ci-and-release/github-actions#bare-native-addon-prebuilds) run `bare-make` across a CI matrix. If you only need the runtime itself, [`bare-runtime`](https://github.com/holepunchto/bare-runtime) provides prebuilt Bare binaries for macOS, iOS, Linux, Android, and Windows.
+
+## See also
+
+- [Embed Bare in a React Native app](/how-to/run-on-native/embed-bare-in-react-native)—load the bundle in a worklet.
+- [Start from the hello-pear-bare template](/getting-started/from-a-template/start-from-hello-pear-bare)—a terminal app that builds standalone with `bare-build`.
+- [Bare modules](/reference/modules/bare-modules)—`bare-pack`, `bare-bundle`, `bare-make`, and the rest of the build tooling.
+- [One core, many platforms](/explanation/bare-on-native)—why the embeddable-bundle path exists.

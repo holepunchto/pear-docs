@@ -1,0 +1,122 @@
+---
+title: "bare-rpc"
+description: "Reference for bare-rpc: a librpc ABI-compatible RPC layer for Bare that frames typed requests and replies over a duplex stream."
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-rpc`](https://github.com/holepunchto/bare-rpc) is a [`librpc`](https://github.com/holepunchto/librpc) ABI-compatible RPC layer for [Bare](/reference/bare/runtime). It frames requests and replies over any duplex stream—an IPC pipe, a TCP socket, or a [Bare Kit](/reference/bare/bare-kit) worklet channel—identifying each method by a unique command number. It's pure JavaScript. For the end-to-end pattern with generated types, see [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge).
+
+```sh
+npm i bare-rpc
+```
+
+## Usage
+
+```js
+const RPC = require('bare-rpc')
+
+const SEND_MESSAGE = 1
+
+// Responder
+const rpc = new RPC(stream, (req) => {
+  if (req.command === SEND_MESSAGE) {
+    console.log(req.data.toString())
+    req.reply('ok')
+  }
+})
+
+// Caller
+const req = rpc.request(SEND_MESSAGE)
+req.send('ping')
+console.log((await req.reply()).toString())
+```
+
+## API
+
+### RPC
+
+#### `const rpc = new RPC(stream[, onrequest])`
+
+Create an RPC instance over a duplex `stream`. `onrequest` is called with an `RPCIncomingRequest` whenever a remote request arrives (it may also be an `RPCCommandRouter`).
+
+#### `const req = rpc.request(command)`
+
+Create an outgoing request for `command` (a unique number). Returns an `RPCOutgoingRequest`.
+
+### RPCOutgoingRequest
+
+Properties: `req.command`, `req.sent`, `req.received`.
+
+#### `req.send([data[, encoding]])`
+
+Send the request with `data` (a buffer or a string encoded with `encoding`). Callable once per request.
+
+#### `const data = await req.reply([encoding])`
+
+Await the remote reply, optionally decoding the buffer with `encoding`.
+
+#### `req.createRequestStream([options])` · `req.createResponseStream([options])`
+
+Create a writable stream for sending request data, or a readable stream for receiving streamed replies—the basis for the request-stream, response-stream, and duplex patterns.
+
+### RPCIncomingRequest
+
+The object passed to `onrequest`.
+
+Properties: `req.command`, `req.data` (the buffer sent with the request), `req.sent` (whether a reply has been sent), `req.received` (whether the request has been received as a stream).
+
+#### `req.reply([data[, encoding]])`
+
+Reply to the request with `data` (a buffer or a string encoded with `encoding`).
+
+The same `createRequestStream` / `createResponseStream` helpers are available for streaming responses—`createRequestStream` returns a `Readable` for incoming data, and `createResponseStream` returns a `Writable` for sending a reply.
+
+### RPCCommandRouter
+
+An alternative way to define commands and their handlers. Pass a router as the `onrequest` argument to `new RPC()` instead of a plain callback.
+
+#### `const router = new RPC.CommandRouter()`
+
+Create a new command router.
+
+#### `router.respond(command[, options], async (req, data) => {})`
+
+Register a handler for `command`. The callback receives the `RPCIncomingRequest` as `req` and the decoded `data`. Returning a value from the callback sends it as the reply; if `req.reply()` is called inside the callback, the return value is ignored.
+
+Options:
+
+```js
+{
+  requestEncoding: c.raw,   // compact-encoding for incoming data (default: raw buffer)
+  responseEncoding: c.raw   // compact-encoding for outgoing reply (default: raw buffer)
+}
+```
+
+**Example:**
+
+```js
+const router = new RPC.CommandRouter()
+
+router.respond(42, (req, data) => {
+  console.log(data.toString()) // ping
+  return Buffer.from('pong')
+})
+
+const rpc = new RPC(stream, router)
+
+const req = rpc.request(42)
+req.send('ping')
+```
+
+## Related modules
+
+Builds on [`bare-stream`](/reference/bare/modules/bare-stream). Pairs with [`hyperschema`](https://github.com/holepunchto/hyperschema) and [`compact-encoding`](/reference/helpers/compact-encoding) to generate typed message codecs.
+
+## See also
+
+- [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge)—generate a typed seam over this layer.
+- [One core, many platforms](/explanation/bare-on-native)—where the RPC seam fits architecturally.
+- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
