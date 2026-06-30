@@ -20,6 +20,7 @@ export class Engine {
   private embedder!: Embedder;
   private answerer: Answerer | null = null;
   llmEnabled = false;
+  llmModel = '';
   model = '';
 
   async init() {
@@ -30,6 +31,7 @@ export class Engine {
       try {
         this.answerer = await createAnswerer();
         this.llmEnabled = true;
+        this.llmModel = this.answerer.label;
       } catch (e) {
         console.warn('⚠ LLM unavailable, /api/ask will use extractive fallback:', (e as Error).message);
       }

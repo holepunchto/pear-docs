@@ -34,7 +34,7 @@ function readBody(req: http.IncomingMessage): Promise<string> {
 async function main() {
   console.log('▸ Initializing engine (loading index + models)…');
   const engine = await new Engine().init();
-  console.log(`✓ Engine ready: ${engine.size} chunks, model=${engine.model}, llm=${engine.llmEnabled ? 'on' : 'extractive-fallback'}`);
+  console.log(`✓ Engine ready: ${engine.size} chunks, model=${engine.model}, llm=${engine.llmEnabled ? engine.llmModel : 'extractive-fallback'}`);
 
   const server = http.createServer(async (req, res) => {
     cors(res);
@@ -48,7 +48,7 @@ async function main() {
     try {
       if (url.pathname === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, chunks: engine.size, model: engine.model, llm: engine.llmEnabled }));
+        res.end(JSON.stringify({ ok: true, chunks: engine.size, model: engine.model, llm: engine.llmEnabled, llmModel: engine.llmModel || null }));
         return;
       }
 

@@ -26,8 +26,8 @@ content/*.mdx ──(build:index)──▶ data/index.json   (chunks + int8 vect
   light lexical boost on heading/title term matches, returned as **section-level**
   hits that deep-link to the heading anchor (`…/page/#section`), capped per page for
   diversity. The same `Engine.search` surface can later be swapped to `@qvac/rag` + HyperDB.
-- **Answers:** QVAC `completion()` with Llama-3.2-1B. Without an LLM it streams an
-  **extractive** answer instead, so `/api/ask` always works.
+- **Answers:** QVAC `completion()` with a selectable model (`QVAC_LLM=fast|quality`).
+  Without an LLM it streams an **extractive** answer instead, so `/api/ask` always works.
 - **Corpus:** reuses the docs repo's own `scripts/helpers.ts` (`getFiles`,
   `fileToSlug`) so indexed/cited URLs match the link checker exactly.
 
@@ -64,8 +64,13 @@ Tools: `search_docs(query, topK?)`, `ask_docs(query)`, `fetch_doc(url)`.
 | --- | --- | --- |
 | `PORT` | `8787` | HTTP port |
 | `QVAC_EMBED_GGUF` | cached GTE-large | embedding model path |
-| `QVAC_LLM_GGUF` | cached Llama-3.2-1B | answer model path |
+| `QVAC_LLM` | `fast` | answer-model preset: `fast` (Llama-3.2-1B) or `quality` (Qwen3-4B) |
+| `QVAC_LLM_GGUF` | — | explicit GGUF path; overrides `QVAC_LLM` |
 | `QVAC_DISABLE_LLM` | unset | set `1` to force extractive answers |
+
+The answer model is a toggle: `QVAC_LLM=fast` is quick but terser; `QVAC_LLM=quality`
+uses Qwen3-4B for sharper prose and code (more RAM, slower per answer on CPU; its
+reasoning trace is suppressed automatically). `GET /health` reports the active model.
 
 ## Notes / known constraints (PoC)
 

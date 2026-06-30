@@ -40,8 +40,9 @@ content/*.mdx ──build:index──▶ data/index.json   (text chunks + int8 v
   over a prebuilt, int8-quantized index. Results are **section-level** and deep-link
   to the heading anchor (e.g. `…/set-up-multisig/#create-signing-keys`). PoC; the same
   interface can later be backed by `@qvac/rag` + HyperDB for replicated/P2P retrieval.
-- **Answers:** QVAC `completion()` with Llama-3.2-1B. With no LLM available it
-  streams an *extractive* answer instead, so the endpoint always responds.
+- **Answers:** QVAC `completion()` with a selectable model — `QVAC_LLM=fast`
+  (Llama-3.2-1B) or `QVAC_LLM=quality` (Qwen3-4B). With no LLM available it streams
+  an *extractive* answer instead, so the endpoint always responds.
 - **Corpus:** built straight from the `.mdx` files, reusing the docs repo's own
   `scripts/helpers.ts` so indexed/cited URLs match the rest of the tooling.
 
