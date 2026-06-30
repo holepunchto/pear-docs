@@ -10,14 +10,15 @@ One retrieval backend, two consumers (website + MCP).
 ## How it works
 
 ```
-content/*.mdx ──(build:index)──▶ data/index.json   (chunks + int8 vectors)
-                                  data/pages.json   (per-page markdown)
+content/*.mdx ──(build:index)──▶ data/index.json   (chunks: prose vectors + raw code)
+                                  data/pages.json   (per-page markdown, code preserved)
                                         │
                           server.ts loads index + QVAC models
                                         │
   website search box ──▶ POST /api/search   (semantic, query embedded by QVAC)
   website ask panel  ──▶ POST /api/ask      (SSE: sources → tokens → done)
   AI agents (MCP)    ──▶ /mcp               (search_docs · ask_docs · fetch_doc)
+  monitoring         ──▶ GET  /health       (chunk count, models, llm status)
 ```
 
 - **Embeddings:** QVAC `embed()` with GTE-large (GGUF). Query embedded server-side
@@ -27,9 +28,14 @@ content/*.mdx ──(build:index)──▶ data/index.json   (chunks + int8 vect
   hits that deep-link to the heading anchor (`…/page/#section`), capped per page for
   diversity. The same `Engine.search` surface can later be swapped to `@qvac/rag` + HyperDB.
 - **Answers:** QVAC `completion()` with a selectable model (`QVAC_LLM=fast|quality`).
+  Grounded in retrieved passages **including real code** — the corpus resolves the
+  docs' `file=<rootDir>/…` code transclusions (like `remark-code-import`) and keeps
+  fenced code, so answers reproduce actual example code instead of inventing APIs.
   Without an LLM it streams an **extractive** answer instead, so `/api/ask` always works.
 - **Corpus:** reuses the docs repo's own `scripts/helpers.ts` (`getFiles`,
-  `fileToSlug`) so indexed/cited URLs match the link checker exactly.
+  `fileToSlug`) so indexed/cited URLs match the link checker exactly. Each chunk gets
+  two text forms: **prose** (embedded, within the 512-token budget) and
+  **code-preserving markdown** (RAG context + the MCP `fetch_doc` body).
 
 ## Run
 
