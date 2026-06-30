@@ -36,7 +36,16 @@ export async function createEmbedder(opts: { ggufPath?: string; batchSize?: numb
   const ggufPath = opts.ggufPath || process.env.QVAC_EMBED_GGUF || DEFAULT_EMBED_GGUF;
   const batchSize = opts.batchSize ?? 32;
 
-  const modelId = await loadModel({ modelSrc: ggufPath, modelType: 'llamacpp-embedding' });
+  // Offload to the GPU (Metal on Apple Silicon) by default; override with
+  // QVAC_DEVICE=cpu on hosts without a usable GPU.
+  const device = process.env.QVAC_DEVICE === 'cpu' ? 'cpu' : 'gpu';
+  const modelId = await loadModel({
+    modelSrc: ggufPath,
+    modelType: 'llamacpp-embedding',
+    // NB: the embedding plugin's config uses camelCase `gpuLayers` (the
+    // completion plugin uses snake_case `gpu_layers` — different schemas).
+    modelConfig: { device, gpuLayers: device === 'gpu' ? 99 : 0 },
+  });
 
   // Probe dimensionality once.
   const probe = await embed({ modelId, text: 'dimension probe' });

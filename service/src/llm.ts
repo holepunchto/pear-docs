@@ -125,10 +125,12 @@ async function* stripThink(src: AsyncIterable<string>): AsyncIterable<string> {
 
 export async function createAnswerer(opts: { preset?: string; ggufPath?: string } = {}): Promise<Answerer> {
   const preset = resolvePreset(opts);
+  // Offload to the GPU (Metal on Apple Silicon) by default; QVAC_DEVICE=cpu opts out.
+  const device = process.env.QVAC_DEVICE === 'cpu' ? 'cpu' : 'gpu';
   const modelId = await loadModel({
     modelSrc: preset.gguf,
     modelType: 'llamacpp-completion',
-    modelConfig: { ctx_size: 4096 },
+    modelConfig: { ctx_size: 4096, device, gpu_layers: device === 'gpu' ? 99 : 0 },
   });
 
   return {

@@ -78,6 +78,7 @@ Tools: `search_docs(query, topK?)`, `ask_docs(query)`, `fetch_doc(url)`.
 | --- | --- | --- |
 | `PORT` | `8787` | HTTP port |
 | `QVAC_EMBED_GGUF` | cached GTE-large | embedding model path |
+| `QVAC_DEVICE` | `gpu` | inference device: `gpu` (Metal on Apple Silicon / CUDA) or `cpu` |
 | `QVAC_LLM` | `quality` | answer-model preset: `quality` (Qwen3-8B), `balanced` (Qwen3-4B), or `fast` (Llama-3.2-1B) |
 | `QVAC_LLM_GGUF` | — | explicit GGUF path; overrides `QVAC_LLM` |
 | `QVAC_DISABLE_LLM` | unset | set `1` to force extractive answers |
