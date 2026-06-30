@@ -41,23 +41,34 @@ interface AskSource {
   heading: string;
 }
 
-// Inline markdown: render `code` spans and **bold**, leave the rest as text.
+// Inline markdown: render [links](url), `code` spans and **bold**; rest as text.
 function renderInline(text: string): ReactNode[] {
   const out: ReactNode[] = [];
-  const re = /(`[^`]+`|\*\*[^*]+\*\*)/g;
+  const re = /(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
   let last = 0;
   let m: RegExpExecArray | null;
   let k = 0;
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) out.push(text.slice(last, m.index));
     const tok = m[0];
-    if (tok.startsWith('`'))
+    if (tok.startsWith('`')) {
       out.push(
         <code key={k++} className="rounded bg-fd-muted px-1 py-0.5 text-[0.85em]">
           {tok.slice(1, -1)}
         </code>,
       );
-    else out.push(<strong key={k++}>{tok.slice(2, -2)}</strong>);
+    } else if (tok.startsWith('[')) {
+      const lm = tok.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if (lm)
+        out.push(
+          <a key={k++} href={lm[2]} className="text-fd-primary hover:underline">
+            {lm[1]}
+          </a>,
+        );
+      else out.push(tok);
+    } else {
+      out.push(<strong key={k++}>{tok.slice(2, -2)}</strong>);
+    }
     last = m.index + tok.length;
   }
   if (last < text.length) out.push(text.slice(last));
