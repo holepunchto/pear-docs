@@ -61,7 +61,7 @@ function renderInline(text: string): ReactNode[] {
       const lm = tok.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
       if (lm)
         out.push(
-          <a key={k++} href={lm[2]} className="text-fd-primary hover:underline">
+          <a key={k++} href={lm[2].replace(/\s+"[^"]*"$/, '')} className="text-fd-primary hover:underline">
             {lm[1]}
           </a>,
         );
@@ -117,10 +117,20 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
   );
 }
 
-// Minimal, streaming-safe markdown: splits fenced ``` code blocks from prose.
-// An unclosed fence (still streaming) renders as a code block immediately.
+// A `|---|:--:|` style separator row identifying a markdown table header.
+function isTableSep(line: string): boolean {
+  return line.includes('|') && line.includes('-') && /^[\s|:-]+$/.test(line.trim());
+}
+function tableCells(line: string): string[] {
+  return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+}
+
+// Minimal, streaming-safe markdown: fenced ``` code blocks, pipe tables, and
+// prose. An unclosed fence (still streaming) renders as a code block immediately;
+// a table only renders once its separator row has arrived.
 function renderMarkdown(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
+  const lines = text.split('\n');
   let inCode = false;
   let lang = '';
   let code: string[] = [];
@@ -141,7 +151,9 @@ function renderMarkdown(text: string): ReactNode[] {
     code = [];
     lang = '';
   };
-  for (const line of text.split('\n')) {
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const fence = line.match(/^\s*```(\w*)/);
     if (fence) {
       if (inCode) flushCode();
@@ -152,7 +164,50 @@ function renderMarkdown(text: string): ReactNode[] {
       inCode = !inCode;
       continue;
     }
-    (inCode ? code : prose).push(line);
+    if (inCode) {
+      code.push(line);
+      continue;
+    }
+    // Table: a header row immediately followed by a separator row.
+    if (line.includes('|') && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+      flushProse();
+      const header = tableCells(line);
+      const rows: string[][] = [];
+      i += 2;
+      while (i < lines.length && lines[i].includes('|') && lines[i].trim()) {
+        rows.push(tableCells(lines[i]));
+        i++;
+      }
+      i--; // the for-loop's i++ lands on the first non-table line
+      nodes.push(
+        <div key={`tb${key++}`} className="mb-2 overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr>
+                {header.map((c, j) => (
+                  <th key={j} className="border border-fd-border bg-fd-muted px-2 py-1 text-left font-medium">
+                    {renderInline(c)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, ri) => (
+                <tr key={ri}>
+                  {r.map((c, j) => (
+                    <td key={j} className="border border-fd-border px-2 py-1 align-top">
+                      {renderInline(c)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      );
+      continue;
+    }
+    prose.push(line);
   }
   if (inCode) flushCode();
   else flushProse();

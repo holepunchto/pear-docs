@@ -8,7 +8,11 @@
  *
  * Model selection (in priority order):
  *   1. QVAC_LLM_GGUF  — explicit absolute path to any GGUF
- *   2. QVAC_LLM       — a named preset: "fast" (default) | "quality"
+ *   2. QVAC_LLM       — a named preset: "quality" (default) | "fast"
+ *
+ * Default is "quality": the small "fast" model tends to fabricate APIs in code
+ * examples, which is unacceptable for a docs assistant. "fast" stays available
+ * for low-resource hosts where answer latency matters more than code fidelity.
  */
 import os from 'node:os';
 import path from 'node:path';
@@ -40,8 +44,8 @@ const PRESETS: Record<string, Preset> = {
 function resolvePreset(opts: { preset?: string; ggufPath?: string }): Preset {
   const explicit = opts.ggufPath || process.env.QVAC_LLM_GGUF;
   if (explicit) return { label: path.basename(explicit), gguf: explicit, noThink: /qwen/i.test(explicit) };
-  const name = (opts.preset || process.env.QVAC_LLM || 'fast').toLowerCase();
-  return PRESETS[name] || PRESETS.fast;
+  const name = (opts.preset || process.env.QVAC_LLM || 'quality').toLowerCase();
+  return PRESETS[name] || PRESETS.quality;
 }
 
 export interface Answerer {
@@ -61,9 +65,12 @@ function buildPrompt(
     .join('\n\n');
   const system =
     'You are the Pear documentation assistant. Answer the question using ONLY the numbered ' +
-    'sources below. Be concise and technical, and cite sources inline like [1], [2]. ' +
-    'When a code example is relevant, reproduce the actual code from the sources VERBATIM in a ' +
-    'fenced code block — do NOT invent APIs, imports, or function names. If the sources do not ' +
+    'sources below, and cite them inline like [1], [2].\n' +
+    'When the question is about how to do something, include the FULL application code example ' +
+    'from the sources — the actual source files (imports through the key calls), not just the ' +
+    'shell command used to run it. Reproduce code VERBATIM in a fenced code block; never invent ' +
+    'or paraphrase APIs, method names, imports, or options. If the sources show only a run ' +
+    'command and no application code, say so rather than inventing code. If the sources do not ' +
     'contain the answer, say so plainly.';
   // `/no_think` is Qwen3's soft switch to skip its reasoning trace.
   const suffix = noThink ? '\n\n/no_think' : '';

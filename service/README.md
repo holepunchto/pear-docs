@@ -70,13 +70,15 @@ Tools: `search_docs(query, topK?)`, `ask_docs(query)`, `fetch_doc(url)`.
 | --- | --- | --- |
 | `PORT` | `8787` | HTTP port |
 | `QVAC_EMBED_GGUF` | cached GTE-large | embedding model path |
-| `QVAC_LLM` | `fast` | answer-model preset: `fast` (Llama-3.2-1B) or `quality` (Qwen3-4B) |
+| `QVAC_LLM` | `quality` | answer-model preset: `quality` (Qwen3-4B) or `fast` (Llama-3.2-1B) |
 | `QVAC_LLM_GGUF` | — | explicit GGUF path; overrides `QVAC_LLM` |
 | `QVAC_DISABLE_LLM` | unset | set `1` to force extractive answers |
 
-The answer model is a toggle: `QVAC_LLM=fast` is quick but terser; `QVAC_LLM=quality`
-uses Qwen3-4B for sharper prose and code (more RAM, slower per answer on CPU; its
-reasoning trace is suppressed automatically). `GET /health` reports the active model.
+The answer model is a toggle. **`quality` (Qwen3-4B) is the default** because the
+small `fast` model tends to fabricate APIs in code examples — unacceptable for a
+docs assistant. `QVAC_LLM=fast` is quicker and lighter but terser and less reliable
+on code; use it only where latency matters more than fidelity. Qwen's reasoning
+trace is suppressed automatically. `GET /health` reports the active model.
 
 ## Notes / known constraints (PoC)
 
