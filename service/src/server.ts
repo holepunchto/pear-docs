@@ -22,6 +22,13 @@ function cors(res: http.ServerResponse) {
   res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id');
 }
 
+/** Coerce a request-supplied topK to an integer in [1, max], else the default. */
+function clampTopK(v: unknown, def = 5, max = 20): number {
+  const n = Math.floor(Number(v));
+  if (!Number.isFinite(n) || n < 1) return def;
+  return Math.min(n, max);
+}
+
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let data = '';
@@ -59,7 +66,7 @@ async function main() {
           res.end(JSON.stringify({ error: 'query (string) required' }));
           return;
         }
-        const hits = await engine.search(query, topK);
+        const hits = await engine.search(query, clampTopK(topK));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(
           JSON.stringify({
@@ -88,10 +95,19 @@ async function main() {
           'Cache-Control': 'no-cache, no-transform',
           Connection: 'keep-alive',
         });
-        for await (const ev of engine.ask(query)) {
+        // Abort retrieval/generation if the client disconnects mid-stream, and
+        // stop writing to a closed socket.
+        const ac = new AbortController();
+        let closed = false;
+        req.on('close', () => {
+          closed = true;
+          ac.abort();
+        });
+        for await (const ev of engine.ask(query, { signal: ac.signal })) {
+          if (closed) break;
           res.write(`data: ${JSON.stringify(ev)}\n\n`);
         }
-        res.end();
+        if (!res.writableEnded) res.end();
         return;
       }
 

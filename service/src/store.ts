@@ -46,7 +46,7 @@ export interface DocPage {
 }
 
 export class DocStore {
-  private dim = 0;
+  dim = 0; // embedding dimensionality of the loaded index
   private meta: ChunkMeta[] = [];
   private matrix = new Float32Array(0); // [n * dim] dequantized, normalized
   private headingLc: string[] = []; // lowercased heading text, per chunk
@@ -134,12 +134,21 @@ export class DocStore {
     const ranked = [...byUrl.values()].sort((a, b) => b.score - a.score);
     const perPage = new Map<string, number>();
     const out: SearchHit[] = [];
+    const capped: SearchHit[] = [];
     for (const h of ranked) {
       const n = perPage.get(h.url) ?? 0;
-      if (n >= maxPerPage) continue;
+      if (n >= maxPerPage) {
+        capped.push(h); // held back by the diversity cap
+        continue;
+      }
       perPage.set(h.url, n + 1);
       out.push(h);
+      if (out.length >= topK) return out;
+    }
+    // Backfill from cap-dropped sections rather than return fewer than topK.
+    for (const h of capped) {
       if (out.length >= topK) break;
+      out.push(h);
     }
     return out;
   }

@@ -26,6 +26,14 @@ export class Engine {
   async init() {
     await this.store.load();
     this.embedder = await createEmbedder();
+    // Query vectors and index vectors must share a space, or cosine scores are
+    // meaningless (the dot loop would also read past the query vector → NaN).
+    if (this.store.dim && this.embedder.dim !== this.store.dim) {
+      throw new Error(
+        `Embedding dim mismatch: index=${this.store.dim}, model=${this.embedder.dim}. ` +
+          'Rebuild the index (npm run build:index) with the same embedding model.',
+      );
+    }
     this.model = this.store.model;
     if (process.env.QVAC_DISABLE_LLM !== '1') {
       try {
@@ -60,28 +68,34 @@ export class Engine {
    * chunks, then `{type:'done'}`. Falls back to an extractive answer (the lead
    * sentences of the top passages) when no LLM is loaded.
    */
-  async *ask(query: string, topK = 6): AsyncIterable<
+  async *ask(
+    query: string,
+    { topK = 6, signal }: { topK?: number; signal?: AbortSignal } = {},
+  ): AsyncIterable<
     | { type: 'sources'; sources: { n: number; url: string; title: string; heading: string }[] }
     | { type: 'token'; text: string }
     | { type: 'done'; extractive: boolean }
   > {
     const context = await this.retrieve(query, topK);
-    const sources = context.map((c, i) => ({ n: i + 1, url: c.deepUrl, title: c.title, heading: c.heading }));
-    yield { type: 'sources', sources };
+    const toSources = (hits: SearchHit[]) =>
+      hits.map((c, i) => ({ n: i + 1, url: c.deepUrl, title: c.title, heading: c.heading }));
 
     if (this.answerer) {
-      for await (const tok of this.answerer.answer(query, context)) {
+      yield { type: 'sources', sources: toSources(context) };
+      for await (const tok of this.answerer.answer(query, context, signal)) {
         yield { type: 'token', text: tok };
       }
       yield { type: 'done', extractive: false };
       return;
     }
 
-    // Extractive fallback: stitch the top passages with citations.
+    // Extractive fallback: emit sources for exactly the passages we cite, so the
+    // [n] markers in the text line up with the source list shown in the UI.
+    const top = context.slice(0, 3);
+    yield { type: 'sources', sources: toSources(top) };
     const text =
       `Based on the documentation:\n\n` +
-      context
-        .slice(0, 3)
+      top
         .map((c, i) => `• ${c.content.split('\n').slice(1).join(' ').slice(0, 280)} [${i + 1}]`)
         .join('\n\n');
     yield { type: 'token', text };

@@ -12,7 +12,7 @@
  */
 import os from 'node:os';
 import path from 'node:path';
-import { loadModel, completion, unloadModel } from '@qvac/sdk';
+import { loadModel, completion, cancel, unloadModel, InferenceCancelledError } from '@qvac/sdk';
 import type { SearchHit } from './store.ts';
 
 const MODELS = path.join(os.homedir(), '.qvac/models');
@@ -46,8 +46,8 @@ function resolvePreset(opts: { preset?: string; ggufPath?: string }): Preset {
 
 export interface Answerer {
   label: string;
-  /** Stream a grounded answer token-by-token. */
-  answer(query: string, context: SearchHit[]): AsyncIterable<string>;
+  /** Stream a grounded answer token-by-token. Pass a signal to cancel generation. */
+  answer(query: string, context: SearchHit[], signal?: AbortSignal): AsyncIterable<string>;
   close(): Promise<void>;
 }
 
@@ -121,14 +121,25 @@ export async function createAnswerer(opts: { preset?: string; ggufPath?: string 
 
   return {
     label: preset.label,
-    async *answer(query, context) {
+    async *answer(query, context, signal) {
       const run = completion({
         modelId,
         history: buildPrompt(query, context, Boolean(preset.noThink)),
         stream: true,
       });
-      const tokens = run.tokenStream as AsyncIterable<string>;
-      yield* preset.noThink ? stripThink(tokens) : tokens;
+      // Cancel the underlying QVAC generation when the caller aborts (e.g. the
+      // HTTP client disconnects), instead of running the model to completion.
+      const onAbort = () => void cancel({ requestId: run.requestId }).catch(() => {});
+      if (signal?.aborted) onAbort();
+      else signal?.addEventListener('abort', onAbort, { once: true });
+      try {
+        const tokens = run.tokenStream as AsyncIterable<string>;
+        yield* preset.noThink ? stripThink(tokens) : tokens;
+      } catch (e) {
+        if (!(e instanceof InferenceCancelledError)) throw e; // cancelled → stop quietly
+      } finally {
+        signal?.removeEventListener('abort', onAbort);
+      }
     },
     async close() {
       await unloadModel({ modelId, clearStorage: false });

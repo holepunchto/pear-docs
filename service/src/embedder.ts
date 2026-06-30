@@ -46,8 +46,8 @@ export async function createEmbedder(opts: { ggufPath?: string; batchSize?: numb
     dim,
     async embed(texts: string[]): Promise<Float32Array[]> {
       const out: Float32Array[] = [];
-      // GTE-large embeds at most 512 tokens; hard-cap input length as a safety net
-      // (~3 chars/token for dense text → 1400 chars stays comfortably under budget).
+      // GTE-large embeds at most 512 tokens; hard-cap input length as a safety net.
+      // Dense/code-y text can hit ~2 chars/token, so 1000 chars stays under budget.
       const cap = (t: string) => (t.length > 1000 ? t.slice(0, 1000) : t);
       for (let i = 0; i < texts.length; i += batchSize) {
         const batch = texts.slice(i, i + batchSize).map(cap);
