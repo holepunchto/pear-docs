@@ -34,9 +34,14 @@ const PRESETS: Record<string, Preset> = {
     label: 'Llama-3.2-1B (fast)',
     gguf: path.join(MODELS, '9856996b9b7bf6c4_Llama-3.2-1B-Instruct-Q4_0.gguf'),
   },
-  quality: {
-    label: 'Qwen3-4B (quality)',
+  balanced: {
+    label: 'Qwen3-4B (balanced)',
     gguf: path.join(MODELS, '6dea07e2f9342ff3_Qwen3-4B-Q4_K_M.gguf'),
+    noThink: true,
+  },
+  quality: {
+    label: 'Qwen3-8B (quality)',
+    gguf: path.join(MODELS, 'qwen3-8b-instruct-q4_k_m.gguf'),
     noThink: true,
   },
 };

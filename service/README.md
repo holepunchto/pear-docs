@@ -46,6 +46,14 @@ npm run build:index   # embeds the corpus → data/*.json  (~100s, one-time)
 npm run start         # serves on http://localhost:8787
 ```
 
+The default answer model is **Qwen3-8B** (~4.7 GB). If it isn't cached yet, fetch it
+once (or run with `QVAC_LLM=balanced`/`fast` to use a smaller cached model):
+
+```bash
+curl -L -o ~/.qvac/models/qwen3-8b-instruct-q4_k_m.gguf \
+  https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf
+```
+
 Point the website at it (default already targets localhost):
 
 ```bash
@@ -70,15 +78,17 @@ Tools: `search_docs(query, topK?)`, `ask_docs(query)`, `fetch_doc(url)`.
 | --- | --- | --- |
 | `PORT` | `8787` | HTTP port |
 | `QVAC_EMBED_GGUF` | cached GTE-large | embedding model path |
-| `QVAC_LLM` | `quality` | answer-model preset: `quality` (Qwen3-4B) or `fast` (Llama-3.2-1B) |
+| `QVAC_LLM` | `quality` | answer-model preset: `quality` (Qwen3-8B), `balanced` (Qwen3-4B), or `fast` (Llama-3.2-1B) |
 | `QVAC_LLM_GGUF` | — | explicit GGUF path; overrides `QVAC_LLM` |
 | `QVAC_DISABLE_LLM` | unset | set `1` to force extractive answers |
 
-The answer model is a toggle. **`quality` (Qwen3-4B) is the default** because the
-small `fast` model tends to fabricate APIs in code examples — unacceptable for a
-docs assistant. `QVAC_LLM=fast` is quicker and lighter but terser and less reliable
-on code; use it only where latency matters more than fidelity. Qwen's reasoning
-trace is suppressed automatically. `GET /health` reports the active model.
+The answer model is a toggle. **`quality` (Qwen3-8B) is the default** — the small
+`fast` model fabricates APIs in code examples, which is unacceptable for a docs
+assistant. `balanced` (Qwen3-4B) is a lighter middle ground; `fast` (Llama-3.2-1B)
+is quickest but least reliable on code — use it only where latency matters more than
+fidelity. Qwen's reasoning trace is suppressed automatically. `GET /health` reports
+the active model. (Qwen3-8B GGUF lives at `~/.qvac/models/qwen3-8b-instruct-q4_k_m.gguf`;
+override any model with `QVAC_LLM_GGUF`.)
 
 ## Notes / known constraints (PoC)
 
