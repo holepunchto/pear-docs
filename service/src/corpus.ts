@@ -3,8 +3,14 @@
  *
  * Reuses the docs repo's own page-enumeration + slug logic (`scripts/helpers.ts`)
  * so the URLs we index/cite are byte-for-byte the ones the link checker validates
- * — no Next.js runtime required. Each page is split into heading-anchored chunks
- * that become the retrieval units.
+ * — no Next.js runtime required. Each page is split into heading-anchored chunks.
+ *
+ * Two text representations are produced per chunk:
+ *   - `content` : prose only (code stripped) → what we EMBED. Keeps vectors within
+ *     the embedder's 512-token budget and matches on meaning.
+ *   - `raw`     : code-preserving markdown (with `file=<rootDir>/…` transclusions
+ *     resolved, mirroring the docs' `remark-code-import`) → the CONTEXT the RAG
+ *     answer is grounded in, so "ask" can show real code, not invented snippets.
  */
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -17,29 +23,32 @@ const SERVICE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const REPO_ROOT = path.resolve(SERVICE_DIR, '..');
 const CONTENT_DIR = path.join(REPO_ROOT, 'content');
 
+const MAX_RAW_CHARS = 2600; // per-chunk LLM-context budget (code is verbose)
+const MAX_PROSE_CHARS = 1000; // per-chunk embedding budget (~< 512 tokens)
+const FENCE = '```';
+
 export interface DocChunk {
   id: string;
-  url: string; // canonical page URL with trailing slash, e.g. /how-to/connect-to-peers/
+  url: string; // canonical page URL with trailing slash
   anchor: string; // heading slug for deep-linking ('' for the lead section)
   title: string; // page title (frontmatter)
-  heading: string; // section heading this chunk lives under ('' for the lead section)
-  content: string; // plain-text chunk body (heading + prose)
+  heading: string; // section heading ('' for the lead section)
+  content: string; // prose-only text (embedded + used for snippets)
+  raw: string; // code-preserving markdown (RAG context)
 }
 
 export interface DocPage {
   url: string;
   title: string;
   description: string;
-  markdown: string; // cleaned full-page markdown (for the MCP fetch_doc tool)
+  markdown: string; // code-preserving full-page markdown (MCP fetch_doc)
 }
 
-/** Slug from helpers (`/how-to/x`) → canonical site URL (`/how-to/x/`). */
 function slugToUrl(slug: string): string {
   if (slug === '/' || slug === '') return '/';
   return `${slug.replace(/\/+$/, '')}/`;
 }
 
-/** Pull `title` / `description` out of YAML frontmatter without a YAML dep. */
 function parseFrontmatter(raw: string): { data: Record<string, string>; body: string } {
   const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!m) return { data: {}, body: raw };
@@ -48,74 +57,80 @@ function parseFrontmatter(raw: string): { data: Record<string, string>; body: st
     const kv = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
     if (!kv) continue;
     let v = kv[2].trim();
-    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-      v = v.slice(1, -1);
-    }
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
     data[kv[1]] = v;
   }
   return { data, body: m[2] };
 }
 
-/**
- * Reduce MDX/markdown to readable plain text: drop imports/exports, JSX comments,
- * fenced code, HTML/JSX tags, and link/image syntax — keeping heading markers so
- * the chunker can split on them.
- */
-function mdxToText(body: string): string {
-  return body
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '') // JSX comments
-    .replace(/^import\s.+$/gm, '') // import lines
-    .replace(/^export\s.+$/gm, '') // export lines
-    .replace(/<include>[\s\S]*?<\/include>/g, '') // partial includes
-    .replace(/```[\s\S]*?```/g, ' ') // fenced code blocks
+// Fenced block whose info string carries `file=<token>` (remark-code-import).
+const FILE_FENCE = new RegExp(`${FENCE}([^\\n]*\\bfile=(\\S+)[^\\n]*)\\n[\\s\\S]*?${FENCE}`, 'g');
+const ANY_FENCE = new RegExp(`${FENCE}[\\s\\S]*?${FENCE}`, 'g');
+
+/** Inline `file=<rootDir>/path` code fences from the referenced source files. */
+async function resolveCodeImports(body: string): Promise<string> {
+  const tokens = [...new Set([...body.matchAll(FILE_FENCE)].map((m) => m[2]))];
+  const contents = new Map<string, string | null>();
+  await Promise.all(
+    tokens.map(async (tok) => {
+      try {
+        const rel = tok.replace(/^["']|["']$/g, '').split('#')[0].replace('<rootDir>/', '');
+        contents.set(tok, (await readFile(path.join(REPO_ROOT, rel), 'utf-8')).trim());
+      } catch {
+        contents.set(tok, null);
+      }
+    }),
+  );
+  return body.replace(FILE_FENCE, (full, info: string, tok: string) => {
+    const c = contents.get(tok);
+    if (c == null) return full;
+    const lang = info.trim().split(/\s+/)[0] || '';
+    return `${FENCE}${lang}\n${c}\n${FENCE}`;
+  });
+}
+
+/** Code-preserving cleanup: drop imports/JSX noise but keep fences + prose. */
+function toRichMarkdown(body: string): string {
+  // Protect code blocks so the JSX/tag strippers don't touch code.
+  const blocks: string[] = [];
+  let s = body.replace(ANY_FENCE, (m) => `@@CODEBLOCK${blocks.push(m) - 1}@@`);
+  s = s
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/^import\s.+$/gm, '')
+    .replace(/^export\s.+$/gm, '')
+    .replace(/<include>[\s\S]*?<\/include>/g, '')
+    .replace(/<[A-Za-z/][^>]*>/g, '') // JSX/HTML tags (code is protected above)
+    .replace(/\n{3,}/g, '\n\n');
+  return s.replace(/@@CODEBLOCK(\d+)@@/g, (_, i) => blocks[Number(i)]).trim();
+}
+
+/** Reduce rich markdown to plain prose (for embedding + snippets). */
+function toProse(rich: string): string {
+  return rich
+    .replace(ANY_FENCE, ' ')
     .replace(/~~~[\s\S]*?~~~/g, ' ')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // links → text
-    .replace(/<[^>]+>/g, ' ') // HTML/JSX tags
-    .replace(/`([^`]+)`/g, '$1') // inline code
-    .replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, '$1') // emphasis
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
-/** Split cleaned page text into chunks anchored at `##`/`###` headings. */
-function chunkPage(text: string, maxChars = 900): { heading: string; anchor: string; content: string }[] {
-  const lines = text.split('\n');
-  const sections: { heading: string; lines: string[] }[] = [{ heading: '', lines: [] }];
+/** Fence-aware split into heading sections (never splits inside a code block). */
+function splitSections(md: string): { heading: string; body: string }[] {
+  const lines = md.split('\n');
+  const secs: { heading: string; lines: string[] }[] = [{ heading: '', lines: [] }];
+  let inCode = false;
   for (const line of lines) {
-    const h = line.match(/^#{1,6}\s+(.+?)\s*#*\s*$/);
-    if (h) sections.push({ heading: h[1].trim(), lines: [] });
-    else sections.at(-1)!.lines.push(line);
+    if (line.trimStart().startsWith(FENCE)) inCode = !inCode;
+    const h = !inCode ? line.match(/^#{1,6}\s+(.+?)\s*#*\s*$/) : null;
+    if (h) secs.push({ heading: h[1].trim(), lines: [] });
+    else secs.at(-1)!.lines.push(line);
   }
-  // One slugger per page so repeated headings get -1/-2 suffixes, matching
-  // Fumadocs/rehype-slug (so anchors resolve to real on-page ids).
-  const slugger = new GithubSlugger();
-  const chunks: { heading: string; anchor: string; content: string }[] = [];
-  for (const s of sections) {
-    const anchor = s.heading ? slugger.slug(s.heading) : '';
-    const body = s.lines.join('\n').trim();
-    if (!body && !s.heading) continue;
-    const prefix = s.heading ? `${s.heading}. ` : '';
-    const full = (prefix + body).trim();
-    if (!full) continue;
-    // Soft-split oversized sections on paragraph boundaries.
-    if (full.length <= maxChars) {
-      chunks.push({ heading: s.heading, anchor, content: full });
-      continue;
-    }
-    let buf = '';
-    for (const para of full.split(/\n{2,}/)) {
-      if ((buf + '\n\n' + para).length > maxChars && buf) {
-        chunks.push({ heading: s.heading, anchor, content: buf.trim() });
-        buf = prefix + para;
-      } else {
-        buf = buf ? `${buf}\n\n${para}` : para;
-      }
-    }
-    if (buf.trim()) chunks.push({ heading: s.heading, anchor, content: buf.trim() });
-  }
-  return chunks;
+  return secs.map((s) => ({ heading: s.heading, body: s.lines.join('\n').trim() }));
 }
 
 /** Build the full corpus: per-page records + flattened retrieval chunks. */
@@ -125,21 +140,26 @@ export async function buildCorpus(): Promise<{ pages: DocPage[]; chunks: DocChun
   const chunks: DocChunk[] = [];
 
   for (const file of files) {
-    const raw = await readFile(file, 'utf-8');
-    const { data, body } = parseFrontmatter(raw);
-    // `fileToSlug` expects a path containing the `content` segment.
+    const fileRaw = await readFile(file, 'utf-8');
+    const { data, body } = parseFrontmatter(fileRaw);
     const relForSlug = file.slice(file.indexOf('content'));
     const url = slugToUrl(fileToSlug(relForSlug));
     const title = data.title || url;
-    const text = mdxToText(body);
 
-    pages.push({ url, title, description: data.description || '', markdown: `# ${title}\n\n${text}` });
+    const resolved = await resolveCodeImports(body);
+    const rich = toRichMarkdown(resolved);
 
-    const pageChunks = chunkPage(text);
-    pageChunks.forEach((c, i) => {
-      // Prepend the page title to every chunk so retrieval has page-level context.
-      const content = `${title}${c.heading ? ` — ${c.heading}` : ''}\n${c.content}`;
-      chunks.push({ id: `${url}#${i}`, url, anchor: c.anchor, title, heading: c.heading, content });
+    pages.push({ url, title, description: data.description || '', markdown: `# ${title}\n\n${rich}` });
+
+    const slugger = new GithubSlugger();
+    splitSections(rich).forEach((sec, i) => {
+      const anchor = sec.heading ? slugger.slug(sec.heading) : '';
+      const prose = toProse(sec.body);
+      if (!prose.trim()) return; // skip code-only/empty sections for retrieval
+      const label = `${title}${sec.heading ? ` — ${sec.heading}` : ''}`;
+      const content = `${label}\n${prose}`.slice(0, MAX_PROSE_CHARS + label.length);
+      const raw = `${label}\n${sec.body}`.slice(0, MAX_RAW_CHARS);
+      chunks.push({ id: `${url}#${i}`, url, anchor, title, heading: sec.heading, content, raw });
     });
   }
 

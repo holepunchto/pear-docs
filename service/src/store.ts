@@ -18,7 +18,8 @@ export interface ChunkMeta {
   anchor: string;
   title: string;
   heading: string;
-  content: string;
+  content: string; // prose (snippets)
+  raw: string; // code-preserving markdown (RAG context)
 }
 
 export interface SearchHit extends ChunkMeta {
@@ -65,7 +66,7 @@ export class DocStore {
     this.contentLc = new Array(n);
     for (let i = 0; i < n; i++) {
       const c = index.chunks[i];
-      this.meta[i] = { id: c.id, url: c.url, anchor: c.anchor ?? '', title: c.title, heading: c.heading, content: c.content };
+      this.meta[i] = { id: c.id, url: c.url, anchor: c.anchor ?? '', title: c.title, heading: c.heading, content: c.content, raw: c.raw ?? c.content };
       this.headingLc[i] = `${c.title} ${c.heading}`.toLowerCase();
       this.contentLc[i] = `${c.title} ${c.heading} ${c.content}`.toLowerCase();
       const buf = Buffer.from(c.q, 'base64');

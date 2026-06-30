@@ -52,6 +52,7 @@ async function main() {
       title: c.title,
       heading: c.heading,
       content: c.content,
+      raw: c.raw,
       q: quantize(vectors[i]),
     })),
   };

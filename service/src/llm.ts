@@ -24,12 +24,14 @@ export interface Answerer {
 
 function buildPrompt(query: string, context: SearchHit[]): { role: string; content: string }[] {
   const sources = context
-    .map((c, i) => `[${i + 1}] (${c.url}) ${c.title}${c.heading ? ` — ${c.heading}` : ''}\n${c.content}`)
+    .map((c, i) => `[${i + 1}] (${c.deepUrl}) ${c.title}${c.heading ? ` — ${c.heading}` : ''}\n${c.raw}`)
     .join('\n\n');
   const system =
     'You are the Pear documentation assistant. Answer the question using ONLY the numbered ' +
-    'sources below. Be concise and technical. Cite sources inline like [1], [2]. ' +
-    'If the sources do not contain the answer, say so plainly.';
+    'sources below. Be concise and technical, and cite sources inline like [1], [2]. ' +
+    'When a code example is relevant, reproduce the actual code from the sources VERBATIM in a ' +
+    'fenced code block — do NOT invent APIs, imports, or function names. If the sources do not ' +
+    'contain the answer, say so plainly.';
   return [
     { role: 'system', content: system },
     { role: 'user', content: `Sources:\n${sources}\n\nQuestion: ${query}` },
