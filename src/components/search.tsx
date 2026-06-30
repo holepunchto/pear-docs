@@ -13,7 +13,13 @@ import {
 import { useDocsSearch } from 'fumadocs-core/search/client';
 import type { SortedResult } from 'fumadocs-core/search';
 import { create } from '@orama/orama';
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from 'react';
 
 // QVAC docs service (semantic search + RAG "ask"). Defaults to the local PoC
 // service; failed/unset → the build-time Orama index is used as a fallback.
@@ -33,6 +39,69 @@ interface AskSource {
   url: string;
   title: string;
   heading: string;
+}
+
+// Inline markdown: render `code` spans and **bold**, leave the rest as text.
+function renderInline(text: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  const re = /(`[^`]+`|\*\*[^*]+\*\*)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let k = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const tok = m[0];
+    if (tok.startsWith('`'))
+      out.push(
+        <code key={k++} className="rounded bg-fd-muted px-1 py-0.5 text-[0.85em]">
+          {tok.slice(1, -1)}
+        </code>,
+      );
+    else out.push(<strong key={k++}>{tok.slice(2, -2)}</strong>);
+    last = m.index + tok.length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+// Minimal, streaming-safe markdown: splits fenced ``` code blocks from prose.
+// An unclosed fence (still streaming) renders as a code block immediately.
+function renderMarkdown(text: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let inCode = false;
+  let code: string[] = [];
+  let prose: string[] = [];
+  let key = 0;
+  const flushProse = () => {
+    const joined = prose.join('\n').replace(/\n{3,}/g, '\n\n');
+    if (joined.trim())
+      nodes.push(
+        <p key={`p${key++}`} className="mb-2 whitespace-pre-wrap">
+          {renderInline(joined)}
+        </p>,
+      );
+    prose = [];
+  };
+  const flushCode = () => {
+    nodes.push(
+      <pre key={`c${key++}`} className="mb-2 overflow-x-auto rounded-md bg-fd-muted p-2 text-xs">
+        <code>{code.join('\n')}</code>
+      </pre>,
+    );
+    code = [];
+  };
+  for (const line of text.split('\n')) {
+    if (/^\s*```/.test(line)) {
+      if (inCode) flushCode();
+      else flushProse();
+      inCode = !inCode;
+      continue;
+    }
+    (inCode ? code : prose).push(line);
+  }
+  if (inCode) flushCode();
+  else flushProse();
+  return nodes;
 }
 
 export default function CustomSearchDialog(props: SharedProps) {
@@ -224,9 +293,13 @@ export default function CustomSearchDialog(props: SharedProps) {
               </p>
             ) : (
               <>
-                <p className="mb-1 whitespace-pre-wrap text-fd-foreground">
-                  {answer || (asking ? 'Thinking…' : '')}
-                </p>
+                <div className="text-fd-foreground">
+                  {answer ? (
+                    renderMarkdown(answer)
+                  ) : asking ? (
+                    <p className="text-fd-muted-foreground">Thinking…</p>
+                  ) : null}
+                </div>
                 {askSources.length > 0 && (
                   <div className="mt-3 border-t pt-2">
                     <p className="mb-1 text-xs font-medium text-fd-muted-foreground">Sources</p>
