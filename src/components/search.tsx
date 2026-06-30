@@ -75,11 +75,54 @@ function renderInline(text: string): ReactNode[] {
   return out;
 }
 
+// Lightweight, synchronous syntax highlighting (streaming-safe — no Shiki/async).
+// One ordered scan classifies comments, strings, keywords, literals and numbers;
+// matching whole strings/comments first means keywords inside them aren't recolored.
+const CODE_TOKEN =
+  /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|\b(const|let|var|function|return|import|from|export|default|async|await|new|class|extends|if|else|for|while|do|switch|case|break|continue|of|in|typeof|instanceof|try|catch|finally|throw|yield|void|delete|require)\b|\b(true|false|null|undefined|this)\b|\b(\d+(?:\.\d+)?)\b/g;
+const TOKEN_COLOR = ['#8b949e', '#a5d6ff', '#ff7b72', '#79c0ff', '#79c0ff']; // comment, string, keyword, literal, number
+
+function highlightCode(src: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let k = 0;
+  CODE_TOKEN.lastIndex = 0;
+  while ((m = CODE_TOKEN.exec(src)) !== null) {
+    if (m.index > last) out.push(src.slice(last, m.index));
+    const groupIdx = [1, 2, 3, 4, 5].find((g) => m![g] !== undefined)!;
+    out.push(
+      <span key={k++} style={{ color: TOKEN_COLOR[groupIdx - 1] }}>
+        {m[0]}
+      </span>,
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < src.length) out.push(src.slice(last));
+  return out;
+}
+
+function CodeBlock({ code, lang }: { code: string; lang: string }) {
+  return (
+    <div className="relative mb-2">
+      {lang && (
+        <span className="absolute right-2 top-1.5 text-[0.65rem] uppercase tracking-wide text-zinc-500">
+          {lang}
+        </span>
+      )}
+      <pre className="overflow-x-auto rounded-md border border-zinc-800 bg-[#0d1117] p-3 text-xs leading-relaxed text-[#e6edf3]">
+        <code className="font-mono">{highlightCode(code)}</code>
+      </pre>
+    </div>
+  );
+}
+
 // Minimal, streaming-safe markdown: splits fenced ``` code blocks from prose.
 // An unclosed fence (still streaming) renders as a code block immediately.
 function renderMarkdown(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   let inCode = false;
+  let lang = '';
   let code: string[] = [];
   let prose: string[] = [];
   let key = 0;
@@ -94,17 +137,18 @@ function renderMarkdown(text: string): ReactNode[] {
     prose = [];
   };
   const flushCode = () => {
-    nodes.push(
-      <pre key={`c${key++}`} className="mb-2 overflow-x-auto rounded-md bg-fd-muted p-2 text-xs">
-        <code>{code.join('\n')}</code>
-      </pre>,
-    );
+    nodes.push(<CodeBlock key={`c${key++}`} code={code.join('\n')} lang={lang} />);
     code = [];
+    lang = '';
   };
   for (const line of text.split('\n')) {
-    if (/^\s*```/.test(line)) {
+    const fence = line.match(/^\s*```(\w*)/);
+    if (fence) {
       if (inCode) flushCode();
-      else flushProse();
+      else {
+        flushProse();
+        lang = fence[1] || '';
+      }
       inCode = !inCode;
       continue;
     }
