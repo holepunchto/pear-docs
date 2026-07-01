@@ -38,6 +38,12 @@ export interface MemberDoc {
   description?: string;
   /** Return-value prose (the leading "Returns " is added by the renderer). */
   returns?: string;
+  /**
+   * Errors the member throws, as ready-to-render bullet text (e.g.
+   * "`SESSION_CLOSED` if the core is closed"). Use this editorial path when the
+   * model has no `@throws` yet; it wins over the model's `throws`.
+   */
+  throws?: string[];
   /** A single JS example body (without the ```js fence). */
   example?: string;
 }
@@ -62,6 +68,14 @@ export interface Layout {
   notes?: Record<string, string>;
   /** See-also bullet bodies (without the leading `- `). */
   seeAlso?: string[];
+  /**
+   * Keep the hand-curated content page; never overwrite it on `--write`. Set when
+   * the generated output would regress the live page — e.g. hyperswarm, whose model
+   * collapses `swarm.destroy` and `discovery.destroy` into one member (no
+   * `PeerDiscovery` sub-object is extracted), so a regen drops the real
+   * `swarm.destroy`. The preview still renders for the gate and for comparison.
+   */
+  keepCurated?: boolean;
 }
 
 /** Load a repo's layout manifest, or null when none has been authored yet. */

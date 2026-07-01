@@ -5,7 +5,7 @@ docType: reference
 schemaType: APIReference
 ---
 
-<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+<Status level="stable" />
 
 HyperDHT is the lower-level keyed connection layer underneath [Hyperswarm](/reference/building-blocks/hyperswarm). Use it when you want to dial a known public key directly or work with raw DHT discovery and record APIs.
 
@@ -49,275 +49,183 @@ await Promise.all([serverNode.destroy(), clientNode.destroy()])
 
 #### `new DHT([options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L25)
-- Signature: `const node = new DHT([options])`
-- Parameters:
-  - `options.bootstrap`: Optional array of bootstrap nodes. In Pear apps this defaults to `Pear.config.dht.bootstrap`; elsewhere it defaults to the public HyperDHT bootstrap nodes.
-  - `options.keyPair`: Optional default key pair used by `server.listen()` and `node.connect()`.
-  - `options.connectionKeepAlive`: Optional default socket keep-alive in milliseconds. Defaults to `5000`; set `false` to disable it.
-  - `options.randomPunchInterval`: Optional punch interval in milliseconds. Defaults to `20000`.
-  - Any additional options are forwarded to [`dht-rpc`](https://github.com/holepunchto/dht-rpc).
-- Returns: A new `DHT` node instance.
-- Example:
+[src](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L26)
 
-```js
-import DHT from 'hyperdht'
+Create a new DHT node.
 
-const node = new DHT({
-  bootstrap: ['203.0.113.10:49737'],
-  connectionKeepAlive: 10000
-})
-```
+| Parameter | Type | Default |
+| --- | --- | --- |
+| `options` | [`HyperDHTOptions`](#hyperdhtoptions) | `{}` |
 
-#### `DHT.keyPair([seed])`
+#### `keyPair = DHT.keyPair([seed])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L450)
-- Signature: `const keyPair = DHT.keyPair([seed])`
-- Parameters:
-  - `seed`: Optional seed value when you want deterministic key generation.
-- Returns: An object with `publicKey` and `secretKey` buffers.
-- Example:
+Use this method to generate the required keypair for DHT operations.
 
-```js
-const keyPair = DHT.keyPair()
-console.log(keyPair.publicKey)
-```
+- Returns: an object with `{publicKey, secretKey}`.
 
-#### `DHT.bootstrapper(port, host, [options])`
+#### `node = DHT.bootstrapper(port, host, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/bin.js#L28)
-- Signature: `const bootstrapNode = DHT.bootstrapper(port, host, [options])`
-- Parameters:
-  - `port`: UDP port for the bootstrap node.
-  - `host`: Hostname or IP address to bind to.
-  - `options`: Optional bootstrap-node settings.
-- Returns: A DHT bootstrap node for isolated or self-hosted networks.
-- Example:
-
-```js
-const bootstrapNode = DHT.bootstrapper(49737, '0.0.0.0')
-```
+If you want to run your own Hyperswarm network use this method to easily create a bootstrap node.
 
 ### Servers
 
 #### `node.createServer([options], [onconnection])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L85)
-- Signature: `const server = node.createServer([options], [onconnection])`
-- Parameters:
-  - `options.firewall(remotePublicKey, remoteHandshakePayload)`: Optional predicate that returns `false` to accept a connection or `true` to reject it.
-  - `onconnection`: Optional handler that runs for each accepted socket.
-- Returns: A HyperDHT server that accepts encrypted `NoiseSecretStream` connections.
-- Example:
+[src](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L85)
+
+Create a new server for accepting incoming encrypted P2P connections.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `options` | [`CreateServerOptions`](#createserveroptions) | — |
+| `onconnection` | [`function(NoiseSecretStream): void`](/reference/helpers/secretstream) | Shorthand listener for the `'connection'` event. |
+
+- Returns: `Server` — A server object — call `server.listen(keyPair)` to start accepting connections.
 
 ```js
-const server = node.createServer((socket) => {
-  socket.write('connected')
-})
+{
+  firewall (remotePublicKey, remoteHandshakePayload) {
+    // validate if you want a connection from remotePublicKey
+    // if you do return false, else return true
+    // remoteHandshakePayload contains their ip and some more info
+    return true
+  }
+}
 ```
 
 #### `await server.listen(keyPair)`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/lib/server.js#L145)
-- Signature: `await server.listen(keyPair)`
-- Parameters:
-  - `keyPair`: The `{ publicKey, secretKey }` pair the server should announce and accept connections on. Defaults to the node's default key pair when omitted.
-- Returns: A promise that resolves when the server is listening.
-- Example:
+Make the server listen on a keyPair. To connect to this server use keyPair.publicKey as the connect address.
 
-```js
-const keyPair = DHT.keyPair()
-await server.listen(keyPair)
-```
+- Throws:
+  - `ALREADY_LISTENING` if the server is already listening.
+  - `NODE_DESTROYED` if the DHT node has been destroyed.
 
 #### `server.refresh()`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/lib/announcer.js#L76)
-- Signature: `server.refresh()`
-- Parameters: None.
-- Returns: Nothing.
-- Example:
-
-```js
-server.refresh()
-```
+Refresh the server, causing it to reannounce its address. This is automatically called on network changes.
 
 Call this to reannounce the server address. HyperDHT also calls it automatically when the network changes.
 
 #### `server.address()`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/lib/server.js#L78)
-- Signature: `const address = server.address()`
-- Parameters: None.
-- Returns: An object with `host`, `port`, and `publicKey`.
-- Example:
+You can also get this info from `node.remoteAddress()` minus the public key.
+
+- Returns: an object containing the address of the server:
 
 ```js
-const { host, port, publicKey } = server.address()
-console.log(host, port, publicKey)
+{
+  ;(host, // external IP of the server,
+    port, // external port of the server if predictable,
+    publicKey) // public key of the server
+}
 ```
 
 #### `server.on('connection', socket)`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L89)
-- Signature: `server.on('connection', socket => { ... })`
-- Parameters:
-  - `socket`: A `NoiseSecretStream` for the accepted peer.
-- Returns: Event subscription.
-- Example:
-
-```js
-server.on('connection', socket => {
-  console.log(socket.remotePublicKey)
-})
-```
+Emitted when a new encrypted connection has passed the firewall check.
 
 The socket exposes `socket.remotePublicKey`, and `socket.handshakeHash` is a shared identifier for the encrypted session.
 
 #### `server.on('listening')`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L36)
-- Signature: `server.on('listening', () => { ... })`
-- Parameters: A listener callback with no arguments.
-- Returns: Event subscription.
-- Example:
-
-```js
-server.on('listening', () => {
-  console.log('ready')
-})
-```
+Emitted when the server is fully listening on a keyPair.
 
 #### `await server.close()`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/lib/server.js#L88)
-- Signature: `await server.close()`
-- Parameters: None.
-- Returns: A promise that resolves when the server has stopped listening.
-- Example:
-
-```js
-await server.close()
-```
+Stop listening.
 
 #### `server.on('close')`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/bin.js#L31)
-- Signature: `server.on('close', () => { ... })`
-- Parameters: A listener callback with no arguments.
-- Returns: Event subscription.
-- Example:
-
-```js
-server.on('close', () => {
-  console.log('server closed')
-})
-```
+Emitted when the server is fully closed.
 
 ### Clients and sockets
 
 #### `node.connect(remotePublicKey, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L81)
-- Signature: `const socket = node.connect(remotePublicKey, [options])`
-- Parameters:
-  - `remotePublicKey`: The server public key as a buffer, hex string, or z-base32 string.
-  - `options.nodes`: Optional nearby DHT nodes that can speed up connection attempts.
-  - `options.keyPair`: Optional local key pair for the outgoing connection. Defaults to `node.defaultKeyPair`.
-- Returns: A `NoiseSecretStream` socket.
-- Example:
+[src](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L81)
 
-```js
-const socket = node.connect(remotePublicKey)
-```
+Connect to a remote server. Similar to `createServer` this performs UDP holepunching for P2P connectivity.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `remotePublicKey` | [`Buffer\|string`](https://nodejs.org/api/buffer.html#class-buffer) | Public key of the server to connect to (Buffer, hex string, or z-base32 string). |
+| `options` | [`ConnectOptions`](#connectoptions) | — |
+
+- Returns: [`NoiseSecretStream`](/reference/helpers/secretstream) — An encrypted duplex stream — use `socket.on('open', ...)` to know when it is ready.
 
 #### `socket.on('open')`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/lib/connection-pool.js#L84)
-- Signature: `socket.on('open', () => { ... })`
-- Parameters: A listener callback with no arguments.
-- Returns: Event subscription.
-- Example:
-
-```js
-socket.on('open', () => {
-  console.log('connected')
-})
-```
+Emitted when the encrypted connection has been fully established with the server.
 
 #### `socket.remotePublicKey`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/lib/noise-wrap.js#L16)
-- Signature: `socket.remotePublicKey`
-- Returns: The remote peer's public key buffer.
-- Example:
-
-```js
-console.log(socket.remotePublicKey)
-```
+The public key of the remote peer.
 
 #### `socket.publicKey`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/lib/server.js#L51)
-- Signature: `socket.publicKey`
-- Returns: The local socket public key buffer.
-- Example:
-
-```js
-console.log(socket.publicKey)
-```
+The public key of the local socket.
 
 ### Peer discovery
 
 #### `node.lookup(topic, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L194)
-- Signature: `const stream = node.lookup(topic, [options])`
-- Parameters:
-  - `topic`: A 32-byte topic buffer, typically a hash.
-  - `options`: Optional lookup settings forwarded to `dht-rpc`.
-- Returns: A stream of lookup responses shaped like `{ from, to, peers }`.
-- Example:
+[src](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L194)
 
-```js
-for await (const result of node.lookup(topic)) {
-  console.log(result.peers)
-}
-```
+Look for peers in the DHT on the given topic. Topic should be a 32 byte buffer (normally a hash of something).
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `topic` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | — |
+| `options` | `object` | `{}` | Options forwarded to `dht-rpc`. |
+
+- Returns: `QueryStream` — An async-iterable query stream whose values are `{ from, to, peers }` objects.
+
+| Option |
+| --- |
+| `from` |
+| `to` |
+| `peers` |
 
 #### `node.announce(topic, keyPair, [relayAddresses], [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L246)
-- Signature: `const stream = node.announce(topic, keyPair, [relayAddresses], [options])`
-- Parameters:
-  - `topic`: A 32-byte topic buffer.
-  - `keyPair`: The key pair being announced under that topic.
-  - `relayAddresses`: Optional array of up to three relay-capable nodes that help other peers connect faster.
-  - `options`: Optional announce settings forwarded to `dht-rpc`.
-- Returns: A stream with the same shape as `node.lookup()`.
-- Example:
+[src](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L246)
+
+Announce that you are listening on a key-pair to the DHT under a specific topic.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `topic` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | 32-byte topic buffer to announce under. |
+| `keyPair` | [`{publicKey: Buffer, secretKey: Buffer}`](https://nodejs.org/api/buffer.html#class-buffer) | — | The Ed25519 key pair to announce with. |
+| `relayAddresses` | [`Array<{host: string, port: number}>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | — | Up to 3 DHT relay node addresses to include in the announcement. |
+| `options` | `object` | `{}` | Options forwarded to `dht-rpc`. |
+
+- Returns: `QueryStream` — An async-iterable query stream (same shape as `lookup()`).
 
 ```js
-const stream = node.announce(topic, keyPair, server.nodes)
-for await (const result of stream) {
-  console.log(result.from)
-}
+const topic = DHT.hash(Buffer.from('my-topic'))
+const stream = node.announce(topic, keyPair)
+await stream.finished()
 ```
 
 Servers created with `node.createServer()` already announce themselves on the key pair they are listening on. Use `node.announce()` when you also want to publish a topic mapping.
 
 #### `await node.unannounce(topic, keyPair, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L242)
-- Signature: `await node.unannounce(topic, keyPair, [options])`
-- Parameters:
-  - `topic`: The topic to stop announcing on.
-  - `keyPair`: The key pair previously announced for that topic.
-  - `options`: Optional unannounce settings forwarded to `dht-rpc`.
-- Returns: A promise that resolves when the announcement has been removed.
-- Example:
+[src](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L242)
+
+Unannounce a key-pair.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `topic` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | 32-byte topic buffer previously used in `announce()`. |
+| `keyPair` | [`{publicKey: Buffer, secretKey: Buffer}`](https://nodejs.org/api/buffer.html#class-buffer) | — | The Ed25519 key pair to unannounce. |
+| `options` | `object` | `{}` | Options forwarded to `dht-rpc`. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves when the unannounce query has completed.
 
 ```js
+const topic = DHT.hash(Buffer.from('my-topic'))
 await node.unannounce(topic, keyPair)
 ```
 
@@ -325,82 +233,163 @@ await node.unannounce(topic, keyPair)
 
 #### `await node.immutablePut(value, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L283)
-- Signature: `const { hash, closestNodes } = await node.immutablePut(value, [options])`
-- Parameters:
-  - `value`: The immutable buffer or value to store in the DHT.
-  - `options`: Optional put settings forwarded to `dht-rpc`.
-- Returns: An object with the stored `hash` and `closestNodes`.
-- Example:
+[src](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L283)
+
+Store an immutable value in the DHT. When successful, the hash of the value is returned.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | The value to store (a Buffer). |
+| `options` | `object` | `{}` | Options forwarded to `dht-rpc`. |
+
+- Returns: [`Promise<{hash: Buffer, closestNodes: Array<object>}>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Object with the 32-byte `hash` and the `closestNodes` that stored the value.
 
 ```js
-const { hash } = await node.immutablePut(Buffer.from('hello'))
+const { hash } = await node.immutablePut(Buffer.from('hello world'))
+const result = await node.immutableGet(hash)
+console.log(result.value.toString()) // 'hello world'
 ```
 
 #### `await node.immutableGet(hash, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L268)
-- Signature: `const { value, from } = await node.immutableGet(hash, [options])`
-- Parameters:
-  - `hash`: The content hash returned by `immutablePut()`.
-  - `options`: Optional get settings forwarded to `dht-rpc`.
-- Returns: An object with the stored `value` and the responding node in `from`.
-- Example:
+[src](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L268)
+
+Fetch an immutable value from the DHT. When successful, it returns the value corresponding to the hash.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `hash` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | 32-byte hash of the value to fetch (returned by `immutablePut()`). |
+| `options` | `object` | `{}` | Options forwarded to `dht-rpc`. |
+
+- Returns: [`Promise<{token: Buffer, from: object, to: object, value: Buffer}\|null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — The result node or `null` if not found.
 
 ```js
-const { value } = await node.immutableGet(hash)
+const result = await node.immutableGet(hash)
+if (result) console.log(result.value.toString())
 ```
 
 #### `await node.mutablePut(keyPair, value, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L357)
-- Signature: `const { publicKey, closestNodes, seq, signature } = await node.mutablePut(keyPair, value, [options])`
-- Parameters:
-  - `keyPair`: The signing key pair for the mutable record.
-  - `value`: The record value to publish.
-  - `options.seq`: Optional sequence number for the record. Defaults to `0`. Increment it on each update so newer values supersede older ones.
-  - Any additional options are forwarded to `dht-rpc`.
-- Returns: An object with the announcing `publicKey`, `closestNodes`, `seq`, and `signature`.
-- Example:
+[src](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L357)
+
+Store a mutable value in the DHT.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keyPair` | [`{publicKey: Buffer, secretKey: Buffer}`](https://nodejs.org/api/buffer.html#class-buffer) | — | Ed25519 key pair used to sign the value. |
+| `value` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | The value to store (a Buffer). |
+| `options` | [`MutablePutOptions`](#mutableputoptions) | `{}` | Put options. |
+
+- Returns: [`Promise<{publicKey: Buffer, closestNodes: Array<object>, seq: number, signature: Buffer}>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — The stored record metadata.
 
 ```js
-const record = await node.mutablePut(keyPair, Buffer.from('v1'))
+const keyPair = DHT.keyPair()
+const { seq } = await node.mutablePut(keyPair, Buffer.from('v1'), { seq: 0 })
+console.log('stored at seq', seq)
 ```
 
 #### `await node.mutableGet(publicKey, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L304)
-- Signature: `const { value, from, seq, signature } = await node.mutableGet(publicKey, [options])`
-- Parameters:
-  - `publicKey`: The public key for the mutable record.
-  - `options.seq`: Optional minimum sequence number to accept. Defaults to `0`.
-  - `options.latest`: Optional boolean. When `true` the query keeps searching for the highest sequence number before returning; when `false` it returns the first verified value at or above `options.seq`. Defaults to `true`.
-  - Any additional options are forwarded to `dht-rpc`.
-- Returns: An object with `value`, `from`, `seq`, and `signature`.
-- Example:
+[src](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L304)
+
+Fetch a mutable value from the DHT.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `publicKey` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | Ed25519 public key of the key pair used to sign the value with `mutablePut()`. |
+| `options` | [`MutableGetOptions`](#mutablegetoptions) | `{}` | Fetch options. |
+
+- Returns: [`Promise<{token: Buffer, from: object, to: object, seq: number, value: Buffer, signature: Buffer}\|null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — The latest matching result, or `null` if not found.
 
 ```js
-const { value, seq } = await node.mutableGet(keyPair.publicKey, {
-  latest: true
-})
+const result = await node.mutableGet(keyPair.publicKey)
+if (result) console.log(result.value.toString(), 'seq:', result.seq)
 ```
 
 ### Lifecycle
 
 #### `await node.destroy([options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L123)
-- Signature: `await node.destroy([options])`
-- Parameters:
-  - `options.force`: Set to `true` to force shutdown without waiting for servers to unannounce.
-- Returns: A promise that resolves when the node is fully destroyed.
-- Example:
+[src](https://github.com/holepunchto/hyperdht/blob/v6.32.0/index.js#L123)
+
+Fully destroy this DHT node.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `options` | `object` | `{}` | Pass `{ force: true }` to skip waiting for servers to unannounce before closing. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves when the node is fully shut down.
 
 ```js
 await node.destroy()
+// or, to skip graceful unannounce:
+await node.destroy({ force: true })
 ```
 
-HyperDHT inherits additional lower-level RPC APIs from [`dht-rpc`](https://github.com/holepunchto/dht-rpc). Reach for those when you need custom queries beyond the keyed connection and record helpers above.
+HyperDHT inherits additional lower-level RPC APIs from [`dht-rpc`](https://github.com/mafintosh/dht-rpc). Reach for those when you need custom queries beyond the keyed connection and record helpers above.
+
+## Types
+
+### HyperDHTOptions
+
+Options for creating a HyperDHT node.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bootstrap` | [`Array<string>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | — | Bootstrap server addresses (`'host:port'`). Defaults to the Holepunch public bootstrap nodes. |
+| `keyPair` | [`{publicKey: Buffer, secretKey: Buffer}`](https://nodejs.org/api/buffer.html#class-buffer) | — | Default key pair used for `server.listen()` and `connect()`. |
+| `connectionKeepAlive` | `number\|false` | `5000` | Keep-alive interval in ms for all opened sockets. Set `false` to disable. |
+| `randomPunchInterval` | `number` | `20000` | Minimum ms between random holepunches. |
+
+### CreateServerOptions
+
+Options for `node.createServer()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `firewall` | [`function(Buffer, object): boolean`](https://nodejs.org/api/buffer.html#class-buffer) | — | Called with `(remotePublicKey, remoteHandshakePayload)`. Return `true` to block, `false` to allow. |
+| `holepunch` | [`function(number, number, Array, Array): boolean`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | — | Called before holepunching begins. Return `false` to abort. |
+| `relayThrough` | [`Buffer\|Array<Buffer>\|function(): Buffer\|null`](https://nodejs.org/api/buffer.html#class-buffer) | — | Optionally relay through a specific peer — pass a public key (Buffer), an array of public keys to pick from, or a function returning one. |
+| `relayKeepAlive` | `number` | `5000` | Keep-alive interval in ms for the relay socket. |
+
+### ConnectOptions
+
+Options for `node.connect()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `nodes` | [`Array<{host: string, port: number}>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | — | Known DHT nodes close to the remote — speeds up connecting. |
+| `relayAddresses` | [`Array<{host: string, port: number}>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | — | Relay server addresses to hole-punch through when a direct connection cannot be established. |
+| `keyPair` | [`{publicKey: Buffer, secretKey: Buffer}`](https://nodejs.org/api/buffer.html#class-buffer) | — | Key pair to use for this connection. Defaults to `node.defaultKeyPair`. |
+| `relayThrough` | [`Buffer\|Array<Buffer>\|function(): Buffer\|null`](https://nodejs.org/api/buffer.html#class-buffer) | — | Optionally relay through a specific peer — pass a public key (Buffer), an array of public keys to pick from, or a function returning one. |
+
+### MutableGetOptions
+
+Options for `node.mutableGet()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `seq` | `number` | `0` | Only return values whose `seq` is >= this number. |
+| `latest` | `boolean` | `true` | If `true`, scan the whole query and return the highest `seq` seen. |
+| `refresh` | `function(object): boolean` | — | Called with the latest result; return `true` to re-store it, extending its TTL. |
+
+### MutablePutOptions
+
+Options for `node.mutablePut()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `seq` | `number` | `0` | Sequence number for this value. Must be greater than the current stored `seq` to overwrite. |
+| `signMutable` | [`function(number, Buffer, object): Promise<Buffer>`](https://nodejs.org/api/buffer.html#class-buffer) | — | Custom signing function. Defaults to the built-in Ed25519 signer. |
+
+## Errors
+
+Coded errors this module can throw — catch them via `err.code`.
+
+| Error | Thrown when |
+| --- | --- |
+| `ALREADY_LISTENING` | if the server is already listening. |
+| `NODE_DESTROYED` | if the DHT node has been destroyed. |
 
 ## See also
 

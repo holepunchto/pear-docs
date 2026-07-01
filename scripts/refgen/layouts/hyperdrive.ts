@@ -64,6 +64,50 @@ const layout: Layout = {
     },
   ],
 
+  // Descriptions for members whose model entry is an extraction artifact (a lead-in
+  // fragment like "`options` include:" or "Usage example:"), authored from the
+  // upstream README so both the docs and the emitted JSDoc read as real summaries.
+  // Errors thrown by public methods are transcribed from the upstream source guards.
+  members: {
+    truncate: { throws: ['`BAD_ARGUMENT` if the truncation length is invalid.'] },
+    get: {
+      description:
+        'Reads the blob stored at `path` and resolves with its contents as a `Buffer`. ' +
+        'Resolves with `null` when no blob exists at `path`, and also returns `null` for symbolic links.',
+      throws: ['`BLOCK_NOT_AVAILABLE` if a required block is not available.'],
+    },
+    purge: { throws: ['if called on a non-main session — only the main session can be purged.'] },
+    entry: {
+      description: 'Resolves with the entry stored at `path`, or `null` if no entry exists.',
+      throws: ['if a symlink chain is recursive or exceeds 16 hops when `follow` is enabled.'],
+    },
+    replicate: {
+      description:
+        'Creates a replication stream for the drive. Pass `true`/`false` to create a new stream as ' +
+        'initiator/responder, or pass an existing stream or socket to replicate over it. See ' +
+        '[`corestore.replicate`](https://github.com/holepunchto/corestore#const-stream--storereplicateoptsorstream) ' +
+        'for how replication works.',
+    },
+    watch: {
+      description:
+        'Returns an async iterator that watches `folder` (defaults to `/`) and yields `[current, previous]` ' +
+        'snapshot pairs whenever the drive changes. The snapshots are auto-closed before the next value, so ' +
+        'do not close them yourself.',
+    },
+    list: {
+      description: 'Returns a stream of all entries in the drive at paths prefixed with `folder`.',
+    },
+    readdir: {
+      description: 'Returns a stream of the immediate subpaths of entries stored at paths prefixed by `folder`.',
+    },
+    createReadStream: {
+      description: 'Returns a readable stream of the blob stored in the drive at `path`.',
+    },
+    entries: {
+      description: 'Returns a read stream of the drive entries within the given Hyperbee `range`.',
+    },
+  },
+
   seeAlso: [
     '[Create a full peer-to-peer filesystem with Hyperdrive](/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—end-to-end filesystem replication walkthrough.',
     '[Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended pattern when one app manages multiple drives or related cores.',

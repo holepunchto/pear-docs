@@ -50,6 +50,16 @@ const layout: Layout = {
     { title: 'Lifecycle', members: ['destroy'] },
   ],
 
+  // Errors thrown by public methods, transcribed from the upstream source guards.
+  members: {
+    listen: {
+      throws: [
+        '`ALREADY_LISTENING` if the server is already listening.',
+        '`NODE_DESTROYED` if the DHT node has been destroyed.',
+      ],
+    },
+  },
+
   notes: {
     refresh:
       'Call this to reannounce the server address. HyperDHT also calls it automatically when the network changes.',

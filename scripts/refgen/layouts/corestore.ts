@@ -60,6 +60,12 @@ const layout: Layout = {
       'A reopened Hypercore whose manifest is converted into a static prologue-based manifest for the current data snapshot.',
   },
 
+  // Errors thrown by public methods, transcribed from the upstream source guards.
+  members: {
+    constructor: { throws: ["`ASSERTION` if `primaryKey` is set on a root store without `unsafe: true`."] },
+    staticify: { throws: ["if the core has no data to staticify."] },
+  },
+
   notes: {
     // The group-level experimental warning has no group-intro slot in the layout
     // type, so it rides along as a note on the first member of the group.

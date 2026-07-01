@@ -41,7 +41,7 @@ const layout: Layout = {
         'Every bundled encoder follows the same three-method contract. The top-level helpers and exported factories below all return or consume objects with this shape.',
       members: ['preencode', 'encode', 'decode'],
     },
-    { title: 'State and convenience helpers', members: ['state', 'encode', 'decode', 'from'] },
+    { title: 'State and convenience helpers', members: ['state', 'from'] },
     { title: 'Encoder factories', members: ['fixed', 'array', 'frame', 'record', 'stringRecord'] },
     { title: 'Numeric encodings', members: ['uint64', 'int64', 'bigint', 'float64', 'lexint'] },
     { title: 'Binary, buffer, and typed-array encodings', members: ['binary', 'arraybuffer', 'float64array', 'fixed64'] },
@@ -57,6 +57,10 @@ const layout: Layout = {
   // the page collapse to one representative key here, so the description covers the
   // whole family (e.g. `uint64` documents the `uint` family).
   descriptions: {
+    encode:
+      'Writes the encoded form of the value into `state.buffer` at `state.start` (the buffer must have been preallocated via `preencode`), advancing `state.start` past the written bytes.',
+    decode:
+      'Reads and returns a value from `state.buffer` at `state.start`, advancing `state.start` past the decoded value.',
     state: 'A mutable state object `{ start, end, buffer }` used by all encoders.',
     from:
       'Coerces `encLike` — an existing compact encoder, a named raw string encoding such as `\'utf8\'` or `\'json\'`, a codec with `encode`/`decode`, or an abstract encoding with `encodingLength` — into a compact-encoding-compatible encoder object.',
@@ -94,6 +98,36 @@ const layout: Layout = {
     raw:
       'A namespace of non-length-prefixed variants for many buffer, string, array, JSON, and typed-array encodings such as `cenc.raw.buffer`, `cenc.raw.utf8`, `cenc.raw.array(enc)`, and `cenc.raw.json`.',
   },
+
+  sections: [
+    {
+      title: 'Module-level encode and decode helpers',
+      body:
+        '#### `const buffer = cenc.encode(enc, value)`\n\n' +
+        'Encodes a single `value` using `enc` into a freshly allocated `Buffer` and returns it. ' +
+        'Equivalent to manually creating a state, calling `enc.preencode` and `enc.encode`, and slicing the buffer — useful when you just want bytes back in one step.\n\n' +
+        '| Param | Type | Description |\n' +
+        '| --- | --- | --- |\n' +
+        '| `enc` | `object` | Any compact-encoding encoder (for example `cenc.uint`, a custom encoder). |\n' +
+        '| `value` | `*` | The value to encode. |\n\n' +
+        '- Returns: `Buffer`\n\n' +
+        '```js\n' +
+        'const buf = cenc.encode(cenc.uint, 42)\n' +
+        '// <Buffer 2a>\n' +
+        '```\n\n' +
+        '#### `const value = cenc.decode(enc, buffer)`\n\n' +
+        'Decodes a single value from `buffer` using `enc`. ' +
+        'Equivalent to constructing a state from the buffer and calling `enc.decode`.\n\n' +
+        '| Param | Type | Description |\n' +
+        '| --- | --- | --- |\n' +
+        '| `enc` | `object` | Any compact-encoding encoder. |\n' +
+        '| `buffer` | `Buffer` | The buffer to decode from. |\n\n' +
+        '- Returns: The decoded value.\n\n' +
+        '```js\n' +
+        'const val = cenc.decode(cenc.uint, buf) // 42\n' +
+        '```',
+    },
+  ],
 
   seeAlso: [
     '[Protomux](/reference/helpers/protomux)—the most common higher-level protocol surface built directly on compact-encoding schemas.',

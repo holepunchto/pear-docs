@@ -47,13 +47,25 @@ const layout: Layout = {
     },
     {
       title: 'Monitoring progress',
-      members: ['monitor', 'stats', 'preloaded', 'destroyed', 'destroy', 'on:update', 'on:preloaded', 'on:destroy'],
+      members: ['monitor', 'stats', 'Monitor.preloaded', 'destroyed', 'destroy', 'on:update', 'on:preloaded', 'on:destroy'],
     },
   ],
 
   // Conceptual section documenting constructor option shapes that are not standalone
   // API members. Transcribed verbatim from the curated page.
   sections: [
+    {
+      title: 'Async iteration',
+      body:
+        '#### `for await (const diff of mirror)`\n\n' +
+        '`MirrorDrive` is itself an async iterable. Iterating it with `for await` drives the entire diff/copy pass; ' +
+        "each yield produces one `{ op, key }` object where `op` is `'put'` or `'del'`.\n\n" +
+        '```js\n' +
+        'for await (const diff of mirror) {\n' +
+        '  console.log(diff.op, diff.key)\n' +
+        '}\n' +
+        '```',
+    },
     {
       title: 'Option patterns',
       body:

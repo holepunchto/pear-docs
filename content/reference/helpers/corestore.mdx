@@ -5,7 +5,7 @@ docType: reference
 schemaType: APIReference
 ---
 
-<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+<Status level="stable" />
 
 `Corestore` manages many related [Hypercores](/reference/building-blocks/hypercore) behind one storage root and one replication surface. It is the helper you usually share across [Hyperbee](/reference/building-blocks/hyperbee), [Hyperdrive](/reference/building-blocks/hyperdrive), and [Autobase](/reference/building-blocks/autobase) instances. For upstream source and changelog context, see the [Corestore repository](https://github.com/holepunchto/corestore).
 
@@ -40,71 +40,50 @@ await store.close()
 
 ### Constructor and lifecycle
 
-#### `const store = new Corestore(storage, [options])`
+#### `new Corestore(storage, options = {})`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L235)
-- Signature: `const store = new Corestore(storage, [options])`
-- Parameters: `storage` is either a local path string or a `hypercore-storage` instance. `options` can include `primaryKey`, `writable`, `readOnly`, `globalCache`, `manifestVersion`, `id`, `allowBackup`, `wait`, `suspend`, `active`, and `unsafe` when you intentionally pass a custom `primaryKey`.
-- Returns: A `Corestore` instance that lazily opens its underlying storage and derives writable core keys from one root key.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L236)
 
-```js
-const store = new Corestore('./storage', {
-  manifestVersion: 1,
-  writable: true
-})
+Create a new Corestore instance.
 
-await store.ready()
-```
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `storage` | `string\|object` | — | can be either a `hypercore-storage` instance or a string. |
+| `options` | [`CorestoreOptions`](#corestoreoptions) | `{}` | Store options. |
+
+- Throws: `ASSERTION` if `primaryKey` is set on a root store without `unsafe: true`.
 
 #### `await store.ready()`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L274)
-- Signature: `await store.ready()`
-- Parameters: None.
-- Returns: A promise that resolves once the storage seed is loaded and properties such as `store.primaryKey` are available.
-- Example:
-
-```js
-await store.ready()
-console.log(store.primaryKey)
-```
+A promise that resolves once the storage seed is loaded and properties such as `store.primaryKey` are available.
 
 #### `await store.close()`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L183)
-- Signature: `await store.close()`
-- Parameters: None.
-- Returns: A promise that resolves after all open sessions, cores, and underlying storage handles managed by this store are closed.
-- Example:
-
-```js
-await store.close()
-```
+Fully close this Corestore instance.
 
 #### `await store.suspend([options])`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L350)
-- Signature: `await store.suspend([options])`
-- Parameters: `options.log` is an optional async logger callback that receives progress messages such as `"Flushing db..."` and `"Suspending db..."`.
-- Returns: A promise that resolves after the backing database has been flushed and, when supported, suspended.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L350)
+
+Suspend the underlying storage for the Corestore.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `options` | `object` | `{}` | Suspend options. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the storage is flushed and suspended.
 
 ```js
-await store.suspend({
-  async log(message) {
-    console.log(message)
-  }
-})
+await store.suspend()
 ```
 
 #### `await store.resume()`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L108)
-- Signature: `await store.resume()`
-- Parameters: None.
-- Returns: A promise that resolves after a suspended backing store is resumed.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L363)
+
+Resume a suspended Corestore.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the storage is resumed.
 
 ```js
 await store.resume()
@@ -114,249 +93,337 @@ await store.resume()
 
 #### `store.storage`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L240)
-- Returns: The backing storage adapter used for aliases, seeds, and Hypercore data files.
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L240)
+
+The backing storage adapter used for aliases, seeds, and Hypercore data files.
+
+- Returns: `object`
 
 #### `store.primaryKey`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L254)
-- Returns: The 32-byte primary key used to deterministically derive writable named cores and namespaced key pairs.
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L254)
+
+The 32-byte primary key used to deterministically derive writable named cores and namespaced key pairs.
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer)
 
 #### `store.readOnly`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L252)
-- Returns: `true` when the store was opened without write access.
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L252)
+
+`true` when the store was opened without write access.
+
+- Returns: `boolean`
 
 #### `store.manifestVersion`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L256)
-- Returns: The Hypercore manifest version used when Corestore creates new writable cores.
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L256)
+
+The Hypercore manifest version used when Corestore creates new writable cores.
+
+- Returns: `number`
 
 #### `store.active`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L258)
-- Returns: `true` when the store should automatically attach loaded cores to active replication streams.
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L258)
+
+`true` when the store should automatically attach loaded cores to active replication streams.
+
+- Returns: `boolean`
 
 ### Loading cores and scoping sessions
 
-#### `const core = store.get(keyOrOptions)`
+#### `store.get(key | { name: 'a-name', ...hypercoreOpts})`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L59)
-- Signature: `const core = store.get(keyOrOptions)`
-- Parameters: Pass a raw core key, discovery key, or an options object. Common options are `name`, `key`, `discoveryKey`, `valueEncoding`, `encryption`, `manifest`, `keyPair`, `writable`, `timeout`, `wait`, `active`, and any Hypercore constructor options that should flow into the resulting session.
-- Returns: A `Hypercore` session. Repeated calls for the same underlying core reuse the same loaded resources and hand back new sessions.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L564)
+
+Loads a Hypercore, either by name (if the `name` option is provided), or from the provided key (if the first argument is a Buffer or String with hex/z32 key, or if the `key` options is set).
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `opts` | [`Buffer\|string\|object`](https://nodejs.org/api/buffer.html#class-buffer) | A key (Buffer/hex/z32 string), or an options object with `name`, `key`, or `discoveryKey` plus Hypercore options. |
+
+- Returns: [`Hypercore`](/reference/building-blocks/hypercore) — A Hypercore session for the requested core.
 
 ```js
-const writer = store.get({ name: 'messages', valueEncoding: 'json' })
-await writer.ready()
-
-const reader = store.get(writer.key)
-await reader.ready()
+const core = store.get({ name: 'my-core' })
 ```
 
-#### `const sessionStore = store.session([options])`
+#### `storeA.session()`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L367)
-- Signature: `const sessionStore = store.session([options])`
-- Parameters: `options` can override session-level flags such as `namespace`, `active`, or `manifestVersion`.
-- Returns: A child `Corestore` session that shares the same underlying storage and primary key, but tracks its own opened cores. Closing the session closes the cores created through that session only.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L367)
+
+Create a new Corestore session. Closing a session will close all cores made from this session.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `opts` | `object` | Session options (forwarded to the new Corestore). |
+
+- Returns: [`Corestore`](/reference/helpers/corestore) — A new Corestore session sharing the same storage.
 
 ```js
-const sessionStore = store.session()
-const sessionCore = sessionStore.get({ name: 'session-only' })
-
-await sessionCore.ready()
-await sessionStore.close()
+const session = store.session()
 ```
 
-#### `const namespacedStore = store.namespace(name, [options])`
+#### `store.namespace(name)`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L377)
-- Signature: `const namespacedStore = store.namespace(name, [options])`
-- Parameters: `name` is the namespace label to hash into the key-derivation namespace. `options` are forwarded to `store.session(...)`.
-- Returns: A child `Corestore` session whose named writable cores do not collide with the parent or sibling namespaces.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L377)
+
+Create a new namespaced Corestore session. Namespacing is useful if you're going to be sharing a single Corestore instance between many applications or components, as it prevents name collisions.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `name` | [`string\|Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | Namespace name; combined with the current namespace to derive a new one. |
+| `opts` | `object` | Session options (forwarded to the new Corestore). |
+
+- Returns: [`Corestore`](/reference/helpers/corestore) — A new namespaced Corestore session.
 
 ```js
-const appStore = store.namespace('my-app')
-const jobsStore = store.namespace('jobs')
-
-const appCore = appStore.get({ name: 'main' })
-const jobsCore = jobsStore.get({ name: 'main' })
+const ns1 = store.namespace('a')
+const ns2 = ns1.namespace('b')
+const core1 = ns1.get({ name: 'main' }) // These will load different Hypercores
+const core2 = ns2.get({ name: 'main' })
 ```
 
 ### Replication and discovery
 
-#### `const stream = store.replicate(isInitiatorOrStream, [options])`
+#### `store.replicate(optsOrStream)`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L481)
-- Signature: `const stream = store.replicate(isInitiatorOrStream, [options])`
-- Parameters: Pass either a boolean initiator flag or an existing protocol stream/socket. `options` are forwarded to Hypercore's protocol-stream creation, including transport-specific replication settings.
-- Returns: A protocol stream that can replicate every compatible core currently opened through the store, plus newly opened ones while the stream stays attached.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L481)
+
+Creates a replication stream that's capable of replicating all Hypercores that are managed by the Corestore, assuming the remote peer has the correct capabilities.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `isInitiator` | [`boolean\|Stream`](https://nodejs.org/api/stream.html) | `true`/`false` to initiate, or an existing stream/connection to replicate over. |
+| `opts` | `object` | Replication options, forwarded to the protocol stream. |
+
+- Returns: [`Stream`](https://nodejs.org/api/stream.html) — The replication stream.
 
 ```js
-swarm.on('connection', (socket) => {
-  store.replicate(socket)
-})
+const swarm = new Hyperswarm()
+
+// join the relevant topic
+swarm.join(...)
+
+// simply pass the connection stream to corestore
+swarm.on('connection', (connection) => store.replicate(connection))
 ```
 
-#### `const done = store.findingPeers()`
+#### `store.findingPeers()`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L335)
-- Signature: `const done = store.findingPeers()`
-- Parameters: None.
-- Returns: A completion callback. Call it after the current peer-discovery pass finishes so pending update waits on loaded cores can unblock.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L335)
+
+A completion callback. Call it after the current peer-discovery pass finishes so pending update waits on loaded cores can unblock.
+
+- Returns: `Function` — A `done` function to call once peer discovery has finished.
 
 ```js
 const done = store.findingPeers()
 swarm.flush().then(done, done)
 ```
 
-#### `const stream = store.list([namespace])`
+#### `store.list(namespace)`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L71)
-- Signature: `const stream = store.list([namespace])`
-- Parameters: `namespace` optionally narrows the listing to one derived namespace buffer.
-- Returns: A stream of discovery keys for the cores known to the backing store.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L384)
+
+Creates a discovery key stream of all cores within a namespace or all cores in general if no namespace is provided.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `namespace` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | to scope to; omit to list all cores. |
+
+- Returns: [`Readable`](https://nodejs.org/api/stream.html#class-streamreadable) — A stream of discovery keys.
 
 ```js
-for await (const discoveryKey of store.list()) {
-  console.log(discoveryKey)
-}
+for await (const discoveryKey of store.list()) console.log(discoveryKey)
 ```
 
-#### `const auth = store.getAuth(discoveryKey)`
+#### `store.getAuth(discoveryKey)`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L388)
-- Signature: `const auth = store.getAuth(discoveryKey)`
-- Parameters: `discoveryKey` is the discovery key for a stored core.
-- Returns: The storage-layer auth metadata for that core, including manifest details when available.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L388)
+
+The storage-layer auth metadata for that core, including manifest details when available.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `discoveryKey` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | Discovery key of the core to look up. |
+
+- Returns: [`Promise<object\|null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — The auth record, or `null` if not stored.
 
 ```js
-const auth = store.getAuth(core.discoveryKey)
-console.log(auth)
+const auth = await store.getAuth(discoveryKey)
 ```
 
 ### Key derivation and maintenance
 
-#### `const keyPair = await store.createKeyPair(name, [namespace])`
+#### `await store.createKeyPair(name, ns = this.ns)`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L621)
-- Signature: `const keyPair = await store.createKeyPair(name, [namespace])`
-- Parameters: `name` is the deterministic label to derive from the store primary key. `namespace` optionally overrides the current namespace buffer instead of using `store.ns`.
-- Returns: A deterministic `{ publicKey, secretKey }` pair derived from the store seed and namespace.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L621)
+
+Generate a key pair seeded with the Corestore's primary key using a `name` and a `ns` aka namespace. `ns` defaults to the current namespace.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | to derive the key pair from. |
+| `ns` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | `this.ns` | — |
+
+- Returns: [`Promise<{publicKey: Buffer, secretKey: Buffer}>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — The derived key pair.
 
 ```js
-const keyPair = await store.createKeyPair('peer-rpc')
-console.log(keyPair.publicKey)
+const keyPair = await store.createKeyPair('signer')
 ```
 
-#### `const report = await store.audit([options])`
+#### `store.audit(opts = {})`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L346)
-- Signature: `const report = await store.audit([options])`
-- Parameters: `options` are forwarded to Corestore's audit helper.
-- Returns: An audit report describing the state of the backing store and any detected inconsistencies.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L346)
+
+An audit report describing the state of the backing store and any detected inconsistencies.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | `object` | `{}` | Audit options (for example `dryRun`). |
+
+- Returns: `AsyncGenerator<object>` — Yields a result per core as it is audited.
 
 ```js
-const report = await store.audit()
-console.log(report)
+for await (const report of store.audit()) console.log(report)
 ```
 
-#### `const staticCore = await store.staticify(core, [options])`
+#### `await store.staticify(core, opts)`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L520)
-- Signature: `const staticCore = await store.staticify(core, [options])`
-- Parameters: `core` is an opened Hypercore with data. `options` are forwarded to the follow-up `store.get(...)` call used to reopen the staticized core.
-- Returns: A reopened Hypercore whose manifest is converted into a static prologue-based manifest for the current data snapshot.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L520)
+
+A reopened Hypercore whose manifest is converted into a static prologue-based manifest for the current data snapshot.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `core` | [`Hypercore`](/reference/building-blocks/hypercore) | The source core to snapshot. Must have data. |
+| `opts` | `object` | Options forwarded to `store.get()` for the new core. |
+
+- Returns: [`Promise<Hypercore>`](/reference/building-blocks/hypercore) — The new static Hypercore.
+- Throws: if the core has no data to staticify.
 
 ```js
-const liveCore = store.get({ name: 'docs' })
-await liveCore.ready()
-await liveCore.append('snapshot me')
-
-const staticCore = await store.staticify(liveCore)
-await staticCore.ready()
+const staticCore = await store.staticify(core)
 ```
 
 ### Watchers
 
-#### `store.watch(callback)`
+#### `store.watch((core) => {})`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L96)
-- Signature: `store.watch(callback)`
-- Parameters: `callback` receives each newly opened internal core object.
-- Returns: Nothing. The callback stays registered until you call `store.unwatch(callback)` or close the store.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L277)
+
+Register a callback called when new Hypercores are opened. `core` is the internal core for the opened Hypercore. It can be used to create weak references to a Hypercore like so:
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `fn` | `Function` | `> {}` | Callback invoked with the internal `core` each time a Hypercore is opened. |
+
+- Returns: `void`
 
 ```js
-function onopen(core) {
-  console.log(core.discoveryKey)
-}
-
-store.watch(onopen)
+store.watch(function (core) {
+  const weakCore = new Hypercore({ core, weak: true })
+})
 ```
 
 #### `store.unwatch(callback)`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L101)
-- Signature: `store.unwatch(callback)`
-- Parameters: `callback` is the same function previously passed to `store.watch(...)`.
-- Returns: Nothing.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L286)
+
+Unregister a callback used with `store.watch(callback)` so it no longer fires.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `callback` | `Function` | The callback previously passed to `store.watch()`. |
+
+- Returns: `void`
 
 ```js
-store.unwatch(onopen)
+store.unwatch(onCore)
 ```
 
 ### Group notifications (experimental)
+
+#### `store.notifyGroup(topic)`
+
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L306)
+
+Get a `handle` for updates from all `hypercore`s with the group `topic` set.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `topic` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | The 32-byte group topic to watch. |
+
+- Returns: [`GroupNotifyHandle`](/reference/helpers/corestore) — A handle that emits `update` when a core in the group changes.
+
+```js
+const handle = store.notifyGroup(topic)
+handle.on('update', () => console.log('group changed'))
+```
 
 <Callout type="warn">
 Group notifications are experimental. The API is subject to change and may break in any release.
 </Callout>
 
-#### `const handle = store.notifyGroup(topic)`
+#### `handle.update(opts = {})`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L306)
-- Signature: `const handle = store.notifyGroup(topic)`
-- Parameters: `topic` is the group topic shared by the Hypercores you want update notifications for.
-- Returns: A `handle` (event emitter) scoped to `topic`. The handle exposes:
-  - `handle.updates([options])`: a readable stream yielding the `key` of each core in the group that has updated. `options` accepts `since` (timestamp to start from, default `0`—all updates) and `reverse` (latest first, default `true`).
-  - `handle.destroy()`: unregisters the handle from its store so it stops receiving updates.
-  - `handle.on('update', callback)`: fires whenever a core with the handle's `topic` updates.
-- Example:
+Gets updates for the `topic` the handle is for.
+
+| Parameter | Default |
+| --- | --- |
+| `opts` | `{}` |
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `since` | `0` | What timestamp to start returning updates from. Default `0` returns all updates |
+| `reverse` | `true` | Flag to return updates in reverse order. Defaults to `true` so latest returned first |
 
 ```js
-const handle = store.notifyGroup(topic)
-handle.on('update', () => console.log('a core in the group updated'))
-
 for await (const key of handle.updates()) {
-  console.log(key)
+  // ...
 }
 ```
 
+#### `handle.destroy()`
+
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/lib/notify.js#L20)
+
+Destroys and unregisters the `handle` from its `store`.
+
+#### `handle.on('update', callback)`
+
+Calls the callback whenever a core with the `topic` for the `handle` updates.
+
 #### `store.on('group-active', (topic) => {})`
 
-[API definition on GitHub](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L298)
-- Signature: `store.on('group-active', (topic) => {})`
-- Parameters: `topic` is the group topic of the core that updated.
-- Returns: Nothing. Emitted whenever an opened Hypercore in the store updates.
-- Example:
+[src](https://github.com/holepunchto/corestore/blob/v7.10.1/index.js#L344)
 
-```js
-store.on('group-active', (topic) => {
-  const handle = store.notifyGroup(topic)
-})
-```
+The `group-active` event emits whenever an opened Hypercore in the store updates. The `topic` is the group topic the core belongs to.
+
+## Types
+
+### CorestoreOptions
+
+Options for the \{@link Corestore\} constructor. Any other options are forwarded
+to the underlying `hypercore-storage` instance.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `primaryKey` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | The 32-byte master key from which all writable named cores are derived. Generated and persisted automatically when omitted. |
+| `writable` | `boolean` | `true` | Set to `false` to open the store read-only; loaded cores default to read-only too. |
+| `readOnly` | `boolean` | `false` | Open the backing storage in read-only mode. |
+| `active` | `boolean` | `true` | Whether loaded cores are automatically attached to active replication streams. |
+| `unsafe` | `boolean` | `false` | Acknowledge that passing `primaryKey` directly is unsafe; required when `primaryKey` is set on a root store. |
+
+## Errors
+
+Coded errors this module can throw — catch them via `err.code`.
+
+| Error | Thrown when |
+| --- | --- |
+| `ASSERTION` | if `primaryKey` is set on a root store without `unsafe: true`. |
 
 ## See also
 

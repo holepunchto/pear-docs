@@ -83,6 +83,25 @@ const layout: Layout = {
     },
   ],
 
+  // Errors thrown by public methods, transcribed from the upstream source guards.
+  members: {
+    append: {
+      returns: 'Resolves to the new core length once the value (or batch) has been appended.',
+      throws: ['if the autobase is closing.', 'if the local writer is not active/writable.'],
+    },
+    // The writer-management methods live on the apply host (lib/apply-calls.js) and
+    // throw when called on the read-only public view.
+    addWriter: { throws: ['if called on the read-only public view.'] },
+    ackWriter: { throws: ['if called on the read-only public view.'] },
+    removeWriter: {
+      throws: ['if called on the read-only public view, or if it would remove the last indexer.'],
+    },
+    interrupt: { throws: ['if called on the read-only public view.'] },
+    // `removeable` (the documented index.js method) returns false and does not throw.
+    get: { throws: ['if no `name` is provided.'] },
+    pause: { description: 'Pauses the autobase, preventing the next apply from running until `resume()` is called.' },
+  },
+
   // AST-only members upstream doesn't document in prose, so the model has no
   // description — supply them here.
   descriptions: {
