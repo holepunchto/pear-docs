@@ -63,6 +63,7 @@ interface RepoResult {
   ungrouped: string[];
   wrote: string[];
   error?: string;
+  keptCurated?: boolean;
 }
 
 async function renderSlug(slug: string, write: boolean): Promise<RepoResult> {
@@ -89,14 +90,16 @@ async function renderSlug(slug: string, write: boolean): Promise<RepoResult> {
   writeFileSync(previewPath, mdx);
   wrote.push(previewPath);
 
-  if (write) {
+  // `keepCurated` pages render a preview (for the gate + comparison) but are never
+  // written over the live content page, which is maintained by hand.
+  if (write && !layout.keepCurated) {
     const contentPath = findContentPage(slug);
     if (!contentPath) return { ...base, unknown, ungrouped, wrote, error: `--write: no content page for ${slug}` };
     writeFileSync(contentPath, mdx);
     wrote.push(contentPath);
   }
 
-  return { slug, unknown, ungrouped, wrote };
+  return { slug, unknown, ungrouped, wrote, keptCurated: write && !!layout.keepCurated };
 }
 
 async function main(): Promise<void> {
@@ -125,7 +128,8 @@ async function main(): Promise<void> {
     if (r.unknown.length) issues.push(`${r.unknown.length} unknown (${r.unknown.join(', ')})`);
     if (r.ungrouped.length) issues.push(`${r.ungrouped.length} ungrouped (${r.ungrouped.join(', ')})`);
     if (issues.length) gateFailures++;
-    console.log(`${issues.length ? '⚠' : '✓'} ${slug}: wrote ${r.wrote.join(', ')}${issues.length ? ` — ${issues.join('; ')}` : ''}`);
+    const curatedNote = r.keptCurated ? ' (content page kept curated)' : '';
+    console.log(`${issues.length ? '⚠' : '✓'} ${slug}: wrote ${r.wrote.join(', ')}${curatedNote}${issues.length ? ` — ${issues.join('; ')}` : ''}`);
   }
 
   if (hardErrors > 0) process.exit(1);

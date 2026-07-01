@@ -123,6 +123,8 @@ function buildClassMethods(
     const returnType = jsdoc?.returnType;
     const description = doc?.description ?? jsdoc?.description;
     const examples = doc?.examples?.length ? doc.examples : (jsdoc?.examples ?? []);
+    // `@throws` only comes from JSDoc — the README has no structured equivalent.
+    const throws = jsdoc?.throws ?? [];
     // Record jsdoc in `source` only when it actually supplied something the
     // README didn't — so drift/provenance tooling sees where facts came from.
     const usedJsDoc =
@@ -130,6 +132,7 @@ function buildClassMethods(
       ((!doc?.description && !!jsdoc.description) ||
         (!doc?.returns && !!jsdoc.returns) ||
         !!jsdoc.returnType ||
+        !!jsdoc.throws.length ||
         (!doc?.examples?.length && !!jsdoc.examples.length) ||
         jsdoc.params.some((p) => p.type || p.description));
     const source: ('ast' | 'readme' | 'jsdoc')[] = ['ast'];
@@ -147,6 +150,7 @@ function buildClassMethods(
       returns,
       ...(returnType ? { returnType } : {}),
       description,
+      ...(throws.length ? { throws } : {}),
       ...(doc?.options?.length ? { options: doc.options } : {}),
       examples,
       // Inherited members live in the base package, not this repo — no link.

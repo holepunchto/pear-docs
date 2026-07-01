@@ -15,8 +15,9 @@ export function baseOptions(): BaseLayoutProps {
           <Image
             src="/pear-1.svg"
             alt="Logo"
-            width={24}
-            height={24}
+            width={265}
+            height={358}
+            className="h-6 w-auto"
           />
           Pear Docs
         </>

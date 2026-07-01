@@ -68,6 +68,15 @@ const layout: Layout = {
     'on:handshake': 'Fires when the Noise handshake keys and hash have been established.',
   },
 
+  // Errors thrown by public methods, transcribed from the upstream source guards.
+  members: {
+    constructor: { throws: ['if `isInitiator` is not a boolean.'] },
+    send: {
+      description:
+        'Sends an encrypted unordered message, see [udx-native](https://github.com/holepunchto/udx-native/tree/main?tab=readme-ov-file#await-streamsendbuffer) for details. This method silently fails if called before the handshake is complete, or if the underlying `rawStream` is not a UDX stream (not capable of UDP).',
+    },
+  },
+
   seeAlso: [
     '[Hyperswarm](/reference/building-blocks/hyperswarm)—the peer-discovery and connection layer that typically hands sockets to Secretstream.',
     '[HyperDHT](/reference/building-blocks/hyperdht)—lower-level DHT whose direct keyed connections are also wrapped in Secretstream.',

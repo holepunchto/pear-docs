@@ -47,51 +47,41 @@ await drive.close()
 
 ### Constructor and lifecycle
 
-#### `new Hyperdrive(store, [key], [options])`
+#### `new Hyperdrive(store, [key])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L20)
-- Signature: `new Hyperdrive(store, [key], [options])`
-- Parameters: `store` is the `Corestore` used for metadata and blob storage; `key` optionally opens an existing drive by public key instead of using the default named core. `options` may be passed in place of `key` and supports `encryptionKey` to encrypt the backing cores, `onwait` for a per-core wait hook, and `active` (defaults to `true`) to control whether the drive keeps its cores active.
-- Returns: A `Hyperdrive` instance.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L21)
+
+Creates a new Hyperdrive instance. `store` must be an instance of `Corestore`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `corestore` | [`Corestore`](/reference/helpers/corestore) | — | — |
+| `key` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | Public key of an existing drive to load. May be omitted, passing `opts` in its place. |
+| `opts` | [`DriveOptions`](#driveoptions) | `{}` | Drive options. |
 
 ```js
-const drive = new Hyperdrive(store, key)
-await drive.ready()
+const Corestore = require('corestore')
+
+const store = new Corestore('./storage')
+const drive = new Hyperdrive(store)
 ```
 
 #### `await drive.ready()`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L45)
-- Signature: `await drive.ready()`
-- Parameters: None.
-- Returns: A promise that resolves when synchronous properties such as `drive.discoveryKey` are safe to read.
-- Example:
-
-```js
-await drive.ready()
-console.log(drive.discoveryKey)
-```
+Waits until internal state is loaded.
 
 #### `await drive.close()`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L189)
-- Signature: `await drive.close()`
-- Parameters: None.
-- Returns: A promise that resolves after the drive and its underlying storage objects are closed.
-- Example:
-
-```js
-await drive.close()
-```
+Fully close this drive, including its underlying Hypercore backed datastructures.
 
 #### `await drive.purge()`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L377)
-- Signature: `await drive.purge()`
-- Parameters: None.
-- Returns: A promise that resolves after both the metadata core and blob storage are removed from local storage.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L377)
+
+Purge both cores (db and blobs) from your storage, completely removing all the drive's data.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once both cores are purged from storage.
+- Throws: if called on a non-main session — only the main session can be purged.
 
 ```js
 await drive.purge()
@@ -101,462 +91,695 @@ await drive.purge()
 
 #### `drive.corestore`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L29)
-- Returns: The `Corestore` instance backing the drive.
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L29)
+
+The Corestore instance used as storage.
+
+- Returns: [`Corestore`](/reference/helpers/corestore)
 
 #### `drive.db`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L30)
-- Returns: The underlying Hyperbee that stores the drive's directory structure and entry metadata.
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L30)
+
+The underlying Hyperbee backing the drive file structure.
+
+- Returns: [`Hyperbee`](/reference/building-blocks/hyperbee)
 
 #### `drive.core`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L31)
-- Returns: The Hypercore used by `drive.db`.
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L31)
+
+The Hypercore used for `drive.db`.
+
+- Returns: [`Hypercore`](/reference/building-blocks/hypercore)
 
 #### `drive.id`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L83)
-- Returns: A z-base-32 string identifier derived from the drive's public key.
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L83)
+
+String containing the id (z-base-32 of the public key) identifying this drive.
+
+- Returns: `string`
 
 #### `drive.key`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L87)
-- Returns: The public key of the metadata Hypercore backing the drive.
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L87)
+
+The public key of the Hypercore backing the drive.
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer)
 
 #### `drive.discoveryKey`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L91)
-- Returns: The discovery key derived from `drive.key`, typically used as a Hyperswarm topic.
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L91)
+
+The hash of the public key of the Hypercore backing the drive.
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer)
 
 #### `drive.contentKey`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L95)
-- Returns: The public key of the Hyperblobs instance that stores file contents.
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L95)
+
+The public key of the [Hyperblobs](https://github.com/holepunchto/hyperblobs) instance holding blobs associated with entries in the drive.
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer)
 
 #### `drive.writable`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L103)
-- Returns: `true` when the current instance can mutate entries in the drive.
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L103)
+
+Boolean indicating if we can write or delete data in this drive.
+
+- Returns: `boolean`
 
 #### `drive.readable`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L107)
-- Returns: `true` when the instance can still read data; becomes `false` after `close()`.
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L107)
+
+Boolean indicating if we can read from this drive. After closing the drive this will be `false`.
+
+- Returns: `boolean`
 
 #### `drive.version`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L99)
-- Returns: The current drive version number, incremented as filesystem mutations are committed.
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L99)
+
+Number that indicates how many modifications were made, useful as a version identifier.
+
+- Returns: `number`
 
 #### `drive.supportsMetadata`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L33)
-- Returns: `true`. Hyperdrive always supports entry metadata.
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L33)
+
+Boolean indicating if the drive handles or not metadata. Always `true`.
+
+- Returns: `boolean`
 
 ### Files
 
 #### `await drive.put(path, buffer, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L330)
-- Signature: `await drive.put(path, buffer, [options])`
-- Parameters: `path` is the absolute drive path to write; `buffer` is the file content; `options` matches `drive.createWriteStream(...)` and supports `executable` and `metadata`.
-- Returns: A promise that resolves after the file entry and blob are committed.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L330)
+
+Creates a file at `path` in the drive. `options` are the same as in `createWriteStream`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | `string` | — | Path to write the file at. |
+| `buffer` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | Blob contents to store. |
+| `options` | [`WriteOptions`](#writeoptions) | `{}` | — |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the file has been written.
 
 ```js
-await drive.put('/docs/readme.txt', Buffer.from('hello'))
+await drive.put('/blob.txt', Buffer.from('example'))
 ```
 
-#### `const buffer = await drive.get(path, [options])`
+#### `await drive.get(path, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L316)
-- Signature: `const buffer = await drive.get(path, [options])`
-- Parameters: `path` is the file path to read; `options.wait` waits for remote blocks and `options.timeout` bounds that wait in milliseconds.
-- Returns: A `Buffer` for the file contents, or `null` if the file is missing or the path is a symlink.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L316)
+
+Reads the blob stored at `path` and resolves with its contents as a `Buffer`. Resolves with `null` when no blob exists at `path`, and also returns `null` for symbolic links.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `path` | `string` | Path of the file to read. |
+| `options` | [`GetOptions`](#getoptions) | — |
+
+- Returns: [`Promise<Buffer\|null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — The blob at `path`, or `null` if the path does not exist or is a symbolic link.
+- Throws: `BLOCK_NOT_AVAILABLE` if a required block is not available.
+
+#### `await drive.entry(path, [options])`
+
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L396)
+
+Resolves with the entry stored at `path`, or `null` if no entry exists.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `path` | `string` | Path of the entry to read. |
+| `options` | [`EntryOptions`](#entryoptions) | — |
+
+- Returns: [`Promise<object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — the entry at `path` in the drive.
+- Throws: if a symlink chain is recursive or exceeds 16 hops when `follow` is enabled.
+
+| Option | Default |
+| --- | --- |
+| `seq` | `Number` |
+| `key` | `String` |
+| `value` | — |
+
+#### `await drive.exists(path)`
+
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L415)
+
+Checks whether an entry exists at `path`.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `path` | `string` | Path to check. |
+
+- Returns: [`Promise<boolean>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — `true` if the entry at `path` does exists, otherwise `false`.
 
 ```js
-const buffer = await drive.get('/docs/readme.txt')
-console.log(buffer?.toString())
-```
-
-#### `const entry = await drive.entry(path, [options])`
-
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L396)
-- Signature: `const entry = await drive.entry(path, [options])`
-- Parameters: `path` is the path to inspect; `options.follow` follows symlinks, while `wait` and `timeout` control remote reads.
-- Returns: The current entry object, including `seq`, `key`, and `value` metadata, or `null` when no entry exists.
-- Example:
-
-```js
-const entry = await drive.entry('/docs/readme.txt')
-console.log(entry?.value.metadata)
-```
-
-#### `const exists = await drive.exists(path)`
-
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L415)
-- Signature: `const exists = await drive.exists(path)`
-- Parameters: `path` is the path to test.
-- Returns: `true` if an entry exists at that path, otherwise `false`.
-- Example:
-
-```js
-const exists = await drive.exists('/docs/readme.txt')
+const exists = await drive.exists('/blob.txt')
 ```
 
 #### `await drive.has(path)`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L483)
-- Signature: `await drive.has(path)`
-- Parameters: `path` is the file path to check.
-- Returns: `true` when the data for that path is already stored locally.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L483)
+
+Checks if path is saved to local store already.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `path` | `string` | of the file or folder to check. |
+
+- Returns: [`Promise<boolean>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — `true` if the blob (or every blob under a folder) is stored locally.
 
 ```js
-const hasLocalData = await drive.has('/docs/readme.txt')
+const exists = await drive.has('/blob.txt')
 ```
 
 #### `await drive.del(path)`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L340)
-- Signature: `await drive.del(path)`
-- Parameters: `path` is the file path to remove.
-- Returns: A promise that resolves after the entry is deleted from the drive.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L340)
+
+Deletes the file at `path` from the drive.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `path` | `string` | Path of the file to delete. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the entry has been deleted.
 
 ```js
-await drive.del('/docs/old.txt')
+await drive.del('/blob.txt')
 ```
 
-#### `const cleared = await drive.clear(path, [options])`
+#### `await drive.clear(path, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L349)
-- Signature: `const cleared = await drive.clear(path, [options])`
-- Parameters: `path` is the file path whose blob data should be discarded locally; `options.diff` includes a byte-count diff in the return value.
-- Returns: Information about cleared bytes when `diff` is enabled; otherwise `null`.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L349)
 
-```js
-await drive.clear('/videos/demo.mp4', { diff: true })
-```
+Deletes the blob from storage to free up space, but the file structure reference is kept.
 
-#### `const cleared = await drive.clearAll([options])`
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `path` | `string` | Path of the file whose blob should be cleared. |
+| `options` | [`ClearOptions`](#clearoptions) | — |
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L367)
-- Signature: `const cleared = await drive.clearAll([options])`
-- Parameters: `options.diff` includes a byte-count diff in the return value.
-- Returns: Information about cleared bytes when `diff` is enabled; otherwise `null`.
-- Example:
+- Returns: [`Promise<object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — A `{ blocks }` object when `diff` is enabled, otherwise `null`.
 
-```js
-await drive.clearAll({ diff: true })
-```
+#### `await drive.clearAll([options])`
 
-#### `await drive.symlink(path, linkname, [options])`
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L367)
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L388)
-- Signature: `await drive.symlink(path, linkname, [options])`
-- Parameters: `path` is the symlink entry to create; `linkname` is the destination path inside the drive; `options.metadata` optionally stores arbitrary JSON metadata on the symlink entry.
-- Returns: A promise that resolves after the symlink entry is written.
-- Example:
+Deletes all the blobs from storage to free up space, similar to how `drive.clear()` works.
+
+| Parameter | Type |
+| --- | --- |
+| `options` | [`ClearOptions`](#clearoptions) |
+
+- Returns: [`Promise<object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — A `{ blocks }` object when `diff` is enabled, otherwise `null`.
+
+#### `await drive.symlink(path, linkname)`
+
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L388)
+
+Creates an entry in drive at `path` that points to the entry at `linkname`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | Path of the symlink to create. |
+| `dst` | `string` | — | Path the symlink points to. |
+| `options` | [`SymlinkOptions`](#symlinkoptions) | `{}` | Symlink options. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the symlink entry has been created.
 
 ```js
 await drive.symlink('/images/logo.shortcut', '/images/logo.png')
 ```
 
-#### `const rs = drive.createReadStream(path, [options])`
+#### `drive.createReadStream(path, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L525)
-- Signature: `const rs = drive.createReadStream(path, [options])`
-- Parameters: `path` is the file path to stream; `options.start`, `end`, and `length` select a byte range, while `wait` and `timeout` control remote reads.
-- Returns: A readable stream for the blob at `path`.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L525)
 
-```js
-for await (const chunk of drive.createReadStream('/hello.txt')) {
-  console.log(chunk)
-}
-```
+Returns a readable stream of the blob stored in the drive at `path`.
 
-#### `const ws = drive.createWriteStream(path, [options])`
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `path` | `string` | Path of the file to read. |
+| `options` | `object` | — |
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L579)
-- Signature: `const ws = drive.createWriteStream(path, [options])`
-- Parameters: `path` is the file path to write; `options.executable` marks the file executable, `options.metadata` stores arbitrary JSON metadata, and `options.dedup` (defaults to `false`) reuses the existing blob when the new contents match the current entry.
-- Returns: A writable stream that commits the file when closed.
-- Example:
+- Returns: [`Readable`](https://nodejs.org/api/stream.html#class-streamreadable) — a stream to read out the blob stored in the drive at `path`.
 
-```js
-const ws = drive.createWriteStream('/notes.txt')
-ws.end('hello from a stream')
-```
+| Option | Default | Description |
+| --- | --- | --- |
+| `start` | `Number` | `start` and `end` are inclusive |
+| `end` | `Number` | — |
+| `length` | `Number` | `length` overrides `end`, they're not meant to be used together |
+| `wait` | `true` | Wait for blocks to be downloaded |
+| `timeout` | `0` | Wait at max some milliseconds (0 means no timeout) |
+
+#### `drive.createWriteStream(path, [options])`
+
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L579)
+
+Stream a blob into the drive at `path`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | `string` | — | Path of the file to write. |
+| `options` | [`WriteOptions`](#writeoptions) | `{}` | Write options — the same as for `drive.put(path, buffer, [options])`. |
+
+- Returns: [`Writable`](https://nodejs.org/api/stream.html#class-streamwritable) — A writable stream; data written is stored as the file's blob.
 
 ### Directories and listings
 
-#### `const stream = drive.list(folder, [options])`
+#### `drive.list(folder, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L503)
-- Signature: `const stream = drive.list(folder, [options])`
-- Parameters: `folder` scopes the prefix to list; `options.recursive` controls descent, `options.ignore` skips names, and `options.wait` blocks for remote metadata.
-- Returns: A stream of full entry records under the requested folder prefix.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L503)
+
+Returns a stream of all entries in the drive at paths prefixed with `folder`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `folder` | `string` | — | Path prefix to list. Defaults to the whole drive. |
+| `options` | `object` | `{}` | — |
+
+- Returns: [`Readable`](https://nodejs.org/api/stream.html#class-streamreadable) — a stream of all entries in the drive at paths prefixed with `folder`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `recursive` | — | Whether to descend into all subfolders or not |
+| `ignore` | — | Ignore files and folders by name |
+| `wait` | `true` | Wait for block to be downloaded. |
+
+#### `drive.readdir(folder, [options])`
+
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L516)
+
+Returns a stream of the immediate subpaths of entries stored at paths prefixed by `folder`.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `folder` | `string` | Path prefix to read. |
+| `options` | `object` | — |
+
+- Returns: [`Readable`](https://nodejs.org/api/stream.html#class-streamreadable) — a stream of all subpaths of entries in drive stored at paths prefixed by `folder`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `wait` | `true` | Wait for block to be downloaded |
+
+#### `await drive.entries([range], [options])`
+
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L471)
+
+Returns a read stream of the drive entries within the given Hyperbee `range`.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `range` | `object` | Hyperbee range bounds (`gt`/`gte`/`lt`/`lte`). |
+| `options` | `object` | `options` are the same as `Hyperbee().createReadStream([range], [options])`. |
+
+- Returns: [`Readable`](https://nodejs.org/api/stream.html#class-streamreadable) — a read stream of entries in the drive.
 
 ```js
-for await (const entry of drive.list('/images')) {
-  console.log(entry.key)
-}
+for await (const entry of drive.entries()) console.log(entry.key)
 ```
 
-#### `const stream = drive.readdir(folder, [options])`
+#### `drive.compare(entryA, entryB)`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L516)
-- Signature: `const stream = drive.readdir(folder, [options])`
-- Parameters: `folder` is the directory to enumerate; `options.wait` waits for remote metadata before yielding names.
-- Returns: A stream of child paths under the requested folder.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L344)
+
+Compares two entries by their sequence number.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `entryA` | `object` | The first entry (as returned by `drive.entry()`). |
+| `entryB` | `object` | The second entry (as returned by `drive.entry()`). |
+
+- Returns: `number` — `0` if entries are the same, `1` if `entryA` is newer, and `-1` if `entryB` is newer.
 
 ```js
-for await (const name of drive.readdir('/images')) {
-  console.log(name)
-}
+const comparison = drive.compare(entryA, entryB)
 ```
 
-#### `const stream = drive.entries([range], [options])`
+#### `drive.watch([folder])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L471)
-- Signature: `const stream = drive.entries([range], [options])`
-- Parameters: `range` limits the key space to read; `options` follows the same stream options as the underlying Hyperbee read stream and accepts `options.ignore` to skip matching keys.
-- Returns: A read stream of drive entries in key order.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L419)
 
-```js
-for await (const entry of drive.entries()) {
-  console.log(entry.key)
-}
-```
+Returns an async iterator that watches `folder` (defaults to `/`) and yields `[current, previous]` snapshot pairs whenever the drive changes. The snapshots are auto-closed before the next value, so do not close them yourself.
 
-#### `const comparison = drive.compare(entryA, entryB)`
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `folder` | `string` | to watch. Defaults to `/`. |
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L344)
-- Signature: `const comparison = drive.compare(entryA, entryB)`
-- Parameters: `entryA` and `entryB` are entry objects returned by Hyperdrive.
-- Returns: `0` when the entries are equal, `1` when `entryA` is newer (higher `seq`), and `-1` when `entryA` is older (lower `seq`).
-- Example:
+- Returns: [`Watcher`](/reference/building-blocks/hyperbee) — an iterator that listens on `folder` to yield changes, by default on `/`.
 
 ```js
-const comparison = drive.compare(currentEntry, previousEntry)
-```
-
-#### `const watcher = drive.watch([folder])`
-
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L419)
-- Signature: `const watcher = drive.watch([folder])`
-- Parameters: `folder` optionally narrows change detection to a subtree; defaults to `/`.
-- Returns: An async iterator that yields `[current, previous]` snapshots. The watcher also exposes `await watcher.ready()` and `await watcher.destroy()`.
-- Example:
-
-```js
-const watcher = drive.watch('/docs')
-await watcher.ready()
-
 for await (const [current, previous] of watcher) {
-  console.log(previous.version, '->', current.version)
-  break
+  console.log(current.version)
+  console.log(previous.version)
 }
-
-await watcher.destroy()
 ```
 
 ### Versions and batched mutations
 
-#### `const batch = drive.batch()`
+#### `drive.batch()`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L169)
-- Signature: `const batch = drive.batch()`
-- Parameters: None.
-- Returns: A batch object with the same mutation interface as `drive`, allowing multiple writes to be staged atomically.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L169)
+
+Useful for atomically mutate the drive, has the same interface as Hyperdrive.
+
+- Returns: [`Hyperdrive`](/reference/building-blocks/hyperdrive) — A batch with the same interface as Hyperdrive; call `batch.flush()` to commit.
 
 ```js
 const batch = drive.batch()
 await batch.put('/a.txt', Buffer.from('a'))
-await batch.put('/b.txt', Buffer.from('b'))
 await batch.flush()
 ```
 
 #### `await batch.flush()`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L187)
-- Signature: `await batch.flush()`
-- Parameters: None.
-- Returns: A promise that resolves once the staged batch mutations are committed to the underlying drive and the batch session is closed.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L187)
+
+Commit a batch of mutations to the underlying drive.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the batch is committed and closed.
 
 ```js
-const batch = drive.batch()
-await batch.del('/old.txt')
 await batch.flush()
 ```
 
-#### `const snapshot = drive.checkout(version)`
+#### `drive.checkout(version)`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L165)
-- Signature: `const snapshot = drive.checkout(version)`
-- Parameters: `version` is the earlier drive version to open.
-- Returns: A read-only snapshot of that version of the drive.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L165)
+
+Get a read-only snapshot of a previous version.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `version` | `number` | Drive version to snapshot. |
+
+- Returns: [`Hyperdrive`](/reference/building-blocks/hyperdrive) — A read-only Hyperdrive at the requested version.
 
 ```js
-const snapshot = drive.checkout(10)
-const buffer = await snapshot.get('/hello.txt')
+const snapshot = drive.checkout(4)
 ```
 
-#### `const stream = drive.diff(version, folder, [options])`
+#### `drive.diff(version, folder, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L428)
-- Signature: `const stream = drive.diff(version, folder, [options])`
-- Parameters: `version` is the baseline version to compare against; `folder` scopes the diff to one subtree; `options` passes through to the diff stream.
-- Returns: A stream of `{ left, right }` objects describing shallow changes between `version` and the current drive version.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L428)
+
+Efficiently create a stream of the changes to `folder` between `version` and `drive.version`.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `version` | `number` | Drive version to diff against the current `drive.version`. |
+| `folder` | `string` | Path prefix to scope the diff to. Omit for the whole drive. |
+| `options` | `object` | Diff options, forwarded to the underlying Hyperbee diff stream. |
+
+- Returns: [`Readable`](https://nodejs.org/api/stream.html#class-streamreadable) — A stream of `{ left, right }` diff entries.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `left` | `Object` | Entry in folder at drive.version for some path |
+| `right` | `Object` | Entry in folder at drive.checkout(version) for some path |
+
+#### `await drive.truncate(version, [options] })`
+
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L115)
+
+Truncates the Hyperdrive to a previous version (both the file-structure reference and the blobs).
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `version` | `number` | — | Drive version to truncate to. |
+| `options` | [`TruncateOptions`](#truncateoptions) | `{}` | Truncate options. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the drive and its blobs are truncated.
+- Throws: `BAD_ARGUMENT` if the truncation length is invalid.
 
 ```js
-for await (const change of drive.diff(10, '/docs')) {
-  console.log(change.left, change.right)
-}
-```
-
-#### `await drive.truncate(version, [options])`
-
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L115)
-- Signature: `await drive.truncate(version, [options])`
-- Parameters: `version` is the drive version to roll back to; `options.blobs` can be provided when the matching blob length is already known.
-- Returns: A promise that resolves after the drive is truncated to that earlier state.
-- Example:
-
-```js
-await drive.truncate(10)
+await drive.truncate(drive.version - 1)
 ```
 
 ### Replication, downloads, and blob access
 
-#### `const mirror = drive.mirror(out, [options])`
+#### `drive.mirror(out, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L521)
-- Signature: `const mirror = drive.mirror(out, [options])`
-- Parameters: `out` is another drive-like destination such as [Localdrive](/reference/helpers/localdrive); `options` are forwarded to the underlying [Mirrordrive](/reference/helpers/mirrordrive) instance.
-- Returns: A `MirrorDrive` instance. Call `await mirror.done()` to wait for the copy to finish.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L521)
+
+Efficiently mirror this drive into another. Returns a [`MirrorDrive`](https://github.com/holepunchto/mirror-drive#api) instance constructed with `options`.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `out` | [`Hyperdrive\|Localdrive`](/reference/building-blocks/hyperdrive) | Destination drive to mirror into. |
+| `options` | `object` | Mirror options, forwarded to `MirrorDrive`. |
+
+- Returns: [`MirrorDrive`](/reference/helpers/mirrordrive) — A `MirrorDrive` instance; await it or `mirror.done()` to finish.
 
 ```js
-const mirror = drive.mirror(localdrive)
+const mirror = drive.mirror(out)
 await mirror.done()
 ```
 
-#### `const download = drive.download(folder, [options])`
+#### `drive.download(folder, [options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L477)
-- Signature: `const download = drive.download(folder, [options])`
-- Parameters: `folder` scopes which subtree to fetch; `options` match `drive.list(...)`.
-- Returns: A `Download` handle for blob downloads. Use `await download.done()` to wait for completion or `download.destroy()` to cancel.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L477)
+
+Downloads the blobs corresponding to all entries in the drive at paths prefixed with `folder`. Returns a `Download` object that resolves once all data has been downloaded:
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `folder` | `string` | `'/'` | Path prefix to download. Defaults to the whole drive. |
+| `options` | `object` | — | `options` are the same as those for `drive.list(folder, [options])`. |
+
+- Returns: `Download` — A Download object; await `download.done()` to know when complete.
 
 ```js
-const download = drive.download('/images')
+const download = await drive.download(key)
 await download.done()
 ```
 
-#### `const download = await drive.downloadDiff(version, folder, [options])`
+```js
+download.destroy()
+```
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L439)
-- Signature: `const download = await drive.downloadDiff(version, folder, [options])`
-- Parameters: `version` is the historical version to compare; `folder` scopes the subtree; `options` match `drive.list(...)`.
-- Returns: A `Download` handle for blobs that exist in `drive.checkout(version)` but not in the current drive state.
-- Example:
+#### `await drive.downloadDiff(version, folder, [options])`
+
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L439)
+
+Downloads all the blobs in `folder` corresponding to entries in `drive.checkout(version)` that are not in `drive.version`. Returns a `Download` object that resolves once all data has been downloaded:
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `version` | `number` | Drive version to diff against the current `drive.version`. |
+| `folder` | `string` | Path prefix to scope the download to. Omit for the whole drive. |
+| `options` | `object` | Diff options, forwarded to `drive.diff()`. |
+
+- Returns: `Download` — A Download object; await `download.done()` to know when complete.
 
 ```js
-const download = await drive.downloadDiff(10, '/images')
+const download = await drive.downloadDiff(version, folder)
 await download.done()
 ```
 
-#### `const download = await drive.downloadRange(dbRanges, blobRanges)`
+```js
+download.destroy()
+```
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L453)
-- Signature: `const download = await drive.downloadRange(dbRanges, blobRanges)`
-- Parameters: `dbRanges` selects metadata ranges and `blobRanges` selects blob ranges, using the range format accepted by [Hypercore](/reference/building-blocks/hypercore).
-- Returns: A `Download` handle for the requested metadata and blob ranges.
-- Example:
+#### `await drive.downloadRange(dbRanges, blobRanges)`
+
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L453)
+
+Downloads the entries and blobs stored in the ranges `dbRanges` and `blobRanges`. Returns a `Download` object that resolves once all data has been downloaded:
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `dbRanges` | [`Array<object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | Block ranges to download from the db (metadata) core. |
+| `blobRanges` | [`Array<object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | Block ranges to download from the blobs core. |
+
+- Returns: `Download` — A Download object; await `download.done()` to know when complete.
 
 ```js
-const download = await drive.downloadRange([{ start: 0, end: 10 }], [])
+const download = await drive.downloadRange(dbRanges, blobRanges)
 await download.done()
 ```
 
-#### `const done = drive.findingPeers()`
+```js
+download.destroy()
+```
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L111)
-- Signature: `const done = drive.findingPeers()`
-- Parameters: None.
-- Returns: A callback that should be invoked when the current peer-discovery pass finishes, allowing pending updates to unblock.
-- Example:
+#### `drive.findingPeers()`
+
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L111)
+
+Indicate to Hyperdrive that you're finding peers in the background, requests will be on hold until this is done.
+
+- Returns: `Function` — A `done` callback to call once peer discovery has finished.
 
 ```js
 const done = drive.findingPeers()
 swarm.flush().then(done, done)
 ```
 
-#### `const stream = drive.replicate(isInitiator, [options])`
+#### `drive.replicate(isInitiatorOrStream)`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L147)
-- Signature: `const stream = drive.replicate(isInitiator, [options])`
-- Parameters: Pass an existing replication stream, or an `isInitiator` boolean with optional `options`. Both forms are forwarded to the underlying Corestore replication API.
-- Returns: The replication stream for the drive and its loaded backing data.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L147)
+
+Creates a replication stream for the drive. Pass `true`/`false` to create a new stream as initiator/responder, or pass an existing stream or socket to replicate over it. See [`corestore.replicate`](https://github.com/holepunchto/corestore#const-stream--storereplicateoptsorstream) for how replication works.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `isInitiator` | [`boolean\|Stream`](https://nodejs.org/api/stream.html) | `true`/`false` to initiate replication, or an existing stream/socket to replicate over. |
+| `opts` | `object` | Replication options, forwarded to `corestore.replicate()`. |
+
+- Returns: [`Stream`](https://nodejs.org/api/stream.html) — A replication stream.
 
 ```js
+const swarm = new Hyperswarm()
+const done = drive.findingPeers()
 swarm.on('connection', (socket) => drive.replicate(socket))
-```
-
-#### `const updated = await drive.update([options])`
-
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L151)
-- Signature: `const updated = await drive.update([options])`
-- Parameters: `options.wait` can force a blocking wait for a newer version.
-- Returns: A boolean indicating whether the drive observed a new version.
-- Example:
-
-```js
-const done = drive.findingPeers()
+swarm.join(drive.discoveryKey)
 swarm.flush().then(done, done)
-const updated = await drive.update()
 ```
 
-#### `const blobs = await drive.getBlobs()`
+#### `await drive.update([options])`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L291)
-- Signature: `const blobs = await drive.getBlobs()`
-- Parameters: None.
-- Returns: The Hyperblobs instance storing file contents for the drive.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L151)
+
+Waits for initial proof of the new drive version until all `findingPeers` are done.
+
+| Parameter | Type |
+| --- | --- |
+| `options` | [`UpdateOptions`](#updateoptions) |
+
+- Returns: [`Promise<boolean>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — `true` if the drive advanced to a new version, otherwise `false`.
+
+#### `await drive.getBlobs()`
+
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L291)
+
+Returns the [Hyperblobs](https://github.com/holepunchto/hyperblobs)
+instance storing the blobs indexed by drive entries.
+
+- Returns: [`Promise<Hyperblobs>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — the [Hyperblobs](https://github.com/holepunchto/hyperblobs) instance storing the blobs indexed by drive entries.
 
 ```js
+await drive.put('/file.txt', Buffer.from('hi'))
+
+const buffer1 = await drive.get('/file.txt')
+
 const blobs = await drive.getBlobs()
-const entry = await drive.entry('/hello.txt')
-const buffer = await blobs.get(entry.value.blob)
+const entry = await drive.entry('/file.txt')
+const buffer2 = await blobs.get(entry.value.blob)
+
+// => buffer1 and buffer2 are equals
 ```
 
-#### `const blobsLength = await drive.getBlobsLength(checkout)`
+#### `await drive.getBlobsLength(checkout)`
 
-[API definition on GitHub](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L133)
-- Signature: `const blobsLength = await drive.getBlobsLength(checkout)`
-- Parameters: `checkout` optionally selects the drive version whose blob length should be resolved.
-- Returns: The Hyperblobs length associated with that version of the drive.
-- Example:
+[src](https://github.com/holepunchto/hyperdrive/blob/v13.3.2/index.js#L133)
+
+Returns the length of the Hyperblobs instance at the time of the specified
+Hyperdrive version (defaults to the current version).
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `checkout` | `number` | Drive version to measure. Defaults to the current version. |
+
+- Returns: [`Promise<number>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — the length of the Hyperblobs instance at the time of the specified Hyperdrive version (defaults to the current version).
 
 ```js
 const blobsLength = await drive.getBlobsLength()
 ```
+
+## Types
+
+### DriveOptions
+
+Options for creating a Hyperdrive.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `encryptionKey` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | — | Encryption key used to encrypt and decrypt the underlying cores. |
+| `onwait` | `Function` | — | Hook called when a block has to be downloaded before it can be read. |
+| `active` | `boolean` | `true` | Whether the drive's cores actively maintain peer connections. |
+
+### TruncateOptions
+
+Options for `drive.truncate()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `blobs` | `number` | — | Corresponding blobs length, if known. Recommended to let the method figure it out. |
+
+### UpdateOptions
+
+Options for `drive.update()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `wait` | `boolean` | `false` | Whether to wait for peers before resolving. Use this or `drive.findingPeers()` to make `await drive.update()` blocking. |
+
+### GetOptions
+
+Options for `drive.get()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `wait` | `boolean` | `true` | Wait for the block to be downloaded. |
+| `timeout` | `number` | `0` | Max milliseconds to wait (0 means no timeout). |
+
+### WriteOptions
+
+Options for writing a file (`drive.put()` and `drive.createWriteStream()`).
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `executable` | `boolean` | `false` | Whether the blob at the path is an executable. |
+| `metadata` | `*` | `null` | Extended file information, i.e. an arbitrary JSON value. |
+| `dedup` | `boolean` | `false` | Reuse the existing blob if the content is unchanged (createWriteStream only). |
+
+### ClearOptions
+
+Options for clearing blobs (`drive.clear()` and `drive.clearAll()`).
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `diff` | `boolean` | `false` | When enabled, returns a `{ blocks }` object reporting the blocks cleared; otherwise the result is `null`. |
+
+### SymlinkOptions
+
+Options for `drive.symlink()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `metadata` | `*` | `null` | Extended file information, i.e. an arbitrary JSON value. |
+
+### EntryOptions
+
+Options for `drive.entry()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `follow` | `boolean` | `false` | Follow symlinks, up to 16 deep or it throws an error. |
+| `wait` | `boolean` | `true` | Wait for the block to be downloaded. |
+| `timeout` | `number` | `0` | Max milliseconds to wait (0 means no timeout). |
+
+## Errors
+
+Coded errors this module can throw — catch them via `err.code`.
+
+| Error | Thrown when |
+| --- | --- |
+| `BAD_ARGUMENT` | if the truncation length is invalid. |
+| `BLOCK_NOT_AVAILABLE` | if a required block is not available. |
 
 ## See also
 

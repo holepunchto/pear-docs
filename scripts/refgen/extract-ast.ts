@@ -25,6 +25,7 @@ export interface AstJsDoc {
   params: { name: string; type?: string; description: string }[];
   returns?: string;
   returnType?: string;
+  throws: { type?: string; description: string }[];
   examples: string[];
 }
 
@@ -297,6 +298,36 @@ function takeBracedType(s: string): { type?: string; rest: string } {
   return { rest: t }; // unbalanced — treat as untyped
 }
 
+/**
+ * Parse a leading JSDoc name token: `name`, `[name]`, or `[name=default]`, returning
+ * the name, optional flag, default (if any) and the remaining text. The default may
+ * itself contain brackets (`[]`, `{}`), so the closing `]` is found by a balanced
+ * scan — a regex like `=[^\]]*` stops at the first inner `]` and leaves a stray
+ * `] -` in the description (the `[messages=[]]` → `[messages=[ - ]` bug).
+ */
+function parseNameToken(rest: string): { name: string; optional: boolean; default?: string; rest: string } | null {
+  const s = rest.trimStart();
+  if (s[0] === '[') {
+    let depth = 0;
+    for (let i = 0; i < s.length; i++) {
+      if (s[i] === '[') depth++;
+      else if (s[i] === ']' && --depth === 0) {
+        const inner = s.slice(1, i);
+        const eq = inner.indexOf('=');
+        return {
+          name: (eq >= 0 ? inner.slice(0, eq) : inner).trim(),
+          optional: true,
+          default: eq >= 0 ? inner.slice(eq + 1).trim() || undefined : undefined,
+          rest: s.slice(i + 1).trimStart(),
+        };
+      }
+    }
+    // unbalanced bracket — fall through to the plain-identifier match
+  }
+  const m = s.match(/^([\w$.]+)\s*([\s\S]*)/);
+  return m ? { name: m[1], optional: false, rest: m[2] } : null;
+}
+
 // Parse a block-comment value (the text between the opening /** and closing delimiters)
 // into structured JSDoc fields: description, @param, @returns, @example.
 function parseJsDoc(text: string): AstJsDoc | null {
@@ -310,6 +341,7 @@ function parseJsDoc(text: string): AstJsDoc | null {
   const params: { name: string; type?: string; description: string }[] = [];
   let returns: string | undefined;
   let returnType: string | undefined;
+  const throws: { type?: string; description: string }[] = [];
   const exampleLines: string[] = [];
   let mode: 'desc' | 'example' | 'skip' = 'desc';
 
@@ -320,19 +352,22 @@ function parseJsDoc(text: string): AstJsDoc | null {
     const paramTag = /^@param\b/.test(line);
     const returnsTag = /^@returns?\b/.test(line);
     const typeTag = /^@type\b/.test(line);
+    const throwsTag = /^@(?:throws?|exception)\b/.test(line);
     const exampleM = line.match(/^@example\s*(.*)/);
-    const isOtherTag = !paramTag && !returnsTag && !typeTag && !exampleM && /^@\w/.test(line);
+    const isOtherTag = !paramTag && !returnsTag && !typeTag && !throwsTag && !exampleM && /^@\w/.test(line);
 
     if (paramTag) {
       mode = 'skip';
       const { type, rest } = takeBracedType(line.replace(/^@param\s*/, ''));
-      const nameM = rest.match(/^(\[?[\w$.]+\]?)\s*([\s\S]*)/);
-      if (nameM) {
-        const name = nameM[1].replace(/[\[\]]/g, '');
-        const desc = nameM[2].trim().replace(/^[-—]\s*/, '');
+      // parseNameToken strips the whole `[name=default]` token (default may contain
+      // brackets) so nothing leaks into the description. The default itself is sourced
+      // from the AST node in paramFrom(), so only the name is kept here.
+      const tok = parseNameToken(rest);
+      if (tok) {
+        const desc = tok.rest.trim().replace(/^[-—]\s*/, '');
         // Keep params with a type even when the description is still missing — the
         // gap report wants "typed but undescribed", and the type is useful.
-        if (name && (desc || type)) params.push({ name, type, description: desc });
+        if (tok.name && (desc || type)) params.push({ name: tok.name, type, description: desc });
       }
     } else if (returnsTag) {
       mode = 'skip';
@@ -349,6 +384,12 @@ function parseJsDoc(text: string): AstJsDoc | null {
       returnType = type ?? returnType;
       const desc = rest.trim().replace(/^[-—]\s*/, '');
       if (desc) descLines.push(desc);
+    } else if (throwsTag) {
+      // `@throws {Type} condition` — the error type and when it's raised.
+      mode = 'skip';
+      const { type, rest } = takeBracedType(line.replace(/^@(?:throws?|exception)\s*/, ''));
+      const desc = rest.trim().replace(/^[-—]\s*/, '');
+      if (type || desc) throws.push({ type, description: desc });
     } else if (exampleM) {
       mode = 'example';
       if (exampleM[1]) exampleLines.push(exampleM[1]);
@@ -366,8 +407,8 @@ function parseJsDoc(text: string): AstJsDoc | null {
 
   const description = descLines.join('\n').trim() || undefined;
   const examples = exampleLines.join('\n').trim() ? [exampleLines.join('\n').trim()] : [];
-  if (!description && !params.length && !returns && !returnType && !examples.length) return null;
-  return { description, params, returns, returnType, examples };
+  if (!description && !params.length && !returns && !returnType && !throws.length && !examples.length) return null;
+  return { description, params, returns, returnType, throws, examples };
 }
 
 /**
@@ -393,15 +434,12 @@ function parseTypedef(text: string): AstTypedef | null {
       seenTypedef = true;
     } else if (/^@property\b/.test(line)) {
       const { type, rest } = takeBracedType(line.replace(/^@property\s*/, ''));
-      const m = rest.match(/^(\[?[\w$.]+(?:=[^\]]*)?\]?)\s*([\s\S]*)/);
-      if (m) {
-        const optional = m[1].startsWith('[');
-        const inner = m[1].replace(/^\[|\]$/g, '');
-        const eq = inner.indexOf('=');
-        const pname = (eq >= 0 ? inner.slice(0, eq) : inner).trim();
-        const def = eq >= 0 ? inner.slice(eq + 1).trim() || undefined : undefined;
-        const desc = m[2].trim().replace(/^[-—]\s*/, '') || undefined;
-        if (pname) properties.push({ name: pname, type, optional, default: def, description: desc });
+      const tok = parseNameToken(rest);
+      if (tok) {
+        const desc = tok.rest.trim().replace(/^[-—]\s*/, '') || undefined;
+        if (tok.name) {
+          properties.push({ name: tok.name, type, optional: tok.optional, default: tok.default, description: desc });
+        }
       }
     } else if (/^@\w/.test(line)) {
       // another tag — stop collecting description

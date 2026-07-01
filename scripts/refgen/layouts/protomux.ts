@@ -48,7 +48,7 @@ const layout: Layout = {
     { title: 'Registering and sending messages', members: ['addMessage', 'send', 'encoding', 'onmessage'] },
     {
       title: 'Channel properties',
-      members: ['userData', 'protocol', 'aliases', 'id', 'handshake', 'messages', 'opened', 'closed', 'destroyed', 'drained'],
+      members: ['userData', 'protocol', 'aliases', 'id', 'handshake', 'messages', 'Channel.opened', 'closed', 'destroyed', 'Channel.drained'],
     },
     { title: 'Lifecycle callbacks', members: ['onopen', 'onclose', 'ondestroy', 'ondrain'] },
   ],

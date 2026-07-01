@@ -54,6 +54,8 @@ export interface RefMethod {
   returnType?: string;
   /** Description prose from the README or JSDoc, if documented. */
   description?: string;
+  /** Errors the member can throw — from JSDoc `@throws {Type} condition`. */
+  throws?: RefThrows[];
   /** Fields of the member's options object, parsed from the README options fence. */
   options?: RefOption[];
   /** Fenced code blocks following the README entry. */
@@ -62,6 +64,14 @@ export interface RefMethod {
   sourceLink?: string;
   /** Which inputs contributed this symbol (`ast`, `readme`, or both). */
   source: SymbolSource[];
+}
+
+/** An error a member can throw — `@throws {Type} condition`. */
+export interface RefThrows {
+  /** Error type/class or code, e.g. `BAD_ARGUMENT` (from the `{Type}` tag). */
+  type?: string;
+  /** When it throws, e.g. "if the core is closed". */
+  description: string;
 }
 
 export interface RefClass {
@@ -176,6 +186,18 @@ export const MODEL_SCHEMA = {
                 returns: { type: 'string' },
                 returnType: { type: 'string' },
                 description: { type: 'string' },
+                throws: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    required: ['description'],
+                    additionalProperties: false,
+                    properties: {
+                      type: { type: 'string' },
+                      description: { type: 'string' },
+                    },
+                  },
+                },
                 options: {
                   type: 'array',
                   items: {

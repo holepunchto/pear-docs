@@ -13,6 +13,12 @@ const layout: Layout = {
     'Topic-based peer discovery and encrypted connections on top of HyperDHT.',
   status: 'stable',
 
+  // The model collapses `swarm.destroy` and `discovery.destroy` into one `destroy`
+  // member (no `PeerDiscovery` sub-object is extracted), so a regen drops the real
+  // `swarm.destroy`. Keep the hand-curated page until the extractor models
+  // PeerDiscovery as a sub-object; the preview still renders for comparison.
+  keepCurated: true,
+
   intro:
     'Hyperswarm is the high-level networking layer for discovering peers by a shared 32-byte topic and opening ' +
     'encrypted connections between them. Prefer one swarm instance per app and join multiple topics on that same ' +
@@ -47,6 +53,19 @@ const layout: Layout = {
     { title: '`PeerDiscovery`', members: ['flushed', 'refresh', 'destroy'] },
     { title: '`PeerInfo`', members: ['publicKey', 'topics', 'prioritized', 'ban'] },
   ],
+
+  // Descriptions for members whose model entry is an extraction artifact or a
+  // wrong copy-paste (the model collapses swarm.destroy and discovery.destroy).
+  members: {
+    constructor: {
+      description:
+        'Creates a Hyperswarm instance for discovering peers by topic and opening encrypted connections to them over HyperDHT.',
+    },
+    destroy: {
+      description:
+        'Destroys the swarm — closes all active connections, stops all topic discovery, and tears down the underlying DHT node. Pass `{ force: true }` to skip waiting for graceful shutdown.',
+    },
+  },
 
   notes: {
     join:

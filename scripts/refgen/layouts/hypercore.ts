@@ -83,6 +83,58 @@ const layout: Layout = {
     },
   ],
 
+  // Errors thrown by public methods, transcribed from the upstream source guards
+  // (hypercore-errors codes). Editorial until `@throws` is authored upstream; the
+  // model still supplies each entry's signature, params, returns, and example.
+  members: {
+    session: { throws: ['`SESSION_CLOSED` if called on a core that is already closing.'] },
+    get: {
+      throws: [
+        '`SESSION_CLOSED` if the core has been closed.',
+        '`ASSERTION` if `index` is not a valid block index.',
+      ],
+    },
+    seek: {
+      throws: [
+        '`SESSION_CLOSED` if the core has been closed.',
+        '`ASSERTION` if `bytes` is not a valid byte offset.',
+      ],
+    },
+    has: { throws: ['`ASSERTION` if the `start`/`end` range is invalid.'] },
+    append: {
+      throws: [
+        '`SESSION_CLOSED` if the core has been closed.',
+        '`SESSION_NOT_WRITABLE` if the core is not writable.',
+        '`INVALID_OPERATION` if the append is inconsistent with the manifest prologue.',
+        '`BAD_ARGUMENT` if an appended block exceeds the maximum suggested block size.',
+      ],
+    },
+    truncate: {
+      throws: [
+        '`SESSION_CLOSED` if the core has been closed.',
+        '`SESSION_NOT_WRITABLE` if the core is not writable.',
+        '`INVALID_OPERATION` if the truncation would break the manifest prologue.',
+      ],
+    },
+    clear: {
+      throws: [
+        '`SESSION_CLOSED` if the core has been closed.',
+        '`ASSERTION` if the `start`/`end` range is invalid.',
+      ],
+    },
+    commit: {
+      throws: ['`INVALID_OPERATION` if no database batch was passed, or the tree changed during the batch.'],
+    },
+    setEncryption: {
+      throws: ['`ASSERTION` if the provider does not satisfy the `HypercoreEncryption` interface.'],
+    },
+    startMarking: { throws: ['`ASSERTION` if the core is already in gc mode, or is a named or atomic session.'] },
+    getUserData: {
+      description:
+        'Reads the local user-data value stored under `key`, resolving with its `Buffer`/string value or `null` if unset. User data is local-only and not replicated.',
+    },
+  },
+
   // Hand-authored conceptual prose upstream doesn't put in member docs; rendered
   // after the named member's entry.
   notes: {

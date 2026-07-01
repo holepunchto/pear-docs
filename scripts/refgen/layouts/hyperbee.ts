@@ -56,6 +56,10 @@ const layout: Layout = {
   // descriptions (from the README), so we only add return/example; the
   // watcher.* / entryWatcher.* members are AST-only, so they need full prose.
   members: {
+    // Errors thrown by public methods, transcribed from the upstream source guards.
+    watch: { throws: ['if called on a non-main Hyperbee (a sub, checkout, or snapshot).'] },
+    getAndWatch: { throws: ['if called on a non-main Hyperbee, or if the Hyperbee is closed.'] },
+    getHeader: { throws: ['`DECODING_ERROR` if the stored header cannot be decoded.'] },
     'Batch.put': { returns: 'Resolves after queuing the write inside the batch.', example: "await batch.put('settings', { retries: 3 })" },
     'Batch.get': { returns: 'The pending or committed entry visible within the batch, or `null` when missing.', example: "const entry = await batch.get('settings')" },
     'Batch.del': { returns: 'Resolves after queuing the delete inside the batch.', example: "await batch.del('settings')" },

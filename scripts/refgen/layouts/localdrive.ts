@@ -59,6 +59,19 @@ const layout: Layout = {
     { title: 'Stream APIs', members: ['createReadStream', 'createWriteStream'] },
   ],
 
+  // Descriptions for members whose model entry is an extraction artifact ("Available
+  // `options`:") and a compare() return value the upstream README states backwards.
+  members: {
+    get: {
+      description:
+        'Reads the file at `key` and resolves with its contents as a `Buffer`, or `null` if no file exists (also `null` for symbolic links).',
+    },
+    entry: { description: 'Resolves with the entry stored at `key`, or `null` if no entry exists.' },
+    list: { description: 'Returns a stream of entries for files under `folder` (defaults to the whole drive).' },
+    createReadStream: { description: 'Returns a readable stream of the file stored at `key`.' },
+    compare: { returns: '`1` if `entryA` is newer, `-1` if `entryB` is newer, and `0` if they are equal.' },
+  },
+
   seeAlso: [
     '[Create a full peer-to-peer filesystem with Hyperdrive](/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—shows Localdrive mirroring in a full writer/reader flow.',
     '[Hyperdrive](/reference/building-blocks/hyperdrive)—the distributed filesystem API Localdrive is designed to interoperate with.',
