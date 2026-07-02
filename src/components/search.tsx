@@ -70,12 +70,13 @@ function renderInline(text: string): ReactNode[] {
       if (lm)
         out.push(
           <a key={k++} href={lm[2].replace(/\s+"[^"]*"$/, '')} className="text-fd-primary hover:underline">
-            {lm[1]}
+            {renderInline(lm[1])}
           </a>,
         );
       else out.push(tok);
     } else {
-      out.push(<strong key={k++}>{tok.slice(2, -2)}</strong>);
+      // Recurse so links/code wrapped in bold (e.g. **[text](url)**) still render.
+      out.push(<strong key={k++}>{renderInline(tok.slice(2, -2))}</strong>);
     }
     last = m.index + tok.length;
   }
