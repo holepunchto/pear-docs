@@ -14,6 +14,9 @@ import { Engine } from './engine.ts';
 import { handleMcpRequest } from './mcp.ts';
 
 const PORT = Number(process.env.PORT || 8787);
+// How many chunks feed the RAG answer. Fewer = shorter prompt = much faster
+// prefill on CPU hosts (prefill dominates latency there). Default 6.
+const ASK_TOPK = Number(process.env.QVAC_ASK_TOPK || 6);
 
 // Optional bearer-token gate. When QVAC_API_TOKEN is set, /api/* and /mcp require
 // `Authorization: Bearer <token>`; /health stays open for monitoring. Unset = open
@@ -193,7 +196,7 @@ async function main() {
           closed = true;
           ac.abort();
         });
-        for await (const ev of engine.ask(query, { signal: ac.signal })) {
+        for await (const ev of engine.ask(query, { signal: ac.signal, topK: ASK_TOPK })) {
           if (closed) break;
           res.write(`data: ${JSON.stringify(ev)}\n\n`);
         }
