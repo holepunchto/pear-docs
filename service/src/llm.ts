@@ -127,10 +127,13 @@ export async function createAnswerer(opts: { preset?: string; ggufPath?: string 
   const preset = resolvePreset(opts);
   // Offload to the GPU (Metal on Apple Silicon) by default; QVAC_DEVICE=cpu opts out.
   const device = process.env.QVAC_DEVICE === 'cpu' ? 'cpu' : 'gpu';
+  // 8192 gives headroom for a full topK=6 RAG context (code chunks run long)
+  // plus the system prompt and generation budget, without risking overflow.
+  const ctxSize = Number(process.env.QVAC_CTX_SIZE || 8192);
   const modelId = await loadModel({
     modelSrc: preset.gguf,
     modelType: 'llamacpp-completion',
-    modelConfig: { ctx_size: 4096, device, gpu_layers: device === 'gpu' ? 99 : 0 },
+    modelConfig: { ctx_size: ctxSize, device, gpu_layers: device === 'gpu' ? 99 : 0 },
   });
 
   return {
