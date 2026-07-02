@@ -15,10 +15,23 @@ import { handleMcpRequest } from './mcp.ts';
 
 const PORT = Number(process.env.PORT || 8787);
 
+// Optional bearer-token gate. When QVAC_API_TOKEN is set, /api/* and /mcp require
+// `Authorization: Bearer <token>`; /health stays open for monitoring. Unset = open
+// (local dev). NOTE: a token shipped to a public static site via NEXT_PUBLIC_* is
+// visible in the browser bundle — this deters casual/bot hits on the raw URL and
+// lets you rotate access; it is not a true secret. Pair with a named tunnel +
+// Cloudflare Access for real protection.
+const API_TOKEN = process.env.QVAC_API_TOKEN || '';
+
+function authorized(req: http.IncomingMessage): boolean {
+  if (!API_TOKEN) return true;
+  return req.headers['authorization'] === `Bearer ${API_TOKEN}`;
+}
+
 function cors(res: http.ServerResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id, mcp-protocol-version');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, mcp-session-id, mcp-protocol-version');
   res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id');
 }
 
@@ -49,6 +62,13 @@ async function main() {
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204).end();
+      return;
+    }
+
+    // Gate everything except /health behind the bearer token (when configured).
+    if (url.pathname !== '/health' && !authorized(req)) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'unauthorized' }));
       return;
     }
 

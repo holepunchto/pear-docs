@@ -24,6 +24,14 @@ import {
 // QVAC docs service (semantic search + RAG "ask"). Defaults to the local PoC
 // service; failed/unset → the build-time Orama index is used as a fallback.
 const QVAC_API = process.env.NEXT_PUBLIC_QVAC_API_URL || 'http://localhost:8787';
+// Optional bearer token when the service is exposed publicly. NOTE: this ships
+// in the client bundle (NEXT_PUBLIC_*), so it is not a secret — it only gates
+// casual access to the raw endpoint.
+const QVAC_TOKEN = process.env.NEXT_PUBLIC_QVAC_API_TOKEN || '';
+const jsonHeaders: Record<string, string> = {
+  'Content-Type': 'application/json',
+  ...(QVAC_TOKEN ? { Authorization: `Bearer ${QVAC_TOKEN}` } : {}),
+};
 
 type Mode = 'search' | 'ask';
 
@@ -247,7 +255,7 @@ export default function CustomSearchDialog(props: SharedProps) {
       try {
         const res = await fetch(`${QVAC_API}/api/search`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: jsonHeaders,
           body: JSON.stringify({ query: search, topK: 6 }),
           signal: ctrl.signal,
         });
@@ -297,7 +305,7 @@ export default function CustomSearchDialog(props: SharedProps) {
     try {
       const res = await fetch(`${QVAC_API}/api/ask`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders,
         body: JSON.stringify({ query: search }),
         signal: ctrl.signal,
       });

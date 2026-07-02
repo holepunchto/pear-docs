@@ -68,6 +68,7 @@ box automatically falls back to the static Orama keyword index.
 
 ```bash
 claude mcp add --transport http pear-docs http://localhost:8787/mcp
+# token-gated service: add  --header "Authorization: Bearer <token>"
 ```
 
 Tools: `search_docs(query, topK?)`, `ask_docs(query)`, `fetch_doc(url)`.
@@ -82,6 +83,7 @@ Tools: `search_docs(query, topK?)`, `ask_docs(query)`, `fetch_doc(url)`.
 | `QVAC_LLM` | `quality` | answer-model preset: `quality` (Qwen3-8B), `balanced` (Qwen3-4B), or `fast` (Llama-3.2-1B) |
 | `QVAC_LLM_GGUF` | — | explicit GGUF path; overrides `QVAC_LLM` |
 | `QVAC_DISABLE_LLM` | unset | set `1` to force extractive answers |
+| `QVAC_API_TOKEN` | unset | when set, `/api/*` and `/mcp` require `Authorization: Bearer <token>` (`/health` stays open). Must match the site's `NEXT_PUBLIC_QVAC_API_TOKEN`. |
 
 The answer model is a toggle. **`quality` (Qwen3-8B) is the default** — the small
 `fast` model fabricates APIs in code examples, which is unacceptable for a docs
