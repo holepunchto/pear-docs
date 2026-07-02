@@ -84,6 +84,7 @@ Tools: `search_docs(query, topK?)`, `ask_docs(query)`, `fetch_doc(url)`.
 | `QVAC_LLM_GGUF` | — | explicit GGUF path; overrides `QVAC_LLM` |
 | `QVAC_DISABLE_LLM` | unset | set `1` to force extractive answers |
 | `QVAC_API_TOKEN` | unset | when set, `/api/*` and `/mcp` require `Authorization: Bearer <token>` (`/health` stays open). Must match the site's `NEXT_PUBLIC_QVAC_API_TOKEN`. |
+| `QVAC_ALLOWED_IPS` | unset | comma-separated client-IP allowlist (matched on `CF-Connecting-IP`) for `/api/*` and `/mcp`. Supports a trailing-`*` prefix, e.g. `203.0.113.*` or an IPv6 `/64` like `2802:8011:3070:6300:*`. `GET /health` echoes the caller's IP so you know what to add. |
 
 The answer model is a toggle. **`quality` (Qwen3-8B) is the default** — the small
 `fast` model fabricates APIs in code examples, which is unacceptable for a docs
@@ -103,5 +104,19 @@ override any model with `QVAC_LLM_GGUF`.)
   already-cached weights. A production deploy on a dedicated host can use the
   registry normally (or keep pinning explicit model files).
 - **Vectors are int8-quantized** and L2-normalized; cosine = dot product.
-- This is a proof of concept: no auth/rate-limiting on `/mcp` or the APIs yet —
-  add those before any non-local deployment.
+- **Exposing it publicly (e.g. a Cloudflare quick tunnel):** layer the two gates —
+  `QVAC_API_TOKEN` (bearer token) + `QVAC_ALLOWED_IPS` (IP allowlist). Example:
+
+  ```bash
+  QVAC_API_TOKEN=$(openssl rand -hex 24) \
+  QVAC_ALLOWED_IPS="2802:8011:3070:6300:*" \
+    npm run start
+  # discover your IP:  curl <tunnel>/health  → { …, "ip": "…" }
+  ```
+
+  Honest limits: an anonymous quick tunnel can't use Cloudflare's WAF/Access (no
+  zone), and because the docs site calls the API from the browser, an IP allowlist
+  only admits whitelisted *visitors* — perfect for a private preview, not a public
+  one. A `NEXT_PUBLIC_*` token ships in the bundle, so it deters bots and enables
+  rotation but isn't a secret. For real, edge-enforced security use a **named
+  tunnel + Cloudflare Access**. No request rate-limiting yet.

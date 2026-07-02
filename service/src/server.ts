@@ -23,9 +23,34 @@ const PORT = Number(process.env.PORT || 8787);
 // Cloudflare Access for real protection.
 const API_TOKEN = process.env.QVAC_API_TOKEN || '';
 
+// Optional IP allowlist. All tunnel traffic passes Cloudflare's edge, which sets
+// `CF-Connecting-IP` to the real client IP (a client can't forge it — CF overwrites
+// it at the edge, and the origin is only reachable through the tunnel). When
+// QVAC_ALLOWED_IPS is set (comma-separated), only those IPs may hit /api/* and /mcp.
+const ALLOWED_IPS = (process.env.QVAC_ALLOWED_IPS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+function clientIp(req: http.IncomingMessage): string {
+  const cf = req.headers['cf-connecting-ip'];
+  if (typeof cf === 'string' && cf) return cf;
+  const xff = req.headers['x-forwarded-for'];
+  if (typeof xff === 'string' && xff) return xff.split(',')[0].trim();
+  return (req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+}
+
 function authorized(req: http.IncomingMessage): boolean {
   if (!API_TOKEN) return true;
   return req.headers['authorization'] === `Bearer ${API_TOKEN}`;
+}
+
+function ipAllowed(req: http.IncomingMessage): boolean {
+  if (ALLOWED_IPS.length === 0) return true;
+  const ip = clientIp(req);
+  // Exact match, or a trailing-`*` prefix (e.g. `2802:8011:3070:6300:*` for a
+  // whole IPv6 /64 — handy since privacy-extension addresses rotate the suffix).
+  return ALLOWED_IPS.some((e) => (e.endsWith('*') ? ip.startsWith(e.slice(0, -1)) : ip === e));
 }
 
 function cors(res: http.ServerResponse) {
@@ -65,17 +90,26 @@ async function main() {
       return;
     }
 
-    // Gate everything except /health behind the bearer token (when configured).
-    if (url.pathname !== '/health' && !authorized(req)) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'unauthorized' }));
-      return;
+    // Gate everything except /health behind the IP allowlist + bearer token.
+    if (url.pathname !== '/health') {
+      if (!ipAllowed(req)) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'forbidden' }));
+        return;
+      }
+      if (!authorized(req)) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'unauthorized' }));
+        return;
+      }
     }
 
     try {
       if (url.pathname === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, chunks: engine.size, model: engine.model, llm: engine.llmEnabled, llmModel: engine.llmModel || null }));
+        // `ip` echoes the caller's IP as the service sees it (via CF-Connecting-IP),
+        // so you can copy it into QVAC_ALLOWED_IPS.
+        res.end(JSON.stringify({ ok: true, chunks: engine.size, model: engine.model, llm: engine.llmEnabled, llmModel: engine.llmModel || null, ip: clientIp(req) }));
         return;
       }
 
