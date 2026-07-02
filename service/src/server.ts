@@ -45,13 +45,41 @@ function authorized(req: http.IncomingMessage): boolean {
   return req.headers['authorization'] === `Bearer ${API_TOKEN}`;
 }
 
-function ipAllowed(req: http.IncomingMessage): boolean {
+function ipAllowed(ip: string): boolean {
   if (ALLOWED_IPS.length === 0) return true;
-  const ip = clientIp(req);
   // Exact match, or a trailing-`*` prefix (e.g. `2802:8011:3070:6300:*` for a
   // whole IPv6 /64 — handy since privacy-extension addresses rotate the suffix).
   return ALLOWED_IPS.some((e) => (e.endsWith('*') ? ip.startsWith(e.slice(0, -1)) : ip === e));
 }
+
+// Per-IP sliding-window rate limit (protects the GPU from floods on /api/* and
+// /mcp). QVAC_RATE_MAX requests per QVAC_RATE_WINDOW_S seconds; set MAX=0 to disable.
+const RATE_MAX = Number(process.env.QVAC_RATE_MAX ?? 60);
+const RATE_WINDOW_MS = Number(process.env.QVAC_RATE_WINDOW_S ?? 60) * 1000;
+const rateHits = new Map<string, number[]>();
+
+function rateLimited(ip: string): number {
+  if (RATE_MAX <= 0) return 0;
+  const now = Date.now();
+  const recent = (rateHits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  if (recent.length >= RATE_MAX) {
+    rateHits.set(ip, recent);
+    return Math.max(1, Math.ceil((RATE_WINDOW_MS - (now - recent[0])) / 1000)); // Retry-After secs
+  }
+  recent.push(now);
+  rateHits.set(ip, recent);
+  return 0;
+}
+
+// Prune idle IPs so the map doesn't grow unbounded; unref() so it never blocks exit.
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, arr] of rateHits) {
+    const keep = arr.filter((t) => now - t < RATE_WINDOW_MS);
+    if (keep.length) rateHits.set(ip, keep);
+    else rateHits.delete(ip);
+  }
+}, RATE_WINDOW_MS).unref();
 
 function cors(res: http.ServerResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -90,9 +118,11 @@ async function main() {
       return;
     }
 
-    // Gate everything except /health behind the IP allowlist + bearer token.
+    const ip = clientIp(req);
+
+    // Gate everything except /health: IP allowlist → bearer token → rate limit.
     if (url.pathname !== '/health') {
-      if (!ipAllowed(req)) {
+      if (!ipAllowed(ip)) {
         res.writeHead(403, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'forbidden' }));
         return;
@@ -102,6 +132,12 @@ async function main() {
         res.end(JSON.stringify({ error: 'unauthorized' }));
         return;
       }
+      const retryAfter = rateLimited(ip);
+      if (retryAfter > 0) {
+        res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) });
+        res.end(JSON.stringify({ error: 'rate limited', retryAfter }));
+        return;
+      }
     }
 
     try {
@@ -109,7 +145,7 @@ async function main() {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         // `ip` echoes the caller's IP as the service sees it (via CF-Connecting-IP),
         // so you can copy it into QVAC_ALLOWED_IPS.
-        res.end(JSON.stringify({ ok: true, chunks: engine.size, model: engine.model, llm: engine.llmEnabled, llmModel: engine.llmModel || null, ip: clientIp(req) }));
+        res.end(JSON.stringify({ ok: true, chunks: engine.size, model: engine.model, llm: engine.llmEnabled, llmModel: engine.llmModel || null, ip }));
         return;
       }
 
