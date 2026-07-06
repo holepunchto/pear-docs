@@ -1,0 +1,101 @@
+name: Watch upstream releases
+
+# The docs changelog (content/changelog/index.mdx) is a hand-curated record of
+# module changes, but humans shouldn't have to notice upstream releases by
+# hand. This job polls the watched repos (scripts/upstream-releases.json) on a
+# schedule; when a repo has releases/tags newer than the recorded baseline
+# (scripts/upstream-releases-state.json), the checker inserts DRAFT entries
+# under the changelog's `changelog:insert` marker and this workflow opens a
+# review PR. A docs human curates the wording — flags Breaking items, adds
+# migration links — before merge.
+#
+# One rolling PR branch (changelog/upstream-drafts) is force-pushed each run,
+# so repeated runs update the open PR instead of stacking new ones. The state
+# file travels with the PR: baselines only advance on `published` once the
+# curated PR merges, so unmerged releases are re-detected until then.
+#
+# Like docs-lint.yml, this can't `npm install` (token-gated @tetherto/*
+# packages) — it installs just `tsx` into a throwaway prefix. The checker
+# itself is stdlib-only.
+
+on:
+  schedule:
+    # Daily, 08:00 UTC — early enough that a release from the previous day
+    # has a review PR waiting in the morning.
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    name: check upstream releases
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: published
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install checker deps (tsx only)
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+
+      - name: Detect new releases and insert draft entries
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./node_modules/.bin/tsx scripts/check-upstream-releases.ts
+
+      - name: Open or update the review PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- content/changelog/index.mdx scripts/upstream-releases-state.json; then
+            echo "No new releases; nothing to PR."
+            exit 0
+          fi
+
+          branch="changelog/upstream-drafts"
+          releases=$(git diff -- content/changelog/index.mdx \
+            | grep '^+### ' | sed 's/^+### /- /' || true)
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B "${branch}"
+          git add content/changelog/index.mdx scripts/upstream-releases-state.json
+          git commit -m "chore(changelog): draft entries for new upstream releases"
+          git push -f origin "${branch}"
+
+          title="Changelog: curate draft entries for new upstream releases"
+          body=$(printf '%s\n' \
+            "New upstream releases were detected and inserted as **draft** changelog entries:" \
+            "" \
+            "${releases}" \
+            "" \
+            "**Review checklist** (see the \`TODO(curate)\` comments in the diff):" \
+            "" \
+            "- [ ] Reword upstream notes for docs readers (what it means for their app)" \
+            "- [ ] Flag breaking items with \`**Breaking:**\` and link migration guidance" \
+            "- [ ] Fold entries into the right dated section; remove the \`(draft)\` heading suffix" \
+            "- [ ] Delete the \`TODO(curate)\` comments" \
+            "" \
+            "_Opened automatically by the Watch upstream releases workflow._")
+
+          existing=$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${branch}" --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -n "${existing}" ]; then
+            echo "Updating open PR #${existing}."
+            gh pr edit "${existing}" --repo "${GITHUB_REPOSITORY}" --body "${body}"
+          else
+            gh pr create --repo "${GITHUB_REPOSITORY}" --base published \
+              --title "${title}" --body "${body}"
+          fi

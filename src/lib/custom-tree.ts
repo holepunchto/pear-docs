@@ -605,4 +605,5 @@ export const customTree: Node[] = [
       },
     ],
   },
+  { type: 'page', name: 'Changelog', url: '/changelog' },
 ];
