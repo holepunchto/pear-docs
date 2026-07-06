@@ -177,6 +177,20 @@ function renderMarkdown(text: string): ReactNode[] {
       code.push(line);
       continue;
     }
+    // ATX heading (`# ` … `###### `).
+    const heading = line.match(/^(#{1,6})\s+(.+)$/);
+    if (heading) {
+      flushProse();
+      const level = heading[1].length;
+      const Tag = `h${level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+      const size = level <= 2 ? 'text-sm' : 'text-xs';
+      nodes.push(
+        <Tag key={`h${key++}`} className={`mb-1 mt-3 ${size} font-semibold text-fd-foreground first:mt-0`}>
+          {renderInline(heading[2])}
+        </Tag>,
+      );
+      continue;
+    }
     // Table: a header row immediately followed by a separator row.
     if (line.includes('|') && i + 1 < lines.length && isTableSep(lines[i + 1])) {
       flushProse();
