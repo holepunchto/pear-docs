@@ -46,9 +46,21 @@ const PRESETS: Record<string, Preset> = {
   },
 };
 
+// Reasoning models emit a <think> trace we must strip / suppress. Guessing from
+// the filename is brittle (a renamed file or a new family slips through and leaks
+// the trace into answers), so QVAC_LLM_NOTHINK=1/0 can force it; otherwise match
+// the known reasoning families by name.
+const REASONING_RE = /qwen3|qwq|deepseek-r1|\br1\b/i;
+function inferNoThink(file: string): boolean {
+  const env = process.env.QVAC_LLM_NOTHINK;
+  if (env === '1' || env === 'true') return true;
+  if (env === '0' || env === 'false') return false;
+  return REASONING_RE.test(path.basename(file));
+}
+
 function resolvePreset(opts: { preset?: string; ggufPath?: string }): Preset {
   const explicit = opts.ggufPath || process.env.QVAC_LLM_GGUF;
-  if (explicit) return { label: path.basename(explicit), gguf: explicit, noThink: /qwen/i.test(explicit) };
+  if (explicit) return { label: path.basename(explicit), gguf: explicit, noThink: inferNoThink(explicit) };
   const name = (opts.preset || process.env.QVAC_LLM || 'quality').toLowerCase();
   return PRESETS[name] || PRESETS.quality;
 }

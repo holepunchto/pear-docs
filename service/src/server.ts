@@ -10,6 +10,7 @@
  *   node --import tsx service/src/server.ts
  */
 import http from 'node:http';
+import crypto from 'node:crypto';
 import { Engine } from './engine.ts';
 import { handleMcpRequest } from './mcp.ts';
 
@@ -35,17 +36,31 @@ const ALLOWED_IPS = (process.env.QVAC_ALLOWED_IPS || '')
   .map((s) => s.trim())
   .filter(Boolean);
 
+// `X-Forwarded-For` is client-controlled unless a trusted proxy overwrites it,
+// so trusting it by default would let anyone spoof an allowlisted IP. Behind the
+// Cloudflare tunnel the real IP always arrives as `CF-Connecting-IP`; only fall
+// back to XFF when QVAC_TRUST_XFF=1 (i.e. a known proxy sets it), else use the
+// socket peer address.
+const TRUST_XFF = process.env.QVAC_TRUST_XFF === '1';
+
 function clientIp(req: http.IncomingMessage): string {
   const cf = req.headers['cf-connecting-ip'];
   if (typeof cf === 'string' && cf) return cf;
-  const xff = req.headers['x-forwarded-for'];
-  if (typeof xff === 'string' && xff) return xff.split(',')[0].trim();
+  if (TRUST_XFF) {
+    const xff = req.headers['x-forwarded-for'];
+    if (typeof xff === 'string' && xff) return xff.split(',')[0].trim();
+  }
   return (req.socket.remoteAddress || '').replace(/^::ffff:/, '');
 }
 
 function authorized(req: http.IncomingMessage): boolean {
   if (!API_TOKEN) return true;
-  return req.headers['authorization'] === `Bearer ${API_TOKEN}`;
+  const header = req.headers['authorization'];
+  if (typeof header !== 'string') return false;
+  // Constant-time compare so response latency can't leak the token prefix.
+  const got = Buffer.from(header);
+  const want = Buffer.from(`Bearer ${API_TOKEN}`);
+  return got.length === want.length && crypto.timingSafeEqual(got, want);
 }
 
 function ipAllowed(ip: string): boolean {
@@ -98,11 +113,24 @@ function clampTopK(v: unknown, def = 5, max = 20): number {
   return Math.min(n, max);
 }
 
+// Cap request bodies so a single huge POST can't exhaust memory (search/ask
+// queries and MCP JSON-RPC are all tiny). Override with QVAC_MAX_BODY_BYTES.
+const MAX_BODY_BYTES = Number(process.env.QVAC_MAX_BODY_BYTES || 1_048_576);
+
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
-    let data = '';
-    req.on('data', (c) => (data += c));
-    req.on('end', () => resolve(data));
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on('data', (c: Buffer) => {
+      size += c.length;
+      if (size > MAX_BODY_BYTES) {
+        reject(Object.assign(new Error('request body too large'), { statusCode: 413 }));
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
 }
@@ -215,7 +243,8 @@ async function main() {
       res.end(JSON.stringify({ error: 'not found' }));
     } catch (e) {
       console.error('request error:', e);
-      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' });
+      const status = (e as { statusCode?: number }).statusCode || 500;
+      if (!res.headersSent) res.writeHead(status, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: (e as Error).message }));
     }
   });

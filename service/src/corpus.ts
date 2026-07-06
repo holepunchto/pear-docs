@@ -76,7 +76,10 @@ async function resolveCodeImports(body: string): Promise<string> {
       try {
         const rel = tok.replace(/^["']|["']$/g, '').split('#')[0].replace('<rootDir>/', '');
         contents.set(tok, (await readFile(path.join(REPO_ROOT, rel), 'utf-8')).trim());
-      } catch {
+      } catch (e) {
+        // Leave the fence unresolved but warn — otherwise a moved/deleted code
+        // file silently ships a literal `file=…` marker into the index.
+        console.warn(`⚠ code import unresolved: ${tok} (${(e as Error).message})`);
         contents.set(tok, null);
       }
     }),
@@ -112,7 +115,11 @@ function toProse(rich: string): string {
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
-    .replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, '$1')
+    // Strip *…*/**…** emphasis only. Underscores are left untouched so identifiers
+    // like pear_run, snake_case, __proto__ and __init__.py survive intact — the old
+    // `[*_]{1,3}` rule split them mid-word. Any genuine _underscore emphasis_ in
+    // prose just keeps its literal underscores, which is harmless for embedding.
+    .replace(/\*{1,3}([^*\n]+?)\*{1,3}/g, '$1')
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')

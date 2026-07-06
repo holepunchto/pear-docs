@@ -19,6 +19,7 @@ const DEFAULT_EMBED_GGUF = path.join(
 
 export interface Embedder {
   dim: number;
+  model: string;
   embed(texts: string[]): Promise<Float32Array[]>;
   close(): Promise<void>;
 }
@@ -53,6 +54,7 @@ export async function createEmbedder(opts: { ggufPath?: string; batchSize?: numb
 
   return {
     dim,
+    model: path.basename(ggufPath),
     async embed(texts: string[]): Promise<Float32Array[]> {
       const out: Float32Array[] = [];
       // GTE-large embeds at most 512 tokens; hard-cap input length as a safety net.

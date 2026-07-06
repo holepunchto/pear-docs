@@ -34,6 +34,18 @@ export class Engine {
           'Rebuild the index (npm run build:index) with the same embedding model.',
       );
     }
+    // A different model of the *same* dim passes the check above but lives in a
+    // different vector space, silently wrecking cosine scores. Compare model
+    // names too (ignoring the ~/.qvac cache hash prefix) and warn — don't throw,
+    // since the index only records a name, not a fingerprint.
+    const bareModel = (s: string) => s.replace(/^.*[/\\]/, '').replace(/^[0-9a-f]{6,}_/i, '');
+    if (this.store.model && bareModel(this.store.model) !== bareModel(this.embedder.model)) {
+      console.warn(
+        `⚠ Embedding model mismatch: index built with "${this.store.model}", now serving ` +
+          `"${this.embedder.model}". Cosine scores may be meaningless — rebuild the index ` +
+          '(npm run build:index) with the same model.',
+      );
+    }
     this.model = this.store.model;
     if (process.env.QVAC_DISABLE_LLM !== '1') {
       try {

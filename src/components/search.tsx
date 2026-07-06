@@ -15,6 +15,7 @@ import type { SortedResult } from 'fumadocs-core/search';
 import { create } from '@orama/orama';
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -258,6 +259,10 @@ export default function CustomSearchDialog(props: SharedProps) {
   const [extractive, setExtractive] = useState(false);
   const askAbort = useRef<AbortController | null>(null);
 
+  // Parse the (streaming) answer markdown only when it actually changes, not on
+  // every unrelated re-render.
+  const renderedAnswer = useMemo(() => renderMarkdown(answer), [answer]);
+
   // Debounced semantic search against the QVAC service (search mode only).
   useEffect(() => {
     if (mode !== 'search' || !search) {
@@ -324,10 +329,32 @@ export default function CustomSearchDialog(props: SharedProps) {
         body: JSON.stringify({ query: search }),
         signal: ctrl.signal,
       });
+      // A non-OK response (e.g. 401 after a token rotation, or 429/5xx) is not an
+      // SSE stream — reading it as one would silently leave the panel blank, so
+      // surface it instead.
+      if (!res.ok) {
+        setAnswer(
+          res.status === 401
+            ? 'The answer service rejected the request (authentication). Search still works.'
+            : `The answer service is unavailable right now (error ${res.status}).`,
+        );
+        return;
+      }
       if (!res.body) throw new Error('no stream');
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = '';
+      // Coalesce tokens: parsing the full markdown on every token is O(n²) over
+      // the answer length. Buffer arriving text and flush to state at most ~20×/s.
+      let acc = '';
+      let lastFlush = 0;
+      const flush = (force = false) => {
+        const now = performance.now();
+        if (force || now - lastFlush >= 50) {
+          lastFlush = now;
+          setAnswer(acc);
+        }
+      };
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -339,10 +366,13 @@ export default function CustomSearchDialog(props: SharedProps) {
           if (!line.startsWith('data:')) continue;
           const ev = JSON.parse(line.slice(5).trim());
           if (ev.type === 'sources') setAskSources(ev.sources);
-          else if (ev.type === 'token') setAnswer((a) => a + ev.text);
-          else if (ev.type === 'done') setExtractive(Boolean(ev.extractive));
+          else if (ev.type === 'token') {
+            acc += ev.text;
+            flush();
+          } else if (ev.type === 'done') setExtractive(Boolean(ev.extractive));
         }
       }
+      flush(true); // render whatever remains after the stream closes
     } catch (e) {
       if ((e as Error).name !== 'AbortError') setAnswer('Could not reach the QVAC answer service.');
     } finally {
@@ -428,7 +458,7 @@ export default function CustomSearchDialog(props: SharedProps) {
               <>
                 <div className="text-fd-foreground">
                   {answer ? (
-                    renderMarkdown(answer)
+                    renderedAnswer
                   ) : asking ? (
                     <p className="text-fd-muted-foreground">Thinking…</p>
                   ) : null}

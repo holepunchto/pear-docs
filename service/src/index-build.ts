@@ -43,7 +43,7 @@ async function main() {
 
   const index = {
     dim: embedder.dim,
-    model: process.env.QVAC_EMBED_GGUF || 'gte-large_fp16.gguf',
+    model: embedder.model,
     builtAt: new Date().toISOString(),
     chunks: chunks.map((c, i) => ({
       id: c.id,
