@@ -1,17 +1,23 @@
 ---
 title: "Command Line Interface (CLI)"
-description: "Pear CLI: init, run, release, and day-to-day development commands."
+description: "Pear CLI: stage, seed, build, install, and day-to-day development commands."
 docType: reference
 schemaType: APIReference
 ---
+
+{/* Maintainer note: "Command source on GitHub" links point at the `main` branch because Pear v3 is not yet tagged. Re-pin them to the v3 tag (for example /blob/v3.x.x/) once it ships. */}
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
 The Command Line Interface is the primary interface for Pear Development.
 
+<Callout type="info">
+This page tracks **Pear v3**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
+</Callout>
+
 ## `pear build [flags]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/index.js#L57)
+[Command source on GitHub](https://github.com/holepunchto/pear-build)
 
 <a name="pear-build"></a>
 
@@ -20,6 +26,10 @@ Create a project deployment folder.
 Assembles per-OS [`electron-forge`](https://www.electronforge.io/) makes—one per target architecture—into the multi-architecture **deployment directory** that [`pear stage`](#pear-stage) reads from disk: a `package.json` plus a `by-arch/<platform-arch>/app/` tree.
 
 Each make runs on its own OS, so transfer the per-platform outputs to one machine first, then pass each via its `--<platform-arch>-app` flag. Run `pear build` from **outside** the application source tree (or point `--target` at a sibling folder) so the deployment output is never re-staged into itself—see [stage size increases](/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#pear-stage-shows-huge-size-growth). If you omit `--target`, the directory is auto-named `<name>-<version>` from `package.json`.
+
+<Callout type="info">
+As of Pear v3, `pear build` is provided by the standalone [`pear-build`](https://github.com/holepunchto/pear-build) module and integrated into the CLI.
+</Callout>
 
 ```
   --package [path]               Path to project package.json
@@ -42,7 +52,7 @@ For the full release walkthrough, see [Deploy a Pear desktop app](/how-to/operat
 
 ## `pear stage <link> [dir]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/stage.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/stage.js)
 
 <a name="pear-stage"></a>
 
@@ -60,20 +70,15 @@ Each time new changes are staged, the length will increase. This change can be r
   --dry-run|-d       Execute a stage without writing
   --ignore <paths>   Comma-separated path ignore list
   --purge            Remove ignored files if present in previous stage
-  --compact|-c       Tree-shaking minimal stage via static-analysis
   --only <paths>     Filter by paths. Comma-separated
   --truncate <n>     Advanced. Truncate to version length n
-  --no-ask           Suppress permission prompt
-  --no-pre           Skip pre scripts
-  --pre-io           Show stdout & stderr of pre scripts
-  --pre-q            Suppress piped output of pre scripts
   --json             Newline delimited JSON output
   --help|-h          Show help
 ```
 
-## `pear provision <source-link> <target-link> <production-link>[dir]`
+## `pear provision <source-verlink> <target-link> <production-verlink>`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/provision.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/provision.js)
 
 <a name="pear-provision"></a>
 
@@ -88,29 +93,30 @@ Use [pear touch](#pear-touch-flags) to generate target link
 
 ```
 Arguments:
-  <source-link>       Versioned source link
-  <target-link>       Target link to sync to
-  <production-link>   Versioned link to sync against
+  <source-verlink>       Versioned source link
+  <target-link>          Target link to sync to
+  <production-verlink>   Versioned link to sync against
 
 Flags:
-  --dry-run|-d        Execute provision without writing
-  --json              Newline delimited JSON output
-  --help|-h           Show help
+  --dry-run|-d           Execute provision without writing
+  --json                 Newline delimited JSON output
+  --help|-h              Show help
 ```
 
 ## `pear multisig [command]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/multisig.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/multisig.js)
 
 <a name="pear-multisig"></a>
 
-Production signing coordination. Gate production releases behind a quorum of signing keys instead of a single machine's key. See [Set up multisig](/how-to/operate-an-app/multisig/set-up-multisig) and [Sign with multisig](/how-to/operate-an-app/multisig/sign-with-multisig) for the end-to-end flow.
+Production signing coordination. Gate production releases behind a quorum of signing keys instead of a single machine's key. Since Pear v3 removed the single-key `pear release` command, quorum multisig (together with [`pear provision`](#pear-provision)) is the path to production. See [Set up multisig](/how-to/operate-an-app/multisig/set-up-multisig) and [Sign with multisig](/how-to/operate-an-app/multisig/sign-with-multisig) for the end-to-end flow.
 
 | Command | Description |
 | --- | --- |
-| `keys get [name=default]` | Get a signing key, initializing it if needed |
+| `keys get [name=default]` | Get a signing key, initializing it if needed (`--secret` also prints the private key) |
+| `keys paths [name=default]` | Print paths to the public & private key files |
 | `keys list` | List signing keys |
-| `keys add <name>` | Add a signing key |
+| `keys add <name> <public-key> [private-key]` | Import a signing keypair or add a known public key |
 | `keys remove <name>` | Remove a signing key |
 | `link` | Print the project multisig link (derived from the `multisig` field in `pear.json`) |
 | `request <verlink>` | Create a multisig request from a versioned source link |
@@ -119,14 +125,15 @@ Production signing coordination. Gate production releases behind a quorum of sig
 | `commit <source-link> <request> [...responses]` | Apply signatures to sync the source drive to the multisig drive (go live) |
 
 ```
-  --config [./pear.json]   Config file path
-  --json                   Newline delimited JSON output
-  --help|-h                Show help
+  --config [./pear.json]        Config file path
+  --peer-update-timeout <ms>    Peer update timeout in ms (request, verify, commit)
+  --json                        Newline delimited JSON output
+  --help|-h                     Show help
 ```
 
-## `pear seed <link> [dir]`
+## `pear seed <link>`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/seed.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/seed.js)
 
 <a name="pear-seed"></a>
 
@@ -137,34 +144,25 @@ Specify link to seed a project or a remote link to reseed.
 Seeding will sparsely replicate the application. This means the entire history of the link is available, but most likely only the most recent version will be replicated.
 
 ```
-  --verbose|-v     Additional output
-  --name <name>    Advanced. Override app name
-  --no-ask         Suppress permission prompt
-  --json           Newline delimited JSON output
-  --help|-h        Show help
+  --no-tty                  Disable tty features
+  --stats-interval <ms>     Stats refresh interval in milliseconds
+  --json                    Newline delimited JSON output
+  --help|-h                 Show help
 ```
 
 ## `pear release <link> [dir]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/release.js)
-
 <a name="pear-release"></a>
 
-Set production release version.
+<mark style={{ backgroundColor: '#f0e57a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>removed</mark>
 
-Set the release pointer against a version (default latest).
+Deprecated in Pear v2.6.5, **removed as of Pear v3**.
 
-Use this to indicate production release points. Once a link has been released (setting a pointer for a given version) running the application (via `pear run <link>`) will load the application at the released version even if more changes were staged.
-
-```
-  --checkout=n|current     Set a custom release length (version)
-  --json                   Newline delimited JSON output
-  --help|-h                Show help
-```
+The single-key release pointer has been replaced by quorum-based production releases. Use [`pear provision`](#pear-provision) to block-sync a pre-production target and [`pear multisig`](#pear-multisig) to cosign it onto a production link.
 
 ## `pear changelog [link]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/changelog.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/changelog.js)
 
 <a name="pear-changelog"></a>
 
@@ -178,19 +176,18 @@ Shows Pear changelog by default
   --max|-m <n=10>    Maximum entries to show
   --of <semver=^*>   SemVer filter - default: latest major
   --full             Show entire changelog
-  --no-ask           Suppress permission prompt
   --json             Newline delimited JSON output
   --help|-h          Show help
 ```
 
 
-## `pear info [link]`
+## `pear info [link] [dir]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/info.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/info.js)
 
 <a name="pear-info"></a>
 
-Read project information.
+Read project information. `[dir]` is the project directory path (defaults to the current directory).
 
 Supply a link to view application information.
 
@@ -199,15 +196,15 @@ Supply no argument to view platform information.
 ```
   --metadata       View metadata only
   --manifest       View app manifest only
+  --multisig       View multisig info only
   --key            View key only
-  --no-ask         Suppress permission prompt
   --json           Newline delimited JSON output
   --help|-h        Show help
 ```
 
 ## `pear dump [flags] <link> <dir>`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/dump.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/dump.js)
 
 <a name="pear-dump"></a>
 
@@ -229,7 +226,6 @@ pear dump pear://keet/CHANGELOG.md dump-dir/
   --only <paths>   Filter by paths. Implies --no-prune. Comma-seperated
   --force|-f       Force overwrite existing files
   --list           List paths at link. Sets <dir> to -
-  --no-ask         Suppress permission prompt
   --no-prune       Prevent removal of existing paths
   --json           Newline delimited JSON output
   --help|-h        Show help
@@ -237,7 +233,7 @@ pear dump pear://keet/CHANGELOG.md dump-dir/
 
 ## `pear touch [flags]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/touch.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/touch.js)
 
 <a name="pear-touch"></a>
 
@@ -249,22 +245,24 @@ Creates a Pear link. Pear links hold a key, this is the basis for application di
   --help|-h   Show help
 ```
 
-## `pear sidecar`
+## `pear sidecar [command]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/sidecar.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/sidecar.js)
 
 <a name="pear-sidecar"></a>
 
 
-The Pear Sidecar is a local-running HTTP and IPC server which
-provides access to corestores.
+The Pear Sidecar is a local-running IPC server for corestore access.
 
 This command instructs any existing sidecar process to shutdown
 and then becomes the sidecar.
 
+| Command | Description |
+| --- | --- |
+| `shutdown` | Shut down the running sidecar |
+| `inspect` | Enable the running sidecar inspector |
+
 ```
-  --mem                 memory mode: RAM corestore
-  --key <key>           Advanced. Switch release lines
   --log-level <level>   Level to log at. 0,1,2,3 (OFF,ERR,INF,TRC)
   --log-labels <list>   Labels to log (internal, always logged)
   --log-fields <list>   Show/hide: date,time,h:level,h:label,h:delta
@@ -274,7 +272,7 @@ and then becomes the sidecar.
 
 ## `pear versions`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/versions.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/versions.js)
 
 <a name="pear-versions"></a>
 
@@ -282,67 +280,43 @@ Output version information.
 
 ```
 --modules|-m   Include module versions
---json         Single JSON object
+--json         Newline delimited JSON output
 --help|-h      Show help
 ```
 
 ## `pear presets [flags] [command]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/presets.js)
-
 <a name="pear-presets"></a>
 
-Default flags per command & link
+<mark style={{ backgroundColor: '#f0e57a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>removed</mark>
 
-Pin flags to a given pear command per app link
+Deprecated in Pear v2.6.5, **removed as of Pear v3**.
 
-```
-  --json        Newline delimited JSON output
-  --help|-h     Show help
-```
+Per-command default flags are no longer configurable through the CLI.
 
 ## `pear shift [flags] <source> <destination>`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/shift.js)
-
 <a name="pear-shift"></a>
 
-**DEPRECATED** 
+<mark style={{ backgroundColor: '#f0e57a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>removed</mark>
 
-Move user application storage between applications.
+Deprecated in Pear v2.6.5, **removed as of Pear v3**.
 
-`<source>` and `<destination>` are links.
-
-```
---force     Overwrite existing application storage if present
---json      Newline delimited JSON output
---help|-h   Show help
-```
+Moving user application storage between applications is no longer supported from the CLI.
 
 ## `pear drop [flags] [command]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/drop.js)
-
 <a name="pear-drop"></a>
 
-**DEPRECATED**: `pear run` is deprecated and `pear drop app` is related. See [Manage installed applications](/how-to/manage-installed-applications) for guidance on resetting an application's storage.
+<mark style={{ backgroundColor: '#f0e57a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>removed</mark>
 
-Advanced. Permanent data deletion
+Deprecated in Pear v2.6.5, **removed as of Pear v3**.
 
-WARNING: Confirmation will be requested as the storage will be deleted permanently and cannot be recovered. Use with caution.
-
-| Commands |           Description                          |
-|----------|------------------------------------------------|
-| app      | Reset an application to initial state          |
-
-```
---json      Newline delimited JSON output
---help|-h   Show help
-```
+`pear drop` was tied to the removed `pear run` model. See [Manage installed applications](/how-to/manage-installed-applications) for resetting application storage.
 
 ## `pear gc [flags] [command]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/gc.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/gc.js)
 
 <a name="pear-gc"></a>
 
@@ -350,10 +324,8 @@ Perform garbage collection and remove unused resources.
 
 | Commands      |           Description                                        |
 |-------|---------------------------------------------------|
-| releases   | Clear inactive releases                       |
 | sidecars   |  Clear running sidecars                       |
-| assets     |  Clear synced assets                          |
-| cores      |  corestore cores                              |
+| cores `[link]`     |  Clear corestore cores (optionally by link)   |
 
 ```
   --json        Newline delimited JSON output
@@ -362,27 +334,20 @@ Perform garbage collection and remove unused resources.
 
 ## `pear data [flags] [command]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/data.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/data.js)
 
 <a name="pear-data"></a>
 
-**DEPRECATED**: `pear run` is deprecated and `pear data apps` is related. See [Manage installed applications](/how-to/manage-installed-applications) for the recommended way to inspect installed apps.
-
-View database contents.
+Explore the platform database.
 
 The database contains metadata stored on this device used by the Pear runtime.
 
 | Commands   | Description                |
 | ---------- | -------------------------- |
-| apps       | DEPRECATED Installed apps  |
 | dht        | DHT known-nodes cache      |
-| gc         | Garbage collection records |
-| manifest   | Database internal versioning |
-| assets     | On-disk assets for app     |
-| currents   | Current working versions   |
+| multisig   | Multisig records           |
 
 ```
---secrets   Show sensitive information, i.e. encryption-keys
 --json      Newline delimited JSON output
 --help|-h   Show help
 ```
@@ -393,7 +358,7 @@ The database contains metadata stored on this device used by the Pear runtime.
 
 <mark style={{ backgroundColor: '#f0e57a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>removed</mark>
 
-`pear init` has been removed from the Pear CLI—in current Pear (v2.6.5) it exits with `ERR_LEGACY: pear init has been removed`.
+`pear init` has been removed from the Pear CLI—it exits with `ERR_LEGACY: pear init has been removed`.
 
 <Callout type="info">
 To scaffold a project, clone the official template instead—[`holepunchto/hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron)—and follow [Start from the hello-pear-electron template](/getting-started/from-a-template/start-from-hello-pear-electron).
@@ -402,78 +367,48 @@ To scaffold a project, clone the official template instead—[`holepunchto/hello
 ## `pear install <link>`
 <a name="pear-install"></a>
 
-<mark style={{ backgroundColor: '#f0d264', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>upcoming</mark>
+[Command source on GitHub](https://github.com/holepunchto/pear-install)
 
 Install a Pear application—or the Pear platform itself—from a `pear://` link.
 
-`pear install pear://<key>` installs any application built with [`pear build`](https://github.com/holepunchto/hello-pear-electron#deploying), pulling it from the swarm and wiring it up locally so it can be launched and kept up to date over the air. It works for both applications and binaries.
+`pear install pear://<key>` installs any application built with [`pear build`](#pear-build), pulling it from the swarm and wiring it up locally so it can be launched and kept up to date over the air. It works for both applications and binaries. Installs go directly into the OS application folder.
+
+```
+  --only <paths>          Advanced. Filter by app filenames
+  --timeout <seconds>     Advanced. Override network timeout (30s)
+  --to <dir>              Advanced. Override install target directory
+  --dht-bootstrap <nodes> Advanced. Custom DHT bootstrap
+  --json                  Newline delimited JSON output
+  --help|-h               Show help
+```
 
 <Callout type="info">
-`pear install` is not yet part of the Pear CLI. You can preview it today with the standalone [`pear-install`](https://www.npmjs.com/package/pear-install) module. For example, install Keet peer-to-peer with:
+As of Pear v3, `pear install` is part of the Pear CLI, provided by the standalone [`pear-install`](https://www.npmjs.com/package/pear-install) module. For example, install Keet peer-to-peer with:
 
 ```
-npx pear-install pear://17pwkcszz18deaccarhrrixhzf1f5ko1b1dz6j3pxhexebutjwzy
+pear install pear://keet
 ```
 
-Once it ships with the CLI, the equivalent will be `pear install pear://keet`. See [Storage and distribution](/explanation/storage-and-distribution#installing-applications) for the install model and the direction described in [Pear Evolution](https://pears.com/news/pear-evolution/).
+See [Storage and distribution](/explanation/storage-and-distribution#installing-applications) for the install model and the direction described in [Pear Evolution](https://pears.com/news/pear-evolution/).
 </Callout>
 
 ## `pear run [flags] <link|dir> [...app-args]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/cmd/run.js)
-
 <a name="pear-run"></a>
 
-**DEPRECATED** - use [`pear-runtime`](https://github.com/holepunchto/pear-runtime)
+<mark style={{ backgroundColor: '#f0e57a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>removed</mark>
 
-Run an application from a link or dir.
-
-|       |                                                   |
-|-------|---------------------------------------------------|
-| link  | `pear://<key>`  \| `pear://<alias>`                |
-| dir   | `file://<absolute-path>` \| `<absolute-path>` \| `<relative-path>` |
-
+Deprecated in Pear v2.6.5, **removed as of Pear v3**. Running `pear run` now exits with:
 
 ```
-  --dev|-d                       Enable --devtools & --updates-diff
-  --devtools                     Open devtools with application [Desktop]
-  --updates-diff                 Enable diff computation for Pear.updates
-  --no-updates                   Disable updates firing via Pear.updates
-  --link=url                     Simulate deep-link click open
-  --store|-s=path                Set the Application Storage path
-  --tmp-store|-t                 Automatic new tmp folder as store path
-  --links <kvs>                  Override configured links with comma-separated key-values
-  --unsafe-clear-app-storage     Clear app storage
-  --unsafe-clear-preferences     Clear preferences (incl. trustlist)
-  --appling=path                 Set application shell path
-  --checkout=n                   Run a checkout, n is version length
-  --checkout=release             Run checkout from marked released length
-  --checkout=latest              Run checkout from latest version length
-  --detached                     Wakeup existing app or run detached
-  --no-ask                       Suppress permissions dialogs
-  --help|-h                      Show help
+pear run has been removed.
+Use the pear-runtime module instead: https://www.npmjs.com/package/pear-runtime
 ```
 
-### Examples
-
-```
-pear run pear://u6c6it1hhb5serppr3tghdm96j1gprtesygejzhmhnk5xsse8kmy
-```
-
-```
-pear run -s /tmp/app-storage path/to/an-app-folder some --app args
-```
-
-```
-pear run -t file://path/to/an-app-folder --some app --args
-```
-
-```
-pear run pear://keet
-```
+Applications are now launched by embedding the **[Pear OTA](/reference/pear/runtime)** (`pear-runtime`) library, which provides over-the-air peer-to-peer updates, application storage, and Bare workers. See [Migrate from `pear run` to Pear OTA](/how-to/operate-an-app/migration) for the move.
 
 ## See also
 
-- [Manage installed applications](/how-to/manage-installed-applications)—using `pear data` and `pear drop` end-to-end.
+- [Manage installed applications](/how-to/manage-installed-applications)—resetting and inspecting installed apps.
 - [Distribute as a binary](/how-to/operate-an-app/build-and-package/distribute-as-binary)—packaging a release built from these commands.
-- [`pear-runtime` reference](/reference/pear/runtime)—the runtime side of the same flow.
+- [Pear OTA reference](/reference/pear/runtime)—the `pear-runtime` library that replaces `pear run`.
