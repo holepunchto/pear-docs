@@ -12,7 +12,16 @@
 
 import type { BareModel, BareExport, BareParam, BareThrows } from './model';
 import type { Layout } from './layout';
-import { ORG, STABILITY_COLORS, stabilityOf, nodeParityUrl } from './config';
+import {
+  ORG,
+  PREFIX,
+  FAMILY,
+  CATALOG_ROUTE,
+  EXTRA_SEE_ALSO,
+  STABILITY_COLORS,
+  stabilityOf,
+  nodeParityUrl,
+} from './config';
 
 /** Signatures longer than this drop to a code block below the heading. */
 const HEADING_MAX = 96;
@@ -425,8 +434,8 @@ export function renderPage(model: BareModel, layout: Layout | null): { mdx: stri
   parts.push('## See also', '');
   for (const s of layout?.seeAlso ?? []) parts.push(`- ${s}`);
   parts.push(
-    '- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.',
-    '- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.',
+    `- [${FAMILY === 'bare' ? 'Bare' : 'Pear'} modules](${CATALOG_ROUTE}) — the full \`${PREFIX}*\` catalog.`,
+    ...(EXTRA_SEE_ALSO ? [`- ${EXTRA_SEE_ALSO}`] : []),
     '',
   );
 

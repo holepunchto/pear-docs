@@ -7,7 +7,7 @@
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { RESEARCH_JSON, TOP_N, ALLOWLIST, MIN_DOWNLOADS, DOWNLOADS_JSON } from './config';
+import { RESEARCH_JSON, TOP_N, ALLOWLIST, MIN_DOWNLOADS, DOWNLOADS_JSON, CATALOG_MDX, PREFIX } from './config';
 
 interface ResearchRec {
   name: string;
@@ -55,15 +55,33 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
   return out;
 }
 
+/**
+ * Candidate modules. With a research dossier (bare): every module known to ship
+ * types. Without one (pear): every `<prefix>*` row in the catalog table — the
+ * driver decides at fetch time whether a candidate actually ships `.d.ts`, and
+ * records the ones that don't.
+ */
+async function candidates(): Promise<ResearchRec[]> {
+  if (RESEARCH_JSON) {
+    const records = JSON.parse(await readFile(RESEARCH_JSON, 'utf8')) as ResearchRec[];
+    return records.filter((r) => r.hasTypes);
+  }
+  const text = await readFile(CATALOG_MDX, 'utf8');
+  const re = new RegExp(`\\[(${PREFIX}[a-z0-9-]+)\\]`, 'g');
+  const names = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) names.add(m[1]);
+  return [...names].sort().map((name) => ({ name, hasTypes: true, inboundDeps: 0 }));
+}
+
 export async function selectModules(n: number = TOP_N): Promise<Selection[]> {
-  const records = JSON.parse(await readFile(RESEARCH_JSON, 'utf8')) as ResearchRec[];
-  const candidates = records.filter((r) => r.hasTypes);
+  const candidateList = await candidates();
 
   const cache: Record<string, number> = existsSync(DOWNLOADS_JSON)
     ? JSON.parse(await readFile(DOWNLOADS_JSON, 'utf8'))
     : {};
 
-  const withCounts = await mapLimit(candidates, 8, async (r) => {
+  const withCounts = await mapLimit(candidateList, 8, async (r) => {
     const live = await lastMonthDownloads(r.name);
     if (live != null) cache[r.name] = live; // refresh the cache on a good fetch
     // Fall back to the cached count so a rate-limited fetch never drops a module.

@@ -23,30 +23,82 @@ export const ALLOWLIST: string[] = [];
  */
 export const MIN_DOWNLOADS: number | null = null;
 
-/** Research dossier produced by scripts/research-bare-modules.ts. */
-export const RESEARCH_JSON = 'docs/bare-modules-research.json';
+// ---- module families -------------------------------------------------------
+//
+// The pipeline documents two module families with identical machinery. Every
+// CLI accepts `--family bare|pear` (or env REFGEN_FAMILY); the constants below
+// resolve once at load, so downstream scripts stay family-agnostic.
 
-/** Version cache: module → last-generated version, for the release poll. */
-export const VERSIONS_JSON = 'scripts/bare-refgen/versions.json';
+export type FamilyKey = 'bare' | 'pear';
 
-/**
- * Downloads cache: module → last-month downloads. Persisted so selection is
- * reproducible when the npm stats API rate-limits — a failed fetch falls back
- * to the cached count instead of dropping the module to zero.
- */
-export const DOWNLOADS_JSON = 'scripts/bare-refgen/downloads.json';
+interface FamilyConfig {
+  /** Package/repo name prefix, e.g. `bare-`. */
+  prefix: string;
+  /** Research dossier (null → derive candidates from the catalog table). */
+  researchJson: string | null;
+  versionsJson: string;
+  downloadsJson: string;
+  /** Catalog table kept in sync on `--write`. */
+  catalogMdx: string;
+  /** Docs route of that catalog, for See-also links. */
+  catalogRoute: string;
+  /** Extra default See-also bullet (docType-appropriate hub page). */
+  extraSeeAlso: string | null;
+  /** Where generated previews land (NOT content/). */
+  outDir: string;
+  /** Live docs location, written only under `--write`. */
+  contentDir: string;
+  /** Optional per-module layout manifests. */
+  layoutsDir: string;
+}
 
-/** The bare-* catalog table kept in sync on `--write`. */
-export const CATALOG_MDX = 'content/reference/modules/bare-modules.mdx';
+const FAMILIES: Record<FamilyKey, FamilyConfig> = {
+  bare: {
+    prefix: 'bare-',
+    researchJson: 'docs/bare-modules-research.json',
+    versionsJson: 'scripts/bare-refgen/versions.json',
+    downloadsJson: 'scripts/bare-refgen/downloads.json',
+    catalogMdx: 'content/reference/modules/bare-modules.mdx',
+    catalogRoute: '/reference/modules/bare-modules',
+    extraSeeAlso: '[Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.',
+    outDir: 'generated/bare-refs',
+    contentDir: 'content/reference/bare/modules',
+    layoutsDir: 'scripts/bare-refgen/layouts',
+  },
+  pear: {
+    prefix: 'pear-',
+    researchJson: null,
+    versionsJson: 'scripts/bare-refgen/versions-pear.json',
+    downloadsJson: 'scripts/bare-refgen/downloads-pear.json',
+    catalogMdx: 'content/reference/modules/pear-modules.mdx',
+    catalogRoute: '/reference/modules/pear-modules',
+    extraSeeAlso: '[Pear API](/reference/pear/api) — the `Pear` global these modules build on.',
+    outDir: 'generated/pear-refs',
+    contentDir: 'content/reference/pear/modules',
+    layoutsDir: 'scripts/bare-refgen/layouts-pear',
+  },
+};
 
-/** Where generated previews land (NOT content/ — see the plan). */
-export const OUT_DIR = 'generated/bare-refs';
+function resolveFamily(): FamilyKey {
+  const i = process.argv.indexOf('--family');
+  const raw = (i !== -1 ? process.argv[i + 1] : process.env.REFGEN_FAMILY) ?? 'bare';
+  if (raw !== 'bare' && raw !== 'pear') throw new Error(`unknown --family: ${raw}`);
+  return raw;
+}
 
-/** Live docs location, written only under `--write` (CI regeneration). */
-export const CONTENT_DIR = 'content/reference/bare/modules';
+export const FAMILY: FamilyKey = resolveFamily();
+const F = FAMILIES[FAMILY];
 
-/** Directory holding the optional per-module layout manifests. */
-export const LAYOUTS_DIR = 'scripts/bare-refgen/layouts';
+export const PREFIX = F.prefix;
+export const RESEARCH_JSON = F.researchJson;
+export const VERSIONS_JSON = F.versionsJson;
+export const DOWNLOADS_JSON = F.downloadsJson;
+export const CATALOG_MDX = F.catalogMdx;
+export const CATALOG_ROUTE = F.catalogRoute;
+export const EXTRA_SEE_ALSO = F.extraSeeAlso;
+export const OUT_DIR = F.outDir;
+export const CONTENT_DIR = F.contentDir;
+export const LAYOUTS_DIR = F.layoutsDir;
 
 export type Stability = 'stable' | 'experimental' | 'deprecated' | 'unstable';
 
@@ -59,25 +111,14 @@ export const STABILITY_COLORS: Record<Stability, string> = {
 };
 
 /**
- * Stability per module, seeded from the Stability column of
- * content/reference/modules/bare-modules.mdx. Modules absent here default to
- * `stable`. This is editorial metadata (like the layout manifests), not AI.
- *
- * TODO(human): confirm the stability of each documented module and add any that
- * aren't `stable` here — the default assumes stable. `bare-refs:todo` lists
- * modules that fall back to the default.
+ * Stability per module. Verified 2026-07-02 against the Stability columns of
+ * BOTH catalog tables (bare-modules.mdx, pear-modules.mdx): every cataloged
+ * module is `stable` except the entries below. Modules absent here default to
+ * `stable`; the todo report flags only modules missing from the catalog too
+ * (stability truly unknown). Editorial metadata, not AI.
  */
 export const STABILITY: Record<string, Stability> = {
-  'bare-stream': 'stable',
-  'bare-events': 'stable',
-  'bare-path': 'stable',
-  'bare-fs': 'stable',
-  'bare-os': 'stable',
-  'bare-url': 'stable',
-  'bare-subprocess': 'stable',
-  'bare-module': 'stable',
-  'bare-bundle': 'stable',
-  'bare-process': 'stable',
+  'pear-gunk': 'unstable',
 };
 
 export function stabilityOf(name: string): Stability {

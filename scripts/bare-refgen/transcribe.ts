@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { OUT_DIR } from './config';
 import type { BareExport, BareModel } from './model';
 
-const RESEARCH_JSON = 'docs/bare-modules-research.json';
+import { RESEARCH_JSON } from './config';
 
 /**
  * Map every symbol identity (name, key, and bare last-segment) to the symbol's
@@ -99,6 +99,10 @@ async function main(): Promise<void> {
   const onlyIdx = process.argv.indexOf('--only');
   const only = onlyIdx !== -1 ? (process.argv[onlyIdx + 1] ?? '').split(',').map((s) => s.trim()) : null;
 
+  if (!RESEARCH_JSON) {
+    console.log('This family has no research dossier (README API sections) — nothing to transcribe.');
+    return;
+  }
   const research = JSON.parse(await readFile(RESEARCH_JSON, 'utf8')) as Array<{ name: string; api: string | null }>;
   const apiByName = new Map(research.map((r) => [r.name, r.api]));
 

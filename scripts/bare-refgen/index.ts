@@ -14,7 +14,17 @@
 import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { OUT_DIR, CONTENT_DIR, TOP_N, VERSIONS_JSON, CATALOG_MDX, STABILITY_COLORS, stabilityOf } from './config';
+import {
+  OUT_DIR,
+  CONTENT_DIR,
+  TOP_N,
+  VERSIONS_JSON,
+  CATALOG_MDX,
+  RESEARCH_JSON,
+  FAMILY,
+  STABILITY_COLORS,
+  stabilityOf,
+} from './config';
 import { selectModules } from './select';
 import { fetchPackage } from './fetch';
 import { extractModule } from './extract';
@@ -22,10 +32,9 @@ import { loadLayout } from './layout';
 import { renderPage } from './render';
 import type { BareModel } from './model';
 
-const RESEARCH_JSON = 'docs/bare-modules-research.json';
-
-/** README `## Usage` body, captured verbatim by the research script. */
+/** README `## Usage` body, captured verbatim by the family's research dossier. */
 async function usageFromResearch(name: string): Promise<string | null> {
+  if (!RESEARCH_JSON) return null; // family has no dossier (pear) — omit Usage
   try {
     const recs = JSON.parse(await readFile(RESEARCH_JSON, 'utf8')) as Array<{ name: string; usage: string | null }>;
     return recs.find((r) => r.name === name)?.usage ?? null;
