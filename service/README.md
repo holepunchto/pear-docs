@@ -37,6 +37,34 @@ content/*.mdx ──(build:index)──▶ data/index.json   (chunks: prose vect
   two text forms: **prose** (embedded, within the 512-token budget) and
   **code-preserving markdown** (RAG context + the MCP `fetch_doc` body).
 
+### Reindexing on a bare deploy (no full repo checkout)
+
+`corpus.ts` reaches outside `service/` into the parent docs repo — `content/*.mdx`
+and `scripts/helpers.ts` (kept as the single source of truth for URL slugs) plus
+any `examples/**` files referenced via `file=<rootDir>/…` code transclusions. A
+deploy that only copies `service/` (e.g. scp'ing just this directory to a bare
+box) is missing those, so `npm run build:index` fails there.
+
+To make a bare deploy self-sufficient, alongside `service/` also ship:
+- `content/` (the full directory)
+- `scripts/helpers.ts` — plus a `scripts/node_modules` **symlink to
+  `service/node_modules`** (it needs `github-slugger`, but sits outside
+  `service/`'s own dependency resolution, so Node can't find it without help)
+- only the `examples/**` files actually referenced — extract the exact list with:
+  ```bash
+  grep -rhoE 'file=<rootDir>/examples/[^ #"'"'"'`]+' content/ \
+    | sed 's/^file=<rootDir>\///' | sort -u
+  ```
+  (the whole `examples/` tree is multiple GB — most of it isn't needed; the
+  referenced subset is typically under 1 MB)
+
+Then rebuild with `QVAC_EMBED_GGUF` pointed at the deploy's model path (not just
+the local-dev default) and restart:
+```bash
+QVAC_EMBED_GGUF=/path/to/embed-model.gguf npm run build:index
+systemctl restart qvac   # or however the service is run
+```
+
 ## Run
 
 ```bash
