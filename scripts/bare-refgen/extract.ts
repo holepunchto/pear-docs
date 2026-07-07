@@ -22,16 +22,25 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
 /** Keys TypeScript uses internally that never represent public API. */
 const CONSTRUCTOR_NAME = ts.InternalSymbolName.Constructor; // "__constructor"
 
-export function extractModule(entryDts: string, pkgRoot: string): BareExport[] {
+export function extractModule(entryDts: string, pkgRoot: string, moduleName?: string): BareExport[] {
   const program = ts.createProgram([entryDts], COMPILER_OPTIONS);
   const checker = program.getTypeChecker();
   const sf = program.getSourceFile(entryDts);
   if (!sf) throw new Error(`could not load ${entryDts}`);
 
   const moduleSymbol = checker.getSymbolAtLocation(sf);
-  const { symbols, exclude } = moduleSymbol
+  let { symbols, exclude } = moduleSymbol
     ? moduleApiSymbols(checker, moduleSymbol)
     : { symbols: [] as ts.Symbol[], exclude: new Set<ts.Symbol>() };
+
+  // Ambient fallback: some packages declare their API inside
+  // `declare module '<name>' { … }` (e.g. bare-mdns-discovery). The source file
+  // then has no top-level exports — read the ambient module's symbol instead.
+  if (symbols.length === 0) {
+    const ambient = ambientModuleDecl(sf, moduleName);
+    const ambientSym = ambient ? checker.getSymbolAtLocation(ambient.name) : undefined;
+    if (ambientSym) ({ symbols, exclude } = moduleApiSymbols(checker, ambientSym));
+  }
 
   const seen = new Set<ts.Symbol>();
   const exports: BareExport[] = [];
@@ -83,6 +92,23 @@ function moduleApiSymbols(
     }
   });
   return { symbols: [target, ...siblings], exclude };
+}
+
+/**
+ * The ambient module declaration to extract from, when the file itself exports
+ * nothing: prefer one whose quoted name matches the package, else the sole one.
+ * Body-less shorthand declarations (`declare module 'x'`) carry no API and are
+ * ignored — the caller then reports 0 exports and the driver skips the module.
+ */
+function ambientModuleDecl(sf: ts.SourceFile, moduleName?: string): ts.ModuleDeclaration | null {
+  const ambients = sf.statements.filter(
+    (s): s is ts.ModuleDeclaration => ts.isModuleDeclaration(s) && ts.isStringLiteral(s.name) && !!s.body,
+  );
+  if (ambients.length === 0) return null;
+  const exact = moduleName
+    ? ambients.find((a) => (a.name as ts.StringLiteral).text === moduleName)
+    : undefined;
+  return exact ?? (ambients.length === 1 ? ambients[0] : null);
 }
 
 function resolveAlias(checker: ts.TypeChecker, sym: ts.Symbol): ts.Symbol {

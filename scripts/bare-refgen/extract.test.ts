@@ -14,7 +14,8 @@ import { renderPage } from './render';
 import type { BareExport, BareModel } from './model';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__');
-const extract = (file: string): BareExport[] => extractModule(join(FIXTURES, file), FIXTURES);
+const extract = (file: string, moduleName?: string): BareExport[] =>
+  extractModule(join(FIXTURES, file), FIXTURES, moduleName);
 
 const byName = (list: BareExport[], name: string) => list.find((e) => e.name === name);
 const names = (list: BareExport[]) => list.map((e) => e.name);
@@ -66,6 +67,16 @@ test('export = promotes distinct sibling classes and never leaks generic params'
   assert.ok(base.members.some((m) => m.name === 'Base.helper' && m.static), 'static helper kept on Base');
   // Sub is its own export, not folded into Base's members.
   assert.ok(!base.members.some((m) => m.name === 'Sub'));
+});
+
+test('ambient declare-module: exports read from the ambient module symbol', () => {
+  const ex = extract('ambient.d.ts', 'ambient-fixture');
+  assert.equal(ex.length, 3, 'all three ambient exports found');
+  assert.equal(byName(ex, 'ping')?.kind, 'function');
+  assert.equal(byName(ex, 'Info')?.kind, 'interface');
+  assert.equal(byName(ex, 'N')?.kind, 'variable');
+  // Without a matching name it still resolves the sole ambient module.
+  assert.equal(extract('ambient.d.ts').length, 3);
 });
 
 test('thin property-only class renders as a shape block, not expanded methods', () => {

@@ -11,7 +11,7 @@
 //
 // Run: npx tsx scripts/bare-refgen/index.ts
 
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { OUT_DIR, CONTENT_DIR, TOP_N, VERSIONS_JSON, CATALOG_MDX, STABILITY_COLORS, stabilityOf } from './config';
@@ -112,13 +112,24 @@ async function generateOne(
       minBare: pkg.minBare,
       native: pkg.native,
       usage: await usageFromResearch(name),
-      exports: extractModule(pkg.entryDts, pkg.pkgDir),
+      exports: extractModule(pkg.entryDts, pkg.pkgDir, pkg.name),
       subpaths: pkg.subpaths.map((s) => ({
         name: s.name,
-        exports: extractModule(s.dts, pkg.pkgDir),
+        exports: extractModule(s.dts, pkg.pkgDir, s.name),
       })),
       generatedAt,
     };
+
+    // A declaration that yields nothing (e.g. a body-less shorthand ambient
+    // module) is as undocumentable as no .d.ts at all — skip rather than render
+    // an empty page, and clear any stale output from earlier runs.
+    if (model.exports.length === 0 && model.subpaths.every((s) => s.exports.length === 0)) {
+      console.warn(`  ⚠ ${name}: declarations yield no extractable exports — skipping.`);
+      skipped.push(name);
+      await rm(join(OUT_DIR, `${name}.mdx`), { force: true });
+      await rm(join(OUT_DIR, name), { recursive: true, force: true });
+      return null;
+    }
     const layout = await loadLayout(name);
     const { mdx, orphans } = renderPage(model, layout);
 

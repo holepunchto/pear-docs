@@ -84,6 +84,13 @@ async function main(): Promise<void> {
     const layout = await loadLayout(name);
     const { mdx } = renderPage(model, layout);
 
+    // A committed model with no exports means the extractor failed silently
+    // (e.g. an ambient-declaration shape it doesn't handle) — the driver should
+    // have skipped it instead.
+    if (model.exports.length === 0 && model.subpaths.every((s) => s.exports.length === 0)) {
+      problems.push({ module: name, kind: 'coverage', detail: 'model has 0 extractable exports (extractor gap or should be skipped)' });
+    }
+
     for (const key of coverageGaps(model, mdx)) {
       problems.push({ module: name, kind: 'coverage', detail: `export not rendered: ${key}` });
     }
