@@ -1,0 +1,284 @@
+---
+title: "bare-stow"
+description: "Module bundling and harness generation for Bare"
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-stow`](https://github.com/holepunchto/bare-stow) — Module bundling and harness generation for Bare.
+
+```sh
+npm i bare-stow
+```
+
+## Usage
+
+Given an entry module `core.js` that exports a `start` function receiving the IPC stream and an optional `ready` callback. The function may optionally return (or resolve to) a function that runs before the bundle exits:
+
+```js
+module.exports = async function start(ipc, ready) {
+  ipc.on('data', (data) => {
+    // Handle messages from the host.
+  })
+
+  // Optionally call `ready()` to signal readiness early. Otherwise it is
+  // signaled automatically when `start()` resolves.
+  ready()
+
+  return async function stop() {
+    // Clean up before the bundle exits.
+  }
+}
+```
+
+The `ipc` argument is a duplex byte stream. Anything written to it is delivered to the host, and `'data'` events fire when the host writes back.
+
+Stow it for the `bare-sidecar` target:
+
+```js
+const stow = require('bare-stow')
+
+const entry = new URL('file:///app/core.js')
+const out = new URL('file:///app/out/index.js')
+
+for await (const artifact of stow(entry, 'bare-sidecar', out)) {
+  console.log(artifact.url.href)
+}
+```
+
+Or equivalently from the command line:
+
+```console
+$ bare-stow --target bare-sidecar --out ./out/index.js ./core.js
+```
+
+This writes the harness to `out` and the bundle alongside it. The harness can then be required from the host and booted with `start()`. The harness awaits the worker's `ready` signal before resolving, so by the time `start()` returns the bundle is up:
+
+```js
+const harness = require('/app/out/index.js')
+
+const { ipc } = await harness.start()
+
+ipc.write(Buffer.from('hello from the host'))
+
+ipc.on('exit', (code) => {
+  console.log('bundle exited with', code)
+})
+
+// Request a graceful shutdown.
+ipc.destroy()
+```
+
+## API
+
+### Functions
+
+#### `stow`
+
+```ts
+stow(entry: URL | string, target: Target | TargetName, out: URL | string, opts?: StowOptions): AsyncGenerator<StowArtifact>
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/index.d.ts#L61)</sub>
+
+**Parameters**
+
+- `entry` (`URL` | `string`)
+- `target` ([`Target`](#target) | `TargetName`)
+- `out` (`URL` | `string`)
+- `opts` ([`StowOptions`](#stowoptions), optional)
+
+### Types
+
+#### `Target`
+
+```ts
+interface Target {
+  name: string
+  linked: boolean
+  offload: boolean | { addons?: boolean; assets?: boolean }
+  format: 'bundle' | 'bundle.cjs' | 'bundle.mjs' | 'bundle.json'
+  encoding: string | null
+  extension: string
+  module?: 'esm' | 'cjs'
+  hosts: string[]
+  generate(context: TargetContext): Artifact[]
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/index.d.ts#L19)</sub>
+
+#### `TargetContext`
+
+```ts
+interface TargetContext {
+  bundleSpecifier: string
+  ipc: string
+  rpc: string
+  module: 'esm' | 'cjs'
+  client: RPCClient | null
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/index.d.ts#L11)</sub>
+
+#### `RPC`
+
+```ts
+interface RPC {
+  name: string
+  generate(context: RPCContext): Artifact[]
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/index.d.ts#L40)</sub>
+
+#### `RPCContext`
+
+```ts
+interface RPCContext {
+  ipc: string
+  rpc: string
+  module: 'esm' | 'cjs'
+  role: 'client' | 'server'
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/index.d.ts#L33)</sub>
+
+#### `RPCClient`
+
+```ts
+interface RPCClient {
+  source: string
+  type: string
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/index.d.ts#L45)</sub>
+
+#### `Artifact`
+
+```ts
+interface Artifact {
+  extension?: string
+  source: string
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/index.d.ts#L4)</sub>
+
+#### `StowOptions`
+
+```ts
+interface StowOptions extends Omit<PackOptions, 'offload' | 'linked' | 'resolve' | 'aliases'> {
+  client?: RPC | RPCName
+  server?: RPC | RPCName
+  resolveTarget?(name: string): Target
+  resolveRPC?(name: string): RPC
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/index.d.ts#L50)</sub>
+
+#### `StowArtifact`
+
+```ts
+interface StowArtifact {
+  url: URL
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/index.d.ts#L57)</sub>
+
+## `bare-stow/protocol`
+
+### Protocol
+
+#### `new Protocol(stream: Duplex)`
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/lib/protocol.d.ts#L17)</sub>
+
+**Parameters**
+
+- `stream` (`Duplex`)
+
+#### `send(type: string, payload?: object): Promise<void>`
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/lib/protocol.d.ts#L13)</sub>
+
+**Parameters**
+
+- `type` (`string`)
+- `payload` (`object`, optional)
+
+### Functions
+
+#### `attach(stream: Duplex): Protocol`
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/lib/protocol.d.ts#L20)</sub>
+
+**Parameters**
+
+- `stream` (`Duplex`)
+
+### Constants and variables
+
+#### `CONTROL: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/lib/protocol.d.ts#L3)</sub>
+
+#### `USER: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/lib/protocol.d.ts#L4)</sub>
+
+### Types
+
+#### `ProtocolEvents`
+
+```ts
+interface ProtocolEvents extends DuplexEvents {
+  ready: []
+  terminate: []
+  exit: [code: number]
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/lib/protocol.d.ts#L6)</sub>
+
+## `bare-stow/host`
+
+### IPC
+
+#### `new IPC(stream: Duplex)`
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/lib/host.d.ts#L10)</sub>
+
+**Parameters**
+
+- `stream` (`Duplex`)
+
+#### `ready: Promise<void>`
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/lib/host.d.ts#L5)</sub>
+
+#### `terminate(): Promise<number | undefined>`
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/lib/host.d.ts#L6)</sub>
+
+### Functions
+
+#### `wrap(stream: Duplex): IPC`
+
+<sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/lib/host.d.ts#L13)</sub>
+
+**Parameters**
+
+- `stream` (`Duplex`)
+
+## See also
+
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.
