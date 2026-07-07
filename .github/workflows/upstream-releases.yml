@@ -9,10 +9,13 @@ name: Watch upstream releases
 # review PR. A docs human curates the wording — flags Breaking items, adds
 # migration links — before merge.
 #
-# One rolling PR branch (changelog/upstream-drafts) is force-pushed each run,
-# so repeated runs update the open PR instead of stacking new ones. The state
-# file travels with the PR: baselines only advance on `published` once the
-# curated PR merges, so unmerged releases are re-detected until then.
+# One rolling PR branch (changelog/upstream-drafts) collects the drafts. When
+# an earlier run left that branch open, this run RESUMES it: the branch's
+# state file is already advanced, so only genuinely new releases are appended
+# on top, and any human curation commits pushed to the PR are preserved
+# (never force-push this branch from published — that clobbers curation). The
+# state file travels with the PR: baselines only land on `published` once the
+# curated PR merges.
 #
 # Like docs-lint.yml, this can't `npm install` (token-gated @tetherto/*
 # packages) — it installs just `tsx` into a throwaway prefix. The checker
@@ -37,6 +40,22 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: published
+
+      - name: Resume the open drafts branch when one exists
+        run: |
+          set -euo pipefail
+          # A previous run may have left an open review PR whose branch holds
+          # both un-merged drafts and human curation commits. Stacking this
+          # run on top of it preserves that work; starting from `published`
+          # would regenerate the same drafts and the final push would clobber
+          # the curation.
+          if git fetch origin changelog/upstream-drafts 2>/dev/null; then
+            git checkout -B changelog/upstream-drafts FETCH_HEAD
+            echo "Resumed existing changelog/upstream-drafts."
+          else
+            git checkout -B changelog/upstream-drafts
+            echo "No open drafts branch; starting from published."
+          fi
 
       - uses: actions/setup-node@v5
         with:
@@ -65,21 +84,36 @@ jobs:
           fi
 
           branch="changelog/upstream-drafts"
-          releases=$(git diff -- content/changelog/index.mdx \
-            | grep '^+### ' | sed 's/^+### /- /' || true)
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B "${branch}"
           git add content/changelog/index.mdx scripts/upstream-releases-state.json
           git commit -m "chore(changelog): draft entries for new upstream releases"
-          git push -f origin "${branch}"
+          # Plain push: when the branch was resumed this fast-forwards on top
+          # of any curation commits; when fresh it creates the remote branch.
+          git push -u origin "${branch}"
+
+          # List every draft heading the branch adds over published (not just
+          # this run's), so an updated PR body stays complete.
+          releases=$(git diff origin/published..HEAD -- content/changelog/index.mdx \
+            | grep '^+### ' | sed 's/^+### /- /' || true)
+
+          # Tripwire: the CLI reference pins its "Command source on GitHub"
+          # links to `main` until Pear v3 is tagged (see the maintainer note
+          # at the top of content/reference/pear/cli.mdx). Surface the re-pin
+          # chore the moment a v3 tag shows up.
+          repin=""
+          if printf '%s\n' "${releases}" | grep -qE '^- pear \(CLI\) — v3'; then
+            repin="⚠️ **A pear v3 tag was detected.** Re-pin the \"Command source on GitHub\" links in \`content/reference/pear/cli.mdx\` from \`main\` to the new tag (see the maintainer note at the top of that file), then remove the note."
+          fi
 
           title="Changelog: curate draft entries for new upstream releases"
           body=$(printf '%s\n' \
             "New upstream releases were detected and inserted as **draft** changelog entries:" \
             "" \
             "${releases}" \
+            "" \
+            "${repin}" \
             "" \
             "**Review checklist** (see the \`TODO(curate)\` comments in the diff):" \
             "" \
@@ -88,7 +122,7 @@ jobs:
             "- [ ] Fold entries into the right dated section; remove the \`(draft)\` heading suffix" \
             "- [ ] Delete the \`TODO(curate)\` comments" \
             "" \
-            "_Opened automatically by the Watch upstream releases workflow._")
+            "_Opened automatically by the Watch upstream releases workflow. Scheduled reruns stack new drafts on this branch without touching curation commits._")
 
           existing=$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${branch}" --state open \
             --json number --jq '.[0].number // empty')
