@@ -89,13 +89,28 @@ aborted.
 - **Source links unaffected by the crash**: sampled 6 pinned GitHub blob URLs
   across bare-fs/bare-events/bare-prom-client (2 each, first/last in file) —
   all 6 resolve 200.
-- **Recommended next step for whoever picks this up**: reproduce in a
-  disposable worktree, bisect bare-fs.mdx content there (not the real tracked
-  file), and narrow to whether it's `includeProcessedMarkdown`, a shiki
-  transformer, or something structural in the MDX (e.g., a heading/anchor
-  collision pattern) before the cutover in `cutover.md` can be considered safe
-  to execute — cutover would put this exact content at
-  `content/reference/bare/modules/bare-fs.mdx` in production.
+- **Session-3 triage (2026-07-08) — calibrated bisection, partial localization.**
+  Method: scratch variants of bare-fs.mdx copied over the route, fresh
+  heap-capped `next dev` per trial, crash detected via the OOM marker in the
+  server log (the npm wrapper survives the worker crash — don't trust `kill -0`;
+  and curl the **trailing-slash** URL, the bare route 308s without compiling).
+  Two critical calibration findings:
+  1. **Caps below ~8GB produce threshold artifacts, not signal**: the
+     known-good bare-prom-client control OOMs in a fresh `next dev` at BOTH
+     1.5GB and 4GB — i.e. compiling ANY sizable generated page costs 4–8GB in
+     this dev setup (itself worth raising with the site owners). An earlier
+     run of ~10 trials at 1.5GB was invalidated by this control and discarded.
+  2. At **CAP=8192** the harness discriminates cleanly: prom-client control OK,
+     full bare-fs OOM. Valid trials so far: head-only OK; **first half
+     (through "Permissions, ownership, and times") OK; second half (from
+     "### Directories" onward, incl. the auto-grouped Dir/Dirent/Stats/Watcher
+     classes, Types like the 24-way `Flag` union, and the `bare-fs/promises` +
+     `bare-fs/constants` subpath sections) OOM.**
+  **Next step (scheduled run)**: continue bisecting WITHIN the second half at
+  `CAP=8192` using the existing harness (`scratchpad/oom/trial.sh`; regenerate
+  it from this description if the scratchpad was reaped): first split at
+  `## \`bare-fs/promises\`` (subpaths vs main-body), then narrow by section.
+  Restore `content/` after every trial. Cutover stays blocked until root-caused.
 
 ## Small infra fix (adjacent, needed to land A4's work)
 
