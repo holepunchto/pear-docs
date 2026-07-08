@@ -15,6 +15,7 @@ import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  ORG,
   OUT_DIR,
   CONTENT_DIR,
   TOP_N,
@@ -66,37 +67,83 @@ async function updateVersions(versions: Record<string, string>): Promise<void> {
 }
 
 /**
+ * Section new catalog rows land under when a module has no existing row at
+ * all. It's a parking spot, not a judgment call about where the module
+ * belongs — `todo.ts` flags every name added this way so a person moves it to
+ * the right section.
+ */
+const FALLBACK_SECTION = '## Other utilities';
+
+/**
  * Non-destructively keep each module's catalog row current: ensure it links to
  * the reference page and carries the right stability. Curated prose is left
  * intact — only the reference link is appended (if missing) and the stability
- * cell is set.
+ * cell is set. Modules with no row at all get a new 2-column row appended
+ * under `FALLBACK_SECTION` (description from `package.json`, never
+ * fabricated); the caller records those for the TODO report.
  */
-async function syncCatalog(names: string[]): Promise<void> {
-  if (!existsSync(CATALOG_MDX)) return;
+async function syncCatalog(names: string[], descriptions: Record<string, string | null>): Promise<string[]> {
+  if (!existsSync(CATALOG_MDX)) return [];
   const lines = (await readFile(CATALOG_MDX, 'utf8')).split('\n');
   let changed = false;
+  const matched = new Set<string>();
   for (let i = 0; i < lines.length; i++) {
     const cells = lines[i].split('|');
-    if (cells.length < 6) continue; // not a 4-column table row
+    if (cells.length < 3) continue; // not a table row
     const name = names.find((n) => cells[1].includes(`[${n}]`));
     if (!name) continue;
+    matched.add(name);
     const refLink = `/reference/bare/modules/${name}`;
     if (!cells[2].includes(refLink)) {
       cells[2] = `${cells[2].trimEnd()} — [reference](${refLink}) `;
       changed = true;
     }
-    // Stability is a styled <mark> badge. Only rewrite when the LEVEL changed,
-    // preserving the existing cell (and its formatting) otherwise.
-    const wantedLevel = stabilityOf(name);
-    const currentLevel = cells[4].match(/stable|experimental|deprecated|unstable/)?.[0];
-    if (currentLevel !== wantedLevel) {
-      const color = STABILITY_COLORS[wantedLevel];
-      cells[4] = ` <mark style={{ backgroundColor: '${color}', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>${wantedLevel}</mark> `;
-      changed = true;
+    // Stability is a styled <mark> badge, in whichever cell holds it (table
+    // layouts vary — 2-column "Other utilities" has none). Only rewrite when
+    // the LEVEL changed, preserving the existing cell (and formatting) otherwise.
+    const stabilityCellIndex = cells.findIndex((c) => /stable|experimental|deprecated|unstable/.test(c));
+    if (stabilityCellIndex !== -1) {
+      const wantedLevel = stabilityOf(name);
+      const currentLevel = cells[stabilityCellIndex].match(/stable|experimental|deprecated|unstable/)?.[0];
+      if (currentLevel !== wantedLevel) {
+        const color = STABILITY_COLORS[wantedLevel];
+        cells[stabilityCellIndex] = ` <mark style={{ backgroundColor: '${color}', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>${wantedLevel}</mark> `;
+        changed = true;
+      }
     }
     lines[i] = cells.join('|');
   }
+
+  const added: string[] = [];
+  const missing = names.filter((n) => !matched.has(n));
+  if (missing.length) {
+    const headingIndex = lines.findIndex((l) => l.trim() === FALLBACK_SECTION);
+    if (headingIndex === -1) {
+      console.warn(`  ⚠ syncCatalog: fallback section "${FALLBACK_SECTION}" not found in ${CATALOG_MDX} — cannot add rows for: ${missing.join(', ')}`);
+    } else {
+      // The section's table is the first "| --- |" separator row after the
+      // heading; new rows go immediately after it (top of that table), or
+      // right after the heading's intro paragraph if the table is empty.
+      let insertAt = headingIndex + 1;
+      for (let i = headingIndex + 1; i < lines.length && !lines[i].startsWith('## '); i++) {
+        if (/^\|[\s-]*\|/.test(lines[i]) || lines[i].startsWith('| ---')) {
+          insertAt = i + 1;
+          break;
+        }
+      }
+      for (const name of missing) {
+        const desc = descriptions[name]?.trim() || '(no package.json description)';
+        const row = `| [${name}](https://github.com/${ORG}/${name}) | ${desc} — [reference](/reference/bare/modules/${name}) |`;
+        lines.splice(insertAt, 0, row);
+        insertAt++;
+        added.push(name);
+        changed = true;
+      }
+    }
+  }
+
   if (changed) await writeFile(CATALOG_MDX, lines.join('\n'));
+  return added;
 }
 
 async function generateOne(
@@ -104,7 +151,7 @@ async function generateOne(
   generatedAt: string,
   write: boolean,
   skipped: string[],
-): Promise<{ orphans: string[]; version: string } | null> {
+): Promise<{ orphans: string[]; version: string; description: string | null } | null> {
   const pkg = await fetchPackage(name);
   try {
     if (!pkg.entryDts) {
@@ -155,7 +202,7 @@ async function generateOne(
     const layoutNote = layout ? (orphans.length ? `layout · ${orphans.length} auto-grouped` : 'layout') : 'by-kind';
     const dest = write ? ` → ${CONTENT_DIR}/` : '';
     console.log(`  ✓ ${name}@${pkg.version} — ${exportCount} top-level exports · ${layoutNote}${dest}`);
-    return { orphans, version: pkg.version };
+    return { orphans, version: pkg.version, description: model.description };
   } finally {
     await pkg.cleanup();
   }
@@ -184,6 +231,7 @@ async function main(): Promise<void> {
 
   let ok = 0;
   const versions: Record<string, string> = {};
+  const descriptions: Record<string, string | null> = {};
   const skipped: string[] = [];
   for (const name of names) {
     try {
@@ -191,6 +239,7 @@ async function main(): Promise<void> {
       if (res) {
         ok++;
         versions[name] = res.version;
+        descriptions[name] = res.description;
       }
     } catch (err) {
       console.error(`  ✗ ${name}: ${(err as Error).message}`);
@@ -201,7 +250,13 @@ async function main(): Promise<void> {
   // Record modules that were selected but ship no usable .d.ts, so the TODO can
   // flag them (they need upstream types before they can be documented).
   await writeFile(join(OUT_DIR, '_skipped.json'), JSON.stringify(skipped.sort(), null, 2) + '\n');
-  if (write) await syncCatalog(Object.keys(versions));
+  if (write) {
+    const added = await syncCatalog(Object.keys(versions), descriptions);
+    // Record modules that got a brand-new catalog row under the fallback
+    // section, so the TODO can flag them for a human to move to the right
+    // section (syncCatalog guesses a parking spot, not a category).
+    await writeFile(join(OUT_DIR, '_catalog-added.json'), JSON.stringify(added.sort(), null, 2) + '\n');
+  }
 
   console.log(`\n✅ Wrote ${ok}/${names.length} pages to ${write ? CONTENT_DIR : OUT_DIR}/`);
   if (skipped.length) console.log(`   ⚠ skipped (no .d.ts shipped): ${skipped.join(', ')}`);
