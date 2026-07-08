@@ -6,11 +6,13 @@ Progress ledger for `instance-b.md`. Scheduled resume runs read the
 ## Progress / resume state
 
 - **B1 (review 34 auto-transcribed describe maps):** DONE (2026-07-08). All 34 modules reviewed against upstream README + `api-model.json`, fixed in place or pruned. `npm run check:bare-refs` green (68 modules OK) after all edits. Verdicts below.
-- **B2 (draft prose for no-prose modules):** NOT STARTED. 35 modules (TODO.md §"Modules with no author-written descriptions", now includes `bare-mdns-discovery` since Instance A's extractor fix `def975c` made it extractable — 12 exports). `bare-tui` remains blocked (no `.d.ts`) — defer.
+- **B2 (draft prose for no-prose modules):** DONE (2026-07-08). All 34 modules in TODO.md §"Modules with no author-written descriptions" drafted (list turned out to be 34, not 35 — `bare-mdns-discovery` was already counted in that 34, not additional). `bare-tui` remains blocked (no `.d.ts`) — deferred, not attempted. `npm run check:bare-refs` green (68 modules OK) after all drafts. `npm run emit:ts-doc -- --only <all 34>` run successfully — every module's local `chore/ts-doc` branch in `../ts-doc-upstream/<name>` now carries the spliced TSDoc + regenerated README `## API` (except `bare-inspector`, which emitted README only — 0 `.d.ts` files spliced, see notes below). Verified via `git -C ../ts-doc-upstream/<name> show` on samples and `git ls-remote --heads origin chore/ts-doc` (empty) on samples — nothing pushed. Verdicts below.
 - **B3 (draft `.d.ts` for bare-dgram / bare-env / bare-stdio):** NOT STARTED. These three are NOT cloned in `../ts-doc-upstream` yet — clone from upstream (holepunchto) first, then branch `chore/add-types` locally. Never push.
-- **B4 (coverage-gap triage):** NOT STARTED, but see "Notes for B4" below — a few real gaps surfaced incidentally during B1 review.
+- **B4 (coverage-gap triage):** NOT STARTED, but see "Notes for B4" below — several real gaps surfaced incidentally during B1 and B2.
 
-**Resume from B2.** Start with the 35-module list in TODO.md §"Modules with no author-written descriptions" (batch ~5-6 modules per agent, ≤6 concurrent agents). When dispatching parallel agents, be explicit that each agent must do the work itself with its own Read/Edit tools and must NOT spawn further nested agents — this run repeatedly saw agents delegate a self-contained review task to a background `Agent` call instead of executing it, which duplicated work and briefly triggered a false "rogue agent editing out-of-scope files" alarm (see incident note below). No actual damage occurred (the destructive revert attempt was correctly blocked), but it wasted a full round-trip per affected batch.
+**Resume from B3.** Clone `bare-dgram`, `bare-env`, `bare-stdio` from holepunchto into `../ts-doc-upstream/<name>` (they don't exist there yet), branch `chore/add-types` locally, author `index.d.ts` by reading the JS source and mirroring `bare-os`/`bare-pipe` house style. Commit locally, never push. After B3, move to B4 (coverage-gap triage) using TODO.md §"Coverage gaps" plus the "Notes for B4" section below, which already has several real candidates pre-identified from B1/B2 review — start there instead of re-deriving from scratch.
+
+**Process note for future dispatches:** in this run, when batch prompts explicitly said "do this yourself with Read/Edit, do NOT spawn a sub-agent" (used for all 6 B2 batches), zero agents self-delegated — a clean improvement over the earlier B1 dispatch (see incident note below) where 3 of 6 batches initially delegated before being redirected. Keep using that explicit instruction for future parallel batch dispatches.
 
 ## Reviewed (per-module verdicts — B1)
 
@@ -53,21 +55,68 @@ Progress ledger for `instance-b.md`. Scheduled resume runs read the
 
 ## Drafted, needs user review (B2)
 
-<!-- one line per module whose describe map was authored (not transcribed) -->
+All 34 modules below had NO describe.json before this run (signatures-only pages) — every entry is newly authored, not transcribed, and needs human review before it's treated as ship-ready. Grounded in `api-model.json` + upstream source (`index.js`/`lib/*`) for every module; Node.js parity docs (nodejs.org) additionally cross-checked, only where the Bare source was independently confirmed to match, for: bare-assert, bare-buffer, bare-dns, bare-events, bare-http1, bare-https, bare-inspector, bare-path, bare-process, bare-readline, bare-timers, bare-tty, bare-zlib.
+
+- **bare-abort** — 1/1 symbols described.
+- **bare-abort-controller** — 12 described, 2 omitted (bare `typeof` constructor aliases with no independent meaning).
+- **bare-ansi-escapes** — 55 described, 3 omitted (structural option/event interfaces already covered via member entries).
+- **bare-assert** — 6 described, 0 omitted. **Flag:** the shipped `.d.ts` is stale vs `index.js` — missing `fail`/`notOk`, and doesn't expose `ok`/`equal`/`notEqual`/`strictEqual`/`notStrictEqual` the way the JS does, so `api-model.json` (and this describe map) covers less than the real module surface. Real upstream `.d.ts` gap — candidate for B4/upstream PR.
+- **bare-buffer** — 98 entries for 99 model keys, 1 omitted (typeof alias). Note: the extractor itself flattens static `Buffer.compare(a,b)` and the instance `.compare()` method to the same key — the single description was written to be accurate for both.
+- **bare-bundle** — 39 described, 5 omitted (option-bag interfaces described via individual properties, not as a container).
+- **bare-bundle-id** — 1/1 symbols described.
+- **bare-dns** — 8 described, 3 omitted (`dns` namespace root, `LookupOptions` container, and `LookupOptions.hints` — the last because `index.js`/`binding.c` never actually read that field, so its effect isn't verifiable).
+- **bare-encoding** — 8 described, 0 omitted (scope limited to what `api-model.json` extracts; `TextEncoderStream`/`TextDecoderStream` are declared in the `.d.ts` but not extracted — same class of gap as bare-assert, candidate for B4).
+- **bare-events** — 18 described, 6 omitted. **Flag (architectural, not just this module):** the flat describe.json format collides same-named static-namespace and instance-method keys (e.g. `EventEmitter.setMaxListeners`); in bare-events specifically the *instance* `setMaxListeners`/`getMaxListeners` behave materially differently from Node's (instance `setMaxListeners` is a no-op, `getMaxListeners` always returns the global default) so a single description couldn't honestly cover both meanings — omitted per "omit rather than mislead." Likely recurs elsewhere; would need per-signature keys or a render.ts resolution rule to fix properly (out of B's ownership — flag for Instance A / B4).
+- **bare-format** — 1 described, 0 omitted (only the top-level `format` function is in `api-model.json`; `format.formatWithOptions`/`format.format` namespace members aren't extracted — same gap class as above).
+- **bare-hrtime** — 1/1 symbols described.
+- **bare-http1** — 83 described, 34 omitted (constructors covered at class level; interface/event fields folded into parent prose per repo convention).
+- **bare-https** — 11 described, 2 omitted (constructors, covered at class level).
+- **bare-inspect** — 3 described, 4 omitted (option fields folded into the `InspectOptions` class-level entry).
+- **bare-inspector** — 19 described, 25 omitted (22 `Console.*` native passthroughs described at the class level rather than fabricating per-method behavior; 3 constructors folded into class entries). **Flag:** `emit:ts-doc` spliced 0 `.d.ts` files for this module (README `## API` was still regenerated) — the splicer couldn't attach TSDoc to any declaration site for this module's shape; needs investigation, likely a pipeline (Instance A) issue, not a content issue.
+- **bare-logger** — 11 described, 3 omitted (2 constructors + 1 field folded into parent prose).
+- **bare-mdns-discovery** — 18 described, 34 omitted (constructor + standard EventEmitter passthroughs + fields folded into parent prose, consistent with sibling conventions). Confirmed extractable post `def975c` (12 real exports, not stale/empty).
+- **bare-net** — 40 described, 2 omitted (empty intersection option interfaces). Confirmed bare-net wraps `bare-tcp`/`bare-pipe` and dispatches on `path` vs `port`/`host` — it is NOT a mirror of Node's `net` (not in NODE_PARITY, correctly not cross-checked against Node docs).
+- **bare-path** — 14/14 symbols described.
+- **bare-posix** — 24/24 symbols described.
+- **bare-process** — 13 described, 3 omitted (`idle`/`resume`/`suspend` forwarded from the `Bare` global with no discoverable trigger semantics anywhere in-repo). **Flag:** only `process` and `ProcessEvents` appear in `api-model.json` — the full `Process` interface (stdin/stdout/cwd/kill/etc.) isn't captured by the extractor at all, so most of the module's real surface has no page content regardless of prose. Real extractor/pipeline gap — flag for Instance A.
+- **bare-querystring** — 4/4 symbols described.
+- **bare-readline** — 22/22 symbols described.
+- **bare-signals** — 14/14 symbols described.
+- **bare-stow** — 53/53 symbols described (including the `bare-stow/protocol` and `bare-stow/host` subpath exports).
+- **bare-string-decoder** — 4/4 symbols described. Not in NODE_PARITY despite the name resembling Node's `string_decoder` — correctly described from Bare's own source/tests only.
+- **bare-system-logger** — 1/1 symbols described (the `.d.ts` declares `SystemLog` as an empty interface extending bare-logger's `Log` with zero own members in the model — only the class itself could be truthfully described).
+- **bare-timers** — 18/18 symbols described. Note: `setTimeout`/`setInterval`/`setImmediate` keys collide between the top-level and `bare-timers/promises` subpath exports (same key/name, different signatures) — phrased generically enough to hold for both, following the precedent already used in `bare-fs.describe.json`.
+- **bare-tty** — 15 described, 0 omitted (`isatty` is a runtime-only alias of `isTTY`, not a separate model key — correctly not duplicated).
+- **bare-type** — 1 described, 3 omitted (the `is*()` predicate interface and `createTag`/`addTag`/`checkTag` namespace members exist in `index.d.ts` but the extractor doesn't surface them as model identities — verified empirically via `check.ts`, dropped as orphaned refs). Real extractor gap — flag for Instance A.
+- **bare-vm** — 3/3 symbols described. Confirmed it wraps `bare-realm`.
+- **bare-ws** — 48 described, 5 omitted (constructor overload nuance folded into one line; `UNEXPECTED_MASK` is thrown in `errors.js` but absent from `errors.d.ts` — real `.d.ts` gap, candidate for B4; plus type-alias/interface shells with no independent behavior).
+- **bare-zlib** — 42 described, 12 omitted (8 `ZlibError.CODE()` static factories exist in `errors.js` but aren't typed in `errors.d.ts` — real `.d.ts` gap, candidate for B4; plus pure callback-type aliases). NODE_PARITY confirmed via WebFetch against nodejs.org/api/zlib.html.
 
 ## Upstream `.d.ts` gaps drafted (B4)
 
-<!-- none drafted yet — B4 not started -->
+<!-- none formally drafted as declarations yet — B4 (declaration-writing workstream) not started. Real gaps have been *identified* during B1/B2 and are listed under "Notes for B4" below, ready for B4 to turn into actual .d.ts additions on chore/ts-doc branches. -->
 
-### Notes for B4 (surfaced incidentally during B1, not yet drafted)
+### Notes for B4 (surfaced incidentally during B1/B2, not yet drafted as declarations)
 
 - **bare-tls** — `TLSNetServer` has no `close()` method in the `.d.ts` (only a `close` event); README/transcription implied one. Needs confirmation against upstream source whether this is a genuine missing declaration or the README documents an event, not a method.
 - **bare-structured-clone** — `Serializable`/`Transferable` classes are empty stubs in the `.d.ts` with zero members; per `instance-b.md`'s pre-identified gap list, the serialize/deserialize family is a known real upstream gap — confirmed again here from the description side.
 - **bare-stream** — `CountQueuingStrategy`/`ByteLengthQueuingStrategy` are empty class stubs with zero prose in both README and `.d.ts` members; likely need upstream member declarations (`highWaterMark`, `size()`).
+- **bare-assert** — `.d.ts` missing `fail`, `notOk`, and doesn't expose `ok`/`equal`/`notEqual`/`strictEqual`/`notStrictEqual` the way `index.js` does. Real upstream `.d.ts` gap.
+- **bare-encoding** — `TextEncoderStream`/`TextDecoderStream` declared in `.d.ts` but not extracted by the pipeline into `api-model.json` — check whether this is an extractor gap (Instance A) or a genuinely malformed declaration (B4/upstream).
+- **bare-format** — `format.formatWithOptions`/`format.format` namespace members declared but not extracted — same class of gap as bare-encoding.
+- **bare-ws** — `UNEXPECTED_MASK` thrown in `errors.js` but absent from `errors.d.ts`.
+- **bare-zlib** — 8 `ZlibError.CODE()` static factories exist in `errors.js` but aren't typed in `errors.d.ts`.
+- **bare-process** — the extractor only captures `process`/`ProcessEvents` from `api-model.json`; the full `Process` interface (stdin/stdout/cwd/kill/etc.) isn't in the model at all. This is likely an **extractor bug** (Instance A's territory, not a `.d.ts` gap) — worth Instance A confirming before B4 tries to "fix" it as a declaration gap.
+- **bare-type** — `is*()` predicate interface and `createTag`/`addTag`/`checkTag` namespace members exist in `.d.ts` but aren't extracted as model identities — likely the same extractor issue as bare-process, flag for Instance A first.
+- **bare-events** — flat describe.json can't hold two true meanings for one colliding key (static vs. instance `setMaxListeners`/`getMaxListeners`/`on`/`once`). Not a `.d.ts` gap — a `render.ts`/layout-format limitation. Instance A's territory.
 
 ## Packaging bugs found
 
 <!-- none yet — B3 not started; bare-stdio's `types: ./index.d.ts` non-shipping issue is expected to surface there -->
+
+## Emit-ts-doc anomalies (B2)
+
+- **bare-inspector** — `npm run emit:ts-doc -- --only bare-inspector` reported "TSDoc in 0 file(s)" — only the README `## API` block was regenerated; no JSDoc was spliced into any `.d.ts` file despite 19 described symbols. Needs investigation (likely a declaration-matching edge case in `emit-jsdoc.ts` for this module's `.d.ts` shape) — out of Instance B's ownership (pipeline `.ts` file), flag for Instance A.
 
 ## Deferred / blocked
 
