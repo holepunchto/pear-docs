@@ -13,9 +13,15 @@ this session's regen — an earlier/scheduled run executed `gen:bare-refs --writ
 It is working-tree only (last content commit is still the #303 baseline).
 
 This includes **bare-fs**, the OOM-blocked page (Phase C-2) — committing +
-building this as-is would break `next build`. Needs a user decision (revert /
-keep / keep-minus-bare-fs) before anything is committed. Phase E's automated
-comparison was confounded by this (content == generated → trivially "equal").
+building this as-is would break `next build`.
+
+**RESOLVED (user decision 2026-07-13): keep, but pull bare-fs.** `bare-fs.mdx`
+was reverted to its committed hand-written page (`git checkout --`); the other
+**69 generated pages remain staged** in content/ (29 replacing hand-written + 40
+new), plus the synced catalog. bare-fs stays on its curated page (the current
+live page — OOM-safe) until the processed-markdown site-infra fix lands, at
+which point it can be cut over too. Still uncommitted — review + commit is the
+user's call. Nothing pushed.
 
 ## Phase A — automated gates: PASS
 
