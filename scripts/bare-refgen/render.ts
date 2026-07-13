@@ -135,13 +135,24 @@ function sourceLine(ctx: Ctx, e: BareExport): string | null {
   return ctx.target === 'readme' ? `[source](${url})` : `<sub>[Source](${url})</sub>`;
 }
 
-function paramLine(p: BareParam, ctx: Ctx, desc: string | null): string {
-  const meta = [p.optional ? 'optional' : null, p.default ? `default ${code(p.default)}` : null]
-    .filter(Boolean)
-    .join(', ');
-  const head = `- ${code(p.name)} (${linkType(p.type, ctx)}${meta ? `, ${meta}` : ''})`;
-  const text = p.description ?? desc;
-  return text ? `${head} — ${mdxProse(text, ctx)}` : head;
+/** Escape `|` for use inside a GFM table cell (splits cells even in code spans). */
+const cell = (s: string) => s.replace(/\|/g, '\\|');
+
+/**
+ * Parameters as a GFM table — one row per parameter, `?` marking optional
+ * (TS-native, machine-parseable), Default `—` when none. Reads better than
+ * bullets for both humans and machines at any parameter count.
+ */
+function paramTable(params: BareParam[], ctx: Ctx, pd: Record<string, string>): string[] {
+  const rows = params.map((p) => {
+    const name = code(p.name + (p.optional && !p.default ? '?' : ''));
+    const type = cell(linkType(p.type, ctx));
+    const def = p.default ? cell(code(p.default)) : '—';
+    const text = p.description ?? own(pd, p.name) ?? '';
+    const desc = text ? cell(mdxProse(text, ctx)) : '—';
+    return `| ${name} | ${type} | ${def} | ${desc} |`;
+  });
+  return ['| Parameter | Type | Default | Description |', '| --- | --- | --- | --- |', ...rows];
 }
 
 function paramDescs(ctx: Ctx, e: BareExport): Record<string, string> {
@@ -190,7 +201,7 @@ function renderSymbol(e: BareExport, ctx: Ctx, syncSibling: BareExport | null, p
 
   if (callable && e.params.length > 0) {
     const pd = paramDescs(ctx, e);
-    lines.push('**Parameters**', '', ...e.params.map((p) => paramLine(p, ctx, own(pd, p.name) ?? null)), '');
+    lines.push('**Parameters**', '', ...paramTable(e.params, ctx, pd), '');
   }
   if (callable && e.returns?.description) {
     lines.push(`**Returns** ${linkType(e.returns.type, ctx)} — ${mdxProse(e.returns.description, ctx)}`, '');
