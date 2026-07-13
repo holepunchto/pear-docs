@@ -8,9 +8,9 @@ Progress ledger for `instance-b.md`. Scheduled resume runs read the
 - **B1 (review 34 auto-transcribed describe maps):** DONE (2026-07-08). All 34 modules reviewed against upstream README + `api-model.json`, fixed in place or pruned. `npm run check:bare-refs` green (68 modules OK) after all edits. Verdicts below.
 - **B2 (draft prose for no-prose modules):** DONE (2026-07-08). All 34 modules in TODO.md §"Modules with no author-written descriptions" drafted (list turned out to be 34, not 35 — `bare-mdns-discovery` was already counted in that 34, not additional). `bare-tui` remains blocked (no `.d.ts`) — deferred, not attempted. `npm run check:bare-refs` green (68 modules OK) after all drafts. `npm run emit:ts-doc -- --only <all 34>` run successfully — every module's local `chore/ts-doc` branch in `../ts-doc-upstream/<name>` now carries the spliced TSDoc + regenerated README `## API` (except `bare-inspector`, which emitted README only — 0 `.d.ts` files spliced, see notes below). Verified via `git -C ../ts-doc-upstream/<name> show` on samples and `git ls-remote --heads origin chore/ts-doc` (empty) on samples — nothing pushed. Verdicts below.
 - **B3 (draft `.d.ts` for bare-dgram / bare-env / bare-stdio):** INVESTIGATED, no drafting needed (2026-07-08) — the premise is stale. See "B3 findings" below: all three modules already have complete, correct `.d.ts` in their upstream git repos; two of the three (`bare-env`, `bare-stdio`) already ship that `.d.ts` in their **currently published npm tarball**; only `bare-dgram`'s published tarball is missing it, and that's a stale-release problem, not a missing-declaration problem — the fix already exists in git, unpublished. Nothing to author, nothing committed to `../ts-doc-upstream` beyond the plain clones (kept as evidence). Flag for Instance A: `bare-dgram`/`bare-env`/`bare-stdio` may now be addable to the pipeline's module-selection list.
-- **B4 (coverage-gap triage):** NOT STARTED, but see "Notes for B4" below — several real gaps surfaced incidentally during B1 and B2.
+- **B4 (coverage-gap triage):** DONE (2026-07-10). All 33 modules with "Coverage gaps surfaced by the transcriber" (README-only headings) triaged via 5 parallel Sonnet agents + main-loop verification. Every flagged heading classified ARTIFACT / EXTRACTOR-GAP (Instance A) / NAMING-MISMATCH / GENUINE-DTS-GAP. **10 genuine `.d.ts` gaps drafted and committed locally** on their modules' `chore/ts-doc` branches (11 declarations; local only, nothing pushed — verified `ls-remote` empty for all 10). No NAMING-MISMATCH cases arose, so no `layouts/*.describe.json` edits. `npm run check:bare-refs` green (68 modules OK). High no-prose counts (bare-fs 66, bare-prom-client 37) sample-verified as folded `*Sync`/option/config members — not authored. Full results below under "Upstream `.d.ts` gaps drafted (B4)".
 
-**Resume from B4 (coverage-gap triage).** Use TODO.md §"Coverage gaps" plus the "Notes for B4" section below, which already has ~10 real candidates pre-identified from B1/B2/B3 review (bare-assert, bare-encoding, bare-format, bare-ws, bare-zlib real `.d.ts` gaps; bare-tls/bare-structured-clone/bare-stream from B1; bare-process/bare-type extractor gaps to confirm with Instance A first) — start there instead of re-deriving from TODO.md's "N symbol(s) with no prose" counts from scratch. For each confirmed real gap, draft the missing declaration on the module's `chore/ts-doc` branch (same commit discipline as B2: `npm run emit:ts-doc` regenerates from layouts, but a pure `.d.ts` addition with no describe.json backing needs a manual edit + commit directly in `../ts-doc-upstream/<name>` on the existing `chore/ts-doc` branch — check it out, edit, commit "docs: add missing `.d.ts` declaration for <symbol>", never push). Also sample-verify the high "N symbols with no prose" counts (bare-fs 66→now lower after B1/B2, bare-prom-client 37) per instance-b.md's original instruction — confirm most are folded `*Sync`/option-interface members rather than authoring prose for every one.
+**All workstreams (B1–B4) complete.** Nothing left to resume. The remaining open items are handoffs to **Instance A** (extractor/render-pipeline gaps — see the consolidated list under "Instance A handoff: extractor & render gaps" below) and to the **upstream maintainers** (the 10 drafted `.d.ts` declarations on local `chore/ts-doc` branches, ready to become upstream PRs after review). This scheduled task can be disabled.
 
 **Process note for future dispatches:** in this run, when batch prompts explicitly said "do this yourself with Read/Edit, do NOT spawn a sub-agent" (used for all 6 B2 batches), zero agents self-delegated — a clean improvement over the earlier B1 dispatch (see incident note below) where 3 of 6 batches initially delegated before being redirected. Keep using that explicit instruction for future parallel batch dispatches.
 
@@ -106,21 +106,67 @@ No `chore/add-types` branches were created — there is no declaration work to d
 
 ## Upstream `.d.ts` gaps drafted (B4)
 
-<!-- none formally drafted as declarations yet — B4 (declaration-writing workstream) not started. Real gaps have been *identified* during B1/B2 and are listed under "Notes for B4" below, ready for B4 to turn into actual .d.ts additions on chore/ts-doc branches. -->
+All 10 below are **genuine missing declarations**: a real public export exists in the JS source and (usually) in the README/prose, but is absent from the shipped `.d.ts`. Each was drafted directly on the module's existing local `chore/ts-doc` branch under `../ts-doc-upstream/<name>` (one commit per module, message `docs: add missing \`.d.ts\` declaration for …`), grounded in the JS source and mirroring sibling house style. **Nothing pushed** — `git -C ../ts-doc-upstream/<name> ls-remote --heads origin chore/ts-doc` verified empty for all 10. These are drafts for maintainer review / upstream-PR material, not yet spliced into docs (no describe.json backing; `emit:ts-doc` not run for them).
 
-### Notes for B4 (surfaced incidentally during B1/B2, not yet drafted as declarations)
+| Module | Commit | Declaration(s) added | Source ground truth |
+| --- | --- | --- | --- |
+| bare-tls | `0a2ad63` | `TLSNetServer.listen` (7 overloads), `address()`, `ref()`, `unref()` | `net.js` — `TLSNetServer` forwards each to the underlying `bare-net` server. Imports `NetServer`/`NetServerListenOptions` from `bare-net` (verified both are exported there). |
+| bare-fetch | `b60ef70` | `Request.clone(): Request`, `Response.clone(): Response` | `lib/request.js:65`, `lib/response.js:50` — WHATWG-spec no-arg methods, throw if body already consumed. |
+| bare-module-resolve | `39bc76d` | `deferred(specifier, opts?): Resolver` generator | `index.js:200` — real `exports.deferred`; siblings `module`/`url`/`preresolved`/`package`/`packageSelf` were declared, `deferred` skipped. |
+| bare-module-traverse | `63b7c1a` | `addons(parentURL, artifacts, visited, opts?): Traversal` generator | `index.js:504` — real `exports.addons`; sibling `assets` declared, `addons` skipped. |
+| bare-assert | `fd1694f` | `fail(message?)`, `notOk(value, message?)` | `index.js:45`, `:57`. |
+| bare-ws | `dee7ee0` | `WebSocketError.UNEXPECTED_MASK(msg?)` static factory | `lib/errors.js:62` (thrown at `lib/socket.js:133`); every sibling factory was already declared. Public via the `bare-ws/errors` subpath export. |
+| bare-zlib | `5faa39c` | 8 `ZlibError` static factories (`STREAM_CLOSED`, `STREAM_ERROR`, `DATA_ERROR`, `MEM_ERROR`, `BUF_ERROR`, `VERSION_ERROR`, `UNKNOWN_ERROR`, `LIMIT_EXCEEDED`) | `lib/errors.js` (used at `index.js:80,89,108,117,132,167`). Public via `bare-zlib/errors` subpath. **Style note:** this `errors.d.ts` previously declared *no* static factories (only a `ZlibErrorCode` union + `readonly` fields), so this is a larger stylistic addition than bare-ws's one-liner — flag for maintainer sign-off. |
+| bare-structured-clone | `cd69d6d` | `preencode(state, serialized)`, `encode(state, serialized)`, `decode(state): SerializedValue` | `index.js:1322`–`1334`. (`decode` found by the batch agent; `preencode`/`encode` are the identical gap under the same compound README heading — added in the main loop for consistency.) |
+| bare-url | `37f3018` | `URL.format(parts): string` + a `URLFormatObject` interface | `index.js:365` — real top-level `exports.format`, reachable as `URL.format` because `module.exports` merges class + namespace. Legacy Node-`url.format()`-style. Was untyped **and** undocumented in the current README. |
+| bare-rpc | `c1797bb` | `RPC.CommandRouter` (class + `RPCCommandRouter` interface, `respond()` overloads, `RPCEncoding`/options interfaces, an `RPC(stream, router)` constructor overload) | `index.js` `exports.CommandRouter = CommandRouter` + `lib/command-router.js`. **⚠ Needs the most maintainer scrutiny of the batch** — the largest draft; the `RPCEncoding` (compact-encoding codec) shape and the options interfaces are *inferred* typing, not copied from an existing declaration. Cross-refs (`RPCIncomingRequest`) verified to resolve. |
 
-- **bare-tls** — `TLSNetServer` has no `close()` method in the `.d.ts` (only a `close` event); README/transcription implied one. Needs confirmation against upstream source whether this is a genuine missing declaration or the README documents an event, not a method.
-- **bare-structured-clone** — `Serializable`/`Transferable` classes are empty stubs in the `.d.ts` with zero members; per `instance-b.md`'s pre-identified gap list, the serialize/deserialize family is a known real upstream gap — confirmed again here from the description side.
-- **bare-stream** — `CountQueuingStrategy`/`ByteLengthQueuingStrategy` are empty class stubs with zero prose in both README and `.d.ts` members; likely need upstream member declarations (`highWaterMark`, `size()`).
-- **bare-assert** — `.d.ts` missing `fail`, `notOk`, and doesn't expose `ok`/`equal`/`notEqual`/`strictEqual`/`notStrictEqual` the way `index.js` does. Real upstream `.d.ts` gap.
-- **bare-encoding** — `TextEncoderStream`/`TextDecoderStream` declared in `.d.ts` but not extracted by the pipeline into `api-model.json` — check whether this is an extractor gap (Instance A) or a genuinely malformed declaration (B4/upstream).
-- **bare-format** — `format.formatWithOptions`/`format.format` namespace members declared but not extracted — same class of gap as bare-encoding.
-- **bare-ws** — `UNEXPECTED_MASK` thrown in `errors.js` but absent from `errors.d.ts`.
-- **bare-zlib** — 8 `ZlibError.CODE()` static factories exist in `errors.js` but aren't typed in `errors.d.ts`.
-- **bare-process** — the extractor only captures `process`/`ProcessEvents` from `api-model.json`; the full `Process` interface (stdin/stdout/cwd/kill/etc.) isn't in the model at all. This is likely an **extractor bug** (Instance A's territory, not a `.d.ts` gap) — worth Instance A confirming before B4 tries to "fix" it as a declaration gap.
-- **bare-type** — `is*()` predicate interface and `createTag`/`addTag`/`checkTag` namespace members exist in `.d.ts` but aren't extracted as model identities — likely the same extractor issue as bare-process, flag for Instance A first.
-- **bare-events** — flat describe.json can't hold two true meanings for one colliding key (static vs. instance `setMaxListeners`/`getMaxListeners`/`on`/`once`). Not a `.d.ts` gap — a `render.ts`/layout-format limitation. Instance A's territory.
+### Instance A handoff: extractor & render-pipeline gaps (NOT `.d.ts` gaps — do not draft declarations)
+
+These symbols **are** correctly declared in the shipped `.d.ts` but never reach `api-model.json` (or lose information in `render.ts`). They are pipeline bugs in `scripts/bare-refgen/` — Instance A's territory. Grouped by root cause:
+
+- **Namespace members merged onto a `declare function` / `declare class` are dropped** (the model's export shows `members: []`). This is the single biggest pattern:
+  - bare-structured-clone — `serialize`, `serializeWithTransfer`, `deserialize`, `deserializeWithTransfer`, `symbols` (inside `declare namespace structuredClone`).
+  - bare-module-resolve — `module`, `url`, `preresolved`, `package`, `packageSelf` (inside `declare namespace resolve`).
+  - bare-module-traverse — `module` (inside `declare namespace traverse`).
+  - bare-module-lexer — `constants` (inside `declare namespace lex`).
+  - bare-format — `format`, `formatWithOptions` (namespace merged on `declare function format`).
+  - bare-assert — `ok`/`equal`/`notEqual`/`strictEqual`/`notStrictEqual`/… (namespace merged on `declare function assert`; model shows `members: []`).
+  - bare-type — the `Type` interface's 40+ `is*()` predicates **and** `createTag`/`addTag`/`checkTag` (function+namespace merge).
+  - bare-type-stripper — `lex`, `constants` (inside `declare namespace strip`).
+  - bare-encoding — `TextEncoderStream`, `TextDecoderStream` (interface+class merge, same as `TextEncoder`/`TextDecoder` which *do* extract — investigate why the Stream variants don't).
+  - bare-stream — `PassThrough` (a `Transform as PassThrough` re-export alias inside `declare namespace Stream`; the extractor doesn't resolve the alias).
+- **Object-literal-typed `declare const` values aren't walked for nested members:**
+  - bare-module — `states`, `types` (nested in the `Module.constants` object, `lib/constants.d.ts`).
+  - bare-crypto — `hash`, `cipher`, `signature`, `keyType` (nested in the `constants` object, `lib/constants.d.ts`).
+- **An interface embedded only in a value-declaration / return type isn't expanded:**
+  - bare-process — the full `Process` interface (`stdin`/`stdout`/`cwd`/`kill`/…) types `declare let process: Process` but its members never surface; the `/global` subpath's `type Process = typeof process` is also left unexpanded.
+  - bare-broadcast-channel — `peers`, `write`, `writeSync`, `read`, `readSync`, `close`, `ref`, `unref` (all members of `interface Port<T>`, which is only referenced as `connect()`'s return type, never itself top-level exported).
+- **Render/format limitation (not the extractor):**
+  - bare-events — `on`/`once`/`getMaxListeners`/`setMaxListeners` collide as static-vs-instance keys. The model *does* capture both distinctly (a `static: true/false` flag on identical `key`s), but `render.ts`'s `describe()` helper looks up a flat `Record<string,string>` describe map keyed only by `e.key`/`e.name` with no static/instance discriminator — so a per-member prose override is unrepresentable for these keys. Fix needs a static/instance-aware describe lookup, not a `.d.ts` change.
+
+### Bonus findings for Instance A / upstream (surfaced during triage, out of B4's drafting scope)
+
+- **bare-module-traverse** — `prebuilds` is *declared* in `index.d.ts:131` but has **no** `index.js` implementation: a phantom declaration (the opposite direction of a gap). Upstream should either implement or remove it.
+- **bare-structured-clone / heading extractor** — compound `·`-separated README headings (e.g. `preencode(state, serialized) · encode(state, serialized) · decode(state)`) only yield **one** name to the matcher, so the other members are invisible to the whole coverage pipeline (that's why `preencode`/`encode` never appeared in `unmatchedHeadings`). Pipeline blind spot for Instance A.
+- **bare-type-stripper / transcribe script** — the prose-skip regex `/[{}]|\[native code\]|=>/` fires on an unrelated `=>` inside a markdown table row, silently dropping the whole `constants` heading block before it can even be recorded as unmatched.
+- **bare-prom-client** — several "no-prose" top-level symbols (`Registry`, `Pushgateway`, `linearBuckets`, …) already carry native JSDoc in `index.d.ts`; render falls back to that JSDoc when no layout entry exists, so the "37 symbols with no prose" count overstates the real gap.
+
+### Artifacts (transcriber parse noise — no action; pattern documented)
+
+- **`for` / `await` / `module` lifted from `for await (…)` code examples:** bare-addon-resolve (`for`, `await`), bare-module-resolve (`for`, `await`), bare-module-traverse (`for`, `await`), bare-sqlite (`for`).
+- **`Name.member` prose/heading tokens split on `.`:** bare-module (`Module.Protocol`, `require`), bare-module-traverse (`addon`).
+- **Prose section titles mistaken for symbols:** bare-stow (`TypeScript`), bare-prom-client (`Labels`×3, `format`, `metric` — tail words of subsection titles like "…Labels" / "…exposition format" / "Getting a single metric").
+- **Stale pre-TS-conversion research-dossier prose:** bare-tcp (`Socket`, `errors` — now correctly `TCPSocket as Socket` / `TCPError as errors`), bare-tls (`Socket` — now `TLSSocket as Socket`).
+- **Identifiers from Usage code examples whose real symbols are already modeled or inherited:** bare-mdns-discovery (`query`→`MDNS.query`, `discover`→`Discovery.discover`, `services`→`Discovery.services`; `ready`/`close` inherited from `ReadyResource`).
+- **Heading-parser splitting `f`-prefixed names:** bare-fs (`datasync`, `sync` are phantom splits of `fdatasync`/`fsync`, both already declared + described).
+- **Keyed off a stale removed README section:** bare-sqlite (`binding` — from an old "Parameter binding" section removed upstream in `e6f6eb1`).
+- bare-rpc `RPC.CommandRouter`'s earlier "possible bogus layout key" concern (from B1) — **confirmed no bogus key ever existed** in the describe.json; it only appeared in `unmatchedHeadings` metadata. (The symbol itself turned out to be a genuine gap — drafted above.)
+
+### Sample-verification of high "N symbols with no prose" counts
+
+- **bare-fs (66):** sampled 9 (`accessSync`, `statSync`, `mkdirSync`, `readFileSync`, `writevSync`, `CpOptions`, `ReadFileOptions`, `WatcherEvents`, `promises`) — 9/9 are `*Sync` variants folded into their async parent's `Synchronous form: …` line, option interfaces described inline in the parent, or event-map types covered by the `Watcher` section. No standalone prose warranted. (`promises` subpath may be a separate NAMING/extractor edge — noted, not pursued.)
+- **bare-prom-client (37):** sampled 10 — folded metric-class members (`Counter`/`Gauge`/`Histogram`/`Summary` methods), config interfaces whose fields are the real doc unit, and self-explanatory type/union aliases; the class exports already carry native `.d.ts` JSDoc. No standalone prose warranted.
 
 ## Packaging bugs found
 
@@ -133,6 +179,8 @@ No `chore/add-types` branches were created — there is no declaration work to d
 ## Deferred / blocked
 
 - **bare-tui** — ships no usable `.d.ts` (declares one it doesn't ship); deferred pending upstream types.
+- **bare-structured-clone `Serializable`/`Transferable`** — `declare class Serializable {}` / `declare class Transferable {}` are empty base-class stubs (their real contract is the symbol-keyed methods on the sibling `*Constructor` interfaces). Not drafted: leaving them empty is plausibly intentional (users extend them and implement the `[symbols.*]` methods), and there's no README/JS surface to ground member declarations. Noted for maintainer judgement, not a B4 draft.
+- **bare-stream `CountQueuingStrategy`/`ByteLengthQueuingStrategy`** — empty class stubs with zero members in both README and `.d.ts`; the WHATWG spec surface (`highWaterMark`, `size()`) is genuinely unimplemented in the declarations. Not among B4's flagged headings and not confidently groundable from Bare's own source (re-exported web-stream shims), so left for upstream rather than guessed.
 
 ## Incident note (process, not content)
 
