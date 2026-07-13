@@ -1,7 +1,8 @@
 # Instance A — findings & progress log
 
-_Last updated: 2026-07-08 (session 2). Next scheduled resume continues at A5
-(final sweep), after the dev-server crash below is triaged._
+_Last updated: 2026-07-08 (session 4). Bare-fs OOM is ROOT-CAUSED (see below) —
+it's a site-infra issue in the processed-markdown/shiki path, awaiting an owner
+decision. A5 (final sweep) can otherwise proceed; cutover of bare-fs stays gated._
 
 ## Workstream status
 
@@ -89,6 +90,78 @@ aborted.
 - **Source links unaffected by the crash**: sampled 6 pinned GitHub blob URLs
   across bare-fs/bare-events/bare-prom-client (2 each, first/last in file) —
   all 6 resolve 200.
+## ROOT CAUSE (session 4, 2026-07-08) — CONFIRMED
+
+The OOM is **not** bare-fs-specific content and **not** a bare-refgen bug. It is
+in the site's processed-markdown / "copy page as markdown" path, and heap use
+scales **super-linearly with the number of fenced code blocks on a page**.
+
+Chain of evidence (all at the calibrated `CAP=8192`, prom-client control OK /
+full bare-fs OOM baseline):
+
+1. **It's the `includeProcessedMarkdown` path.** Toggling
+   `source.config.ts` → `postprocess.includeProcessedMarkdown: false` makes full
+   bare-fs render with **no OOM** (it 500s only because `src/lib/source.ts`
+   `getLLMText` then throws "requires includeProcessedMarkdown", as designed).
+   Config was reverted to `true` immediately after the probe.
+2. **Every page build hits it.** `src/app/(docs)/[[...slug]]/page.tsx:27` calls
+   `getLLMText(page)` → `page.data.getText('processed')` unconditionally to fill
+   the CopyPageButton `fallbackMarkdown`. The route is `force-static`, so this
+   runs for **every page at `next build`** — production build blocker, not just
+   dev.
+3. **The sink is fenced code blocks.** bare-fs with all ` ```…``` ` bodies
+   stripped → **OK**. A size-matched copy of the *known-good* control
+   (prom-client body duplicated to ~2350 lines, ~104 fences) → **OOM**. So it's
+   not size per se and not unique to bare-fs — it's fence count. bare-fs has
+   **78 fenced blocks** (every interface/type/class shape + overload block +
+   Usage); prom-client has 52 (passes), the doubled control ~104 (fails).
+4. **Not plain serialization.** A standalone `remark().use(remarkMdx)`
+   parse→stringify of the full bare-fs body (incl. all code blocks) completes in
+   46ms / 56KB out at a 3GB cap. So `mdast-util-to-markdown` is cheap; the heap
+   blowup comes from a code-block-specific transform in fumadocs' processed
+   pipeline (shiki/`rehypeCodeOptions` is the only code-block-heavy step my
+   standalone repro lacked).
+
+**Conclusion:** fumadocs re-runs shiki highlighting (or retains the full
+hast+mdast per block) when materializing `getText('processed')`, and cost grows
+super-linearly in fence count. Any code-block-dense page eventually exceeds the
+build heap; generated API pages are inherently fence-dense.
+
+## RECOMMENDATION (site-infra decision — needs the user / docs-site owner)
+
+Not something Instance A should silently change (touches `source.config.ts` /
+`src/lib/source.ts` / build infra — the owner's architectural call). Options,
+best first:
+
+1. **Don't highlight in the LLM/markdown path.** `getText('processed')` feeds a
+   *copy-as-markdown* button and llms.txt — it should return plain markdown with
+   un-highlighted fences. Check for a fumadocs option to get raw processed
+   markdown without `rehypeCodeOptions`, or derive the copy text from the raw
+   source file (`page.path`) instead of the processed tree. This removes shiki
+   from the path entirely and is the robust fix.
+2. **Precompute/cache once at collection build**, not per-page-render.
+3. **Upgrade fumadocs** — check the changelog for a processed-markdown/shiki
+   memory fix (fumadocs-mdx 14.x → latest).
+4. **Interim only:** raise build `NODE_OPTIONS=--max-old-space-size` — fragile,
+   super-linear scaling defeats it as more code-dense pages land.
+
+**Cutover gate:** `cutover.md` stays blocked until the site owner picks a fix —
+`--write` would place bare-fs (78 fences) at
+`content/reference/bare/modules/bare-fs.mdx` and break `next build`. Everything
+else in the generated set is safe; bare-fs is the only page over the current
+threshold, but the doubled-control result means the margin is thin for any
+future large module.
+
+Harness to reproduce (rebuild if scratch reaped): a heap-capped `next dev`
+(`NODE_OPTIONS=--max-old-space-size=8192`), copy the variant over
+`content/reference/bare/modules/bare-fs.mdx`, curl the **trailing-slash** route,
+detect the `heap out of memory` marker in the server log (the npm wrapper
+survives the worker crash). Always `git checkout --` the content file after.
+
+---
+
+## Superseded: session-3 triage (kept for history)
+
 - **Session-3 triage (2026-07-08) — calibrated bisection, partial localization.**
   Method: scratch variants of bare-fs.mdx copied over the route, fresh
   heap-capped `next dev` per trial, crash detected via the OOM marker in the
