@@ -52,14 +52,31 @@ editorial sign-off on prose remains a human step, but the 10-agent QA pass
 - Flat-key collisions (bare-crypto update/final, bare-fs path/type/blocks) —
   documented limitation, prose correct for the primary symbol; unchanged.
 
-## Phase C — in-site rendering: PARTIALLY (deferred, see note)
+## Phase C — in-site rendering: PASS (exhaustive, session 7 2026-07-13)
 
-Not re-run this session. C-1 sample renders (bare-events, bare-prom-client) were
-verified 200 OK with badge/anchors/source-links in a prior session
-(findings-a.md, session 2/3). C-2 (bare-fs OOM) is root-caused and re-confirmed
-twice — it is the known blocker, not re-run here to avoid the expensive crash.
-The scheduled `execute-bare-refs-test-plan` run will do a fresh C-1 + C-2 via
-the dev server.
+**C-1 — ALL 76 routes render 200** through the real `next dev` (the staged 69
+generated pages + hand-written bare-fs + the 6 kept hand-written pages).
+Method: sequential curl sweep against a 12GB dev server; initial timeouts were
+Next's *memory-threshold auto-restarts* mid-sweep (the dev server restarts
+itself under accumulated compile cache — a dev-only artifact, not a page
+defect: even hand-written pages 000'd during restart windows); all resolved on
+batched retries with fresh servers. Final tally 76/76 HTTP 200.
+
+**Marker verification on the rendered HTML: 69/69 generated pages** carry the
+stability badge, `<h1>` title, TOC, and `Source` links. The 5 flags are all
+expected: bare-apk/mime/sdl/union-bundle are kept hand-written pages without
+the badge markup; bare-fs shows no Source links because it is (correctly) the
+hand-written page.
+
+**C-2 — bare-fs OOM gate: CONFIRMED STILL BLOCKED.** Generated bare-fs copied
+into content/ OOMs the 8GB-capped dev server (heap-out-of-memory marker in the
+server log); reverted to the hand-written page immediately after; the 69-page
+staged cutover verified intact. The site-infra fix (findings-a.md ROOT CAUSE
+section) remains the gate for bare-fs only.
+
+Operational note for future sweeps: one long-lived dev server degrades across
+~40+ route compiles (auto-restart windows); use fresh servers per ~12-route
+batch.
 
 ## Phase E — cutover readiness
 
