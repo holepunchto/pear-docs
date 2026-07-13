@@ -42,9 +42,36 @@ decision. A5 (final sweep) can otherwise proceed; cutover of bare-fs stays gated
   4-column-only cell-count gate silently skipped; fixed as part of this
   change, see below). Not yet exercised via a real `--write` (that stays
   un-executed per the "prepare, don't flip" mandate).
-- **A5 final sweep** ⬜ blocked on the dev-server crash triage below (or a
-  documented decision to proceed without it). Once unblocked: full regen
-  `--top 80`, all gates both families, both TODOs, final commit.
+- **A5 final sweep** ✅ (session 5, 2026-07-13). Authoritative full regen both
+  families: **bare 70/72 pages** — only `bare-dgram` (stale upstream release,
+  types exist in git, unpublished) and `bare-tui` (body-less ambient decl, no
+  API) skipped; `bare-env`+`bare-stdio` now generate (their tarballs were
+  re-published with the `.d.ts` B3 found). **pear 0/36** (none ship types).
+  All gates green: `check:bare-refs` 70 OK, `check:pear-refs` 0 OK,
+  `test:bare-refs` pass, all 70 compile as MDX. Both TODOs regenerated.
+- **Describe QA pass (B1-redux)** ✅ (session 5). Independent 10-agent parallel
+  verification of ALL 66 non-empty describe maps (~640 entries) against
+  api-model + upstream README + `index.js`/`lib`. Net: ~20 prose fixes across
+  11 modules + 2 deletions of non-existent-symbol keys (`bare-module` addon,
+  `bare-signals` Signal.send — the latter caught by the `check` gate, missed by
+  the agent, which is why the gate exists). "No-prose" modules dropped 35→2
+  (only the newly-generating bare-env/bare-stdio, never transcribed). Committed.
+  Recurring real limitation surfaced (see below).
+
+## Known limitation — flat name-keyed describe maps (for the user)
+
+Several modules have same-named members on different classes (`update`/`final`
+on bare-crypto Hash vs Cipheriv; `path`/`type`/`blocks` on bare-fs
+Dir/Stats/StatFs; `incoming`/`outgoing` on bare-ipc IPC-vs-IPCPort;
+`reply`/`create*Stream` on bare-rpc incoming-vs-outgoing requests — the last two
+have genuinely INVERTED semantics). A bare-name describe key applies to every
+same-named symbol. Fix used where the members render as headings: split into
+**qualified keys** (`Central.destroy`, `IPCPort.incoming`, etc.) — render/emit
+match `describe[e.key]` before `[e.name]`, so qualified keys win. Where a member
+is rendered inline (interface/option members, not as a heading), a qualified key
+is inert and the collision can't be expressed in a flat map — those (bare-crypto
+update/final) need either the render layer to key inline members too, or an
+upstream `.d.ts`/README fix. Documented, not blocking.
 
 ## Dev-server crash on bare-fs (new — needs the user / further triage)
 
