@@ -44,8 +44,8 @@ new Pipe(opts?: PipeOptions)
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `path` | `string` \| `number` | — | — |
-| `opts?` | [`PipeOptions`](#pipeoptions) | — | — |
+| `path` | `string` \| `number` | — | A file descriptor to open (number), or a path to connect to (string). |
+| `opts?` | [`PipeOptions`](#pipeoptions) | — | Options; `readBufferSize` defaults to `65536`, `allowHalfOpen` and `eagerOpen` to `true`, and `ipc` to `false` (set `ipc: true` to enable handle passing over the pipe). |
 
 #### `accept<T extends IPCAcceptable>(target: T): T`
 
@@ -57,7 +57,13 @@ Accept a pending handle into `target`. `target` must implement the [`IPCAcceptab
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `target` | `T` | — | — |
+| `target` | `T` | — | The object to accept the pending handle into; must implement the `IPCAcceptable` protocol. Call synchronously from the `'handle'` event listener. |
+
+**Returns** `T` — `target`, for chaining the accepted handle into an expression.
+
+**Throws**
+
+- `INVALID_IPC_TARGET` — `target` does not implement the IPC handle protocol.
 
 #### `connect(path: string, opts?: PipeConnectOptions, onconnect?: () => void): this`
 
@@ -77,9 +83,13 @@ connect(opts: PipeConnectOptions, onconnect?: () => void): this
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `path` | `string` | — | — |
-| `opts?` | [`PipeConnectOptions`](#pipeconnectoptions) | — | — |
-| `onconnect?` | `() => void` | — | — |
+| `path` | `string` | — | The path to connect to. |
+| `opts?` | [`PipeConnectOptions`](#pipeconnectoptions) | — | Options; `path` may be given here instead of as the first argument. |
+| `onconnect?` | `() => void` | — | Called when the connection is established. |
+
+**Throws**
+
+- `PIPE_ALREADY_CONNECTED` — the pipe is already connecting or connected.
 
 #### `connecting: boolean`
 
@@ -105,9 +115,9 @@ open(opts: { fd: number }, onconnect?: () => void): this
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `fd` | `number` | — | — |
+| `fd` | `number` | — | The file descriptor to open the pipe on. |
 | `opts?` | `{ fd?: number }` | — | — |
-| `onconnect?` | `() => void` | — | — |
+| `onconnect?` | `() => void` | — | Called once when the pipe emits `'connect'`. |
 
 #### `pending: boolean`
 
@@ -156,9 +166,9 @@ Create a new pipe and connect it to `path`. Shorthand for `new Pipe(options).con
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `path` | `string` | — | — |
-| `opts?` | [`CreateConnectionOptions`](#createconnectionoptions) | — | — |
-| `onconnect?` | `() => void` | — | — |
+| `path` | `string` | — | The path to connect to. |
+| `opts?` | [`CreateConnectionOptions`](#createconnectionoptions) | — | Options passed to both the `Pipe` constructor and `connect()`. |
+| `onconnect?` | `() => void` | — | Called when the connection is established. |
 
 #### `Pipe.createServer(opts?: PipeServerOptions, onconnection?: () => void): PipeServer`
 
@@ -170,8 +180,8 @@ Create a new pipe server. `server` extends \<https://github.com/holepunchto/bare
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`PipeServerOptions`](#pipeserveroptions) | — | — |
-| `onconnection?` | `() => void` | — | — |
+| `opts?` | [`PipeServerOptions`](#pipeserveroptions) | — | Options applied to each incoming pipe; `readBufferSize` defaults to `65536`, `allowHalfOpen` to `true`, `pauseOnConnect` to `false`, and `ipc` to `false`. |
+| `onconnection?` | `() => void` | — | Called on each `'connection'` event. |
 
 #### `Pipe.pipe(): [read: number, write: number]`
 
@@ -211,10 +221,10 @@ Write `chunk` to the pipe. If `handle` is given and the pipe was created with `i
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `chunk` | `Buffer` \| `string` | — | — |
-| `encoding` | `BufferEncoding` | — | — |
-| `handle?` | [`IPCAcceptable`](#ipcacceptable) | — | — |
-| `cb?` | `(err: Error \| null) => void` | — | — |
+| `chunk` | `Buffer` \| `string` | — | The data to write. |
+| `encoding` | `BufferEncoding` | — | The encoding of `chunk` when it is a string. |
+| `handle?` | [`IPCAcceptable`](#ipcacceptable) | — | A handle to transfer to the receiver alongside the chunk; requires the pipe to have been created with `ipc: true` and `handle` to implement the `IPCAcceptable` protocol. |
+| `cb?` | `(err: Error \| null) => void` | — | Called when the chunk has been processed. |
 
 ### PipeServer
 
@@ -233,8 +243,8 @@ new PipeServer(onconnection: () => void)
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`PipeServerOptions`](#pipeserveroptions) | — | — |
-| `onconnection?` | `() => void` | — | — |
+| `opts?` | [`PipeServerOptions`](#pipeserveroptions) | — | Options applied to each incoming pipe; `readBufferSize` defaults to `65536`, `allowHalfOpen` to `true`, `pauseOnConnect` to `false`, and `ipc` to `false`. |
+| `onconnection?` | `() => void` | — | Called on each `'connection'` event. |
 
 #### `address(): string | null`
 
@@ -252,7 +262,7 @@ Close the server. No new connections will be accepted. The server emits `close` 
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `onclose?` | `(err?: Error) => void` | — | — |
+| `onclose?` | `(err?: Error) => void` | — | Called once when the server emits `'close'`, after all existing connections have ended. |
 
 #### `listen`
 
@@ -268,10 +278,15 @@ Start listening for connections on `path`. `backlog` defaults to `511`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `path` | `string` | — | — |
-| `backlog?` | `number` | — | — |
-| `opts?` | [`PipeServerListenOptions`](#pipeserverlistenoptions) | — | — |
-| `onlistening?` | `() => void` | — | — |
+| `path` | `string` | — | The path to listen on. |
+| `backlog?` | `number` | — | The maximum length of the queue of pending connections (default `511`). |
+| `opts?` | [`PipeServerListenOptions`](#pipeserverlistenoptions) | — | `path` and `backlog` may be given here instead of as positional arguments. |
+| `onlistening?` | `() => void` | — | Called once when the server emits `'listening'`. |
+
+**Throws**
+
+- `SERVER_ALREADY_LISTENING` — the server is already listening.
+- `SERVER_IS_CLOSED` — the server has been closed.
 
 #### `listening: boolean`
 

@@ -59,8 +59,15 @@ Synchronous form: `openSync(filepath: Path, flags?: Flag | number, mode?: string
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `flags?` | [`Flag`](#flag) \| `number` | — | — |
-| `mode?` | `string` \| `number` | — | — |
+| `flags?` | [`Flag`](#flag) \| `number` | — | Defaults to `'r'`. Selects read/write mode and whether the file is created, truncated, or appended. |
+| `mode?` | `string` \| `number` | — | Defaults to `0o666`. Applied only when `flags` creates a new file. |
+
+**Returns** `Promise<number>` — The file descriptor for the newly opened file.
+
+**Throws**
+
+- `ENOENT` — `filepath` does not exist and `flags` does not include a creating variant (e.g. the default `'r'`).
+- `EEXIST` — `flags` is an exclusive variant (`'wx'`, `'ax'`, `'xw'`, `'xa'`, etc.) and `filepath` already exists.
 
 #### `close(fd: number): Promise<void>`
 
@@ -81,11 +88,7 @@ Synchronous form: `closeSync(fd: number): void`
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `fd` | `number` | — | — |
-
-#### `closeSync(): void`
-
-<sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L50)</sub>
+| `fd` | `number` | — | The file descriptor to close, as returned by `fs.open()`. |
 
 #### `read`
 
@@ -103,15 +106,13 @@ Synchronous form: `readSync(fd: number, buffer: Buffer | ArrayBufferView, offset
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `fd` | `number` | — | — |
+| `fd` | `number` | — | The file descriptor to read from, as returned by `fs.open()`. |
 | `buffer` | `Buffer` \| `ArrayBufferView` | — | — |
-| `offset?` | `number` | — | — |
-| `len?` | `number` | — | — |
-| `pos?` | `number` | — | — |
+| `offset?` | `number` | — | The offset within `buffer` to start writing to. Defaults to `0`. |
+| `len?` | `number` | — | The number of bytes to read. Defaults to `buffer.byteLength - offset`. |
+| `pos?` | `number` | — | The position in the file to read from. Defaults to `-1`, which reads from the current file position and advances it. |
 
-#### `readSync(): Dirent<T> | null`
-
-<sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L46)</sub>
+**Returns** `Promise<number>` — The number of bytes actually read, which may be less than `len` (`0` at end of file).
 
 #### `readv(fd: number, buffers: ArrayBufferView[], position?: number): Promise<number>`
 
@@ -137,6 +138,8 @@ Synchronous form: `readvSync(fd: number, buffers: ArrayBufferView[], position?: 
 | `buffers` | `ArrayBufferView[]` | — | — |
 | `position?` | `number` | — | — |
 
+**Returns** `Promise<number>` — The number of bytes actually read across all buffers.
+
 #### `write`
 
 ```ts
@@ -153,11 +156,13 @@ Synchronous form: `writeSync(fd: number, data: Buffer | ArrayBufferView, offset?
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `fd` | `number` | — | — |
-| `data` | `Buffer` \| `ArrayBufferView` | — | — |
-| `offset?` | `number` | — | — |
-| `len?` | `number` | — | — |
-| `pos?` | `number` | — | — |
+| `fd` | `number` | — | The file descriptor to write to, as returned by `fs.open()`. |
+| `data` | `Buffer` \| `ArrayBufferView` | — | The bytes to write. May also be a string, in which case the signature becomes `fs.write(fd, data[, pos[, encoding]])`. |
+| `offset?` | `number` | — | The offset within `data` to start writing from. Defaults to `0`. |
+| `len?` | `number` | — | The number of bytes to write. Defaults to `data.byteLength - offset`. |
+| `pos?` | `number` | — | The position in the file to write to. Defaults to `-1`, which writes at the current file position and advances it. |
+
+**Returns** `Promise<number>` — The number of bytes actually written, which may be less than `data`'s length.
 
 #### `writev(fd: number, buffers: ArrayBufferView[], pos?: number): Promise<number>`
 
@@ -182,6 +187,8 @@ Synchronous form: `writevSync(fd: number, buffers: ArrayBufferView[], pos?: numb
 | `fd` | `number` | — | — |
 | `buffers` | `ArrayBufferView[]` | — | — |
 | `pos?` | `number` | — | — |
+
+**Returns** `Promise<number>` — The number of bytes actually written across all buffers.
 
 #### `fsync(fd: number): Promise<void>`
 
@@ -259,7 +266,7 @@ Synchronous form: `readFileSync(filepath: Path, opts: ReadFileOptions & { encodi
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `opts` | `ReadFileOptions & { encoding: BufferEncoding }` | — | — |
+| `opts` | `ReadFileOptions & { encoding: BufferEncoding }` | — | `encoding` defaults to `'buffer'` (returning a `Buffer` rather than a string); `flag` defaults to `'r'`. |
 
 #### `writeFile`
 
@@ -279,7 +286,7 @@ Synchronous form: `writeFileSync(filepath: Path, data: string | Buffer | ArrayBu
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
 | `data` | `string` \| `Buffer` \| `ArrayBufferView` | — | — |
-| `opts?` | [`WriteFileOptions`](#writefileoptions) | — | — |
+| `opts?` | [`WriteFileOptions`](#writefileoptions) | — | `flag` defaults to `'w'` (truncating any existing file); `mode` defaults to `0o666`. |
 
 #### `appendFile`
 
@@ -322,7 +329,7 @@ Synchronous form: `accessSync(filepath: Path, mode?: number): void`
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `mode?` | `number` | — | — |
+| `mode?` | `number` | — | Defaults to `fs.constants.F_OK` (existence only); may also combine `R_OK`, `W_OK`, and/or `X_OK`. |
 
 #### `exists(filepath: Path): Promise<boolean>`
 
@@ -686,7 +693,12 @@ Synchronous form: `mkdirSync(filepath: Path, opts?: MkdirOptions): void`
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `opts?` | [`MkdirOptions`](#mkdiroptions) | — | — |
+| `opts?` | [`MkdirOptions`](#mkdiroptions) | — | `mode` defaults to `0o777`. `recursive`, if `true`, creates missing parent directories and does not error if `filepath` already exists as a directory. |
+
+**Throws**
+
+- `ENOENT` — a parent directory in `filepath` does not exist and `opts.recursive` is not set.
+- `EEXIST` — `filepath` already exists; when `opts.recursive` is set this is only thrown if the existing path is not itself a directory.
 
 #### `mkdtemp(prefix: Path): Promise<string>`
 
@@ -707,7 +719,9 @@ Synchronous form: `mkdtempSync(prefix: Path): string`
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `prefix` | [`Path`](#path) | — | — |
+| `prefix` | [`Path`](#path) | — | The literal suffix `'XXXXXX'` is appended to `prefix` and replaced with random characters to form the directory name. |
+
+**Returns** `Promise<string>` — The path of the newly created directory, including its randomly generated suffix.
 
 #### `rmdir(filepath: Path): Promise<void>`
 
@@ -730,6 +744,10 @@ Synchronous form: `rmdirSync(filepath: Path): void`
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
 
+**Throws**
+
+- `ENOTEMPTY` — the directory is not empty.
+
 #### `readdir`
 
 ```ts
@@ -747,7 +765,7 @@ Synchronous form: `readdirSync(filepath: Path, opts: ReaddirOptions & { encoding
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `opts` | `ReaddirOptions & { encoding?: BufferEncoding }` | — | — |
+| `opts` | `ReaddirOptions & { encoding?: BufferEncoding }` | — | `withFileTypes`, if `true`, returns `Dirent` objects instead of plain filename strings. |
 
 #### `opendir`
 
@@ -925,7 +943,7 @@ Synchronous form: `unlinkSync(filepath: Path): void`
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `filepath` | [`Path`](#path) | — | — |
+| `filepath` | [`Path`](#path) | — | The path of the file to remove. |
 
 #### `rm(filepath: Path, opts?: RmOptions): Promise<void>`
 
@@ -948,7 +966,11 @@ Synchronous form: `rmSync(filepath: Path, opts?: RmOptions): void`
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `opts?` | [`RmOptions`](#rmoptions) | — | — |
+| `opts?` | [`RmOptions`](#rmoptions) | — | `recursive`, if `true`, removes directories and their contents; `force`, if `true`, suppresses the error when `filepath` does not exist. |
+
+**Throws**
+
+- `EISDIR` — `filepath` is a directory and `opts.recursive` is not set.
 
 #### `copyFile(src: Path, dst: Path, mode?: number): Promise<void>`
 
@@ -972,7 +994,11 @@ Synchronous form: `copyFileSync(src: Path, dst: Path, mode?: number): void`
 | --- | --- | --- | --- |
 | `src` | [`Path`](#path) | — | — |
 | `dst` | [`Path`](#path) | — | — |
-| `mode?` | `number` | — | — |
+| `mode?` | `number` | — | Defaults to `0`. A bitmask of `fs.constants.COPYFILE_EXCL` (fail if `dst` exists), `COPYFILE_FICLONE`, or `COPYFILE_FICLONE_FORCE`. |
+
+**Throws**
+
+- `EEXIST` — `dst` already exists and `mode` includes `fs.constants.COPYFILE_EXCL`.
 
 #### `cp(src: Path, dst: Path, opts?: CpOptions): Promise<void>`
 
@@ -996,7 +1022,11 @@ Synchronous form: `cpSync(src: Path, dst: Path, opts?: CpOptions): void`
 | --- | --- | --- | --- |
 | `src` | [`Path`](#path) | — | — |
 | `dst` | [`Path`](#path) | — | — |
-| `opts?` | [`CpOptions`](#cpoptions) | — | — |
+| `opts?` | [`CpOptions`](#cpoptions) | — | `recursive` must be `true` to copy a directory; copying a directory without it throws `EISDIR`. |
+
+**Throws**
+
+- `EISDIR` — `src` is a directory and `opts.recursive` is not set.
 
 ### Streams and watching
 
@@ -1010,8 +1040,8 @@ Create a readable stream for a file. Returns a `ReadStream`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `path` | [`Path`](#path) \| `null` | — | — |
-| `opts?` | [`ReadStreamOptions`](#readstreamoptions) | — | — |
+| `path` | [`Path`](#path) \| `null` | — | May be `null` if `opts.fd` specifies an already-open file descriptor to read from instead of opening `path`. |
+| `opts?` | [`ReadStreamOptions`](#readstreamoptions) | — | `flags` defaults to `'r'`, `mode` to `0o666`, `start` (byte offset) to `0`; `end` (inclusive byte offset), if given, stops the stream early. |
 
 #### `createWriteStream(path: Path | null, opts?: WriteStreamOptions): WriteStream`
 
@@ -1023,8 +1053,8 @@ Create a writable stream for a file. Returns a `WriteStream`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `path` | [`Path`](#path) \| `null` | — | — |
-| `opts?` | [`WriteStreamOptions`](#writestreamoptions) | — | — |
+| `path` | [`Path`](#path) \| `null` | — | May be `null` if `opts.fd` specifies an already-open file descriptor to write to instead of opening `path`. |
+| `opts?` | [`WriteStreamOptions`](#writestreamoptions) | — | `flags` defaults to `'w'`, `mode` to `0o666`. |
 
 #### `watch`
 
@@ -1041,8 +1071,8 @@ Watch a file or directory for changes. Returns a `Watcher` object. The `callback
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `opts` | `WatcherOptions & { encoding?: BufferEncoding }` | — | — |
-| `cb` | `(eventType: WatcherEventType, filename: string) => void` | — | — |
+| `opts` | `WatcherOptions & { encoding?: BufferEncoding }` | — | `persistent` defaults to `true`; `recursive` (default `false`) also watches subdirectories; `encoding` defaults to `'utf8'`. |
+| `cb` | `(eventType: WatcherEventType, filename: string) => void` | — | Called with `(eventType, filename)` on each change; equivalent to listening for the `Watcher`'s `'change'` event. |
 
 ### Modules
 
@@ -1112,7 +1142,7 @@ An object containing file system constants, such as file access modes and file t
 
 <sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L48)</sub>
 
-Close a file descriptor.
+Close the directory handle opened by `fs.opendir()`.
 
 Overloads:
 
@@ -1120,6 +1150,12 @@ Overloads:
 close(): Promise<void>
 close(cb: Callback): void
 ```
+
+#### `closeSync(): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L50)</sub>
+
+Close the directory handle opened by `fs.opendirSync()`.
 
 #### `path: string`
 
@@ -1131,7 +1167,7 @@ The path of the directory.
 
 <sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L44)</sub>
 
-Read from a file descriptor into `buffer`. `offset` defaults to `0`, `len` defaults to `buffer.byteLength - offset`, and `pos` defaults to `-1` (current position). Returns the number of bytes read.
+Read the next entry from the directory.
 
 Overloads:
 
@@ -1139,6 +1175,16 @@ Overloads:
 read(): Promise<Dirent<T> | null>
 read(cb: Callback<[dirent: Dirent<T> | null]>): void
 ```
+
+**Returns** `Promise<Dirent<T> | null>` — The next `Dirent` for the directory, or `null` once every entry has been read.
+
+#### `readSync(): Dirent<T> | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L46)</sub>
+
+Read the next entry from the directory.
+
+**Returns** `Dirent<T> | null` — The next `Dirent` for the directory, or `null` once every entry has been read.
 
 ### Dirent
 
@@ -1360,7 +1406,7 @@ The user identifier of the file owner.
 
 <sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L203)</sub>
 
-Close a file descriptor.
+Stop watching for further changes. Once closed, a `close` event is emitted.
 
 #### `ref(): void`
 
@@ -1427,6 +1473,8 @@ interface ReadStreamOptions {
 
 <sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L145)</sub>
 
+Options for `fs.createReadStream()`. `fd`, if given, is used instead of opening `path`. `flags` defaults to `'r'` and `mode` to `0o666`. `start` (default `0`) is the first byte read; `end`, if given, is the last byte read (inclusive).
+
 #### `WriteStreamOptions`
 
 ```ts
@@ -1439,6 +1487,8 @@ interface WriteStreamOptions {
 
 <sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L166)</sub>
 
+Options for `fs.createWriteStream()`. `fd`, if given, is used instead of opening `path`. `flags` defaults to `'w'` and `mode` to `0o666`.
+
 #### `WatcherOptions`
 
 ```ts
@@ -1450,6 +1500,8 @@ interface WatcherOptions {
 ```
 
 <sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L185)</sub>
+
+Options for `fs.watch()`. `persistent` defaults to `true` (if `false`, the watcher is `unref()`'d immediately so it does not keep the process alive). `recursive` defaults to `false` and also watches subdirectories. `encoding` defaults to `'utf8'`.
 
 #### `WatcherEventType`
 
@@ -1493,6 +1545,8 @@ interface CpOptions {
 
 <sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L296)</sub>
 
+Options for `fs.cp()`. `recursive` must be `true` to copy a directory; without it, copying a directory throws `EISDIR`.
+
 #### `MkdirOptions`
 
 ```ts
@@ -1504,6 +1558,8 @@ interface MkdirOptions {
 
 <sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L398)</sub>
 
+Options for `fs.mkdir()`. `mode` defaults to `0o777`. `recursive`, if `true`, creates any missing parent directories and does not error if `filepath` already exists as a directory.
+
 #### `OpendirOptions`
 
 ```ts
@@ -1514,6 +1570,8 @@ interface OpendirOptions {
 ```
 
 <sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L438)</sub>
+
+Options for `fs.opendir()`. `bufferSize` defaults to `32` and sets how many directory entries are buffered internally per read.
 
 #### `ReadFileOptions`
 
@@ -1566,6 +1624,8 @@ interface RmOptions {
 ```
 
 <sub>[Source](https://github.com/holepunchto/bare-fs/blob/v4.7.4/index.d.ts#L1014)</sub>
+
+Options for `fs.rm()`. `recursive`, if `true`, removes directories and their contents. `force`, if `true`, suppresses the error when `filepath` does not exist.
 
 #### `WriteFileOptions`
 
@@ -1638,8 +1698,15 @@ Open a file, returning a file descriptor. `flags` defaults to `'r'` and `mode` d
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `flags?` | [`Flag`](#flag) \| `number` | — | — |
-| `mode?` | `string` \| `number` | — | — |
+| `flags?` | [`Flag`](#flag) \| `number` | — | Defaults to `'r'`. Selects read/write mode and whether the file is created, truncated, or appended. |
+| `mode?` | `string` \| `number` | — | Defaults to `0o666`. Applied only when `flags` creates a new file. |
+
+**Returns** `Promise<FileHandle>` — The file descriptor for the newly opened file.
+
+**Throws**
+
+- `ENOENT` — `filepath` does not exist and `flags` does not include a creating variant (e.g. the default `'r'`).
+- `EEXIST` — `flags` is an exclusive variant (`'wx'`, `'ax'`, `'xw'`, `'xa'`, etc.) and `filepath` already exists.
 
 #### `promises.access(filepath: Path, mode?: number): Promise<void>`
 
@@ -1652,7 +1719,7 @@ Check whether the file at `filepath` is accessible. `mode` defaults to `fs.const
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `mode?` | `number` | — | — |
+| `mode?` | `number` | — | Defaults to `fs.constants.F_OK` (existence only); may also combine `R_OK`, `W_OK`, and/or `X_OK`. |
 
 #### `promises.appendFile`
 
@@ -1711,7 +1778,11 @@ Copy a file from `src` to `dst`. `mode` is an optional bitmask created from `fs.
 | --- | --- | --- | --- |
 | `src` | [`Path`](#path) | — | — |
 | `dst` | [`Path`](#path) | — | — |
-| `mode?` | `number` | — | — |
+| `mode?` | `number` | — | Defaults to `0`. A bitmask of `fs.constants.COPYFILE_EXCL` (fail if `dst` exists), `COPYFILE_FICLONE`, or `COPYFILE_FICLONE_FORCE`. |
+
+**Throws**
+
+- `EEXIST` — `dst` already exists and `mode` includes `fs.constants.COPYFILE_EXCL`.
 
 #### `promises.cp(src: Path, dst: Path, opts?: CpOptions): Promise<void>`
 
@@ -1725,7 +1796,11 @@ Copy a file or directory from `src` to `dst`.
 | --- | --- | --- | --- |
 | `src` | [`Path`](#path) | — | — |
 | `dst` | [`Path`](#path) | — | — |
-| `opts?` | [`CpOptions`](#cpoptions) | — | — |
+| `opts?` | [`CpOptions`](#cpoptions) | — | `recursive` must be `true` to copy a directory; copying a directory without it throws `EISDIR`. |
+
+**Throws**
+
+- `EISDIR` — `src` is a directory and `opts.recursive` is not set.
 
 #### `promises.lchown(filepath: Path, uid: number, gid: number): Promise<void>`
 
@@ -1798,7 +1873,12 @@ mkdir(filepath: Path, mode: number): Promise<void>
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `opts?` | [`MkdirOptions`](#mkdiroptions) | — | — |
+| `opts?` | [`MkdirOptions`](#mkdiroptions) | — | `mode` defaults to `0o777`. `recursive`, if `true`, creates missing parent directories and does not error if `filepath` already exists as a directory. |
+
+**Throws**
+
+- `ENOENT` — a parent directory in `filepath` does not exist and `opts.recursive` is not set.
+- `EEXIST` — `filepath` already exists; when `opts.recursive` is set this is only thrown if the existing path is not itself a directory.
 
 #### `promises.mkdtemp(prefix: Path): Promise<string>`
 
@@ -1810,7 +1890,9 @@ Create a unique temporary directory.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `prefix` | [`Path`](#path) | — | — |
+| `prefix` | [`Path`](#path) | — | The literal suffix `'XXXXXX'` is appended to `prefix` and replaced with random characters to form the directory name. |
+
+**Returns** `Promise<string>` — The path of the newly created directory, including its randomly generated suffix.
 
 #### `promises.opendir`
 
@@ -1852,7 +1934,7 @@ readFile(filepath: Path): Promise<Buffer>
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `opts` | `ReadFileOptions & { encoding: BufferEncoding }` | — | — |
+| `opts` | `ReadFileOptions & { encoding: BufferEncoding }` | — | `encoding` defaults to `'buffer'` (returning a `Buffer` rather than a string); `flag` defaults to `'r'`. |
 
 #### `promises.readdir`
 
@@ -1869,7 +1951,7 @@ Read the contents of a directory. Returns an array of filenames or, if `withFile
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `opts` | `ReaddirOptions & { encoding?: BufferEncoding }` | — | — |
+| `opts` | `ReaddirOptions & { encoding?: BufferEncoding }` | — | `withFileTypes`, if `true`, returns `Dirent` objects instead of plain filename strings. |
 
 #### `promises.readlink(filepath: Path, opts: ReadlinkOptions & { encoding?: BufferEncoding }): Promise<string>`
 
@@ -1945,7 +2027,11 @@ Remove a file or directory at `filepath`.
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `opts?` | [`RmOptions`](#rmoptions) | — | — |
+| `opts?` | [`RmOptions`](#rmoptions) | — | `recursive`, if `true`, removes directories and their contents; `force`, if `true`, suppresses the error when `filepath` does not exist. |
+
+**Throws**
+
+- `EISDIR` — `filepath` is a directory and `opts.recursive` is not set.
 
 #### `promises.rmdir(filepath: Path): Promise<void>`
 
@@ -1958,6 +2044,10 @@ Remove an empty directory.
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
+
+**Throws**
+
+- `ENOTEMPTY` — the directory is not empty.
 
 #### `promises.stat(filepath: Path): Promise<Stats>`
 
@@ -2020,7 +2110,7 @@ Remove a file.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `filepath` | [`Path`](#path) | — | — |
+| `filepath` | [`Path`](#path) | — | The path of the file to remove. |
 
 #### `promises.utimes(filepath: Path, atime: number | Date, mtime: number | Date): Promise<void>`
 
@@ -2059,7 +2149,7 @@ watch(filepath: Path): Watcher<string>
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
-| `opts` | `WatcherOptions & { encoding?: BufferEncoding }` | — | — |
+| `opts` | `WatcherOptions & { encoding?: BufferEncoding }` | — | `persistent` defaults to `true`; `recursive` (default `false`) also watches subdirectories; `encoding` defaults to `'utf8'`. |
 
 #### `promises.writeFile`
 
@@ -2077,7 +2167,7 @@ Write `data` to a file, replacing it if it already exists.
 | --- | --- | --- | --- |
 | `filepath` | [`Path`](#path) | — | — |
 | `data` | `string` \| `Buffer` \| `ArrayBufferView` | — | — |
-| `opts?` | [`WriteFileOptions`](#writefileoptions) | — | — |
+| `opts?` | [`WriteFileOptions`](#writefileoptions) | — | `flag` defaults to `'w'` (truncating any existing file); `mode` defaults to `0o666`. |
 
 ### Constants and variables
 

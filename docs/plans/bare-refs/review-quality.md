@@ -76,8 +76,8 @@ Priority order = npm downloads, highest first (`downloads.json`), excluding
 `bare-dgram`/`bare-tui` (no shipped `.d.ts`, not part of the 70 generated
 pages).
 
-- [ ] Batch 1: bare-events, bare-fs, bare-stream, bare-os, bare-path, bare-url, bare-module-resolve, bare-semver
-- [ ] Batch 2: bare-addon-resolve, bare-type, bare-inspect, bare-ansi-escapes, bare-assert, bare-subprocess, bare-buffer, bare-pipe
+- [x] Batch 1: bare-events, bare-fs, bare-stream, bare-os, bare-path, bare-url, bare-module-resolve, bare-semver
+- [x] Batch 2: bare-addon-resolve, bare-type, bare-inspect, bare-ansi-escapes, bare-assert, bare-subprocess, bare-buffer, bare-pipe
 - [ ] Batch 3: bare-tty, bare-signals, bare-process, bare-hrtime, bare-tls, bare-net, bare-tcp, bare-http1
 - [ ] Batch 4: bare-crypto, bare-dns, bare-https, bare-env, bare-stdio, bare-abort, bare-module-lexer, bare-module
 - [ ] Batch 5: bare-bundle, bare-inspector, bare-format, bare-ws, bare-encoding, bare-fetch, bare-zlib, bare-structured-clone
@@ -88,7 +88,50 @@ pages).
 
 ## Findings log
 
-_(appended per batch)_
+### Batches 1 + 2 (2026-07-14, session 8) — 16 modules reviewed + fixed
+
+Executed by parallel subagents (cut short by a session limit, but nearly all
+edits landed on disk; bare-pipe finished by the main loop). Layout files
+created: bare-events, bare-stream, bare-buffer, bare-url, bare-semver,
+bare-module-resolve, bare-addon-resolve, bare-type, bare-inspect,
+bare-ansi-escapes, bare-assert, bare-subprocess, bare-pipe (13 new `.ts`
+manifests). Extended: bare-fs.ts (+109 lines incl. first `returns`/expanded
+`params`+`throws`), bare-os.ts (+42), bare-path.ts (+49). describe.json fixes:
+bare-fs (+14 entries: Dir/Watcher members, options interfaces with defaults),
+bare-semver (Comparator/Range.toString, Range.test; de-duplicated throws prose
+out of `Version.parse` describe), bare-url (isURLSearchParams static; moved
+throws/returns prose out of describe into structured maps).
+
+Key per-module notes:
+- **bare-events**: model quirk — static utils (on/once/listenerCount/
+  getMaxListeners/setMaxListeners) share their model `key` with same-named
+  instance methods; overrides keyed qualified hit BOTH twins. Documented in
+  the manifest header; facts added only where true for both (or keyed bare for
+  instance-only). Verified `getMaxListeners()` returns `defaultMaxListeners`
+  (index.js:173) and web.js `dispatchEvent` returns `!(state & CANCELED)`.
+- **bare-fs**: options-interface describes now carry defaults (mode `0o777`,
+  watch `persistent: true`, opendir `bufferSize: 32`, stream flags/mode) —
+  grounded in README + lib source.
+- **bare-url**: URLError codes (INVALID_URL, INVALID_URL_SCHEME,
+  INVALID_FILE_URL_HOST, INVALID_FILE_URL_PATH) verified in lib/errors.js +
+  index.js throw sites; fileURLToPath conditions per-platform.
+- **bare-pipe** (main loop): constructor/server option defaults from README
+  `options = {…}` blocks; PIPE_ALREADY_CONNECTED / INVALID_IPC_TARGET /
+  SERVER_ALREADY_LISTENING / SERVER_IS_CLOSED verified at index.js throw
+  sites; `accept` returns `target`.
+- **Style rule established**: `returns` prose must NOT start with "Returns" —
+  the renderer already prefixes `**Returns** <type> — ` and the emitter
+  prefixes `@returns`; normalized 12 entries across bare-events/os/path/pipe/
+  url.
+- **bare-fetch, bare-module-traverse**: upstream releases picked up in regen
+  (v3.0.1→v3.0.2 etc.) — model+page diffs are version bumps, not review edits.
+- Pipeline nit (spawned as separate task): `gen:bare-refs --only X` rewrites
+  `generated/bare-refs/_skipped.json` with only the current run's skips,
+  wiping bare-dgram/bare-tui — reverted by hand this run.
+
+Gates after batch: check 70/70 OK, tests 5/5, MDX compile 70/70, emit:ts-doc
+re-run for all 16 reviewed modules + tsc --noEmit clean on every touched
+`.d.ts` across them.
 
 ## Known pre-existing issue (not this review's scope, flagged for the user)
 

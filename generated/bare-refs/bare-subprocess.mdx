@@ -63,7 +63,11 @@ Send a signal to the child. `signum` may be a signal number or a name (e.g. `'SI
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `signum?` | `number` | — | — |
+| `signum?` | `number` | — | Signal to send, as a signal number or name (e.g. `'SIGTERM'`); defaults to `SIGTERM`. |
+
+**Throws**
+
+- `UNKNOWN_SIGNAL` — thrown if `signum` is a string that isn't a recognized signal name.
 
 #### `killed: boolean`
 
@@ -100,9 +104,11 @@ send(message: unknown, cb: (err: Error | null) => void): boolean
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `message` | `unknown` | — | — |
-| `handle?` | `unknown` | — | — |
-| `cb?` | `(err: Error \| null) => void` | — | — |
+| `message` | `unknown` | — | The value to send to the child over the IPC channel. |
+| `handle?` | `unknown` | — | A `bare-pipe` `Pipe` or `bare-tcp` `Socket` to transfer to the child along with `message`. |
+| `cb?` | `(err: Error \| null) => void` | — | Called with `(err)` once `message` has been written, or with an error if there is no connected IPC channel. |
+
+**Returns** `boolean` — `false` if the subprocess has no IPC channel or it has disconnected (`cb`, if given, is then invoked asynchronously with an error); otherwise the underlying pipe write result.
 
 #### `signalCode: string | null`
 
@@ -173,9 +179,14 @@ Synchronous form: `spawnSync(file: string, args?: string[] | null, opts?: SpawnS
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `file` | `string` | — | — |
-| `args?` | `string[]` \| `null` | — | — |
-| `opts?` | [`SpawnOptions`](#spawnoptions) | — | — |
+| `file` | `string` | — | The executable to spawn; a string path or a `file://` URL. |
+| `args?` | `string[]` \| `null` | — | Arguments to pass to `file`; may be `null` or omitted to spawn with none. If omitted, the second argument is treated as `opts`. |
+| `opts?` | [`SpawnOptions`](#spawnoptions) | — | Options controlling the environment, stdio, and behavior of the new subprocess; see `SpawnOptions`. |
+
+**Throws**
+
+- `UNKNOWN_SERIALIZATION_MODE` — thrown if `opts.serialization` is not `'json'`, `'advanced'`, or `'binary'`.
+- `IPC_CHANNEL_ALREADY_DEFINED` — thrown if `opts.stdio` requests more than one `'ipc'` slot.
 
 ### Types
 
@@ -306,6 +317,11 @@ class SubprocessError {
 
 <sub>[Source](https://github.com/holepunchto/bare-subprocess/blob/v6.1.0/lib/parent.d.ts#L26)</sub>
 
+**Throws**
+
+- `NO_IPC_CHANNEL` — thrown if the `BARE_CHANNEL_FD` environment variable is not set.
+- `UNKNOWN_SERIALIZATION_MODE` — thrown if `BARE_CHANNEL_SERIALIZATION_MODE` is set to something other than `'json'` or `'advanced'`.
+
 #### `SubprocessParentChannel.connected: boolean`
 
 <sub>[Source](https://github.com/holepunchto/bare-subprocess/blob/v6.1.0/lib/parent.d.ts#L12)</sub>
@@ -341,9 +357,11 @@ send(message: unknown, cb: (err: Error | null) => void): boolean
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `message` | `unknown` | — | — |
-| `handle?` | `unknown` | — | — |
-| `cb?` | `(err: Error \| null) => void` | — | — |
+| `message` | `unknown` | — | The value to send to the parent process over the IPC channel. |
+| `handle?` | `unknown` | — | A `bare-pipe` `Pipe` or `bare-tcp` `Socket` to transfer to the parent along with `message`. |
+| `cb?` | `(err: Error \| null) => void` | — | Called with `(err)` once `message` has been written, or with an error if the channel is disconnected. |
+
+**Returns** `boolean` — `false` if the channel is disconnected (`cb`, if given, is then invoked asynchronously with a `CHANNEL_DISCONNECTED` error); otherwise the underlying pipe write result.
 
 #### `unref(): this`
 
