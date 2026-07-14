@@ -1,10 +1,10 @@
 # Reference generation improvement plan — hypercore
-Generated from `holepunchto/hypercore` at **v11.33.2** (`c8a555de54`) on 2026-06-16T17:23:33.508Z.
-**Doc-completeness: 80%** — 47 of 59 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
+Generated from `holepunchto/hypercore` at **v11.34.0** (`97aecf97ef`) on 2026-07-14T14:05:26.984Z.
+**Doc-completeness: 76%** — 45 of 59 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
-**100%** of the hand-authored page is reproduced — 66 of 66 documented symbols (`content/reference/building-blocks/hypercore.mdx`).
-### Extra in generated model (64)
+**100%** of the hand-authored page is reproduced — 67 of 67 documented symbols (`content/reference/building-blocks/hypercore.mdx`).
+### Extra in generated model (63)
 _Found in source but absent from the curated page — candidate additions (or internal symbols to filter)._
 - `DefaultEncryption`
 - `SMALL_WANTS`
@@ -56,7 +56,6 @@ _Found in source but absent from the curated page — candidate additions (or in
 - `recovering`
 - `replicator`
 - `sessions`
-- `setGroup`
 - `setRecoveryPeers`
 - `snapshotted`
 - `start`
@@ -82,7 +81,7 @@ _Cause: method exists in source but has no prose in the README — upstream READ
 - `const storage = Hypercore.defaultStorage(storage, opts = {})`
 - `const buffer = await core.signable([length], [fork])`
 
-### Undocumented parameters (12)
+### Undocumented parameters (14)
 
 _Cause: parameter present in the signature but not described — README gap or extractor name-mismatch._
 
@@ -91,12 +90,14 @@ _Cause: parameter present in the signature but not described — README gap or e
 - `const bkey = Hypercore.blockEncryptionKey(key, encryptionKey)` → key, encryptionKey
 - `const mux = Hypercore.getProtocolMuxer(stream)` → stream
 - `const core = Hypercore.createCore(storage, opts)` → storage, opts
-- `const storage = Hypercore.defaultStorage(storage, opts = {})` → opts
+- `const storage = Hypercore.defaultStorage(storage, opts = {})` → storage, opts
+- `core.setActive(active)` → bool
 - `const stream = core.replicate(isInitiatorOrReplicationStream, opts = {})` → isInitiator
 - `const [index, relativeOffset] = await core.seek(byteOffset, [options])` → bytes, opts
 - `const block = await core.get(index, [options])` → index
 - `await core.truncate(newLength, [options])` → newLength
-- `const buffer = await core.signable([length], [fork])` → fork
+- `const buffer = await core.signable([length], [fork])` → length, fork
+- `const batch = await core.verifyFullyRemote(proof)` → proof
 - `const ext = core.registerExtension(name, handlers = {})` → name
 
 ## Enhancements

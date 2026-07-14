@@ -1,6 +1,6 @@
 # Reference generation improvement plan — corestore
-Generated from `holepunchto/corestore` at **v7.10.1** (`9680e5a03e`) on 2026-06-11T12:36:59.730Z.
-**Doc-completeness: 60%** — 9 of 15 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
+Generated from `holepunchto/corestore` at **v7.11.0** (`a0ad080939`) on 2026-07-14T14:05:33.431Z.
+**Doc-completeness: 47%** — 7 of 15 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
 **100%** of the hand-authored page is reproduced — 27 of 27 documented symbols (`content/reference/helpers/corestore.mdx`).
@@ -27,20 +27,22 @@ _Found in source but absent from the curated page — candidate additions (or in
 - `sessions`
 - `shouldSuspend`
 - `streamTracker`
-- `update`
+- `updates`
 - `watchIndex`
 - `watchers`
 ## Completeness gaps
-### Undocumented parameters (6)
+### Undocumented parameters (8)
 
 _Cause: parameter present in the signature but not described — README gap or extractor name-mismatch._
 
 - `const store = new Corestore(storage, options = {})` → opts
 - `store.watch((core) => {})` → fn
-- `await store.suspend()` → { log = noop }
+- `store.unwatch(callback)` → fn
+- `await store.suspend()` → options
 - `const storeB = storeA.session()` → opts
 - `const store = store.namespace(name)` → opts
 - `const stream = store.replicate(optsOrStream)` → isInitiator, opts
+- `store.on('group-active', (topic) => {})` → update
 
 ## Enhancements
 ### Return value not explained (7)

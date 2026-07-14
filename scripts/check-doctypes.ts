@@ -35,6 +35,9 @@ const QUADRANT_DOCTYPE: Record<string, string> = {
   reference: 'reference',
   explanation: 'explanation',
   'getting-started': 'getting-started',
+  // Not a Diátaxis quadrant: the rolling changelog is a generic page, like
+  // the site-root index.
+  changelog: 'page',
 };
 
 /**

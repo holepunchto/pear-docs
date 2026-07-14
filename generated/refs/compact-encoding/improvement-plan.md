@@ -1,6 +1,6 @@
 # Reference generation improvement plan — compact-encoding
-Generated from `holepunchto/compact-encoding` at **v3.2.0** (`bc92e92fde`) on 2026-06-11T13:18:06.269Z.
-**Doc-completeness: 100%** — 2 of 2 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
+Generated from `holepunchto/compact-encoding` at **v3.3.0** (`e67abec0fb`) on 2026-07-14T14:05:31.955Z.
+**Doc-completeness: 0%** — 0 of 2 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
 **100%** of the hand-authored page is reproduced — 29 of 29 documented symbols (`content/reference/helpers/compact-encoding.mdx`).
@@ -52,6 +52,13 @@ _Found in source but absent from the curated page — candidate additions (or in
 - `utf16le`
 - `utf8`
 ## Completeness gaps
+### Undocumented parameters (2)
+
+_Cause: parameter present in the signature but not described — README gap or extractor name-mismatch._
+
+- `enc.encode(state, val)` → enc, m
+- `val = enc.decode(state)` → enc
+
 ## Enhancements
 ### No example (2)
 

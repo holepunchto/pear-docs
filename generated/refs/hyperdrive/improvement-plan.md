@@ -1,6 +1,6 @@
 # Reference generation improvement plan — hyperdrive
-Generated from `holepunchto/hyperdrive` at **v13.3.2** (`52599226b1`) on 2026-06-11T12:36:55.978Z.
-**Doc-completeness: 58%** — 26 of 45 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
+Generated from `holepunchto/hyperdrive` at **v13.3.3** (`f582adb810`) on 2026-07-14T14:05:29.956Z.
+**Doc-completeness: 53%** — 24 of 45 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
 **100%** of the hand-authored page is reproduced — 45 of 45 documented symbols (`content/reference/building-blocks/hyperdrive.mdx`).
@@ -35,28 +35,30 @@ _Cause: method exists in source but has no prose in the README — upstream READ
 - `const comparison = drive.compare(entryA, entryB)`
 - `const exists = await drive.exists(path)`
 
-### Undocumented parameters (18)
+### Undocumented parameters (20)
 
 _Cause: parameter present in the signature but not described — README gap or extractor name-mismatch._
 
-- `const drive = new Hyperdrive(store, [key])` → opts
-- `await drive.truncate(version, [options] })` → { blobs = -1 }
+- `const drive = new Hyperdrive(store, [key])` → key, opts
+- `await drive.truncate(version, [options] })` → options
 - `const blobsLength = await drive.getBlobsLength(checkout)` → checkout
 - `const stream = drive.replicate(isInitiatorOrStream)` → isInitiator, opts
 - `const buffer = await drive.get(path, [options])` → name
-- `await drive.put(path, buffer, [options])` → buf
+- `await drive.put(path, buffer, [options])` → name, buf
+- `await drive.del(path)` → name
 - `const comparison = drive.compare(entryA, entryB)` → a, b
 - `const cleared = await drive.clear(path, [options])` → name
-- `await drive.symlink(path, linkname)` → dst, { metadata = null }
+- `await drive.symlink(path, linkname)` → name, dst, options
 - `const entry = await drive.entry(path, [options])` → name
 - `const exists = await drive.exists(path)` → name
 - `const watcher = drive.watch([folder])` → folder
-- `const stream = drive.diff(version, folder, [options])` → opts
-- `await drive.downloadDiff(version, folder, [options])` → opts
+- `const stream = drive.diff(version, folder, [options])` → length, opts
+- `await drive.downloadDiff(version, folder, [options])` → length, opts
 - `const stream = drive.list(folder, [options])` → folder
 - `const stream = drive.readdir(folder, [options])` → folder
 - `const mirror = drive.mirror(out, [options])` → out
 - `const rs = drive.createReadStream(path, [options])` → name
+- `const ws = drive.createWriteStream(path, [options])` → name
 
 ## Enhancements
 ### Return value not explained (11)
@@ -120,7 +122,7 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `drive.setActive(bool)`
 - `drive.monitor(name, opts = {})`
 - `await drive.closeMonitors()`
-- `await drive.putEntry(name, { executable = false, linkname = null, blob = null, metadata = null } = {})`
+- `await drive.putEntry(name, options = {})`
 - `Hyperdrive.normalizePath(name)`
 - `drive.opened`
 - `drive.closed`

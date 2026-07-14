@@ -325,6 +325,11 @@ export const customTree: Node[] = [
                 name: 'Distribute as a binary',
                 url: '/how-to/operate-an-app/build-and-package/distribute-as-binary',
               },
+              {
+                type: 'page',
+                name: 'Submit to app stores',
+                url: '/how-to/operate-an-app/build-and-package/submit-to-app-stores',
+              },
             ],
           },
           {
@@ -605,4 +610,5 @@ export const customTree: Node[] = [
       },
     ],
   },
+  { type: 'page', name: 'Release Overview', url: '/release-overview' },
 ];
