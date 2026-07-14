@@ -610,5 +610,5 @@ export const customTree: Node[] = [
       },
     ],
   },
-  { type: 'page', name: 'Release Overview', url: '/changelog' },
+  { type: 'page', name: 'Release Overview', url: '/release-overview' },
 ];

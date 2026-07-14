@@ -4,7 +4,7 @@
  * Reads the watch list from scripts/upstream-releases.json and the last-seen
  * release tag per repo from scripts/upstream-releases-state.json. For every
  * release published since the recorded tag, a draft entry block is inserted
- * under the `{/* changelog:insert *\/}` marker in content/changelog/index.mdx
+ * under the `{/* changelog:insert *\/}` marker in content/release-overview/index.mdx
  * and the state file is advanced.
  *
  * The generated blocks are DRAFTS: upstream release notes are terse and not
@@ -29,7 +29,7 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const CONFIG_PATH = path.join(root, 'scripts/upstream-releases.json');
 const STATE_PATH = path.join(root, 'scripts/upstream-releases-state.json');
-const CHANGELOG_PATH = path.join(root, 'content/changelog/index.mdx');
+const CHANGELOG_PATH = path.join(root, 'content/release-overview/index.mdx');
 const MARKER = '{/* changelog:insert';
 const MAX_RELEASES_PER_REPO = 10;
 const MAX_BODY_LINES = 12;
