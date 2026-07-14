@@ -55,6 +55,8 @@ const layout: Layout = {
   },
   returns: {
     accept: '`target`, for chaining the accepted handle into an expression.',
+    address: 'The bound path, or `null` if the server is not listening.',
+    'Pipe.pipe': 'A `[read, write]` pair of file descriptors connected to each other.',
   },
   throws: {
     connect: ['`PIPE_ALREADY_CONNECTED` — the pipe is already connecting or connected.'],
