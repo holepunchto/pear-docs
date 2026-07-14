@@ -5,6 +5,7 @@ import type { ImgHTMLAttributes } from 'react';
 import { ImageGrid } from '@/components/ImageGrid';
 import { Image } from '@/components/Image';
 import { Mermaid } from '@/components/mermaid';
+import { Status } from '@/components/Status';
 import { cn } from '@/lib/cn';
 
 /**
@@ -43,6 +44,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ImageGrid,
     Image,
     Mermaid,
+    Status,
     ...components,
   };
 }
