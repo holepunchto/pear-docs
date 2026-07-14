@@ -1,0 +1,4338 @@
+{
+  "slug": "hypercore",
+  "repo": {
+    "org": "holepunchto",
+    "repo": "hypercore"
+  },
+  "description": "Hypercore is a secure, distributed append-only log",
+  "tag": "v11.33.2",
+  "sha": "c8a555de54abf7970b44e382d79c46b0a3711e3d",
+  "generatedAt": "2026-06-16T17:23:33.508Z",
+  "sections": [
+    {
+      "title": "Features",
+      "markdown": "## Features\n\n- **Sparse replication.** Only download the data you are interested in.\n- **Realtime.** Get the latest updates to the log fast and securely.\n- **Performant.** Uses a simple flat file structure to maximize I/O performance.\n- **Secure.** Uses signed merkle trees to verify log integrity in real time.\n- **Modular.** Hypercore aims to do one thing and one thing well - distributing a stream of data.\n\nNote that the latest release is Hypercore 10, which adds support for truncate and many other things.\nVersion 10 is not compatible with earlier versions (9 and earlier), but is considered LTS, meaning the storage format and wire protocol is forward compatible with future versions."
+    },
+    {
+      "title": "Install",
+      "markdown": "## Install\n\n```sh\nnpm install hypercore\n```"
+    }
+  ],
+  "classes": [
+    {
+      "name": "Hypercore",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "const core = new Hypercore(storage, [key], [options])",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "storage",
+              "optional": false,
+              "description": "`storage` should be set to a directory where you want to store the data and core metadata.",
+              "type": "string|object"
+            },
+            {
+              "name": "key",
+              "optional": true,
+              "description": "`key` can be set to a Hypercore key which is a hash of Hypercore's internal auth manifest, describing how to validate the Hypercore.",
+              "type": "Buffer|string"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "type": "HypercoreOptions"
+            }
+          ],
+          "description": "Make a new Hypercore instance.",
+          "options": [
+            {
+              "name": "createIfMissing",
+              "default": "true",
+              "description": "create a new Hypercore key pair if none was present in storage"
+            },
+            {
+              "name": "overwrite",
+              "default": "false",
+              "description": "overwrite any old Hypercore that might already exist"
+            },
+            {
+              "name": "force",
+              "default": "false",
+              "description": "Advanced option. Will force overwrite even if the header's key & the passed key don't match"
+            },
+            {
+              "name": "valueEncoding",
+              "description": "defaults to binary"
+            },
+            {
+              "name": "encodeBatch",
+              "description": "optionally apply an encoding to complete batches"
+            },
+            {
+              "name": "keyPair",
+              "default": "kp",
+              "description": "optionally pass the public key and secret key as a key pair"
+            },
+            {
+              "name": "encryption",
+              "description": "the block encryption key"
+            },
+            {
+              "name": "onwait",
+              "description": "hook that is called if gets are waiting for download"
+            },
+            {
+              "name": "timeout",
+              "default": "0",
+              "description": "wait at max some milliseconds (0 means no timeout)"
+            },
+            {
+              "name": "writable",
+              "default": "true",
+              "description": "disable appends and truncates"
+            },
+            {
+              "name": "inflightRange",
+              "default": "null",
+              "description": "Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading."
+            },
+            {
+              "name": "ongc",
+              "description": "A callback called when the session is garbage collected"
+            },
+            {
+              "name": "onseq",
+              "description": "A callback called when core.get(index) is called."
+            },
+            {
+              "name": "notDownloadingLinger",
+              "default": "20000",
+              "description": "How many milliseconds to wait after downloading finishes keeping the connection open. Defaults to a random number between 20-40s"
+            },
+            {
+              "name": "allowFork",
+              "default": "true",
+              "description": "Enables updating core when it forks"
+            },
+            {
+              "name": "userData",
+              "description": "An object to assign to the local User Data storage"
+            },
+            {
+              "name": "manifest",
+              "default": "undefined",
+              "description": "Advanced option. Set the manifest when creating the hypercore. See Manifest section for more info"
+            },
+            {
+              "name": "preload",
+              "default": "undefined",
+              "description": "Advanced option. A promise that returns constructor options overrides before the core is opened"
+            },
+            {
+              "name": "storage",
+              "default": "undefined",
+              "description": "An alternative to passing storage as a dedicated argument"
+            },
+            {
+              "name": "key",
+              "default": "null",
+              "description": "An alternative to passing key as a dedicated argument"
+            }
+          ],
+          "examples": [
+            "const core = new Hypercore('./directory') // store data in ./directory",
+            "{\n  createIfMissing: true, // create a new Hypercore key pair if none was present in storage\n  overwrite: false, // overwrite any old Hypercore that might already exist\n  force: false, // Advanced option. Will force overwrite even if the header's key & the passed key don't match\n  valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to binary\n  encodeBatch: batch => { ... }, // optionally apply an encoding to complete batches\n  keyPair: kp, // optionally pass the public key and secret key as a key pair\n  encryption: { key: buffer }, // the block encryption key\n  onwait: () => {}, // hook that is called if gets are waiting for download\n  timeout: 0, // wait at max some milliseconds (0 means no timeout)\n  writable: true, // disable appends and truncates\n  inflightRange: null, // Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading.\n  ongc: (session) => { ... }, // A callback called when the session is garbage collected\n  onseq: (index, core) => { ... }, // A callback called when core.get(index) is called.\n  notDownloadingLinger: 20000, // How many milliseconds to wait after downloading finishes keeping the connection open. Defaults to a random number between 20-40s\n  allowFork: true, // Enables updating core when it forks\n  userData: { foo: 'bar' }, // An object to assign to the local User Data storage\n  manifest: undefined, // Advanced option. Set the manifest when creating the hypercore. See Manifest section for more info\n  preload: undefined, // Advanced option. A promise that returns constructor options overrides before the core is opened\n  storage: undefined, // An alternative to passing storage as a dedicated argument\n  key: null, // An alternative to passing key as a dedicated argument\n}",
+            "{\n  version: 1,                       // Version of the manifest format\n  hash: 'blake2b',                  // Only Blake2b is supported currently\n  allowPatch: false,                // Whether the hypercore can be \"patched\" to change the signers\n  quorum: (signers.length / 2) + 1, // How many signers needed to verify a block\n  signers,                          // Array of signers for the core\n  prologue: null,                   // The tree hash and length of the core\n  linked: null,                     // Array of associated core keys. Only supported in versions >= 2\n  userData: null                    // Arbitrary buffer for User Data integral to the core. Only supported in versions >= 2\n}",
+            "{\n  signature: 'ed25519',               // The signature method\n  namespace: caps.DEFAULT_NAMESPACE,  // A cryptographic namespace for the signature\n  publicKey: Buffer                   // Signer's public key\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L46",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "MAX_SUGGESTED_BLOCK_SIZE",
+          "signature": "Hypercore.MAX_SUGGESTED_BLOCK_SIZE",
+          "kind": "property",
+          "static": true,
+          "async": false,
+          "params": [],
+          "returnType": "number",
+          "description": "The constant for max size (15MB) for blocks appended to Hypercore. This max ensures blocks are replicated smoothly.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L116",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "DefaultEncryption",
+          "signature": "Hypercore.DefaultEncryption",
+          "kind": "property",
+          "static": true,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L315",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "SMALL_WANTS",
+          "signature": "Hypercore.SMALL_WANTS",
+          "kind": "property",
+          "static": true,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L317",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "enable",
+          "signature": "Hypercore.enable(flag)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "flag",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L319",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "setRecoveryPeers",
+          "signature": "Hypercore.setRecoveryPeers(peers)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "peers",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L324",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "key",
+          "signature": "const key = Hypercore.key(manifest, options = {})",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "manifest",
+              "optional": false,
+              "description": "A 32-byte public key Buffer, or a full manifest object with a `signers` array.",
+              "type": "Buffer|object"
+            },
+            {
+              "name": "options",
+              "optional": true,
+              "default": "{}",
+              "type": "KeyOptions"
+            }
+          ],
+          "returns": "Returns the key for a given manifest.",
+          "returnType": "Buffer",
+          "description": "`options` include:",
+          "options": [
+            {
+              "name": "compat",
+              "default": "false",
+              "description": "Whether the manifest has a single signer whose public key is the key"
+            },
+            {
+              "name": "version",
+              "description": "Manifest version if the manifest argument is the public key of a single signer"
+            },
+            {
+              "name": "namespace",
+              "description": "The signer namespace if the manifest argument is the public key of a single signer"
+            }
+          ],
+          "examples": [
+            "{\n  compat: false,  // Whether the manifest has a single signer whose public key is the key\n  version,        // Manifest version if the manifest argument is the public key of a single signer\n  namespace       // The signer namespace if the manifest argument is the public key of a single signer\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L131",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "discoveryKey",
+          "signature": "const dKey = Hypercore.discoveryKey(key)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The 32-byte Hypercore public key.",
+              "type": "Buffer"
+            }
+          ],
+          "returns": "Returns the discovery key for the provided `key`.",
+          "returnType": "Buffer",
+          "description": "Derive the discovery key from a Hypercore public key. The discovery key\ncan safely be shared to announce the core without exposing the read key.",
+          "examples": [
+            "const dKey = Hypercore.discoveryKey(core.key)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L138",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "blockEncryptionKey",
+          "signature": "const bkey = Hypercore.blockEncryptionKey(key, encryptionKey)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The 32-byte Hypercore public key.",
+              "type": "Buffer"
+            },
+            {
+              "name": "encryptionKey",
+              "optional": false,
+              "description": "The 32-byte master encryption key.",
+              "type": "Buffer"
+            }
+          ],
+          "returns": "Returns a block encryption key derived from the `key` and `encryptionKey`.",
+          "returnType": "Buffer",
+          "description": "Derive a block-level encryption key from the Hypercore public key and a\nmaster encryption key using BLAKE2b.",
+          "examples": [
+            "const blockKey = Hypercore.blockEncryptionKey(core.key, encryptionKey)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L142",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "getProtocolMuxer",
+          "signature": "const mux = Hypercore.getProtocolMuxer(stream)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "stream",
+              "optional": false,
+              "description": "A Hypercore protocol stream (as returned by `core.replicate()` or `Hypercore.createProtocolStream()`).",
+              "type": "object"
+            }
+          ],
+          "returns": "Returns a protomux instance from the provided `stream` Hypercore protocol stream.",
+          "returnType": "object",
+          "description": "Extract the Protomux instance attached to a Hypercore protocol stream.",
+          "examples": [
+            "const stream = core.replicate(true)\nconst mux = Hypercore.getProtocolMuxer(stream)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L146",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "createCore",
+          "signature": "const core = Hypercore.createCore(storage, opts)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "storage",
+              "optional": false,
+              "description": "Path to a storage directory, or a CoreStorage instance.",
+              "type": "string|object"
+            },
+            {
+              "name": "opts",
+              "optional": false,
+              "description": "Options forwarded to the Core constructor.",
+              "type": "HypercoreOptions"
+            }
+          ],
+          "returns": "Returns the internal core using the `storage` and `opts` without creating a full Hypercore instance.",
+          "returnType": "object",
+          "description": "Create the raw internal Core object directly, bypassing the Hypercore\nsession layer. Useful for low-level tooling that needs direct storage access.",
+          "examples": [
+            "const core = Hypercore.createCore('./storage', { key: myKey })"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L150",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "createProtocolStream",
+          "signature": "const stream = Hypercore.createProtocolStream(isInitiator, opts = {})",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "isInitiator",
+              "optional": false,
+              "description": "`isInitiator` can be a framed stream, a protomux or a boolean for whether the stream should be the initiator in the noise handshake.",
+              "type": "boolean|object"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "type": "ProtocolStreamOptions"
+            }
+          ],
+          "returns": "The outer raw stream with a `.noiseStream.userData` Protomux attached.",
+          "returnType": "object",
+          "description": "Create an encrypted noise stream with a protomux instance attached used for Hypercore's replication protocol.",
+          "options": [
+            {
+              "name": "ondiscoverykey",
+              "description": "A handler for when a discovery key is set over the stream for corestore management"
+            }
+          ],
+          "examples": [
+            "{\n  ondiscoverykey: () => {}, // A handler for when a discovery key is set over the stream for corestore management\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L154",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "defaultStorage",
+          "signature": "const storage = Hypercore.defaultStorage(storage, opts = {})",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "storage",
+              "optional": false,
+              "description": "Directory path string or an existing CoreStorage instance (returned as-is).",
+              "type": "string|object"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "description": "Extra options forwarded to the CoreStorage constructor.",
+              "type": "DefaultStorageOptions"
+            }
+          ],
+          "returns": "Returns a default hypercore storage.",
+          "returnType": "object",
+          "description": "Wrap a path or existing CoreStorage object into a CoreStorage instance.\nCalled internally by the constructor; exposed for advanced use.",
+          "examples": [
+            "const storage = Hypercore.defaultStorage('./my-core')"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L188",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "clearRequests",
+          "signature": "Hypercore.clearRequests(session, err)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "session",
+              "optional": false
+            },
+            {
+              "name": "err",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L453",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "destroyRequests",
+          "signature": "Hypercore.destroyRequests(session, err)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "session",
+              "optional": false
+            },
+            {
+              "name": "err",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L457",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "treeHashFromStorage",
+          "signature": "await Hypercore.treeHashFromStorage(session, length = session.length)",
+          "kind": "method",
+          "static": true,
+          "async": true,
+          "params": [
+            {
+              "name": "session",
+              "optional": false
+            },
+            {
+              "name": "length",
+              "optional": true,
+              "default": "session.length"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L462",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "signature": "const snapshot = core.snapshot([options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "Options forwarded to `core.session()` with `snapshot: true` set automatically.",
+              "type": "SessionOptions"
+            }
+          ],
+          "returns": "A new read-only Hypercore session locked to the current length.",
+          "returnType": "Hypercore",
+          "description": "Same as [`core.session(options)`](#coresessionoptions), but backed by a storage snapshot so will not truncate nor append.",
+          "examples": [
+            "const snap = core.snapshot()\nconsole.log(snap.length) // frozen at the moment snapshot() was called"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L209",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "compact",
+          "signature": "core.compact()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L480",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "session",
+          "signature": "const session = core.session([options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "description": "Options are inherited from the parent instance, unless they are re-set.",
+              "type": "SessionOptions"
+            }
+          ],
+          "returns": "A new Hypercore session sharing the same underlying storage.",
+          "returnType": "Hypercore",
+          "description": "Creates a new Hypercore instance that shares the same underlying core.",
+          "options": [
+            {
+              "name": "weak",
+              "default": "false",
+              "description": "Creates the session as a \"weak ref\" which closes when all non-weak sessions are closed"
+            },
+            {
+              "name": "exclusive",
+              "default": "false",
+              "description": "Create a session with exclusive access to the core. Creating an exclusive session on a core with other exclusive sessions, will wait for the session with access to close before the next exclusive session is `ready`"
+            },
+            {
+              "name": "checkout",
+              "default": "undefined",
+              "description": "A index to checkout the core at. Checkout sessions must be an atom or a named session"
+            },
+            {
+              "name": "atom",
+              "default": "undefined",
+              "description": "A storage atom for making atomic batch changes across hypercores"
+            },
+            {
+              "name": "name",
+              "default": "null",
+              "description": "Name the session creating a persisted branch of the core. Still beta so may break in the future"
+            }
+          ],
+          "examples": [
+            "{\n  weak: false // Creates the session as a \"weak ref\" which closes when all non-weak sessions are closed\n  exclusive: false, // Create a session with exclusive access to the core. Creating an exclusive session on a core with other exclusive sessions, will wait for the session with access to close before the next exclusive session is `ready`\n  checkout: undefined, // A index to checkout the core at. Checkout sessions must be an atom or a named session\n  atom: undefined, // A storage atom for making atomic batch changes across hypercores\n  name: null, // Name the session creating a persisted branch of the core. Still beta so may break in the future\n}",
+            "const core = new Hypercore('./atom-example')\nawait core.ready()\n\nawait core.append('block 1')\n\nconst atom = core.state.storage.createAtom()\nconst atomicSession = core.session({ atom })\n\nawait core.append('block 2') // Add blocks not using the atom\n\nawait atomicSession.append('atom block 2') // Add different block to atom\nawait atom.flush()\n\nconsole.log((await core.get(core.length - 1)).toString()) // prints 'atom block 2' not 'block 2'"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L217",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "setEncryptionKey",
+          "signature": "await core.setEncryptionKey(key, [opts])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The 32-byte encryption key to use for block encryption/decryption.",
+              "type": "Buffer"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "type": "SetEncryptionKeyOptions"
+            }
+          ],
+          "returns": "Resolves once the encryption provider has been installed.",
+          "returnType": "Promise<void>",
+          "description": "Set the encryption key.",
+          "options": [
+            {
+              "name": "block",
+              "default": "false",
+              "description": "Whether the key is for block encryption"
+            }
+          ],
+          "examples": [
+            "{\n  block: false, // Whether the key is for block encryption\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L252",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "setEncryption",
+          "signature": "await core.setEncryption(encryption)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "encryption",
+              "optional": false,
+              "description": "An encryption provider with `padding`, `encrypt`, and `decrypt` methods, or `null` to disable encryption.",
+              "type": "object|null"
+            }
+          ],
+          "returns": "Resolves once the encryption provider has been installed.",
+          "returnType": "Promise<void>",
+          "description": "Set the encryption, which should satisfy the [HypercoreEncryption](https://github.com/holepunchto/hypercore-encryption) interface.",
+          "examples": [
+            "await core.setEncryption(new DefaultEncryption(encryptionKey, core.key))"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L258",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "setGroup",
+          "signature": "await core.setGroup(topic)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "topic",
+              "optional": false,
+              "description": "`topic` is a 32 byte buffer.",
+              "type": "Buffer"
+            }
+          ],
+          "description": "Set the group `topic` that the hypercore belongs to. Useful for grouping hypercores together that need to update a larger data structure (eg. `autobee`) that is comprised of them. See `corestore`'s `store.notifyGroup(topic)` for more details.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L273",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "setKeyPair",
+          "signature": "core.setKeyPair(keyPair)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "keyPair",
+              "optional": false,
+              "description": "The new Ed25519 key pair to use for signing.",
+              "type": "{publicKey: Buffer, secretKey: Buffer}"
+            }
+          ],
+          "returnType": "void",
+          "description": "Update the core's `keyPair`. Advanced as the `keyPair` is used throughout Hypercore, for example verifying blocks, identifying the core, etc.",
+          "examples": [
+            "core.setKeyPair({ publicKey: pubKey, secretKey: secKey })"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L278",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "setActive",
+          "signature": "core.setActive(active)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "bool",
+              "optional": false,
+              "description": "Pass `true` to mark the core as active, `false` to deactivate.",
+              "type": "boolean"
+            }
+          ],
+          "returnType": "void",
+          "description": "Set the core to be active or not. A core is considered 'active' if it should linger to download blocks from peers.",
+          "examples": [
+            "core.setActive(false) // stop lingering for peer downloads"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L282",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "replicator",
+          "signature": "core.replicator",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L791",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "close",
+          "signature": "await core.close([{ error }])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "options",
+              "optional": true,
+              "default": "{}",
+              "description": "Optional close options.",
+              "type": "CloseOptions"
+            }
+          ],
+          "returns": "Resolves once the session (and underlying core if no other sessions remain) is fully closed.",
+          "returnType": "Promise<void>",
+          "description": "Fully close this core. Passing an error via `{ error }` is optional and all pending replicator requests will be rejected with the error.",
+          "examples": [
+            "await core.close()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L489",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "clearRequests",
+          "signature": "core.clearRequests(activeRequests, error)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "activeRequests",
+              "optional": false
+            },
+            {
+              "name": "error",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L832",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "commit",
+          "signature": "const { byteLength, length } = await core.commit(session, opts = {})",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "session",
+              "optional": false,
+              "description": "The named or atom session whose staged blocks should be committed.",
+              "type": "Hypercore"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "type": "CommitOptions"
+            }
+          ],
+          "returns": "Returns `null` if committing failed.",
+          "returnType": "Promise<{length: number, byteLength: number}|null>",
+          "description": "Attempt to apply blocks from the session to the `core`. `core` must be a default core, aka a non-named session.",
+          "options": [
+            {
+              "name": "length",
+              "description": "the core's length after committing the blocks"
+            },
+            {
+              "name": "treeLength",
+              "description": "The expected length of the core's merkle tree prior to commit"
+            },
+            {
+              "name": "keyPair",
+              "description": "The keypair to use when committing"
+            },
+            {
+              "name": "signature",
+              "default": "undefined",
+              "description": "The signature for the blocks being committed"
+            }
+          ],
+          "examples": [
+            "{\n  length: session.length, // the core's length after committing the blocks\n  treeLength: core.length, // The expected length of the core's merkle tree prior to commit\n  keyPair: core.keyPair, // The keypair to use when committing\n  signature: undefined, // The signature for the blocks being committed\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L549",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "replicate",
+          "signature": "const stream = core.replicate(isInitiatorOrReplicationStream, opts = {})",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "isInitiator",
+              "optional": false,
+              "description": "`true`/`false` for the noise handshake role, or an existing stream / Protomux to attach to.",
+              "type": "boolean|object"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "description": "`opts` are same as [`Hypercore.createProtocolStream()`](#hypercorecreateprotocolstreamisinitiator-opts--).",
+              "type": "ProtocolStreamOptions"
+            }
+          ],
+          "returns": "The replication stream (a raw duplex stream with a Protomux attached).",
+          "returnType": "object",
+          "description": "Create a replication stream. You should pipe this to another Hypercore instance.",
+          "examples": [
+            "// assuming we have two cores, localCore + remoteCore, sharing the same key\n// on a server\nconst net = require('net')\nconst server = net.createServer(function (socket) {\n  socket.pipe(remoteCore.replicate(false)).pipe(socket)\n})\n\n// on a client\nconst socket = net.connect(...)\nsocket.pipe(localCore.replicate(true)).pipe(socket)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L556",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "id",
+          "signature": "core.id",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "The z-base-32 encoded public key, or `null` before the core is opened.",
+          "returnType": "string|null",
+          "description": "String containing the id (z-base-32 of the public key) identifying this core.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L592",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "key",
+          "signature": "core.key",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "The 32-byte public key, or `null` before the core is opened.",
+          "returnType": "Buffer|null",
+          "description": "Buffer containing the public key identifying this core.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L596",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "discoveryKey",
+          "signature": "core.discoveryKey",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "The 32-byte discovery key, or `null` before the core is opened.",
+          "returnType": "Buffer|null",
+          "description": "Buffer containing a key derived from the core's public key. In contrast to `core.key` this key does not allow you to verify the data but can be used to announce or look for peers that are sharing the same core, without leaking the core key.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L600",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "manifest",
+          "signature": "core.manifest",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L983",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "length",
+          "signature": "core.length",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "The total number of blocks in the core (0 before the core is opened).",
+          "returnType": "number",
+          "description": "How many blocks of data are available on this core.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L608",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "signedLength",
+          "signature": "core.signedLength",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "The number of quorum-signed blocks (0 before the core is opened).",
+          "returnType": "number",
+          "description": "How many blocks of data are available on this core that have been signed by a quorum. This is equal to `core.length` for Hypercores with a single signer.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L613",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "byteLength",
+          "signature": "core.byteLength",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Deprecated. Use `const { byteLength } = await core.info()`.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L620",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "remoteContiguousLength",
+          "signature": "core.remoteContiguousLength",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "The remote contiguous length (0 before the core is opened).",
+          "returnType": "number",
+          "description": "How many blocks are contiguously available starting from the first block of this core on any known remote. This is only updated when a remote thinks it is fully contiguous such that they have all known blocks.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L626",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "contiguousLength",
+          "signature": "core.contiguousLength",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "The local contiguous length (0 before the core is opened).",
+          "returnType": "number",
+          "description": "How many blocks are contiguously available starting from the first block of this core.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L631",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "contiguousByteLength",
+          "signature": "core.contiguousByteLength",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1036",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "fork",
+          "signature": "core.fork",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "The current fork counter (incremented on each truncation; 0 before the core is opened).",
+          "returnType": "number",
+          "description": "What is the current fork id of this core?",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L640",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "padding",
+          "signature": "core.padding",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "Number of padding bytes prepended to each block (0 when encryption is disabled).",
+          "returnType": "number",
+          "description": "How much padding is applied to each block of this core? Will be `0` unless block encryption is enabled.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L645",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "peers",
+          "signature": "core.peers",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "Live array of Replicator peer objects (empty before the core is opened).",
+          "returnType": "Array<object>",
+          "description": "Array of current peers the core is replicating with.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L653",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "globalCache",
+          "signature": "core.globalCache",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1070",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "recovering",
+          "signature": "core.recovering",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1074",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "ready",
+          "signature": "await core.ready()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "Resolves once the core is ready for reading and writing.",
+          "returnType": "Promise<void>",
+          "description": "Wait for the core to fully open.",
+          "examples": [
+            "const core = new Hypercore('./storage')\nawait core.ready()\nconsole.log(core.key) // now available"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L665",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "recover",
+          "signature": "await core.recover()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1090",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "setUserData",
+          "signature": "await core.setUserData(key, value)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "The user-data key (a string).",
+              "type": "string"
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "description": "The value to store (Buffer or UTF-8 string).",
+              "type": "Buffer|string"
+            }
+          ],
+          "returns": "Resolves once the value has been persisted to storage.",
+          "returnType": "Promise<void>",
+          "description": "Set a key in the User Data key-value store.",
+          "examples": [
+            "await core.setUserData('version', Buffer.from('1.0'))"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L674",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "getUserData",
+          "signature": "const value = await core.getUserData(key)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "`key` is a string.",
+              "type": "string"
+            }
+          ],
+          "returns": "Return the value for a key in the User Data key-value store.",
+          "returnType": "Promise<Buffer|null>",
+          "description": "`key` is a string.",
+          "examples": [
+            "const value = await core.getUserData('version')\nconsole.log(value && value.toString()) // '1.0'"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L681",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "transferSession",
+          "signature": "core.transferSession(core)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "core",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1126",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "findingPeers",
+          "signature": "const done = core.findingPeers()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "A `done()` callback to call when peer discovery is complete.",
+          "returnType": "function",
+          "description": "Create a hook that tells Hypercore you are finding peers for this core in the background. Call `done` when your current discovery iteration is done. If you're using Hyperswarm, you'd normally call this after a `swarm.flush()` finishes.",
+          "examples": [
+            "const done = core.findingPeers()\nswarm.flush().then(done, done)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L711",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "info",
+          "signature": "const info = await core.info([options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "opts",
+              "optional": true,
+              "type": "InfoOptions"
+            }
+          ],
+          "returns": "An `Info` object with `key`, `discoveryKey`, `length`, `contiguousLength`, `byteLength`, `fork`, `padding`, and optional `storage` fields.",
+          "returnType": "Promise<object>",
+          "description": "Get information about this core, such as its total size in bytes.",
+          "options": [
+            {
+              "name": "storage",
+              "default": "false",
+              "description": "get storage estimates in bytes, disabled by default"
+            }
+          ],
+          "examples": [
+            "Info {\n  key: Buffer(...),\n  discoveryKey: Buffer(...),\n  length: 18,\n  contiguousLength: 16,\n  byteLength: 742,\n  fork: 0,\n  padding: 8,\n  storage: {\n    oplog: 8192,\n    tree: 4096,\n    blocks: 4096,\n    bitfield: 4096\n  }\n}",
+            "{\n  storage: false // get storage estimates in bytes, disabled by default\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L727",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "update",
+          "signature": "const updated = await core.update([options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "opts",
+              "optional": true,
+              "type": "UpdateOptions"
+            }
+          ],
+          "returns": "`true` if the core was updated to a new length, `false` otherwise.",
+          "returnType": "Promise<boolean>",
+          "description": "Waits for initial proof of the new core length until all `findingPeers` calls have finished.",
+          "options": [
+            {
+              "name": "wait",
+              "default": "false"
+            },
+            {
+              "name": "activeRequests",
+              "default": "undefined",
+              "description": "Advanced option. Pass requests for replicating blocks"
+            },
+            {
+              "name": "force",
+              "default": "false",
+              "description": "Force an update even if core is writable."
+            }
+          ],
+          "examples": [
+            "const updated = await core.update()\n\nconsole.log('core was updated?', updated, 'length is', core.length)",
+            "{\n  wait: false,\n  activeRequests: undefined, // Advanced option. Pass requests for replicating blocks\n  force: false, // Force an update even if core is writable.\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L733",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "seek",
+          "signature": "const [index, relativeOffset] = await core.seek(bytes, [options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "bytes",
+              "optional": false,
+              "description": "The byte offset to seek to (zero-based).",
+              "type": "number"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "Options controlling wait and timeout behaviour.",
+              "type": "SeekOptions"
+            }
+          ],
+          "returns": "Returns `[index, relativeOffset]`, where `index` is the data block the `bytes` is contained in and `relativeOffset` is the relative byte offset in the data block.",
+          "returnType": "Promise<[number, number]>",
+          "description": "Seek to a byte offset.",
+          "options": [
+            {
+              "name": "wait",
+              "default": "true",
+              "description": "wait for data to be downloaded"
+            },
+            {
+              "name": "timeout",
+              "default": "0",
+              "description": "wait at max some milliseconds (0 means no timeout)"
+            },
+            {
+              "name": "activeRequests",
+              "default": "undefined",
+              "description": "Advanced option. Pass requests for replicating blocks"
+            }
+          ],
+          "examples": [
+            "await core.append([Buffer.from('abc'), Buffer.from('d'), Buffer.from('efg')])\n\nconst first = await core.seek(1) // returns [0, 1]\nconst second = await core.seek(3) // returns [1, 0]\nconst third = await core.seek(5) // returns [2, 1]",
+            "{\n  wait: true, // wait for data to be downloaded\n  timeout: 0, // wait at max some milliseconds (0 means no timeout)\n  activeRequests: undefined // Advanced option. Pass requests for replicating blocks\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L766",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "has",
+          "signature": "const has = await core.has(start, [end])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "start",
+              "optional": false,
+              "description": "Zero-based index of the first block to check.",
+              "type": "number"
+            },
+            {
+              "name": "end",
+              "optional": true,
+              "default": "start + 1",
+              "description": "Exclusive end index (defaults to `start + 1`, that is checks a single block).",
+              "type": "number"
+            }
+          ],
+          "returns": "`true` if every block in `[start, end)` is available locally.",
+          "returnType": "Promise<boolean>",
+          "description": "Check if the core has all blocks between `start` and `end`.",
+          "examples": [
+            "const hasBlock = await core.has(5)\nconst hasRange = await core.has(0, 10)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L808",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "get",
+          "signature": "const block = await core.get(index, [options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "index",
+              "optional": false,
+              "description": "Zero-based index of the block to retrieve.",
+              "type": "number"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "type": "GetOptions"
+            }
+          ],
+          "returns": "The block value (decoded per `valueEncoding`), or `null` if the block is not available and `wait` is `false`.",
+          "returnType": "Promise<Buffer|null>",
+          "description": "Get a block of data. If the data is not available locally this method will prioritize and wait for the data to be downloaded.",
+          "options": [
+            {
+              "name": "wait",
+              "default": "true",
+              "description": "wait for block to be downloaded"
+            },
+            {
+              "name": "onwait",
+              "description": "hook that is called if the get is waiting for download"
+            },
+            {
+              "name": "timeout",
+              "default": "0",
+              "description": "wait at max some milliseconds (0 means no timeout)"
+            },
+            {
+              "name": "activeRequests",
+              "default": "undefined",
+              "description": "Advanced option. Pass BlockRequest for replicating the block"
+            },
+            {
+              "name": "valueEncoding",
+              "description": "defaults to the core's valueEncoding"
+            },
+            {
+              "name": "decrypt",
+              "default": "true",
+              "description": "automatically decrypts the block if encrypted"
+            },
+            {
+              "name": "raw",
+              "default": "false",
+              "description": "Return block without decoding"
+            }
+          ],
+          "examples": [
+            "// get block #42\nconst block = await core.get(42)\n\n// get block #43, but only wait 5s\nconst blockIfFast = await core.get(43, { timeout: 5000 })\n\n// get block #44, but only if we have it locally\nconst blockLocal = await core.get(44, { wait: false })",
+            "{\n  wait: true, // wait for block to be downloaded\n  onwait: () => {}, // hook that is called if the get is waiting for download\n  timeout: 0, // wait at max some milliseconds (0 means no timeout)\n  activeRequests: undefined, // Advanced option. Pass BlockRequest for replicating the block\n  valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to the core's valueEncoding\n  decrypt: true, // automatically decrypts the block if encrypted\n  raw: false, // Return block without decoding\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L840",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "clear",
+          "signature": "const cleared = await core.clear(start, [end], [options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "start",
+              "optional": false,
+              "description": "Zero-based index of the first block to clear.",
+              "type": "number"
+            },
+            {
+              "name": "end",
+              "optional": true,
+              "default": "start + 1",
+              "description": "Exclusive end index (defaults to `start + 1`).",
+              "type": "number"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "type": "ClearOptions"
+            }
+          ],
+          "returns": "`{ blocks }` with the count of cleared blocks when `opts.diff` is true, otherwise `null`.",
+          "returnType": "Promise<{blocks: number}|null>",
+          "description": "Clear stored blocks between `start` and `end`, reclaiming storage when possible.",
+          "options": [
+            {
+              "name": "diff",
+              "default": "false",
+              "description": "Returned `cleared` bytes object is null unless you enable this"
+            }
+          ],
+          "examples": [
+            "await core.clear(4) // clear block 4 from your local cache\nawait core.clear(0, 10) // clear block 0-10 from your local cache",
+            "{\n  diff: false // Returned `cleared` bytes object is null unless you enable this\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L871",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "purge",
+          "signature": "await core.purge()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1422",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "markBlock",
+          "signature": "await core.markBlock(start, end = start + 1)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "start",
+              "optional": false,
+              "description": "Zero-based index of the first block to mark.",
+              "type": "number"
+            },
+            {
+              "name": "end",
+              "optional": true,
+              "default": "start + 1",
+              "description": "`end` is non-inclusive and defaults to `start + 1` so `core.markBlock(index)` only marks the block at `index`.",
+              "type": "number"
+            }
+          ],
+          "returns": "Resolves once all marks in the range have been written to storage.",
+          "returnType": "Promise<void>",
+          "description": "Manually mark a block or range of blocks to be retained when sweeping. Useful to mark blocks without loading them into memory. `end` is non-inclusive and defaults to `start + 1` so `core.markBlock(index)` only marks the block at `index`.",
+          "examples": [
+            "await core.markBlock(5)       // mark block 5\nawait core.markBlock(0, 10)   // mark blocks 0\u20139"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L971",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "clearMarkings",
+          "signature": "await core.clearMarkings()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "returns": "Resolves once all marks have been cleared from storage.",
+          "returnType": "Promise<void>",
+          "description": "Manually remove all markings. Automatically called when calling `core.startMarking()`.",
+          "examples": [
+            "await core.clearMarkings()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L985",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "startMarking",
+          "signature": "await core.startMarking()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "returns": "Resolves once marking mode is active and previous marks are cleared.",
+          "returnType": "Promise<void>",
+          "description": "This enables marking mode for the \"mark & sweep\" approach to clear hypercore storage. When called the current markings are cleared.",
+          "examples": [
+            "await core.startMarking()\nawait core.get(2)\nawait core.get(4)\nawait core.sweep() // All blocks but blocks 2 & 4 are cleared"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L994",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "sweep",
+          "signature": "await core.sweep(opts)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "options",
+              "optional": true,
+              "default": "{}",
+              "type": "SweepOptions"
+            }
+          ],
+          "returns": "Resolves once all unmarked blocks have been cleared.",
+          "returnType": "Promise<void>",
+          "description": "Clear all unmarked blocks from storage.",
+          "options": [
+            {
+              "name": "batchSize",
+              "default": "1000",
+              "description": "How frequently to flush clears to storage."
+            }
+          ],
+          "examples": [
+            "{\n  batchSize: 1000 // How frequently to flush clears to storage.\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1010",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "createReadStream",
+          "signature": "const stream = core.createReadStream([options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "opts",
+              "optional": true,
+              "type": "ReadStreamOptions"
+            }
+          ],
+          "returns": "A Readable stream that emits decoded blocks.",
+          "returnType": "object",
+          "description": "Make a read stream to read a range of data out at once.",
+          "options": [
+            {
+              "name": "start",
+              "default": "0"
+            },
+            {
+              "name": "end"
+            },
+            {
+              "name": "wait",
+              "description": "Whether to wait for updates from peers"
+            },
+            {
+              "name": "timeout",
+              "description": "How long to wait for updates from peers"
+            },
+            {
+              "name": "live",
+              "default": "false",
+              "description": "Wait for next block keeping stream open / live"
+            },
+            {
+              "name": "snapshot",
+              "default": "true",
+              "description": "auto set end to core.length on open or update it on every read"
+            }
+          ],
+          "examples": [
+            "// read the full core\nconst fullStream = core.createReadStream()\n\n// read from block 10-14\nconst partialStream = core.createReadStream({ start: 10, end: 15 })\n\n// pipe the stream somewhere using the .pipe method on Node.js or consume it as\n// an async iterator\n\nfor await (const data of fullStream) {\n  console.log('data:', data)\n}",
+            "{\n  start: 0,\n  end: core.length,\n  wait: core.wait, // Whether to wait for updates from peers\n  timeout: core.timeout, // How long to wait for updates from peers\n  live: false, // Wait for next block keeping stream open / live\n  snapshot: true // auto set end to core.length on open or update it on every read\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1040",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "createWriteStream",
+          "signature": "const stream = core.createWriteStream()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "A Writable stream; each chunk written becomes one block appended to the core.",
+          "returnType": "object",
+          "description": "Make a write stream to append chunks as blocks.",
+          "examples": [
+            "const ws = core.createWriteStream()\n\n// Listen for stream finishing\nconst done = new Promise((resolve) => ws.on('finish', resolve))\n\nfor (const data of ['hello', 'world']) ws.write(data)\nws.end()\n\nawait done\n\nconsole.log(await core.get(core.length - 2)) // 'hello'\nconsole.log(await core.get(core.length - 1)) // 'world'"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1044",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "createByteStream",
+          "signature": "const bs = core.createByteStream([options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "opts",
+              "optional": true,
+              "type": "ByteStreamOptions"
+            }
+          ],
+          "returns": "A Readable stream that emits raw Buffer chunks spanning the requested byte range.",
+          "returnType": "object",
+          "description": "Make a byte stream to read a range of bytes.",
+          "options": [
+            {
+              "name": "byteOffset",
+              "default": "0",
+              "description": "Offset where to start from"
+            },
+            {
+              "name": "byteLength",
+              "description": "How many bytes to read"
+            },
+            {
+              "name": "prefetch",
+              "default": "32",
+              "description": "How many bytes to download at a time"
+            }
+          ],
+          "examples": [
+            "// Read the full core\nconst fullStream = core.createByteStream()\n\n// Read from byte 3, and from there read 50 bytes\nconst partialStream = core.createByteStream({ byteOffset: 3, byteLength: 50 })\n\n// Consume it as an async iterator\nfor await (const data of fullStream) {\n  console.log('data:', data)\n}\n\n// Or pipe it somewhere like any stream:\npartialStream.pipe(process.stdout)",
+            "{\n  byteOffset: 0, // Offset where to start from\n  byteLength: core.byteLength - options.byteOffset, // How many bytes to read\n  prefetch: 32 // How many bytes to download at a time\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1048",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "download",
+          "signature": "const range = core.download([range])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "range",
+              "optional": true,
+              "description": "The block range to download. Omit to download the entire core.",
+              "type": "DownloadRange"
+            }
+          ],
+          "returns": "A Download handle with a `.done()` promise and a `.destroy()` method to cancel.",
+          "returnType": "object",
+          "description": "Download a range of data.",
+          "options": [
+            {
+              "name": "start",
+              "default": "startIndex"
+            },
+            {
+              "name": "end",
+              "default": "nonInclusiveEndIndex"
+            },
+            {
+              "name": "blocks"
+            },
+            {
+              "name": "linear",
+              "default": "false",
+              "description": "download range linearly and not randomly"
+            },
+            {
+              "name": "activeRequests",
+              "default": "undefined",
+              "description": "Advanced option. Pass requests for replicating blocks"
+            }
+          ],
+          "examples": [
+            "const download = core.download({ start: 0, end: 10 })\nawait download.done()",
+            "{\n  start: startIndex,\n  end: nonInclusiveEndIndex,\n  blocks: [index1, index2, ...],\n  linear: false, // download range linearly and not randomly\n  activeRequests: undefined // Advanced option. Pass requests for replicating blocks\n}",
+            "// Note that this will never be considered downloaded as the range\n// will keep waiting for new blocks to be appended.\ncore.download({ start: 0, end: -1 })",
+            "core.download({ blocks: [4, 9, 7] })",
+            "// will stop downloading now\nrange.destroy()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1052",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "undownload",
+          "signature": "core.undownload(range)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "range",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1678",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "cancel",
+          "signature": "core.cancel(request)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "request",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1683",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "truncate",
+          "signature": "await core.truncate(newLength, [options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "newLength",
+              "optional": true,
+              "default": "0",
+              "description": "The target length to truncate to (must be \u2264 current `core.length`).",
+              "type": "number"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "type": "TruncateOptions"
+            }
+          ],
+          "returns": "Resolves once the truncation has been signed and written to storage.",
+          "returnType": "Promise<void>",
+          "description": "Truncate the core to a smaller length.",
+          "options": [
+            {
+              "name": "fork",
+              "description": "The new fork id after truncating"
+            },
+            {
+              "name": "keyPair",
+              "description": "Key pair used for signing the truncation"
+            },
+            {
+              "name": "signature",
+              "default": "null",
+              "description": "Set signature for truncation"
+            }
+          ],
+          "examples": [
+            "{\n  fork: core.fork + 1, // The new fork id after truncating\n  keyPair: core.keyPair, // Key pair used for signing the truncation\n  signature: null, // Set signature for truncation\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1066",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "append",
+          "signature": "const { length, byteLength } = await core.append(block, options = {})",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "blocks",
+              "optional": false,
+              "description": "A single block, or an array of blocks, to append.",
+              "type": "Buffer|Array<Buffer>"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "type": "AppendOptions"
+            }
+          ],
+          "returns": "The new `length` and `byteLength` of the core after appending.",
+          "returnType": "Promise<{length: number, byteLength: number}>",
+          "description": "Append a block of data (or an array of blocks) to the core. Returns the new length and byte length of the core.",
+          "options": [
+            {
+              "name": "writable",
+              "default": "false",
+              "description": "Enabled ignores writable check. Does not override whether core is writable."
+            },
+            {
+              "name": "maxLength",
+              "default": "undefined",
+              "description": "The maximum resulting length of the core after appending"
+            },
+            {
+              "name": "keyPair",
+              "description": "KeyPair used to sign the blocks"
+            },
+            {
+              "name": "signature",
+              "default": "null",
+              "description": "Set signature for blocks"
+            }
+          ],
+          "examples": [
+            "// simple call append with a new block of data\nawait core.append(Buffer.from('I am a block of data'))\n\n// pass an array to append multiple blocks as a batch\nawait core.append([Buffer.from('batch block 1'), Buffer.from('batch block 2')])",
+            "{\n  writable: false // Enabled ignores writable check. Does not override whether core is writable.\n  maxLength: undefined // The maximum resulting length of the core after appending\n  keyPair: core.keyPair // KeyPair used to sign the block(s)\n  signature: null // Set signature for block(s)\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1088",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "signable",
+          "signature": "const buffer = await core.signable([length], [fork])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "length",
+              "optional": true,
+              "default": "-1",
+              "description": "The length to sign for (defaults to `core.length`).",
+              "type": "number"
+            },
+            {
+              "name": "fork",
+              "optional": true,
+              "default": "-1",
+              "description": "The fork ID to include (defaults to `core.fork`).",
+              "type": "number"
+            }
+          ],
+          "returns": "Return a buffer which encodes the core's `key`, tree hash (`core.treeHash()`), `length`, & `fork`.",
+          "returnType": "Promise<Buffer>",
+          "description": "Produce the signable payload for a given tree state. The payload encodes the\ncore's `key`, tree hash (`core.treeHash()`), `length`, and `fork`.",
+          "examples": [
+            "const payload = await core.signable()\nconst sig = sodium.crypto_sign_detached(payload, secretKey)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1126",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "treeHash",
+          "signature": "const hash = await core.treeHash([length])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "length",
+              "optional": true,
+              "default": "-1",
+              "description": "Tree length to hash at (defaults to `core.length`).",
+              "type": "number"
+            }
+          ],
+          "returns": "A 32-byte BLAKE2b hash of the Merkle tree roots at the given length.",
+          "returnType": "Promise<Buffer>",
+          "description": "Get the Merkle Tree hash of the core at a given length, defaulting to the current length of the core.",
+          "examples": [
+            "const hash = await core.treeHash()\nconsole.log(hash.toString('hex'))"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1134",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "missingNodes",
+          "signature": "await core.missingNodes(index)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "index",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1804",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "proof",
+          "signature": "const proof = await core.proof(opts)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "opts",
+              "optional": false,
+              "type": "ProofOptions"
+            }
+          ],
+          "returns": "A settled `TreeProof` object that can be serialised and sent to a remote peer.",
+          "returnType": "Promise<object>",
+          "description": "Generate a proof (a `TreeProof` instance) for the request `opts`.",
+          "options": [
+            {
+              "name": "block",
+              "description": "Block request"
+            },
+            {
+              "name": "hash",
+              "description": "Hash Request"
+            },
+            {
+              "name": "seek",
+              "description": "Seek Request"
+            },
+            {
+              "name": "upgrade",
+              "description": "Upgrade request"
+            }
+          ],
+          "examples": [
+            "{\n  block: { index, nodes }, // Block request\n  hash: { index, nodes }, // Hash Request\n  seek: { bytes, padding }, // Seek Request\n  upgrade: { start, length } // Upgrade request\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1148",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "applyProof",
+          "signature": "await core.applyProof(proof, from)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "proof",
+              "optional": false
+            },
+            {
+              "name": "from",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1828",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "verifyFullyRemote",
+          "signature": "const batch = await core.verifyFullyRemote(proof)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "proof",
+              "optional": false,
+              "description": "A proof object as produced by a remote core's `core.proof()`.",
+              "type": "object"
+            }
+          ],
+          "returns": "Return the merkle tree batch from the proof.",
+          "returnType": "Promise<object>",
+          "description": "Note that you cannot seek & provide a block / hash request when upgrading.",
+          "examples": [
+            "const batch = await core.verifyFullyRemote(remoteProof)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1165",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "generateRemoteProofForTreeNode",
+          "signature": "core.generateRemoteProofForTreeNode(treeNodeIndex)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "treeNodeIndex",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1848",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "recoverFromRemoteProof",
+          "signature": "await core.recoverFromRemoteProof(remoteProof)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "remoteProof",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1857",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "recoverTreeNodeFromPeers",
+          "signature": "core.recoverTreeNodeFromPeers()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1883",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "registerExtension",
+          "signature": "const ext = core.registerExtension(name, handlers = {})",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "name",
+              "optional": false,
+              "description": "The unique name that identifies this extension across peers.",
+              "type": "string"
+            },
+            {
+              "name": "handlers",
+              "optional": true,
+              "default": "{}",
+              "type": "object"
+            }
+          ],
+          "returns": "The extension object with `send(message, peer)`, `broadcast(message)`, and `destroy()` methods.",
+          "returnType": "object",
+          "description": "Register a custom protocol extension. This is a legacy implementation and is no longer recommended. Creating a [`Protomux`](https://github.com/holepunchto/protomux) protocol is recommended instead.",
+          "options": [
+            {
+              "name": "encoding",
+              "description": "Compact encoding to use for messages. Defaults to buffer"
+            },
+            {
+              "name": "onmessage",
+              "description": "Callback for when a message for the extension is received"
+            }
+          ],
+          "examples": [
+            "{\n  encoding: 'json' | 'utf-8' | 'binary', // Compact encoding to use for messages. Defaults to buffer\n  onmessage: (message, peer) => { ... } // Callback for when a message for the extension is received\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1223",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "on",
+          "signature": "core.on(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "once",
+          "signature": "core.once(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "off",
+          "signature": "core.off(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "emit",
+          "signature": "core.emit(event, [...args])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "...args",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "core",
+          "signature": "core.core",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L243",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "state",
+          "signature": "core.state",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L244",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "encryption",
+          "signature": "core.encryption",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L245",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "extensions",
+          "signature": "core.extensions",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L246",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "valueEncoding",
+          "signature": "core.valueEncoding",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L248",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "encodeBatch",
+          "signature": "core.encodeBatch",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L249",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "activeRequests",
+          "signature": "core.activeRequests",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L250",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "sessions",
+          "signature": "core.sessions",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L251",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "ongc",
+          "signature": "core.ongc",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L252",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "keyPair",
+          "signature": "core.keyPair",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "{publicKey: Buffer, secretKey: Buffer|null}|null",
+          "description": "Object containing buffers of the core's public and secret key",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L74",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "readable",
+          "signature": "core.readable",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "boolean",
+          "description": "Can we read from this core? After closing the core this will be false.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L75",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "writable",
+          "signature": "core.writable",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "boolean",
+          "description": "Can we append to or truncate this core?",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L76",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "exclusive",
+          "signature": "core.exclusive",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L269",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "opened",
+          "signature": "core.opened",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L270",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "closed",
+          "signature": "core.closed",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L271",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "weak",
+          "signature": "core.weak",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L272",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "snapshotted",
+          "signature": "core.snapshotted",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L273",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "onseq",
+          "signature": "core.onseq",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L274",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "onwait",
+          "signature": "core.onwait",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L275",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "wait",
+          "signature": "core.wait",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L276",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "timeout",
+          "signature": "core.timeout",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L277",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "preload",
+          "signature": "core.preload",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L278",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "closing",
+          "signature": "core.closing",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L279",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "opening",
+          "signature": "core.opening",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L280",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "waits",
+          "signature": "core.waits",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L288",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "close",
+          "signature": "core.on('close')",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Emitted when the core has been fully closed.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L656",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "ready",
+          "signature": "core.on('ready')",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Emitted after the core has initially opened all its internal state.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L669",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "migrate",
+          "signature": "core.on('migrate', key)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/index.js#L1145",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "send",
+          "signature": "ext.send(message, peer)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "message",
+              "optional": false
+            },
+            {
+              "name": "peer",
+              "optional": false
+            }
+          ],
+          "description": "Sends the `message` to a specific `peer`.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "broadcast",
+          "signature": "ext.broadcast(message)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "message",
+              "optional": false
+            }
+          ],
+          "description": "Sends the `message` to all peers.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "destroy",
+          "signature": "ext.destroy()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Unregister and remove extension from the hypercore.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "append",
+          "signature": "core.on('append')",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "'append'",
+              "optional": false
+            }
+          ],
+          "description": "Emitted when the core has been appended to (that is has a new length / byteLength), either locally or remotely.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "truncate",
+          "signature": "core.on('truncate', ancestors, forkId)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "'truncate'",
+              "optional": false
+            },
+            {
+              "name": "ancestors",
+              "optional": false
+            },
+            {
+              "name": "forkId",
+              "optional": false
+            }
+          ],
+          "description": "Emitted when the core has been truncated, either locally or remotely.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "peer-add",
+          "signature": "core.on('peer-add')",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "'peer-add'",
+              "optional": false
+            }
+          ],
+          "description": "Emitted when a new connection has been established with a peer.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "peer-remove",
+          "signature": "core.on('peer-remove')",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "'peer-remove'",
+              "optional": false
+            }
+          ],
+          "description": "Emitted when a peer's connection has been closed.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "upload",
+          "signature": "core.on('upload', index, byteLength, peer)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "'upload'",
+              "optional": false
+            },
+            {
+              "name": "index",
+              "optional": false
+            },
+            {
+              "name": "byteLength",
+              "optional": false
+            },
+            {
+              "name": "peer",
+              "optional": false
+            }
+          ],
+          "description": "Emitted when a block is uploaded to a peer.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "download",
+          "signature": "core.on('download', index, byteLength, peer)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "'download'",
+              "optional": false
+            },
+            {
+              "name": "index",
+              "optional": false
+            },
+            {
+              "name": "byteLength",
+              "optional": false
+            },
+            {
+              "name": "peer",
+              "optional": false
+            }
+          ],
+          "description": "Emitted when a block is downloaded from a peer.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "remote-contiguous-length",
+          "signature": "core.on('remote-contiguous-length', length)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "'remote-contiguous-length'",
+              "optional": false
+            },
+            {
+              "name": "length",
+              "optional": false
+            }
+          ],
+          "description": "Emitted when the max known contiguous `length` from a remote, that is `core.remoteContiguousLength`, is updated. Note this is not emitted when core is truncated.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ReadStream",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "new ReadStream(core, opts = {})",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "core",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/lib/streams.js#L4",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "push",
+          "signature": "readStream.push(data)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "data",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "destroy",
+          "signature": "readStream.destroy([err])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "err",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "destroyed",
+          "signature": "readStream.destroyed",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "signature": "readStream.on(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "once",
+          "signature": "readStream.once(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "off",
+          "signature": "readStream.off(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "emit",
+          "signature": "readStream.emit(event, [...args])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "...args",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "core",
+          "signature": "readStream.core",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/lib/streams.js#L7",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "start",
+          "signature": "readStream.start",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/lib/streams.js#L8",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "end",
+          "signature": "readStream.end",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/lib/streams.js#L9",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "snapshot",
+          "signature": "readStream.snapshot",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/lib/streams.js#L10",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "live",
+          "signature": "readStream.live",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/lib/streams.js#L11",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "wait",
+          "signature": "readStream.wait",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/lib/streams.js#L12",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "timeout",
+          "signature": "readStream.timeout",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/lib/streams.js#L13",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "data",
+          "signature": "readStream.on('data', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "readable",
+          "signature": "readStream.on('readable', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "end",
+          "signature": "readStream.on('end', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "close",
+          "signature": "readStream.on('close', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "error",
+          "signature": "readStream.on('error', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "WriteStream",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "new WriteStream(core)",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "core",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/lib/streams.js#L44",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "write",
+          "signature": "writeStream.write(data)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "data",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "end",
+          "signature": "writeStream.end()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "destroy",
+          "signature": "writeStream.destroy([err])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "err",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "destroyed",
+          "signature": "writeStream.destroyed",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "signature": "writeStream.on(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "once",
+          "signature": "writeStream.once(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "off",
+          "signature": "writeStream.off(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "emit",
+          "signature": "writeStream.emit(event, [...args])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "...args",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "core",
+          "signature": "writeStream.core",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/lib/streams.js#L46",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "drain",
+          "signature": "writeStream.on('drain', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "finish",
+          "signature": "writeStream.on('finish', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "close",
+          "signature": "writeStream.on('close', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "error",
+          "signature": "writeStream.on('error', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ByteStream",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "new ByteStream(core, opts = {})",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "core",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/hypercore/blob/v11.33.2/lib/streams.js#L61",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "push",
+          "signature": "byteStream.push(data)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "data",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "destroy",
+          "signature": "byteStream.destroy([err])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "err",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "destroyed",
+          "signature": "byteStream.destroyed",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "signature": "byteStream.on(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "once",
+          "signature": "byteStream.once(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "off",
+          "signature": "byteStream.off(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "emit",
+          "signature": "byteStream.emit(event, [...args])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "...args",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "data",
+          "signature": "byteStream.on('data', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "readable",
+          "signature": "byteStream.on('readable', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "end",
+          "signature": "byteStream.on('end', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "close",
+          "signature": "byteStream.on('close', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "error",
+          "signature": "byteStream.on('error', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        }
+      ]
+    }
+  ],
+  "typedefs": [
+    {
+      "name": "HypercoreOptions",
+      "description": "Options for creating or opening a Hypercore instance.",
+      "properties": [
+        {
+          "name": "key",
+          "optional": true,
+          "type": "Buffer",
+          "description": "The public key of the core (32 bytes). Omit to create a new writable core."
+        },
+        {
+          "name": "keyPair",
+          "optional": true,
+          "type": "{publicKey: Buffer, secretKey: Buffer}",
+          "description": "Ed25519 key pair for signing appended blocks."
+        },
+        {
+          "name": "encryptionKey",
+          "optional": true,
+          "type": "Buffer",
+          "description": "A 32-byte key to enable block encryption."
+        },
+        {
+          "name": "encryption",
+          "optional": true,
+          "type": "object",
+          "description": "Custom encryption provider satisfying the HypercoreEncryption interface."
+        },
+        {
+          "name": "valueEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Encoding for block values (for example `'utf8'`, `'json'`, a compact-encoding codec)."
+        },
+        {
+          "name": "writable",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Set `false` to open the session read-only."
+        },
+        {
+          "name": "sparse",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Download blocks on demand instead of eagerly."
+        },
+        {
+          "name": "weak",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Do not keep the underlying core alive when this session is the last one."
+        },
+        {
+          "name": "snapshot",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Snapshot the core length at open time; blocks beyond that length are invisible."
+        },
+        {
+          "name": "timeout",
+          "optional": true,
+          "default": "0",
+          "type": "number",
+          "description": "Default timeout in ms for `get()` / `seek()` (0 = no timeout)."
+        },
+        {
+          "name": "wait",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Wait for blocks to download when `get()` / `seek()` are called."
+        },
+        {
+          "name": "onwait",
+          "optional": true,
+          "type": "function",
+          "description": "Called whenever `get()` triggers a network wait: `onwait(index, core)`."
+        },
+        {
+          "name": "onseq",
+          "optional": true,
+          "type": "function",
+          "description": "Called on each `get()` call with the block index: `onseq(index, core)`."
+        },
+        {
+          "name": "compat",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Enable legacy (v9) manifest compatibility mode."
+        },
+        {
+          "name": "exclusive",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Acquire an exclusive write lock on the core."
+        }
+      ]
+    },
+    {
+      "name": "KeyOptions",
+      "description": "Options for Hypercore.key() static method.",
+      "properties": [
+        {
+          "name": "compat",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "If `true`, returns the first signer's raw public key instead of the manifest hash."
+        },
+        {
+          "name": "version",
+          "optional": true,
+          "type": "number",
+          "description": "Manifest version number (used when building the manifest from a raw key)."
+        },
+        {
+          "name": "namespace",
+          "optional": true,
+          "type": "Buffer",
+          "description": "Namespace buffer to include in the manifest when building from a raw key."
+        }
+      ]
+    },
+    {
+      "name": "ProtocolStreamOptions",
+      "description": "Options for Hypercore.createProtocolStream().",
+      "properties": [
+        {
+          "name": "stream",
+          "optional": true,
+          "type": "object",
+          "description": "An existing raw stream to wrap; avoids creating a new NoiseSecretStream."
+        },
+        {
+          "name": "ondiscoverykey",
+          "optional": true,
+          "type": "function",
+          "description": "Called with a discovery key Buffer when a remote announces a new core."
+        },
+        {
+          "name": "keepAlive",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Send keep-alive pings every 5 s to prevent idle disconnection."
+        }
+      ]
+    },
+    {
+      "name": "DefaultStorageOptions",
+      "description": "Options for Hypercore.defaultStorage().",
+      "properties": [
+        {
+          "name": "sparse",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Use sparse file storage (holes instead of zero-filled regions)."
+        }
+      ]
+    },
+    {
+      "name": "SessionOptions",
+      "description": "Options for core.session() / core.snapshot().",
+      "properties": [
+        {
+          "name": "valueEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Override the value encoding for this session only."
+        },
+        {
+          "name": "writable",
+          "optional": true,
+          "type": "boolean",
+          "description": "Override the writable flag for this session."
+        },
+        {
+          "name": "snapshot",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Lock the visible length to the current core length."
+        },
+        {
+          "name": "sparse",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Download blocks on demand."
+        },
+        {
+          "name": "timeout",
+          "optional": true,
+          "type": "number",
+          "description": "Per-session get/seek timeout in ms."
+        },
+        {
+          "name": "wait",
+          "optional": true,
+          "type": "boolean",
+          "description": "Whether to wait for remote blocks by default."
+        },
+        {
+          "name": "weak",
+          "optional": true,
+          "type": "boolean",
+          "description": "Do not keep the core alive when this session is the last one."
+        },
+        {
+          "name": "exclusive",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Acquire an exclusive write lock on the core."
+        },
+        {
+          "name": "atom",
+          "optional": true,
+          "type": "object",
+          "description": "A storage atom to stage writes against."
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "type": "string",
+          "description": "Named session; writes are staged under this name."
+        },
+        {
+          "name": "checkout",
+          "optional": true,
+          "type": "number",
+          "description": "Roll back a named/atom session to this length after opening."
+        }
+      ]
+    },
+    {
+      "name": "SetEncryptionKeyOptions",
+      "description": "Options for core.setEncryptionKey().",
+      "properties": [
+        {
+          "name": "block",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Treat the supplied key as a raw block-level key rather than deriving one."
+        }
+      ]
+    },
+    {
+      "name": "GetOptions",
+      "description": "Options for core.get().",
+      "properties": [
+        {
+          "name": "wait",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Wait for the block to be downloaded from a peer if not available locally."
+        },
+        {
+          "name": "timeout",
+          "optional": true,
+          "default": "0",
+          "type": "number",
+          "description": "Max ms to wait for replication (0 = use core default)."
+        },
+        {
+          "name": "valueEncoding",
+          "optional": true,
+          "type": "string|object",
+          "description": "Decode the block with this encoding instead of the core's default."
+        },
+        {
+          "name": "decrypt",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Decrypt the block when encryption is enabled."
+        },
+        {
+          "name": "raw",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Return the raw Buffer without decoding or decrypting."
+        },
+        {
+          "name": "onwait",
+          "optional": true,
+          "type": "function",
+          "description": "Called if this specific get triggers a network wait: `onwait(index, core)`."
+        }
+      ]
+    },
+    {
+      "name": "SeekOptions",
+      "description": "Options for core.seek().",
+      "properties": [
+        {
+          "name": "wait",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Wait for the necessary blocks to download if not local."
+        },
+        {
+          "name": "timeout",
+          "optional": true,
+          "default": "0",
+          "type": "number",
+          "description": "Max ms to wait (0 = use core default)."
+        }
+      ]
+    },
+    {
+      "name": "ClearOptions",
+      "description": "Options for core.clear().",
+      "properties": [
+        {
+          "name": "diff",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Return a `{ blocks: number }` object counting cleared blocks instead of `null`."
+        }
+      ]
+    },
+    {
+      "name": "UpdateOptions",
+      "description": "Options for core.update().",
+      "properties": [
+        {
+          "name": "wait",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Wait for remote peers to send a new signed length proof."
+        },
+        {
+          "name": "force",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Force an update even when the core is writable."
+        }
+      ]
+    },
+    {
+      "name": "TruncateOptions",
+      "description": "Options for core.truncate().",
+      "properties": [
+        {
+          "name": "fork",
+          "optional": true,
+          "type": "number",
+          "description": "The fork ID to assign after truncation (defaults to `state.fork + 1`)."
+        },
+        {
+          "name": "keyPair",
+          "optional": true,
+          "type": "{publicKey: Buffer, secretKey: Buffer}",
+          "description": "Key pair to sign the truncation (defaults to `core.keyPair`)."
+        },
+        {
+          "name": "signature",
+          "optional": true,
+          "type": "Buffer",
+          "description": "Pre-computed signature for the truncation."
+        }
+      ]
+    },
+    {
+      "name": "AppendOptions",
+      "description": "Options for core.append().",
+      "properties": [
+        {
+          "name": "keyPair",
+          "optional": true,
+          "type": "{publicKey: Buffer, secretKey: Buffer}",
+          "description": "Key pair to sign the batch (defaults to `core.keyPair`)."
+        },
+        {
+          "name": "signature",
+          "optional": true,
+          "type": "Buffer",
+          "description": "Pre-computed signature."
+        },
+        {
+          "name": "maxLength",
+          "optional": true,
+          "type": "number",
+          "description": "Refuse to append if the resulting length would exceed this value."
+        }
+      ]
+    },
+    {
+      "name": "InfoOptions",
+      "description": "Options for core.info().",
+      "properties": [
+        {
+          "name": "storage",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Include per-file storage byte counts in the result."
+        }
+      ]
+    },
+    {
+      "name": "ReadStreamOptions",
+      "description": "Options for core.createReadStream().",
+      "properties": [
+        {
+          "name": "start",
+          "optional": true,
+          "default": "0",
+          "type": "number",
+          "description": "Index of the first block to read."
+        },
+        {
+          "name": "end",
+          "optional": true,
+          "type": "number",
+          "description": "Index of the block to stop at (exclusive)."
+        },
+        {
+          "name": "live",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Keep streaming new blocks as they are appended."
+        },
+        {
+          "name": "snapshot",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Snap the end to the current length at open time (ignored when `live` is true)."
+        },
+        {
+          "name": "wait",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Wait for blocks to download."
+        },
+        {
+          "name": "timeout",
+          "optional": true,
+          "default": "0",
+          "type": "number",
+          "description": "Per-block timeout in ms (0 = use core default)."
+        }
+      ]
+    },
+    {
+      "name": "ByteStreamOptions",
+      "description": "Options for core.createByteStream().",
+      "properties": [
+        {
+          "name": "byteOffset",
+          "optional": true,
+          "default": "0",
+          "type": "number",
+          "description": "Start reading from this byte position."
+        },
+        {
+          "name": "byteLength",
+          "optional": true,
+          "type": "number",
+          "description": "Number of bytes to read (-1 = until end of core)."
+        },
+        {
+          "name": "prefetch",
+          "optional": true,
+          "default": "32",
+          "type": "number",
+          "description": "Number of blocks to prefetch ahead."
+        }
+      ]
+    },
+    {
+      "name": "DownloadRange",
+      "description": "Download range descriptor for core.download().",
+      "properties": [
+        {
+          "name": "start",
+          "optional": true,
+          "default": "0",
+          "type": "number",
+          "description": "First block index to download."
+        },
+        {
+          "name": "end",
+          "optional": true,
+          "type": "number",
+          "description": "Last block index to download (exclusive; defaults to `core.length`)."
+        },
+        {
+          "name": "linear",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Download blocks in sequential order."
+        }
+      ]
+    },
+    {
+      "name": "ProofOptions",
+      "description": "Options for core.proof().",
+      "properties": [
+        {
+          "name": "block",
+          "optional": true,
+          "type": "object",
+          "description": "Request a block proof: `{ index: number }`."
+        },
+        {
+          "name": "hash",
+          "optional": true,
+          "type": "object",
+          "description": "Request a hash proof: `{ index: number }`."
+        },
+        {
+          "name": "seek",
+          "optional": true,
+          "type": "object",
+          "description": "Request a seek proof: `{ bytes: number }`."
+        },
+        {
+          "name": "upgrade",
+          "optional": true,
+          "type": "object",
+          "description": "Request an upgrade proof: `{ start: number, length: number }`."
+        },
+        {
+          "name": "manifest",
+          "optional": true,
+          "type": "object",
+          "description": "Include a manifest proof."
+        }
+      ]
+    },
+    {
+      "name": "CommitOptions",
+      "description": "Options for core.commit().",
+      "properties": [
+        {
+          "name": "keyPair",
+          "optional": true,
+          "type": "{publicKey: Buffer, secretKey: Buffer}",
+          "description": "Key pair used to sign the committed blocks."
+        }
+      ]
+    },
+    {
+      "name": "SweepOptions",
+      "description": "Options for core.sweep().",
+      "properties": [
+        {
+          "name": "batchSize",
+          "optional": true,
+          "default": "1000",
+          "type": "number",
+          "description": "Number of clear operations to run in parallel per sweep iteration."
+        }
+      ]
+    },
+    {
+      "name": "CloseOptions",
+      "description": "Options for core.close().",
+      "properties": [
+        {
+          "name": "error",
+          "optional": true,
+          "type": "Error",
+          "description": "Error to reject pending replication requests with."
+        }
+      ]
+    }
+  ]
+}
