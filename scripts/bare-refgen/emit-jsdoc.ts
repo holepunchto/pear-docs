@@ -36,25 +36,27 @@ async function git(cwd: string, args: string[]): Promise<string> {
   return stdout.trim();
 }
 
-/** Build a JSDoc comment as an array of lines (single-line when no @param). */
-function jsDocLines(description: string, params: Record<string, string>): string[] {
+/** Build a JSDoc comment as an array of lines (single-line when no @param/@returns). */
+function jsDocLines(description: string, params: Record<string, string>, returns?: string): string[] {
   const paramNames = Object.keys(params);
-  if (paramNames.length === 0) return [`/** ${description} */`];
+  if (paramNames.length === 0 && !returns) return [`/** ${description} */`];
   const lines = ['/**'];
   if (description) lines.push(` * ${description}`);
   for (const p of paramNames) lines.push(` * @param ${p} - ${params[p]}`);
+  if (returns) lines.push(` * @returns ${returns}`);
   lines.push(' */');
   return lines;
 }
 
-/** Insert TSDoc above every top-level declaration named in `describe`/`params`, and above
- *  class/interface members — Bare's `.d.ts` files declare instance methods via
+/** Insert TSDoc above every top-level declaration named in `describe`/`params`/`returns`, and
+ *  above class/interface members — Bare's `.d.ts` files declare instance methods via
  *  `interface Foo { method(...) }` merged with `declare class Foo {}`, so a member's
  *  documentation lives one level below the statements `walk` used to see. */
 function injectJsDoc(
   src: string,
   describe: Record<string, string>,
   params: Record<string, Record<string, string>>,
+  returns: Record<string, string>,
 ): string {
   const sf = ts.createSourceFile('d.ts', src, ts.ScriptTarget.ESNext, true);
   const edits: { pos: number; text: string }[] = [];
@@ -66,16 +68,22 @@ function injectJsDoc(
   // Object.hasOwn throughout — a declaration named `toString`/`constructor`
   // would otherwise pick up the Object.prototype member.
   const consider = (node: ts.Node, names: string[]) => {
-    const key = names.find((n) => Object.hasOwn(describe, n) || Object.hasOwn(params, n));
+    const key = names.find(
+      (n) => Object.hasOwn(describe, n) || Object.hasOwn(params, n) || Object.hasOwn(returns, n),
+    );
     if (!key || documented.has(key)) return;
     const description = Object.hasOwn(describe, key) ? describe[key] : undefined;
     const paramMap = Object.hasOwn(params, key) ? params[key] : {};
-    if (!description && Object.keys(paramMap).length === 0) return;
+    const returnsDesc = Object.hasOwn(returns, key) ? returns[key] : undefined;
+    if (!description && Object.keys(paramMap).length === 0 && !returnsDesc) return;
     if (ts.getJSDocCommentsAndTags(node).length > 0) return; // already documented
     documented.add(key);
     const start = node.getStart(sf);
     const indent = ' '.repeat(sf.getLineAndCharacterOfPosition(start).character);
-    edits.push({ pos: start, text: jsDocLines(description ?? '', paramMap).join(`\n${indent}`) + `\n${indent}` });
+    edits.push({
+      pos: start,
+      text: jsDocLines(description ?? '', paramMap, returnsDesc).join(`\n${indent}`) + `\n${indent}`,
+    });
   };
 
   // A member may be keyed bare (`parse`) or qualified (`URL.parse`) — try both.
@@ -229,6 +237,7 @@ async function emitOne(name: string, pr: boolean): Promise<void> {
   const layout = await loadLayout(name);
   const describe = layout?.describe ?? {};
   const params = layout?.params ?? {};
+  const returns = layout?.returns ?? {};
 
   const { dir, base } = await ensureClone(name, model.repoUrl);
   // Reset onto the default branch so re-runs produce one clean commit; fall back
@@ -243,7 +252,7 @@ async function emitOne(name: string, pr: boolean): Promise<void> {
   for (const rel of dtsFiles) {
     const abs = join(dir, rel);
     const src = await readFile(abs, 'utf8');
-    const next = injectJsDoc(src, describe, params);
+    const next = injectJsDoc(src, describe, params, returns);
     if (next !== src) {
       await writeFile(abs, next);
       dtsTouched++;

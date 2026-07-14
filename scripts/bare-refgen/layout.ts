@@ -45,6 +45,14 @@ export interface Layout {
    */
   params?: Record<string, Record<string, string>>;
   /**
+   * Return-value descriptions, keyed by member key/name. The `.d.ts` always
+   * carries the return *type*, but never a `@returns` comment (no upstream
+   * JSDoc yet), so without this override a callable can never get a
+   * **Returns** line. Rendered as `**Returns** <type> — <prose>` and emitted
+   * as an upstream `@returns` TSDoc tag. Author-written.
+   */
+  returns?: Record<string, string>;
+  /**
    * An author-written lead paragraph for the page intro, used verbatim instead
    * of the auto-assembled description sentence (the npm-install fence and the
    * Node parity line are still added). Markdown; may include links.
@@ -75,6 +83,7 @@ export async function loadLayout(name: string): Promise<Layout | null> {
   return {
     groups: base?.groups ?? [],
     params: base?.params,
+    returns: base?.returns,
     intro: base?.intro,
     seeAlso: base?.seeAlso,
     throws: base?.throws,

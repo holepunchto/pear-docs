@@ -86,6 +86,10 @@ function describe(ctx: Ctx, e: BareExport): string | null {
   return e.description ?? own(ctx.layout?.describe, e.key, e.name) ?? null;
 }
 
+function returnsFor(ctx: Ctx, e: BareExport): string | null {
+  return e.returns?.description ?? own(ctx.layout?.returns, e.key, e.name) ?? null;
+}
+
 function throwsFor(ctx: Ctx, e: BareExport): BareThrows[] {
   const overrides = own(ctx.layout?.throws, e.key, e.name) ?? [];
   return [...e.throws, ...overrides.map(parseThrows)];
@@ -203,8 +207,9 @@ function renderSymbol(e: BareExport, ctx: Ctx, syncSibling: BareExport | null, p
     const pd = paramDescs(ctx, e);
     lines.push('**Parameters**', '', ...paramTable(e.params, ctx, pd), '');
   }
-  if (callable && e.returns?.description) {
-    lines.push(`**Returns** ${linkType(e.returns.type, ctx)} — ${mdxProse(e.returns.description, ctx)}`, '');
+  const returnsDesc = callable ? returnsFor(ctx, e) : null;
+  if (returnsDesc && e.returns) {
+    lines.push(`**Returns** ${linkType(e.returns.type, ctx)} — ${mdxProse(returnsDesc, ctx)}`, '');
   }
 
   const throws = throwsFor(ctx, e);

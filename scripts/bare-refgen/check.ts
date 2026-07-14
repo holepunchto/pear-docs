@@ -47,12 +47,14 @@ function coverageGaps(model: BareModel, mdx: string): string[] {
   return gaps;
 }
 
-/** Manifest refs (group members, describe/throws keys) that match no symbol. */
+/** Manifest refs (group members, describe/params/returns/throws keys) that match no symbol. */
 function layoutGaps(layout: Layout, ids: Set<string>): string[] {
   const refs = new Set<string>();
   for (const g of layout.groups) g.members.forEach((m) => refs.add(m));
   Object.keys(layout.describe ?? {}).forEach((k) => refs.add(k));
   Object.keys(layout.throws ?? {}).forEach((k) => refs.add(k));
+  Object.keys(layout.params ?? {}).forEach((k) => refs.add(k));
+  Object.keys(layout.returns ?? {}).forEach((k) => refs.add(k));
   return [...refs].filter((r) => !ids.has(r));
 }
 
