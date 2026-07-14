@@ -75,6 +75,8 @@ const config = {
       { source: '/building-blocks/:slug', destination: '/reference/building-blocks/:slug', permanent: true },
       { source: '/helpers/:slug', destination: '/reference/helpers/:slug', permanent: true },
       { source: '/tools/:slug', destination: '/reference/tools/:slug', permanent: true },
+      // "The Pears stack" was renamed "The Pear stack"; the slug moved too.
+      { source: '/explanation/the-pears-stack', destination: '/explanation/the-pear-stack', permanent: true },
     ];
   },
 };
