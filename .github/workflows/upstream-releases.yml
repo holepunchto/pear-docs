@@ -42,20 +42,35 @@ jobs:
           ref: published
 
       - name: Resume the open drafts branch when one exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # A previous run may have left an open review PR whose branch holds
+          # A previous run may have left an OPEN review PR whose branch holds
           # both un-merged drafts and human curation commits. Stacking this
           # run on top of it preserves that work; starting from `published`
           # would regenerate the same drafts and the final push would clobber
-          # the curation.
-          if git fetch origin changelog/upstream-drafts 2>/dev/null; then
-            git checkout -B changelog/upstream-drafts FETCH_HEAD
-            echo "Resumed existing changelog/upstream-drafts."
-          else
-            git checkout -B changelog/upstream-drafts
-            echo "No open drafts branch; starting from published."
+          # the curation. Only resume when the PR is still open — a branch
+          # left behind by a closed-without-merge PR would otherwise keep
+          # resurrecting its rejected drafts.
+          branch="changelog/upstream-drafts"
+          remote_sha=""
+          if git fetch origin "${branch}" 2>/dev/null; then
+            remote_sha=$(git rev-parse FETCH_HEAD)
           fi
+          open_pr=$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${branch}" --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -n "${open_pr}" ] && [ -n "${remote_sha}" ]; then
+            git checkout -B "${branch}" "${remote_sha}"
+            echo "Resumed drafts branch behind open PR #${open_pr}."
+          else
+            git checkout -B "${branch}"
+            echo "No open drafts PR; starting from published."
+          fi
+          # The PR step force-pushes with this exact lease, so a curation
+          # commit pushed while this job runs fails the push instead of
+          # being clobbered (empty = the remote branch must not exist yet).
+          echo "DRAFTS_REMOTE_SHA=${remote_sha}" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v5
         with:
@@ -89,9 +104,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add content/changelog/index.mdx scripts/upstream-releases-state.json
           git commit -m "chore(changelog): draft entries for new upstream releases"
-          # Plain push: when the branch was resumed this fast-forwards on top
-          # of any curation commits; when fresh it creates the remote branch.
-          git push -u origin "${branch}"
+          # Lease-guarded push (DRAFTS_REMOTE_SHA set by the resume step):
+          # fast-forwards a resumed open-PR branch, replaces a stale branch
+          # from a closed PR, and fails safely if anyone pushed curation
+          # commits while this job was running.
+          git push --force-with-lease="refs/heads/${branch}:${DRAFTS_REMOTE_SHA}" -u origin "${branch}"
 
           # List every draft heading the branch adds over published (not just
           # this run's), so an updated PR body stays complete.
@@ -101,9 +118,11 @@ jobs:
           # Tripwire: the CLI reference pins its "Command source on GitHub"
           # links to `main` until Pear v3 is tagged (see the maintainer note
           # at the top of content/reference/pear/cli.mdx). Surface the re-pin
-          # chore the moment a v3 tag shows up.
+          # chore the moment a v3 tag shows up. NOTE: the literal "pear (CLI)"
+          # here must match the `name` for holepunchto/pear in
+          # scripts/upstream-releases.json — keep them in sync.
           repin=""
-          if printf '%s\n' "${releases}" | grep -qE '^- pear \(CLI\) — v3'; then
+          if printf '%s\n' "${releases}" | grep -qE '^- pear \(CLI\) — v3([^0-9]|$)'; then
             repin="⚠️ **A pear v3 tag was detected.** Re-pin the \"Command source on GitHub\" links in \`content/reference/pear/cli.mdx\` from \`main\` to the new tag (see the maintainer note at the top of that file), then remove the note."
           fi
 
