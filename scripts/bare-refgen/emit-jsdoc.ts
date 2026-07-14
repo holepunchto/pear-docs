@@ -47,7 +47,10 @@ function jsDocLines(description: string, params: Record<string, string>): string
   return lines;
 }
 
-/** Insert TSDoc above every top-level declaration named in `describe`/`params`. */
+/** Insert TSDoc above every top-level declaration named in `describe`/`params`, and above
+ *  class/interface members — Bare's `.d.ts` files declare instance methods via
+ *  `interface Foo { method(...) }` merged with `declare class Foo {}`, so a member's
+ *  documentation lives one level below the statements `walk` used to see. */
 function injectJsDoc(
   src: string,
   describe: Record<string, string>,
@@ -55,16 +58,21 @@ function injectJsDoc(
 ): string {
   const sf = ts.createSourceFile('d.ts', src, ts.ScriptTarget.ESNext, true);
   const edits: { pos: number; text: string }[] = [];
+  // A merged `interface Foo` / `declare class Foo` / `declare namespace Foo` shares one
+  // describe key ("Foo") across up to three declaration sites — document it once, on
+  // whichever site is encountered first, instead of stamping the same comment 3x.
+  const documented = new Set<string>();
 
   // Object.hasOwn throughout — a declaration named `toString`/`constructor`
   // would otherwise pick up the Object.prototype member.
   const consider = (node: ts.Node, names: string[]) => {
     const key = names.find((n) => Object.hasOwn(describe, n) || Object.hasOwn(params, n));
-    if (!key) return;
+    if (!key || documented.has(key)) return;
     const description = Object.hasOwn(describe, key) ? describe[key] : undefined;
     const paramMap = Object.hasOwn(params, key) ? params[key] : {};
     if (!description && Object.keys(paramMap).length === 0) return;
     if (ts.getJSDocCommentsAndTags(node).length > 0) return; // already documented
+    documented.add(key);
     const start = node.getStart(sf);
     const indent = ' '.repeat(sf.getLineAndCharacterOfPosition(start).character);
     edits.push({ pos: start, text: jsDocLines(description ?? '', paramMap).join(`\n${indent}`) + `\n${indent}` });
@@ -73,15 +81,42 @@ function injectJsDoc(
   // A member may be keyed bare (`parse`) or qualified (`URL.parse`) — try both.
   const qualified = (prefix: string, name: string) => (prefix ? [`${prefix}.${name}`, name] : [name]);
 
+  const memberName = (member: ts.ClassElement | ts.TypeElement): string | undefined => {
+    if (ts.isConstructorDeclaration(member) || ts.isConstructSignatureDeclaration(member)) return 'constructor';
+    if ('name' in member && member.name) return member.name.getText(sf);
+    return undefined;
+  };
+
+  // Instance members of a class/interface — the `interface Foo { method(...) }` /
+  // `declare class Foo {}` merge pattern Bare uses for every stateful export.
+  const walkMembers = (members: ts.NodeArray<ts.ClassElement | ts.TypeElement>, containerPrefix: string) => {
+    for (const member of members) {
+      if (
+        ts.isMethodDeclaration(member) || ts.isMethodSignature(member) ||
+        ts.isPropertyDeclaration(member) || ts.isPropertySignature(member) ||
+        ts.isGetAccessorDeclaration(member) || ts.isSetAccessorDeclaration(member) ||
+        ts.isConstructorDeclaration(member) || ts.isConstructSignatureDeclaration(member)
+      ) {
+        const name = memberName(member);
+        if (name) consider(member, qualified(containerPrefix, name));
+      }
+    }
+  };
+
   const walk = (statements: ts.NodeArray<ts.Statement>, prefix: string) => {
     for (const stmt of statements) {
       if (ts.isModuleDeclaration(stmt) && stmt.body && ts.isModuleBlock(stmt.body)) {
         const ns = stmt.name.getText(sf);
         consider(stmt, qualified(prefix, ns));
         walk(stmt.body.statements, prefix ? `${prefix}.${ns}` : ns); // recurse into the namespace
+      } else if (ts.isClassDeclaration(stmt) || ts.isInterfaceDeclaration(stmt)) {
+        const name = stmt.name?.getText(sf);
+        if (name) {
+          consider(stmt, qualified(prefix, name));
+          walkMembers(stmt.members, prefix ? `${prefix}.${name}` : name);
+        }
       } else if (
-        ts.isFunctionDeclaration(stmt) || ts.isClassDeclaration(stmt) || ts.isInterfaceDeclaration(stmt) ||
-        ts.isTypeAliasDeclaration(stmt) || ts.isEnumDeclaration(stmt)
+        ts.isFunctionDeclaration(stmt) || ts.isTypeAliasDeclaration(stmt) || ts.isEnumDeclaration(stmt)
       ) {
         const name = stmt.name?.getText(sf);
         if (name) consider(stmt, qualified(prefix, name));
