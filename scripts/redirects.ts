@@ -247,6 +247,10 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: '/guide/debugging-a-pear-terminal-app/', to: '/how-to/troubleshooting/' });
   out.push({ from: '/guide/creating-a-pear-init-template/', to: '/reference/pear/cli/' });
 
+  // "The Pears stack" was renamed "The Pear stack" to drop the pluralised
+  // brand term; the slug moved with it.
+  out.push({ from: '/explanation/the-pears-stack/', to: '/explanation/the-pear-stack/' });
+
   out.sort((a, b) => a.from.localeCompare(b.from));
   return out;
 }
