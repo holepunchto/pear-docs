@@ -327,7 +327,7 @@ interface RenderedGroup {
 function groupByLayout(entries: Entry[], layout: Layout): { groups: RenderedGroup[]; orphans: string[] } {
   const used = new Set<Entry>();
   const groups: RenderedGroup[] = [];
-  for (const g of layout.groups) {
+  for (const g of layout.groups ?? []) {
     const picked: Entry[] = [];
     for (const ref of g.members) {
       const match = entries.find((e) => !used.has(e) && (e.key === ref || e.name === ref));

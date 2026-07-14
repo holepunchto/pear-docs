@@ -52,7 +52,7 @@ new Socket(url: URL | string, opts?: WebSocketOptions)
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts` | `WebSocketOptions` | — | — |
+| `opts` | `WebSocketOptions` | — | Connection options: `host`/`hostname`, `port`, `path`, `secure`, or an already-connected `socket` to wrap. |
 
 #### `ping(data: unknown): void`
 
@@ -64,7 +64,11 @@ Send a WebSocket ping frame with `data` as its payload.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `data` | `unknown` | — | — |
+| `data` | `unknown` | — | The payload of the ping frame; a string is converted to a `Buffer`. |
+
+**Throws**
+
+- `NOT_CONNECTED` — the socket has not finished connecting.
 
 #### `pong(data: unknown): void`
 
@@ -76,7 +80,11 @@ Send a WebSocket pong frame with `data` as its payload.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `data` | `unknown` | — | — |
+| `data` | `unknown` | — | The payload of the pong frame; a string is converted to a `Buffer`. |
+
+**Throws**
+
+- `NOT_CONNECTED` — the socket has not finished connecting.
 
 #### `Socket.handshake(req: HTTPClientRequest, cb: (error: WebSocketError | null) => void): void`
 
@@ -88,8 +96,8 @@ Perform the client side of the WebSocket opening handshake over `req`, calling `
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `req` | `HTTPClientRequest` | — | — |
-| `cb` | `(error: WebSocketError \| null) => void` | — | — |
+| `req` | `HTTPClientRequest` | — | The outgoing HTTP request to upgrade; the WebSocket handshake headers are added to it. |
+| `cb` | `(error: WebSocketError \| null) => void` | — | Called once the server's response is validated, with a `WebSocketError` on failure, otherwise `null`. |
 
 #### `Socket.WebSocketEvents`
 
@@ -136,7 +144,7 @@ new Server(opts?: WebSocketServerOptions, onconnection?: (socket: WebSocket, req
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `onconnection` | `(socket: WebSocket, req: HTTPClientRequest) => void` | — | — |
+| `onconnection` | `(socket: WebSocket, req: HTTPClientRequest) => void` | — | Called on each `'connection'` event. |
 
 #### `address(): TCPSocketAddress`
 
@@ -154,7 +162,7 @@ Stop the server from accepting new connections, calling `cb` once it has closed.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `cb?` | `(err?: Error \| null) => void` | — | — |
+| `cb?` | `(err?: Error \| null) => void` | — | Called once the underlying server has closed. |
 
 #### `listening: boolean`
 
@@ -186,8 +194,8 @@ Server.handshake(req: HTTPClientRequest, socket?: TCPSocket, head?: Buffer, cb?:
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `req` | `HTTPClientRequest` | — | — |
-| `cb` | `(err: WebSocketError \| null) => void` | — | — |
+| `req` | `HTTPClientRequest` | — | The incoming upgrade request. |
+| `cb` | `(err: WebSocketError \| null) => void` | — | Called with a `WebSocketError` if the request is not a valid WebSocket upgrade, otherwise `null`. |
 
 #### `Server.WebSocketServerEvents`
 
@@ -293,11 +301,11 @@ An error thrown for WebSocket protocol violations, carrying a `code` and a close
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg` | `string` | — | — |
-| `code` | `string` | — | — |
-| `status` | `number` | — | — |
-| `fn?` | `WebSocketError` | — | — |
-| `cause?` | `unknown` | — | — |
+| `msg` | `string` | — | The error message. |
+| `code` | `string` | — | The error code. |
+| `status` | `number` | — | The WebSocket close status associated with the error. |
+| `fn?` | `WebSocketError` | — | Optional function to omit from the top of the generated stack trace, passed to `Error.captureStackTrace`. |
+| `cause?` | `unknown` | — | The underlying cause of the error, if any. |
 
 #### `WebSocketError.EXPECTED_CONTINUATION(msg?: string): WebSocketError`
 
@@ -309,7 +317,9 @@ A fragmented message's next frame was not a continuation frame.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'EXPECTED_CONTINUATION'`, for the caller to throw.
 
 #### `WebSocketError.EXPECTED_MASK(msg?: string): WebSocketError`
 
@@ -321,7 +331,9 @@ A frame from a client was missing its required mask.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'EXPECTED_MASK'`, for the caller to throw.
 
 #### `WebSocketError.INCOMPLETE_FRAME(msg?: string, length?: number): WebSocketError`
 
@@ -333,8 +345,10 @@ The buffered data does not yet contain a full frame.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
-| `length?` | `number` | — | — |
+| `msg?` | `string` | — | The error message. |
+| `length?` | `number` | — | The total byte length the frame needs before it can be decoded, stored as the error `status` (default `-1`). |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INCOMPLETE_FRAME'` and `status` set to `length`, for the caller to throw.
 
 #### `WebSocketError.INVALID_ACCEPT_HEADER(msg?: string): WebSocketError`
 
@@ -346,7 +360,9 @@ The `Sec-WebSocket-Accept` header in the server's handshake response did not mat
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_ACCEPT_HEADER'`, for the caller to throw.
 
 #### `WebSocketError.INVALID_ENCODING(msg?: string): WebSocketError`
 
@@ -358,7 +374,9 @@ Data was written with an encoding other than `buffer` or `utf8`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_ENCODING'`, for the caller to throw.
 
 #### `WebSocketError.INVALID_KEY_HEADER(msg?: string): WebSocketError`
 
@@ -370,7 +388,9 @@ The `Sec-WebSocket-Key` header was missing or malformed.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_KEY_HEADER'`, for the caller to throw.
 
 #### `WebSocketError.INVALID_OPCODE(msg?: string): WebSocketError`
 
@@ -382,7 +402,9 @@ A frame was received with an opcode that is not `TEXT` or `BINARY`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_OPCODE'`, for the caller to throw.
 
 #### `WebSocketError.INVALID_PAYLOAD_LENGTH(msg?: string): WebSocketError`
 
@@ -394,7 +416,9 @@ A frame's payload length field was invalid.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_PAYLOAD_LENGTH'`, for the caller to throw.
 
 #### `WebSocketError.INVALID_UPGRADE_HEADER(msg?: string): WebSocketError`
 
@@ -406,7 +430,9 @@ The `Upgrade` header was missing or not `websocket`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_UPGRADE_HEADER'`, for the caller to throw.
 
 #### `WebSocketError.INVALID_VERSION_HEADER(msg?: string): WebSocketError`
 
@@ -418,7 +444,9 @@ The `Sec-WebSocket-Version` header was neither `8` nor `13`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_VERSION_HEADER'`, for the caller to throw.
 
 #### `WebSocketError.NETWORK_ERROR(msg: string, cause?: unknown): WebSocketError`
 
@@ -430,8 +458,10 @@ The underlying HTTP request errored before the handshake completed.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg` | `string` | — | — |
-| `cause?` | `unknown` | — | — |
+| `msg` | `string` | — | The error message. |
+| `cause?` | `unknown` | — | The underlying error. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'NETWORK_ERROR'`, for the caller to throw.
 
 #### `WebSocketError.NOT_CONNECTED(msg?: string): WebSocketError`
 
@@ -443,7 +473,9 @@ An operation, such as `ping()` or `pong()`, was attempted before the socket fini
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'NOT_CONNECTED'`, for the caller to throw.
 
 #### `WebSocketError.UNEXPECTED_CONTINUATION(msg?: string): WebSocketError`
 
@@ -455,7 +487,9 @@ A continuation frame was received without a preceding fragmented frame.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'UNEXPECTED_CONTINUATION'`, for the caller to throw.
 
 #### `WebSocketError.UNEXPECTED_CONTROL(msg?: string): WebSocketError`
 
@@ -467,7 +501,9 @@ A control frame was received while a fragmented message was in progress.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'UNEXPECTED_CONTROL'`, for the caller to throw.
 
 #### `WebSocketError.UNEXPECTED_RSV1(msg?: string): WebSocketError`
 
@@ -479,7 +515,9 @@ A frame was received with the reserved RSV1 bit set.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'UNEXPECTED_RSV1'`, for the caller to throw.
 
 #### `WebSocketError.UNEXPECTED_RSV2(msg?: string): WebSocketError`
 
@@ -491,7 +529,9 @@ A frame was received with the reserved RSV2 bit set.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'UNEXPECTED_RSV2'`, for the caller to throw.
 
 #### `WebSocketError.UNEXPECTED_RSV3(msg?: string): WebSocketError`
 
@@ -503,7 +543,9 @@ A frame was received with the reserved RSV3 bit set.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg?` | `string` | — | — |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'UNEXPECTED_RSV3'`, for the caller to throw.
 
 ## See also
 

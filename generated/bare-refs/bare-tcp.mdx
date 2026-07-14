@@ -37,11 +37,13 @@ socket.write('hello world')
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L77)</sub>
 
+Create a new TCP socket.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`TCPSocketOptions`](#tcpsocketoptions) | — | — |
+| `opts?` | [`TCPSocketOptions`](#tcpsocketoptions) | — | Options; `readBufferSize` defaults to `65536`, and `allowHalfOpen` and `eagerOpen` to `true`. |
 
 #### `connect`
 
@@ -57,10 +59,15 @@ Connect the socket to `port` on `host`. If `host` is not provided, it defaults t
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `port` | `number` | — | — |
-| `host?` | `string` | — | — |
-| `opts?` | [`TCPSocketConnectOptions`](#tcpsocketconnectoptions) | — | — |
-| `onconnect?` | `() => void` | — | — |
+| `port` | `number` | — | The port to connect to. |
+| `host?` | `string` | — | The host to connect to; defaults to `'localhost'`. |
+| `opts?` | [`TCPSocketConnectOptions`](#tcpsocketconnectoptions) | — | Connection options; if `host` is a hostname it is resolved with `opts.lookup`, which defaults to `dns.lookup` from `bare-dns`. |
+| `onconnect?` | `() => void` | — | Called when the connection is established. |
+
+**Throws**
+
+- `SOCKET_ALREADY_CONNECTED` — the socket is already connecting or connected.
+- `INVALID_PORT` — `port` is not an integer between 0 and 65535.
 
 #### `connecting: boolean`
 
@@ -90,6 +97,8 @@ The local port of the socket, if connected.
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L61)</sub>
 
+Open the socket on the file descriptor of an existing TCP connection, emitting `'connect'` once open.
+
 Overloads:
 
 ```ts
@@ -102,9 +111,9 @@ open(opts: { fd: number }, onconnect?: () => void): this
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `fd` | `number` | — | — |
-| `opts?` | `{ fd?: number }` | — | — |
-| `onconnect?` | `() => void` | — | — |
+| `fd` | `number` | — | The file descriptor of an existing TCP connection to open the socket on. |
+| `opts?` | `{ fd?: number }` | — | `fd` may be given here instead of as the first argument. |
+| `onconnect?` | `() => void` | — | Called once when the socket emits `'connect'`. |
 
 #### `pending: boolean`
 
@@ -159,8 +168,8 @@ setKeepAlive(delay: number): this
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `enable?` | `boolean` | — | — |
-| `delay?` | `number` | — | — |
+| `enable?` | `boolean` | — | Whether to enable keep-alive. |
+| `delay?` | `number` | — | The initial delay in milliseconds before the first keep-alive probe is sent. |
 
 #### `setNoDelay(enable?: boolean): this`
 
@@ -172,7 +181,7 @@ Enable or disable Nagle's algorithm. When `enable` is `true` (the default), data
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `enable?` | `boolean` | — | — |
+| `enable?` | `boolean` | — | When `true` (the default), data is sent immediately without buffering. |
 
 #### `setTimeout(ms: number, ontimeout?: () => void): this`
 
@@ -184,8 +193,8 @@ Set a timeout in milliseconds. When the socket is idle for `ms` milliseconds, a 
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `ms` | `number` | — | — |
-| `ontimeout?` | `() => void` | — | — |
+| `ms` | `number` | — | The inactivity timeout in milliseconds; pass `0` to disable the timeout. |
+| `ontimeout?` | `() => void` | — | Called once when the socket emits `'timeout'`. |
 
 #### `timeout: number`
 
@@ -205,6 +214,8 @@ Unref the socket, allowing the process to exit.
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L142)</sub>
 
+Create a new TCP server. If `onconnection` is provided, it is added as a listener for the `connection` event.
+
 Overloads:
 
 ```ts
@@ -216,12 +227,14 @@ new TCPServer(onconnection: () => void)
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`TCPServerOptions`](#tcpserveroptions) | — | — |
-| `onconnection?` | `() => void` | — | — |
+| `opts?` | [`TCPServerOptions`](#tcpserveroptions) | — | Options applied to each incoming socket; `readBufferSize` defaults to `65536`, `allowHalfOpen` to `true`, and `keepAlive`, `noDelay`, and `pauseOnConnect` to `false`. |
+| `onconnection?` | `() => void` | — | Called on each `'connection'` event. |
 
 #### `address(): TCPSocketAddress`
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L121)</sub>
+
+**Returns** [`TCPSocketAddress`](#tcpsocketaddress) — The bound address as `{ address, family, port }`, or `null` if the server is not listening.
 
 #### `close(onclose?: (err?: Error) => void): this`
 
@@ -233,7 +246,7 @@ Close the server. No new connections will be accepted. The server emits `close` 
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `onclose?` | `(err?: Error) => void` | — | — |
+| `onclose?` | `(err?: Error) => void` | — | Called once when the server emits `'close'`, after all existing connections have ended. |
 
 #### `closing: boolean`
 
@@ -261,11 +274,17 @@ Start listening for connections on `port` and `host`. If `port` is `0`, an avail
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `port?` | `number` | — | — |
-| `host?` | `string` | — | — |
-| `backlog?` | `number` | — | — |
-| `opts?` | [`TCPServerListenOptions`](#tcpserverlistenoptions) | — | — |
-| `onlistening?` | `() => void` | — | — |
+| `port?` | `number` | — | The port to listen on; if `0` (the default), an available port is assigned. |
+| `host?` | `string` | — | The host to listen on; defaults to `'localhost'`. |
+| `backlog?` | `number` | — | The maximum length of the queue of pending connections (default `511`). |
+| `opts?` | [`TCPServerListenOptions`](#tcpserverlistenoptions) | — | Listen options; the positional arguments may be given here instead, and `lookup` (default `dns.lookup`) resolves `host` when it is a hostname. |
+| `onlistening?` | `() => void` | — | Called once when the server emits `'listening'`. |
+
+**Throws**
+
+- `SERVER_ALREADY_LISTENING` — the server is already listening.
+- `SERVER_IS_CLOSED` — the server has been closed.
+- `INVALID_PORT` — `port` is not an integer between 0 and 65535.
 
 #### `listening: boolean`
 
@@ -277,17 +296,19 @@ Whether the server is listening.
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L119)</sub>
 
+The maximum number of concurrent connections; connections beyond it are destroyed and reported via the `'drop'` event. Defaults to `Infinity`.
+
 #### `TCPServer.ref(): this`
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L137)</sub>
 
-Ref the socket, preventing the process from exiting.
+Ref the server, preventing the process from exiting.
 
 #### `TCPServer.unref(): this`
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L138)</sub>
 
-Unref the socket, allowing the process to exit.
+Unref the server, allowing the process to exit.
 
 ### Functions
 
@@ -305,10 +326,10 @@ Create a new socket and connect it to `port` on `host`. Shorthand for `new tcp.S
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `port` | `number` | — | — |
-| `host?` | `string` | — | — |
-| `opts?` | `TCPSocketOptions & TCPSocketConnectOptions` | — | — |
-| `onconnect?` | `() => void` | — | — |
+| `port` | `number` | — | The port to connect to. |
+| `host?` | `string` | — | The host to connect to; defaults to `'localhost'`. |
+| `opts?` | `TCPSocketOptions & TCPSocketConnectOptions` | — | Options passed to both the `TCPSocket` constructor and `connect()`. |
+| `onconnect?` | `() => void` | — | Called when the connection is established. |
 
 #### `createServer(opts?: TCPServerOptions, onconnection?: () => void): TCPServer`
 
@@ -327,12 +348,16 @@ createServer(onconnection: () => void): TCPServer
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`TCPServerOptions`](#tcpserveroptions) | — | — |
-| `onconnection?` | `() => void` | — | — |
+| `opts?` | [`TCPServerOptions`](#tcpserveroptions) | — | Options applied to each incoming socket; `readBufferSize` defaults to `65536`, `allowHalfOpen` to `true`, and `keepAlive`, `noDelay`, and `pauseOnConnect` to `false`. |
+| `onconnection?` | `() => void` | — | Called on each `'connection'` event. |
 
 #### `socketpair(): [first: number, second: number]`
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L174)</sub>
+
+Create a pair of connected sockets, returning their file descriptors.
+
+**Returns** `[first: number, second: number]` — The file descriptors of the two connected sockets.
 
 #### `isIP(host: string): IPFamily | 0`
 
@@ -344,7 +369,7 @@ Returns `4` if `host` is an IPv4 address, `6` if it is an IPv6 address, or `0` o
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `host` | `string` | — | — |
+| `host` | `string` | — | The string to check. |
 
 #### `isIPv4(host: string): boolean`
 
@@ -356,7 +381,7 @@ Returns `true` if `host` is an IPv4 address.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `host` | `string` | — | — |
+| `host` | `string` | — | The string to check. |
 
 #### `isIPv6(host: string): boolean`
 
@@ -368,7 +393,7 @@ Returns `true` if `host` is an IPv6 address.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `host` | `string` | — | — |
+| `host` | `string` | — | The string to check. |
 
 ### Constants and variables
 
@@ -406,6 +431,8 @@ interface TCPSocketAddress {
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L16)</sub>
 
+The address of a TCP socket, as `{ address, family, port }`.
+
 #### `TCPSocketEvents`
 
 ```ts
@@ -418,6 +445,8 @@ interface TCPSocketEvents extends DuplexEvents {
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L22)</sub>
 
+Events emitted by a `TCPSocket`.
+
 #### `TCPSocketOptions`
 
 ```ts
@@ -429,6 +458,8 @@ interface TCPSocketOptions {
 ```
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L28)</sub>
+
+Options for a `TCPSocket`.
 
 #### `TCPSocketConnectOptions`
 
@@ -446,6 +477,8 @@ interface TCPSocketConnectOptions extends LookupOptions {
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L34)</sub>
 
+Options for `connect()`.
+
 #### `TCPServerDropInfo`
 
 ```ts
@@ -461,6 +494,8 @@ interface TCPServerDropInfo {
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L80)</sub>
 
+Details of a connection dropped because `maxConnections` was exceeded.
+
 #### `TCPServerEvents`
 
 ```ts
@@ -475,6 +510,8 @@ interface TCPServerEvents extends EventMap {
 ```
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L89)</sub>
+
+Events emitted by a `TCPServer`.
 
 #### `TCPServerOptions`
 
@@ -492,6 +529,8 @@ interface TCPServerOptions {
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L98)</sub>
 
+Options for a TCP server, applied to each incoming socket.
+
 #### `TCPServerListenOptions`
 
 ```ts
@@ -504,6 +543,8 @@ interface TCPServerListenOptions extends LookupOptions {
 ```
 
 <sub>[Source](https://github.com/holepunchto/bare-tcp/blob/v2.5.2/index.d.ts#L108)</sub>
+
+Options for `listen()`.
 
 ### Classes
 

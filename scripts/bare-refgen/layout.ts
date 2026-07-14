@@ -24,7 +24,8 @@ export interface LayoutGroup {
 }
 
 export interface Layout {
-  groups: LayoutGroup[];
+  /** Optional — a manifest may carry only params/returns/throws/describe overrides. */
+  groups?: LayoutGroup[];
   /**
    * Throws that the .d.ts doesn't (yet) annotate, keyed by member key/name.
    * Each string is a ready-to-render bullet; a leading `` `CODE` `` becomes the

@@ -78,8 +78,8 @@ A readable stream representing an incoming HTTP request (on the server) or respo
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `socket?` | `TCPSocket` | — | — |
-| `opts?` | [`HTTPIncomingMessageOptions`](#httpincomingmessageoptions) | — | — |
+| `socket?` | `TCPSocket` | — | The socket the message is read from. |
+| `opts?` | [`HTTPIncomingMessageOptions`](#httpincomingmessageoptions) | — | Initial values for `headers`, plus `method` and `url` (server side) or `statusCode` and `statusMessage` (client side). |
 
 #### `HTTPIncomingMessage.getHeader(name: string): string | number | undefined`
 
@@ -91,7 +91,7 @@ Returns the value of header `name` (case-insensitive), or `undefined` if not set
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `name` | `string` | — | — |
+| `name` | `string` | — | The header name (case-insensitive). |
 
 #### `HTTPIncomingMessage.getHeaders(): Record<string, string | number>`
 
@@ -109,7 +109,7 @@ Returns whether header `name` (case-insensitive) is set.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `name` | `string` | — | — |
+| `name` | `string` | — | The header name (case-insensitive). |
 
 #### `HTTPIncomingMessage.headers: Record<string, string | number>`
 
@@ -139,8 +139,8 @@ Sets the underlying socket's timeout to `ms` and, if given, adds `ontimeout` as 
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `ms` | `number` | — | — |
-| `ontimeout?` | `() => void` | — | — |
+| `ms` | `number` | — | The socket timeout in milliseconds. |
+| `ontimeout?` | `() => void` | — | Added as a one-time `'timeout'` listener. |
 
 #### `HTTPIncomingMessage.socket: TCPSocket`
 
@@ -170,6 +170,8 @@ Whether the connection was upgraded (e.g. to a WebSocket) after this message.
 
 <sub>[Source](https://github.com/holepunchto/bare-http1/blob/v4.5.7/index.d.ts#L45)</sub>
 
+The request URL path. Only meaningful on the server side.
+
 ### HTTPOutgoingMessage
 
 #### `new HTTPOutgoingMessage(socket?: TCPSocket)`
@@ -182,7 +184,7 @@ A writable stream representing an outgoing HTTP request (on the client) or respo
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `socket?` | `TCPSocket` | — | — |
+| `socket?` | `TCPSocket` | — | The socket the message is written to. |
 
 #### `flushHeaders(): void`
 
@@ -200,7 +202,7 @@ Returns the value of header `name` (case-insensitive), or `undefined` if not set
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `name` | `string` | — | — |
+| `name` | `string` | — | The header name (case-insensitive). |
 
 #### `HTTPOutgoingMessage.getHeaders(): Record<string, string | number>`
 
@@ -218,7 +220,7 @@ Returns whether header `name` (case-insensitive) is set.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `name` | `string` | — | — |
+| `name` | `string` | — | The header name (case-insensitive). |
 
 #### `HTTPOutgoingMessage.headers: Record<string, string | number>`
 
@@ -242,8 +244,13 @@ Sets header `name` (case-insensitive) to `value`, validating both.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `name` | `string` | — | — |
-| `value` | `string` \| `number` | — | — |
+| `name` | `string` | — | The header name (case-insensitive); must be a valid RFC 7230 token. |
+| `value` | `string` \| `number` | — | The header value; must not contain line-terminating characters. |
+
+**Throws**
+
+- `INVALID_HEADER_NAME` — `name` is not a valid RFC 7230 token.
+- `INVALID_HEADER_VALUE` — `value` contains a line-terminating character.
 
 #### `HTTPOutgoingMessage.setTimeout(ms: number, ontimeout?: () => void): this`
 
@@ -255,8 +262,8 @@ Sets the underlying socket's timeout to `ms` and, if given, adds `ontimeout` as 
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `ms` | `number` | — | — |
-| `ontimeout?` | `() => void` | — | — |
+| `ms` | `number` | — | The socket timeout in milliseconds. |
+| `ontimeout?` | `() => void` | — | Added as a one-time `'timeout'` listener. |
 
 #### `HTTPOutgoingMessage.socket: TCPSocket`
 
@@ -282,7 +289,7 @@ Manages a pool of `TCPSocket` connections shared across requests to the same hos
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | `HTTPAgentOptions & TCPSocketOptions & TCPSocketConnectOptions` | — | — |
+| `opts?` | `HTTPAgentOptions & TCPSocketOptions & TCPSocketConnectOptions` | — | Agent options (`keepAlive`, `keepAliveMsecs`, `defaultPort`) plus TCP socket and connect options applied to each connection the agent creates. |
 
 #### `addRequest(req: HTTPClientRequest, opts: TCPSocketOptions & TCPSocketConnectOptions): void`
 
@@ -294,8 +301,8 @@ Assigns a socket to `req`, reusing an idle keep-alive socket for the same host a
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `req` | `HTTPClientRequest` | — | — |
-| `opts` | `TCPSocketOptions & TCPSocketConnectOptions` | — | — |
+| `req` | `HTTPClientRequest` | — | The request to assign a socket to. |
+| `opts` | `TCPSocketOptions & TCPSocketConnectOptions` | — | The socket and connection options, including the destination `host` and `port`. |
 
 #### `createConnection(opts?: TCPSocketOptions & TCPSocketConnectOptions): TCPSocket`
 
@@ -307,7 +314,11 @@ Creates a new `TCPSocket` connection for a request. Throws if the agent is suspe
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | `TCPSocketOptions & TCPSocketConnectOptions` | — | — |
+| `opts?` | `TCPSocketOptions & TCPSocketConnectOptions` | — | The socket and connection options, including the destination `host` and `port`. |
+
+**Throws**
+
+- `AGENT_SUSPENDED` — the agent is suspended.
 
 #### `destroy(): void`
 
@@ -331,7 +342,7 @@ Returns the pool key used to group sockets by destination, derived from `opts.ho
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts` | `{ host: string; port: number }` | — | — |
+| `opts` | `{ host: string; port: number }` | — | The destination `host` and `port` to derive the pool key from. |
 
 #### `HTTPAgent.global: HTTPAgent`
 
@@ -349,7 +360,7 @@ Marks `socket` to be kept alive and unreferenced instead of closed once a reques
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `socket` | `TCPSocket` | — | — |
+| `socket` | `TCPSocket` | — | The socket to keep alive for reuse. |
 
 #### `resume(): void`
 
@@ -373,8 +384,8 @@ Marks `socket` as back in active use, referencing it so it keeps the event loop 
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `socket` | `TCPSocket` | — | — |
-| `req?` | `HTTPClientRequest` | — | — |
+| `socket` | `TCPSocket` | — | The socket to mark as back in active use. |
+| `req?` | `HTTPClientRequest` | — | The request the socket is being reused for. |
 
 #### `sockets: IterableIterator<TCPSocket>`
 
@@ -410,8 +421,8 @@ An HTTP/1.1 server, extending `TCPServer`. Emits `'request'` with an `HTTPIncomi
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`HTTPServerConnectionOptions`](#httpserverconnectionoptions) | — | — |
-| `onrequest?` | `(req: HTTPIncomingMessage, res: HTTPServerResponse) => void` | — | — |
+| `opts?` | [`HTTPServerConnectionOptions`](#httpserverconnectionoptions) | — | Options passed to each `HTTPServerConnection`, such as custom `IncomingMessage` and `ServerResponse` classes. |
+| `onrequest?` | `(req: HTTPIncomingMessage, res: HTTPServerResponse) => void` | — | Added as a listener for the `'request'` event. |
 
 #### `HTTPServer.setTimeout(ms: number, ontimeout?: () => void): this`
 
@@ -423,8 +434,8 @@ Sets the idle-socket timeout to `ms` (default `0`, meaning no timeout) and, if g
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `ms` | `number` | — | — |
-| `ontimeout?` | `() => void` | — | — |
+| `ms` | `number` | — | The idle-socket timeout in milliseconds; `0` (the default) disables it. |
+| `ontimeout?` | `() => void` | — | Added as a `'timeout'` listener. |
 
 #### `timeout: number | undefined`
 
@@ -444,8 +455,8 @@ An outgoing HTTP response, extending `HTTPOutgoingMessage`. Defaults to status `
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `socket` | `TCPSocket` | — | — |
-| `req` | `HTTPIncomingMessage` | — | — |
+| `socket` | `TCPSocket` | — | The socket the response is written to. |
+| `req` | `HTTPIncomingMessage` | — | The request this response answers. |
 
 #### `req: HTTPIncomingMessage`
 
@@ -479,9 +490,14 @@ Sets `statusCode`, and optionally `statusMessage` and additional `headers`, in o
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `statusCode` | [`HTTPStatusCode`](#httpstatuscode) | — | — |
-| `statusMessage?` | [`HTTPStatusMessage`](#httpstatusmessage) | — | — |
-| `headers?` | `Record<string, string \| number>` | — | — |
+| `statusCode` | [`HTTPStatusCode`](#httpstatuscode) | — | The status code to send. |
+| `statusMessage?` | [`HTTPStatusMessage`](#httpstatusmessage) | — | The reason phrase to send; defaults to the standard phrase for `statusCode`. |
+| `headers?` | `Record<string, string \| number>` | — | Additional headers to merge into the response headers. |
+
+**Throws**
+
+- `INVALID_HEADER_NAME` — a header name is not a valid token.
+- `INVALID_HEADER_VALUE` — `statusMessage` or a header value contains an invalid character.
 
 ### HTTPServerConnection
 
@@ -499,9 +515,9 @@ The per-socket state machine that parses incoming request data into `HTTPIncomin
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `server` | `HTTPServer` | — | — |
-| `socket` | `TCPSocket` | — | — |
-| `opts?` | [`HTTPServerConnectionOptions`](#httpserverconnectionoptions) | — | — |
+| `server` | `HTTPServer` | — | The server the connection belongs to. |
+| `socket` | `TCPSocket` | — | The connection socket. |
+| `opts?` | [`HTTPServerConnectionOptions`](#httpserverconnectionoptions) | — | Custom `IncomingMessage` and `ServerResponse` classes to use for requests on the connection. |
 
 #### `HTTPServerConnection.for(socket: TCPSocket): HTTPServerConnection`
 
@@ -513,7 +529,7 @@ Returns the `HTTPServerConnection` associated with `socket`, or `null` if none e
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `socket` | `TCPSocket` | — | — |
+| `socket` | `TCPSocket` | — | The socket to look up. |
 
 #### `HTTPServerConnection.idle: boolean`
 
@@ -564,8 +580,13 @@ new HTTPClientRequest(onresponse: () => void)
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`HTTPClientRequestOptions`](#httpclientrequestoptions) | — | — |
-| `onresponse?` | `() => void` | — | — |
+| `opts?` | [`HTTPClientRequestOptions`](#httpclientrequestoptions) | — | Request options; `method` defaults to `'GET'`, `path` to `'/'`, `host` to `'localhost'`, and `port` to the agent's default port (`80`). Set `agent` to choose the pooling agent, or `false` for a fresh, unpooled one. |
+| `onresponse?` | `() => void` | — | Added as a one-time `'response'` listener. |
+
+**Throws**
+
+- `INVALID_HEADER_NAME` — `method` or a header name is not a valid token.
+- `INVALID_HEADER_VALUE` — `path` or a header value contains an invalid character.
 
 #### `HTTPClientRequest.headers: Record<string, string | number>`
 
@@ -597,8 +618,8 @@ The per-socket state machine that parses response data for an `HTTPClientRequest
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `socket` | `TCPSocket` | — | — |
-| `opts?` | [`HTTPClientConnectionOptions`](#httpclientconnectionoptions) | — | — |
+| `socket` | `TCPSocket` | — | The connection socket. |
+| `opts?` | [`HTTPClientConnectionOptions`](#httpclientconnectionoptions) | — | A custom `IncomingMessage` class to use for the response. |
 
 #### `HTTPClientConnection.for(socket: TCPSocket): HTTPClientConnection | null`
 
@@ -610,7 +631,7 @@ Returns the `HTTPClientConnection` associated with `socket`, or `null` if none e
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `socket` | `TCPSocket` | — | — |
+| `socket` | `TCPSocket` | — | The socket to look up. |
 
 #### `HTTPClientConnection.from`
 
@@ -626,8 +647,8 @@ Returns the existing `HTTPClientConnection` for `socket`, creating one with `opt
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `socket` | `TCPSocket` | — | — |
-| `opts?` | [`HTTPClientConnectionOptions`](#httpclientconnectionoptions) | — | — |
+| `socket` | `TCPSocket` | — | The socket to look up or create a connection for. |
+| `opts?` | [`HTTPClientConnectionOptions`](#httpclientconnectionoptions) | — | Options used if a new connection is created. |
 
 #### `HTTPClientConnection.idle: boolean`
 
@@ -669,8 +690,8 @@ Creates an `HTTPServer`. If `onrequest` is given, it's added as a `'request'` li
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`HTTPServerConnectionOptions`](#httpserverconnectionoptions) | — | — |
-| `onrequest?` | `(req: HTTPIncomingMessage, res: HTTPServerResponse) => void` | — | — |
+| `opts?` | [`HTTPServerConnectionOptions`](#httpserverconnectionoptions) | — | Options passed to each `HTTPServerConnection`, such as custom `IncomingMessage` and `ServerResponse` classes. |
+| `onrequest?` | `(req: HTTPIncomingMessage, res: HTTPServerResponse) => void` | — | Added as a listener for the `'request'` event. |
 
 #### `request`
 
@@ -686,9 +707,9 @@ Creates an `HTTPClientRequest` to `url` (a `URL` or a URL string). If `onrespons
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `url` | `URL` \| `string` | — | — |
-| `opts?` | [`HTTPClientRequestOptions`](#httpclientrequestoptions) | — | — |
-| `onresponse?` | `(res: HTTPIncomingMessage) => void` | — | — |
+| `url` | `URL` \| `string` | — | The URL to request, as a `URL` object or string; its host, port, and path populate the request options. |
+| `opts?` | [`HTTPClientRequestOptions`](#httpclientrequestoptions) | — | Request options, merged over the values derived from `url`. |
+| `onresponse?` | `(res: HTTPIncomingMessage) => void` | — | Added as a one-time `'response'` listener. |
 
 #### `get`
 
@@ -704,9 +725,9 @@ Like `request()`, but ends the request immediately, since GET requests have no b
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `url` | `URL` \| `string` | — | — |
-| `opts?` | [`HTTPClientRequestOptions`](#httpclientrequestoptions) | — | — |
-| `onresponse?` | `(res: HTTPIncomingMessage) => void` | — | — |
+| `url` | `URL` \| `string` | — | The URL to request, as a `URL` object or string; its host, port, and path populate the request options. |
+| `opts?` | [`HTTPClientRequestOptions`](#httpclientrequestoptions) | — | Request options, merged over the values derived from `url`. |
+| `onresponse?` | `(res: HTTPIncomingMessage) => void` | — | Added as a one-time `'response'` listener. |
 
 ### Constants and variables
 

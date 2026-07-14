@@ -41,8 +41,12 @@ console.log(digest)
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `algorithm` | `HashAlgorithm` \| `number` | — | — |
-| `opts?` | `TransformOptions<CryptoHash>` | — | — |
+| `algorithm` | `HashAlgorithm` \| `number` | — | The hash algorithm, as a string (e.g. `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`. |
+| `opts?` | `TransformOptions<CryptoHash>` | — | Options forwarded to the `Transform` constructor from `bare-stream`. |
+
+**Throws**
+
+- `UNKNOWN_HASH` — `algorithm` is a string that does not name a supported hash algorithm.
 
 #### `Hash.digest(encoding: BufferEncoding): string`
 
@@ -61,7 +65,7 @@ digest(): Buffer
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `encoding` | `BufferEncoding` | — | — |
+| `encoding` | `BufferEncoding` | — | The encoding for the returned digest; omit (or pass `'buffer'`) to get a `Buffer`. |
 
 #### `Hash.HashAlgorithm`
 
@@ -94,8 +98,8 @@ update(data: Buffer, encoding?: 'buffer'): this
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `data` | `string` | — | — |
-| `encoding?` | `BufferEncoding` | — | — |
+| `data` | `string` | — | The data to push into the hash. |
+| `encoding?` | `BufferEncoding` | — | The encoding of `data` when it is a string (defaults to `'utf8'`). |
 
 ### Hmac
 
@@ -111,15 +115,19 @@ new Hmac(algorithm: HashAlgorithm | number, key: string | Buffer, opts?: Transfo
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `algorithm` | `HashAlgorithm` \| `number` | — | — |
-| `key` | `string` \| `Buffer` | — | — |
-| `opts?` | `TransformOptions<CryptoHmac>` | — | — |
+| `algorithm` | `HashAlgorithm` \| `number` | — | The hash algorithm, as a string (e.g. `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`. |
+| `key` | `string` \| `Buffer` | — | The HMAC key; a string is decoded using the `encoding` option (defaults to `'utf8'`). |
+| `opts?` | `TransformOptions<CryptoHmac>` | — | Options forwarded to the `Transform` constructor from `bare-stream`. |
+
+**Throws**
+
+- `UNKNOWN_HASH` — `algorithm` is a string that does not name a supported hash algorithm.
 
 #### `Hmac.digest(encoding: BufferEncoding): string`
 
 <sub>[Source](https://github.com/holepunchto/bare-crypto/blob/v1.15.3/lib/hmac.d.ts#L15)</sub>
 
-Finalize the hash and return the digest. If `encoding` is provided (and is not `'buffer'`), the digest is returned as a string in that encoding; otherwise as a `Buffer`. Further calls to `update()` or `digest()` throw.
+Finalize the HMAC. Same semantics as `hash.digest()`.
 
 Overloads:
 
@@ -132,13 +140,13 @@ digest(): Buffer
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `encoding` | `BufferEncoding` | — | — |
+| `encoding` | `BufferEncoding` | — | The encoding for the returned digest; omit (or pass `'buffer'`) to get a `Buffer`. |
 
 #### `Hmac.update(data: string, encoding?: BufferEncoding): this`
 
 <sub>[Source](https://github.com/holepunchto/bare-crypto/blob/v1.15.3/lib/hmac.d.ts#L12)</sub>
 
-Push `data` into the hash. If `data` is a string, it is decoded using `encoding` (defaults to `'utf8'`). Returns the same `hash` for chaining. Throws once `digest()` has been called.
+Push `data` into the HMAC. Same semantics as `hash.update()`.
 
 Overloads:
 
@@ -151,8 +159,8 @@ update(data: Buffer, encoding?: 'buffer'): this
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `data` | `string` | — | — |
-| `encoding?` | `BufferEncoding` | — | — |
+| `data` | `string` | — | The data to push into the HMAC. |
+| `encoding?` | `BufferEncoding` | — | The encoding of `data` when it is a string (defaults to `'utf8'`). |
 
 ### Cipheriv
 
@@ -168,10 +176,15 @@ new Cipheriv(algorithm: CipherAlgorithm | number, key: string | Buffer, iv: stri
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `algorithm` | `CipherAlgorithm` \| `number` | — | — |
-| `key` | `string` \| `Buffer` | — | — |
-| `iv` | `string` \| `Buffer` | — | — |
-| `opts?` | `TransformOptions<Cipheriv>` | — | — |
+| `algorithm` | `CipherAlgorithm` \| `number` | — | The cipher algorithm, as a string or a numeric constant from `constants.cipher`. |
+| `key` | `string` \| `Buffer` | — | The encryption key; must match the algorithm's required length. |
+| `iv` | `string` \| `Buffer` | — | The initialization vector / nonce; must match the algorithm's required length. |
+| `opts?` | `TransformOptions<Cipheriv>` | — | Options forwarded to `Transform`; may include `encoding` (defaults to `'utf8'`) and, for AEAD algorithms, `authTagLength` (defaults to `16`; must be `12`, `14`, or `16`). |
+
+**Throws**
+
+- `UNKNOWN_CIPHER` — `algorithm` is a string that does not name a supported cipher.
+- `RangeError` — `key` or `iv` does not match the algorithm's required length, or (AEAD) `authTagLength` is not `12`, `14`, or `16`.
 
 #### `Cipheriv.final(outputEncoding?: BufferEncoding): string | Buffer`
 
@@ -183,7 +196,7 @@ Finalize encryption. For AEAD ciphers, the auth tag becomes available via `getAu
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `outputEncoding?` | `BufferEncoding` | — | — |
+| `outputEncoding?` | `BufferEncoding` | — | If provided, the final output is returned as a string in this encoding. |
 
 #### `getAuthTag(): Buffer`
 
@@ -201,8 +214,8 @@ Provide additional authenticated data. AEAD ciphers only. The `options` may incl
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `buffer` | `string` \| `Buffer` | — | — |
-| `opts?` | `{ encoding?: BufferEncoding }` | — | — |
+| `buffer` | `string` \| `Buffer` | — | The additional authenticated data. |
+| `opts?` | `{ encoding?: BufferEncoding }` | — | May include an `encoding` for string `buffer` inputs. |
 
 #### `setAutoPadding(pad: unknown): this`
 
@@ -214,7 +227,7 @@ Enable or disable automatic padding. Block ciphers only.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `pad` | `unknown` | — | — |
+| `pad` | `unknown` | — | `true` to enable automatic padding, `false` to disable it. |
 
 #### `Cipheriv.update`
 
@@ -224,15 +237,15 @@ update(data: string | Buffer, inputEncoding?: BufferEncoding, outputEncoding?: B
 
 <sub>[Source](https://github.com/holepunchto/bare-crypto/blob/v1.15.3/lib/cipher.d.ts#L26)</sub>
 
-Push `data` into the hash. If `data` is a string, it is decoded using `encoding` (defaults to `'utf8'`). Returns the same `hash` for chaining. Throws once `digest()` has been called.
+Encrypt a chunk. Returns a `Buffer`, or a string if `outputEncoding` is provided. For AEAD ciphers, encrypted output is delivered all at once from `final()`.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `data` | `string` \| `Buffer` | — | — |
-| `inputEncoding?` | `BufferEncoding` | — | — |
-| `outputEncoding?` | `BufferEncoding` | — | — |
+| `data` | `string` \| `Buffer` | — | The chunk to encrypt. |
+| `inputEncoding?` | `BufferEncoding` | — | The encoding of `data` when it is a string. |
+| `outputEncoding?` | `BufferEncoding` | — | If provided, the encrypted result is returned as a string in this encoding. |
 
 ### Decipheriv
 
@@ -248,22 +261,27 @@ new Decipheriv(algorithm: CipherAlgorithm | number, key: string | Buffer, iv: st
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `algorithm` | `CipherAlgorithm` \| `number` | — | — |
-| `key` | `string` \| `Buffer` | — | — |
-| `iv` | `string` \| `Buffer` | — | — |
-| `opts?` | `TransformOptions<Cipheriv>` | — | — |
+| `algorithm` | `CipherAlgorithm` \| `number` | — | The cipher algorithm, as a string or a numeric constant from `constants.cipher`. |
+| `key` | `string` \| `Buffer` | — | The decryption key; must match the algorithm's required length. |
+| `iv` | `string` \| `Buffer` | — | The initialization vector / nonce; must match the algorithm's required length. |
+| `opts?` | `TransformOptions<Cipheriv>` | — | Accepts the same options as `createCipheriv`. |
+
+**Throws**
+
+- `UNKNOWN_CIPHER` — `algorithm` is a string that does not name a supported cipher.
+- `RangeError` — `key` or `iv` does not match the algorithm's required length, or (AEAD) `authTagLength` is not `12`, `14`, or `16`.
 
 #### `Decipheriv.final(outputEncoding?: BufferEncoding): string | Buffer`
 
 <sub>[Source](https://github.com/holepunchto/bare-crypto/blob/v1.15.3/lib/cipher.d.ts#L55)</sub>
 
-Finalize encryption. For AEAD ciphers, the auth tag becomes available via `getAuthTag()` after this call.
+Finalize decryption. For AEAD ciphers, `setAuthTag()` must be called before `final()`.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `outputEncoding?` | `BufferEncoding` | — | — |
+| `outputEncoding?` | `BufferEncoding` | — | If provided, the final output is returned as a string in this encoding. |
 
 #### `Decipheriv.setAAD(buffer: string | Buffer, opts?: { encoding?: BufferEncoding }): this`
 
@@ -275,8 +293,8 @@ Provide additional authenticated data. AEAD ciphers only. The `options` may incl
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `buffer` | `string` \| `Buffer` | — | — |
-| `opts?` | `{ encoding?: BufferEncoding }` | — | — |
+| `buffer` | `string` \| `Buffer` | — | The additional authenticated data. |
+| `opts?` | `{ encoding?: BufferEncoding }` | — | May include an `encoding` for string `buffer` inputs. |
 
 #### `setAuthTag(authTag: string | Buffer, encoding?: BufferEncoding): this`
 
@@ -288,8 +306,8 @@ Set the expected auth tag prior to calling `final()`. AEAD ciphers only.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `authTag` | `string` \| `Buffer` | — | — |
-| `encoding?` | `BufferEncoding` | — | — |
+| `authTag` | `string` \| `Buffer` | — | The expected authentication tag. |
+| `encoding?` | `BufferEncoding` | — | The encoding of `authTag` when it is a string. |
 
 #### `setAutoPadding(pad: boolean): this`
 
@@ -301,7 +319,7 @@ Enable or disable automatic padding. Block ciphers only.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `pad` | `boolean` | — | — |
+| `pad` | `boolean` | — | `true` to enable automatic padding, `false` to disable it. |
 
 #### `Decipheriv.update`
 
@@ -311,15 +329,15 @@ update(data: string | Buffer, inputEncoding?: BufferEncoding, outputEncoding?: B
 
 <sub>[Source](https://github.com/holepunchto/bare-crypto/blob/v1.15.3/lib/cipher.d.ts#L49)</sub>
 
-Push `data` into the hash. If `data` is a string, it is decoded using `encoding` (defaults to `'utf8'`). Returns the same `hash` for chaining. Throws once `digest()` has been called.
+Decrypt a chunk. Same semantics as `cipher.update()`.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `data` | `string` \| `Buffer` | — | — |
-| `inputEncoding?` | `BufferEncoding` | — | — |
-| `outputEncoding?` | `BufferEncoding` | — | — |
+| `data` | `string` \| `Buffer` | — | The chunk to decrypt. |
+| `inputEncoding?` | `BufferEncoding` | — | The encoding of `data` when it is a string. |
+| `outputEncoding?` | `BufferEncoding` | — | If provided, the decrypted result is returned as a string in this encoding. |
 
 ### Functions
 
@@ -333,8 +351,12 @@ Create a new `Hash` instance with the specified `algorithm`. `algorithm` may be 
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `algorithm` | `HashAlgorithm` \| `number` | — | — |
-| `opts?` | `TransformOptions<Hash>` | — | — |
+| `algorithm` | `HashAlgorithm` \| `number` | — | The hash algorithm, as a string (e.g. `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`. |
+| `opts?` | `TransformOptions<Hash>` | — | Options forwarded to the `Transform` constructor from `bare-stream`. |
+
+**Throws**
+
+- `UNKNOWN_HASH` — `algorithm` is a string that does not name a supported hash algorithm.
 
 #### `createHmac`
 
@@ -350,9 +372,13 @@ Create a new `Hmac` instance using `algorithm` and `key`. `key` may be a string 
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `algorithm` | `HashAlgorithm` \| `number` | — | — |
-| `key` | `string` \| `Buffer` | — | — |
-| `opts?` | `TransformOptions<Hmac>` | — | — |
+| `algorithm` | `HashAlgorithm` \| `number` | — | The hash algorithm, as a string (e.g. `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`. |
+| `key` | `string` \| `Buffer` | — | The HMAC key; a string is decoded using the `encoding` option (defaults to `'utf8'`). |
+| `opts?` | `TransformOptions<Hmac>` | — | Options forwarded to the `Transform` constructor from `bare-stream`. |
+
+**Throws**
+
+- `UNKNOWN_HASH` — `algorithm` is a string that does not name a supported hash algorithm.
 
 #### `createCipheriv`
 
@@ -368,10 +394,15 @@ Create a new `Cipheriv` instance using `algorithm`, `key`, and `iv` (initializat
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `algorithm` | `CipherAlgorithm` \| `number` | — | — |
-| `key` | `string` \| `Buffer` | — | — |
-| `iv` | `string` \| `Buffer` | — | — |
-| `opts?` | `TransformOptions<Cipheriv>` | — | — |
+| `algorithm` | `CipherAlgorithm` \| `number` | — | The cipher algorithm, as a string or a numeric constant from `constants.cipher`. |
+| `key` | `string` \| `Buffer` | — | The encryption key; must match the algorithm's required length. |
+| `iv` | `string` \| `Buffer` | — | The initialization vector / nonce; must match the algorithm's required length. |
+| `opts?` | `TransformOptions<Cipheriv>` | — | Options forwarded to `Transform`; may include `encoding` (defaults to `'utf8'`) and, for AEAD algorithms, `authTagLength` (defaults to `16`; must be `12`, `14`, or `16`). |
+
+**Throws**
+
+- `UNKNOWN_CIPHER` — `algorithm` is a string that does not name a supported cipher.
+- `RangeError` — `key` or `iv` does not match the algorithm's required length, or (AEAD) `authTagLength` is not `12`, `14`, or `16`.
 
 #### `createDecipheriv`
 
@@ -387,10 +418,15 @@ Create a new `Decipheriv` instance using `algorithm`, `key`, and `iv`. Accepts t
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `algorithm` | `CipherAlgorithm` \| `number` | — | — |
-| `key` | `string` \| `Buffer` | — | — |
-| `iv` | `string` \| `Buffer` | — | — |
-| `opts?` | `TransformOptions<Cipheriv>` | — | — |
+| `algorithm` | `CipherAlgorithm` \| `number` | — | The cipher algorithm, as a string or a numeric constant from `constants.cipher`. |
+| `key` | `string` \| `Buffer` | — | The decryption key; must match the algorithm's required length. |
+| `iv` | `string` \| `Buffer` | — | The initialization vector / nonce; must match the algorithm's required length. |
+| `opts?` | `TransformOptions<Cipheriv>` | — | Accepts the same options as `createCipheriv`. |
+
+**Throws**
+
+- `UNKNOWN_CIPHER` — `algorithm` is a string that does not name a supported cipher.
+- `RangeError` — `key` or `iv` does not match the algorithm's required length, or (AEAD) `authTagLength` is not `12`, `14`, or `16`.
 
 #### `randomBytes(size: number): Buffer`
 
@@ -409,7 +445,7 @@ randomBytes(size: number, callback: (err: Error | null, buffer: Buffer) => void)
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `size` | `number` | — | — |
+| `size` | `number` | — | The number of random bytes to generate. |
 
 #### `randomFill`
 
@@ -427,9 +463,13 @@ Synchronous form: `randomFillSync<B extends ArrayBuffer | ArrayBufferView>(buffe
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `buffer` | `B` | — | — |
-| `offset?` | `number` | — | — |
-| `size?` | `number` | — | — |
+| `buffer` | `B` | — | The buffer to fill. |
+| `offset?` | `number` | — | Offset at which filling starts (defaults to `0`). |
+| `size?` | `number` | — | Amount to fill (defaults to `buffer.byteLength - offset`). |
+
+**Throws**
+
+- `RangeError` — `offset`, `size`, or `offset + size` is out of range for `buffer`.
 
 #### `randomUUID(): string`
 
@@ -453,11 +493,16 @@ Synchronous form: `pbkdf2Sync(password: string | ArrayBufferView, salt: string |
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `password` | `string` \| `ArrayBuffer` \| `ArrayBufferView` | — | — |
-| `salt` | `string` \| `ArrayBuffer` \| `ArrayBufferView` | — | — |
-| `iterations` | `number` | — | — |
-| `keylen` | `number` | — | — |
-| `digest` | `HashAlgorithm` \| `number` | — | — |
+| `password` | `string` \| `ArrayBuffer` \| `ArrayBufferView` | — | The password to derive the key from. |
+| `salt` | `string` \| `ArrayBuffer` \| `ArrayBufferView` | — | The salt. |
+| `iterations` | `number` | — | The number of PBKDF2 iterations; must be between `1` and `2^32 - 1`. |
+| `keylen` | `number` | — | The length in bytes of the derived key. |
+| `digest` | `HashAlgorithm` \| `number` | — | The hash algorithm, as a string or a numeric constant from `constants.hash`. |
+
+**Throws**
+
+- `RangeError` — `iterations` or `keylen` is out of range.
+- `UNKNOWN_HASH` — `digest` is a string that does not name a supported hash algorithm.
 
 #### `generateKeyPair`
 
@@ -476,7 +521,11 @@ Generate a new asymmetric key pair. `type` may be a string (e.g. `'ed25519'`) or
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `type` | `SignatureAlgorithm \| Lowercase<SignatureAlgorithm>` | — | — |
+| `type` | `SignatureAlgorithm \| Lowercase<SignatureAlgorithm>` | — | The key type, as a string (e.g. `'ed25519'`) or a numeric constant from `constants.keyType`. |
+
+**Throws**
+
+- `UNKNOWN_KEY_TYPE` — `type` is a string that does not name a supported key type.
 
 #### `sign(algorithm: null, data: ArrayBuffer | ArrayBufferView, key: CryptoKey): Buffer`
 
@@ -488,9 +537,9 @@ Sign `data` using `key`. For Ed25519, `algorithm` is ignored — pass `null`. `d
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `algorithm` | `null` | — | — |
-| `data` | `ArrayBuffer` \| `ArrayBufferView` | — | — |
-| `key` | `CryptoKey` | — | — |
+| `algorithm` | `null` | — | Ignored for Ed25519 — pass `null`. |
+| `data` | `ArrayBuffer` \| `ArrayBufferView` | — | The data to sign. |
+| `key` | `CryptoKey` | — | The key to sign with. |
 
 #### `verify`
 
@@ -506,10 +555,10 @@ Verify that `signature` is a valid signature over `data` for `key`. Returns `tru
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `algorithm` | `null` | — | — |
-| `data` | `ArrayBuffer` \| `ArrayBufferView` | — | — |
-| `key` | `CryptoKey` | — | — |
-| `signature` | `Buffer` | — | — |
+| `algorithm` | `null` | — | Ignored for Ed25519 — pass `null`. |
+| `data` | `ArrayBuffer` \| `ArrayBufferView` | — | The signed data. |
+| `key` | `CryptoKey` | — | The key to verify against. |
+| `signature` | `Buffer` | — | The signature to check. |
 
 #### `timingSafeEqual(a: ArrayBuffer | ArrayBufferView, b: ArrayBuffer | ArrayBufferView): boolean`
 
@@ -521,8 +570,12 @@ Compare two `ArrayBuffer`s or `ArrayBufferView`s in constant time. Returns `true
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `a` | `ArrayBuffer` \| `ArrayBufferView` | — | — |
-| `b` | `ArrayBuffer` \| `ArrayBufferView` | — | — |
+| `a` | `ArrayBuffer` \| `ArrayBufferView` | — | The first buffer to compare. |
+| `b` | `ArrayBuffer` \| `ArrayBufferView` | — | The second buffer to compare. |
+
+**Throws**
+
+- `RangeError` — `a` and `b` differ in byte length.
 
 ### Constants and variables
 
@@ -539,6 +592,8 @@ constants: {
 
 <sub>[Source](https://github.com/holepunchto/bare-crypto/blob/v1.15.3/lib/constants.d.ts#L5)</sub>
 
+The supported algorithm constants: `hash` (hash algorithms), `cipher` (symmetric cipher algorithms), `signature` (signature algorithms), and `keyType` (asymmetric key types).
+
 #### `webcrypto`
 
 <sub>[Source](https://github.com/holepunchto/bare-crypto/blob/v1.15.3/web.d.ts#L1)</sub>
@@ -553,11 +608,13 @@ A namespace implementing a subset of the W3C Web Crypto API (\<https://w3c.githu
 
 <sub>[Source](https://github.com/holepunchto/bare-crypto/blob/v1.15.3/web.d.ts#L1)</sub>
 
+Fill `array` with cryptographically secure random bytes and return the same `array`. Equivalent to `randomFillSync(array)`.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `array` | `B` | — | — |
+| `array` | `B` | — | The buffer to fill with cryptographically secure random bytes. |
 
 ## `bare-crypto/global`
 
@@ -566,6 +623,8 @@ A namespace implementing a subset of the W3C Web Crypto API (\<https://w3c.githu
 #### `crypto`
 
 <sub>[Source](https://github.com/holepunchto/bare-crypto/blob/v1.15.3/web.d.ts#L1)</sub>
+
+Installed as a global by importing `bare-crypto/global`, along with `Crypto`, `CryptoKey`, and `SubtleCrypto`.
 
 ## See also
 
