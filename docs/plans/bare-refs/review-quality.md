@@ -4,6 +4,25 @@ _Status: **COMPLETE** (started 2026-07-13; finished 2026-07-15). Run by the
 `review-bare-api-quality` scheduled task across several session-limited runs.
 **This scheduled task can now be disabled.**_
 
+## Addendum (session 9) — two more emitter bugs fixed after COMPLETE was marked
+
+The completion summary below verified Surface 2 as "parse clean + member TSDoc
+present" — but that checked *descriptions*, not *tags*. A follow-up spot-check of
+bare-sqlite's branch found it carried **0 `@param`/`@returns`/`@throws` tags**.
+Two more systemic emitter bugs (commit `9368ec2`), now fixed and all 69 branches
+re-emitted:
+3. `emit-jsdoc` **never emitted `@throws`** — the `layout.throws` maps rendered
+   on the pages but never reached the TSDoc. Added `throwsTag()` (`` `CODE` `` →
+   `@throws {CODE} condition`).
+4. **Key-space mismatch**: manifest keys use the model's names
+   (`DatabaseSync.prepare`), but emit walks the raw `.d.ts` whose interface is
+   named `SQLiteDatabaseSync` — so `@param`/`@returns` silently missed on every
+   renamed declaration (descriptions matched via bare-name fallback, tags did
+   not). Added `withBareAliases()` — index each map under its unambiguous bare
+   last segment. bare-sqlite 0 → 22 tags; bare-fs now emits `@throws {EEXIST}`
+   etc. All 69 re-emitted; sampled `.d.ts` across bare-sqlite/fs/rpc/crypto/
+   stream/bluetooth-android parse clean; nothing pushed.
+
 ## Final summary (2026-07-15)
 
 All **70 generated pages** and **69 upstream TSDoc branches** reviewed against
