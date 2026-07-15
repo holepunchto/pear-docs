@@ -9,7 +9,7 @@
  *      file at out/_redirects. Follows the qvac docs strategy:
  *        - public/_redirects is the authored source (markdown negotiation,
  *          catch-all 404, etc.) and is copied into out/ by `next build`.
- *        - This script prepends generated IA 308 rules ahead of that file
+ *        - This script prepends generated IA 301 rules ahead of that file
  *          so legacy redirects stay first-match and public/_redirects
  *          rules (especially the catch-all 404) remain last.
  *
@@ -48,7 +48,7 @@ function main(): void {
     stubsWritten++;
   }
 
-  const generatedRedirects = redirects.map(({ from, to }) => `${from} ${to} 308`).join('\n');
+  const generatedRedirects = redirects.map(({ from, to }) => `${from} ${to} 301`).join('\n');
   const redirectsFile =
     generatedRedirects && publicRedirects
       ? `${generatedRedirects}\n\n${publicRedirects}\n`

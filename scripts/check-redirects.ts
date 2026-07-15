@@ -6,7 +6,7 @@
  *   1. out/<from>/index.html exists.
  *   2. The HTML contains `meta http-equiv="refresh"` pointing at the new URL.
  *   3. The HTML contains `link rel="canonical"` pointing at the new URL.
- *   4. out/_redirects contains a line like `<from> <to> 308`.
+ *   4. out/_redirects contains a line like `<from> <to> 301`.
  *   5. out/_redirects ends with the catch-all 404 rule from public/_redirects.
  *
  * Designed to be wired into CI alongside check:internal-links so the IA
@@ -81,7 +81,7 @@ function main(): void {
       failures.push({ from, to, reason: `canonical link missing or wrong target` });
     }
 
-    const redirectLine = `${from} ${to} 308`;
+    const redirectLine = `${from} ${to} 301`;
     if (!redirectsFile.includes(redirectLine)) {
       failures.push({ from, to, reason: `not present in out/_redirects (expected line: "${redirectLine}")` });
     }
