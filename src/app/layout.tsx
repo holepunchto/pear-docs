@@ -6,10 +6,17 @@ import { getDocsSeoConfig } from '@/lib/seo-config';
 
 export const dynamic = 'force-static';
 
-const { metadataBase } = getDocsSeoConfig();
+const { metadataBase, siteName } = getDocsSeoConfig();
 
 export const metadata: Metadata = {
   metadataBase,
+  // Suffix every page's <title> with the brand so it differs from the on-page
+  // <h1> (page.data.title). buildDocsMetadata returns sub-page titles as plain
+  // strings (template applies) and the home title as `{ absolute }` (bypassed).
+  title: {
+    template: `%s | ${siteName}`,
+    default: siteName,
+  },
 };
 
 const poppins = Poppins({
