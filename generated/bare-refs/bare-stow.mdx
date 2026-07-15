@@ -83,16 +83,24 @@ stow(entry: URL | string, target: Target | TargetName, out: URL | string, opts?:
 
 <sub>[Source](https://github.com/holepunchto/bare-stow/blob/v0.1.4/index.d.ts#L61)</sub>
 
-Bundle the module graph rooted at `entry` for `target`, writing a harness plus bundle to `out`. Returns an async generator that yields each written artifact's `url` as it is produced.
+Bundle the module graph rooted at `entry` for `target`, writing a harness plus bundle to `out`.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `entry` | `URL` \| `string` | — | — |
-| `target` | [`Target`](#target) \| `TargetName` | — | — |
-| `out` | `URL` \| `string` | — | — |
-| `opts?` | [`StowOptions`](#stowoptions) | — | — |
+| `entry` | `URL` \| `string` | — | The entry module to bundle, as a `file:` URL or path string. |
+| `target` | [`Target`](#target) \| `TargetName` | — | The bundling target: a `Target` object, or a target name resolved to one (the built-in `bare-sidecar` and `bare-worker`, or a `bare-stow-target-<name>` package). |
+| `out` | `URL` \| `string` | — | The path to write the harness to, as a `file:` URL or path string; the bundle is written alongside it. |
+| `opts?` | [`StowOptions`](#stowoptions) | — | Options; see [`StowOptions`](#stowoptions). |
+
+**Returns** `AsyncGenerator<StowArtifact>` — An async generator that yields each written artifact's `url` as it is produced — the harness first, then the bundle, then any offloaded addon or asset files.
+
+**Throws**
+
+- The `target` argument is missing.
+- The `out` argument is missing.
+- A host in `opts.hosts` is not supported by the resolved target.
 
 ### Types
 
@@ -227,7 +235,7 @@ Attach a `Protocol` to the given underlying duplex byte `stream`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `stream` | `Duplex` | — | — |
+| `stream` | `Duplex` | — | The underlying duplex byte stream to multiplex the control and user-data channels over. |
 
 #### `send(type: string, payload?: object): Promise<void>`
 
@@ -239,8 +247,8 @@ Send a control frame of `type` with an optional JSON-serializable `payload`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `type` | `string` | — | — |
-| `payload?` | `object` | — | — |
+| `type` | `string` | — | The control frame type, e.g. `'ready'`, `'exit'`, `'error'`, or `'terminate'`. |
+| `payload?` | `object` | — | An optional JSON-serializable payload carried with the frame. |
 
 ### Functions
 
@@ -254,7 +262,9 @@ Attach a `Protocol` to `stream`, an underlying duplex byte stream.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `stream` | `Duplex` | — | — |
+| `stream` | `Duplex` | — | Any duplex byte stream to attach the protocol to. |
+
+**Returns** `Protocol` — A `Protocol` multiplexing control and user-data frames over `stream`.
 
 ### Constants and variables
 
@@ -300,7 +310,7 @@ Wrap the host side of a stowed bundle's transport `stream`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `stream` | `Duplex` | — | — |
+| `stream` | `Duplex` | — | The host side of a stowed bundle's transport (any duplex byte stream). |
 
 #### `ready: Promise<void>`
 
@@ -314,6 +324,8 @@ A promise that resolves once the worker has signaled ready, and rejects if the w
 
 Send a `terminate` control frame to the worker and resolve with its exit code once it exits.
 
+**Returns** `Promise<number | undefined>` — The worker's exit `code` once it exits.
+
 ### Functions
 
 #### `wrap(stream: Duplex): IPC`
@@ -326,7 +338,9 @@ Wrap the host side of a stowed bundle's transport `stream`, returning an `IPC` h
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `stream` | `Duplex` | — | — |
+| `stream` | `Duplex` | — | The host side of a stowed bundle's transport (any duplex byte stream). |
+
+**Returns** `IPC` — An `IPC` handle wrapping `stream`, with the `ready` promise and `terminate()` layered on top of `Protocol`.
 
 ## See also
 

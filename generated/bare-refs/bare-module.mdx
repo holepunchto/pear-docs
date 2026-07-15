@@ -31,7 +31,7 @@ const Module = require('bare-module')
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `url` | `URL` | — | — |
+| `url` | `URL` | — | The WHATWG `URL` identifying the module. |
 
 #### `builtins: Builtins`
 
@@ -101,9 +101,16 @@ Get the asset URL by resolving `specifier` relative to `parentURL`. `specifier` 
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `specifier` | `string` | — | — |
-| `parentURL` | `URL` | — | — |
-| `opts?` | [`Options`](#options) | — | — |
+| `specifier` | `string` | — | The asset specifier to resolve. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `specifier` relative to. |
+| `opts?` | [`Options`](#options) | — | Resolution options. |
+
+**Returns** `URL` — The WHATWG `URL` of the resolved asset.
+
+**Throws**
+
+- `ASSET_NOT_FOUND` — no asset matching `specifier` could be found relative to `parentURL`.
+- `TypeError` — `specifier` is not a string.
 
 #### `Module.builtinModules: Module[]`
 
@@ -151,8 +158,10 @@ Create a preconfigured `require()` bound to `parentURL`, so specifiers resolve a
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `parentURL` | `string` \| `URL` | — | — |
-| `opts?` | [`CreateRequireOptions`](#createrequireoptions) | — | — |
+| `parentURL` | `string` \| `URL` | — | The parent URL that the returned `require()` resolves and loads specifiers relative to. |
+| `opts?` | [`CreateRequireOptions`](#createrequireoptions) | — | Options for the created `require()`, such as its `protocol` and `cache`. |
+
+**Returns** [`Require`](#require) — A `require()` bound to `parentURL`, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.
 
 #### `Module.isBuiltin(): boolean`
 
@@ -177,8 +186,14 @@ Module.load(url: URL, source?: Buffer | string | Bundle | null, opts?: LoadOptio
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `url` | `URL` | — | — |
-| `opts` | [`LoadOptions`](#loadoptions) | — | — |
+| `url` | `URL` | — | The WHATWG `URL` of the module to load. |
+| `opts` | [`LoadOptions`](#loadoptions) | — | Load options; may carry a `source` to load directly instead of reading it through the protocol. |
+
+**Returns** `Module` — The loaded `Module`, reusing the cached instance if `url` was already loaded.
+
+**Throws**
+
+- `TYPE_INCOMPATIBLE` — a module is already cached for `url` with a type incompatible with the requested `type`.
 
 #### `Module.protocol: Protocol`
 
@@ -196,9 +211,16 @@ Resolve the module `specifier` relative to the `parentURL`. `specifier` is a str
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `specifier` | `string` | — | — |
-| `parentURL` | `URL` | — | — |
-| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+| `specifier` | `string` | — | The module specifier to resolve. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `specifier` relative to. |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | Resolution options. |
+
+**Returns** `URL` — The WHATWG `URL` that `specifier` resolves to.
+
+**Throws**
+
+- `MODULE_NOT_FOUND` — no module matching `specifier` could be found relative to `parentURL`.
+- `TypeError` — `specifier` is not a string.
 
 #### `path: string`
 
@@ -240,8 +262,8 @@ Defines how modules are resolved, read and loaded; custom protocols can serve mo
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `methods?` | `Partial<ModuleProtocol>` | — | — |
-| `context?` | `ModuleProtocol` | — | — |
+| `methods?` | `Partial<ModuleProtocol>` | — | Protocol method overrides; any of `preresolve`, `postresolve`, `resolve`, `exists`, `read`, `addon`, or `asset`. |
+| `context?` | `ModuleProtocol` | — | An existing protocol to fall back to for any method not provided in `methods`. |
 
 #### `addon(url: URL): URL`
 
@@ -253,7 +275,7 @@ Post-process URLs for addons before `postresolve()`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `url` | `URL` | — | — |
+| `url` | `URL` | — | The resolved addon `URL` to post-process. |
 
 #### `asset(url: URL): URL`
 
@@ -265,7 +287,7 @@ Post-process URLs for assets before `postresolve()`.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `url` | `URL` | — | — |
+| `url` | `URL` | — | The resolved asset `URL` to post-process. |
 
 #### `exists(url: URL, type: number): boolean`
 
@@ -277,8 +299,8 @@ Return whether the URL exists.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `url` | `URL` | — | — |
-| `type` | `number` | — | — |
+| `url` | `URL` | — | The `URL` to check for existence. |
+| `type` | `number` | — | The module type being probed (see `Module.constants.types`). |
 
 #### `extend(methods: Partial<ModuleProtocol>): ModuleProtocol`
 
@@ -290,7 +312,9 @@ Create a new protocol that uses this protocol as its context, overriding the giv
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `methods` | `Partial<ModuleProtocol>` | — | — |
+| `methods` | `Partial<ModuleProtocol>` | — | Protocol method overrides for the new protocol. |
+
+**Returns** `ModuleProtocol` — A new `ModuleProtocol` that uses this protocol as its context, with `methods` overriding.
 
 #### `postresolve(url: URL): URL`
 
@@ -302,7 +326,9 @@ Process the resolved URL; can be used to convert file paths, etc.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `url` | `URL` | — | — |
+| `url` | `URL` | — | The resolved `URL` to post-process. |
+
+**Returns** `URL` — The (possibly transformed) resolved `URL`.
 
 #### `preresolve(specifier: string, parentURL: URL): string`
 
@@ -314,8 +340,10 @@ Preprocess the `specifier` and `parentURL` before the resolve algorithm is calle
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `specifier` | `string` | — | — |
-| `parentURL` | `URL` | — | — |
+| `specifier` | `string` | — | The module specifier being resolved. |
+| `parentURL` | `URL` | — | The `URL` the specifier is resolved relative to. |
+
+**Returns** `string` — The (possibly rewritten) specifier to pass into the resolve algorithm.
 
 #### `read(url: URL): Buffer | string | null`
 
@@ -327,7 +355,9 @@ Return the source code of a URL, represented as a string or buffer.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `url` | `URL` | — | — |
+| `url` | `URL` | — | The `URL` to read. |
+
+**Returns** `Buffer` | `string` | `null` — The source of `url` as a `Buffer` or `string`, or `null` if it does not exist.
 
 #### `resolve(specifier: string, parentURL: URL, imports: ImportsMap): URL`
 
@@ -339,9 +369,9 @@ Resolve the `specifier` to a URL.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `specifier` | `string` | — | — |
-| `parentURL` | `URL` | — | — |
-| `imports` | `ImportsMap` | — | — |
+| `specifier` | `string` | — | The module specifier to resolve. |
+| `parentURL` | `URL` | — | The `URL` to resolve `specifier` relative to. |
+| `imports` | `ImportsMap` | — | The `"imports"` map to apply during resolution. |
 
 ### Types
 
