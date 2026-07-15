@@ -1,7 +1,53 @@
 # In-depth quality review — generated API pages + upstream TSDoc
 
-_Status: IN PROGRESS (started 2026-07-13, session 7). Resumed by the
-`review-bare-api-quality` scheduled task (8 PM + every 5h) until COMPLETE._
+_Status: **COMPLETE** (started 2026-07-13; finished 2026-07-15). Run by the
+`review-bare-api-quality` scheduled task across several session-limited runs.
+**This scheduled task can now be disabled.**_
+
+## Final summary (2026-07-15)
+
+All **70 generated pages** and **69 upstream TSDoc branches** reviewed against
+the criteria and fixed. Verified end state:
+
+- **Coverage detector**: 65/70 modules carry a `layouts/<m>.ts` manifest with
+  `params`/`returns`/`throws`; the other 5 (`bare-abort`, `bare-env`,
+  `bare-process`, `bare-stdio`, `bare-system-logger`) have **zero callables
+  with parameters** in their model (verified) so those maps don't apply —
+  their `describe` coverage was read through and is sound.
+- **Result**: 39 pages now carry at least one `**Returns**` line, 34 carry a
+  `**Throws**` section — both impossible before this review (see the two
+  structural fixes below).
+- **Gates green**: `check:bare-refs` 70/70 OK · `test:bare-refs` 5/5 ·
+  70/70 MDX compile with `@mdx-js/mdx`.
+- **Surface 2 (TSDoc branches)**: `emit:ts-doc` re-run for all 69 modules
+  against the final layouts; **153 spliced `.d.ts` files across all branches
+  parse clean under `tsc --noEmit`**; member-level TSDoc (methods, not just
+  containers) confirmed present on the merge-pattern modules the earlier bug
+  silently skipped (bare-sqlite, bare-rpc, bare-buffer, streams, …). Nothing
+  was ever pushed.
+
+Two systemic pipeline bugs found and fixed during the review (both would have
+capped the quality of every module):
+1. `emit-jsdoc.ts` only spliced TSDoc onto top-level + namespace declarations,
+   never `interface`/`class` **members** — so instance methods (the bulk of
+   the stateful API) got no `@param`/description. Fixed in `a2c5ffc`.
+2. There was no `Layout.returns` override, and Bare `.d.ts` carry no `@returns`
+   JSDoc, so **no module could ever render a Returns line**. Added in
+   `692c4e6` (+ `check.ts` now validates `params`/`returns` keys).
+
+Genuinely needs the user (nothing blocking this task's completion):
+- **Uncommitted `content/reference/bare/modules/*.mdx` drift** predating this
+  review (see "Known pre-existing issue" at the end). Out of scope here
+  (`content/reference/**` is a user-approved staged cutover, bare-fs stays
+  hand-written); the user should decide whether to commit, discard, or
+  re-derive it.
+- **Spawned side task**: `gen:bare-refs --only X` overwrites
+  `generated/bare-refs/_skipped.json` with only the current run's skips
+  (wiping `bare-dgram`/`bare-tui`). Flagged as a background task chip; worked
+  around by hand during this review. Not urgent.
+- Upstream TSDoc PRs are **committed locally only, never pushed** — opening
+  them upstream (Loop B, `emit:ts-doc -- --pr`) remains a deliberate manual
+  step for the user.
 
 Criteria: pages read well for humans AND machines (consistent labeled
 structure); tables used where possible; every callable documents types, params,
