@@ -46,6 +46,11 @@ const tetherSeoFrontmatterSchema = z.object({
     .string()
     .trim()
     .min(1, 'description is required for SEO (meta, Open Graph, JSON-LD)'),
+  // Optional SEO override for the <title> only (not the on-page <h1>, which
+  // stays `title`). Descriptive part WITHOUT the brand suffix — the root
+  // layout's title template appends " | Pear Docs". Use it to lengthen short,
+  // single-word titles that Semrush flags as too short.
+  seoTitle: z.string().trim().min(1).optional(),
   noIndex: z.boolean().optional(),
   ogImage: z.string().optional(),
   schemaType: jsonLdSchemaTypeSchema.optional(),
