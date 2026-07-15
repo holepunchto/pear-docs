@@ -36,16 +36,49 @@ async function git(cwd: string, args: string[]): Promise<string> {
   return stdout.trim();
 }
 
-/** Build a JSDoc comment as an array of lines (single-line when no @param/@returns). */
-function jsDocLines(description: string, params: Record<string, string>, returns?: string): string[] {
+/** A `throws` bullet → a TSDoc `@throws {Type} rest` line (Type from a leading `` `X` ``). */
+function throwsTag(bullet: string): string {
+  const m = bullet.match(/^\s*`([^`]+)`\s*(?:—|-|:)?\s*(.*)$/);
+  return m ? ` * @throws {${m[1].trim()}} ${m[2].trim()}`.trimEnd() : ` * @throws ${bullet.trim()}`;
+}
+
+/** Build a JSDoc comment (single-line only when there is nothing but a description). */
+function jsDocLines(
+  description: string,
+  params: Record<string, string>,
+  returns?: string,
+  throwsArr: string[] = [],
+): string[] {
   const paramNames = Object.keys(params);
-  if (paramNames.length === 0 && !returns) return [`/** ${description} */`];
+  if (paramNames.length === 0 && !returns && throwsArr.length === 0) return [`/** ${description} */`];
   const lines = ['/**'];
   if (description) lines.push(` * ${description}`);
   for (const p of paramNames) lines.push(` * @param ${p} - ${params[p]}`);
   if (returns) lines.push(` * @returns ${returns}`);
+  for (const t of throwsArr) lines.push(throwsTag(t));
   lines.push(' */');
   return lines;
+}
+
+/**
+ * Also index each map entry under its bare last segment (`DatabaseSync.prepare`
+ * → `prepare`), so a manifest keyed with the MODEL's names still matches when
+ * emit walks a `.d.ts` whose declaration is named differently (e.g. the
+ * interface is `SQLiteDatabaseSync`). Skipped when the bare segment is already a
+ * key or is ambiguous (two qualified keys share it), to avoid mis-attribution.
+ */
+function withBareAliases<T>(map: Record<string, T>): Record<string, T> {
+  const count: Record<string, number> = {};
+  for (const k of Object.keys(map)) {
+    const b = k.split('.').pop()!;
+    if (b !== k) count[b] = (count[b] ?? 0) + 1;
+  }
+  const out: Record<string, T> = { ...map };
+  for (const k of Object.keys(map)) {
+    const b = k.split('.').pop()!;
+    if (b !== k && count[b] === 1 && !Object.hasOwn(out, b)) out[b] = map[k];
+  }
+  return out;
 }
 
 /** Insert TSDoc above every top-level declaration named in `describe`/`params`/`returns`, and
@@ -57,6 +90,7 @@ function injectJsDoc(
   describe: Record<string, string>,
   params: Record<string, Record<string, string>>,
   returns: Record<string, string>,
+  throwsMap: Record<string, string[]>,
 ): string {
   const sf = ts.createSourceFile('d.ts', src, ts.ScriptTarget.ESNext, true);
   const edits: { pos: number; text: string }[] = [];
@@ -69,20 +103,23 @@ function injectJsDoc(
   // would otherwise pick up the Object.prototype member.
   const consider = (node: ts.Node, names: string[]) => {
     const key = names.find(
-      (n) => Object.hasOwn(describe, n) || Object.hasOwn(params, n) || Object.hasOwn(returns, n),
+      (n) =>
+        Object.hasOwn(describe, n) || Object.hasOwn(params, n) ||
+        Object.hasOwn(returns, n) || Object.hasOwn(throwsMap, n),
     );
     if (!key || documented.has(key)) return;
     const description = Object.hasOwn(describe, key) ? describe[key] : undefined;
     const paramMap = Object.hasOwn(params, key) ? params[key] : {};
     const returnsDesc = Object.hasOwn(returns, key) ? returns[key] : undefined;
-    if (!description && Object.keys(paramMap).length === 0 && !returnsDesc) return;
+    const throwsArr = Object.hasOwn(throwsMap, key) ? throwsMap[key] : [];
+    if (!description && Object.keys(paramMap).length === 0 && !returnsDesc && throwsArr.length === 0) return;
     if (ts.getJSDocCommentsAndTags(node).length > 0) return; // already documented
     documented.add(key);
     const start = node.getStart(sf);
     const indent = ' '.repeat(sf.getLineAndCharacterOfPosition(start).character);
     edits.push({
       pos: start,
-      text: jsDocLines(description ?? '', paramMap, returnsDesc).join(`\n${indent}`) + `\n${indent}`,
+      text: jsDocLines(description ?? '', paramMap, returnsDesc, throwsArr).join(`\n${indent}`) + `\n${indent}`,
     });
   };
 
@@ -235,9 +272,12 @@ async function emitOne(name: string, pr: boolean): Promise<void> {
     return;
   }
   const layout = await loadLayout(name);
-  const describe = layout?.describe ?? {};
-  const params = layout?.params ?? {};
-  const returns = layout?.returns ?? {};
+  // Alias model-qualified keys to their bare segment so they match when emit
+  // walks a `.d.ts` whose declaration names differ from the model's.
+  const describe = withBareAliases(layout?.describe ?? {});
+  const params = withBareAliases(layout?.params ?? {});
+  const returns = withBareAliases(layout?.returns ?? {});
+  const throwsMap = withBareAliases(layout?.throws ?? {});
 
   const { dir, base } = await ensureClone(name, model.repoUrl);
   // Reset onto the default branch so re-runs produce one clean commit; fall back
@@ -252,7 +292,7 @@ async function emitOne(name: string, pr: boolean): Promise<void> {
   for (const rel of dtsFiles) {
     const abs = join(dir, rel);
     const src = await readFile(abs, 'utf8');
-    const next = injectJsDoc(src, describe, params, returns);
+    const next = injectJsDoc(src, describe, params, returns, throwsMap);
     if (next !== src) {
       await writeFile(abs, next);
       dtsTouched++;
