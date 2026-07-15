@@ -2,9 +2,9 @@ import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import Image from 'next/image';
 
 export const gitConfig = {
-  user: 'tetherto',
-  repo: 'pear-apps-docs-migration',
-  branch: 'main',
+  user: 'holepunchto',
+  repo: 'pear-docs',
+  branch: 'published',
 };
 
 export function baseOptions(): BaseLayoutProps {
