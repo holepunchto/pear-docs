@@ -1,11 +1,13 @@
 ---
 title: "bare-bluetooth-android"
-description: "Reference overview for bare-bluetooth-android: Android Bluetooth Low Energy bindings for Bare, in the central (scanner/client) role."
+description: "Android Bluetooth bindings for Bare"
 docType: reference
 schemaType: APIReference
 ---
 
-[`bare-bluetooth-android`](https://github.com/holepunchto/bare-bluetooth-android) provides Android Bluetooth Low Energy (BLE) bindings for [Bare](/reference/bare/runtime). It's a native addon and runs on **Android only**—on Apple platforms use [`bare-bluetooth-apple`](/reference/bare/modules/bare-bluetooth-apple). This page is an overview; the surface is large, so see the [repository README](https://github.com/holepunchto/bare-bluetooth-android) for the full API.
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-bluetooth-android`](https://github.com/holepunchto/bare-bluetooth-android) — Android Bluetooth bindings for Bare. It is a native addon.
 
 ```sh
 npm i bare-bluetooth-android
@@ -19,23 +21,910 @@ const { Central } = require('bare-bluetooth-android')
 const central = new Central()
 
 central.on('stateChange', (state) => {
-  if (state === 'on') central.startScan(['180D']) // Heart Rate service
+  if (state === 'on') {
+    central.startScan(['180D']) // Heart Rate service UUID
+  }
 })
 
 central.on('discover', (peripheral) => {
   console.log('Found:', peripheral.name, peripheral.id)
   central.stopScan()
+  central.connect(peripheral)
+})
+
+central.on('connect', (peripheral) => {
+  peripheral.discoverServices()
+
+  peripheral.on('servicesDiscover', (services) => {
+    // Discover characteristics for each service
+  })
 })
 ```
 
-## API overview
+## API
 
-- **`Central`** — the BLE central (scanner/client) role. Drive scanning with `central.startScan([serviceUUIDs])` and `central.stopScan()`, and observe adapter state and discoveries via the `stateChange` and `discover` events. Discovered **peripherals** can be connected to, with their services and characteristics read, written, and subscribed for notifications.
+### BluetoothError
 
-The module builds on `bare-events` and [`bare-stream`](/reference/bare/modules/bare-stream). For the complete peripheral/service/characteristic API, refer to the repository.
+#### `new BluetoothError(msg: string, fn?: Function, code?: string)`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L2)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | A human-readable error message. |
+| `fn?` | `Function` | — | The function to omit from the captured stack trace (default `BluetoothError`). |
+| `code?` | `string` | — | The error code; defaults to `fn.name` (e.g. `SCAN_FAILED`). |
+
+#### `BluetoothError.ADVERTISE_FAILED(msg: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L8)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.CHANNEL_FAILED(msg: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L17)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.CHANNEL_PUBLISH_FAILED(msg: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L19)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.CONNECTION_FAILED(msg: string, id: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L10)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | A human-readable error message. |
+| `id` | `string` | — | The id of the peripheral the connection attempt targeted. |
+
+#### `BluetoothError.DISCONNECT(msg: string, id: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L11)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | A human-readable error message. |
+| `id` | `string` | — | The id of the peripheral that disconnected. |
+
+#### `BluetoothError.DISCOVER_FAILED(msg: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L12)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.MTU_CHANGE_FAILED(msg: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L20)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.NOTIFY_FAILED(msg: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L15)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.NOTIFY_STATE_FAILED(msg: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L16)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.READ_FAILED(msg: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L13)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.SCAN_FAILED(msg: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L9)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.SERVICE_ADD_FAILED(msg: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L18)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.WRITE_FAILED(msg: string): BluetoothError`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L14)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `code: string`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L4)</sub>
+
+#### `BluetoothError.id: string`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L6)</sub>
+
+#### `name: 'BluetoothError'`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/errors.d.ts#L5)</sub>
+
+### L2CAPChannel
+
+#### `new L2CAPChannel(channelHandle: ArrayBuffer)`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/channel.d.ts#L4)</sub>
+
+A duplex stream representing an L2CAP connection-oriented channel. Extends `Duplex` from \<https://github.com/holepunchto/bare-stream>. Typically obtained via the `'channelOpen'` event rather than constructed directly.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `channelHandle` | `ArrayBuffer` | — | The native channel handle backing the stream; supplied internally when a channel opens, not usually passed directly. |
+
+#### `peer: string | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/channel.d.ts#L7)</sub>
+
+The address of the remote peer, or `null`.
+
+#### `psm: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/channel.d.ts#L6)</sub>
+
+The Protocol/Service Multiplexer number of the channel.
+
+### Service
+
+#### `new Service(uuid: string, characteristics?: Characteristic[], opts?: ServiceOptions)`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/service.d.ts#L4)</sub>
+
+Create a new GATT service definition.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `uuid` | `string` | — | The service's UUID. |
+| `characteristics?` | `Characteristic[]` | — | The characteristics belonging to the service. |
+| `opts?` | [`ServiceOptions`](#serviceoptions) | — | Options; set `primary: true` to mark this a primary service. |
+
+#### `characteristics: Characteristic[]`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/service.d.ts#L7)</sub>
+
+The array of characteristics belonging to the service.
+
+#### `primary: boolean`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/service.d.ts#L8)</sub>
+
+Whether the service is a primary service.
+
+#### `Service.uuid: string`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/service.d.ts#L6)</sub>
+
+The UUID of the service.
+
+### Characteristic
+
+#### `new Characteristic(uuid: string, opts?: CharacteristicOptions)`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/characteristic.d.ts#L2)</sub>
+
+Create a new GATT characteristic definition.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `uuid` | `string` | — | The characteristic's UUID. |
+| `opts?` | [`CharacteristicOptions`](#characteristicoptions) | — | Options selecting the characteristic `properties`, `permissions`, and initial `value`. |
+
+#### `Characteristic.PROPERTY_INDICATE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/characteristic.d.ts#L13)</sub>
+
+Characteristic property constants.
+
+#### `Characteristic.PROPERTY_NOTIFY: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/characteristic.d.ts#L12)</sub>
+
+#### `Characteristic.PROPERTY_READ: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/characteristic.d.ts#L9)</sub>
+
+#### `Characteristic.PROPERTY_WRITE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/characteristic.d.ts#L11)</sub>
+
+#### `Characteristic.PROPERTY_WRITE_WITHOUT_RESPONSE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/characteristic.d.ts#L10)</sub>
+
+#### `permissions: number | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/characteristic.d.ts#L6)</sub>
+
+The permission flags of the characteristic, or `null` if inferred.
+
+#### `properties: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/characteristic.d.ts#L5)</sub>
+
+The property flags of the characteristic.
+
+#### `Characteristic.uuid: string`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/characteristic.d.ts#L4)</sub>
+
+The UUID of the characteristic.
+
+#### `value: Uint8Array | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/characteristic.d.ts#L7)</sub>
+
+The current value of the characteristic, or `null`.
+
+### Server
+
+#### `new Server()`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L52)</sub>
+
+Create a new BLE peripheral server for advertising services and handling client requests.
+
+#### `addService(service: Service): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L56)</sub>
+
+Add a `service` to the GATT server. The `'serviceAdd'` event is emitted when the service has been registered.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `service` | `Service` | — | The `Service` to register with the GATT server. |
+
+#### `Server.destroy(): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L63)</sub>
+
+Destroy the server, stopping advertising and unpublishing all L2CAP channels.
+
+#### `publishChannel(opts?: ChannelOptions): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L61)</sub>
+
+Publish an L2CAP channel. The `'channelPublish'` event is emitted with the assigned PSM.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | [`ChannelOptions`](#channeloptions) | — | Options for the L2CAP channel to publish. |
+
+#### `respondToRequest(request: ReadRequest, result: number, data?: Uint8Array): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L59)</sub>
+
+Respond to a read or write `request` with a `result` code and optional `data`. Use the `Server.ATT_*` constants for the result.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `request` | [`ReadRequest`](#readrequest) | — | The read or write request to respond to. |
+| `result` | `number` | — | The ATT result code; use the `Server.ATT_*` constants. |
+| `data?` | `Uint8Array` | — | The value to return for a read request; omit for write responses. |
+
+#### `Server.ATT_INSUFFICIENT_RESOURCES: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L90)</sub>
+
+#### `Server.ATT_INVALID_HANDLE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L87)</sub>
+
+#### `Server.ATT_READ_NOT_PERMITTED: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L88)</sub>
+
+#### `Server.ATT_SUCCESS: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L86)</sub>
+
+#### `Server.ATT_UNLIKELY_ERROR: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L91)</sub>
+
+ATT result codes for use with `server.respondToRequest()`.
+
+#### `Server.ATT_WRITE_NOT_PERMITTED: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L89)</sub>
+
+#### `Server.CONNECTION_STATE_CONNECTED: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L83)</sub>
+
+#### `Server.CONNECTION_STATE_CONNECTING: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L82)</sub>
+
+#### `Server.CONNECTION_STATE_DISCONNECTED: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L81)</sub>
+
+#### `Server.CONNECTION_STATE_DISCONNECTING: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L84)</sub>
+
+#### `Server.PERMISSION_READ_ENCRYPTED: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L78)</sub>
+
+#### `Server.PERMISSION_READABLE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L76)</sub>
+
+#### `Server.PERMISSION_WRITE_ENCRYPTED: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L79)</sub>
+
+Characteristic permission constants.
+
+#### `Server.PERMISSION_WRITEABLE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L77)</sub>
+
+#### `Server.PROPERTY_INDICATE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L74)</sub>
+
+Characteristic property constants.
+
+#### `Server.PROPERTY_NOTIFY: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L73)</sub>
+
+#### `Server.PROPERTY_READ: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L70)</sub>
+
+#### `Server.PROPERTY_WRITE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L72)</sub>
+
+#### `Server.PROPERTY_WRITE_WITHOUT_RESPONSE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L71)</sub>
+
+#### `Server.STATE_OFF: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L65)</sub>
+
+#### `Server.STATE_ON: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L67)</sub>
+
+#### `Server.STATE_TURNING_OFF: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L68)</sub>
+
+#### `Server.STATE_TURNING_ON: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L66)</sub>
+
+#### `startAdvertising(opts?: AdvertisingOptions): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L57)</sub>
+
+Start advertising the server.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | [`AdvertisingOptions`](#advertisingoptions) | — | Advertising options such as the local `name` and the `serviceUUIDs` to advertise. |
+
+#### `Server.state: BluetoothState`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L54)</sub>
+
+The current Bluetooth adapter state. One of `'off'`, `'turningOn'`, `'on'`, or `'turningOff'`.
+
+#### `stopAdvertising(): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L58)</sub>
+
+Stop advertising.
+
+#### `unpublishChannel(psm: number): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L62)</sub>
+
+Unpublish an L2CAP channel with the given `psm`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `psm` | `number` | — | The PSM of the channel to unpublish, as assigned when it was published. |
+
+#### `updateValue(characteristic: Characteristic, data: Uint8Array): boolean`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L60)</sub>
+
+Update the value of `characteristic` with `data` and notify subscribed clients.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `characteristic` | `Characteristic` | — | The characteristic whose value changed. |
+| `data` | `Uint8Array` | — | The new value to send to subscribed clients. |
+
+**Returns** `boolean` — Whether the notification was sent to subscribed clients successfully.
+
+### Central
+
+#### `new Central()`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L16)</sub>
+
+Create a new BLE central manager for scanning and connecting to peripherals.
+
+#### `Central.SCAN_MODE_BALANCED: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L33)</sub>
+
+#### `Central.SCAN_MODE_LOW_LATENCY: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L34)</sub>
+
+Scan mode constants for use with `central.startScan()`.
+
+#### `Central.SCAN_MODE_LOW_POWER: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L32)</sub>
+
+#### `Central.SCAN_MODE_OPPORTUNISTIC: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L31)</sub>
+
+#### `Central.STATE_OFF: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L26)</sub>
+
+#### `Central.STATE_ON: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L28)</sub>
+
+#### `Central.STATE_TURNING_OFF: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L29)</sub>
+
+#### `Central.STATE_TURNING_ON: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L27)</sub>
+
+#### `connect(peripheral: Peripheral): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L22)</sub>
+
+Connect to a discovered `peripheral`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `peripheral` | `Peripheral` | — | A discovered peripheral to connect to. |
+
+#### `Central.destroy(): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L24)</sub>
+
+Destroy the central manager, stopping any active scan and disconnecting all connected peripherals.
+
+#### `disconnect(peripheral: Peripheral): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L23)</sub>
+
+Disconnect from a connected `peripheral`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `peripheral` | `Peripheral` | — | The connected peripheral to disconnect from. |
+
+#### `startScan(serviceUUIDs?: string[], opts?: { scanMode?: number }): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L20)</sub>
+
+Start scanning for peripherals advertising the given `serviceUUIDs`. Pass `null` to scan for all peripherals.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `serviceUUIDs?` | `string[]` | — | The service UUIDs to filter advertisements by; pass `null` to scan for all peripherals. |
+| `opts?` | `{ scanMode?: number }` | — | Options; `scanMode` selects the Android scan mode (one of the `Central.SCAN_MODE_*` constants). |
+
+#### `Central.state: BluetoothState`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L18)</sub>
+
+The current Bluetooth adapter state. One of `'off'`, `'turningOn'`, `'on'`, or `'turningOff'`.
+
+#### `stopScan(): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/central.d.ts#L21)</sub>
+
+Stop scanning for peripherals.
+
+### Peripheral
+
+#### `new Peripheral(opts: PeripheralOptions)`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L27)</sub>
+
+Create a new peripheral instance from a `ScanResult`. Typically obtained via the `'discover'` event on `Central` rather than constructed directly. Its identity and advertised metadata are derived from the scan result.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | [`PeripheralOptions`](#peripheraloptions) | — | Options carrying the `ScanResult` this peripheral is derived from. |
+
+#### `Peripheral.destroy(): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L43)</sub>
+
+Destroy the peripheral, releasing its underlying resources.
+
+#### `discoverCharacteristics(service: Service): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L36)</sub>
+
+Discover characteristics for the given `service`. Results are emitted via the `'characteristicsDiscover'` event.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `service` | `Service` | — | The service to discover characteristics on. |
+
+#### `discoverServices(): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L35)</sub>
+
+Discover services offered by the peripheral. Results are emitted via the `'servicesDiscover'` event.
+
+#### `Peripheral.id: string`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L30)</sub>
+
+The unique identifier of the peripheral, equal to `scanResult.device.address`.
+
+#### `name: string | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L31)</sub>
+
+The advertised name of the peripheral, or `null` if unavailable. Equal to `scanResult.device.name`.
+
+#### `openL2CAPChannel(psm: number): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L41)</sub>
+
+Open an L2CAP channel to the peripheral using the given `psm`. The result is emitted via the `'channelOpen'` event.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `psm` | `number` | — | The PSM (Protocol/Service Multiplexer) of the channel to open. |
+
+#### `Peripheral.PROPERTY_INDICATE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L49)</sub>
+
+Characteristic property constants.
+
+#### `Peripheral.PROPERTY_NOTIFY: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L48)</sub>
+
+#### `Peripheral.PROPERTY_READ: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L45)</sub>
+
+#### `Peripheral.PROPERTY_WRITE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L47)</sub>
+
+#### `Peripheral.PROPERTY_WRITE_WITHOUT_RESPONSE: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L46)</sub>
+
+#### `read(characteristic: Characteristic): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L37)</sub>
+
+Read the value of `characteristic`. The result is emitted via the `'read'` event.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `characteristic` | `Characteristic` | — | The characteristic to read. |
+
+#### `requestMtu(mtu: number): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L42)</sub>
+
+Request a new MTU size. The result is emitted via the `'mtuChanged'` event.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `mtu` | `number` | — | The desired ATT MTU size, in bytes. |
+
+#### `rssi: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L32)</sub>
+
+The signal strength of the most recent advertisement, equal to `scanResult.rssi`.
+
+#### `scanResult: ScanResult`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L29)</sub>
+
+The `ScanResult` from the most recent advertisement for this peripheral.
+
+#### `serviceData: ServiceData | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L33)</sub>
+
+The advertised service data, or `null` when the advertisement carried no scan record or no service data.
+
+#### `subscribe(characteristic: Characteristic): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L39)</sub>
+
+Subscribe to notifications for `characteristic`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `characteristic` | `Characteristic` | — | The characteristic to start receiving notifications for. |
+
+#### `unsubscribe(characteristic: Characteristic): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L40)</sub>
+
+Unsubscribe from notifications for `characteristic`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `characteristic` | `Characteristic` | — | The characteristic to stop receiving notifications for. |
+
+#### `write(characteristic: Characteristic, data: Uint8Array, withResponse?: boolean): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L38)</sub>
+
+Write `data` to `characteristic`. If `withResponse` is `true` (the default), a write confirmation is requested.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `characteristic` | `Characteristic` | — | The characteristic to write to. |
+| `data` | `Uint8Array` | — | The bytes to write. |
+| `withResponse?` | `boolean` | — | Whether a write confirmation is requested (default `true`). |
+
+### Types
+
+#### `ServiceOptions`
+
+```ts
+interface ServiceOptions {
+  primary?: boolean
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/service.d.ts#L11)</sub>
+
+#### `CharacteristicOptions`
+
+```ts
+interface CharacteristicOptions {
+  read?: boolean
+  write?: boolean
+  writeWithoutResponse?: boolean
+  notify?: boolean
+  indicate?: boolean
+  permissions?: number
+  value?: Uint8Array | null
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/characteristic.d.ts#L16)</sub>
+
+#### `BluetoothState`
+
+```ts
+type BluetoothState = 'off' | 'turningOn' | 'on' | 'turningOff'
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L7)</sub>
+
+#### `AdvertisingOptions`
+
+```ts
+interface AdvertisingOptions {
+  name?: string
+  serviceUUIDs?: string[]
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L9)</sub>
+
+#### `ChannelOptions`
+
+```ts
+interface ChannelOptions {
+  encrypted?: boolean
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L14)</sub>
+
+#### `ReadRequest`
+
+```ts
+interface ReadRequest {
+  handle: unknown
+  requestId: number
+  characteristicUuid: string
+  offset: number
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L18)</sub>
+
+#### `WriteRequest`
+
+```ts
+interface WriteRequest {
+  handle: unknown
+  requestId: number
+  characteristicUuid: string
+  data: Uint8Array
+  offset: number
+  responseNeeded: boolean
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/server.d.ts#L25)</sub>
+
+#### `PeripheralOptions`
+
+```ts
+interface PeripheralOptions {
+  scanResult: ScanResult
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/peripheral.d.ts#L9)</sub>
+
+#### `ServiceData`
+
+```ts
+type ServiceData = {
+  [uuid: string]: Uint8Array
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/scan-record.d.ts#L1)</sub>
+
+### Classes
+
+#### `ScanResult`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/scan-result.d.ts#L4)</sub>
+
+```ts
+class ScanResult {
+  device: Device
+  rssi: number
+  scanRecord: ScanRecord | null
+}
+```
+
+#### `ScanRecord`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/scan-record.d.ts#L5)</sub>
+
+```ts
+class ScanRecord {
+  serviceData: ServiceData | null
+}
+```
+
+#### `Device`
+
+<sub>[Source](https://github.com/holepunchto/bare-bluetooth-android/blob/v0.5.1/lib/device.d.ts#L1)</sub>
+
+```ts
+class Device {
+  address: string
+  name: string | null
+}
+```
 
 ## See also
 
-- [`bare-bluetooth-apple`](/reference/bare/modules/bare-bluetooth-apple)—the Apple-platform counterpart.
-- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
-- [One core, many platforms](/explanation/bare-on-native)—using platform bindings from a native shell.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.

@@ -1,15 +1,13 @@
 ---
 title: "bare-module-traverse"
-description: "Reference for bare-module-traverse: low-level module graph traversal for Bare, yielding every dependency, addon, and asset of an entry module."
+description: "Low-level module graph traversal for Bare"
 docType: reference
 schemaType: APIReference
 ---
 
-[`bare-module-traverse`](https://github.com/holepunchto/bare-module-traverse) walks a module graph from an entry URL, yielding every dependency, native addon, and asset it reaches. It's a pure-JavaScript generator built on [`bare-module-resolve`](/reference/bare/modules/bare-module-resolve), [`bare-addon-resolve`](/reference/bare/modules/bare-addon-resolve), and `bare-module-lexer`. It's the engine behind [`bare-pack`](/reference/modules/bare-modules).
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-<Callout type="info">
-A low-level building block—use [`bare-pack`](/reference/modules/bare-modules) to produce a bundle; reach for this directly only when building tooling on top of the graph.
-</Callout>
+[`bare-module-traverse`](https://github.com/holepunchto/bare-module-traverse) — Low-level module graph traversal for Bare.
 
 ```sh
 npm i bare-module-traverse
@@ -17,15 +15,17 @@ npm i bare-module-traverse
 
 ## Usage
 
+For synchronous traversal:
+
 ```js
 const traverse = require('bare-module-traverse')
 
-function readModule (url) {
-  // Read `url` if it exists, otherwise return null
+function readModule(url) {
+  // Read `url` if it exists, otherwise `null`
 }
 
-function* listPrefix (url) {
-  // Yield URLs that have `url` as a prefix
+function* listPrefix(url) {
+  // Yield URLs that have `url` as a prefix. The list may be empty.
 }
 
 for (const dependency of traverse(new URL('file:///directory/file.js'), readModule, listPrefix)) {
@@ -33,22 +33,213 @@ for (const dependency of traverse(new URL('file:///directory/file.js'), readModu
 }
 ```
 
-An asynchronous form is supported by iterating with `for await`.
+For asynchronous traversal:
+
+```js
+const traverse = require('bare-module-traverse')
+
+async function readModule(url) {
+  // Read `url` if it exists, otherwise `null`
+}
+
+async function* listPrefix(url) {
+  // Yield URLs that have `url` as a prefix. The list may be empty.
+}
+
+for await (const dependency of traverse(
+  new URL('file:///directory/file.js'),
+  readModule,
+  listPrefix
+)) {
+  console.log(dependency)
+}
+```
 
 ## API
 
-#### `const dependencies = traverse(url[, options], readModule[, listPrefix])`
+### Functions
 
-Traverse the graph rooted at `url`. `readModule` returns a module's source or `null`; `listPrefix` enumerates URLs under a prefix (for assets). Iterate synchronously or with `for await`.
+#### `traverse`
 
-The resolver hooks `resolve.module`, `resolve.addon`, `resolve.default`, `resolve.bare`, and `resolve.node` control how specifiers map to URLs. Step generators—`traverse.module`, `traverse.package`, `traverse.preresolved`, `traverse.imports`, `traverse.addons`, and `traverse.assets`—are exposed for fine-grained traversal; see the [repository README](https://github.com/holepunchto/bare-module-traverse).
+```ts
+traverse(entry: URL, readModule: (url: URL) => Buffer | string | null, listPrefix?: (url: URL) => Iterable<URL>, probeModule?: (url: URL) => boolean | undefined, resolveModule?: (url: URL) => URL): Iterable<Dependency>
+```
 
-## Related modules
+<sub>[Source](https://github.com/holepunchto/bare-module-traverse/blob/v2.4.2/index.d.ts#L42)</sub>
 
-Builds on [`bare-module-resolve`](/reference/bare/modules/bare-module-resolve), [`bare-addon-resolve`](/reference/bare/modules/bare-addon-resolve), and `bare-module-lexer` (see [Bare modules](/reference/modules/bare-modules)).
+Traverse the module graph rooted at `entry`, which must be a WHATWG `URL` instance. `readModule` is called with a `URL` instance for every module to be read and must either return the module source, if it exists, or `null`. `listPrefix` is called with a `URL` instance of every prefix to be listed and must yield `URL` instances that have the specified `URL` as a prefix. If not provided, prefixes won't be traversed. If `readModule` returns a promise or `listPrefix` returns a promise generator, synchronous iteration is not supported.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `URL` | — | The WHATWG `URL` of the entry module to root the graph at. |
+| `readModule` | `(url: URL) => Buffer \| string \| null` | — | Called with the `URL` of each module to read; returns its source as a `Buffer` or `string`, or `null` if it does not exist. Returning a promise disables synchronous iteration. |
+| `listPrefix?` | `(url: URL) => Iterable<URL>` | — | Called with the `URL` of each prefix to list; must yield the `URL`s that have it as a prefix. If omitted, prefixes are not traversed. |
+| `probeModule?` | `(url: URL) => boolean \| undefined` | — | Called with the `URL` of each module to probe for existence; returns a boolean, or `undefined` to fall back to `readModule`. |
+| `resolveModule?` | `(url: URL) => URL` | — | Called with each resolution `URL` to transform; returns the `URL` to use in its place. Defaults to the identity function. |
+
+**Returns** `Iterable<Dependency>` — An iterable of resolved `Dependency` records for the module graph; asynchronous when any callback returns a promise.
+
+### Types
+
+#### `TraverseOptions`
+
+```ts
+interface TraverseOptions extends ResolveOptions {
+  defaultType?: number
+  aliases?: Record<string, AliasableExtension>
+  resolve?: (entry: Import, parentURL: URL, opts?: ResolveOptions) => Resolver
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-module-traverse/blob/v2.4.2/index.d.ts#L36)</sub>
+
+#### `Artifacts`
+
+```ts
+interface Artifacts {
+    addons: URL[] | Set<string>
+    assets: URL[] | Set<string>
+  }
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-module-traverse/blob/v2.4.2/index.d.ts#L91)</sub>
+
+## `bare-module-traverse/resolve`
+
+### Functions
+
+#### `default(entry: Import, parentURL: URL, opts?: ResolveOptions): Resolver`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-traverse/blob/v2.4.2/lib/resolve/default.d.ts#L4)</sub>
+
+The default resolver, which simply forwards to \<https://github.com/holepunchto/bare-module-resolve> and \<https://github.com/holepunchto/bare-addon-resolve> with the literal options passed by the caller.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `ResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+#### `bare(entry: Import, parentURL: URL, opts?: BareResolveOptions): Resolver`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-traverse/blob/v2.4.2/lib/resolve/bare.d.ts#L10)</sub>
+
+The Bare resolver, which matches the options used by the Bare module system.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `BareResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+#### `node(entry: Import, parentURL: URL, opts?: NodeResolveOptions): Resolver`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-traverse/blob/v2.4.2/lib/resolve/node.d.ts#L9)</sub>
+
+The Node.js resolver, which matches the options used by the Node.js module system.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `NodeResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+## `bare-module-traverse/resolve/default`
+
+### Functions
+
+#### `resolve(entry: Import, parentURL: URL, opts?: ResolveOptions): Resolver`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-traverse/blob/v2.4.2/lib/resolve/default.d.ts#L4)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `ResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+## `bare-module-traverse/resolve/bare`
+
+### Functions
+
+#### `resolve(entry: Import, parentURL: URL, opts?: BareResolveOptions): Resolver`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-traverse/blob/v2.4.2/lib/resolve/bare.d.ts#L10)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `BareResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+### Types
+
+#### `BareResolveOptions`
+
+```ts
+interface BareResolveOptions extends ResolveOptions {
+  linked?: boolean
+  host?: string
+  hosts?: string[]
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-module-traverse/blob/v2.4.2/lib/resolve/bare.d.ts#L4)</sub>
+
+## `bare-module-traverse/resolve/node`
+
+### Functions
+
+#### `resolve(entry: Import, parentURL: URL, opts?: NodeResolveOptions): Resolver`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-traverse/blob/v2.4.2/lib/resolve/node.d.ts#L9)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `NodeResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+### Types
+
+#### `NodeResolveOptions`
+
+```ts
+interface NodeResolveOptions extends ResolveOptions {
+  host?: string
+  hosts?: string[]
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-module-traverse/blob/v2.4.2/lib/resolve/node.d.ts#L4)</sub>
 
 ## See also
 
-- [`bare-pack`](/reference/modules/bare-modules)—the bundler built on this traversal.
-- [`bare-module-resolve`](/reference/bare/modules/bare-module-resolve)—the resolver it drives.
-- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.

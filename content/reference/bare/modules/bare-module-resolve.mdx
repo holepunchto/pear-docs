@@ -1,15 +1,13 @@
 ---
 title: "bare-module-resolve"
-description: "Reference for bare-module-resolve: the low-level module resolution algorithm for Bare, exposed as a synchronous or asynchronous generator."
+description: "Low-level module resolution algorithm for Bare"
 docType: reference
 schemaType: APIReference
 ---
 
-[`bare-module-resolve`](https://github.com/holepunchto/bare-module-resolve) implements Bare's low-level module resolution algorithm. It's a pure-JavaScript generator that yields candidate URLs for a specifier; the caller supplies package reads and decides which candidate exists.
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-<Callout type="info">
-This is a low-level building block. Most applications resolve modules implicitly through the [runtime](/reference/bare/runtime) or bundle with [`bare-pack`](/reference/modules/bare-modules); reach for this directly only when implementing tooling.
-</Callout>
+[`bare-module-resolve`](https://github.com/holepunchto/bare-module-resolve) — Low-level module resolution algorithm for Bare.
 
 ```sh
 npm i bare-module-resolve
@@ -17,11 +15,13 @@ npm i bare-module-resolve
 
 ## Usage
 
+For synchronous resolution:
+
 ```js
 const resolve = require('bare-module-resolve')
 
-function readPackage (url) {
-  // Read and parse `url` if it exists, otherwise return null
+function readPackage(url) {
+  // Read and parse `url` if it exists, otherwise `null`
 }
 
 for (const resolution of resolve('./file.js', new URL('file:///directory/'), readPackage)) {
@@ -29,24 +29,142 @@ for (const resolution of resolve('./file.js', new URL('file:///directory/'), rea
 }
 ```
 
-An asynchronous form is also supported by iterating the resolver with `for await`.
+For asynchronous resolution:
+
+```js
+const resolve = require('bare-module-resolve')
+
+async function readPackage(url) {
+  // Read and parse `url` if it exists, otherwise `null`
+}
+
+for await (const resolution of resolve('./file.js', new URL('file:///directory/'), readPackage)) {
+  console.log(resolution)
+}
+```
 
 ## API
 
-#### `const resolver = resolve(specifier, parentURL[, options][, readPackage])`
+### Functions
 
-Create a resolver for `specifier` relative to `parentURL`. Iterate it synchronously (`for (const resolution of resolver)`) or asynchronously (`for await`); each yielded value is a candidate `URL` to test.
+#### `resolve`
 
-### Sub-generators
+```ts
+resolve(specifier: string, parentURL: URL, readPackage?: (url: URL) => JSON | null): Iterable<URL>
+```
 
-The algorithm's steps are exposed for fine-grained use: `resolve.module`, `resolve.url`, `resolve.preresolved`, `resolve.deferred`, `resolve.package`, `resolve.packageSelf`, `resolve.packageExports`, `resolve.packageImports`, `resolve.packageImportsExports`, `resolve.packageTarget`, `resolve.builtinTarget`, `resolve.file`, and `resolve.directory`. See the [repository README](https://github.com/holepunchto/bare-module-resolve) for each step's signature and options.
+<sub>[Source](https://github.com/holepunchto/bare-module-resolve/blob/v1.12.3/index.d.ts#L33)</sub>
 
-## Related modules
+Resolve `specifier` relative to `parentURL`, which must be a WHATWG `URL` instance. `readPackage` is called with a `URL` instance for every package manifest to be read and must either return the parsed JSON package manifest, if it exists, or `null`. If `readPackage` returns a promise, synchronous iteration is not supported.
 
-Builds on `bare-semver`. Paired with [`bare-addon-resolve`](/reference/bare/modules/bare-addon-resolve) and [`bare-module-traverse`](/reference/bare/modules/bare-module-traverse).
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier to resolve, relative to `parentURL`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` that `specifier` is resolved against. |
+| `readPackage?` | `(url: URL) => JSON \| null` | — | Called with the `URL` of each package manifest to read; must return the parsed JSON manifest if it exists, or `null`. Returning a promise disables synchronous iteration. |
+
+**Returns** `Iterable<URL>` — Yields each candidate resolution `URL` in the order the algorithm tries them, for the caller to test (e.g. check it exists); if none resolve, iteration simply ends without yielding further values — it does not throw or return `null` for an unresolved specifier.
+
+**Throws**
+
+- `INVALID_MODULE_SPECIFIER` — the specifier (or a `node:`-protocol target) is not a valid module or package specifier: empty, a scoped package name missing the `/`, invalid characters, a relative-style `node:` specifier, an unmatched internal `#import` specifier, or a `file:` path containing an encoded `/` or `\`.
+- `INVALID_PACKAGE_TARGET` — a string target in a package's `"exports"` (or non-internal `"imports"`) map does not start with `./`.
+- `PACKAGE_PATH_NOT_EXPORTED` — the requested subpath is not defined by the package's `"exports"` map.
+- `PACKAGE_IMPORT_NOT_DEFINED` — an internal `#specifier` is not defined by the package's `"imports"` map.
+- `UNSUPPORTED_ENGINE` — the package's `"engines"` requirement is not satisfied by the corresponding `opts.engines` entry.
+
+### Types
+
+#### `ResolveOptions`
+
+```ts
+interface ResolveOptions {
+  builtinProtocol?: string
+  builtins?: Builtins
+  conditions?: Conditions
+  defer?: string[]
+  deferredProtocol?: string
+  engines?: Engines
+  extensions?: string[]
+  imports?: ImportsMap
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-module-resolve/blob/v1.12.3/index.d.ts#L20)</sub>
+
+## `bare-module-resolve/errors`
+
+### ModuleResolveError
+
+#### `code: string`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-resolve/blob/v1.12.3/lib/errors.d.ts#L2)</sub>
+
+#### `ModuleResolveError.INVALID_MODULE_SPECIFIER(msg: string): ModuleResolveError`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-resolve/blob/v1.12.3/lib/errors.d.ts#L4)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `ModuleResolveError` — A new `ModuleResolveError` with code `INVALID_MODULE_SPECIFIER`.
+
+#### `ModuleResolveError.INVALID_PACKAGE_TARGET(msg: string): ModuleResolveError`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-resolve/blob/v1.12.3/lib/errors.d.ts#L5)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `ModuleResolveError` — A new `ModuleResolveError` with code `INVALID_PACKAGE_TARGET`.
+
+#### `ModuleResolveError.PACKAGE_IMPORT_NOT_DEFINED(msg: string): ModuleResolveError`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-resolve/blob/v1.12.3/lib/errors.d.ts#L7)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `ModuleResolveError` — A new `ModuleResolveError` with code `PACKAGE_IMPORT_NOT_DEFINED`.
+
+#### `ModuleResolveError.PACKAGE_PATH_NOT_EXPORTED(msg: string): ModuleResolveError`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-resolve/blob/v1.12.3/lib/errors.d.ts#L6)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `ModuleResolveError` — A new `ModuleResolveError` with code `PACKAGE_PATH_NOT_EXPORTED`.
+
+#### `ModuleResolveError.UNSUPPORTED_ENGINE(msg: string): ModuleResolveError`
+
+<sub>[Source](https://github.com/holepunchto/bare-module-resolve/blob/v1.12.3/lib/errors.d.ts#L8)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `ModuleResolveError` — A new `ModuleResolveError` with code `UNSUPPORTED_ENGINE`.
 
 ## See also
 
-- [`bare-module-traverse`](/reference/bare/modules/bare-module-traverse)—walk a whole module graph using this resolver.
-- [`bare-addon-resolve`](/reference/bare/modules/bare-addon-resolve)—the matching algorithm for native addons.
-- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.

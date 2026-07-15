@@ -1,11 +1,13 @@
 ---
 title: "bare-sidecar"
-description: "Reference for bare-sidecar: start and manage a Bare sidecar process from a Node.js or Electron host."
+description: "Start and manage Bare sidecar processes from Node.js and Electron"
 docType: reference
 schemaType: APIReference
 ---
 
-[`bare-sidecar`](https://github.com/holepunchto/bare-sidecar) starts and manages a [Bare](/reference/bare/runtime) **sidecar** process from a Node.js or Electron host—a way to run a Bare core alongside a Node/Electron app and talk to it over its standard streams. It's pure JavaScript.
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-sidecar`](https://github.com/holepunchto/bare-sidecar) — Start and manage Bare sidecar processes from Node.js and Electron.
 
 ```sh
 npm i bare-sidecar
@@ -13,34 +15,93 @@ npm i bare-sidecar
 
 ## Usage
 
+In the host process:
+
 ```js
 const Sidecar = require('bare-sidecar')
 
 const sidecar = new Sidecar(require.resolve('./entry'))
 
 sidecar
-  .on('data', (data) => { /* output from the sidecar */ })
-  .on('exit', (code, status) => { /* the sidecar exited */ })
+  .on('exit', (code, status) => {
+    // The sidecar process exited
+  })
+  .on('data', (data) => {
+    // Received data from the sidecar over IPC
+  })
+  .write('Hello sidecar')
+```
+
+In the sidecar entry (`entry.js`), the IPC channel is available as a stream on `Bare.IPC`:
+
+```js
+Bare.IPC.on('data', (data) => Bare.IPC.write(data))
 ```
 
 ## API
 
-#### `const sidecar = new Sidecar(entry[, args][, options])`
+### Sidecar
 
-Spawn a Bare process running `entry`, with optional `args` and `options`.
+#### `new Sidecar(entry: string, args?: string[], opts?: SidecarOptions)`
 
-#### `sidecar.stdin` · `sidecar.stdout` · `sidecar.stderr`
+<sub>[Source](https://github.com/holepunchto/bare-sidecar/blob/v0.5.3/index.d.ts#L17)</sub>
 
-The sidecar's standard streams.
+Spawn a bundled Bare runtime running `entry` and return a `Sidecar`. `entry` is the path to the module to run, typically resolved with `require.resolve()`. `args` is an array of additional command line arguments passed to the process. `options` is reserved for future use.
 
-Emits `data` (sidecar output), `exit` (`(code, status)`), and `close`.
+Overloads:
 
-## Related modules
+```ts
+new Sidecar(entry: string, args?: string[], opts?: SidecarOptions)
+new Sidecar(entry: string, opts?: SidecarOptions)
+```
 
-Builds on [`bare-subprocess`](/reference/bare/modules/bare-subprocess), [`bare-pipe`](/reference/bare/modules/bare-pipe), [`bare-module`](/reference/bare/modules/bare-module), [`bare-fs`](/reference/bare/modules/bare-fs), [`bare-os`](/reference/bare/modules/bare-os), `bare-path`, [`bare-stream`](/reference/bare/modules/bare-stream), and [`bare-url`](/reference/bare/modules/bare-url) (see [Bare modules](/reference/modules/bare-modules)).
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `string` | — | Path to the module the sidecar process runs, typically resolved with `require.resolve()`. |
+| `args?` | `string[]` | — | Additional command-line arguments passed to the process (default `[]`). |
+| `opts?` | [`SidecarOptions`](#sidecaroptions) | — | Reserved for future use. |
+
+#### `stderr: Pipe | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-sidecar/blob/v0.5.3/index.d.ts#L13)</sub>
+
+The readable standard error stream of the underlying process.
+
+#### `stdin: Pipe | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-sidecar/blob/v0.5.3/index.d.ts#L11)</sub>
+
+The writable standard input stream of the underlying process.
+
+#### `stdout: Pipe | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-sidecar/blob/v0.5.3/index.d.ts#L12)</sub>
+
+The readable standard output stream of the underlying process.
+
+### Types
+
+#### `SidecarEvents`
+
+```ts
+interface SidecarEvents extends DuplexEvents {
+  exit: [code: number | null, signalCode: string | null]
+}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sidecar/blob/v0.5.3/index.d.ts#L4)</sub>
+
+#### `SidecarOptions`
+
+```ts
+interface SidecarOptions {}
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sidecar/blob/v0.5.3/index.d.ts#L8)</sub>
 
 ## See also
 
-- [`bare-subprocess`](/reference/bare/modules/bare-subprocess)—the lower-level process API.
-- [One core, many platforms](/explanation/bare-on-native)—running a Bare core beside a host.
-- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.

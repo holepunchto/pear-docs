@@ -1,11 +1,13 @@
 ---
 title: "bare-sqlite"
-description: "Reference for bare-sqlite: synchronous SQLite bindings for Bare, with a DatabaseSync/Statement API close to Node.js node:sqlite."
+description: "SQLite bindings for Bare"
 docType: reference
 schemaType: APIReference
 ---
 
-[`bare-sqlite`](https://github.com/holepunchto/bare-sqlite) provides SQLite bindings for [Bare](/reference/bare/runtime). The API mirrors Node.js's [`node:sqlite`](https://nodejs.org/api/sqlite.html) (`DatabaseSync` + prepared statements). It's a native addon.
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-sqlite`](https://github.com/holepunchto/bare-sqlite) — SQLite bindings for Bare. It is a native addon.
 
 ```sh
 npm i bare-sqlite
@@ -34,54 +36,493 @@ db.close()
 
 ### DatabaseSync
 
-#### `const db = new DatabaseSync(location[, options])`
+#### `new DatabaseSync(location: string, opts?: SQLiteDatabaseSync.Options)`
 
-Open (or create) a database at `location` (a file path or `':memory:'`).
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/database-sync.d.ts#L22)</sub>
 
-#### `db.isOpen` · `db.open()` · `db.close()`
+Open a SQLite database. `location` is a path to a database file, or `':memory:'` for an in-memory database.
 
-Connection state and lifecycle.
+**Parameters**
 
-#### `db.exec(sql)`
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `location` | `string` | — | Path to the database file, or `':memory:'` for an in-memory database. |
+| `opts?` | `SQLiteDatabaseSync.Options` | — | Options. `open` opens the database immediately (default `true`); `readOnly` opens it read-only (default `false`); `enableForeignKeyConstraints` enforces foreign keys (default `true`); `enableDoubleQuotedStringLiterals` permits double-quoted string literals (default `false`); `allowExtension` permits loading extensions (default `false`); `timeout` is the busy-timeout in milliseconds (default `0`). |
 
-Execute one or more statements without returning rows.
+#### `close(): void`
 
-#### `const stmt = db.prepare(sql)`
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/database-sync.d.ts#L8)</sub>
 
-Compile a SQL statement into a reusable `Statement`.
+Close the database. Throws if not open. Prepared statements that are still reachable from JavaScript remain valid until they are finalized; the underlying connection is released once the last statement is gone.
 
-#### `db.enableLoadExtension(allow)` · `db.loadExtension(path[, entryPoint])`
+**Throws**
 
-Opt into and load SQLite extensions.
+- `DATABASE_NOT_OPEN` — the database is not open.
 
-#### `const sql = db.createTagStore([maxSize])`
+#### `createTagStore(maxSize?: number): TagStore`
 
-Create a tagged-template SQL helper bound to this database.
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/database-sync.d.ts#L13)</sub>
 
-### Statement
+Create an LRU cache of prepared statements keyed on the SQL string produced by a tagged template. `maxSize` defaults to `1000`. The returned store exposes `sql.all`, `sql.get`, `sql.iterate`, and `sql.run` as tag functions; placeholder values are bound positionally.
 
-#### `const rows = stmt.all(...params)` · `stmt.values(...params)` · `const row = stmt.get(...params)`
+**Parameters**
 
-Run a query and return all rows, raw value arrays, or the first row.
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `maxSize?` | `number` | — | Maximum number of cached prepared statements before the least-recently-used entry is evicted (default `1000`). |
 
-#### `const result = stmt.run(...params)`
+**Returns** `TagStore` — A `TagStore` exposing `all`, `get`, `iterate`, and `run` as tagged-template functions.
 
-Execute a write and return the change count and last insert row id.
+**Throws**
 
-#### `for (const row of stmt.iterate(...params)) { ... }`
+- `DATABASE_NOT_OPEN` — the database is not open.
+- `INVALID_ARGUMENT` — `maxSize` is not a positive integer.
 
-Iterate rows lazily.
+#### `DatabaseSync.Options`
 
-#### `stmt.columns()` · `stmt.sourceSQL` · `stmt.expandedSQL`
+```ts
+interface Options {
+    open?: boolean
+    readOnly?: boolean
+    enableForeignKeyConstraints?: boolean
+    enableDoubleQuotedStringLiterals?: boolean
+    allowExtension?: boolean
+    timeout?: number
+  }
+```
 
-Column metadata and the statement's source/expanded SQL.
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/database-sync.d.ts#L26)</sub>
 
-#### `stmt.setReadBigInts(enabled)` · `stmt.setAllowBareNamedParameters(allow)` · `stmt.setAllowUnknownNamedParameters(allow)`
+#### `enableLoadExtension(allow: boolean): void`
 
-Tune integer and named-parameter handling. Parameters bind positionally (`?`) or by name; see the [repository README](https://github.com/holepunchto/bare-sqlite) for the binding rules.
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/database-sync.d.ts#L15)</sub>
+
+Toggle extension loading at runtime. Useful for enabling extension loading during setup and disabling it before running user-supplied SQL. Throws if `allowExtension` was not enabled at construction.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `allow` | `boolean` | — | When `true`, enable extension loading; when `false`, disable it. |
+
+**Throws**
+
+- `DATABASE_NOT_OPEN` — the database is not open.
+- `LOAD_EXTENSION_DISABLED` — `allowExtension` was not enabled at construction.
+
+#### `exec(sql: string): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/database-sync.d.ts#L10)</sub>
+
+Execute one or more SQL statements without returning rows. `sql` may contain multiple statements separated by `;`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `sql` | `string` | — | One or more SQL statements to execute, separated by `;`. |
+
+**Throws**
+
+- `DATABASE_NOT_OPEN` — the database is not open.
+
+#### `isOpen: boolean`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/database-sync.d.ts#L5)</sub>
+
+`true` if the database is currently open, `false` otherwise.
+
+#### `loadExtension(path: string, entryPoint?: string | null): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/database-sync.d.ts#L16)</sub>
+
+Load an SQLite extension from `path`. `entryPoint` is the C initialization function name; when omitted, SQLite derives it from the filename. Throws if `allowExtension` was not enabled at construction.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | `string` | — | Path to the shared library implementing the SQLite extension. |
+| `entryPoint?` | `string` \| `null` | — | Name of the C initialization function to call; when omitted (`null`), SQLite derives it from the filename. |
+
+**Throws**
+
+- `DATABASE_NOT_OPEN` — the database is not open.
+- `LOAD_EXTENSION_DISABLED` — `allowExtension` was not enabled at construction.
+
+#### `open(): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/database-sync.d.ts#L7)</sub>
+
+Open the database. Throws if already open. Useful when the database was constructed with `open: false`.
+
+**Throws**
+
+- `DATABASE_ALREADY_OPEN` — the database is already open.
+
+#### `prepare(sql: string): StatementSync`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/database-sync.d.ts#L11)</sub>
+
+Compile `sql` into a prepared statement. The returned `StatementSync` can be reused with different parameter values.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `sql` | `string` | — | The SQL to compile into a reusable prepared statement. |
+
+**Returns** `StatementSync` — A `StatementSync` that can be reused with different parameter values.
+
+**Throws**
+
+- `DATABASE_NOT_OPEN` — the database is not open.
+
+### StatementSync
+
+#### `StatementSync.all`
+
+```ts
+all<T extends SQLiteStatementSync.Row = SQLiteStatementSync.Row>(...params: SQLiteStatementSync.Parameters): T[]
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L7)</sub>
+
+Execute the statement and return all rows as an array of objects keyed by column name.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `params` | `SQLiteStatementSync.Parameters` | — | Values to bind to the statement placeholders. An optional leading plain object binds named parameters; the remaining arguments bind positional placeholders. |
+
+**Returns** `T[]` — All result rows, as an array of objects keyed by column name.
+
+#### `columns(): SQLiteStatementSync.Column[]`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L25)</sub>
+
+Return an array describing the statement's result columns.
+
+**Returns** `SQLiteStatementSync.Column[]` — An array describing the statement result columns.
+
+#### `expandedSQL: string | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L5)</sub>
+
+The SQL with bound parameter values substituted in, or `null` if SQLite couldn't expand it.
+
+#### `StatementSync.get`
+
+```ts
+get<T extends SQLiteStatementSync.Row = SQLiteStatementSync.Row>(...params: SQLiteStatementSync.Parameters): T | undefined
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L15)</sub>
+
+Execute the statement and return the first row, or `undefined` if there are no rows.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `params` | `SQLiteStatementSync.Parameters` | — | Values to bind to the statement placeholders. An optional leading plain object binds named parameters; the remaining arguments bind positional placeholders. |
+
+**Returns** `T` | `undefined` — The first result row, or `undefined` if the query produced no rows.
+
+#### `StatementSync.iterate`
+
+```ts
+iterate<T extends SQLiteStatementSync.Row = SQLiteStatementSync.Row>(...params: SQLiteStatementSync.Parameters): IterableIterator<T>
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L21)</sub>
+
+Execute the statement and return an iterator that yields result rows one at a time as objects keyed by column name.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `params` | `SQLiteStatementSync.Parameters` | — | Values to bind to the statement placeholders. An optional leading plain object binds named parameters; the remaining arguments bind positional placeholders. |
+
+**Returns** `IterableIterator<T>` — An iterator that yields result rows one at a time as objects keyed by column name.
+
+#### `run(...params: SQLiteStatementSync.Parameters): SQLiteStatementSync.RunResult`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L19)</sub>
+
+Execute the statement and return a result object with `changes` (the number of rows modified) and `lastInsertRowid`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `params` | `SQLiteStatementSync.Parameters` | — | Values to bind to the statement placeholders. An optional leading plain object binds named parameters; the remaining arguments bind positional placeholders. |
+
+**Returns** `SQLiteStatementSync.RunResult` — A result object with `changes` (the number of rows modified) and `lastInsertRowid`.
+
+#### `setAllowBareNamedParameters(allow: boolean): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L27)</sub>
+
+When `true` (the default), named-parameter lookup falls back to the bare key when the sigil-prefixed key (`':foo'`) is not found. When `false`, only sigil-prefixed keys are considered.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `allow` | `boolean` | — | When `true` (the default), named-parameter lookup falls back to the bare key when the sigil-prefixed key is not found; when `false`, only sigil-prefixed keys match. |
+
+#### `setAllowUnknownNamedParameters(allow: boolean): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L28)</sub>
+
+When `false` (the default), passing a named-parameters object with keys that don't correspond to any placeholder throws `INVALID_ARGUMENT`. When `true`, extras are silently ignored.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `allow` | `boolean` | — | When `false` (the default), unknown named-parameter keys throw; when `true`, they are silently ignored. |
+
+#### `setReadBigInts(enabled: boolean): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L29)</sub>
+
+When `true`, `INTEGER` columns are returned as `BigInt` rather than `Number`. `changes` and `lastInsertRowid` from `stmt.run()` are returned as `BigInt` too. Default is `false`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabled` | `boolean` | — | When `true`, `INTEGER` columns (and the `changes`/`lastInsertRowid` from `run()`) are returned as `BigInt` rather than `Number` (default `false`). |
+
+#### `sourceSQL: string`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L4)</sub>
+
+The original SQL string that the statement was compiled from.
+
+#### `StatementSync.BindValue`
+
+```ts
+type BindValue = | null
+    | undefined
+    | number
+    | bigint
+    | string
+    | ArrayBuffer
+    | ArrayBufferView
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L39)</sub>
+
+#### `StatementSync.Column`
+
+```ts
+interface Column {
+    column: string | null
+    name: string | null
+    database: string | null
+    table: string | null
+    type: string | null
+  }
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L59)</sub>
+
+#### `StatementSync.NamedParameters`
+
+```ts
+type NamedParameters = Record<string, BindValue>
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L50)</sub>
+
+#### `StatementSync.Parameters`
+
+```ts
+type Parameters = [NamedParameters, ...BindValue[]] | BindValue[]
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L52)</sub>
+
+#### `StatementSync.Row`
+
+```ts
+type Row = Record<string, Value>
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L48)</sub>
+
+#### `StatementSync.RunResult`
+
+```ts
+interface RunResult {
+    changes: number | bigint
+    lastInsertRowid: number | bigint
+  }
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L54)</sub>
+
+#### `StatementSync.Value`
+
+```ts
+type Value = null | number | bigint | string | Buffer
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L37)</sub>
+
+#### `StatementSync.values`
+
+```ts
+values<T extends SQLiteStatementSync.Value[] = SQLiteStatementSync.Value[]>(...params: SQLiteStatementSync.Parameters): T[]
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/statement-sync.d.ts#L11)</sub>
+
+Execute the statement and return all rows as an array of value tuples, one per row, in the order given by `stmt.columns()`. Cheaper than `stmt.all()` when column names aren't needed.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `params` | `SQLiteStatementSync.Parameters` | — | Values to bind to the statement placeholders. An optional leading plain object binds named parameters; the remaining arguments bind positional placeholders. |
+
+**Returns** `T[]` — All result rows, as an array of value tuples ordered by `columns()`.
+
+### TagStore
+
+#### `TagStore.all`
+
+```ts
+all<T extends StatementSync.Row = StatementSync.Row>(strings: readonly string[], ...params: StatementSync.BindValue[]): T[]
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/tag-store.d.ts#L9)</sub>
+
+Execute the statement and return all rows as an array of objects keyed by column name.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `strings` | `readonly string[]` | — | The template string parts (the `strings` array of a tagged template). |
+| `params` | `StatementSync.BindValue[]` | — | The interpolated template values, bound positionally to the placeholders between the string parts. |
+
+**Returns** `T[]` — All result rows, as an array of objects keyed by column name.
+
+#### `capacity: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/tag-store.d.ts#L7)</sub>
+
+The maximum number of statements the cache holds before evicting the least-recently-used entry.
+
+#### `clear(): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/tag-store.d.ts#L31)</sub>
+
+Evict all cached prepared statements.
+
+#### `db: DatabaseSync`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/tag-store.d.ts#L5)</sub>
+
+The `DatabaseSync` this store prepares statements against.
+
+#### `TagStore.get`
+
+```ts
+get<T extends StatementSync.Row = StatementSync.Row>(strings: readonly string[], ...params: StatementSync.BindValue[]): T | undefined
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/tag-store.d.ts#L19)</sub>
+
+Execute the statement and return the first row, or `undefined` if there are no rows.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `strings` | `readonly string[]` | — | The template string parts (the `strings` array of a tagged template). |
+| `params` | `StatementSync.BindValue[]` | — | The interpolated template values, bound positionally to the placeholders between the string parts. |
+
+**Returns** `T` | `undefined` — The first result row, or `undefined` if the query produced no rows.
+
+#### `TagStore.iterate`
+
+```ts
+iterate<T extends StatementSync.Row = StatementSync.Row>(strings: readonly string[], ...params: StatementSync.BindValue[]): IterableIterator<T>
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/tag-store.d.ts#L24)</sub>
+
+Execute the statement and return an iterator that yields result rows one at a time as objects keyed by column name.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `strings` | `readonly string[]` | — | The template string parts (the `strings` array of a tagged template). |
+| `params` | `StatementSync.BindValue[]` | — | The interpolated template values, bound positionally to the placeholders between the string parts. |
+
+**Returns** `IterableIterator<T>` — An iterator that yields result rows one at a time as objects keyed by column name.
+
+#### `run(strings: readonly string[], ...params: StatementSync.BindValue[]): StatementSync.RunResult`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/tag-store.d.ts#L29)</sub>
+
+Execute the statement and return a result object with `changes` (the number of rows modified) and `lastInsertRowid`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `strings` | `readonly string[]` | — | The template string parts (the `strings` array of a tagged template). |
+| `params` | `StatementSync.BindValue[]` | — | The interpolated template values, bound positionally to the placeholders between the string parts. |
+
+**Returns** `StatementSync.RunResult` — A result object with `changes` (the number of rows modified) and `lastInsertRowid`.
+
+#### `size: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/tag-store.d.ts#L6)</sub>
+
+The number of prepared statements currently cached.
+
+#### `TagStore.values`
+
+```ts
+values<T extends StatementSync.Value[] = StatementSync.Value[]>(strings: readonly string[], ...params: StatementSync.BindValue[]): T[]
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/tag-store.d.ts#L14)</sub>
+
+Execute the statement and return all rows as an array of value tuples, one per row, in the order given by `stmt.columns()`. Cheaper than `stmt.all()` when column names aren't needed.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `strings` | `readonly string[]` | — | The template string parts (the `strings` array of a tagged template). |
+| `params` | `StatementSync.BindValue[]` | — | The interpolated template values, bound positionally to the placeholders between the string parts. |
+
+**Returns** `T[]` — All result rows, as an array of value tuples ordered by `columns()`.
+
+### Classes
+
+#### `errors`
+
+<sub>[Source](https://github.com/holepunchto/bare-sqlite/blob/v0.1.4/lib/errors.d.ts#L1)</sub>
+
+```ts
+class errors {
+  code: string
+}
+```
 
 ## See also
 
-- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
-- [`bare-fs`](/reference/bare/modules/bare-fs)—file access alongside an on-disk database.
-- [Bare runtime API](/reference/bare/runtime)—the runtime these bindings run on.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.

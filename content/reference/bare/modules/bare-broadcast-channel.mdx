@@ -1,11 +1,13 @@
 ---
 title: "bare-broadcast-channel"
-description: "Reference for bare-broadcast-channel: multi-producer, multi-consumer inter-thread broadcast messaging for Bare."
+description: "Multi-producer, multi-consumer inter-thread broadcast messaging for JavaScript"
 docType: reference
 schemaType: APIReference
 ---
 
-[`bare-broadcast-channel`](https://github.com/holepunchto/bare-broadcast-channel) provides multi-producer, multi-consumer broadcast messaging between Bare threads. A channel exposes a transferable `handle`, so other [threads](/reference/bare/runtime#barethread) can join the same channel and exchange structured-cloned values over per-thread ports. It's a native addon.
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-broadcast-channel`](https://github.com/holepunchto/bare-broadcast-channel) — Multi-producer, multi-consumer inter-thread broadcast messaging for JavaScript. It is a native addon.
 
 ```sh
 npm i bare-broadcast-channel
@@ -27,54 +29,82 @@ const consumer = (label) =>
     await port.close()
   })
 
-consumer('a')
-consumer('b')
+const a = consumer('a')
+const b = consumer('b')
+
+const port = channel.connect()
+
+while (port.peers < 2) await new Promise((r) => setTimeout(r, 10))
+
+await port.write('hello')
+await port.close()
+
+a.join()
+b.join()
 ```
 
 ## API
 
 ### BroadcastChannel
 
-#### `const channel = new BroadcastChannel([options])`
+#### `new BroadcastChannel(opts?: BroadcastChannelOptions)`
 
-Create a channel. `BroadcastChannel.MAX_PORTS` is the maximum number of connected ports.
+<sub>[Source](https://github.com/holepunchto/bare-broadcast-channel/blob/v0.2.0/index.d.ts#L26)</sub>
 
-#### `const channel = BroadcastChannel.from(handle[, options])`
+Create a new broadcast channel. The channel is backed by a `SharedArrayBuffer` exposed as `channel.handle` that can be passed to other threads to share the channel across them.
 
-Reconstruct a channel from a transferred `channel.handle` (pass `handle` to a thread via its `data`).
+**Parameters**
 
-#### `channel.handle` · `channel.interfaces`
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `BroadcastChannelOptions` | — | Channel options; `handle` backs the channel with an existing `SharedArrayBuffer`, `interfaces` registers serializable and transferable interfaces (default `[]`), and `portCapacity` defaults to `1024`. |
 
-The transferable handle, and the channel's interfaces.
+#### `BroadcastChannel.from`
 
-#### `const port = channel.connect()`
+```ts
+BroadcastChannel.from(handle: SharedArrayBuffer, opts?: BroadcastChannelOptions): BroadcastChannel
+```
 
-Connect to the channel, returning a `Port` for this thread.
+<sub>[Source](https://github.com/holepunchto/bare-broadcast-channel/blob/v0.2.0/index.d.ts#L30)</sub>
 
-### Port
+Restore a channel from its `SharedArrayBuffer` `handle`. `options` accepts the same fields as the constructor, except for `handle`.
 
-#### `await port.write(value[, options])` · `port.writeSync(value[, options])`
+**Parameters**
 
-Broadcast a structured-cloneable `value` to peers; returns whether the write flushed.
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `handle` | `SharedArrayBuffer` | — | The `SharedArrayBuffer` backing the channel, as exposed by `channel.handle`. |
+| `opts?` | `BroadcastChannelOptions` | — | The same options as the constructor, except `handle`. |
 
-#### `const value = await port.read()` · `port.readSync()`
+**Returns** `BroadcastChannel` — A channel backed by the given `handle`.
 
-Read the next broadcast value.
+#### `BroadcastChannel.MAX_PORTS: number`
 
-#### `port.createReadStream([options])` · `port.createWriteStream([options])` · `port.createStream([options])`
+<sub>[Source](https://github.com/holepunchto/bare-broadcast-channel/blob/v0.2.0/index.d.ts#L28)</sub>
 
-Stream interfaces over the port.
+Maximum number of ports that may connect to a single channel over its lifetime.
 
-#### `port.peers` · `port.ref()` · `port.unref()` · `await port.close()`
+#### `connect(): Port<T>`
 
-Peer count, event-loop references, and teardown. Ports emit `peers` and `close`.
+<sub>[Source](https://github.com/holepunchto/bare-broadcast-channel/blob/v0.2.0/index.d.ts#L22)</sub>
 
-## Related modules
+Connect a new port to the channel. Throws if `MAX_PORTS` has been reached. Port slots are not reused, so the cap applies to the total number of connections over the channel's lifetime, not the number of concurrently connected ports.
 
-Builds on `bare-events`, [`bare-stream`](/reference/bare/modules/bare-stream), and `bare-structured-clone` (see [Bare modules](/reference/modules/bare-modules)).
+**Returns** `Port<T>` — A new port connected to the channel.
+
+#### `handle: SharedArrayBuffer`
+
+<sub>[Source](https://github.com/holepunchto/bare-broadcast-channel/blob/v0.2.0/index.d.ts#L19)</sub>
+
+The `SharedArrayBuffer` backing the channel. Pass this to other threads to share the channel.
+
+#### `interfaces: SerializableConstructor[]`
+
+<sub>[Source](https://github.com/holepunchto/bare-broadcast-channel/blob/v0.2.0/index.d.ts#L20)</sub>
+
+The serializable and transferable interfaces registered on the channel.
 
 ## See also
 
-- [`bare-channel`](/reference/modules/bare-modules)—point-to-point inter-thread messaging.
-- [Bare runtime API](/reference/bare/runtime#barethread)—`Bare.Thread`, the threads this broadcasts between.
-- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.
