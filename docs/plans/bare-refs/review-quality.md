@@ -70,7 +70,28 @@ Regeneration (`gen:bare-refs`, `check:bare-refs`, `test:bare-refs`, MDX
 compile, `emit:ts-doc`) is run ONCE by the main loop after each batch
 completes, to avoid concurrent-write races on shared output/cache files.
 
-## Module checklist (✔ = reviewed + fixed; batch = agent batch)
+## ACTUAL COVERAGE (source of truth — supersedes the batch checklist below)
+
+Ground truth = a module has a `layouts/<m>.ts` manifest carrying
+`params`/`returns`/`throws` (detector, not batch labels, since session-limited
+runs committed partial batches). As of 2026-07-14 session 9:
+
+**REVIEWED (37):** the 16 from batches 1+2 plus the batch 3–5 modules committed
+in `af8e46c`. Verify against the detector: `for m in $(ls generated/bare-refs/*.mdx|xargs -n1 basename|sed s/.mdx//); do grep -lqE 'params:|returns:|throws:' scripts/bare-refgen/layouts/$m.ts 2>/dev/null && echo "$m ✓"; done`
+
+**REMAINING — 28 with callable params (real work), highest downloads first:**
+bare-module, bare-structured-clone, bare-module-traverse, bare-posix,
+bare-abort-controller, bare-rpc, bare-logger, bare-pack, bare-bundle-id,
+bare-make, bare-type-stripper, bare-readline, bare-console, bare-timers,
+bare-sidecar, bare-vm, bare-sqlite, bare-realm, bare-string-decoder,
+bare-sqlite-vector, bare-file-logger, bare-bluetooth-apple,
+bare-bluetooth-android, bare-stow, bare-prom-client, bare-atomics,
+bare-mdns-discovery, bare-collabora.
+
+**REMAINING — 5 with no callable params (light read-through of describe only):**
+bare-process, bare-env, bare-stdio, bare-abort, bare-system-logger.
+
+## Module checklist (batch-based — STALE, kept for history)
 
 Priority order = npm downloads, highest first (`downloads.json`), excluding
 `bare-dgram`/`bare-tui` (no shipped `.d.ts`, not part of the 70 generated
