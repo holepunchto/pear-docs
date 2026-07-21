@@ -36,6 +36,101 @@ async function git(cwd: string, args: string[]): Promise<string> {
   return stdout.trim();
 }
 
+// The bare-* repos lint with `prettier --check .`, so the files we emit must be
+// Prettier-formatted or the PR's Lint job fails. Prettier resolves each repo's
+// own `.prettierrc` (they extend the shared `prettier-config-holepunch`); we
+// install prettier + that config once under WORK_DIR so node's upward module
+// resolution finds them from any clone. Best-effort: if the install or a per-repo
+// config can't be resolved, we log and emit unformatted (no worse than before).
+const PRETTIER_BIN = join(WORK_DIR, 'node_modules', '.bin', 'prettier');
+let formatterReady: boolean | null = null;
+
+async function ensureFormatter(): Promise<boolean> {
+  if (formatterReady !== null) return formatterReady;
+  if (existsSync(PRETTIER_BIN)) return (formatterReady = true);
+  try {
+    await mkdir(WORK_DIR, { recursive: true });
+    console.log('  installing prettier + prettier-config-holepunch (one-time, for CI-clean output) …');
+    await execFile(
+      'npm',
+      ['install', '--no-save', '--prefix', WORK_DIR, '--legacy-peer-deps', 'prettier@^3', 'prettier-config-holepunch'],
+      { maxBuffer: 64 * 1024 * 1024 },
+    );
+    formatterReady = existsSync(PRETTIER_BIN);
+  } catch (err) {
+    console.log(`  ⚠ prettier install failed (${(err as Error).message.split('\n')[0]}); emitting unformatted`);
+    formatterReady = false;
+  }
+  return formatterReady;
+}
+
+// Most bare-* repos pin prettier with a semver range (e.g. `^3.4.1`) and have no
+// lockfile, so CI's `npm install` always resolves the newest matching 3.x — the
+// shared install above matches that. A few repos (e.g. bare-prom-client) pin an
+// exact version instead, so CI installs *that* version verbatim; formatting with
+// the shared "latest" prettier there produces output the repo's own lint rejects.
+// Detect an exact pin and use a per-version cached install for it instead.
+const PRETTIER_CACHE_ROOT = join(WORK_DIR, 'prettier-versions');
+const pinnedFormatterCache = new Map<string, Promise<string | null>>();
+
+const isExactVersion = (spec: string) => /^\d+\.\d+\.\d+/.test(spec.trim());
+
+async function ensurePinnedFormatter(version: string): Promise<string | null> {
+  let promise = pinnedFormatterCache.get(version);
+  if (!promise) {
+    promise = (async () => {
+      const dir = join(PRETTIER_CACHE_ROOT, version);
+      const bin = join(dir, 'node_modules', '.bin', 'prettier');
+      if (existsSync(bin)) return bin;
+      try {
+        await mkdir(dir, { recursive: true });
+        console.log(`  installing prettier@${version} (repo pins an exact version) …`);
+        await execFile(
+          'npm',
+          ['install', '--no-save', '--prefix', dir, '--legacy-peer-deps', `prettier@${version}`],
+          { maxBuffer: 64 * 1024 * 1024 },
+        );
+        return existsSync(bin) ? bin : null;
+      } catch (err) {
+        console.log(`  ⚠ prettier@${version} install failed (${(err as Error).message.split('\n')[0]}); falling back to shared prettier`);
+        return null;
+      }
+    })();
+    pinnedFormatterCache.set(version, promise);
+  }
+  return promise;
+}
+
+async function resolveFormatterBin(dir: string): Promise<string | null> {
+  try {
+    const pkg = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8'));
+    const spec: string | undefined = pkg.devDependencies?.prettier ?? pkg.dependencies?.prettier;
+    if (spec && isExactVersion(spec)) {
+      const pinned = await ensurePinnedFormatter(spec.trim());
+      if (pinned) return pinned;
+    }
+  } catch {
+    // no readable package.json — fall through to the shared formatter.
+  }
+  return (await ensureFormatter()) ? PRETTIER_BIN : null;
+}
+
+/** Run each repo's Prettier over the files we touched so they pass `prettier --check`. */
+async function formatTouched(dir: string, files: string[]): Promise<void> {
+  if (files.length === 0) return;
+  const bin = await resolveFormatterBin(dir);
+  if (!bin) return;
+  try {
+    await execFile(bin, ['--write', '--ignore-unknown', ...files], {
+      cwd: dir,
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  } catch (err) {
+    // e.g. a repo whose .prettierrc references a config package we didn't install.
+    console.log(`  ⚠ prettier skipped files in ${dir}: ${(err as Error).message.split('\n')[0]}`);
+  }
+}
+
 /** A `throws` bullet → a TSDoc `@throws {Type} rest` line (Type from a leading `` `X` ``). */
 function throwsTag(bullet: string): string {
   const m = bullet.match(/^\s*`([^`]+)`\s*(?:—|-|:)?\s*(.*)$/);
@@ -288,6 +383,7 @@ async function emitOne(name: string, pr: boolean): Promise<void> {
 
   // 1) TSDoc into the shipped declarations.
   let dtsTouched = 0;
+  const touched: string[] = [];
   const dtsFiles = (await git(dir, ['ls-files', '*.d.ts'])).split('\n').filter(Boolean);
   for (const rel of dtsFiles) {
     const abs = join(dir, rel);
@@ -295,6 +391,7 @@ async function emitOne(name: string, pr: boolean): Promise<void> {
     const next = injectJsDoc(src, describe, params, returns, throwsMap);
     if (next !== src) {
       await writeFile(abs, next);
+      touched.push(rel);
       dtsTouched++;
     }
   }
@@ -307,9 +404,13 @@ async function emitOne(name: string, pr: boolean): Promise<void> {
     const next = syncReadme(readme, renderReadmeApi(model, layout), readmePolicyOf(name));
     if (next !== null) {
       await writeFile(readmePath, next);
+      touched.push('README.md');
       readmeTouched = true;
     }
   }
+
+  // 3) Prettier-format what we touched so the repo's `prettier --check` lint passes.
+  await formatTouched(dir, touched);
 
   await git(dir, ['add', '-A']);
   const staged = await git(dir, ['diff', '--cached', '--name-only']);
