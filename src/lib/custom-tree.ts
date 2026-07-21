@@ -371,6 +371,11 @@ export const customTree: Node[] = [
           },
           {
             type: 'page',
+            name: 'Publish a changelog for your app',
+            url: '/how-to/operate-an-app/publish-a-changelog',
+          },
+          {
+            type: 'page',
             name: 'Migrate from pear run to pear-runtime',
             url: '/how-to/operate-an-app/migration',
           },
