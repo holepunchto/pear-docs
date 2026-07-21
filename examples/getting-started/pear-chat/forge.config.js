@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const plink = require('pear-link')
 const pkg = require('./package.json')
 const appName = pkg.productName ?? pkg.name
 
@@ -115,6 +116,12 @@ module.exports = {
     readPackageJson: async (forgeConfig, packageJson) => {
       if (process.env.UPGRADE_KEY) {
         packageJson.upgrade = process.env.UPGRADE_KEY
+      }
+
+      try {
+        plink.parse(packageJson.upgrade)
+      } catch {
+        throw new Error('Use `pear touch` to get a valid upgrade key for package.json#upgrade')
       }
 
       return packageJson
