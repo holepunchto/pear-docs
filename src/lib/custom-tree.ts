@@ -71,11 +71,6 @@ export const customTree: Node[] = [
         children: [
           {
             type: 'page',
-            name: 'The Pears stack',
-            url: '/explanation/the-pears-stack',
-          },
-          {
-            type: 'page',
             name: 'Peer-to-peer, demystified',
             url: '/explanation/peer-to-peer-demystified',
           },
@@ -83,21 +78,6 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Runtime and languages',
             url: '/explanation/runtime-and-languages',
-          },
-          {
-            type: 'page',
-            name: 'Using Bare on its own',
-            url: '/explanation/use-bare-standalone',
-          },
-          {
-            type: 'page',
-            name: 'Inside Bare',
-            url: '/explanation/bare-runtime',
-          },
-          {
-            type: 'page',
-            name: 'One core, many platforms',
-            url: '/explanation/bare-on-native',
           },
           {
             type: 'page',
@@ -262,27 +242,6 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Stream a live camera in a peer-to-peer app',
             url: '/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app',
-          },
-        ],
-      },
-      {
-        type: 'folder',
-        name: 'Run on mobile & native',
-        children: [
-          {
-            type: 'page',
-            name: 'Embed Bare in a React Native app',
-            url: '/how-to/run-on-native/embed-bare-in-react-native',
-          },
-          {
-            type: 'page',
-            name: 'Type a native RPC bridge',
-            url: '/how-to/run-on-native/type-a-native-rpc-bridge',
-          },
-          {
-            type: 'page',
-            name: 'Bundle a Bare app',
-            url: '/how-to/run-on-native/bundle-a-bare-app',
           },
         ],
       },
