@@ -1,0 +1,64 @@
+name: Sync bare upstream docs
+
+# Manual only. Regenerates each bare-* module's TSDoc (in the .d.ts) and README
+# `## API` section from its published type declarations and opens a PR against
+# the upstream repo. Deliberate + reviewed by design: you run it when you want
+# the change to land in a release, and you review every cross-repo PR.
+#
+# Requires two settings so it can push to your fork and open PRs:
+#   secret  UPSTREAM_PAT         — a PAT with `repo` (+ `workflow` for repos that
+#                                  ship .github/workflows) scope.
+#   variable UPSTREAM_FORK_OWNER — the GitHub user/org that holds your bare-* forks.
+# Without them the job still runs but stops after committing locally (no push).
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Comma-separated module list (blank = all generated modules)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  sync-upstream:
+    name: sync bare upstream docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install generator deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/gen" tsx typescript
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/gen/node_modules/." node_modules/
+
+      - name: Configure git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Build the API models the emitter reads.
+      - name: Generate models
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.only }}" ]; then
+            ARGS="-- --only ${{ github.event.inputs.only }}"
+          fi
+          ./node_modules/.bin/tsx scripts/bare-refgen/index.ts $ARGS
+
+      - name: Emit TSDoc + README and open upstream PRs
+        env:
+          UPSTREAM_PAT: ${{ secrets.UPSTREAM_PAT }}
+          UPSTREAM_FORK_OWNER: ${{ vars.UPSTREAM_FORK_OWNER }}
+        run: |
+          ARGS="--pr"
+          if [ -n "${{ github.event.inputs.only }}" ]; then
+            ARGS="$ARGS --only ${{ github.event.inputs.only }}"
+          fi
+          ./node_modules/.bin/tsx scripts/bare-refgen/emit-jsdoc.ts $ARGS

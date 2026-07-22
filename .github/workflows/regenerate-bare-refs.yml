@@ -1,0 +1,118 @@
+name: Regenerate bare module references
+
+# Regenerates the bare-* reference pages from each module's PUBLISHED TypeScript
+# declarations (scripts/bare-refgen). Runs on a daily poll and on demand. The
+# generator always pulls the latest published tarball, so a new upstream release
+# shows up as a diff (new signatures, bumped source-link version tags); if the
+# regenerated pages differ from what's committed, we open a review PR into the
+# live branch. Descriptions live in the layout manifests, so regenerating never
+# loses prose. Never auto-merges.
+
+on:
+  schedule:
+    # Daily at 05:00 UTC.
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Comma-separated module list (blank = the top-N by downloads)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  regenerate:
+    name: regenerate bare refs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: published
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # The generator needs tsx + typescript; the validator also compiles the
+      # pages with @mdx-js/mdx. Install in isolation and copy into ./node_modules
+      # — same approach as the link workflows — rather than a full project install.
+      - name: Install generator deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/gen" tsx typescript @mdx-js/mdx github-slugger
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/gen/node_modules/." node_modules/
+
+      # On the daily poll, regenerate only modules whose npm `latest` moved (and
+      # skip entirely when nothing changed). Manual runs honour the `only` input,
+      # or regenerate everything.
+      - name: Decide what to regenerate
+        id: scope
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ github.event.inputs.only }}" ]; then
+              echo "args=--only ${{ github.event.inputs.only }}" >> "$GITHUB_OUTPUT"
+            else
+              echo "args=" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+          CHANGED="$(./node_modules/.bin/tsx scripts/bare-refgen/poll.ts)"
+          if [ -z "$CHANGED" ]; then
+            echo "Nothing changed — skipping."
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          elif [ "$CHANGED" = "*" ]; then
+            echo "args=" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=--only $CHANGED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Regenerate reference pages
+        if: steps.scope.outputs.skip != '1'
+        run: ./node_modules/.bin/tsx scripts/bare-refgen/index.ts --write ${{ steps.scope.outputs.args }}
+
+      # Gate: coverage, layout-manifest sanity, and MDX validity. Fails the job
+      # (no PR) if a page would drop a symbol, has a stale manifest ref, or
+      # wouldn't compile.
+      - name: Validate generated pages
+        if: steps.scope.outputs.skip != '1'
+        run: ./node_modules/.bin/tsx scripts/bare-refgen/check.ts
+
+      - name: Open PR if the pages changed
+        if: steps.scope.outputs.skip != '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Only the live pages matter for the PR; the generated/ previews and
+          # models are byproducts.
+          if git diff --quiet -- content/reference/bare/modules; then
+            echo "No changes to bare reference pages."
+            exit 0
+          fi
+
+          # Build the change summary BEFORE committing (working tree vs HEAD).
+          ./node_modules/.bin/tsx scripts/bare-refgen/changelog.ts > pr-body.md
+          {
+            echo
+            echo "Automated regeneration from the latest published \`bare-*\` type declarations."
+            echo "Descriptions come from the layout manifests, so prose is preserved."
+          } >> pr-body.md
+
+          BRANCH="chore/regenerate-bare-refs"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add content/reference/bare/modules generated/bare-refs
+          git commit -m "chore: regenerate bare module references from type declarations"
+          git push --force origin "$BRANCH"
+
+          # Reuse the open PR if one exists, else create it.
+          if ! gh pr edit "$BRANCH" --body-file pr-body.md 2>/dev/null; then
+            gh pr create \
+              --base published \
+              --head "$BRANCH" \
+              --title "Regenerate bare module references" \
+              --body-file pr-body.md
+          fi

@@ -1,0 +1,69 @@
+---
+title: "bare-channel"
+description: "Reference for bare-channel: point-to-point inter-thread messaging for Bare, with transferable handles and stream interfaces."
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-channel`](https://github.com/holepunchto/bare-channel) provides point-to-point messaging between [Bare threads](/reference/bare/runtime#barethread). A channel exposes a transferable `handle`; pass it to another thread, reconstruct with `Channel.from(handle)`, and exchange structured-cloned values over a port. It's a native addon and requires Bare `>=1.7.0`. For one-to-many fan-out, see [`bare-broadcast-channel`](/reference/bare/modules/bare-broadcast-channel).
+
+```sh
+npm i bare-channel
+```
+
+## Usage
+
+```js
+const Channel = require('bare-channel')
+const { Thread } = Bare
+
+const channel = new Channel()
+
+new Thread(__filename, { data: channel.handle }, async (handle) => {
+  const Channel = require('bare-channel')
+  const port = Channel.from(handle).connect()
+  console.log(await port.read())
+  await port.close()
+})
+
+const port = channel.connect()
+await port.write('hello')
+```
+
+## API
+
+### Channel
+
+#### `const channel = new Channel([options])` · `Channel.from(handle[, options])`
+
+Create a channel, or reconstruct one from a transferred `channel.handle`. `channel.interfaces` lists its interfaces; `channel.connect()` returns a `Port`.
+
+### Port
+
+#### `await port.write(value[, options])` · `port.writeSync(value[, options])`
+
+Send a structured-cloneable value; returns whether the write flushed.
+
+#### `const data = await port.read()` · `port.readSync()`
+
+Read the next value. A port is also iterable (`for await (const data of port)`).
+
+#### `port.createReadStream([options])` · `port.createWriteStream([options])` · `port.createStream([options])`
+
+Stream interfaces over the port.
+
+#### `port.ref()` · `port.unref()` · `await port.close()`
+
+Event-loop references and teardown. Ports emit `end` and `close`.
+
+## Related modules
+
+Builds on `bare-events`, [`bare-stream`](/reference/bare/modules/bare-stream), and `bare-structured-clone` (see [Bare modules](/reference/modules/bare-modules)).
+
+## See also
+
+- [`bare-broadcast-channel`](/reference/bare/modules/bare-broadcast-channel)—multi-producer, multi-consumer messaging.
+- [`bare-atomics`](/reference/bare/modules/bare-atomics)—low-level thread synchronization.
+- [Bare runtime API](/reference/bare/runtime#barethread)—`Bare.Thread`.

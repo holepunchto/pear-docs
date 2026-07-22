@@ -1,0 +1,452 @@
+---
+title: "bare-rpc"
+description: "librpc ABI compatible RPC for Bare"
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-rpc`](https://github.com/holepunchto/bare-rpc) — librpc ABI compatible RPC for Bare.
+
+```sh
+npm i bare-rpc
+```
+
+## Usage
+
+```js
+import RPC from 'bare-rpc'
+
+// On one end
+const rpc = new RPC(stream, (req) => {
+  if (req.command === 42) {
+    console.log(req.data.toString()) // ping
+    req.reply('pong')
+  }
+})
+
+// On the other end
+const req = rpc.request(42)
+req.send('ping')
+
+const replyBuffer = await req.reply()
+console.log(replyBuffer.toString()) // pong
+```
+
+## API
+
+### RPC
+
+#### `new RPC(stream: Duplex, onrequest: (req: RPCIncomingRequest) => void | Promise<void>)`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L105)</sub>
+
+Create an RPC instance using a duplex `stream`. `onrequest` is an optional callback run when a remote request is received. This is where processing and responding to an RPC request happens. `onrequest` receives a `RPCIncomingRequest` as an argument.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `stream` | `Duplex` | — | The duplex stream to frame RPC messages over, such as a pipe or socket. |
+| `onrequest` | `(req: RPCIncomingRequest) => void \| Promise<void>` | — | Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to. Defaults to a no-op. |
+
+#### `event(command: number): RPCOutgoingEvent`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L100)</sub>
+
+Create an outgoing event for `command`. Events are one-way: unlike `request()` they carry no id and expect no reply, so the remote end receives them as an `RPCIncomingEvent`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `command` | `number` | — | A unique number identifying the event; the remote end differentiates events by it. |
+
+**Returns** `RPCOutgoingEvent` — an `RPCOutgoingEvent`; call `send()` on it to dispatch the one-way event.
+
+#### `idle: boolean`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L98)</sub>
+
+Whether there are no requests or responses currently in flight. Useful for determining when it is safe to tear down the underlying stream.
+
+#### `request(command: number): RPCOutgoingRequest`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L101)</sub>
+
+Create a request for `command`. `command` is a unique number that should be used to differentiate different requests on the remote end.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `command` | `number` | — | A unique number identifying the request; the remote end differentiates requests by it. |
+
+**Returns** `RPCOutgoingRequest` — an `RPCOutgoingRequest`; call `send()` on it to dispatch the request and `await reply()` for the response.
+
+### RPCIncomingEvent
+
+#### `new RPCIncomingEvent(rpc: RPC, command: number, data: Buffer)`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L27)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the event arrived on. |
+| `command` | `number` | — | The command number the event was sent with. |
+| `data` | `Buffer` | — | The payload buffer sent with the event. |
+
+#### `RPCIncomingEvent.command: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L22)</sub>
+
+The command that the request was created with. A command is a unique number.
+
+#### `RPCIncomingEvent.data: Buffer | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L23)</sub>
+
+The data buffer sent with the request.
+
+#### `RPCIncomingEvent.rpc: RPC`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L21)</sub>
+
+### RPCOutgoingEvent
+
+#### `new RPCOutgoingEvent(rpc: RPC, command: number)`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L57)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance to send the event on. |
+| `command` | `number` | — | The command number to send. |
+
+#### `RPCOutgoingEvent.command: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L50)</sub>
+
+The command that the request was created with. A command is a unique number.
+
+#### `RPCOutgoingEvent.rpc: RPC`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L49)</sub>
+
+#### `RPCOutgoingEvent.send(data?: Buffer | string | null, encoding?: BufferEncoding): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L53)</sub>
+
+Send the request with the provided `data`. `data` can be a buffer or a string which will be encoded using `encoding`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data?` | `Buffer` \| `string` \| `null` | — | The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. |
+| `encoding?` | `BufferEncoding` | — | The encoding used when `data` is a string (defaults to `utf8`). |
+
+**Throws**
+
+- `ALREADY_SENT` — the event has already been sent.
+
+#### `RPCOutgoingEvent.sent: boolean`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L51)</sub>
+
+A boolean for whether the request has been sent.
+
+### RPCIncomingRequest
+
+#### `new RPCIncomingRequest(rpc: RPC, id: number, command: number, data: Buffer)`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L45)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the request arrived on. |
+| `id` | `number` | — | The request id, used to correlate the reply with the request. |
+| `command` | `number` | — | The command number the request was sent with. |
+| `data` | `Buffer` | — | The payload buffer sent with the request. |
+
+#### `RPCIncomingRequest.command: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L33)</sub>
+
+The command that the request was created with. A command is a unique number.
+
+#### `createRequestStream(opts?: ReadableOptions): RPCIncomingStream`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L41)</sub>
+
+Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for receiving the request's streamed data.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `ReadableOptions` | — | Options for the returned [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_RECEIVED` — the request has already been received.
+
+#### `createResponseStream(opts?: WritableOptions): RPCOutgoingStream`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L40)</sub>
+
+Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending the streamed reply to the request.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `WritableOptions` | — | Options for the returned [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_SENT` — a response has already been sent for this request.
+
+#### `RPCIncomingRequest.data: Buffer | null`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L34)</sub>
+
+The data buffer sent with the request.
+
+#### `RPCIncomingRequest.id: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L32)</sub>
+
+#### `RPCIncomingRequest.received: boolean`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L36)</sub>
+
+A boolean for whether the request has received a reply.
+
+#### `reply(data?: Buffer | string | null, encoding?: BufferEncoding): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L38)</sub>
+
+Send a reply to the request. `data` may be a buffer or a string encoded using `encoding`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data?` | `Buffer` \| `string` \| `null` | — | The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. |
+| `encoding?` | `BufferEncoding` | — | The encoding used when `data` is a string (defaults to `utf8`). |
+
+**Throws**
+
+- `ALREADY_SENT` — a response has already been sent for this request.
+
+#### `RPCIncomingRequest.rpc: RPC`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L31)</sub>
+
+#### `RPCIncomingRequest.sent: boolean`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L35)</sub>
+
+A boolean for whether the request has been sent.
+
+### RPCOutgoingRequest
+
+#### `new RPCOutgoingRequest(rpc: RPC, id: number, command: number)`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L76)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance to send the request on. |
+| `id` | `number` | — | The request id, used to correlate the reply with the request. |
+| `command` | `number` | — | The command number to send. |
+
+#### `RPCOutgoingRequest.command: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L63)</sub>
+
+The command that the request was created with. A command is a unique number.
+
+#### `createRequestStream(opts?: WritableOptions): RPCOutgoingStream`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L71)</sub>
+
+Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending data with the request.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `WritableOptions` | — | Options for the returned [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_SENT` — the request has already been sent.
+
+#### `createResponseStream(opts?: ReadableOptions): RPCIncomingStream`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L72)</sub>
+
+Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for receiving data in reply to the request.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `ReadableOptions` | — | Options for the returned [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_RECEIVED` — the response has already been received.
+
+#### `RPCOutgoingRequest.id: number`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L62)</sub>
+
+#### `RPCOutgoingRequest.received: boolean`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L65)</sub>
+
+A boolean for whether the request has received a reply.
+
+#### `reply(encoding?: BufferEncoding): Promise<Buffer | string | null>`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L69)</sub>
+
+Await the reply from the remote end to the request. `encoding` can be defined for decoding the response `data` buffer back into a string.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `encoding?` | `BufferEncoding` | — | If given, decodes the reply payload to a string using this encoding; omit to receive the raw `Buffer`. |
+
+**Returns** `Promise<Buffer | string | null>` — a promise that resolves with the remote end's reply payload, or rejects with the channel's teardown error if it closes before a reply arrives.
+
+**Throws**
+
+- `ALREADY_RECEIVED` — a reply is already being received for this request.
+
+#### `RPCOutgoingRequest.rpc: RPC`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L61)</sub>
+
+#### `RPCOutgoingRequest.send(data?: Buffer | string | null, encoding?: BufferEncoding): void`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L67)</sub>
+
+Send the request with the provided `data`. `data` can be a buffer or a string which will be encoded using `encoding`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data?` | `Buffer` \| `string` \| `null` | — | The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. |
+| `encoding?` | `BufferEncoding` | — | The encoding used when `data` is a string (defaults to `utf8`). |
+
+**Throws**
+
+- `ALREADY_SENT` — the request has already been sent.
+
+#### `RPCOutgoingRequest.sent: boolean`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L64)</sub>
+
+A boolean for whether the request has been sent.
+
+### RPCIncomingStream
+
+#### `RPCIncomingStream`
+
+```ts
+new RPCIncomingStream(rpc: RPC, request: RPCIncomingRequest | RPCOutgoingRequest, type: typeof constants.type.REQUEST | typeof constants.type.RESPONSE, opts?: ReadableOptions)
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L80)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the stream belongs to. |
+| `request` | `RPCIncomingRequest` \| `RPCOutgoingRequest` | — | The request the stream carries data for. |
+| `type` | `typeof constants.type.REQUEST` \| `typeof constants.type.RESPONSE` | — | Whether the stream carries the request body (`constants.type.REQUEST`) or the response body (`constants.type.RESPONSE`). |
+| `opts?` | `ReadableOptions` | — | Options for the underlying [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream. |
+
+### RPCOutgoingStream
+
+#### `RPCOutgoingStream`
+
+```ts
+new RPCOutgoingStream(rpc: RPC, request: RPCIncomingRequest | RPCOutgoingRequest, type: typeof constants.type.REQUEST | typeof constants.type.RESPONSE, opts?: WritableOptions)
+```
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/index.d.ts#L89)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the stream belongs to. |
+| `request` | `RPCIncomingRequest` \| `RPCOutgoingRequest` | — | The request the stream carries data for. |
+| `type` | `typeof constants.type.REQUEST` \| `typeof constants.type.RESPONSE` | — | Whether the stream carries the request body (`constants.type.REQUEST`) or the response body (`constants.type.RESPONSE`). |
+| `opts?` | `WritableOptions` | — | Options for the underlying [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream. |
+
+## `bare-rpc/errors`
+
+### RPCError
+
+#### `RPCError.ALREADY_RECEIVED(msg: string): RPCError`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/lib/errors.d.ts#L4)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.ALREADY_SENT(msg: string): RPCError`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/lib/errors.d.ts#L3)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.CHANNEL_CLOSED(msg: string): RPCError`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/lib/errors.d.ts#L5)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.UNKNOWN_MESSAGE(msg: string): RPCError`
+
+<sub>[Source](https://github.com/holepunchto/bare-rpc/blob/v1.3.8/lib/errors.d.ts#L2)</sub>
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+## See also
+
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.
