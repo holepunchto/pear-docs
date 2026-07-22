@@ -40,7 +40,7 @@ const layout: Layout = {
   // signalled by `null` or a thrown error, only by the iterable simply ending.
   returns: {
     resolve:
-      'Yields each candidate resolution `URL` in the order the algorithm tries them, for the caller to test (e.g. check it exists); if none resolve, iteration simply ends without yielding further values — it does not throw or return `null` for an unresolved specifier.',
+      'Yields each candidate resolution `URL` in the order the algorithm tries them, for the caller to test (for example check it exists); if none resolve, iteration simply ends without yielding further values — it does not throw or return `null` for an unresolved specifier.',
     'ModuleResolveError.INVALID_MODULE_SPECIFIER':
       'A new `ModuleResolveError` with code `INVALID_MODULE_SPECIFIER`.',
     'ModuleResolveError.INVALID_PACKAGE_TARGET':

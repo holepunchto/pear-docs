@@ -15,11 +15,11 @@ const layout: Layout = {
   groups: [],
   params: {
     createServer: {
-      opts: 'Server options: TLS socket options (e.g. `cert`, `key`) plus `bare-http1` server connection options.',
+      opts: 'Server options: TLS socket options (for example `cert`, `key`) plus `bare-http1` server connection options.',
       onrequest: "Added as a `'request'` listener.",
     },
     'HTTPSServer.constructor': {
-      opts: 'Server options: TLS socket options (e.g. `cert`, `key`) plus `bare-http1` server connection options.',
+      opts: 'Server options: TLS socket options (for example `cert`, `key`) plus `bare-http1` server connection options.',
       onrequest: "Added as a `'request'` listener.",
     },
     request: {

@@ -15,7 +15,7 @@ const layout: Layout = {
     'BluetoothError.constructor': {
       msg: 'A human-readable error message.',
       fn: 'The function to omit from the captured stack trace (default `BluetoothError`).',
-      code: 'The error code; defaults to `fn.name` (e.g. `SCAN_FAILED`).',
+      code: 'The error code; defaults to `fn.name` (for example `SCAN_FAILED`).',
     },
     'BluetoothError.CONNECTION_FAILED': {
       msg: 'A human-readable error message.',

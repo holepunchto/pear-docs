@@ -21,12 +21,12 @@ const layout: Layout = {
   params: {
     'Hash.constructor': {
       algorithm:
-        "The hash algorithm, as a string (e.g. `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`.",
+        "The hash algorithm, as a string (for example `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`.",
       opts: 'Options forwarded to the `Transform` constructor from `bare-stream`.',
     },
     createHash: {
       algorithm:
-        "The hash algorithm, as a string (e.g. `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`.",
+        "The hash algorithm, as a string (for example `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`.",
       opts: 'Options forwarded to the `Transform` constructor from `bare-stream`.',
     },
     'Hash.update': {
@@ -38,13 +38,13 @@ const layout: Layout = {
     },
     'Hmac.constructor': {
       algorithm:
-        "The hash algorithm, as a string (e.g. `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`.",
+        "The hash algorithm, as a string (for example `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`.",
       key: "The HMAC key; a string is decoded using the `encoding` option (defaults to `'utf8'`).",
       opts: 'Options forwarded to the `Transform` constructor from `bare-stream`.',
     },
     createHmac: {
       algorithm:
-        "The hash algorithm, as a string (e.g. `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`.",
+        "The hash algorithm, as a string (for example `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`.",
       key: "The HMAC key; a string is decoded using the `encoding` option (defaults to `'utf8'`).",
       opts: 'Options forwarded to the `Transform` constructor from `bare-stream`.',
     },
@@ -135,7 +135,7 @@ const layout: Layout = {
       digest: 'The hash algorithm, as a string or a numeric constant from `constants.hash`.',
     },
     generateKeyPair: {
-      type: "The key type, as a string (e.g. `'ed25519'`) or a numeric constant from `constants.keyType`.",
+      type: "The key type, as a string (for example `'ed25519'`) or a numeric constant from `constants.keyType`.",
     },
     sign: {
       algorithm: 'Ignored for Ed25519 — pass `null`.',

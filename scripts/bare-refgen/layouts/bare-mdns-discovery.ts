@@ -13,7 +13,7 @@ const layout: Layout = {
       opts: 'Options; see [`MDNSOptions`](#mdnsoptions).',
     },
     'MDNS.query': {
-      name: "The DNS name to query for, e.g. `'_http._tcp.local'`.",
+      name: "The DNS name to query for, for example `'_http._tcp.local'`.",
       type: 'The DNS record type to request (default `TYPE.PTR`).',
     },
     'Discovery.constructor': {

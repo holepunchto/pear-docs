@@ -7,7 +7,7 @@
 //   - Parameter binding semantics from lib/statement-sync.js `splitParameters`
 //     (a leading plain object is bound as named params, the rest positionally)
 //     and lib/tag-store.js (`strings` joined with `?`, values bound positionally).
-// Keys are qualified model keys (e.g. `StatementSync.all`) so StatementSync and
+// Keys are qualified model keys (for example `StatementSync.all`) so StatementSync and
 // TagStore members with the same short name get distinct prose.
 
 import type { Layout } from '../layout';

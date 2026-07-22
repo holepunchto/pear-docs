@@ -27,7 +27,7 @@ const layout: Layout = {
   throws: {
     resolve: [
       "`INVALID_ADDON_SPECIFIER` — the addon specifier is not a valid package name or contains an invalid escape sequence.",
-      "`INVALID_PACKAGE_NAME` — a package manifest's `name` field is invalid (e.g. contains `__`).",
+      "`INVALID_PACKAGE_NAME` — a package manifest's `name` field is invalid (for example contains `__`).",
     ],
   },
 };

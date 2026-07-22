@@ -77,7 +77,7 @@ const layout: Layout = {
 
   // Per-parameter prose, grounded in the bare-fs implementation (index.js) since
   // the .d.ts carries no defaults or semantics beyond types. Keyed by the
-  // top-level function; nested option-object fields (e.g. `MkdirOptions.mode`)
+  // top-level function; nested option-object fields (for example `MkdirOptions.mode`)
   // have no render slot of their own, so their defaults are folded into the
   // `opts` param line instead (or into the option interface's `describe` entry).
   params: {
@@ -158,7 +158,7 @@ const layout: Layout = {
   // and, for copyFile, the package's own test.js.
   throws: {
     open: [
-      "`ENOENT` — `filepath` does not exist and `flags` does not include a creating variant (e.g. the default `'r'`).",
+      "`ENOENT` — `filepath` does not exist and `flags` does not include a creating variant (for example the default `'r'`).",
       "`EEXIST` — `flags` is an exclusive variant (`'wx'`, `'ax'`, `'xw'`, `'xa'`, etc.) and `filepath` already exists.",
     ],
     mkdir: [

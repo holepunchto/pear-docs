@@ -32,7 +32,7 @@ const layout: Layout = {
       stream: 'The underlying duplex byte stream to multiplex the control and user-data channels over.',
     },
     'Protocol.send': {
-      type: "The control frame type, e.g. `'ready'`, `'exit'`, `'error'`, or `'terminate'`.",
+      type: "The control frame type, for example `'ready'`, `'exit'`, `'error'`, or `'terminate'`.",
       payload: 'An optional JSON-serializable payload carried with the frame.',
     },
     attach: {

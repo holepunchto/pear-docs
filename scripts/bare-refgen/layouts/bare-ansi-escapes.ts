@@ -19,7 +19,7 @@ const layout: Layout = {
       opts: 'Options controlling the `encoding` and `escapeCodeTimeout` used to decode input; see `KeyDecoderOptions`.',
     },
     'Key.constructor': {
-      name: "The decoded key name, e.g. `'up'`, `'return'`, or a single character.",
+      name: "The decoded key name, for example `'up'`, `'return'`, or a single character.",
       sequence: 'The raw input sequence the key was decoded from.',
       ctrl: 'Whether the Ctrl modifier was held.',
       meta: 'Whether the Meta (Alt) modifier was held.',

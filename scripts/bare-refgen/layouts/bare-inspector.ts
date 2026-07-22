@@ -4,7 +4,7 @@
 // Console methods are native (binding.console) and mirror their `console`
 // counterparts, so their param prose states only the standard contract.
 //
-// Method params are keyed by bare member name (e.g. `post`, `close`) so the
+// Method params are keyed by bare member name (for example `post`, `close`) so the
 // same prose applies to both the re-exported classes (`Session`, `Server`,
 // `Console`) and the duplicated `bare-inspector/*` submodule sections
 // (`InspectorSession`, `InspectorServer`, `InspectorConsole`) — the member
@@ -23,7 +23,7 @@ const layout: Layout = {
       onpaused: 'Called whenever the debugger pauses; return `true` to keep the pause, or a falsy value to resume immediately (the default resumes).',
     },
     post: {
-      method: "The inspector protocol method name (e.g. `'Runtime.evaluate'`).",
+      method: "The inspector protocol method name (for example `'Runtime.evaluate'`).",
       cb: 'Called with the error or result; when given, no promise is returned.',
     },
     'Server.constructor': {

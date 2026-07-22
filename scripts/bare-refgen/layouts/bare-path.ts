@@ -47,7 +47,7 @@ const layout: Layout = {
       'Both `from` and `to` are resolved to absolute paths before comparing, and an empty string is returned if they resolve to the same path.',
     'path.basename': 'An empty string if `suffix` equals `path` exactly.',
     'path.extname':
-      "An empty string if `path` has no `.` in its last segment, or if that segment's only `.` is its first character (e.g. a dotfile).",
+      "An empty string if `path` has no `.` in its last segment, or if that segment's only `.` is its first character (for example a dotfile).",
     'path.isAbsolute':
       'On Windows, a drive-qualified path such as `C:\\foo` is also absolute; on POSIX, only paths starting with `/` are absolute.',
     'path.toNamespacedPath':

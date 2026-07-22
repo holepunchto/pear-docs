@@ -9,7 +9,7 @@ const layout: Layout = {
       opts: 'Options controlling the environment, stdio, and behavior of the new subprocess; see `SpawnOptions`.',
     },
     'Subprocess.kill': {
-      signum: "Signal to send, as a signal number or name (e.g. `'SIGTERM'`); defaults to `SIGTERM`.",
+      signum: "Signal to send, as a signal number or name (for example `'SIGTERM'`); defaults to `SIGTERM`.",
     },
     'Subprocess.send': {
       message: 'The value to send to the child over the IPC channel.',

@@ -9,7 +9,7 @@
 // Facts below are grounded in the bare-stream README on `main` (before the
 // chore/ts-doc splice replaced it with generated content — see
 // ts-doc-upstream/bare-stream, `git show main:README.md`) and in index.js /
-// web.js source (e.g. the `StreamCallback` type shape, and the literal
+// web.js source (for example the `StreamCallback` type shape, and the literal
 // `TypeError` messages thrown/used as destroy reasons in web.js). Nothing
 // here assumes Node.js `stream` semantics beyond what this module's own
 // docs/source state.
@@ -250,7 +250,7 @@ const layout: Layout = {
   },
 
   // Return-value semantics beyond the bare type, for callables where the
-  // description doesn't already state it (skipping e.g. `Writable.write` /
+  // description doesn't already state it (skipping for example `Writable.write` /
   // `Stream.pipeline`, whose existing `describe` prose already covers the
   // return value and would otherwise render a redundant **Returns** line).
   returns: {

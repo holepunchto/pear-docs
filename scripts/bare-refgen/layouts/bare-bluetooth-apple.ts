@@ -67,7 +67,7 @@ const layout: Layout = {
     },
     'PeripheralManager.respondToRequest': {
       request: "The read or write request to respond to, as delivered by the `'readRequest'`/`'writeRequest'` event.",
-      result: 'The ATT result code, e.g. `PeripheralManager.ATT_SUCCESS`.',
+      result: 'The ATT result code, for example `PeripheralManager.ATT_SUCCESS`.',
       data: 'The value to return for a read request; omit for write responses.',
     },
     'PeripheralManager.updateValue': {

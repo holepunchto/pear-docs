@@ -14,7 +14,7 @@ const layout: Layout = {
       options: 'Options controlling log rotation; see [`FileLogOptions`](#filelogoptions).',
     },
     'FileLog.append': {
-      label: 'A short severity label, right-padded to five characters (e.g. `info`, `error`), prefixed to the line ahead of an ISO-8601 timestamp.',
+      label: 'A short severity label, right-padded to five characters (for example `info`, `error`), prefixed to the line ahead of an ISO-8601 timestamp.',
       data: 'Values to format into the log message, using the same formatting as `console.log`.',
     },
   },

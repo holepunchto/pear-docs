@@ -8,7 +8,7 @@
 import type { Layout } from '../layout';
 
 const paramData = {
-  data: 'Values to format and log; the first may be a `printf`-style format string (e.g. `%s`, `%d`, `%o`) with the remaining values as substitutions.',
+  data: 'Values to format and log; the first may be a `printf`-style format string (for example `%s`, `%d`, `%o`) with the remaining values as substitutions.',
 };
 
 const layout: Layout = {

@@ -9,7 +9,7 @@
 // one errors namespace, and one constants object — the default per-container
 // grouping (errors / Version / Comparator / Range / Functions / Constants and
 // variables) already keeps each class's constructor, properties, and methods
-// together. Forcing a thematic split (e.g. "Parsing", "Comparison", "Range
+// together. Forcing a thematic split (for example "Parsing", "Comparison", "Range
 // matching") would separate `Version.parse` from `Version.major`/`compare`
 // under the same class, which reads worse than the current class-based
 // layout for this particular API shape.

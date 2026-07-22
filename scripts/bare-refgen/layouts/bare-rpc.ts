@@ -4,7 +4,7 @@
 //
 // NOTE: incoming and outgoing requests share method NAMES (`reply`,
 // `createRequestStream`, `createResponseStream`, `send`) with INVERTED
-// semantics — e.g. `RPCIncomingRequest.reply` sends the reply while
+// semantics — for example `RPCIncomingRequest.reply` sends the reply while
 // `RPCOutgoingRequest.reply` awaits it, and the request/response stream
 // direction flips (Readable vs Writable) between the two. Keys are therefore
 // kept fully qualified so each twin gets its own prose. Member descriptions
