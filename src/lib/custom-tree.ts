@@ -71,8 +71,8 @@ export const customTree: Node[] = [
         children: [
           {
             type: 'page',
-            name: 'The Pears stack',
-            url: '/explanation/the-pears-stack',
+            name: 'The Pear stack',
+            url: '/explanation/the-pear-stack',
           },
           {
             type: 'page',
@@ -325,6 +325,11 @@ export const customTree: Node[] = [
                 name: 'Distribute as a binary',
                 url: '/how-to/operate-an-app/build-and-package/distribute-as-binary',
               },
+              {
+                type: 'page',
+                name: 'Submit to app stores',
+                url: '/how-to/operate-an-app/build-and-package/submit-to-app-stores',
+              },
             ],
           },
           {
@@ -363,6 +368,11 @@ export const customTree: Node[] = [
                 url: '/how-to/operate-an-app/multisig/troubleshoot-multisig',
               },
             ],
+          },
+          {
+            type: 'page',
+            name: 'Publish a changelog for your app',
+            url: '/how-to/operate-an-app/publish-a-changelog',
           },
           {
             type: 'page',
@@ -605,4 +615,5 @@ export const customTree: Node[] = [
       },
     ],
   },
+  { type: 'page', name: 'Release Overview', url: '/release-overview' },
 ];

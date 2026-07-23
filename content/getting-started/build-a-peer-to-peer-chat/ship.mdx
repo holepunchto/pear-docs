@@ -61,7 +61,7 @@ pear touch
 ```
 
 <Callout type="warning">
-Stage and provision only work against links you **own**—ones you minted on this machine with `pear touch`. If you stage to someone else's link (for example the public placeholder from part 2), `pear stage --dry-run` prints `🍐 Staging null` with an empty diff and `pear provision` has nothing to sync. Always use the link `pear touch` just printed.
+Stage and provision only work against links you **own**—ones you minted on this machine with `pear touch`. If you stage to someone else's link (for example the public placeholder from part 2), `pear stage` prints the header and then fails with `✖ Destination must be writable`. Always use the link `pear touch` just printed.
 </Callout>
 
 Point `package.json#upgrade` at the stage link for now—you will switch it to the **provision link** after the first provision:
@@ -75,15 +75,18 @@ Your output will be different.
 
 ```bash
 pear seed pear://<stage-link>
---------------------------------------------------------  
-Pear Link:     pear://<stage-link>
-Drive Key:     73d02bee8bb356402592cafe0bd9c993202742223943a830332d237fae2173b7 
-Discovery Key: 127512b795163f8c13aa3e718ef9995d40d2ae7533e485c2c363a92adb8c8a9c 
-Content Key:    
-Firewalled:    true 
-NAT Type:      Consistent 
-Network:       [ Peers: 0 ] [ ⬆ 0B - 0B/s ] [ ⬇ 0B - 0B/s] 
---------------------------------------------------------  
+
+Seeding:        pear://<stage-link>
+Drive Key:      <stage-key>
+Drive Length:   0
+Discovery Key:  qx138e5wnc3bmnjcbks68xpp17m6bj6h5165hud9ps4tr8zad4fo
+Content Key:    pending
+Firewalled:     true
+NAT Type:       consistent
+Whoami:         t8kgj1p3a4e9x8p1etsgks1rc4j58yu9xjh11bbjkgys7zkfmabo
+Network:        [ Peers 0 ]  [ ⬆ 0B - 0B/s ]  [ ⬇ 0B - 0B/s ]
+────────────────────────────────────────────────────────
+^_^ announced
 ```
 
 Leave `pear seed` running in its own terminal for the rest of the tutorial—without an active seeder, peers cannot download your build. 
@@ -246,26 +249,38 @@ pear stage --dry-run pear://<stage-link> ./pear-chat-1.0.1
 Your keys and byte counts will differ; the shape looks like this:
 
 ```text
-🍐 Staging pear://<stage-link>
-+ package.json                         2.1 kB
-+ electron/main.js                    12.4 kB
-+ workers/chat-room.js                 8.7 kB
-+ renderer/index.html                  3.2 kB
-+ by-arch/darwin-arm64/app/PearChat   48.2 MB
-  ... more files ...
-pear://0.<length>.<stage-key>
+🍐 Staging pear-chat
+
+[  pear://<stage-link>  ]
+pear://0.0.<stage-key>
+
+Current: 1
+
+NOTE: This is a dry run, no changes will be persisted.
+
++ /package.json (+2.1kB)
++ /by-arch/darwin-arm64/app/PearChat.app/Contents/Info.plist (+1.4kB)
++ /by-arch/darwin-arm64/app/PearChat.app/Contents/MacOS/PearChat (+55kB)
++ /by-arch/darwin-arm64/app/PearChat.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework (+165MB)
++ /by-arch/darwin-arm64/app/PearChat.app/Contents/Resources/app/electron/main.js (+12.4kB)
++ /by-arch/darwin-arm64/app/PearChat.app/Contents/Resources/app/workers/chat-room.js (+8.7kB)
++ /by-arch/darwin-arm64/app/PearChat.app/Contents/Resources/app/renderer/index.html (+3.2kB)
+  ... more files under /by-arch/ ...
+✔ Skipping (dry-run)
+
+Staging dry run complete!
 ```
 
 How to read it:
 
-- **`+` lines**—files that would be written or updated. Scan for surprises before you run without `--dry-run`.
-- **Last line**—a **versioned link** (`pear://0.<length>.<stage-key>`). The `<length>` is the Hypercore length after this stage; you need the full string for `pear provision` in the next step. On a first stage, `<length>` is usually a few hundred to a few thousand—not `0`.
+- **`+` lines**—files that would be written or updated, as `/`-prefixed drive paths with byte counts in parentheses. Scan for surprises before you run without `--dry-run`.
+- **Versioned link in the header**—the line under the bracketed stage link shows the drive at its **current** length. On a first stage nothing is staged yet, so it reads `pear://0.0.<stage-key>`. The versioned link you need for `pear provision` is printed by the real stage in the next step, after the sync actually happens.
 
 Look for:
 
-- Files you expect to ship—`electron/`, `workers/`, `renderer/`, `package.json`, `node_modules/...`.
+- Only two entries at the drive root—`/package.json` and `/by-arch/...`. That is everything `pear build` writes into the deployment directory. Your app source (`electron/`, `workers/`, `renderer/`, `node_modules/`) ships **inside** the packaged app—for example under `/by-arch/darwin-arm64/app/PearChat.app/Contents/Resources/app/`—never as loose files at the root.
 - No surprise additions—stray `.DS_Store`, editor swap files, secrets, the deployment directory itself.
-- Sensible byte counts—if a file is suddenly 100 MB, something is wrong.
+- Sensible byte counts—the Electron framework binary dominates (a hundred-plus MB per platform-arch); if an unrelated file is suddenly 100 MB, something is wrong.
 
 #### 2. Stage for real
 
@@ -275,28 +290,30 @@ If the diff looks right, drop the `--dry-run` flag and run it for real:
 pear stage pear://<stage-link> ./pear-chat-1.0.1
 ```
 
-The live output should match the dry-run diff. Copy the **versioned link**: `pear://0.<length>.<stage-key>`. It appears twice in the output; either copy works:
+The live output repeats the dry-run diff, then ends with the post-stage **versioned link** after the `^Latest:` line:
 
 ```text
 🍐 Staging pear-chat
 
 [  pear://<stage-link>  ]
-pear://0.<length>.<stage-key>
+pear://0.0.<stage-key>
 
-Current: <length>
-Release: 0 [UNRELEASED]
+Current: 1
 
-✔ Skipping warmup (no changes)
++ /package.json (+2.1kB)
+  ... same diff as the dry run ...
 
 Staging complete!
 
-^Latest: <length>
-Release: 0 [UNRELEASED]
+^Latest: 1426
 
-pear://0.1426.9mdt6h676phg7nuwp1urs7457nsz3juyeuqcbw4h7r1tqz8e84ay
+pear://0.1426.<stage-key>
+[  pear://<stage-link>  ]
 ```
 
-Use that full versioned string as the first argument to `pear provision` below (not the unversioned `<stage-link>` you passed to `pear stage`).
+Copy the versioned link printed under `^Latest:`—`pear://0.<length>.<stage-key>`, where `<length>` is the Hypercore length **after** this stage (a few hundred to a few thousand on a first stage). Don't copy the versioned link at the top of the output—that one shows the drive **before** staging (`pear://0.0.<stage-key>` on a first stage).
+
+Use the full versioned string as the first argument to `pear provision` below (not the unversioned `<stage-link>` you passed to `pear stage`).
 
 #### 3. Mint the provision link
 
@@ -333,16 +350,39 @@ Example with concrete keys (yours will differ):
 pear provision --dry-run pear://0.1426.9mdt6h676phg7nuwp1urs7457nsz3juyeuqcbw4h7r1tqz8e84ay pear://o11z79iogfzx1ckthrhwoeyk7pyxxhy7par4edq5sy1dmwieutso pear://0.0.o11z79iogfzx1ckthrhwoeyk7pyxxhy7par4edq5sy1dmwieutso
 ```
 
-Provision output is another file diff, then confirmation on the target link:
+Provision syncs the target, prints the same file diff you just staged plus a summary, and—on the real run—ends with the provisioned links. The dry run stops after `Dry Run Complete`; the real run pauses for a 10-second cooldown before writing:
 
 ```text
-🍐 Provisioning pear://0.1079.qxenz5... → pear://q9sopzoq...
-+ package.json                         2.1 kB
-  ... same files as stage ...
-pear://q9sopzoqgas9usoiq7uzkkwngm5pzj4zo3n4esjwwbmw6offis8o
+Syncing existing metadata, please wait...
+
+Completed metadata sync
+Checking diff
+
++ /package.json (+2.1kB)
+  ... same diff as the stage ...
+Diffing complete
+Total changes: 1425
+Package version: 1.0.1
+
+Core:
+  Key: o11z79iogfzx1ckthrhwoeyk7pyxxhy7par4edq5sy1dmwieutso
+  ...
+
+NOT A DRY RUN! Waiting 10s for certainty. Use ctrl+c to bail
+Staging to target...
+  ... same diff again ...
+
+Provisioned:
+  Verlink: pear://0.1426.o11z79iogfzx1ckthrhwoeyk7pyxxhy7par4edq5sy1dmwieutso
+
+  Hashlink: pear://0.1426.o11z79iogfzx1ckthrhwoeyk7pyxxhy7par4edq5sy1dmwieutso.<hash>
+
+Seed with:
+
+   pear seed pear://o11z79iogfzx1ckthrhwoeyk7pyxxhy7par4edq5sy1dmwieutso
 ```
 
-The diff should mirror what you just staged. The last line is the provision link peers will poll—set `upgrade` to that unversioned link, not the versioned stage link.
+The diff should mirror what you just staged. The `Seed with` line at the end names the unversioned provision link peers will poll—set `upgrade` to that link in the next step, not the versioned stage link.
 
 #### 5. Switch `upgrade` to the provision link
 
@@ -395,6 +435,7 @@ Every release iteration after this is the same pattern: `npm version patch`, `np
 - **Automate it:** [Publish with GitHub Actions](/how-to/operate-an-app/github-actions/publish-with-github-actions)—skip the manual staging and let CI stage a stable `pear://` link on every push.
 - [Deploy a Pear desktop app](/how-to/operate-an-app/manual-deployment/deployment)—the canonical how-to with every command, every flag, and every recovery procedure.
 - [Build desktop distributables](/how-to/operate-an-app/build-and-package/build-desktop-distributables)—code-signing, notarization, MSIX publisher details.
+- [Publish a changelog for your app](/how-to/operate-an-app/publish-a-changelog)—ship a `CHANGELOG.md` so users read your release notes with `pear changelog`.
 - [Troubleshoot desktop releases](/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases)—"the app did not update," lost write-access, stage size blowups.
 - [Release pipeline](/explanation/release-pipeline)—the conceptual picture, deployment layers, and release lines.
 - [Release pipeline glossary](/explanation/release-pipeline#glossary)—terminology.

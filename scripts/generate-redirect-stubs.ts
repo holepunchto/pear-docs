@@ -9,7 +9,7 @@
  *      file at out/_redirects. Follows the qvac docs strategy:
  *        - public/_redirects is the authored source (markdown negotiation,
  *          catch-all 404, etc.) and is copied into out/ by `next build`.
- *        - This script prepends generated IA 308 rules ahead of that file
+ *        - This script prepends generated IA 301 rules ahead of that file
  *          so legacy redirects stay first-match and public/_redirects
  *          rules (especially the catch-all 404) remain last.
  *
@@ -48,7 +48,12 @@ function main(): void {
     stubsWritten++;
   }
 
-  const generatedRedirects = redirects.map(({ from, to }) => `${from} ${to} 308`).join('\n');
+  // `301!` — the force flag is required: a static meta-refresh stub exists at
+  // each `from` path (written above), and on Sevalla/Kinsta/Cloudflare a
+  // non-forced rule is shadowed by that static file (serves 200, rule never
+  // fires). Force makes the host emit a real 301; the stub stays as the
+  // zero-config fallback for hosts that don't read `_redirects`.
+  const generatedRedirects = redirects.map(({ from, to }) => `${from} ${to} 301!`).join('\n');
   const redirectsFile =
     generatedRedirects && publicRedirects
       ? `${generatedRedirects}\n\n${publicRedirects}\n`

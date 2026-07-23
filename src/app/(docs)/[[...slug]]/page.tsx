@@ -81,10 +81,22 @@ export async function generateMetadata(props: PageProps<'/[[...slug]]'>): Promis
       ? (seoConfig.staticOgImagePath ?? '/og-default.png')
       : getPageImage(page).url);
 
-  return buildDocsMetadata({
+  const metadata = buildDocsMetadata({
     state,
     ogImageUrl,
     siteName: seoConfig.siteName,
     isHomePage,
   });
+
+  // The home title is `{ absolute }` (no template), so it would otherwise equal
+  // the on-page <h1>. Give it a distinct, keyword-rich title instead.
+  if (isHomePage) {
+    metadata.title = { absolute: `${page.data.title} — Peer-to-Peer Application Runtime` };
+  } else if (page.data.seoTitle) {
+    // Plain string → root layout's title template appends " | Pear Docs".
+    // The on-page <h1> keeps `page.data.title`.
+    metadata.title = page.data.seoTitle;
+  }
+
+  return metadata;
 }

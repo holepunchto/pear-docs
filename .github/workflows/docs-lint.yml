@@ -14,6 +14,9 @@ on:
       - 'content/**'
       - 'scripts/check-internal-links.ts'
       - 'scripts/helpers.ts'
+      - 'scripts/gen-curated.ts'
+      - 'scripts/refgen/**'
+      - 'generated/refs/**'
       - '.vale.ini'
       - '.github/styles/**'
       - '.github/workflows/docs-lint.yml'
@@ -22,6 +25,9 @@ on:
       - 'content/**'
       - 'scripts/check-internal-links.ts'
       - 'scripts/helpers.ts'
+      - 'scripts/gen-curated.ts'
+      - 'scripts/refgen/**'
+      - 'generated/refs/**'
       - '.vale.ini'
       - '.github/styles/**'
       - '.github/workflows/docs-lint.yml'
@@ -75,3 +81,35 @@ jobs:
       # Fail the job on error-level alerts (per MinAlertLevel in .vale.ini).
       - name: Lint content
         run: vale --minAlertLevel=error content
+
+  curated-gate:
+    name: curated manifest gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Runs entirely off the committed models (generated/refs/*/api-model.json)
+      # and manifests (scripts/refgen/layouts/*.ts) — no upstream clone. The gate
+      # only needs tsx plus mdast-util-from-markdown (pulled in transitively via
+      # scripts/refgen/identity.ts → extract-readme.ts). Same isolated-install
+      # pattern as internal-links: the root `npm install` can't run here because
+      # package.json pulls token-gated @tetherto/* packages.
+      - name: Install gate deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/gate" tsx mdast-util-from-markdown
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/gate/node_modules/." node_modules/
+      # Fails if any manifest references a member upstream no longer exports
+      # (stale key) or leaves a newly documented model member ungrouped. Catches
+      # manifest/model drift on the PR that introduces it, not just in the weekly
+      # regenerate run.
+      - name: Check curated manifests
+        run: ./node_modules/.bin/tsx scripts/gen-curated.ts --check
+
+      # Print the JSDoc-completeness dashboard for visibility on every docs PR
+      # (report-only, no writes). Add `--gate <n>` here to enforce a floor once
+      # source repos are enriched.
+      - name: JSDoc completeness report
+        run: ./node_modules/.bin/tsx scripts/refgen/report-all.ts --summary

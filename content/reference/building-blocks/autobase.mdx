@@ -1,11 +1,12 @@
 ---
 title: "Autobase"
 description: "Multi-writer linearization layer for building deterministic views from many Hypercores."
+seoTitle: "Autobase: Multi-Writer Views over Hypercores"
 docType: reference
 schemaType: APIReference
 ---
 
-<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+<Status level="stable" />
 
 Autobase is a higher-level composition over underlying [Hypercores](/reference/building-blocks/hypercore). Writers append causal nodes to local cores, Autobase linearizes that graph into an eventually consistent order, and your `apply` handler materializes a deterministic view, often into a [Hyperbee](/reference/building-blocks/hyperbee).
 
@@ -57,196 +58,357 @@ Autobase can reorder previously seen nodes as new causal information arrives. Ke
 
 #### `new Autobase(store, bootstrap, opts)`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L76)
-- Signature: `const base = new Autobase(store, bootstrap, opts)`
-- Parameters:
-  - `store`: the `Corestore` that manages Autobase system, writer, and view cores.
-  - `bootstrap`: an existing Autobase key when reopening a base; omit it or pass `null` to create a new one.
-  - `opts`: configuration for view creation and linearization.
-    - `open(store, host)`: creates the view from the passed store.
-    - `apply(nodes, view, host)`: deterministically applies linearized nodes into the view.
-    - `optimistic`: enables optimistic appends from non-writers that are later acknowledged.
-    - `close(view)`: closes the view when Autobase closes it.
-    - `valueEncoding`: encoding for appended values.
-    - `ackInterval`: auto-ack interval in milliseconds.
-    - `encryptionKey`: promise or buffer used to encrypt the base.
-    - `encrypt`: encrypt the base if it is currently unencrypted and no key is provided.
-    - `encrypted`: require the base to be encrypted.
-    - `fastForward`: enable fast-forwarding to a quorum-signed state.
-    - `wakeup`: custom wakeup protocol implementation.
-    - `bigBatches`: enables larger `apply` batches.
-- Returns: a new `Autobase` instance.
-- Example: `const base = new Autobase(store, null, { open, apply })`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L77)
+
+Instantiate an Autobase.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `store` | [`Corestore`](/reference/helpers/corestore) | — | The Corestore that holds the system, writer, and view cores. |
+| `bootstrap` | [`Buffer\|string`](https://nodejs.org/api/buffer.html#class-buffer) | — | Key of an existing Autobase to load; omit or pass `null` to create a new one. |
+| `opts` | `object` | `{}` | Configuration: `open`, `apply`, `close`, `valueEncoding`, `ackInterval`, `fastForward`, `encrypt`/`encryptionKey`, `optimistic`, and more (see the options table). |
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `open` | — | create the view |
+| `apply` | — | handle nodes to update view |
+| `optimistic` | `false` | Autobase supports optimistic appends |
+| `close` | — | close the view |
+| `valueEncoding` | — | encoding |
+| `ackInterval` | `1000` | enable auto acking with the interval |
+| `encryptionKey` | — | Key to encrypt the base |
+| `encrypt` | `false` | Encrypt the base if unencrypted & no encryptionKey is set |
+| `encrypted` | `false` | Expect the base to be encrypted, will throw an error otherwise, defaults to true if encryptionKey is set |
+| `fastForward` | `true` | Enable fast forwarding. If passing \{ key: base.core.key \}, they autobase will fastforward to that key first. |
+| `wakeup` | — | Set a custom wakeup protocol for hinting which writers are active, see `protomux-wakeup` for protocol details |
+| `bigBatches` | `false` | Enable big batches. See `base.setBigBatches()` for details. |
+
+```js
+const base = new Autobase(store, bootstrap, {
+  optimistic: true,
+  async apply(nodes, view, host) {
+    for (const node of nodes) {
+      const { value } = node
+      // Verify block
+      if (value.password !== 'secrets') continue
+
+      // Acknowledge only even numbers
+      if (value.num % 2 === 0) await host.ackWriter(node.from.key)
+
+      await view.append(value.num)
+    }
+  }
+})
+
+// Passing the password 'secrets' represents being verifiable
+await base.append({ num: 3, password: 'secrets' }, { optimistic: true }) // will not be applied because `ackWriter` isnt called
+await base.append({ num: 2, password: 'secrets' }, { optimistic: true }) // will be applied
+await base.append({ num: 4, password: 'incorrect' }, { optimistic: true }) // will not be applied because the block isn't verifiable
+```
 
 When `optimistic` is enabled, validate optimistic blocks inside `apply` before calling `host.ackWriter(key)`. Otherwise any peer that can write to the underlying network path could attempt to inject values.
 
 #### `await base.ready()`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L216)
-- Signature: `await base.ready()`
-- Parameters: none.
-- Returns: a promise that resolves when the base and its view are ready to use.
-- Example: `await base.ready()`
+Resolves once the base and its view are open and ready to use.
 
 ### State and derived view
 
-- `base.key`: primary key for the Autobase. Example: `const bootstrap = base.key`
-- `base.discoveryKey`: discovery key associated with the Autobase. Example: `swarm.join(base.discoveryKey)`
-- `base.isIndexer`: `true` when this instance is acting as an indexer. Example: `if (base.isIndexer) await base.ack()`
-- `base.writable`: `true` when this instance can append as a writer. Example: `if (base.writable) await base.append(value)`
-- `base.view`: the materialized view returned by `open`. Example: `const row = await base.view.get(0)`
-- `base.length`: length of the Autobase system core, not the writer or view length. Example: `console.log(base.length)`
-- `base.signedLength`: highest quorum-signed system index that will not be reordered. Example: `console.log(base.signedLength)`
-- `base.paused`: whether Autobase is currently paused. Example: `if (base.paused) await base.resume()`
+#### `base.view`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L187)
+
+The view of the autobase derived from writer inputs. The view is created in the `open` handler and can have any shape. The most common `view` is a [hyperbee](https://github.com/holepunchto/hyperbee).
+
+- Returns: `*`
+
+#### `base.key`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L90)
+
+The primary key of the autobase.
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer)
+
+#### `base.discoveryKey`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L91)
+
+The discovery key associated with the autobase.
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer)
+
+#### `base.isIndexer`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L110)
+
+Whether the instance is an indexer.
+
+- Returns: `boolean`
+
+#### `base.writable`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L242)
+
+Whether the instance is a writer for the autobase.
+
+- Returns: `boolean`
+
+#### `base.length`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L258)
+
+The length of the system core. This is neither the length of the local writer nor the length of the view. The system core tracks the autobase as a whole.
+
+- Returns: `number`
+
+#### `base.signedLength`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L250)
+
+The index of the system core that has been signed by a quorum of indexers. The system up until this point will not change.
+
+- Returns: `number`
+
+#### `base.paused`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L166)
+
+Whether the base is currently paused.
+
+- Returns: `boolean` — `true` if the autobase is currently paused, otherwise returns `false`.
 
 ### Writes and linearization
 
 #### `await base.append(value, opts)`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1010)
-- Signature: `await base.append(value, opts)`
-- Parameters:
-  - `value`: the entry to append to the local writer.
-  - `opts`: append options.
-    - `optimistic`: allows an optimistic append from a non-writer when the base was created with `optimistic: true`.
-- Returns: a promise that resolves when the append has been written locally.
-- Example: `await base.append({ type: 'message', text: 'hi' })`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1010)
+
+Append a new entry to the autobase.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `value` | [`*\|Array<*>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | The value, or array of values, to append. |
+| `opts` | [`AppendOptions`](#appendoptions) | Append options. |
+
+- Returns: [`Promise<number>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves to the new core length once the value (or batch) has been appended.
+- Throws:
+  - if the autobase is closing.
+  - if the local writer is not active/writable.
 
 #### `await base.update()`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L894)
-- Signature: `await base.update()`
-- Parameters: none.
-- Returns: a promise that resolves after Autobase fetches available data and reruns linearization.
-- Example: `await base.update()`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L894)
+
+Fetch all available data and update the linearizer.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the linearizer has advanced.
+
+```js
+await base.update()
+```
 
 #### `await base.ack(bg = false)`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L934)
-- Signature: `await base.ack(bg = false)`
-- Parameters:
-  - `bg`: when `true`, schedules the ack through the automatic ack timer instead of appending immediately.
-- Returns: a promise that resolves after the acknowledgement has been appended or scheduled.
-- Example: `await base.ack(true)`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L934)
+
+Manually acknowledge the current state by appending a `null` node that references known head nodes. `null` nodes are ignored by the `apply` handler and only serve as a way to acknowledge the current linearized state. Only indexers can ack.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bg` | `boolean` | `false` | If `bg` is set to `true`, the ack will not be appended immediately but will set the automatic ack timer to trigger as soon as possible. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the ack has been handled.
+
+```js
+await base.ack()
+```
 
 Only indexers can acknowledge. An ack appends a `null` node that references the known heads so peers can converge faster without changing the view.
 
-#### `const heads = base.heads()`
+#### `base.heads()`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L297)
-- Signature: `const heads = base.heads()`
-- Parameters: none.
-- Returns: the current writer-head nodes with no causal dependents.
-- Example: `const heads = base.heads()`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L297)
+
+Gets the current writer heads. A writer head is a node which has no causal dependents, aka it is the latest write. If there is more than one head, there is a causal fork which is pretty common.
+
+- Returns: [`Array<object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) — The head nodes (empty until the base is ready).
+
+```js
+const heads = base.heads()
+```
 
 #### `await base.pause()`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1983)
-- Signature: `await base.pause()`
-- Parameters: none.
-- Returns: a promise that resolves when Autobase has paused before the next `apply`.
-- Example: `await base.pause()`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1983)
+
+Pauses the autobase, preventing the next apply from running until `resume()` is called.
+
+- Returns: `void`
+
+```js
+base.pause()
+```
 
 #### `await base.resume()`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1987)
-- Signature: `await base.resume()`
-- Parameters: none.
-- Returns: a promise that resolves after Autobase resumes and checks for updates.
-- Example: `await base.resume()`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1987)
+
+Resumes a paused autobase and will check for an update.
+
+- Returns: `void`
+
+```js
+base.resume()
+```
 
 #### `base.setBigBatches(enable = true)`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L326)
-- Signature: `base.setBigBatches(enable = true)`
-- Parameters:
-  - `enable`: whether to enable larger `apply` batches.
-- Returns: nothing.
-- Example: `base.setBigBatches(true)`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L326)
+
+Set the autobase to enable or disable big batches. Big batches allow autobase to run the `apply` function on more blocks at once at the expense of being slower and less responsive.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enable` | `boolean` | `true` | Whether to enable big batches. |
+
+- Returns: `void`
+
+```js
+base.setBigBatches(true)
+```
 
 Big batches let Autobase call `apply` with more nodes at once, trading responsiveness for larger deterministic batches.
 
 ### Replication and metadata
 
-#### `const hash = await base.hash()`
+#### `await base.hash()`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L266)
-- Signature: `const hash = await base.hash()`
-- Parameters: none.
-- Returns: the hash of the system core Merkle tree roots.
-- Example: `const hash = await base.hash()`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L266)
 
-#### `const stream = base.replicate(isInitiator || stream, opts)`
+Merkle-tree hash of the system core at its current length.
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L291)
-- Signature: `const stream = base.replicate(isInitiator || stream, opts)`
-- Parameters:
-  - `isInitiator || stream`: either an initiator boolean or an existing replication stream.
-  - `opts`: the same replication options accepted by `Corestore#replicate()`.
-- Returns: a replication stream for the Autobase.
-- Example: `const stream = base.replicate(true)`
+- Returns: [`Promise<Buffer>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — the hash of the system core's merkle tree roots.
+
+```js
+const hash = await base.hash()
+```
+
+#### `base.replicate(isInitiator || stream, opts)`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L291)
+
+Creates a replication stream for replicating the autobase. Arguments are the same as [corestores's `.replicate()`](https://github.com/holepunchto/corestore?tab=readme-ov-file#const-stream--storereplicateoptsorstream).
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `isInitiator` | [`boolean\|Stream`](https://nodejs.org/api/stream.html) | `true`/`false` to open a new stream, or an existing replication stream to attach to. |
+| `opts` | `object` | Replication options forwarded to the underlying Corestore. |
+
+- Returns: [`Stream`](https://nodejs.org/api/stream.html) — The replication stream.
+
+```js
+const swarm = new Hyperswarm()
+
+// Join a topic
+swarm.join(base.discoveryKey)
+
+swarm.on('connection', (connection) => base.replicate(connection))
+```
 
 #### `await base.setUserData(key, value)`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1129)
-- Signature: `await base.setUserData(key, value)`
-- Parameters:
-  - `key`: user-data key as a string.
-  - `value`: string or buffer value to store.
-- Returns: a promise that resolves after the value is stored.
-- Example: `await base.setUserData('app', 'chat')`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1129)
 
-#### `const value = await base.getUserData(key)`
+Sets the [User Data](https://github.com/holepunchto/hypercore#user-data) value for the provided `key`. `key` is a string. `value` can be either a string or a buffer.
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1106)
-- Signature: `const value = await base.getUserData(key)`
-- Parameters:
-  - `key`: user-data key as a string.
-- Returns: the stored string or buffer value for that key.
-- Example: `const appName = await base.getUserData('app')`
+| Parameter | Type |
+| --- | --- |
+| `key` | `string` |
+| `value` | [`Buffer\|string`](https://nodejs.org/api/buffer.html#class-buffer) |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once written.
+
+```js
+await base.setUserData('nickname', 'alice')
+```
+
+#### `await base.getUserData(key)`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1136)
+
+Read a local-only value previously stored with `setUserData()`.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `key` | `string` | is a string. |
+
+- Returns: [`Promise<Buffer\|null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — the [User Data](https://github.com/holepunchto/hypercore#user-data) value for the provided `key`.
+
+```js
+const nickname = await base.getUserData('nickname')
+```
 
 ### Static helpers
 
-#### `const core = Autobase.getLocalCore(store, handlers, encryptionKey)`
+#### `Autobase.getLocalCore(store, handlers, encryptionKey)`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1093)
-- Signature: `const core = Autobase.getLocalCore(store, handlers, encryptionKey)`
-- Parameters:
-  - `store`: the store used to create the local writer core.
-  - `handlers`: handler options passed through to `store`.
-  - `encryptionKey`: optional encryption key for the local core.
-- Returns: a local core suitable for an Autobase writer.
-- Example: `const core = Autobase.getLocalCore(store, { name: 'local-writer' })`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1093)
 
-#### `const { referrer, view } = await Autobase.getUserData(core)`
+Generate a local core to be used for an Autobase.
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1106)
-- Signature: `const { referrer, view } = await Autobase.getUserData(core)`
-- Parameters:
-  - `core`: an Autobase-related core.
-- Returns: a promise for user-data metadata, including the Autobase `referrer` key and the `view` name.
-- Example: `const meta = await Autobase.getUserData(core)`
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `store` | [`Corestore`](/reference/helpers/corestore) | The Corestore to open the core from. |
+| `handlers` | `object` | are any options passed to `store` to get the core. |
+| `encryptionKey` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | Encryption key, when the core is encrypted. |
 
-#### `const isBase = await Autobase.isAutobase(core, opts)`
+- Returns: [`Hypercore`](/reference/building-blocks/hypercore) — The local writer core.
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1115)
-- Signature: `const isBase = await Autobase.isAutobase(core, opts)`
-- Parameters:
-  - `core`: the core to inspect.
-  - `opts`: the same options accepted by `core.get(index, opts)`.
-- Returns: a promise that resolves to whether the core is an Autobase core.
-- Example: `const isBase = await Autobase.isAutobase(core)`
+```js
+const core = Autobase.getLocalCore(store)
+```
+
+#### `await Autobase.getUserData(core)`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1106)
+
+Get user data associated with an autobase `core`. `referrer` is the `.key` of the autobase the `core` is from. `view` is the `name` of the view.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `core` | [`Hypercore`](/reference/building-blocks/hypercore) | The bootstrap/local core to read from. |
+
+- Returns: [`Promise<{referrer: Buffer, view: string\|null}>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — The referrer and view name.
+
+```js
+const { referrer, view } = await Autobase.getUserData(core)
+```
+
+#### `await Autobase.isAutobase(core, opts)`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1115)
+
+Detect whether a core's first block is an Autobase oplog message.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `core` | [`Hypercore`](/reference/building-blocks/hypercore) | — | The core to inspect. |
+| `opts` | `object` | `{}` | are the same options as [core.get(index, opts)](https://github.com/holepunchto/hypercore?tab=readme-ov-file#const-block--await-coregetindex-options). |
+
+- Returns: [`Promise<boolean>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — whether the core is an autobase core.
+
+```js
+const isBase = await Autobase.isAutobase(core)
+```
 
 ### View store helper
 
-#### `const core = store.get(name || { name, valueEncoding })`
+#### `store.get(name || { name, valueEncoding })`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/lib/active-writers.js#L16)
-- Signature: `const core = store.get(name || { name, valueEncoding })`
-- Parameters:
-  - `name`: view name as a string, or an options object with `name` and `valueEncoding`.
-- Returns: a `Hypercore` loaded from the Autobase view store.
-- Example: `const view = store.get({ name: 'messages', valueEncoding: 'json' })`
+Load a `Hypercore` by name (passed as `name`). `name` should be passed as a string.
+
+- Throws: if no `name` is provided.
 
 This `store` instance is the `AutoStore` passed into `open`, and it is the intended place to create the cores that make up your deterministic view.
 
@@ -254,67 +416,114 @@ This `store` instance is the `AutoStore` passed into `open`, and it is the inten
 
 #### `await host.addWriter(key, { indexer = true })`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/lib/apply-calls.js#L19)
-- Signature: `await host.addWriter(key, { indexer = true })`
-- Parameters:
-  - `key`: writer key to add to the Autobase.
-  - `indexer`: when `true`, adds the writer as an indexer as well.
-- Returns: a promise that resolves after the writer has been added.
-- Example: `await host.addWriter(newWriterKey, { indexer: true })`
+Add a writer with the given `key` to the autobase allowing their local core to append. If `indexer` is `true`, it will be added as an indexer.
+
+| Parameter | Default |
+| --- | --- |
+| `{ indexer` | `true }` |
+
+- Throws: if called on the read-only public view.
 
 #### `await host.removeWriter(key)`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/lib/apply-calls.js#L27)
-- Signature: `await host.removeWriter(key)`
-- Parameters:
-  - `key`: writer key to remove.
-- Returns: a promise that resolves after the writer has been removed.
-- Example: `await host.removeWriter(oldWriterKey)`
+Remove a writer from the autobase. This will throw if the writer cannot be removed.
+
+- Throws: if called on the read-only public view, or if it would remove the last indexer.
 
 This throws when the writer cannot be removed, such as when it would leave the system without a removable indexer set.
 
 #### `await host.ackWriter(key)`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/lib/apply-calls.js#L23)
-- Signature: `await host.ackWriter(key)`
-- Parameters:
-  - `key`: writer key to acknowledge.
-- Returns: a promise that resolves after the writer has been acknowledged for optimistic application.
-- Example: `await host.ackWriter(node.from.key)`
+Acknowledge a writer even if they haven't been added before. This is most useful for applying `optimistic` blocks from writers that are not currently a writer.
+
+- Throws: if called on the read-only public view.
 
 #### `host.interrupt(reason)`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/lib/apply-calls.js#L35)
-- Signature: `host.interrupt(reason)`
-- Parameters:
-  - `reason`: optional reason explaining why `apply` must stop.
-- Returns: nothing.
-- Example: `host.interrupt('unsupported block type')`
+Interrupt the applying of writer blocks optionally giving a `reason`. This will emit an `interrupt` event passing the `reason` to the callback and close the autobase.
+
+- Throws: if called on the read-only public view.
 
 Interrupting closes the Autobase and emits the `interrupt` event so the application can upgrade its `apply` logic or recover intentionally.
 
 #### `host.removeable(key)`
 
-[API definition on GitHub](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L2189)
-- Signature: `host.removeable(key)`
-- Parameters:
-  - `key`: writer key to inspect.
-- Returns: whether that writer can be removed.
-- Example: `if (host.removeable(key)) await host.removeWriter(key)`
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L2189)
+
+Whether the writer with `key` can be removed without leaving the system
+without a removable indexer set.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `key` | [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) | The writer's key. |
+
+- Returns: `boolean` — whether the writer for the given `key` can be removed.
+
+```js
+if (base.removeable(writerKey)) await host.removeWriter(writerKey)
+```
 
 The last indexer cannot be removed.
 
 ### Events
 
-- `base.on('update', () => {})`: emitted after `apply` finishes and the view has updated.
-- `base.on('interrupt', (reason) => {})`: emitted when `host.interrupt(reason)` stops `apply`.
-- `base.on('fast-forward', (to, from) => {})`: emitted when Autobase fast-forwards from `from` to `to` signed length.
-- `base.on('is-indexer', () => {})`: emitted when this instance becomes an indexer.
-- `base.on('is-non-indexer', () => {})`: emitted when this instance is not an indexer.
-- `base.on('writable', () => {})`: emitted when this instance becomes writable.
-- `base.on('unwritable', () => {})`: emitted when this instance is no longer writable.
-- `base.on('warning', (warning) => {})`: emitted when Autobase raises a warning.
-- `base.on('error', (err) => {})`: emitted when updating the Autobase raises an error.
+#### `base.on('update', () => { ... })`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L914)
+
+Triggered when the autobase view updates after `apply` has finished running.
+
+#### `base.on('interrupt', (reason) => { ... })`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L913)
+
+Triggered when `host.interrupt(reason)` is called in the `apply` handler. See [`host.interrupt(reason)`](#hostinterruptreason) for when interrupts are used.
+
+#### `base.on('fast-forward', (to, from) => { ... })`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1639)
+
+Triggered when the autobase fast forwards to a state already with a quorum. `to` and `from` are the `.signedLength` after and before the fast forward respectively.
+
+#### `base.on('is-indexer', () => { ... })`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1849)
+
+Triggered when the autobase instance is an indexer.
+
+#### `base.on('is-non-indexer', () => { ... })`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1860)
+
+Triggered when the autobase instance is not an indexer.
+
+#### `base.on('writable', () => { ... })`
+
+Triggered when the autobase instance is now a writer.
+
+#### `base.on('unwritable', () => { ... })`
+
+Triggered when the autobase instance is no longer a writer.
+
+#### `base.on('warning', (warning) => { ... })`
+
+Triggered when a warning is triggered.
+
+#### `base.on('error', (err) => { ... })`
+
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L927)
+
+Triggered when an error is triggered while updating the autobase.
+
+## Types
+
+### AppendOptions
+
+Options for `base.append()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `optimistic` | `boolean` | `false` | Allow appending on an optimistic Autobase while not a writer; the block is only applied if validated in `apply`. |
 
 ## See also
 

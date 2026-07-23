@@ -17,16 +17,18 @@ An update will not apply unless `package.json` **`version`** changes. Use `npm v
 
 ### Advance the release pointer after `pear stage`
 
-`pear stage` writes new content into the Hypercore but does **not** move the `release` pointer that peers poll. The staging output reports this explicitly:
+`pear stage` writes new content into the Hypercore but does **not** move the `release` pointer that peers poll. Staging ends by printing the new **`Latest`** length and the post-stage versioned link:
 
 ```text skip="sample-output"
-Latest: 1191
-Release: 1177
+Staging complete!
 
-Use pear release pear://<your-link> to set release to latest
+^Latest: 1191
+
+pear://0.1191.<stage-key>
+[  pear://<stage-link>  ]
 ```
 
-If `Latest` is higher than `Release`, peers continue to fetch the older content. Run `pear release pear://<your-link>` to advance the pointer. For production releases, use [`pear provision`](/how-to/operate-an-app/manual-deployment/deployment#6-provision) or `pear multisig` instead—both manage their own release pointers.
+The stage output does not show a release pointer, so a clean stage on its own never changes what peers already tracking the link fetch—they keep the previous release until the pointer advances. The single-key `pear release` command was **removed in Pear v3**—advance the pointer for a production release with [`pear provision`](/how-to/operate-an-app/manual-deployment/deployment#6-provision) followed by [`pear multisig`](/reference/pear/cli#pear-multisig) quorum cosigning, which manage the release pointer.
 
 ### Tune `PearRuntime` `delay` for live OTA visibility
 
@@ -163,7 +165,7 @@ If you have multiple Node versions installed, pin one for the project—for exam
 
 If the **deployment directory** (output of `pear build`) lives **inside** the application tree that gets staged, each stage can **re-include the previous deployment blob**, so diffs grow without bound.
 
-**Fix:** always emit `pear build` output **beside** the repo root (sibling `target` directory) or omit `--target` so the tool writes a versioned folder **outside** the app tree. Never run:
+**Fix:** always pass `--target` pointing to a sibling directory **beside** the app root. Note that omitting `--target` does **not** protect you: `pear build` then writes a `<name>-<version>` folder into the directory you run it *from*, so run it from a parent directory outside the app tree if you leave `--target` off. Never run:
 
 ```bash skip="signed-build"
 # Bad: target inside the app you are about to stage

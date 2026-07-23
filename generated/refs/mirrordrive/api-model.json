@@ -1,0 +1,951 @@
+{
+  "slug": "mirrordrive",
+  "repo": {
+    "org": "holepunchto",
+    "repo": "mirror-drive"
+  },
+  "description": "Mirror a hyperdrive or localdrive into another one",
+  "tag": "v1.14.2",
+  "sha": "26e9d38b823e6fd17ed093bee9d11fc85da54242",
+  "generatedAt": "2026-06-11T12:37:02.155Z",
+  "sections": [
+    {
+      "title": "Usage",
+      "markdown": "## Usage\n\n```js\nimport MirrorDrive from 'mirror-drive'\n\nconst src = new Localdrive('./src')\nconst dst = new Hyperdrive(store)\n\nconst mirror = new MirrorDrive(src, dst)\nconsole.log(mirror.count) // => { files: 0, add: 0, remove: 0, change: 0 }\n\nfor await (const diff of mirror) {\n  console.log(diff) /* {\n    op: 'add',\n    key: '/new-file.txt',\n    bytesRemoved: 0,\n    bytesAdded: 4\n  }*/\n}\n\nconsole.log(mirror.count) // => { files: 1, add: 1, remove: 0, change: 0 }\n```\n\nAnother example:\n\n```js\nconst mirror = new MirrorDrive(src, dst)\n\nconsole.log(mirror.count) // => { files: 0, add: 0, remove: 0, change: 0 }\nawait mirror.done()\nconsole.log(mirror.count) // => { files: 1, add: 1, remove: 0, change: 0 }\n```"
+    }
+  ],
+  "classes": [
+    {
+      "name": "MirrorDrive",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "const mirror = new MirrorDrive(src, dst, [options])",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "src",
+              "optional": false,
+              "description": "Source drive to read from.",
+              "type": "Hyperdrive|Localdrive"
+            },
+            {
+              "name": "dst",
+              "optional": false,
+              "description": "Destination drive to write into (must be writable).",
+              "type": "Hyperdrive|Localdrive"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "description": "Mirror options.",
+              "type": "MirrorDriveOptions"
+            }
+          ],
+          "description": "Creates a mirror instance to efficiently move `src` drive into `dst` drive.",
+          "options": [
+            {
+              "name": "prefix",
+              "default": "'/'"
+            },
+            {
+              "name": "dryRun",
+              "default": "false"
+            },
+            {
+              "name": "prune",
+              "default": "true"
+            },
+            {
+              "name": "includeEquals",
+              "default": "false"
+            },
+            {
+              "name": "filter"
+            },
+            {
+              "name": "metadataEquals"
+            },
+            {
+              "name": "batch",
+              "default": "false"
+            },
+            {
+              "name": "entries",
+              "default": "null",
+              "description": "Array of key entries (if you use this then prefix is ignored)"
+            },
+            {
+              "name": "ignore",
+              "description": "Ignore source files and folders by name."
+            },
+            {
+              "name": "transformers",
+              "description": "Array of factory functions (key) => stream"
+            }
+          ],
+          "examples": [
+            "{\n  prefix: '/',\n  dryRun: false,\n  prune: true,\n  includeEquals: false,\n  filter: (key) => true,\n  metadataEquals: (srcMetadata, dstMetadata) => { ... }\n  batch: false,\n  entries: null // Array of key entries (if you use this then prefix is ignored)\n  ignore: String || Array // Ignore source files and folders by name.\n  transformers: [] // Array of factory functions (key) => stream\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L72",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "peers",
+          "signature": "mirror.peers",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "Array<object>",
+          "description": "Live replication peers attached to the source drive's underlying Hypercore.\nReturns an empty array when the source is a local drive.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L113",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "downloadProgress",
+          "signature": "mirror.downloadProgress",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "number",
+          "description": "Download progress as a fraction between `0` and `1`. Returns `1` when the\nmirror has finished. Requires `opts.progress` to be enabled; otherwise\nalways returns `0` until finished.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L117",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "monitor",
+          "signature": "mirror.monitor(opts)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "opts",
+              "optional": false,
+              "type": "MonitorOptions",
+              "description": "Monitor options."
+            }
+          ],
+          "returns": "A new monitor instance attached to this mirror.",
+          "returnType": "Monitor",
+          "description": "Create a live `Monitor` that polls the mirror's progress statistics at a\nregular interval and emits `update` events with the latest counts/speeds.\nAutomatically enables progress tracking on the mirror.",
+          "examples": [
+            "const monitor = mirror.monitor({ interval: 500 })\nmonitor.on('update', (stats) => {\n  console.log('downloaded', stats.download.bytes, 'bytes')\n})"
+          ],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L124",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "done",
+          "signature": "await mirror.done()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "returns": "Resolves when all diffs have been processed.",
+          "returnType": "Promise<void>",
+          "description": "It starts processing all the diffing until is done.",
+          "examples": [
+            "const mirror = new MirrorDrive(src, dst)\nawait mirror.done()\nconsole.log(mirror.count) // { files: 3, add: 2, remove: 0, change: 1 }"
+          ],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L131",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "src",
+          "signature": "mirror.src",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L108",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "dst",
+          "signature": "mirror.dst",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L109",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "prefix",
+          "signature": "mirror.prefix",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L111",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "dedup",
+          "signature": "mirror.dedup",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L112",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "dryRun",
+          "signature": "mirror.dryRun",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L113",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "prune",
+          "signature": "mirror.prune",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L114",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "preload",
+          "signature": "mirror.preload",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L115",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "preloaded",
+          "signature": "mirror.preloaded",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "boolean",
+          "description": "`true` once all blobs for the source entries have been prefetched and are ready for streaming.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L81",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "includeProgress",
+          "signature": "mirror.includeProgress",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L121",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "includeEquals",
+          "signature": "mirror.includeEquals",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L122",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "filter",
+          "signature": "mirror.filter",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L123",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "metadataEquals",
+          "signature": "mirror.metadataEquals",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L124",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "batch",
+          "signature": "mirror.batch",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L125",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "entries",
+          "signature": "mirror.entries",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L126",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "transformers",
+          "signature": "mirror.transformers",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L127",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "count",
+          "signature": "mirror.count",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "{ files: number, add: number, remove: number, change: number }",
+          "description": "It counts the total files proccessed, added, removed, and changed.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L90",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "bytesRemoved",
+          "signature": "mirror.bytesRemoved",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "number",
+          "description": "Total bytes removed from the destination so far.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L91",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "bytesAdded",
+          "signature": "mirror.bytesAdded",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "number",
+          "description": "Total bytes written to the destination so far.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L92",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "ignore",
+          "signature": "mirror.ignore",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L144",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "finished",
+          "signature": "mirror.finished",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "boolean",
+          "description": "`true` after the mirror iterator has been fully consumed.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L94",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "downloadedBlocks",
+          "signature": "mirror.downloadedBlocks",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "number",
+          "description": "Number of source blob blocks downloaded from peers so far (progress tracking).",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L96",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "downloadedBlocksEstimate",
+          "signature": "mirror.downloadedBlocksEstimate",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L156",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "downloadedBytes",
+          "signature": "mirror.downloadedBytes",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "number",
+          "description": "Total bytes downloaded from peers so far (progress tracking).",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L98",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "downloadSpeed",
+          "signature": "mirror.downloadSpeed",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L162",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "uploadedBlocks",
+          "signature": "mirror.uploadedBlocks",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "number",
+          "description": "Number of destination blob blocks uploaded to peers so far (progress tracking).",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L101",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "uploadedBytes",
+          "signature": "mirror.uploadedBytes",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "number",
+          "description": "Total bytes uploaded to peers so far (progress tracking).",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L102",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "uploadSpeed",
+          "signature": "mirror.uploadSpeed",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L174",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "monitors",
+          "signature": "mirror.monitors",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L176",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "iterator",
+          "signature": "mirror.iterator",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L177",
+          "source": [
+            "ast"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Monitor",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "new Monitor(mirror, options = {})",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "mirror",
+              "optional": false
+            },
+            {
+              "name": "options",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L14",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "preloaded",
+          "signature": "monitor.preloaded",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L25",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "destroyed",
+          "signature": "monitor.destroyed",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L29",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "update",
+          "signature": "monitor.update()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L33",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "destroy",
+          "signature": "monitor.destroy()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L55",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "signature": "monitor.on(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "once",
+          "signature": "monitor.once(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "off",
+          "signature": "monitor.off(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "emit",
+          "signature": "monitor.emit(event, [...args])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "...args",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "mirror",
+          "signature": "monitor.mirror",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L17",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "interval",
+          "signature": "monitor.interval",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L18",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "stats",
+          "signature": "monitor.stats",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L19",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "index",
+          "signature": "monitor.index",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L20",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "update",
+          "signature": "monitor.on('update', stats)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "stats",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L52",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "destroy",
+          "signature": "monitor.on('destroy', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L67",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "preloaded",
+          "signature": "monitor.on('preloaded', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L290",
+          "source": [
+            "ast"
+          ]
+        }
+      ]
+    }
+  ],
+  "typedefs": [
+    {
+      "name": "MirrorDriveOptions",
+      "description": "Options for controlling how `MirrorDrive` synchronises drives.",
+      "properties": [
+        {
+          "name": "prefix",
+          "optional": true,
+          "default": "'/'",
+          "type": "string|Array<string>",
+          "description": "One or more path prefixes to mirror. When an array, each prefix is mirrored in order."
+        },
+        {
+          "name": "dryRun",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Walk the diff and emit events without writing any changes to `dst`."
+        },
+        {
+          "name": "prune",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Remove files from `dst` that no longer exist in `src`."
+        },
+        {
+          "name": "includeEquals",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Emit `{ op: 'equal' }` events for files that are identical in both drives."
+        },
+        {
+          "name": "filter",
+          "optional": true,
+          "type": "function(string): boolean",
+          "description": "Called with each source key; return `false` to skip that entry."
+        },
+        {
+          "name": "metadataEquals",
+          "optional": true,
+          "type": "function(*,*): boolean",
+          "description": "Custom equality check for file metadata; receives `(srcMetadata, dstMetadata)`."
+        },
+        {
+          "name": "batch",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Accumulate destination writes in a single batch and flush at the end."
+        },
+        {
+          "name": "entries",
+          "optional": true,
+          "default": "null",
+          "type": "Array<object>|null",
+          "description": "Pre-computed list of source entries to mirror; when provided, `prefix` is ignored."
+        },
+        {
+          "name": "ignore",
+          "optional": true,
+          "type": "string|Array<string>",
+          "description": "Paths to exclude from the source listing."
+        },
+        {
+          "name": "transformers",
+          "optional": true,
+          "default": "[]",
+          "type": "Array<function>",
+          "description": "Array of factory functions `(key) => stream | null`; each returned stream is piped between source read and destination write."
+        },
+        {
+          "name": "progress",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Enable download/upload progress tracking (requires `src.getBlobs`)."
+        },
+        {
+          "name": "dedup",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Enable content-addressed deduplication using Rabin chunking on the destination."
+        }
+      ]
+    },
+    {
+      "name": "MonitorOptions",
+      "description": "Options for the `monitor()` method.",
+      "properties": [
+        {
+          "name": "interval",
+          "optional": true,
+          "default": "250",
+          "type": "number",
+          "description": "How often (in milliseconds) the monitor emits `update` events with fresh stats."
+        }
+      ]
+    }
+  ]
+}
