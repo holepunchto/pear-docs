@@ -148,6 +148,14 @@ export const customTree: Node[] = [
           },
         ],
       },
+      {
+        type: 'folder',
+        name: 'Built with Pear',
+        children: [
+          { type: 'page', name: 'Keet', url: 'https://keet.io', external: true },
+          { type: 'page', name: 'PearPass', url: 'https://pass.pears.com', external: true },
+        ],
+      },
     ],
   },
   {
@@ -158,6 +166,7 @@ export const customTree: Node[] = [
       {
         type: 'folder',
         name: 'Connect to peers',
+        index: { type: 'page', name: 'Connect to peers', url: '/how-to/connect-to-peers' },
         children: [
           {
             type: 'page',
@@ -179,6 +188,7 @@ export const customTree: Node[] = [
       {
         type: 'folder',
         name: 'Store and replicate',
+        index: { type: 'page', name: 'Store and replicate', url: '/how-to/store-and-replicate' },
         children: [
           {
             type: 'page',
@@ -200,6 +210,7 @@ export const customTree: Node[] = [
       {
         type: 'folder',
         name: 'Blind peering',
+        index: { type: 'page', name: 'Blind peering', url: '/how-to/blind-peering' },
         children: [
           {
             type: 'page',
@@ -216,6 +227,7 @@ export const customTree: Node[] = [
       {
         type: 'folder',
         name: 'Manage identity',
+        index: { type: 'page', name: 'Manage identity', url: '/how-to/manage-identity' },
         children: [
           {
             type: 'page',
@@ -232,6 +244,7 @@ export const customTree: Node[] = [
       {
         type: 'folder',
         name: 'Stream and share media',
+        index: { type: 'page', name: 'Stream and share media', url: '/how-to/stream-and-share-media' },
         children: [
           {
             type: 'page',
@@ -268,6 +281,7 @@ export const customTree: Node[] = [
       {
         type: 'folder',
         name: 'Run on mobile & native',
+        index: { type: 'page', name: 'Run on mobile & native', url: '/how-to/run-on-native' },
         children: [
           {
             type: 'page',
@@ -294,26 +308,29 @@ export const customTree: Node[] = [
       {
         type: 'folder',
         name: 'Release & distribute your app',
+        index: { type: 'page', name: 'Release & distribute your app', url: '/how-to/operate-an-app' },
         children: [
           {
             type: 'folder',
             name: 'CI/CD with GitHub Actions',
+            index: { type: 'page', name: 'CI/CD with GitHub Actions', url: '/how-to/operate-an-app/github-actions' },
             children: [
               {
                 type: 'page',
-                name: 'Build and sign desktop apps',
-                url: '/how-to/operate-an-app/github-actions/build-and-sign-in-ci',
+                name: 'Publish with GitHub Actions',
+                url: '/how-to/operate-an-app/github-actions/publish-with-github-actions',
               },
               {
                 type: 'page',
-                name: 'Publish your app',
-                url: '/how-to/operate-an-app/github-actions/publish-with-github-actions',
+                name: 'Build and sign desktop apps with GitHub Actions',
+                url: '/how-to/operate-an-app/github-actions/build-and-sign-in-ci',
               },
             ],
           },
           {
             type: 'folder',
             name: 'Build & package',
+            index: { type: 'page', name: 'Build & package', url: '/how-to/operate-an-app/build-and-package' },
             children: [
               {
                 type: 'page',
@@ -335,6 +352,7 @@ export const customTree: Node[] = [
           {
             type: 'folder',
             name: 'Manual deployment',
+            index: { type: 'page', name: 'Manual deployment', url: '/how-to/operate-an-app/manual-deployment' },
             children: [
               {
                 type: 'page',
@@ -351,6 +369,7 @@ export const customTree: Node[] = [
           {
             type: 'folder',
             name: 'Multisig',
+            index: { type: 'page', name: 'Multisig', url: '/how-to/operate-an-app/multisig' },
             children: [
               {
                 type: 'page',
@@ -376,7 +395,7 @@ export const customTree: Node[] = [
           },
           {
             type: 'page',
-            name: 'Migrate from pear run to pear-runtime',
+            name: 'Migrate from pear run to Pear OTA',
             url: '/how-to/operate-an-app/migration',
           },
         ],
@@ -408,7 +427,7 @@ export const customTree: Node[] = [
             name: 'Command Line Interface (CLI)',
             url: '/reference/pear/cli',
           },
-          { type: 'page', name: 'Runtime', url: '/reference/pear/runtime' },
+          { type: 'page', name: 'Pear OTA', url: '/reference/pear/runtime' },
           {
             type: 'page',
             name: 'Configuration',
