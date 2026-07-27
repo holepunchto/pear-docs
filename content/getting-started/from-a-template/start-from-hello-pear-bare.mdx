@@ -9,14 +9,18 @@ docType: getting-started
 schemaType: TechArticle
 ---
 
-This is the terminal counterpart to [Start from the hello-pear-electron template](/getting-started/from-a-template/start-from-hello-pear-electron). Instead of a desktop window, you start from a finished command-line boilerplate and learn how a single [Bare](/reference/modules/bare-modules) process wires peer-to-peer updates and replication—then ship it as a standalone binary.
+This is the terminal counterpart to [Start from the hello-pear-electron template](/getting-started/from-a-template/start-from-hello-pear-electron). Instead of a desktop window, you start from a finished command-line boilerplate and learn how a Bare app wires peer-to-peer updates and replication through a worker—then ship it as a standalone binary.
 
-[`holepunchto/hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare) is Holepunch's official boilerplate for peer-to-peer terminal applications. Where the Electron template embeds [`pear-runtime`](/reference/pear/runtime) into Electron, this template embeds it into [Bare](/reference/modules/bare-modules), the zero-core embeddable JavaScript runtime. The application and runtime compile into a single standalone executable per OS and architecture with no peer dependencies—no Node.js, and no Bare or Pear CLI required on the user's machine.
+[`holepunchto/hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare) is Holepunch's official boilerplate for peer-to-peer terminal applications. Where the Electron template embeds [`pear-runtime`](/reference/pear/runtime) into Electron, this template embeds it into [Bare](/reference/modules/bare-modules), the zero-core embeddable JavaScript runtime. The application and runtime compile into a single standalone executable per OS and architecture with no peer dependencies—no Node.js, and no Bare or [Pear CLI](/reference/pear/cli) required on the user's machine.
 
 With this shape you can build CLIs, REPLs, TUIs, services and daemons, or transport hooks—anything headless—and ship it with peer-to-peer over-the-air (OTA) updates. The Pear CLI v3 is built on this same architecture: a Bare standalone executable that updates itself peer-to-peer through `pear-runtime`.
 
+<include>../../_snippets/_p2p-intro-callout.mdx</include>
+
 Take this path when you want to distribute a terminal app as a single executable and update it over the air.
 If you want to build a desktop app instead, follow the [hello-pear-electron template](/getting-started/from-a-template/start-from-hello-pear-electron).
+
+<include>../../_snippets/_install-pear-cli-callout.mdx</include>
 
 ## Clone and run
 
@@ -66,44 +70,56 @@ npm start -- --updates
 
 | Path | What it is | Do you edit it? |
 | --- | --- | --- |
-| [`bin.mjs`](https://github.com/holepunchto/hello-pear-bare/blob/main/bin.mjs) | The entrypoint—CLI flag parsing, the storage path, and the Corestore + Hyperswarm + `pear-runtime` updater wiring. | Yes—this is your app. |
+| [`bin.mjs`](https://github.com/holepunchto/hello-pear-bare/blob/main/bin.mjs) | The entrypoint—parses CLI flags, resolves the storage path, constructs the `App`, and logs its updater events. | Yes—your startup and CLI. |
+| [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/app.js) | The `App` class (a [`ready-resource`](https://github.com/holepunchto/ready-resource)). Spawns the Bare worker with [`PearRuntime.run`](/reference/pear/runtime#running-workers), wraps its IPC in a [`FramedStream`](https://www.npmjs.com/package/framed-stream), and turns updater messages into events. | Sometimes—app lifecycle. |
+| [`workers/main.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/workers/main.js) | The Bare [worker](/explanation/workers) that owns the peer-to-peer code and the [`pear-runtime`](/reference/pear/runtime) updater. | Yes—this is your backend. |
 | [`package.json`](https://github.com/holepunchto/hello-pear-bare/blob/main/package.json) | App metadata, scripts, the `upgrade` link, and the per-platform `make:*` build targets. | Yes—branding and release link. |
 | [`scripts/make.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/scripts/make.js) | Detects the host OS and architecture and runs the matching `make:` target. | Rarely. |
 | [`test/index.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/test/index.js) | The [`brittle`](https://github.com/holepunchto/brittle) test entry, run by `npm test`. | Yes—your tests. |
 
-Unlike the Electron template, there's no renderer, preload bridge, or separate worker. A single Bare process in `bin.mjs` owns everything.
+Like the Electron template, the peer-to-peer logic lives in a Bare [worker](/explanation/workers); `bin.mjs` and `app.js` are the host that spawns it and drives updates. There's no renderer or preload bridge—your "frontend" is the terminal.
+
+<Callout type="info">
+Upstream ships the worker as the [`hello-pear-worker`](https://github.com/holepunchto/hello-pear-worker) package, so the template's `workers/main.js` is just `require('hello-pear-worker')`. That is where your peer-to-peer code goes—open [Corestore](/reference/helpers/corestore) cores, join [Hyperswarm](/reference/building-blocks/hyperswarm) topics, and run your protocol.
+</Callout>
 
 ## How it's wired
 
-`bin.mjs` runs as a single [Bare](/reference/modules/bare-modules) process. It parses two flags with [`paparam`](https://github.com/holepunchto/paparam):
+The template is three layers: `bin.mjs` (entry + CLI), `app.js` (the host that runs the worker and updater), and the Bare [worker](/explanation/workers) that holds your peer-to-peer code.
 
-```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.js#L13-L17 title="bin.js"
+`bin.mjs` is the Bare entry process. It parses three flags with [`paparam`](https://github.com/holepunchto/paparam)—`--version`, `--storage`, and `--no-updates`—then constructs the `App`:
+
+```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.mjs#L13-L19 title="bin.mjs"
 ```
 
-Then it picks a storage directory, opens a [Corestore](/reference/helpers/corestore) and a [Hyperswarm](/reference/building-blocks/hyperswarm), and constructs the [`pear-runtime`](/reference/pear/runtime) instance from the `upgrade` link and version in `package.json`. In development (launched with `bare`) storage is a temporary directory; a packaged binary uses the persistent per-app directory from [`bare-storage`](/reference/modules/bare-modules), and `--storage` overrides both—see [Storage and distribution](/explanation/storage-and-distribution):
+It resolves a storage directory, then hands the runtime configuration to a `new App(...)`. In development (launched with `bare`) storage is a temporary directory; a packaged binary uses the persistent per-app directory from [`bare-storage`](/reference/modules/bare-modules), and `--storage` overrides both—see [Storage and distribution](/explanation/storage-and-distribution):
 
-```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.js#L21-L45 title="bin.js"
+```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.mjs#L28-L41 title="bin.mjs"
 ```
 
-When updates are enabled, it replicates the store on every swarm connection and joins the update drive's discovery key as a client to pull new releases:
+`App` (in `app.js`) is a [`ready-resource`](https://github.com/holepunchto/ready-resource). When it opens, it spawns the Bare worker with [`PearRuntime.run`](/reference/pear/runtime#running-workers)—passing the runtime config as arguments—and wraps the worker's IPC pipe in a [`FramedStream`](https://www.npmjs.com/package/framed-stream):
 
-```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.js#L58-L63 title="bin.js"
+```js file=<rootDir>/examples/getting-started/hello-pear-bare/app.js#L20-L31 title="app.js"
 ```
 
-The updater runs on `pear.updater`: on an `updated` event it applies the downloaded release with `applyUpdate()`, and `SIGHUP`, `SIGINT`, `SIGQUIT`, and `SIGTERM` handlers close `pear` cleanly before exit. For the model behind these updates, see [Pear OTA](/reference/pear/runtime#updates).
+The worker owns the peer-to-peer code and the [`pear-runtime`](/reference/pear/runtime) updater. It messages the host, and `App` turns those into `updating`, `updated`, and `update-applied` events—which `bin.mjs` logs—applying each downloaded release automatically. `SIGHUP`, `SIGINT`, `SIGQUIT`, and `SIGTERM` handlers call `app.exit()` to close cleanly. For the model behind these updates, see [Pear OTA](/reference/pear/runtime#updates):
+
+```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.mjs#L43-L55 title="bin.mjs"
+```
 
 ```mermaid
 flowchart LR
-  cli["bin.mjs (Bare process)"] --> updater["pear-runtime updater"]
-  cli --> store["Corestore"]
-  cli --> swarm["Hyperswarm"]
-  updater --> swarm
+  cli["bin.mjs (entry)"] --> app["app.js (App)"]
+  app -->|"PearRuntime.run"| worker["workers/main.js (Bare worker)"]
+  worker --> updater["pear-runtime updater"]
+  worker --> store["Corestore"]
+  worker --> swarm["Hyperswarm"]
   swarm <-->|"replicate update drive"| peers((seeding peers))
 ```
 
 ## Build a standalone binary
 
-[`bare-build`](https://github.com/holepunchto/bare-build) compiles `bin.mjs` and its dependencies into a single standalone executable with no peer dependencies—users don't need Node.js, Bare, or the Pear CLI installed. Build for your current host with:
+[`bare-build`](https://github.com/holepunchto/bare-build) compiles `bin.mjs` and its dependencies into a single standalone executable with no peer dependencies—users don't need Node.js, Bare, or the [Pear CLI](/reference/pear/cli) installed. Build for your current host with:
 
 ```bash
 npm run make
@@ -136,12 +152,14 @@ After the first install, new releases reach users through the swarm—no reinsta
 
 ## Example: add a flag
 
-The boilerplate is a minimal CLI plus updater, and `bin.mjs` is where your logic goes. Flags are parsed with `paparam`, so adding one is a two-line change. Add a `--name` flag to the command definition:
+The boilerplate is a minimal CLI plus updater; `bin.mjs` holds the CLI and startup logic (your peer-to-peer code lives in the [worker](/explanation/workers)). Flags are parsed with `paparam`, so adding one is a two-line change. Add a `--name` flag to the command definition:
 
 ```diff
  const cmd = command(
    appName,
-   flag('--storage <dir>', 'custom storage directory for pear-runtime'),
+   summary(pkg.description),
+   flag('--version|-v', 'Print the current version'),
+   flag('--storage <dir>', 'custom storage directory'),
 -  flag('--no-updates', 'disable OTA updates for this run')
 +  flag('--no-updates', 'disable OTA updates for this run'),
 +  flag('--name <name>', 'who to greet on startup')
@@ -151,18 +169,17 @@ The boilerplate is a minimal CLI plus updater, and `bin.mjs` is where your logic
 Then log the greeting after the other startup logs:
 
 ```diff
- console.log(`${appName} v${pkg.version}`)
  console.log(`Updates: ${updates === false ? 'disabled' : 'enabled'}`)
 +
 +if (cmd.flags.name) console.log(`Hello, ${cmd.flags.name}!`)
 ```
 
-Run `npm start -- --name YourName`, and the process greets you on boot. From here, build real peer-to-peer features on the `store` and `swarm` the template already creates: 
+Run `npm start -- --name YourName`, and the process greets you on boot. That is the CLI layer in `bin.mjs`; your real peer-to-peer features go in the [worker](/explanation/workers) (`workers/main.js`): 
 * open a [Corestore](/reference/helpers/corestore) core, 
 * join a [Hyperswarm](/reference/building-blocks/hyperswarm) topic, and 
 * run your protocol. 
 
-Reuse the same storage directory so your data lands alongside the updater's—see [Storage and distribution](/explanation/storage-and-distribution).
+Reuse the storage directory the host passes to the worker so your data lands alongside the updater's—see [Storage and distribution](/explanation/storage-and-distribution).
 
 ## Customize for your brand
 
