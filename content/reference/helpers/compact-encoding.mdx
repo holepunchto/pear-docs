@@ -1,6 +1,7 @@
 ---
 title: "compact-encoding"
 description: "Small binary encoding toolkit for protocol messages and storage formats."
+upstreamVersion: "3.3.0"
 docType: reference
 schemaType: APIReference
 ---
@@ -82,40 +83,39 @@ Does a fast preencode dry-run that only sets state.end. Use this to figure out h
 
 #### `enc.encode(state, val)`
 
-[src](https://github.com/holepunchto/compact-encoding/blob/v3.3.0/index.js#L1036)
-
 Writes the encoded form of the value into `state.buffer` at `state.start` (the buffer must have been preallocated via `preencode`), advancing `state.start` past the written bytes.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `state` | `object` | A compact-encoding encoder with `preencode` and `encode` methods. |
+| `state` | `object` | A compact-encoding state with `start`, `end`, and `buffer`. |
 | `val` | `*` | The value to encode. |
 
-- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) — A newly allocated buffer containing the encoded value.
+- Returns: `undefined` — the encoded bytes are written into `state.buffer` in place.
 
 ```js
 const cenc = require('compact-encoding')
-const buf = cenc.encode(cenc.uint, 42)
-// buf is a 1-byte Buffer containing the encoded uint
+const state = cenc.state()
+cenc.uint.preencode(state, 42)
+state.buffer = Buffer.allocUnsafe(state.end)
+cenc.uint.encode(state, 42)
+// state.buffer is a 1-byte Buffer containing the encoded uint
 ```
 
 #### `val = enc.decode(state)`
-
-[src](https://github.com/holepunchto/compact-encoding/blob/v3.3.0/index.js#L1044)
 
 Reads and returns a value from `state.buffer` at `state.start`, advancing `state.start` past the decoded value.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `enc` | `object` | A compact-encoding encoder with a `decode` method. |
-| `buffer` | [`Buffer\|Uint8Array`](https://nodejs.org/api/buffer.html#class-buffer) | The buffer to decode from. |
+| `state` | `object` | A compact-encoding state with `start`, `end`, and `buffer`. |
 
 - Returns: `*` — The decoded value.
 
 ```js
 const cenc = require('compact-encoding')
 const buf = cenc.encode(cenc.bool, true)
-const val = cenc.decode(cenc.bool, buf) // true
+const state = cenc.state(0, buf.byteLength, buf)
+const val = cenc.bool.decode(state) // true
 ```
 
 ### State and convenience helpers
@@ -148,7 +148,7 @@ cenc.string.encode(state, 'hi')
 
 [src](https://github.com/holepunchto/compact-encoding/blob/v3.3.0/index.js#L966)
 
-Coerces `encLike` — an existing compact encoder, a named raw string encoding such as `'utf8'` or `'json'`, a codec with `encode`/`decode`, or an abstract encoding with `encodingLength` — into a compact-encoding-compatible encoder object.
+Coerces `enc` — an existing compact encoder, a named raw string encoding such as `'utf8'` or `'json'`, a codec with `encode`/`decode`, or an abstract encoding with `encodingLength` — into a compact-encoding-compatible encoder object.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -169,7 +169,7 @@ const val = cenc.decode(enc, buf) // 'hello'
 
 [src](https://github.com/holepunchto/compact-encoding/blob/v3.3.0/index.js#L526)
 
-An encoder for fixed-size buffers, where `length` is the exact byte length every encoded value must have.
+An encoder for fixed-size buffers, where `n` is the exact byte length every encoded value must have.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -188,7 +188,7 @@ const val = cenc.decode(enc, buf) // <Buffer ff ff ff ff>
 
 [src](https://github.com/holepunchto/compact-encoding/blob/v3.3.0/index.js#L546)
 
-An encoder that prefixes arrays with their length and encodes each item in order using `itemEncoding`.
+An encoder that prefixes arrays with their length and encodes each item in order using `enc`.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -239,7 +239,7 @@ An encoder for plain object records, with `keyEncoding` for object keys and `val
 const cenc = require('compact-encoding')
 const enc = cenc.record(cenc.string, cenc.uint)
 const buf = cenc.encode(enc, { a: 1, b: 2 })
-const val = cenc.decode(enc, buf) // { a: 1, b: 2 }
+const val = cenc.decode(enc, buf) // [Object: null prototype] { a: 1, b: 2 }
 ```
 
 #### `cenc.stringRecord`
@@ -253,7 +253,7 @@ A prebuilt `record(cenc.string, cenc.string)` encoder for simple string maps.
 ```js
 const cenc = require('compact-encoding')
 const buf = cenc.encode(cenc.stringRecord, { name: 'alice', role: 'admin' })
-const val = cenc.decode(cenc.stringRecord, buf) // { name: 'alice', role: 'admin' }
+const val = cenc.decode(cenc.stringRecord, buf) // [Object: null prototype] { name: 'alice', role: 'admin' }
 ```
 
 ### Numeric encodings
@@ -318,7 +318,7 @@ const val = cenc.decode(cenc.float64, buf) // 3.141592653589793
 
 [src](https://github.com/holepunchto/compact-encoding/blob/v3.3.0/index.js#L293)
 
-The exported lexicographic integer encoder family from the `./lexint` module.
+The lexicographic integer encoder exported from the `./lexint` module.
 
 - Returns: `object`
 
@@ -596,7 +596,7 @@ The sections above detail the contract and the most common encoders. Below is th
 
 | Codec | Notes |
 | --- | --- |
-| `cenc.buffer` | Buffer with a `uint` length prefix. Decoding an empty buffer returns `null`. |
+| `cenc.buffer` | Buffer with a `uint` length prefix. |
 | `cenc.optionalBuffer` | Like `cenc.buffer` but round-trips `null`/absent values. |
 | `cenc.binary` | Buffer or string, length-prefixed; decodes to a buffer. |
 | `cenc.arraybuffer` | `ArrayBuffer` with a `uint` length prefix. |
