@@ -74,8 +74,10 @@ function frontmatterBlock(content: string): string {
 }
 
 function pinFromFrontmatter(content: string): string | null {
+  // Top-level key only (no leading indent — an indented key is nested, not ours),
+  // tolerating quotes and a trailing YAML comment.
   const m = frontmatterBlock(content).match(
-    /^\s*upstreamVersion:\s*["']?([^"'\s#]+)["']?\s*$/m,
+    /^upstreamVersion:[ \t]*["']?([^"'\s#]+)["']?[ \t]*(?:#.*)?$/m,
   );
   return m ? m[1] : null;
 }
@@ -138,6 +140,21 @@ function parts(v: string): [number, number, number] {
   return [Number(a), Number(b), Number(c)];
 }
 
+/**
+ * Numeric element-wise comparison. Returns <0, 0, >0.
+ *
+ * Must NOT be done by comparing joined strings: "3.10.0" < "3.9.0"
+ * lexicographically, so any segment reaching double digits inverts the result.
+ */
+function compare(a: string, b: string): number {
+  const x = parts(a);
+  const y = parts(b);
+  for (let i = 0; i < 3; i++) {
+    if (x[i] !== y[i]) return x[i] - y[i];
+  }
+  return 0;
+}
+
 function grade(pinned: string, latest: string): { severity: Severity; note: string } {
   if (pinned === latest) return { severity: 'ok', note: '' };
   const [pMaj, pMin] = parts(pinned);
@@ -155,9 +172,9 @@ function grade(pinned: string, latest: string): { severity: Severity; note: stri
       note: 'minor bump: re-audit defaults, signatures and new API surface',
     };
   }
-  // Same major+minor, or npm is *behind* the pin (prerelease pinned ahead of
-  // stable — legitimate, and not drift to chase).
-  if (parts(pinned).join('.') > parts(latest).join('.')) {
+  // npm is *behind* the pin — a prerelease or unpublished build pinned ahead of
+  // stable. Legitimate, and not drift to chase.
+  if (compare(pinned, latest) > 0) {
     return { severity: 'ok', note: 'pinned ahead of npm latest (prerelease)' };
   }
   return { severity: 'info', note: 'patch bump: bump the pin; recheck [src] lines if they moved' };
