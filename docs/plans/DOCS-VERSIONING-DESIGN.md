@@ -204,7 +204,7 @@ sitemap-excluded — needed if we ever want an unindexed older platform view.
 | --- | --- | --- |
 | **0** ✅ | "Documented against" marker + semver-aware drift check (§5) across module **and** bare refs | **DONE 2026-07-29** — see §9 |
 | **1** ✅ | Build `<Since>` / `<Until>` + a version context; convert `cli.mdx`'s existing inline markers | **DONE 2026-07-29** — see §10 |
-| **2** | Add the platform version dropdown (explicit `sidebar.tabs` + `SidebarTabsDropdown`); resolve the `loader()`/`baseUrl` unknown from §2 | Dropdown ships on the 4 platform pages |
+| **2** | Add the platform version dropdown — **spec: [PHASE-2-VERSION-DROPDOWN-SPEC.md](./PHASE-2-VERSION-DROPDOWN-SPEC.md)** | Dropdown ships on the 4 platform pages |
 | **3** | Define the doc-state list generator: derive which Pear versions are distinct by diffing `cmd/index.js` between tags | Dropdown lists doc-states, not 26 releases/yr |
 | **4** | Introduce per-major URLs for one module (hypercore, which has live drift) as the pattern | Validates per-version SEO before rolling out |
 | **5** | Extend refgen to emit per-version models; render flag/API tables from them | Drift structurally impossible rather than review-dependent |
