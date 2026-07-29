@@ -99,9 +99,28 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-function VersionBadge({ children }: { children: ReactNode }) {
+/**
+ * Since = added (green). Until = a specific flag/behavior dropped from a
+ * command that still exists (yellow, cautionary) — distinct from
+ * `<Status level="removed">`, which marks a whole command as gone (red).
+ */
+const BADGE_COLORS = {
+  since: '#7dde9a',
+  until: '#f0e57a',
+} as const;
+
+function VersionBadge({
+  variant,
+  children,
+}: {
+  variant: keyof typeof BADGE_COLORS;
+  children: ReactNode;
+}) {
   return (
-    <span className="inline-block rounded bg-fd-accent px-1.5 py-0.5 text-xs font-medium text-fd-accent-foreground align-baseline">
+    <span
+      className="inline-block rounded px-1.5 py-0.5 text-xs font-medium align-baseline"
+      style={{ backgroundColor: BADGE_COLORS[variant], color: '#1a1a1a' }}
+    >
       {children}
     </span>
   );
@@ -151,7 +170,7 @@ export function Since({ v, label, children }: MarkerProps) {
 
   return (
     <>
-      <VersionBadge>{label ?? `New in ${v}`}</VersionBadge>
+      <VersionBadge variant="since">{label ?? `New in ${v}`}</VersionBadge>
       {children}
     </>
   );
@@ -164,7 +183,7 @@ export function Until({ v, label, children }: MarkerProps) {
 
   return (
     <>
-      <VersionBadge>{label ?? `Removed in ${v}`}</VersionBadge>
+      <VersionBadge variant="until">{label ?? `Removed in ${v}`}</VersionBadge>
       {children}
     </>
   );
