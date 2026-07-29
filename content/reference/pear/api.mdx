@@ -661,7 +661,7 @@ The identifier of the operating system for which Bare was compiled. The possible
 ### `Bare.arch`
 <a name="bare-arch"></a>
 
-The identifier of the processor architecture for which Bare was compiled. The possible values are `arm`, `arm64`, `ia32`, `mips`, `mipsel`, and `x64`.
+The identifier of the processor architecture for which Bare was compiled. The possible values are `arm`, `arm64`, `ia32`, `mips`, `mipsel`, `riscv64`, and `x64`.
 
 ### `Bare.simulator`
 <a name="bare-simulator"></a>
@@ -683,16 +683,6 @@ The ID of the current process.
 
 The code that will be returned once the process exits. If the process is exited using `Bare.exit()` without specifying a code, `Bare.exitCode` is used.
 
-### `Bare.suspended`
-<a name="bare-suspended"></a>
-
-Whether or not the process is currently suspended.
-
-### `Bare.exiting`
-<a name="bare-exiting"></a>
-
-Whether or not the process is currently exiting.
-
 ### `Bare.version`
 <a name="bare-version"></a>
 
@@ -712,6 +702,11 @@ Immediately terminate the process or current thread with an exit status of `code
 <a name="bare-suspend"></a>
 
 Suspend the process and all threads. This will emit a `suspend` event signalling that all work should stop immediately. When all work has stopped and the process would otherwise exit, an `idle` event will be emitted. If the process is not resumed from an `idle` event listener, the loop will block until the process is resumed.
+
+### `Bare.wakeup([deadline])`
+<a name="bare-wakeup"></a>
+
+Wake the process and all threads during suspension. This will emit a `wakeup` event signalling that work may be performed until `deadline` is reached.
 
 ### `Bare.idle()`
 <a name="bare-idle"></a>
@@ -752,7 +747,12 @@ Additional work **MUST NOT** be scheduled from an `exit` event listener.
 ### `Bare.on('suspend', linger)`
 <a name="bare-on-suspend"></a>
 
-Emitted when the process or current thread is suspended. Any in-progress or outstanding work, such as network activity or file system access, should be deferred, cancelled, or paused when the `suspend` event is emitted and no additional work should be scheduled.
+Emitted when the process or current thread is suspended. Any in-progress or outstanding work, such as network activity or file system access, should be deferred, cancelled, or paused when the `suspend` event is emitted and no additional work should be scheduled. A `suspend` event listener may call `Bare.resume()` to cancel the suspension.
+
+### `Bare.on('wakeup', deadline)`
+<a name="bare-on-wakeup"></a>
+
+Emitted when the process or current thread wakes up during suspension. Once the process becomes idle, or if the process is not idle by the time `deadline` has passed, the process will suspend itself again and an `idle` event be emitted. A `wakeup` event listener may call `Bare.resume()` to resume the process.
 
 ### `Bare.on('idle')`
 <a name="bare-on-idle"></a>
@@ -769,19 +769,15 @@ Emitted when the process or current thread resumes after suspension. Deferred an
 
 The `Bare.Addon` namespace provides support for loading native addons, which are typically written in C/C++ and distributed as shared libraries.
 
-### `const addon = Addon.load(url[, options])`
-<a name="bare-addon-load"></a>
+### `Addon.cache`
+<a name="bare-addon-cache"></a>
 
-Load a static or dynamic native addon identified by `url`. If `url` is not a static native addon, Bare will instead look for a matching dynamic object library.
+The global cache of loaded addons.
 
-Options are reserved.
+### `Addon.host`
+<a name="bare-addon-host"></a>
 
-### `const unloaded = Addon.unload(url[, options])`
-<a name="bare-addon-unload"></a>
-
-Unload a dynamic native addon identified by `url`. If the function returns `true`, the addon was unloaded from memory. If it instead returns `false`, the addon is still in use by one or more threads and will only be unloaded from memory when those threads either exit or explicitly unload the addon.
-
-Options are reserved.
+The target triplet identifying the current addon host.
 
 ### `const url = Addon.resolve(specifier, parentURL[, options])`
 <a name="bare-addon-resolve"></a>
@@ -789,6 +785,23 @@ Options are reserved.
 Resolve a native addon specifier by searching for a static native addon or dynamic object library matching `specifier` imported from `parentURL`.
 
 Options are reserved.
+
+### `const addon = Addon.load(url[, options])`
+<a name="bare-addon-load"></a>
+
+Load a static or dynamic native addon identified by `url`. If `url` is not a static native addon, Bare will instead look for a matching dynamic object library.
+
+Options are reserved.
+
+### `addon.url`
+<a name="bare-addon-url"></a>
+
+The WHATWG `URL` identifier of the addon.
+
+### `addon.exports`
+<a name="bare-addon-exports"></a>
+
+The exports of the addon.
 
 ## `Bare.Thread`
 <a name="bare-thread"></a>
@@ -850,10 +863,27 @@ Block and wait for the thread to exit.
 
 Suspend the thread. Equivalent to calling `Bare.suspend()` from within the thread.
 
+### `thread.wakeup([deadline])`
+<a name="bare-new-thread-wakeup"></a>
+
+Wake the thread. Equivalent to calling `Bare.wakeup()` from within the thread.
+
 ### `thread.resume()`
 <a name="bare-new-thread-resume"></a>
 
 Resume the thread. Equivalent to calling `Bare.resume()` from within the thread.
+
+### `thread.terminate()`
+<a name="bare-new-thread-terminate"></a>
+
+Terminate the thread. Equivalent to calling `Bare.exit()` from within the thread.
+
+## `Bare.IPC`
+<a name="bare-ipc"></a>
+
+Optional streaming communication between an embedder and JavaScript code. By default, `Bare.IPC` is `null`, indicating streaming communication isn't supported. If set by the embedder, `Bare.IPC` is a [`bare-stream`](https://github.com/holepunchto/bare-stream) `Duplex`.
+
+This is how [Pear OTA](/reference/pear/runtime) wires up worker communication: [`PearRuntime.run()`](/reference/pear/runtime#running-workers) returns the embedder-side `IPC` duplex stream, and the spawned worker reads and writes the other end as `Bare.IPC`.
 
 ## See also
 

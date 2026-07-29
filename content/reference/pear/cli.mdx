@@ -7,14 +7,18 @@ schemaType: APIReference
 
 import { Tabs, Tab } from 'fumadocs-ui/components/tabs'
 
-{/* Maintainer note: "Command source on GitHub" links point at the `main` branch because Pear v3 is not yet tagged. Re-pin them to the v3 tag (for example /blob/v3.x.x/) once it ships. */}
+{/* Maintainer note: "Command source on GitHub" links are pinned to v3.1.0, the release this page documents. Re-pin them when a newer release ships. To find flag-level drift, diff the command definitions between tags:
+  gh api "repos/holepunchto/pear/contents/cmd/index.js?ref=<tag>" -H "Accept: application/vnd.github.raw"
+That diff is the complete CLI surface change. Mark anything that differs from a previous release with the <Since v="x.y.z" /> / <Until v="x.y.z" /> components (src/components/version) rather than prose — they render a badge today and are what the version dropdown filters on. `Since` = added in that release, `Until` = removed in it; pass `label` to override the badge text. */}
 
 <Status level="stable" />
 
 The Command Line Interface is the primary interface for Pear Development.
 
 <Callout type="info">
-This page tracks **Pear v3**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
+This page tracks **Pear 3.1.0**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
+
+Anything a release adds or removes carries an inline badge—<Since v="3.1.0" /> or <Until v="3.1.0" />—so you can tell whether your build has it. Run `pear versions` to check what you are on, and see the [Release Overview](/release-overview) for the full history.
 </Callout>
 
 ## Install & upgrade
@@ -53,6 +57,28 @@ The [`tetherto/pear`](https://hub.docker.com/r/tetherto/pear) Docker image runs 
 
 Run `npx pear` to move onto the v3 platform. From v3 on, the CLI is a standalone binary that keeps itself up to date over the air through [Pear OTA](/reference/pear/runtime)—so you no longer reinstall from npm for platform updates. Several commands were removed in v3 (see the <Status level="removed" /> badges below); if your application relied on the removed `pear run` runtime or the global `Pear` API, follow [Migrate from pear run to Pear OTA](/how-to/operate-an-app/migration) and review the [Release Overview](/release-overview).
 
+## Scripting with `--json`
+<a name="json-output"></a>
+
+Most commands accept `--json`—use it for anything that parses a command's result. The default, human-readable output is meant for a person at a terminal and can change wording or formatting between releases; the JSON shape is the stable contract to script against.
+
+`--json` output is newline-delimited JSON (NDJSON): one object per line, each shaped `{"cmd", "tag", "data"}`. Intermediate tags are command-specific—[`pear changelog --json`](#pear-changelog) tags each release `"changelog"`, for example—so filter on `tag` rather than assuming a fixed number of lines.
+
+Most commands close the stream with a `tag: "final"` object whose `data` carries `success` alongside any result fields, as `pear touch --json` does with `{"success": true, "key": "…", "link": "pear://…"}`. Two exceptions to code defensively around: some commands emit **no** `final` object at all—`pear versions --json` emits only its `platform`, `runtimes`, `libraries`, and `modules` tags—and some emit a bare `final` with no `data`, as `pear multisig keys list --json` does. Treat a missing `success` as "no status reported" rather than as failure.
+
+<Callout type="info">
+[`pear touch`](#pear-touch-flags) is the practical exception: its default output is already nothing but the bare `pear://<key>` link on its own line, so it's safe to consume directly without `--json`—for example `LINK=$(pear touch)`.
+</Callout>
+
+For commands that take a subcommand, **where you put `--json` matters—and it is not the same for all of them**, because each command declares the flag at a different level of its tree:
+
+| Command | Position | Works | Rejected |
+| --- | --- | --- | --- |
+| [`pear data`](#pear-data), [`pear gc`](#pear-gc) | **before** the subcommand | `pear data --json dht` | `pear data dht --json` |
+| [`pear multisig`](#pear-multisig) | **after** the subcommand | `pear multisig keys list --json` | `pear multisig --json keys list` |
+
+The wrong position is rejected with `✖ Unrecognized Flag: --json`, so a script that guesses will fail loudly rather than silently emit human-readable text.
+
 ## `pear build [flags]`
 
 [Command source on GitHub](https://github.com/holepunchto/pear-build)
@@ -90,7 +116,7 @@ For the full release walkthrough, see [Deploy a Pear desktop app](/how-to/operat
 
 ## `pear stage <link> [dir]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/stage.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/stage.js)
 
 <a name="pear-stage"></a>
 
@@ -116,7 +142,7 @@ Each time new changes are staged, the length will increase. This change can be r
 
 ## `pear provision <source-verlink> <target-link> <production-verlink>`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/provision.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/provision.js)
 
 <a name="pear-provision"></a>
 
@@ -143,7 +169,7 @@ Flags:
 
 ## `pear multisig [command]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/multisig.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/multisig.js)
 
 <a name="pear-multisig"></a>
 
@@ -166,13 +192,16 @@ Production signing coordination. Gate production releases behind a quorum of sig
   --config [./pear.json]        Config file path
   --peer-update-timeout <ms>    Peer update timeout in ms (request, verify, commit)
   --force                       Skip sanity checks (request)
+  --vanity <vanity>             Vanity link prefix (link)
   --json                        Newline delimited JSON output
   --help|-h                     Show help
 ```
 
+`--vanity` applies to the `link` subcommand only, deriving a multisig link whose key starts with the given prefix. <Since v="3.1.0" /> Not available on 3.0.1 or earlier.
+
 ## `pear seed <link>`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/seed.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/seed.js)
 
 <a name="pear-seed"></a>
 
@@ -199,7 +228,7 @@ The single-key release pointer has been replaced by quorum-based production rele
 
 ## `pear changelog [link]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/changelog.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/changelog.js)
 
 <a name="pear-changelog"></a>
 
@@ -221,7 +250,7 @@ Shows the Pear platform changelog by default (no link).
 
 ## `pear info [link] [dir]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/info.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/info.js)
 
 <a name="pear-info"></a>
 
@@ -240,9 +269,23 @@ Supply no argument to view platform information.
   --help|-h        Show help
 ```
 
+With [`--json`](#json-output), output arrives as three tagged objects before the closing `final`:
+
+| Tag | `data` |
+| --- | --- |
+| `retrieving` | `z32`, `onlyShowKey` |
+| `keys` | `project`, `content`, `discovery` |
+| `info` | `link`, `verlink`, `name`, `version`, `productName`, `upgrade` |
+
+Filter on `"tag": "info"` for the manifest values and `"tag": "keys"` for the key triplet, rather than relying on ordering. `verlink` is the versioned `pear://<fork>.<length>.<key>` form and was added in 3.1.0.
+
+<Callout type="info">
+<Until v="3.1.0" label="Fixed in 3.1.0" /> On 3.0.1 and earlier, `pear info` and [`pear changelog`](#pear-changelog) can fail outright with `✖ Cannot read properties of undefined (reading 'key')`.
+</Callout>
+
 ## `pear dump [flags] <link> <dir>`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/dump.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/dump.js)
 
 <a name="pear-dump"></a>
 
@@ -271,21 +314,26 @@ pear dump pear://<key>/CHANGELOG.md dump-dir/
 
 ## `pear touch [flags]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/touch.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/touch.js)
 
 <a name="pear-touch"></a>
 
 
 Creates a Pear link. Pear links hold a key, this is the basis for application discovery.
 
+Default output is just the `pear://<key>` link on its own line—safe to capture directly in a script (`LINK=$(pear touch)`) without needing [`--json`](#json-output).
+
 ```
   --json              Newline delimited JSON output
+  --vanity <vanity>   Generate a vanity link with this prefix
   --help|-h           Show help
 ```
 
+`--vanity` mines for a key whose z32-encoded form starts with the given prefix. The value must contain only z32 characters—anything else is rejected with `Vanity key must contain only z32 characters`—and generation slows sharply as the prefix grows. Prefixes longer than four characters print a warning, and because it goes to **stderr** rather than stdout, `LINK=$(pear touch --vanity pear)` still captures just the link. <Since v="3.1.0" /> Not available on 3.0.1 or earlier.
+
 ## `pear sidecar [command]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/sidecar.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/sidecar.js)
 
 <a name="pear-sidecar"></a>
 
@@ -302,15 +350,35 @@ and then becomes the sidecar.
 
 ```
   --log-level <level>   Level to log at. 0,1,2,3 (OFF,ERR,INF,TRC)
-  --log-labels <list>   Labels to log (internal, always logged)
-  --log-fields <list>   Show/hide: date,time,h:level,h:label,h:delta
-  --log-stacks          Add a stack trace to each log message
   --help|-h             Show help
 ```
 
+<Callout type="info">
+<Until v="3.1.0" /> `--log-labels`, `--log-fields`, and `--log-stacks` were removed in 3.1.0; only `--log-level` remains. All three still work on 3.0.1 and earlier.
+</Callout>
+
+`--log-level` accepts either a number (`0`–`3`) or a name (`OFF`, `ERR`, `INF`, `TRC`); it defaults to `INF`.
+
+### Persisted logs
+<a name="sidecar-logs"></a>
+
+<Since v="3.1.0" /> Log output is written to a file as well as the terminal, so sidecar errors and stack traces survive the process exiting—previously they were lost once it died.
+
+- **Location:** `pear.log` in the Pear platform directory.
+- **Rotation:** at 10 MB the current file is moved to `pear.old.log`, replacing any previous `pear.old.log`. Only those two files are ever kept.
+- **Line format:** the level padded to five characters, an ISO-8601 timestamp, the label in brackets, then the message:
+
+  ```
+  INF   2026-07-28T18:29:43.869Z [ sidecar ] - Sidecar Booted
+  ```
+
+  The terminal prints the same entry with the **timestamp first** (`2026-07-28T18:29:43.869Z INF [ sidecar ] …`), so parse the file rather than captured console output.
+
+Entries above the active `--log-level` are dropped from both the file and the terminal, so raise the level before reproducing a fault you want captured.
+
 ## `pear versions`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/versions.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/versions.js)
 
 <a name="pear-versions"></a>
 
@@ -324,13 +392,13 @@ Output version information.
 
 ## `pear help [command]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/index.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/index.js)
 
 <a name="pear-help"></a>
 
 View help for a command. With no argument, prints the full command overview.
 
-Relatedly, running `pear -v` (no command) prints platform version information: the platform key as a versioned `pear://<fork>.<length>.<key>` link where available, plus the SemVer—or the dev root path on development installs. Add `--json` for a single JSON object.
+Relatedly, running `pear -v` (no command) prints platform version information: the platform key as a versioned `pear://<fork>.<length>.<key>` link where available, plus the SemVer—or the dev root path on development installs. `pear -v` does not itself accept `--json`; for the machine-readable equivalent use [`pear versions --json`](#pear-versions) instead.
 
 ## `pear presets [flags] [command]`
 
@@ -358,7 +426,7 @@ Moving user application storage between applications is no longer supported from
 
 ## `pear gc [flags] [command]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/gc.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/gc.js)
 
 <a name="pear-gc"></a>
 
@@ -374,9 +442,32 @@ Perform garbage collection and remove unused resources.
   --help|-h     Show help
 ```
 
+## `pear cores`
+
+<a name="pear-cores"></a>
+
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/cores.js)
+
+List platform corestore cores.
+
+<Callout type="info">
+<Since v="3.1.0" /> On 3.0.1 and earlier, `pear cores` fails with `✖ Unrecognized Argument at index 0 with value cores`.
+</Callout>
+
+Prints one line per core—the core's `pear://` link, suffixed `(writable)` when this device holds its key pair—followed by a `Total cores: <n> | Writable: <n>` summary, or `No cores` when the store is empty.
+
+```
+  --json        Newline delimited JSON output
+  --help|-h     Show help
+```
+
+With [`--json`](#json-output), each core is emitted as a `"tag": "core"` object carrying `{ link, writable }`, and the closing `"tag": "final"` object carries `{ count, writable }`.
+
+Distinct from [`pear gc cores`](#pear-gc), which *clears* corestore cores rather than listing them.
+
 ## `pear data [flags] [command]`
 
-[Command source on GitHub](https://github.com/holepunchto/pear/blob/main/cmd/data.js)
+[Command source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/cmd/data.js)
 
 <a name="pear-data"></a>
 
