@@ -5,6 +5,7 @@ import { getMDXComponents } from '@/mdx-components';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { CopyPageButton, ViewOptions } from '@/components/ai/page-actions';
+import { UpstreamVersion } from '@/components/UpstreamVersion';
 import { pageMarkdownUrl } from '@/lib/page-markdown-url';
 import { gitConfig } from '@/lib/layout.shared';
 import {
@@ -43,6 +44,8 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
           fallbackMarkdown={markdownForCopy}
         />
         <ViewOptions githubUrl={githubUrl} />
+        {/* Reference pages declare `upstreamVersion`; renders nothing elsewhere. */}
+        <UpstreamVersion version={page.data.upstreamVersion} />
       </div>
       <DocsBody>
         <MDX

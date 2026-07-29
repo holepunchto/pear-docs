@@ -56,6 +56,26 @@ const tetherSeoFrontmatterSchema = z.object({
   schemaType: jsonLdSchemaTypeSchema.optional(),
   docType: docTypeSchema.optional(),
   lastModified: z.union([z.string(), z.coerce.date()]).optional(),
+  // The upstream release this reference page was written and verified against.
+  // Bare SemVer, no leading `v` (e.g. "11.34.0"); prereleases allowed.
+  //
+  // Reference pages track their own upstream module's version, NOT the Pear
+  // platform version — hypercore's API doesn't change when Pear does. See
+  // docs/plans/DOCS-VERSIONING-DESIGN.md §1.
+  //
+  // Two consumers:
+  //   1. `npm run check:upstream-pins` grades drift against npm latest
+  //      (patch = info, minor = warn, major = needs a new versioned page).
+  //   2. The page template renders a "documented against" marker from it, so
+  //      readers can tell whether the page matches their installed version.
+  upstreamVersion: z
+    .string()
+    .trim()
+    .regex(
+      /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-.]+)?$/,
+      'upstreamVersion must be a bare SemVer without a leading "v" (e.g. "11.34.0")',
+    )
+    .optional(),
 });
 
 /**
