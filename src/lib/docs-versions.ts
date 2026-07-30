@@ -27,15 +27,28 @@ export interface DocsVersion {
   prerelease?: boolean;
 }
 
-/** Newest first. The default is derived from `stable`, never from position. */
+/**
+ * The supported doc-states. Order here is for humans; consumers read
+ * `DOCS_VERSIONS_NEWEST_FIRST`, so appending an entry cannot break anything.
+ *
+ * `npm run check:docs-versions` enforces the invariants this list has to hold:
+ * exactly one `stable`, unique labels and values, and every version referenced
+ * by a gate in `content/` present here.
+ */
 export const DOCS_VERSIONS: DocsVersion[] = [
   { label: '3.1', value: '3.1.0', stable: true },
   { label: '3.0', value: '3.0.0' },
 ];
 
-/** The canonical release. `?v=` absent means "annotate", not "this". */
-export const STABLE_DOCS_VERSION: DocsVersion =
-  DOCS_VERSIONS.find((v) => v.stable) ?? DOCS_VERSIONS[0];
+/**
+ * Sorted, so `resolveDocsVersion` and the dropdown do not depend on the literal
+ * above being hand-ordered. It used to: `resolveDocsVersion` takes the FIRST
+ * entry at or below the selection, so an entry appended out of order resolved to
+ * an older doc-state than the reader picked, silently.
+ */
+export const DOCS_VERSIONS_NEWEST_FIRST: DocsVersion[] = [...DOCS_VERSIONS].sort(
+  (a, b) => compareVersions(b.value, a.value),
+);
 
 /**
  * Compare two SemVer-ish strings. Returns <0, 0, >0.
@@ -69,9 +82,12 @@ export function compareVersions(a: string, b: string): number {
  */
 export function resolveDocsVersion(selected: string | null): DocsVersion | null {
   if (!selected) return null;
-  // DOCS_VERSIONS is newest-first, so the first entry at or below `selected`
-  // is the one that describes it.
-  return DOCS_VERSIONS.find((v) => compareVersions(selected, v.value) >= 0) ?? null;
+  // Newest-first, so the first entry at or below `selected` describes it.
+  return (
+    DOCS_VERSIONS_NEWEST_FIRST.find(
+      (v) => compareVersions(selected, v.value) >= 0,
+    ) ?? null
+  );
 }
 
 /**

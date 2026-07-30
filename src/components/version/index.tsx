@@ -40,7 +40,7 @@ import {
   type ReactNode,
 } from 'react';
 import { usePathname } from 'next/navigation';
-import { compareVersions } from '@/lib/docs-versions';
+import { compareVersions, resolveDocsVersion } from '@/lib/docs-versions';
 
 // Re-exported: `compareVersions` has always been part of this module's surface,
 // but it lives in `@/lib/docs-versions` now so the remark/Shiki side and the
@@ -75,7 +75,15 @@ export function useSetDocsVersion(): (next: string | null) => void {
 function readVersionFromLocation(): string | null {
   if (typeof window === 'undefined') return null;
   const value = new URLSearchParams(window.location.search).get(VERSION_PARAM);
-  return value && /^\d+\.\d+(\.\d+)?/.test(value) ? value : null;
+  if (!value || !/^\d+\.\d+(\.\d+)?/.test(value)) return null;
+
+  // Honour the value only if it maps onto a real doc-state. Otherwise `?v=2.9`
+  // — well-formed but older than every entry — would hide every `since` gate
+  // while the dropdown, which renders `resolveDocsVersion(...)`, showed "All
+  // versions" and claimed nothing was filtered. Worse, the reader could not
+  // undo it: the `<select>` already sits on that option, so choosing it fires
+  // no change event. Degrading to annotate mode keeps the three in agreement.
+  return resolveDocsVersion(value) ? value : null;
 }
 
 /**

@@ -21,7 +21,7 @@
 import { usePathname } from 'next/navigation';
 import { useDocsVersion, useSetDocsVersion } from '@/components/version';
 import {
-  DOCS_VERSIONS,
+  DOCS_VERSIONS_NEWEST_FIRST,
   isPlatformPath,
   resolveDocsVersion,
 } from '@/lib/docs-versions';
@@ -62,7 +62,7 @@ export function VersionDropdown() {
         className="w-full rounded-md border border-fd-border bg-fd-background px-2 py-1.5 text-sm text-fd-foreground transition-colors hover:bg-fd-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fd-primary"
       >
         <option value={ANNOTATE}>All versions</option>
-        {DOCS_VERSIONS.map((v) => (
+        {DOCS_VERSIONS_NEWEST_FIRST.map((v) => (
           <option key={v.value} value={v.label}>
             {optionLabel(v.label, v.stable, v.prerelease)}
           </option>

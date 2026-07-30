@@ -13,6 +13,8 @@ on:
     paths:
       - 'content/**'
       - 'scripts/check-internal-links.ts'
+      - 'scripts/check-docs-versions.ts'
+      - 'src/lib/docs-versions.ts'
       - 'scripts/helpers.ts'
       - 'scripts/gen-curated.ts'
       - 'scripts/refgen/**'
@@ -24,6 +26,8 @@ on:
     paths:
       - 'content/**'
       - 'scripts/check-internal-links.ts'
+      - 'scripts/check-docs-versions.ts'
+      - 'src/lib/docs-versions.ts'
       - 'scripts/helpers.ts'
       - 'scripts/gen-curated.ts'
       - 'scripts/refgen/**'
@@ -57,6 +61,29 @@ jobs:
           cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
       - name: Check internal links
         run: ./node_modules/.bin/tsx scripts/check-internal-links.ts
+
+  version-gates:
+    name: version gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Only tsx: check-docs-versions.ts imports nothing but src/lib/docs-versions.ts,
+      # which is self-contained. Same throwaway-prefix dance as internal-links,
+      # because a plain `npm install` here would need the token-gated
+      # @tetherto/* packages. See that job for the full explanation.
+      - name: Install tsx
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+      # Catches a gate whose version is well-formed but not a real doc-state —
+      # `since="3.10"` for `3.1.0` compiles fine and then never matches any
+      # selection, leaving the section visible in every version with no error.
+      - name: Check version gates
+        run: ./node_modules/.bin/tsx scripts/check-docs-versions.ts
 
   vale:
     name: vale prose lint

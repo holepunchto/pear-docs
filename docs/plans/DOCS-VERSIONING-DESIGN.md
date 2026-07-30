@@ -646,7 +646,8 @@ React state directly as well.
 ### Notes for Phase 3 and beyond
 
 - `DOCS_VERSIONS` in `src/lib/docs-versions.ts` is the hand-maintained literal Phase 3 replaces.
-  `STABLE_DOCS_VERSION` derives from the `stable` flag, never array position.
+  Consumers read `DOCS_VERSIONS_NEWEST_FIRST` (sorted at module scope), so Phase 3's generator
+  may emit entries in any order. `npm run check:docs-versions` pins the invariants.
 - The dropdown writes the **label** (`?v=3.1`) for clean shareable URLs, and
   `resolveDocsVersion` maps any version-ish value onto its doc-state, so `?v=3.0.1` selects
   "3.0". `<Since>`/`<Until>` still compare the raw string, so a patch-level link stays precise.
@@ -678,3 +679,65 @@ All §8 acceptance criteria, against **both** `next dev` and the served static e
 `cli.mdx` broke `check-internal-links` for four anchors — MDX ignores it inside a comment, but
 the checker's markdown parse treats it as opening a fence and swallows later headings. Keep
 triple backticks out of MDX comments.
+
+### 11.1 Post-merge review round
+
+Merged `feat/add-json-flags-and-new-version-updates` (CLI reference regrouped by task, so every
+command dropped from `##` to `###`). Git's auto-merge **duplicated** `pear cores` and
+`Persisted logs`: the reorder on one side and the added pragma on the other touched the same
+heading blocks. Resolved by taking the restructured file wholesale and re-applying the six
+markers, then diffing against upstream to prove the only delta was those markers. The pragma is
+depth-relative, so demotion needed no mechanism change.
+
+An adversarial review panel then found four defects worth fixing. Two were **silent** — the
+kind that look fine in every manual check:
+
+1. **TOC filtering never ran below 1280px.** `TOC_CONTAINERS` listed `#nd-tocnav`, which does
+   not exist in fumadocs-ui 16.5.4 (zero hits in `dist`). `#nd-toc` carries `max-xl:hidden`, so
+   under 1280px the only TOC on screen is `[data-toc-popover-content]` — never touched. The
+   original verification passed because it was done at 1440px. Fixed, plus a scoped
+   `MutationObserver`, because Radix mounts the popover on first open.
+2. **An out-of-range `?v=` filtered the page while the dropdown said "All versions".**
+   `readVersionFromLocation` accepted any `\d+\.\d+`, so `?v=2.9` hid every `since` gate while
+   `resolveDocsVersion` returned `null` for the control — and the reader could not undo it,
+   because the `<select>` already sat on that option so choosing it fired no `change`. The
+   reader now degrades to annotate mode. **Lesson: the filter and the control must read the
+   selection through the same resolver.**
+3. **Hidden headings kept their ids,** so `useAnchorObserver`'s fallback
+   (`fumadocs-core/dist/toc.js`) could lock the TOC highlight onto an invisible heading: it
+   resolves watched ids with `getElementById`, which returns `display: none` elements, and their
+   all-zero rect wins the "closest to viewport top" test. Ids are now parked in
+   `data-version-id` while hidden.
+4. **A well-formed but unknown version silently disabled a gate.** `since="3.10"` (typo for
+   `3.1.0`) compiled to a `data-version-since` no selection can match, leaving the section
+   visible in every version with no error. Now caught two ways: the plugin rejects
+   non-numeric values at build time, and `check:docs-versions` rejects anything that is not a
+   declared doc-state.
+
+`scripts/check-docs-versions.ts` (`npm run check:docs-versions`) is the safety net this feature
+lacked — there is no test runner in the repo, so it follows the existing `check:*` pattern. It
+validates every `<VersionSection>`, `<VersionGate>`, `<Since>`, `<Until>` and `[!version …]`
+marker in `content/` against `DOCS_VERSIONS`, and pins the list's own invariants: exactly one
+`stable`, unique labels/values, and each `label` comparing equal to its `value` (otherwise
+selecting it would resolve to a different doc-state). Each failure class was verified by
+deliberately introducing it. It also flags an **inert** gate — a `since` at or below the oldest
+doc-state can never hide anything, so the marker is misleading.
+
+Also fixed: `readAttrs` collected errors it could never report (`VFile#fail` returns `never`, so
+every `continue` was dead) and now reports all problems with one pragma at once; the guard loop
+was off by one (N pragmas need N+1 scans, so a file with exactly 500 failed with a false "this
+is a bug"); `STABLE_DOCS_VERSION` was deleted as dead code.
+
+**Still open** — the `[!version …]` marker survives into the processed markdown *inside a code
+fence*, so `out/reference/pear/cli.md` presents it as literal `pear touch --help` output. Unlike
+the `<VersionGate>` wrappers (which a consumer discounts as tags around content), this injects
+invented text into a block that claims to be verbatim. The fix is to strip it in a remark pass
+and hand the line numbers to the Shiki transformer through the fence's `meta` instead, where
+annotations like `title="…"` already live harmlessly — that changes the plugin pipeline, so it
+wants its own pass rather than a bolt-on.
+
+Deferred, and worth a UX decision rather than a patch: there are no aria attributes in
+`src/components/version/` (the hint `<p>` is neither `aria-describedby`-linked nor a live
+region, so content vanishing is unannounced), and below 768px fumadocs turns the sidebar into a
+drawer, so the dropdown and the only "you are filtered" indicator disappear while the URL keeps
+filtering — an in-article chip would address both.

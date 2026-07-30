@@ -45,6 +45,9 @@ const GATE = 'VersionGate';
 
 const GATE_ATTRS = ['since', 'until'] as const;
 
+/** Runaway-loop backstop, set far above any plausible page. */
+const MAX_PRAGMAS = 500;
+
 interface Parent {
   children: RootContent[];
 }
@@ -58,38 +61,52 @@ function isPragma(node: RootContent): node is MdxJsxFlowElement {
   );
 }
 
-/** Plain string attributes only — `since="3.1.0"`, never `since={expr}`. */
+/** A bare numeric version: `3`, `3.1`, `3.1.0`. No `v` prefix, no range. */
+const VERSION_RE = /^\d+(\.\d+){0,2}$/;
+
+/**
+ * Plain string attributes only — `since="3.1.0"`, never `since={expr}`.
+ *
+ * `VFile#fail` THROWS, so problems are collected and reported in one go rather
+ * than failing on the first one — an author fixing a pragma sees everything
+ * wrong with it in a single build.
+ */
 function readAttrs(node: MdxJsxFlowElement, file: VFile): MdxJsxAttribute[] {
   const out: MdxJsxAttribute[] = [];
+  const errors: string[] = [];
+
   for (const attr of node.attributes) {
     if (attr.type !== 'mdxJsxAttribute') {
-      file.fail(
-        `<${PRAGMA}> takes only plain string attributes (${GATE_ATTRS.join(', ')}).`,
-        node,
+      errors.push(
+        `takes only plain string attributes (${GATE_ATTRS.join(', ')})`,
       );
-      continue;
-    }
-    if (!GATE_ATTRS.includes(attr.name as (typeof GATE_ATTRS)[number])) {
-      file.fail(
-        `<${PRAGMA}> has no "${attr.name}" attribute; expected ${GATE_ATTRS.join(' or ')}.`,
-        node,
+    } else if (!GATE_ATTRS.includes(attr.name as (typeof GATE_ATTRS)[number])) {
+      errors.push(
+        `has no "${attr.name}" attribute; expected ${GATE_ATTRS.join(' or ')}`,
       );
-      continue;
-    }
-    if (typeof attr.value !== 'string') {
-      file.fail(
-        `<${PRAGMA} ${attr.name}> must be a literal string, e.g. ${attr.name}="3.1.0".`,
-        node,
+    } else if (typeof attr.value !== 'string') {
+      errors.push(
+        `${attr.name} must be a literal string, e.g. ${attr.name}="3.1.0"`,
       );
-      continue;
+    } else if (!VERSION_RE.test(attr.value)) {
+      // Without this a typo compiles to a gate whose `data-version-*` can never
+      // match any selection, so the section stays visible in every version with
+      // no build error — the failure mode is silence.
+      errors.push(
+        `${attr.name}="${attr.value}" is not a version; use a bare number like ${attr.name}="3.1.0" (no "v", no range)`,
+      );
+    } else {
+      out.push(attr);
     }
-    out.push(attr);
   }
-  if (out.length === 0) {
-    file.fail(
-      `<${PRAGMA}> needs ${GATE_ATTRS.join(' or ')}, e.g. <${PRAGMA} since="3.1.0" />.`,
-      node,
+
+  if (out.length === 0 && errors.length === 0) {
+    errors.push(
+      `needs ${GATE_ATTRS.join(' or ')}, e.g. <${PRAGMA} since="3.1.0" />`,
     );
+  }
+  if (errors.length > 0) {
+    file.fail(`<${PRAGMA}> ${errors.join('; ')}.`, node);
   }
   return out;
 }
@@ -114,7 +131,11 @@ export function remarkVersionSections() {
     // Each rewrite splices `children`, so re-scan from the top rather than
     // holding indices across mutations. Sections per page are in the single
     // digits; the guard is only there to make a bug loud instead of infinite.
-    for (let guard = 0; guard < 500; guard++) {
+    //
+    // `<=`, because N pragmas need N+1 scans: the last one is the scan that
+    // finds nothing and returns. With `<` a file holding exactly MAX_PRAGMAS
+    // rewrote them all and then fell through to the "this is a bug" failure.
+    for (let scans = 0; scans <= MAX_PRAGMAS; scans++) {
       const found = findPragma(root as unknown as Parent);
       if (!found) return;
 
@@ -123,12 +144,12 @@ export function remarkVersionSections() {
 
       const heading = parent.children[index - 1];
       if (!heading || heading.type !== 'heading') {
+        // Throws.
         file.fail(
           `<${PRAGMA}> must come directly after the heading of the section it gates. ` +
             `To gate a block that is not a whole section, use <${GATE}> around it instead.`,
           node,
         );
-        return;
       }
 
       // The section runs to the next heading at the same level or higher, so a
@@ -156,7 +177,7 @@ export function remarkVersionSections() {
     }
 
     file.fail(
-      `Gave up rewriting <${PRAGMA}> pragmas after 500 passes — this is a bug in remark-version-sections.`,
+      `Gave up rewriting <${PRAGMA}> pragmas after ${MAX_PRAGMAS} rewrites — this is a bug in remark-version-sections.`,
     );
   };
 }
