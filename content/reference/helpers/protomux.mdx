@@ -1,6 +1,7 @@
 ---
 title: "Protomux"
 description: "Multiplex multiple framed protocols over one transport stream."
+upstreamVersion: "3.11.0"
 seoTitle: "Protomux: Multiplex Protocols over One Stream"
 docType: reference
 schemaType: APIReference
@@ -59,7 +60,8 @@ Make a new instance. `stream` should be a framed stream, preserving the messages
 
 ```js
 {
-  // Called when the muxer wants to allocate a message that is written, defaults to Buffer.allocUnsafe.
+  // Called when the muxer wants to allocate a message that is written.
+  // Defaults to the stream's own alloc method when it has one, otherwise Buffer.allocUnsafe.
   alloc (size) {}
 }
 ```
@@ -131,9 +133,9 @@ mux.uncork()
 
 [src](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L381)
 
-Convenience method that returns true if the number of channels is currently 0.
+Convenience method that returns true when no channels are open and no closed channel is still awaiting the remote's acknowledgement.
 
-- Returns: `boolean` — `true` if the channel count is currently zero.
+- Returns: `boolean` — `true` when the muxer has no open channels and none awaiting a remote close acknowledgement.
 
 ```js
 if (mux.isIdle()) console.log('no open channels')
@@ -203,7 +205,7 @@ if (mux.opened({ protocol: 'my-protocol' })) {
 
 [src](https://github.com/holepunchto/protomux/blob/v3.11.0/index.js#L400)
 
-Returns the most recently opened matching channel, or `null` if none is open.
+Returns the channel that most recently opened. Returns `null` once that channel closes, even if older channels with the same protocol and id are still open.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -455,7 +457,7 @@ Options for allocating buffers in a Protomux instance.
 
 | Property | Type | Default | Description |
 | --- | --- | --- | --- |
-| `alloc` | `Function` | — | Custom allocator; called with `(size)` and must return a `Buffer`. Defaults to `Buffer.allocUnsafe`. |
+| `alloc` | `Function` | — | Custom allocator; called with `(size)` and must return a `Buffer`. Defaults to the stream's own `alloc` method when it has one, otherwise `Buffer.allocUnsafe`. |
 
 ### CreateChannelOptions
 
@@ -466,7 +468,7 @@ Options for creating a protocol channel.
 | `protocol` | `string` | — | Protocol name used to match channels between peers. |
 | `id` | [`Buffer\|null`](https://nodejs.org/api/buffer.html#class-buffer) | `null` | Optional binary identifier to distinguish multiple channels with the same protocol name. |
 | `handshake` | `*` | `null` | Compact-encoding codec for encoding/decoding the handshake value exchanged on open. |
-| `messages` | [`Array<AddMessageOptions>`](#addmessageoptions) | `[]` | Array of message descriptors registered on channel open. |
+| `messages` | [`Array<AddMessageOptions>`](#addmessageoptions) | `[]` | Array of message descriptors registered when the channel is created. |
 | `unique` | `boolean` | `true` | When `true`, returns `null` if a channel with this protocol+id is already open. |
 | `aliases` | [`Array<string>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | `[]` | Alternative protocol names that also match this channel. |
 | `userData` | `*` | `null` | Arbitrary value stored as `channel.userData`; not transmitted. |
@@ -492,7 +494,7 @@ Protocol + id selector used by pair/unpair/opened/getLastChannel.
 | Property | Type | Default | Description |
 | --- | --- | --- | --- |
 | `protocol` | `string` | — | Protocol name to match. |
-| `id` | [`Buffer\|null`](https://nodejs.org/api/buffer.html#class-buffer) | `null` | Optional binary id to narrow the match. |
+| `id` | [`Buffer\|null`](https://nodejs.org/api/buffer.html#class-buffer) | `null` | Optional binary id, combined with `protocol` into an exact key. `opened` and `getLastChannel` only match channels created with the same id; a protocol-only `pair` registration matches channels with any id. |
 
 ## See also
 

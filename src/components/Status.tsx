@@ -11,7 +11,7 @@ const COLORS = {
   unstable: '#ff4242',
   experimental: '#8484ff',
   deprecated: '#f0e57a',
-  removed: '#f0e57a',
+  removed: '#ff4242',
   upcoming: '#f0d264',
 } as const;
 

@@ -6,6 +6,7 @@ import { ImageGrid } from '@/components/ImageGrid';
 import { Image } from '@/components/Image';
 import { Mermaid } from '@/components/mermaid';
 import { Status } from '@/components/Status';
+import { Since, Until } from '@/components/version';
 import { cn } from '@/lib/cn';
 
 /**
@@ -45,6 +46,9 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Image,
     Mermaid,
     Status,
+    // Platform version annotations — see src/components/version/index.tsx
+    Since,
+    Until,
     ...components,
   };
 }

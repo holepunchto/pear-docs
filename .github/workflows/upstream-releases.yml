@@ -87,6 +87,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./node_modules/.bin/tsx scripts/check-upstream-releases.ts
 
+      # Reports how far each reference page's `upstreamVersion` has drifted from
+      # npm latest, graded by SemVer. Intentionally advisory: an older pin is
+      # valid for the version it documents, so this must never fail the job —
+      # hence no `--strict` and `continue-on-error`. See
+      # docs/plans/DOCS-VERSIONING-DESIGN.md §5.
+      - name: Report upstream pin drift
+        continue-on-error: true
+        run: |
+          ./node_modules/.bin/tsx scripts/check-upstream-pins.ts | tee /tmp/pin-drift.txt || true
+          {
+            echo '## Upstream pin drift'
+            echo ''
+            echo '```'
+            cat /tmp/pin-drift.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Open or update the review PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
