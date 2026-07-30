@@ -5,6 +5,7 @@ import { customTree } from '@/lib/custom-tree';
 import { KeetIcon } from '@/components/keet-icon';
 import KeetRoomModalMount from '@/components/keet-modal';
 import { DocsVersionProvider } from '@/components/version';
+import { VersionDropdown } from '@/components/version/dropdown';
 
 export const dynamic = 'force-static';
 
@@ -24,14 +25,23 @@ export default function Layout({ children }: LayoutProps<'/'>) {
 
   return (
     <>
-      <DocsLayout
-        {...baseOptions()}
-        tree={{ name: 'docs', children: customTree }}
-        links={linkItems}
-      >
-        {/* Supplies the `?v=` selection that <Since>/<Until> filter on. */}
-        <DocsVersionProvider>{children}</DocsVersionProvider>
-      </DocsLayout>
+      {/*
+        The provider wraps DocsLayout rather than just `children`, because
+        `sidebar.banner` is rendered BY DocsLayout — outside `children` — and the
+        dropdown in it has to reach the same context that <Since>/<Until> and
+        <VersionFilter> read. Wrapping a server-rendered subtree in a client
+        provider is fine in this direction.
+      */}
+      <DocsVersionProvider>
+        <DocsLayout
+          {...baseOptions()}
+          tree={{ name: 'docs', children: customTree }}
+          links={linkItems}
+          sidebar={{ banner: <VersionDropdown /> }}
+        >
+          {children}
+        </DocsLayout>
+      </DocsVersionProvider>
       <KeetRoomModalMount />
     </>
   );

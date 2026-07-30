@@ -573,3 +573,108 @@ rather than hiding them. Annotate mode remains correct and is what the canonical
 `types:check`, `eslint` (one pre-existing unrelated warning in `MdxImg`), `vale`,
 `check-internal-links`, `check-includes`, `check-doctypes`, `check-upstream-pins` all clean;
 badges render in SSR HTML; gate behaviour confirmed in-browser.
+
+---
+
+## 11. Phase 2 — implemented 2026-07-29
+
+The platform version dropdown, per
+[PHASE-2-VERSION-DROPDOWN-SPEC.md](./PHASE-2-VERSION-DROPDOWN-SPEC.md).
+
+| Piece | Where |
+| --- | --- |
+| Version list, `compareVersions`, `isGateHidden`, scope test | `src/lib/docs-versions.ts` |
+| Provider with a setter (`useSetDocsVersion`) | `src/components/version/index.tsx` |
+| Dropdown (sidebar banner, platform pages only) | `src/components/version/dropdown.tsx` |
+| Block gate — renders always, decides nothing | `src/components/version/gate.tsx` |
+| The one client consumer: content + TOC | `src/components/version/filter.tsx` |
+| `<VersionSection>` pragma → `<VersionGate>` | `src/lib/remark-version-sections.ts` |
+| Single fence rows | `src/lib/shiki-version-lines.ts` |
+| `display: contents` / `display: none` rules | `src/app/global.css` |
+
+### The §5 decision: option C, and the experiment that settled it
+
+§5 flagged one unverified assumption as decisive — whether headings inside a JSX block still
+land in `page.data.toc`. **They do.** `remarkHeading` (`fumadocs-core/mdx-plugins`) collects
+headings with `visit(root, 'heading')`, which recurses into `mdxJsxFlowElement` children, so a
+gated section's headings reach the TOC exactly as before. Confirmed by running the real plugin
+over a fixture: a `##` and a `###` wrapped in a JSX block both appeared in the extracted TOC.
+
+That inverts the reasoning in §5. The TOC is *never* filtered by wrapping, whichever option is
+chosen, so **the TOC has to be filtered on the client in all three** — which removes option
+B's main advantage and makes option C strictly the simplest thing that works.
+
+**Chosen: (C).** Gated content always renders, carrying `data-version-since` /
+`data-version-until`; one client effect decides what to hide. Consequences:
+
+- The exported HTML contains **every** version's content under the single canonical URL, which
+  is what requirement 4 asks for — verified: `data-version-hidden` appears in **0** exported
+  files, so no selection is ever baked in.
+- Filtering is a class flip, so there is no re-render, no hydration mismatch, and no
+  static-export trap.
+- Hidden content is present-but-`display: none`. Acceptable because annotate mode *is* the
+  canonical view by design; `display: none` also keeps it out of find-in-page and the
+  accessibility tree, so a filtered reader does not stumble over it.
+
+### Three gating tools, one contract
+
+Everything below emits the same two data attributes, so `<VersionFilter>` is the only consumer:
+
+| Tool | Gates | Why it exists |
+| --- | --- | --- |
+| `<Since v="…" />` childless | nothing — pure badge | §10: it is the warning, never hide it |
+| `<VersionSection since="…" />` | the whole section it sits under | one line that cannot drift out of sync with the section's extent |
+| `<VersionGate since="…">…</…>` | an arbitrary block | for a `<Callout>` or paragraph that is not a section |
+| `[!version since=…]` in a fence | one row | a flag added to `--help` output is a claim about one line, and no JSX can wrap it |
+
+`<VersionSection>` grouping runs to the next heading of the same level or higher, so a gated
+`##` swallows its `###` subsections and stops at the next `##`. The pragma is **explicit** on
+purpose: §5(B) suggested inferring the extent from a leading `<Since>` badge, but that badge
+also appears mid-paragraph as an annotation, so inferring would silently gate whole sections an
+author only meant to annotate — the same class of bug as §10.
+
+`display: contents` on the gate wrapper makes it layout-transparent. Measured: a gated `<h2>`
+and an ungated one are dimensionally identical (825×32, `margin: 48px 0 24px`).
+
+### Decided by the maintainer
+
+**History: `pushState`,** not `replaceState` (the spec's stated preference). Each selection gets
+its own history entry, so back/forward steps through selections. `popstate` covers the
+back/forward direction; it does **not** fire for `pushState`, which is why the setter updates
+React state directly as well.
+
+### Notes for Phase 3 and beyond
+
+- `DOCS_VERSIONS` in `src/lib/docs-versions.ts` is the hand-maintained literal Phase 3 replaces.
+  `STABLE_DOCS_VERSION` derives from the `stable` flag, never array position.
+- The dropdown writes the **label** (`?v=3.1`) for clean shareable URLs, and
+  `resolveDocsVersion` maps any version-ish value onto its doc-state, so `?v=3.0.1` selects
+  "3.0". `<Since>`/`<Until>` still compare the raw string, so a patch-level link stays precise.
+- The provider re-syncs from the URL on `pathname` change. In-site links carry no `?v=`, so a
+  selection deliberately **does not** follow the reader to a sibling page. Carrying it across
+  navigation would mean rewriting link hrefs — out of scope here, and worth a UX decision.
+- Generated `.md` / copy-page output contains the raw `<VersionGate>` wrappers and
+  `[!version …]` markers. That is pre-existing behaviour for JSX in this repo (`<Callout>`,
+  `<Status>`, `<Tabs>` already leak the same way — 24 occurrences in `cli.mdx` before this
+  change), not a new class of problem, but it is the natural thing to fix if LLM output quality
+  is ever tightened.
+
+### Verified
+
+All §8 acceptance criteria, against **both** `next dev` and the served static export (`out/`):
+
+- Dropdown on exactly the four `/reference/pear/*` pages, and **0** other exported pages.
+- Default renders everything with badges; `?v=3.0` hides `pear cores`, persisted-logs and both
+  `--vanity` rows (fence row *and* prose) while **showing** the removed sidecar log flags;
+  `?v=3.1` inverts all of it.
+- TOC drops exactly `#pear-cores` and `#persisted-logs` (25 of 27 entries visible).
+- Shared `?v=3.0` link loads pre-filtered; back/forward re-filters; changing selection keeps
+  scroll position (~8400px, not 0 — browser scroll anchoring absorbs the reflow).
+- `npm run build`, `types:check`, `vale`, `check-internal-links`, `check-includes`,
+  `check-doctypes`, `check-upstream-pins` clean. Sitemap unchanged: 137 entries, one per
+  platform page, no `?v=`, self-canonical. No console errors; light and dark both correct.
+
+⚠️ **Trap found the hard way:** a stray ` ``` ` inside the `{/* maintainer note */}` in
+`cli.mdx` broke `check-internal-links` for four anchors — MDX ignores it inside a comment, but
+the checker's markdown parse treats it as opening a fence and swallows later headings. Keep
+triple backticks out of MDX comments.

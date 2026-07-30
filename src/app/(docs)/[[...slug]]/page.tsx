@@ -6,6 +6,7 @@ import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { CopyPageButton, ViewOptions } from '@/components/ai/page-actions';
 import { UpstreamVersion } from '@/components/UpstreamVersion';
+import { VersionFilter } from '@/components/version/filter';
 import { pageMarkdownUrl } from '@/lib/page-markdown-url';
 import { gitConfig } from '@/lib/layout.shared';
 import {
@@ -55,6 +56,11 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
           })}
         />
       </DocsBody>
+      {/*
+        Applies the `?v=` selection to gated blocks, gated code-fence rows, and
+        the TOC. A no-op on pages with nothing gated, which is most of them.
+      */}
+      <VersionFilter />
     </DocsPage>
   );
 }

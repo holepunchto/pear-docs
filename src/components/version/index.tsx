@@ -4,9 +4,9 @@
  * Platform version annotations for the Pear reference pages.
  *
  * The Pear platform pages are single-source: one page documents every 3.x
- * release, and content that only applies to some versions is marked with
- * `<Since>` / `<Until>` rather than duplicated into per-version copies. See
- * docs/plans/DOCS-VERSIONING-DESIGN.md §1.2 and §4.
+ * release, and content that only applies to some releases is marked rather than
+ * duplicated into per-version copies. See docs/plans/DOCS-VERSIONING-DESIGN.md
+ * §1.2, §4 and §11.
  *
  *   <Since v="3.1.0" />   the thing described was ADDED in 3.1.0
  *   <Until v="3.1.0" />   the thing described was REMOVED in 3.1.0
@@ -20,32 +20,56 @@
  *                           the platform).
  *   version selected        filter — hide content that does not apply to it.
  *
- * Phase 1 ships both modes plus the `?v=` reader; Phase 2 adds the dropdown
- * that sets it. Selection is read on the client because the site is a static
- * export (`output: export`, `force-static`), so query strings are not
- * available at build time.
+ * Selection is read on the client because the site is a static export
+ * (`output: export`, `force-static`), so query strings are not available at
+ * build time.
  *
- * NOTE these are deliberately INLINE (`<span>`): they are used inside
+ * NOTE the markers here are deliberately INLINE (`<span>`): they are used inside
  * paragraphs and inside `<Callout>` bodies, where a block element would be
- * invalid nesting. Whole-block gating is a separate concern for Phase 2.
+ * invalid nesting. WHOLE-BLOCK gating is a separate mechanism — `<VersionGate>`
+ * plus the `<VersionSection>` pragma, filtered by `<VersionFilter>`.
  */
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from 'react';
+import { usePathname } from 'next/navigation';
+import { compareVersions } from '@/lib/docs-versions';
 
-/** Query-string key the dropdown will drive. */
+// Re-exported: `compareVersions` has always been part of this module's surface,
+// but it lives in `@/lib/docs-versions` now so the remark/Shiki side and the
+// client side share one implementation.
+export { compareVersions };
+
+/** Query-string key the dropdown drives. */
 export const VERSION_PARAM = 'v';
 
-const DocsVersionContext = createContext<string | null>(null);
+interface DocsVersionState {
+  /** `null` means "no explicit selection" -> annotate mode. */
+  version: string | null;
+  /** Select a version, or `null` to return to annotate mode. */
+  setVersion: (next: string | null) => void;
+}
+
+const DocsVersionContext = createContext<DocsVersionState>({
+  version: null,
+  setVersion: () => {},
+});
 
 /** `null` means "no explicit selection" -> annotate mode. */
 export function useDocsVersion(): string | null {
-  return useContext(DocsVersionContext);
+  return useContext(DocsVersionContext).version;
+}
+
+/** Setter for the dropdown. Updates React state and the URL together. */
+export function useSetDocsVersion(): (next: string | null) => void {
+  return useContext(DocsVersionContext).setVersion;
 }
 
 function readVersionFromLocation(): string | null {
@@ -55,48 +79,52 @@ function readVersionFromLocation(): string | null {
 }
 
 /**
- * Wraps the docs layout. Reads `?v=` after mount (never during render, so the
- * static HTML stays selection-free and cacheable) and tracks history
- * navigation.
+ * Wraps the docs layout — and must wrap `DocsLayout` itself, not just its
+ * children, because the dropdown is passed to `DocsLayout` via `sidebar.banner`
+ * and is therefore rendered BY `DocsLayout`, outside of `children`.
+ *
+ * Reads `?v=` after mount (never during render, so the static HTML stays
+ * selection-free and cacheable).
  */
 export function DocsVersionProvider({ children }: { children: ReactNode }) {
-  const [version, setVersion] = useState<string | null>(null);
+  const [version, setVersionState] = useState<string | null>(null);
+  const pathname = usePathname();
 
+  // Re-sync on mount, on history navigation, and on client-side route changes.
+  //
+  // `popstate` covers back/forward — including back/forward across the entries
+  // `setVersion` pushes — but it does NOT fire for `pushState` itself, which is
+  // why `setVersion` sets React state directly. The `pathname` dependency
+  // matters because in-site links carry no `?v=`, so navigating to a sibling
+  // page must drop a stale selection rather than keep filtering the new page.
   useEffect(() => {
-    const sync = () => setVersion(readVersionFromLocation());
+    const sync = () => setVersionState(readVersionFromLocation());
     sync();
     window.addEventListener('popstate', sync);
     return () => window.removeEventListener('popstate', sync);
+  }, [pathname]);
+
+  const setVersion = useCallback((next: string | null) => {
+    setVersionState(next);
+    if (typeof window === 'undefined') return;
+
+    const url = new URL(window.location.href);
+    if (next === null) url.searchParams.delete(VERSION_PARAM);
+    else url.searchParams.set(VERSION_PARAM, next);
+
+    // `pushState` (not `replace`): each selection gets its own history entry, so
+    // back/forward steps through selections. Next's App Router treats a bare
+    // `history.pushState` as a URL-only update — no navigation, no scroll reset.
+    window.history.pushState(null, '', url);
   }, []);
 
+  const value = useMemo(() => ({ version, setVersion }), [version, setVersion]);
+
   return (
-    <DocsVersionContext.Provider value={version}>
+    <DocsVersionContext.Provider value={value}>
       {children}
     </DocsVersionContext.Provider>
   );
-}
-
-/**
- * Compare two SemVer-ish strings. Returns <0, 0, >0.
- *
- * Tolerates partial versions ("3.1" from a minor-level dropdown, per design
- * decision 5) by treating missing segments as 0, and ignores prerelease
- * suffixes — "3.1.0-rc.1" sorts as "3.1.0". That is intentional: a reader on an
- * RC should see the features of the release it is a candidate for.
- */
-export function compareVersions(a: string, b: string): number {
-  const seg = (v: string) =>
-    v
-      .split('-')[0]
-      .split('.')
-      .map((n) => Number.parseInt(n, 10) || 0);
-  const x = seg(a);
-  const y = seg(b);
-  for (let i = 0; i < Math.max(x.length, y.length); i++) {
-    const d = (x[i] ?? 0) - (y[i] ?? 0);
-    if (d !== 0) return d;
-  }
-  return 0;
 }
 
 function VersionBadge({ children }: { children: ReactNode }) {
@@ -129,9 +157,8 @@ interface MarkerProps {
  * strictly worse than showing it. (Caught by testing `?v=3.0.1`: the `pear
  * cores` section stayed visible while its "New in 3.1.0" badge vanished.)
  *
- * Only a marker with children can meaningfully gate anything. Section-level
- * gating — hiding a whole `##` block and its body — needs more than a wrapper
- * component and is deliberately out of scope here.
+ * Only a marker with children can meaningfully gate anything. Hiding a whole
+ * `##` block and its body is what `<VersionSection>` / `<VersionGate>` are for.
  */
 function hidden(
   selected: string | null,
