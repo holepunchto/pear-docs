@@ -4,74 +4,63 @@
  * The Pear CLI pages document flags as blocks of `pear <cmd> --help` output, so
  * "this flag arrived in 3.1.0" is a claim about one row of a fence — which no
  * JSX wrapper can express, since a fence's body is opaque text. Authors mark the
- * row inline:
+ * row inline and `remarkVersionCodeLines` moves that marker onto the fence's
+ * info line, so by the time this transformer runs the fence carries:
  *
- *     ```
- *       --json              Newline delimited JSON output
- *       --vanity <vanity>   Generate a vanity link  [!version since=3.1.0]
- *       --help|-h           Show help
- *     ```
+ *     ```text version-lines="2:since:3.1.0"
  *
- * The marker is stripped from the rendered output and becomes
- * `data-version-since` / `data-version-until` on that line's `<span>`, which is
- * the same contract `<VersionGate>` emits — so `<VersionFilter>` hides fence
- * rows and whole sections through one code path.
+ * This reads it back and stamps `data-version-since` / `data-version-until` onto
+ * that line's `<span>`, which is the same contract `<VersionGate>` emits — so
+ * `<VersionFilter>` hides fence rows and whole sections through one code path.
  *
- * Implemented in `preprocess` (raw text, before tokenizing) rather than by
- * walking highlighted tokens: the marker can then be found with one regex per
- * line instead of being reassembled from however Shiki happened to split the
- * line into tokens. `preprocess` runs before `line`, and `this.meta` is
- * per-code-block, so the line map it stashes cannot leak between fences.
+ * Reading `meta` rather than stripping the marker here is what keeps the marker
+ * out of the `.md` files served to LLMs: `includeProcessedMarkdown` serializes
+ * the mdast, which is upstream of every rehype hook this transformer could use.
+ * See remark-version-code-lines.ts for the full reasoning.
  *
  * The alternative — Shiki's comment-notation helpers (`[!code highlight]`) —
- * does not fit: these fences have no language, so there is no comment syntax to
- * anchor to, and CLI help text is full of `--flag` that the `--` comment matcher
- * would try to claim.
+ * does not fit: these fences have no language of their own, so there is no
+ * comment syntax to anchor to, and CLI help text is full of `--flag` that the
+ * `--` comment matcher would try to claim.
  */
 
 import type { ShikiTransformer } from 'shiki';
+import { VERSION_LINES_META } from './remark-version-code-lines';
 
-/** `[!version since=3.1.0]` / `[!version until=3.1.0]`, plus leading space. */
-const MARKER = /[ \t]*\[!version[ \t]+(since|until)=([0-9][^\]\s]*)\]/;
+/** `version-lines="2:since:3.1.0,7:until:3.2.0"` on the fence info line. */
+const META_RE = new RegExp(`${VERSION_LINES_META}="([^"]*)"`);
 
-interface LineVersion {
-  direction: 'since' | 'until';
-  version: string;
-}
+type Direction = 'since' | 'until';
 
-interface VersionLineMeta {
-  versionLines?: Map<number, LineVersion>;
+/** Parse the meta into line number -> gate. Bad entries are skipped. */
+function parseVersionLines(raw: string | undefined): Map<number, [Direction, string]> {
+  const out = new Map<number, [Direction, string]>();
+  const match = raw ? META_RE.exec(raw) : null;
+  if (!match) return out;
+
+  for (const entry of match[1].split(',')) {
+    const [line, direction, version] = entry.split(':');
+    const n = Number.parseInt(line, 10);
+    if (!n || (direction !== 'since' && direction !== 'until') || !version) continue;
+    out.set(n, [direction, version]);
+  }
+  return out;
 }
 
 export function transformerVersionLines(): ShikiTransformer {
   return {
     name: 'pear:version-lines',
 
-    preprocess(code) {
-      const versionLines = new Map<number, LineVersion>();
-
-      const stripped = code.split('\n').map((line, i) => {
-        const match = MARKER.exec(line);
-        if (!match) return line;
-        // Shiki numbers lines from 1.
-        versionLines.set(i + 1, {
-          direction: match[1] as 'since' | 'until',
-          version: match[2],
-        });
-        return line.replace(MARKER, '');
-      });
-
-      if (versionLines.size === 0) return;
-      (this.meta as VersionLineMeta).versionLines = versionLines;
-      return stripped.join('\n');
-    },
-
     line(node, line) {
-      const hit = (this.meta as VersionLineMeta).versionLines?.get(line);
+      // `__raw` is the fence's full info string; the same channel
+      // `transformerMetaHighlight` uses for `{16,22-23}`.
+      const hit = parseVersionLines(this.options.meta?.__raw).get(line);
       if (!hit) return;
+
+      const [direction, version] = hit;
       node.properties[
-        hit.direction === 'since' ? 'data-version-since' : 'data-version-until'
-      ] = hit.version;
+        direction === 'since' ? 'data-version-since' : 'data-version-until'
+      ] = version;
     },
   };
 }

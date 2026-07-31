@@ -15,6 +15,7 @@ import { transformerMetaHighlight } from '@shikijs/transformers';
 import codeImport from 'remark-code-import';
 import { z } from 'zod';
 import { remarkVersionSections } from './src/lib/remark-version-sections';
+import { remarkVersionCodeLines } from './src/lib/remark-version-code-lines';
 import { transformerVersionLines } from './src/lib/shiki-version-lines';
 
 const execFile = promisify(execFileCb);
@@ -188,6 +189,11 @@ export default defineConfig({
       remarkMdxMermaid,
       [codeImport, { rootDir: process.cwd() }],
       remarkVersionSections,
+      // Must be a REMARK pass, not part of the Shiki transformer: it moves the
+      // `[!version …]` marker out of the fence body onto the info line before
+      // `includeProcessedMarkdown` serializes the mdast, which is the only way
+      // to keep it out of the `.md` files served to LLMs.
+      remarkVersionCodeLines,
       ...v,
     ],
   },

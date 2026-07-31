@@ -5,7 +5,6 @@ import { customTree } from '@/lib/custom-tree';
 import { KeetIcon } from '@/components/keet-icon';
 import KeetRoomModalMount from '@/components/keet-modal';
 import { DocsVersionProvider } from '@/components/version';
-import { VersionDropdown } from '@/components/version/dropdown';
 
 export const dynamic = 'force-static';
 
@@ -26,18 +25,18 @@ export default function Layout({ children }: LayoutProps<'/'>) {
   return (
     <>
       {/*
-        The provider wraps DocsLayout rather than just `children`, because
-        `sidebar.banner` is rendered BY DocsLayout — outside `children` — and the
-        dropdown in it has to reach the same context that <Since>/<Until> and
-        <VersionFilter> read. Wrapping a server-rendered subtree in a client
-        provider is fine in this direction.
+        The provider stays OUTSIDE DocsLayout. The dropdown has since moved into
+        the article (see version/dropdown.tsx), so `children` alone would now be
+        enough — but keeping it here costs nothing and means anything Fumadocs
+        renders itself, such as a sidebar banner or tab, can still reach the
+        context without this trap resurfacing. Wrapping a server-rendered subtree
+        in a client provider is fine in this direction.
       */}
       <DocsVersionProvider>
         <DocsLayout
           {...baseOptions()}
           tree={{ name: 'docs', children: customTree }}
           links={linkItems}
-          sidebar={{ banner: <VersionDropdown /> }}
         >
           {children}
         </DocsLayout>

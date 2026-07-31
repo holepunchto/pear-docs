@@ -728,13 +728,51 @@ every `continue` was dead) and now reports all problems with one pragma at once;
 was off by one (N pragmas need N+1 scans, so a file with exactly 500 failed with a false "this
 is a bug"); `STABLE_DOCS_VERSION` was deleted as dead code.
 
-**Still open** — the `[!version …]` marker survives into the processed markdown *inside a code
-fence*, so `out/reference/pear/cli.md` presents it as literal `pear touch --help` output. Unlike
-the `<VersionGate>` wrappers (which a consumer discounts as tags around content), this injects
-invented text into a block that claims to be verbatim. The fix is to strip it in a remark pass
-and hand the line numbers to the Shiki transformer through the fence's `meta` instead, where
-annotations like `title="…"` already live harmlessly — that changes the plugin pipeline, so it
-wants its own pass rather than a bolt-on.
+### 11.2 Fence-marker leak fixed, and the dropdown moved into the article
+
+**The `[!version …]` leak is fixed.** It used to survive into the processed markdown *inside a
+code fence*, so `out/reference/pear/cli.md` presented it as literal `pear touch --help` output —
+unlike the `<VersionGate>` wrappers, which a consumer discounts as tags around content, that
+invents text inside a block claiming to be verbatim.
+
+The cause was staging: `postprocess.includeProcessedMarkdown` serializes the **mdast**, and Shiki
+is a **rehype** transformer, so anything stripped in Shiki's `preprocess` was already baked into
+the `.md`. `src/lib/remark-version-code-lines.ts` now moves the marker at the remark stage, out of
+the fence body and onto the info line, and `shiki-version-lines.ts` reads it back from
+`this.options.meta.__raw` — the same channel `transformerMetaHighlight` uses for `{16,22-23}`:
+
+```text
+  --vanity <vanity>   Generate a vanity link  [!version since=3.1.0]   <- authored
+```
+becomes ```` ```text version-lines="2:since:3.1.0" ```` with a clean body. Authors keep the inline
+form because it is **self-anchoring** — a line number in the info string would silently drift the
+moment a flag is inserted above it.
+
+⚠️ The pass forces `lang` to `text` on unlabelled fences. mdast serializes `meta` straight after
+`lang`, so with `lang` empty the info line would read ```` ``` version-lines="…" ```` and
+re-parsing it would take the meta as the language. `text` renders identically to no language.
+
+Verified in the real export: `out/reference/pear/cli.md:107` and `:231` now read plain
+`--vanity <vanity>   Generate a vanity link with this prefix`. The one remaining `[!version` in
+that file is the maintainer note documenting the syntax, which is correct.
+
+**The dropdown moved from `sidebar.banner` into the article, beside the `<h1>`.** The banner hid
+it exactly when it mattered: Fumadocs renders it inside `SidebarContent`, and below 768px the
+sidebar becomes a drawer — so on a phone the control *and* the only "you are reading a filtered
+page" signal both vanished while `?v=` kept filtering. Confirmed at 375px: it wraps under the
+heading, stays visible, and filtering still works end to end.
+
+Two consequences:
+
+- The provider no longer *needs* to wrap `DocsLayout`, since nothing version-aware is passed to
+  it any more. It still does, deliberately — it costs nothing and stops the trap resurfacing if a
+  banner or tab is ever added.
+- Scoping is now enforced twice: server-side in `page.tsx` via `isPlatformPath(page.url)`, so the
+  component is not shipped to the other 143 pages at all, and again inside the component.
+
+That move also closed the aria gap: the hint is now `aria-describedby`-linked to the `<select>`
+and carries `role="status"`, so a screen reader announces what changed instead of the page
+silently losing sections (WCAG 2.1 SC 4.1.3).
 
 The review panel died on rate limits twice, and both times the same two dimensions were the
 casualties, so **`filter-client` and `spec-compliance` were audited by hand**. That found two
@@ -763,9 +801,8 @@ discarded as it would be in a bare comma-separated list.
 
 Deferred, and worth a UX decision rather than a patch: a shared `?v=3.0#pear-cores` link lands
 the reader at the top of the page with no explanation, because the target is hidden by their own
-selection (`check-internal-links` cannot see gating either, so it will never flag such a link);
-there are no aria attributes in
-`src/components/version/` (the hint `<p>` is neither `aria-describedby`-linked nor a live
-region, so content vanishing is unannounced), and below 768px fumadocs turns the sidebar into a
-drawer, so the dropdown and the only "you are filtered" indicator disappear while the URL keeps
-filtering — an in-article chip would address both.
+selection — and `check-internal-links` cannot see gating, so it will never flag such a link.
+Either fall back to annotate mode when the hash names a hidden section, or say "this section does
+not exist in 3.0"; both are product calls. Also unverified either way: arrow-keying a **closed**
+`<select>` fires `change` per keypress on some platforms, which would mint one history entry per
+option traversed.
