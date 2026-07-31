@@ -799,10 +799,58 @@ Worth knowing about the CSS approach: the generated rule puts `li:has(> a[href=�
 dropped and the plain `a[href=…]` still hides the entry, instead of the whole rule being
 discarded as it would be in a bare comma-separated list.
 
-Deferred, and worth a UX decision rather than a patch: a shared `?v=3.0#pear-cores` link lands
-the reader at the top of the page with no explanation, because the target is hidden by their own
-selection — and `check-internal-links` cannot see gating, so it will never flag such a link.
-Either fall back to annotate mode when the hash names a hidden section, or say "this section does
-not exist in 3.0"; both are product calls. Also unverified either way: arrow-keying a **closed**
-`<select>` fires `change` per keypress on some platforms, which would mint one history entry per
-option traversed.
+### 11.3 Deep links win over the selection, and the checker learned about gating
+
+**The hidden-anchor problem is fixed.** `?v=3.0#pear-cores` used to drop the reader at the top of
+the page: the target was `display: none`, so the browser had nothing to scroll to and the link
+silently did nothing.
+
+Three options, and the chosen one is the third:
+
+| Option | Why not |
+| --- | --- |
+| Keep filtering it away | The link reads as broken; the reader has no idea why. |
+| Drop the whole selection | The rest of the page changes for no visible reason. |
+| **Reveal just that section, and say why** | Honours both the link and the selection. |
+
+So a gate the selection would hide, but that holds the hash target, is **revealed** instead:
+`data-version-revealed` carries the sentence, `global.css` renders it as a `::before` note above
+the section, and `<VersionFilter>` re-scrolls (the browser already gave up). The rest of the
+selection stays filtered and the dropdown still reads `3.0`.
+
+Two things that had to be right:
+
+- The revealed gate switches to `display: block`, because a `display: contents` element
+  **generates no pseudo-elements** — the note would not render at all.
+- The re-scroll is guarded by *which hash was last scrolled to*, not merely by "something is
+  revealed". The effect also re-runs on every selection change, so an unguarded call yanked the
+  page back to the anchor every time the reader touched the dropdown. Verified: parked at
+  y=3000, switching 3.0 → 3.1 → 3.0 stays at ~3000 instead of jumping to ~9700.
+
+**`check:internal-links` now understands gating**, so this class of link is caught before it
+ships rather than being a runtime surprise:
+
+- An **unversioned** link is judged against `STABLE_DOCS_VERSION` — the release a reader
+  following a bare link is assumed to be on. A bare link to content removed by current stable
+  fails with *"does not exist in Pear 3.1 (current stable); add ?v=3.0 to link at it
+  deliberately"*.
+- A link **carrying `?v=`** is judged against that release, and fails with the versions it does
+  resolve on.
+- `?v=` must name a declared doc-state **exactly**. `resolveDocsVersion` is deliberately lenient
+  for reader input (it maps `?v=9.9` forward onto the newest doc-state), and that leniency would
+  let a typo in our own content pass silently.
+
+⚠️ Two bugs found while building it, both of which had been hiding real breakage:
+
+1. `extractLinks` did `rawLink.split('?')[0]`, which **truncated the fragment of every
+   version-qualified link** — `/x?v=3.0#anchor` lost `#anchor` entirely, so those links skipped
+   anchor validation altogether. Hash is now split before query.
+2. The first cut of `extractAnchorGates` did not strip JSX comments, so the cli.mdx maintainer
+   note — which documents this very syntax — was parsed as real markup. Its illustrative closing
+   tag is `</…>`, not `</VersionGate>`, so the stack never popped and a phantom `since="x.y.z"`
+   gate leaked onto **every** anchor in the file. It was invisible because `compareVersions`
+   reads `x.y.z` as `0.0.0`, which never hides anything.
+
+Each failure class was verified by deliberately introducing it. Still unverified either way:
+arrow-keying a **closed** `<select>` fires `change` per keypress on some platforms, which would
+mint one history entry per option traversed.

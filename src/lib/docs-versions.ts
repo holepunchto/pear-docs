@@ -51,6 +51,19 @@ export const DOCS_VERSIONS_NEWEST_FIRST: DocsVersion[] = [...DOCS_VERSIONS].sort
 );
 
 /**
+ * The current stable release — derived from the `stable` flag, never from array
+ * position (`check:docs-versions` asserts exactly one entry carries it).
+ *
+ * This is NOT the default *view*: absent `?v=` the page renders annotate mode,
+ * showing every release. It is the default *audience*: what a reader following
+ * an unversioned link is assumed to be running, which is how
+ * `check:internal-links` decides whether a bare `#anchor` link actually resolves
+ * for the majority of readers.
+ */
+export const STABLE_DOCS_VERSION: DocsVersion =
+  DOCS_VERSIONS.find((v) => v.stable) ?? DOCS_VERSIONS_NEWEST_FIRST[0];
+
+/**
  * Compare two SemVer-ish strings. Returns <0, 0, >0.
  *
  * Tolerates partial versions ("3.1" from the minor-level dropdown, per design

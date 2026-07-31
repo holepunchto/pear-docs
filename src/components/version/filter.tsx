@@ -17,7 +17,7 @@
  * (verified empirically — it is why option C was chosen over A and B).
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useDocsVersion } from '@/components/version';
 import { isGateHidden } from '@/lib/docs-versions';
@@ -52,21 +52,70 @@ const TOC_SCOPE = ':is(#nd-toc, [data-toc-popover-content])';
 /** Holds the generated TOC rules; one per document, reused across renders. */
 const STYLE_ID = 'version-toc-filter';
 
+/**
+ * Set on a gate that the selection would hide but the reader deep-linked into.
+ * `global.css` renders its value as an explanatory note above the section.
+ */
+const REVEALED_ATTR = 'data-version-revealed';
+
+/** Escape for a QUOTED attribute-selector value (not `CSS.escape`, see below). */
+const quoteEscape = (v: string) => v.replace(/["\\]/g, '\\$&');
+
+/** Why a section the selected version does not have is on screen anyway. */
+function revealNote(el: HTMLElement, selected: string): string {
+  const since = el.dataset.versionSince;
+  const until = el.dataset.versionUntil;
+  const what = since
+    ? `Added in ${since}`
+    : until
+      ? `Removed in ${until}`
+      : 'Not in this release';
+  return `${what} — not part of Pear ${selected}. Shown because you followed a link to it.`;
+}
+
 export function VersionFilter() {
   const version = useDocsVersion();
   // Client-side navigation swaps the article DOM without remounting this
   // component, so re-run per route as well as per selection.
   const pathname = usePathname();
+  /** Last `location.hash` scrolled to, so a version switch does not re-scroll. */
+  const scrolledFor = useRef<string | null>(null);
 
-  const apply = useCallback(() => {
+  const apply = useCallback((): HTMLElement | null => {
+    // A deep link wins over the selection. `?v=3.0#pear-cores` used to drop the
+    // reader at the top of the page with no explanation, because the target was
+    // hidden and the browser had nothing to scroll to — the link silently did
+    // nothing. Revealing the section and saying why beats both alternatives:
+    // filtering it away (a broken-feeling link) and quietly dropping the whole
+    // selection (the rest of the page changes for no visible reason).
+    const hashId = decodeURIComponent(window.location.hash.slice(1));
+    const holdsTarget = (el: HTMLElement) =>
+      hashId !== '' &&
+      (el.id === hashId ||
+        el.getAttribute(STASHED_ID_ATTR) === hashId ||
+        el.querySelector(
+          `[id="${quoteEscape(hashId)}"], [${STASHED_ID_ATTR}="${quoteEscape(hashId)}"]`,
+        ) !== null);
+
     // Pass 1 — decide visibility for every gate.
+    let revealed: HTMLElement | null = null;
     for (const el of document.querySelectorAll<HTMLElement>(
       '[data-version-since], [data-version-until]',
     )) {
-      el.toggleAttribute(
-        HIDDEN_ATTR,
-        isGateHidden(version, el.dataset.versionSince, el.dataset.versionUntil),
+      const hide = isGateHidden(
+        version,
+        el.dataset.versionSince,
+        el.dataset.versionUntil,
       );
+      const reveal = hide && holdsTarget(el);
+
+      el.toggleAttribute(HIDDEN_ATTR, hide && !reveal);
+      if (reveal) {
+        el.setAttribute(REVEALED_ATTR, revealNote(el, version ?? ''));
+        revealed = el;
+      } else {
+        el.removeAttribute(REVEALED_ATTR);
+      }
     }
 
     // Pass 2 — park the ids of everything inside a hidden gate, restore the
@@ -113,10 +162,10 @@ export function VersionFilter() {
       document.head.append(style);
     }
     const selectors = [...hiddenIds].map((id) => {
-      // Escaped for a QUOTED attribute value, not with `CSS.escape` — that
-      // escapes identifiers, so an id starting with a digit ("31-release")
-      // would come back as `\31 -release` and match nothing in this position.
-      const href = `a[href="#${id.replace(/["\\]/g, '\\$&')}"]`;
+      // `quoteEscape`, not `CSS.escape` — the latter escapes identifiers, so an
+      // id starting with a digit ("31-release") would come back as
+      // `\31 -release` and match nothing inside a quoted attribute value.
+      const href = `a[href="#${quoteEscape(id)}"]`;
       // Hide the list item where there is one, so no empty row or bullet is
       // left behind in the TOC rail.
       return `${TOC_SCOPE} :is(${href}, li:has(> ${href}))`;
@@ -124,10 +173,32 @@ export function VersionFilter() {
     style.textContent = selectors.length
       ? `${selectors.join(',\n')} { display: none !important; }`
       : '';
+
+    return revealed;
   }, [version]);
 
   useEffect(() => {
-    apply();
+    const revealed = apply();
+
+    // The browser tried to scroll to the hash while the target was still hidden
+    // and gave up, so it has to be done again now the section is on screen.
+    //
+    // Guarded by which hash was last scrolled to, NOT just by `revealed` being
+    // set: this effect also re-runs whenever the selection changes, so an
+    // unguarded call would yank the page back to the anchor every time the reader
+    // touched the dropdown.
+    const scrollOnce = (el: HTMLElement | null) => {
+      const hash = window.location.hash;
+      if (!el || scrolledFor.current === hash) return;
+      scrolledFor.current = hash;
+      el.scrollIntoView();
+    };
+
+    scrollOnce(revealed);
+
+    const onHashChange = () => scrollOnce(apply());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
   }, [apply, pathname]);
 
   return null;
