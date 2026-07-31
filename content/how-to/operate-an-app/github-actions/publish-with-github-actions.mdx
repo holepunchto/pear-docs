@@ -7,22 +7,24 @@ docType: how-to
 schemaType: TechArticle
 ---
 
-The simplest way to publish and update a Pear app is to let CI do it. The [`pear-ci` GitHub Action](https://github.com/holepunchto/actions/blob/main/pear-ci/action.yml) stages a directory from your repository into a Hyperdrive on every push, so shipping a new version is just a `git push`. There is no local `pear touch`, `pear seed`, or `pear stage` to run by hand, and nothing to keep online between releases.
+The simplest way to publish and update a Pear app is to let CI do it. The [`pear-ci` GitHub Action](https://github.com/holepunchto/actions/blob/main/pear-ci/action.yml) stages a directory from your repository into a [Hyperdrive](/reference/building-blocks/hyperdrive) on every push, so shipping a new version is just a `git push`. There is no local `pear touch`, `pear seed`, or `pear stage` to run by hand, and nothing to keep online between releases.
 
 This is the goal-oriented recipe. If you need the full-control flow—release lines, provision, and multisig—use [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment) instead. The two are not mutually exclusive: CI is the fast path for development and staging links, while the manual flow gives you production gating.
+
+<include>../../../_snippets/_install-pear-cli-callout.mdx</include>
 
 ## How it works
 
 The action wraps the [`pear-ci`](https://www.npmjs.com/package/pear-ci) tool. On each run it:
 
 1. Installs `pear-ci` and fetches the committed `ci/snapshot.json` from `main`.
-2. Mirrors your `target` directory into a Hyperdrive whose key is **derived deterministically from `primary-key` + `namespace`**, then replicates over [Hyperswarm](/reference/building-blocks/hyperswarm) until connected peers have synced.
+2. Mirrors your `target` directory into a [Hyperdrive](/reference/building-blocks/hyperdrive) whose key is **derived deterministically from `primary-key` + `namespace`**, then replicates over [Hyperswarm](/reference/building-blocks/hyperswarm) until connected peers have synced.
 3. Commits the updated `ci/snapshot.json` back to `main` (or opens a PR if the push is rejected).
 
 Two properties make this work well in CI:
 
 - **The `pear://` link is stable.** Because the drive key comes from the secret primary key plus the namespace, every run stages to the same link. You set that link once as your app's `upgrade` field and every push updates it.
-- **The snapshot replaces persistent storage.** `ci/snapshot.json` records each core's length, so the next run only syncs what changed instead of re-uploading the whole drive or persisting a full Corestore between jobs.
+- **The snapshot replaces persistent storage.** `ci/snapshot.json` records each core's length, so the next run only syncs what changed instead of re-uploading the whole drive or persisting a full [Corestore](/reference/helpers/corestore) between jobs.
 
 ```mermaid skip="diagram"
 flowchart LR

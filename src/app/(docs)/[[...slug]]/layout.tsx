@@ -5,6 +5,7 @@ import { customTree } from '@/lib/custom-tree';
 import { KeetIcon } from '@/components/keet-icon';
 import KeetRoomModalMount from '@/components/keet-modal';
 import { McpMenu } from '@/components/mcp-menu';
+import { DocsVersionProvider } from '@/components/version';
 
 export const dynamic = 'force-static';
 
@@ -35,7 +36,8 @@ export default function Layout({ children }: LayoutProps<'/'>) {
         tree={{ name: 'docs', children: customTree }}
         links={linkItems}
       >
-        {children}
+        {/* Supplies the `?v=` selection that <Since>/<Until> filter on. */}
+        <DocsVersionProvider>{children}</DocsVersionProvider>
       </DocsLayout>
       <KeetRoomModalMount />
     </>

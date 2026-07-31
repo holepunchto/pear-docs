@@ -1,6 +1,7 @@
 ---
 title: "Autobase"
 description: "Multi-writer linearization layer for building deterministic views from many Hypercores."
+upstreamVersion: "7.28.1"
 seoTitle: "Autobase: Multi-Writer Views over Hypercores"
 docType: reference
 schemaType: APIReference
@@ -36,6 +37,7 @@ import Autobase from 'autobase'
 
 const store = new Corestore('./autobase-demo')
 const base = new Autobase(store, null, {
+  valueEncoding: 'json',
   open: (viewStore) => viewStore.get({ name: 'messages', valueEncoding: 'json' }),
   apply: async (nodes, view) => {
     for (const { value } of nodes) await view.append(value)
@@ -75,7 +77,7 @@ Instantiate an Autobase.
 | `optimistic` | `false` | Autobase supports optimistic appends |
 | `close` | — | close the view |
 | `valueEncoding` | — | encoding |
-| `ackInterval` | `1000` | enable auto acking with the interval |
+| `ackInterval` | `10000` | enable auto acking with the interval |
 | `encryptionKey` | — | Key to encrypt the base |
 | `encrypt` | `false` | Encrypt the base if unencrypted & no encryptionKey is set |
 | `encrypted` | `false` | Expect the base to be encrypted, will throw an error otherwise, defaults to true if encryptionKey is set |
@@ -440,15 +442,15 @@ Acknowledge a writer even if they haven't been added before. This is most useful
 
 #### `host.interrupt(reason)`
 
-Interrupt the applying of writer blocks optionally giving a `reason`. This will emit an `interrupt` event passing the `reason` to the callback and close the autobase.
+Interrupt the applying of writer blocks optionally giving a `reason`. This will emit an `interrupt` event passing the `reason` to the callback and halt all further applying. The base is not closed, but `base.interrupted` is set to the `reason` and later `base.append()` calls reject.
 
 - Throws: if called on the read-only public view.
 
-Interrupting closes the Autobase and emits the `interrupt` event so the application can upgrade its `apply` logic or recover intentionally.
+Interrupting halts applying and emits the `interrupt` event so the application can upgrade its `apply` logic or recover intentionally.
 
 #### `host.removeable(key)`
 
-[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L2189)
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/lib/apply-calls.js#L91)
 
 Whether the writer with `key` can be removed without leaving the system
 without a removable indexer set.
@@ -460,7 +462,7 @@ without a removable indexer set.
 - Returns: `boolean` — whether the writer for the given `key` can be removed.
 
 ```js
-if (base.removeable(writerKey)) await host.removeWriter(writerKey)
+if (host.removeable(writerKey)) await host.removeWriter(writerKey)
 ```
 
 The last indexer cannot be removed.
@@ -469,31 +471,31 @@ The last indexer cannot be removed.
 
 #### `base.on('update', () => { ... })`
 
-[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L914)
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L2060)
 
 Triggered when the autobase view updates after `apply` has finished running.
 
 #### `base.on('interrupt', (reason) => { ... })`
 
-[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L913)
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L838)
 
 Triggered when `host.interrupt(reason)` is called in the `apply` handler. See [`host.interrupt(reason)`](#hostinterruptreason) for when interrupts are used.
 
 #### `base.on('fast-forward', (to, from) => { ... })`
 
-[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1639)
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1502)
 
 Triggered when the autobase fast forwards to a state already with a quorum. `to` and `from` are the `.signedLength` after and before the fast forward respectively.
 
 #### `base.on('is-indexer', () => { ... })`
 
-[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1849)
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1712)
 
 Triggered when the autobase instance is an indexer.
 
 #### `base.on('is-non-indexer', () => { ... })`
 
-[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1860)
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L1723)
 
 Triggered when the autobase instance is not an indexer.
 
@@ -511,7 +513,7 @@ Triggered when a warning is triggered.
 
 #### `base.on('error', (err) => { ... })`
 
-[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L927)
+[src](https://github.com/holepunchto/autobase/blob/v7.28.1/index.js#L852)
 
 Triggered when an error is triggered while updating the autobase.
 

@@ -84,8 +84,32 @@ interface Scenario {
 const CONNECT = 'how-to/connect-to-peers';
 const STORE = 'how-to/store-and-replicate';
 const STREAM = 'how-to/stream-and-share-media';
+const GETTING = 'getting-started';
 
 const SCENARIOS: Scenario[] = [
+  {
+    // hello-pear-bare: the three-layer template (bin.mjs entry -> app.js host
+    // -> Bare worker). Runs with the pinned `bare-runtime` devDep via
+    // ./node_modules/.bin/bare so the boot is independent of the host's PATH
+    // `bare` version, then asserts the worker's "Hello from worker" reaches the
+    // host over IPC — i.e. the full PearRuntime.run spawn + argv + FramedStream
+    // round-trip works. `--no-updates` keeps it off the network.
+    id: 'hello-pear-bare',
+    dir: `${GETTING}/hello-pear-bare`,
+    installs: ['.'],
+    artifacts: [],
+    steps: [
+      {
+        kind: 'run',
+        process: 'app',
+        app: '.',
+        cmd: './node_modules/.bin/bare bin.mjs --no-updates',
+        expect: 'Hello from worker',
+        expectAliveMs: 1500,
+        timeoutMs: 45_000,
+      },
+    ],
+  },
   {
     id: 'hyperdht-chat',
     dir: `${CONNECT}/connect-two-peers-by-key-with-hyperdht`,

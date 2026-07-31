@@ -1,19 +1,20 @@
 ---
 title: "MirrorDrive"
 description: "Diff and sync engine for copying between drive-like APIs."
+upstreamVersion: "1.14.2"
 docType: reference
 schemaType: APIReference
 ---
 
 <Status level="stable" />
 
-`Mirrordrive` computes diffs between two drive-like APIs and applies them efficiently. It is the helper that powers sync flows between [Hyperdrive](/reference/building-blocks/hyperdrive) and [Localdrive](/reference/helpers/localdrive), including the `drive.mirror(...)` shortcut on Hyperdrive. A `MirrorDrive` instance is itself an async iterator, so iterating it with `for await (const diff of mirror)` drives the diff/copy pass and yields one diff object per entry. For source and release notes, see the [mirror-drive repository](https://github.com/holepunchto/mirror-drive).
+`Mirrordrive` computes diffs between two drive-like APIs and applies them efficiently. It is the helper that powers sync flows between [Hyperdrive](/reference/building-blocks/hyperdrive) and [Localdrive](/reference/helpers/localdrive), including the `drive.mirror(...)` shortcut on Hyperdrive. A `MirrorDrive` instance is itself an async iterable, so iterating it with `for await (const diff of mirror)` drives the diff/copy pass and yields one diff object per entry. For source and release notes, see the [mirror-drive repository](https://github.com/holepunchto/mirror-drive).
 
 ## Async iteration
 
 #### `for await (const diff of mirror)`
 
-`MirrorDrive` is itself an async iterable. Iterating it with `for await` drives the entire diff/copy pass; each yield produces one `{ op, key }` object where `op` is `'put'` or `'del'`.
+`MirrorDrive` is itself an async iterable. Iterating it with `for await` drives the entire diff/copy pass; each yield produces one `{ op, key, bytesRemoved, bytesAdded }` object where `op` is `'add'`, `'change'`, or `'remove'`, plus `'equal'` when `includeEquals` is set.
 
 ```js
 for await (const diff of mirror) {
@@ -157,7 +158,7 @@ The total number of bytes removed from the destination so far.
 
 [src](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L81)
 
-`true` once any configured preload phase has finished fetching the blob ranges or block maps it needs.
+`true` once any configured preload phase has fetched the block maps it needs and estimated its download size. The blob ranges themselves may still be downloading.
 
 - Returns: `boolean`
 
@@ -197,7 +198,7 @@ The number of blob bytes downloaded from the source during the current run.
 
 [src](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L101)
 
-The number of destination blob blocks uploaded or written during the current run.
+The number of blob blocks the source drive's blob core has uploaded to its peers during the current run.
 
 - Returns: `number`
 
@@ -205,7 +206,7 @@ The number of destination blob blocks uploaded or written during the current run
 
 [src](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L102)
 
-The number of destination blob bytes uploaded or written during the current run.
+The number of blob bytes the source drive's blob core has uploaded to its peers during the current run.
 
 - Returns: `number`
 
@@ -215,7 +216,7 @@ The number of destination blob bytes uploaded or written during the current run.
 
 [src](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L124)
 
-A monitor object that emits progress updates and exposes the latest `stats` snapshot.
+A monitor object that emits progress updates and exposes the latest `stats` snapshot. Requires a source drive that exposes `getBlobs`; iterating the mirror throws otherwise.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -265,7 +266,7 @@ Emitted every `interval` milliseconds with the latest `monitor.stats` snapshot.
 
 #### `monitor.on('preloaded', listener)`
 
-[src](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L290)
+[src](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L187)
 
 Emitted once preload has completed.
 
@@ -291,7 +292,7 @@ Options for controlling how `MirrorDrive` synchronises drives.
 | `metadataEquals` | `function(*,*): boolean` | — | Custom equality check for file metadata; receives `(srcMetadata, dstMetadata)`. |
 | `batch` | `boolean` | `false` | Accumulate destination writes in a single batch and flush at the end. |
 | `entries` | [`Array<object>\|null`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | `null` | Pre-computed list of source entries to mirror; when provided, `prefix` is ignored. |
-| `ignore` | [`string\|Array<string>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | — | Paths to exclude from the source listing. |
+| `ignore` | [`string\|Array<string>\|function`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | — | Paths to exclude from both drives' listings; ignored paths in `dst` are therefore never pruned. |
 | `transformers` | [`Array<function>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | `[]` | Array of factory functions `(key) => stream \| null`; each returned stream is piped between source read and destination write. |
 | `progress` | `boolean` | `false` | Enable download/upload progress tracking (requires `src.getBlobs`). |
 | `dedup` | `boolean` | `false` | Enable content-addressed deduplication using Rabin chunking on the destination. |

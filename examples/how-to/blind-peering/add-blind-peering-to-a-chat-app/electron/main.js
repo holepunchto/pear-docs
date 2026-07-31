@@ -139,12 +139,12 @@ function getUpdaterPipe () {
   const appPath = getAppPath()
   const extension = isLinux ? '.AppImage' : isMac ? '.app' : '.msix'
   const worker = PearRuntime.run(require.resolve('..' + updaterSpecifier), [
-    dir,
-    appPath,
     updates,
     version,
     upgrade,
-    productName + extension
+    productName + extension,
+    dir,
+    appPath
   ])
   const pipe = new FramedStream(worker)
 

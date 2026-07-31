@@ -12,7 +12,11 @@ This is an alternative to the [four-part getting started path](/getting-started)
 
 [`holepunchto/hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) is Holepunch's official Electron template—the same shape [Keet](https://keet.io) and [PearPass](https://pass.pears.com) ship. This is a clone-first tour: where to put your UI, where to put your peer-to-peer logic, and how the two halves talk. For the conceptual "why" behind the split, read [Pear desktop application architecture](/explanation/pear-desktop-architecture).
 
+<include>../../_snippets/_p2p-intro-callout.mdx</include>
+
 Take this path when you want a production-shaped Electron app from the first commit. If you would rather learn the moving parts by building up from scratch, follow the [four-part path](/getting-started) instead.
+
+<include>../../_snippets/_install-pear-cli-callout.mdx</include>
 
 ## Clone and run
 
@@ -105,12 +109,16 @@ The full production bridge—including how `window.bridge` is assembled—is wal
 
 ## Where the app logic goes
 
-Everything peer-to-peer lives in `workers/main.js`, which runs in Bare (not Node). The main process passes the configuration as positional arguments to `PearRuntime.run()`:
+Everything peer-to-peer lives in `workers/main.js`, which runs in Bare (not Node). The host passes the runtime configuration as positional arguments; the worker reads them (with an `argv` helper for cross-platform compatibility) and constructs the [`pear-runtime`](/reference/pear/runtime) instance:
 
-```js file=<rootDir>/examples/getting-started/hello-pear-electron/workers/main.js#L8-L21 title="workers/main.js"
+```js file=<rootDir>/examples/getting-started/hello-pear-electron/workers/main.js#L15-L27 title="workers/main.js"
 ```
 
-This is where you add your [Corestore](/reference/helpers/corestore) cores, join [Hyperswarm](/reference/building-blocks/hyperswarm) topics, and run your protocols. Pass `pear.storage` (in this case `Bare.argv[2]`, the storage path) as the storage root so your data lands in the same per-app directory Pear manages—see [Storage and distribution](/explanation/storage-and-distribution). For why the logic belongs here rather than in the renderer, see [Workers](/explanation/workers).
+This is where you add your [Corestore](/reference/helpers/corestore) cores, join [Hyperswarm](/reference/building-blocks/hyperswarm) topics, and run your protocols. Use `pear.storage` as the storage root so your data lands in the same per-app directory Pear manages—see [Storage and distribution](/explanation/storage-and-distribution). For why the logic belongs here rather than in the renderer, see [Workers](/explanation/workers).
+
+<Callout type="info">
+Upstream now ships this worker as the [`hello-pear-worker`](https://github.com/holepunchto/hello-pear-worker) package—the template's `workers/main.js` is just `require('hello-pear-worker')`. The code above is that worker inlined so you can see what it does; write your own peer-to-peer logic in `workers/main.js` the same way.
+</Callout>
 
 ## How to connect them
 
@@ -188,6 +196,7 @@ In `workers/main.js`, parse incoming messages and reply to `ping`. Keep the exis
  pipe.on('data', async (data) => {
    const message = data.toString()
    if (message === 'pear:applyUpdate') {
+     await pear.ready()
      await pear.updater.applyUpdate()
      pipe.write('pear:updateApplied')
 -  } else console.log(message)
@@ -205,7 +214,7 @@ In `workers/main.js`, parse incoming messages and reply to `ping`. Keep the exis
  })
 ```
 
-Run `npm start`, click **Ping worker**, and the worker's timestamp appears in the renderer. You now have a request/response path you can grow into real features—swap the `pong` handler for a Corestore read, a Hyperswarm lookup, or any protocol your app needs.
+Run `npm start`, click **Ping worker**, and the worker's timestamp appears in the renderer. You now have a request/response path you can grow into real features—swap the `pong` handler for a [Corestore](/reference/helpers/corestore) read, a [Hyperswarm](/reference/building-blocks/hyperswarm) lookup, or any protocol your app needs.
 
 ## Customize for your brand
 
@@ -221,7 +230,7 @@ Then build and release with [Build desktop distributables](/how-to/operate-an-ap
 
 - [Pear desktop application architecture](/explanation/pear-desktop-architecture)—the conceptual model behind the renderer/main/worker split.
 - [Workers](/explanation/workers)—why peer-to-peer logic lives in a Bare worker and where the boundary should sit.
-- [Reshape into a production app](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app)—the hello-pear-electron-shaped scaffold with an Autobase-backed room, blind-pairing invites, and a vanilla HTML renderer.
+- [Reshape into a production app](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app)—the hello-pear-electron-shaped scaffold with an [Autobase](/reference/building-blocks/autobase)-backed room, blind-pairing invites, and a vanilla HTML renderer.
 - [Start from a template](/getting-started/from-a-template)—both boilerplates, side by side.
 - [Start from the hello-pear-bare template](/getting-started/from-a-template/start-from-hello-pear-bare)—the terminal counterpart: a standalone Bare CLI with OTA updates and no GUI.
 - [Publish with GitHub Actions](/how-to/operate-an-app/github-actions/publish-with-github-actions)—stage a stable `pear://` link on every push with the `pear-ci` action.
