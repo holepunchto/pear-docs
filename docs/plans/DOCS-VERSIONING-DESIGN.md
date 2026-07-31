@@ -750,6 +750,12 @@ more, both fixed:
   and the rewrite silently did not happen. The build still failed (`VersionSection` is
   deliberately unregistered) but with a message pointing nowhere near the mistake.
 
+⚠️ **Trap: never run `npm run build` while `next dev` is running.** Both use `out/` (dev under
+`out/dev/`), so the build deletes the manifests the dev server is holding open and every request
+starts returning `Internal Server Error` with `ENOENT … out/dev/routes-manifest.json`. The build
+itself succeeds, so it reads like a code regression when it is only a directory collision. Run
+them one at a time; verify the export from `out/` first, then restart dev for runtime checks.
+
 Worth knowing about the CSS approach: the generated rule puts `li:has(> a[href=…])` inside
 `:is(…)`, whose selector list is **forgiving**. Where `:has()` is unsupported that branch is
 dropped and the plain `a[href=…]` still hides the entry, instead of the whole rule being
