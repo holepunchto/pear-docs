@@ -59,38 +59,42 @@ export function VersionFilter() {
   const pathname = usePathname();
 
   const apply = useCallback(() => {
-    const gates = document.querySelectorAll<HTMLElement>(
+    // Pass 1 — decide visibility for every gate.
+    for (const el of document.querySelectorAll<HTMLElement>(
       '[data-version-since], [data-version-until]',
-    );
-
-    const hiddenIds = new Set<string>();
-    for (const el of gates) {
-      const hide = isGateHidden(
-        version,
-        el.dataset.versionSince,
-        el.dataset.versionUntil,
+    )) {
+      el.toggleAttribute(
+        HIDDEN_ATTR,
+        isGateHidden(version, el.dataset.versionSince, el.dataset.versionUntil),
       );
-      el.toggleAttribute(HIDDEN_ATTR, hide);
+    }
 
-      // Both selectors, because a previous pass may already have parked the id.
-      const withIds = [
-        el,
-        ...el.querySelectorAll<HTMLElement>(`[id], [${STASHED_ID_ATTR}]`),
-      ];
-      for (const node of withIds) {
-        const stashed = node.getAttribute(STASHED_ID_ATTR);
-        if (hide) {
-          const id = node.id || stashed;
-          if (!id) continue;
-          hiddenIds.add(id);
-          if (node.id) {
-            node.setAttribute(STASHED_ID_ATTR, node.id);
-            node.removeAttribute('id');
-          }
-        } else if (stashed) {
-          node.id = stashed;
-          node.removeAttribute(STASHED_ID_ATTR);
+    // Pass 2 — park the ids of everything inside a hidden gate, restore the
+    // rest. Deliberately a SECOND pass rather than work done inside pass 1,
+    // because gates nest: a `<VersionGate>` that applies to the selected version
+    // can sit inside a `<VersionSection>` that does not. Deciding ids while
+    // walking gate-by-gate restored the inner gate's ids even though the outer
+    // one keeps the whole subtree `display: none` — which is exactly the
+    // invisible-but-addressable heading this parking exists to prevent.
+    // Asking `closest()` after all gates are marked is order-independent.
+    const hiddenIds = new Set<string>();
+    const scope = document.querySelector('article') ?? document.body;
+    for (const node of scope.querySelectorAll<HTMLElement>(
+      `[id], [${STASHED_ID_ATTR}]`,
+    )) {
+      const parked = node.getAttribute(STASHED_ID_ATTR);
+      const id = node.id || parked;
+      if (!id) continue;
+
+      if (node.closest(`[${HIDDEN_ATTR}]`)) {
+        hiddenIds.add(id);
+        if (node.id) {
+          node.setAttribute(STASHED_ID_ATTR, node.id);
+          node.removeAttribute('id');
         }
+      } else if (parked) {
+        node.id = parked;
+        node.removeAttribute(STASHED_ID_ATTR);
       }
     }
 

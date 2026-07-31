@@ -126,8 +126,36 @@ function findPragma(
   return null;
 }
 
+/**
+ * Catch a pragma written INLINE on the heading line:
+ *
+ *     ### `pear cores` <VersionSection since="3.1.0" />
+ *
+ * MDX parses that as an `mdxJsxTextElement` (phrasing) rather than an
+ * `mdxJsxFlowElement`, so `isPragma` does not match, the rewrite never happens,
+ * and the node survives into the output. `VersionSection` is deliberately not
+ * registered in `src/mdx-components.tsx`, so the build does fail — but with
+ * "Expected component `VersionSection` to be defined", which says nothing about
+ * the real mistake. Fail with the actual instruction instead.
+ */
+function failOnInlinePragma(parent: Parent, file: VFile): void {
+  for (const child of parent.children) {
+    if (child.type === 'mdxJsxTextElement' && child.name === PRAGMA) {
+      file.fail(
+        `<${PRAGMA}> must be on its own line directly BELOW the heading, not inline in it.`,
+        child,
+      );
+    }
+    if ('children' in child && Array.isArray(child.children)) {
+      failOnInlinePragma(child as unknown as Parent, file);
+    }
+  }
+}
+
 export function remarkVersionSections() {
   return (root: Root, file: VFile) => {
+    failOnInlinePragma(root as unknown as Parent, file);
+
     // Each rewrite splices `children`, so re-scan from the top rather than
     // holding indices across mutations. Sections per page are in the single
     // digits; the guard is only there to make a bug loud instead of infinite.
