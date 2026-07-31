@@ -736,7 +736,29 @@ and hand the line numbers to the Shiki transformer through the fence's `meta` in
 annotations like `title="…"` already live harmlessly — that changes the plugin pipeline, so it
 wants its own pass rather than a bolt-on.
 
-Deferred, and worth a UX decision rather than a patch: there are no aria attributes in
+The review panel died on rate limits twice, and both times the same two dimensions were the
+casualties, so **`filter-client` and `spec-compliance` were audited by hand**. That found two
+more, both fixed:
+
+- `filter.tsx` decided id-parking per gate *while* iterating, so a gate that applies to the
+  selection restored its heading ids even when an outer gate kept the subtree `display: none` —
+  reintroducing the invisible-but-addressable heading for NESTED gates. Now two passes: mark
+  every gate, then ask `closest()` per id, which is order-independent. `cli.mdx` has no nested
+  gate yet, so it was verified by injecting one (inner `until="3.1.0"` inside outer
+  `since="3.1.0"`, selected 3.0).
+- A pragma inline on the heading line parses as `mdxJsxTextElement`, so `isPragma` never matched
+  and the rewrite silently did not happen. The build still failed (`VersionSection` is
+  deliberately unregistered) but with a message pointing nowhere near the mistake.
+
+Worth knowing about the CSS approach: the generated rule puts `li:has(> a[href=…])` inside
+`:is(…)`, whose selector list is **forgiving**. Where `:has()` is unsupported that branch is
+dropped and the plain `a[href=…]` still hides the entry, instead of the whole rule being
+discarded as it would be in a bare comma-separated list.
+
+Deferred, and worth a UX decision rather than a patch: a shared `?v=3.0#pear-cores` link lands
+the reader at the top of the page with no explanation, because the target is hidden by their own
+selection (`check-internal-links` cannot see gating either, so it will never flag such a link);
+there are no aria attributes in
 `src/components/version/` (the hint `<p>` is neither `aria-describedby`-linked nor a live
 region, so content vanishing is unannounced), and below 768px fumadocs turns the sidebar into a
 drawer, so the dropdown and the only "you are filtered" indicator disappear while the URL keeps
