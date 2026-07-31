@@ -17,7 +17,7 @@ import type { Node } from 'fumadocs-core/page-tree';
  *     the site's `trailingSlash` mode.
  */
 export const customTree: Node[] = [
-  { type: 'page', name: 'Pear by Holepunch', url: '/' },
+  { type: 'page', name: 'Pear', url: '/' },
   {
     type: 'folder',
     name: 'Getting Started',
