@@ -851,6 +851,30 @@ ships rather than being a runtime surprise:
    gate leaked onto **every** anchor in the file. It was invisible because `compareVersions`
    reads `x.y.z` as `0.0.0`, which never hides anything.
 
-Each failure class was verified by deliberately introducing it. Still unverified either way:
-arrow-keying a **closed** `<select>` fires `change` per keypress on some platforms, which would
-mint one history entry per option traversed.
+Each failure class was verified by deliberately introducing it.
+
+### 11.4 Keyboard traversal no longer floods history
+
+The last open item, now closed. The worry was that arrow-keying a **closed** `<select>` fires
+`change` on every keypress, so a keyboard user passing over options would mint a history entry
+each and then need that many Backs to leave the page.
+
+Measured on macOS: **it does not happen there.** Four real `ArrowDown` presses on the focused,
+closed select produced **zero** `change` events and zero history writes — macOS opens the native
+popup (an OS widget outside the page) and fires nothing until commit. The behaviour is specific to
+Windows and Linux Chrome/Firefox, which cannot be tested from this machine.
+
+Rather than leave a known-bad path on two platforms unaddressed, `setVersion` now collapses a
+**run** of changes inside `TRAVERSAL_WINDOW_MS` (400ms) into a single history entry —
+`replaceState` within the window, `pushState` outside it. A rapid run is a traversal; spaced
+changes are decisions. Verified all three cases:
+
+| | entries added |
+| --- | --- |
+| one selection | 1 |
+| rapid run of three | 1 |
+| two selections 600ms apart | 2 |
+
+So decision 4's `pushState` semantics are intact — back/forward still steps through deliberate
+selections and re-filters — while a keyboard run costs one entry instead of one per option. That
+matters more as `DOCS_VERSIONS` grows, which Phase 3 will do automatically.

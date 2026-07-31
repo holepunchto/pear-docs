@@ -36,6 +36,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -94,9 +95,17 @@ function readVersionFromLocation(): string | null {
  * Reads `?v=` after mount (never during render, so the static HTML stays
  * selection-free and cacheable).
  */
+/**
+ * How close together two selections have to be to count as one traversal rather
+ * than two decisions. Comfortably above key-repeat, far below deliberate reading.
+ */
+const TRAVERSAL_WINDOW_MS = 400;
+
 export function DocsVersionProvider({ children }: { children: ReactNode }) {
   const [version, setVersionState] = useState<string | null>(null);
   const pathname = usePathname();
+  /** When the URL was last written, to tell a keyboard run from real choices. */
+  const lastCommitAt = useRef(0);
 
   // Re-sync on mount, on history navigation, and on client-side route changes.
   //
@@ -123,7 +132,21 @@ export function DocsVersionProvider({ children }: { children: ReactNode }) {
     // `pushState` (not `replace`): each selection gets its own history entry, so
     // back/forward steps through selections. Next's App Router treats a bare
     // `history.pushState` as a URL-only update — no navigation, no scroll reset.
-    window.history.pushState(null, '', url);
+    //
+    // Except for a run of changes in quick succession, which is not a reader
+    // making several decisions: on Windows and Linux, arrow keys on a CLOSED
+    // `<select>` move the selection and fire `change` on every keypress, so a
+    // keyboard user passing over options would mint a history entry each and then
+    // need that many Backs to leave the page. (macOS opens the native popup
+    // instead and fires nothing until commit — verified: four ArrowDowns produced
+    // zero `change` events — which is why this is guarded rather than reworked.)
+    // Collapsing a rapid run keeps one entry per intended selection on both.
+    const now = Date.now();
+    const isRapidRun = now - lastCommitAt.current < TRAVERSAL_WINDOW_MS;
+    lastCommitAt.current = now;
+
+    if (isRapidRun) window.history.replaceState(null, '', url);
+    else window.history.pushState(null, '', url);
   }, []);
 
   const value = useMemo(() => ({ version, setVersion }), [version, setVersion]);
