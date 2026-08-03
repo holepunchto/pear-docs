@@ -4,12 +4,16 @@ name: Watch boilerplate upstreams
 # examples/getting-started/ and import code from them with remark-code-import
 # (```js file=<rootDir>/examples/getting-started/<name>/...). GitHub won't let
 # us subscribe to another org's repo events, so instead of a true webhook
-# "watcher" this job polls the upstream default branches on a schedule and opens
-# a tracking issue when a vendored snapshot falls behind upstream — the cue to
-# refresh the files and re-check the imported line ranges.
+# "watcher" this job polls each snapshot's upstream branch on a schedule (the
+# default branch, or `ref` where a snapshot tracks a non-default branch) and
+# opens a tracking issue when a vendored snapshot falls behind upstream — the
+# cue to refresh the files and re-check the imported line ranges.
 #
-# When you refresh a snapshot, bump the matching `pinned` SHA below (and the
-# snapshot's README); the next run sees no drift and auto-closes the issue.
+# When you refresh a snapshot, bump the matching `pinned` SHA below AND the
+# snapshot's provenance record — that is the bespoke README for snapshots whose
+# README this repo authors (hello-pear-bare, hello-pear-electron), or SNAPSHOT.md
+# for snapshots that vendor upstream's own README verbatim (the variants). The
+# next run sees no drift and auto-closes the issue.
 
 on:
   schedule:
@@ -38,6 +42,20 @@ jobs:
             repo: holepunchto/hello-pear-electron
             pinned: 9e8085a7ae0313150d05fd9d5ad6c0ba8b297243
             path: examples/getting-started/hello-pear-electron
+          # The two hello-pear-bare variants live on long-lived non-default
+          # branches, so they set `ref` explicitly. Without it the poll below
+          # would compare a variant snapshot against `main`'s HEAD and file a
+          # drift issue that could never close.
+          - name: hello-pear-bare-single-thread
+            repo: holepunchto/hello-pear-bare
+            ref: variant/single-thread
+            pinned: 31934aea35f3c0e32d357941218f95b325abbddb
+            path: examples/getting-started/hello-pear-bare-single-thread
+          - name: hello-pear-bare-daemon
+            repo: holepunchto/hello-pear-bare
+            ref: variant/daemon
+            pinned: 1f0cebf406f42dd1b3e90fc7e74e9831631e6441
+            path: examples/getting-started/hello-pear-bare-daemon
     steps:
       - name: Compare upstream HEAD to the vendored snapshot
         env:
@@ -46,10 +64,13 @@ jobs:
           NAME: ${{ matrix.name }}
           PINNED: ${{ matrix.pinned }}
           VENDOR_PATH: ${{ matrix.path }}
+          # Empty for snapshots vendored from the default branch; a branch name
+          # for snapshots vendored from elsewhere (e.g. `variant/daemon`).
+          REF: ${{ matrix.ref }}
         run: |
           set -euo pipefail
 
-          branch=$(gh api "repos/${REPO}" --jq '.default_branch')
+          branch="${REF:-$(gh api "repos/${REPO}" --jq '.default_branch')}"
           head_sha=$(gh api "repos/${REPO}/commits/${branch}" --jq '.sha')
           title="Refresh vendored snapshot: ${NAME}"
 
@@ -84,9 +105,10 @@ jobs:
             "" \
             "The docs import code from this snapshot via \`remark-code-import\`. To refresh:" \
             "" \
-            "1. Copy the imported upstream files into \`${VENDOR_PATH}\` at \`${head_sha}\`." \
-            "2. Re-check the \`#L…\` ranges in the importing \`.mdx\`." \
-            "3. Update the \`pinned\` SHA for \`${NAME}\` in \`.github/workflows/watch-boilerplates.yml\` and the snapshot README." \
+            "1. Copy the imported upstream files into \`${VENDOR_PATH}\` from \`${branch}\` at \`${head_sha}\`, keeping any deliberate local deviations (e.g. the placeholder \`upgrade\` link in \`package.json\`)." \
+            "2. Re-check the \`#L…\` ranges in the importing \`.mdx\` — a shifted range fails silently." \
+            "3. Update the \`pinned\` SHA for \`${NAME}\` in \`.github/workflows/watch-boilerplates.yml\` and the snapshot's provenance record (its bespoke \`README.md\`, or \`SNAPSHOT.md\` where the README is vendored from upstream)." \
+            "4. Re-run the snapshot's scenario: \`npm run test:examples -- --filter=${NAME}\` (if one exists)." \
             "" \
             "_Opened automatically by the Watch boilerplate upstreams workflow._")
 

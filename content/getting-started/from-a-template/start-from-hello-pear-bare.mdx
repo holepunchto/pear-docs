@@ -119,7 +119,7 @@ flowchart LR
 
 ## Variants
 
-The `main` branch above (a Bare worker thread) is one of three process shapes `holepunchto/hello-pear-bare` ships. All three keep the same `upgrade` link, build targets, and `pear install`/[`pear seed`](/explanation/availability-and-blind-peering#seeding-with-pear-seed) flow from [Clone and run](#clone-and-run) onward—only `app.js` and `bin.mjs` differ. Pick the branch that matches how your CLI runs:
+The `main` branch above (a Bare worker thread) is one of three process shapes `holepunchto/hello-pear-bare` ships. All three share the same `upgrade` link, the same per-platform build targets, and the same [`pear install`](/reference/pear/cli#pear-install)/[`pear seed`](/explanation/availability-and-blind-peering#seeding-with-pear-seed) release flow. What differs is `app.js`, `bin.mjs`, and their dependencies—and **neither variant has a `workers/` directory at all**, so the `workers/main.js` row in [Map the template](#map-the-template) applies to `main` only; on both variants the peer-to-peer code and the updater live in the same process tree as the CLI. Pick the branch that matches how your CLI runs:
 
 | Branch | Shape | Use it for |
 | --- | --- | --- |
@@ -135,7 +135,7 @@ git clone -b variant/single-thread https://github.com/holepunchto/hello-pear-bar
 
 ### `single-thread`
 
-Same `App` [`ready-resource`](https://github.com/holepunchto/ready-resource) shape and event surface (`updating`, `updating-delta`, `updated`, `update-applied`, `error`) as `main`, but `_open()` constructs `PearRuntime` directly instead of spawning a worker and wrapping its IPC in a `FramedStream`:
+Same `App` [`ready-resource`](https://github.com/holepunchto/ready-resource) shape as `main`, emitting the `updating`, `updated`, `update-applied`, and `error` events `bin.mjs` logs—plus `updating-delta`, which carries download progress and which `main`'s worker never actually forwards. (`main` also emits a generic `message` event for anything else the worker writes over the pipe; with no worker, single-thread has no equivalent.) The difference is in `_open()`, which constructs `PearRuntime` directly instead of spawning a worker and wrapping its IPC in a `FramedStream`:
 
 ```js file=<rootDir>/examples/getting-started/hello-pear-bare-single-thread/app.js#L23-L41 title="app.js"
 ```
@@ -154,13 +154,19 @@ See [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/variant/singl
 ```js file=<rootDir>/examples/getting-started/hello-pear-bare-daemon/app.js#L11-L18 title="app.js"
 ```
 
-The daemon acquires an `updater.lock` file in the storage directory—via [`fs-native-extensions`](https://github.com/holepunchto/fs-native-extensions)—so only one updater runs per storage directory at a time, waits up to `--update-window` (default 30 seconds) for an update to arrive, and logs to `<storage>/updates.log` instead of stdout since nothing is attached to read it. See [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/variant/daemon/app.js) and [`bin.mjs`](https://github.com/holepunchto/hello-pear-bare/blob/variant/daemon/bin.mjs) on the `variant/daemon` branch for the full files.
+The daemon acquires an `updater.lock` file in the storage directory—via [`fs-native-extensions`](https://github.com/holepunchto/fs-native-extensions)—so only one updater runs per storage directory at a time, and logs to `<storage>/updates.log` instead of stdout, since nothing is attached to read it.
 
-Tune how long a run waits for an update before giving up:
+`--update-window` (default `30000`, in milliseconds) bounds only how long the daemon waits for a download to **start**. Once one starts, it stays alive until the update is applied or errors out, however long that takes. See [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/variant/daemon/app.js) and [`bin.mjs`](https://github.com/holepunchto/hello-pear-bare/blob/variant/daemon/bin.mjs) on the `variant/daemon` branch for the full files.
+
+Give a run longer to pick up a download before the daemon gives up:
 
 ```bash
 npm start -- --updates --update-window 60000
 ```
+
+<Callout type="warn">
+Two steps from [Clone and run](#clone-and-run) behave differently on this branch. `npm start` **returns immediately** rather than staying up, so there is no `Ctrl+C` to press. And because the foreground process never constructs [`pear-runtime`](/reference/pear/runtime), an unreplaced placeholder `upgrade` link does **not** fail with `INVALID_URL` in your terminal—the detached updater writes that error to `<storage>/updates.log`. Check that file first whenever updates appear not to run.
+</Callout>
 
 ## Build a standalone binary
 
