@@ -8,7 +8,7 @@ import pkg from './package.json'
 import App from './app.js'
 
 const appName = pkg.productName || pkg.name
-const isDev = path.basename(Bare.argv[0]) === 'bare'
+const isDev = path.basename(Bare.argv[0]) === (isWindows ? 'bare.exe' : 'bare')
 
 const cmd = command(
   appName,
