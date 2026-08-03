@@ -117,6 +117,81 @@ flowchart LR
   swarm <-->|"replicate update drive"| peers((seeding peers))
 ```
 
+## Variants
+
+The `main` branch above (a Bare worker thread) is one of three process shapes `holepunchto/hello-pear-bare` ships. All three keep the same `upgrade` link, build targets, and `pear install`/[`pear seed`](/explanation/availability-and-blind-peering#seeding-with-pear-seed) flow from [Clone and run](#clone-and-run) onward—only `app.js` and `bin.mjs` differ. Pick the branch that matches how your CLI runs:
+
+| Branch | Shape | Use it for |
+| --- | --- | --- |
+| [`main`](https://github.com/holepunchto/hello-pear-bare) (this page) | `pear-runtime` inside a Bare [worker](/explanation/workers) thread | Long-lived programs (services, REPLs, TUIs) that keep peer-to-peer logic off the main thread. |
+| [`variant/single-thread`](https://github.com/holepunchto/hello-pear-bare/tree/variant/single-thread) | `pear-runtime` constructed directly in the main Bare process—no worker, no IPC framing | Long-lived programs whose peer-to-peer logic doesn't need a separate thread. |
+| [`variant/daemon`](https://github.com/holepunchto/hello-pear-bare/tree/variant/daemon) | `pear-runtime` runs inside a detached [`bare-daemon`](https://github.com/holepunchto/bare-daemon) process that the foreground command spawns and returns from immediately | Short-lived CLI invocations (like `git`) that shouldn't block on an update check—the command exits while the daemon updates in the background. |
+
+Clone whichever branch fits, swapping it into step 1 of [Clone and run](#clone-and-run):
+
+```bash
+git clone -b variant/single-thread https://github.com/holepunchto/hello-pear-bare
+```
+
+### `single-thread`
+
+Same `App` [`ready-resource`](https://github.com/holepunchto/ready-resource) shape and event surface (`updating`, `updating-delta`, `updated`, `update-applied`, `error`) as `main`, but `_open()` constructs `PearRuntime` directly instead of spawning a worker and wrapping its IPC in a `FramedStream`:
+
+```js
+_open() {
+  const store = new Corestore(path.join(this.dir, 'pear-runtime', 'corestore'))
+  const swarm = new Hyperswarm()
+
+  this.store = store
+  this.swarm = swarm
+
+  const pear = new PearRuntime({
+    dir: this.dir,
+    app: this.app,
+    updates: this.updates,
+    version: this.version,
+    upgrade: this.upgrade,
+    name: this.name,
+    store,
+    swarm
+  })
+
+  this.pear = pear
+  // ...
+}
+```
+
+See [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/variant/single-thread/app.js) on the `variant/single-thread` branch for the full file.
+
+### `daemon`
+
+`bin.mjs` spawns a **detached** updater and returns immediately—the foreground command never blocks on the network:
+
+```js
+if (updates !== false) {
+  App.spawnUpdater(dir, os.execPath(), isDev ? Bare.argv[1] : null, wait)
+}
+```
+
+`App.spawnUpdater` re-invokes the same executable with a hidden `--updater` flag through [`bare-daemon`](https://github.com/holepunchto/bare-daemon):
+
+```js
+static spawnUpdater(dir, app, entrypoint, updateWindow) {
+  const args = entrypoint === null ? [] : [entrypoint]
+  args.push('--updater', '--storage', dir)
+  if (updateWindow !== undefined) args.push('--update-window', String(updateWindow))
+  return daemon.spawn(app, args)
+}
+```
+
+The daemon acquires an `updater.lock` file in the storage directory—via [`fs-native-extensions`](https://github.com/holepunchto/fs-native-extensions)—so only one updater runs per storage directory at a time, waits up to `--update-window` (default 30 seconds) for an update to arrive, and logs to `<storage>/updates.log` instead of stdout since nothing is attached to read it. See [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/variant/daemon/app.js) and [`bin.mjs`](https://github.com/holepunchto/hello-pear-bare/blob/variant/daemon/bin.mjs) on the `variant/daemon` branch for the full files.
+
+Tune how long a run waits for an update before giving up:
+
+```bash
+npm start -- --updates --update-window 60000
+```
+
 ## Build a standalone binary
 
 [`bare-build`](https://github.com/holepunchto/bare-build) compiles `bin.mjs` and its dependencies into a single standalone executable with no peer dependencies—users don't need Node.js, Bare, or the [Pear CLI](/reference/pear/cli) installed. Build for your current host with:
