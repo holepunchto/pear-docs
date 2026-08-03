@@ -105,10 +105,17 @@ function buildCanonicals(files: string[]): Canonical[] {
 }
 
 function prettifyModuleName(basename: string): string {
-  // hypercore → Hypercore, hyperdht → HyperDHT, compact-encoding → Compact-encoding.
+  // hypercore → Hypercore, hyperdht → HyperDHT, localdrive → Localdrive.
+  // Special-cased where the file basename doesn't titlecase into the name the
+  // docs actually use — usually mid-word capitals in the upstream class name
+  // (MirrorDrive, NoiseSecretStream) or a package name that stays lowercase
+  // (compact-encoding). Keep in sync with the page's frontmatter `title`.
   const specialCase: Record<string, string> = {
     hyperdht: 'HyperDHT',
     hyperssh: 'HyperSSH',
+    mirrordrive: 'MirrorDrive',
+    secretstream: 'NoiseSecretStream',
+    'compact-encoding': 'compact-encoding',
   };
   if (specialCase[basename]) return specialCase[basename];
   return basename

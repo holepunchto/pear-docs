@@ -133,7 +133,7 @@ export const customTree: Node[] = [
         children: [
           {
             type: 'page',
-            name: 'Pear desktop architecture',
+            name: 'Pear desktop application architecture',
             url: '/explanation/pear-desktop-architecture',
           },
           {
@@ -589,17 +589,17 @@ export const customTree: Node[] = [
           },
           {
             type: 'page',
-            name: 'Mirrordrive',
+            name: 'MirrorDrive',
             url: '/reference/helpers/mirrordrive',
           },
           {
             type: 'page',
-            name: 'Secretstream',
+            name: 'NoiseSecretStream',
             url: '/reference/helpers/secretstream',
           },
           {
             type: 'page',
-            name: 'Compact encoding',
+            name: 'compact-encoding',
             url: '/reference/helpers/compact-encoding',
           },
           {
