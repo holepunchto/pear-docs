@@ -6,15 +6,18 @@
  * at MINOR granularity ("3.1", not "3.1.0", "3.1.1", …) — design decision 5.
  * Readers on 3.1.4 pick "3.1" and see the surface their build has.
  *
- * Phase 3 replaces this hand-maintained literal with a generator that diffs
- * `cmd/index.js` between tags (recipe in the cli.mdx maintainer note and design
- * §1.1). Until then, add an entry here when a release changes the documented
- * surface.
+ * The list is GENERATED, not hand-maintained: `scripts/gen-docs-states.ts`
+ * compares Pear's `cmd/index.js` between tags and emits `docs-states.json`, so a
+ * release only earns an entry when it changed the documented surface. That is
+ * what stops a fortnightly cadence becoming ~26 dropdown entries a year (design
+ * §1.1). `npm run check:docs-states` fails when upstream has moved.
  *
  * Scope: the four `content/reference/pear/*` platform pages ONLY. Module and
  * bare reference pages are versioned by their own npm versions and must never
  * appear behind this dropdown (design §1) — see `isPlatformPath`.
  */
+
+import docsStates from './docs-states.json';
 
 export interface DocsVersion {
   /** Dropdown text, minor granularity: "3.1". Also what lands in `?v=`. */
@@ -28,17 +31,23 @@ export interface DocsVersion {
 }
 
 /**
- * The supported doc-states. Order here is for humans; consumers read
- * `DOCS_VERSIONS_NEWEST_FIRST`, so appending an entry cannot break anything.
+ * The supported doc-states, from `docs-states.json`.
  *
- * `npm run check:docs-versions` enforces the invariants this list has to hold:
- * exactly one `stable`, unique labels and values, and every version referenced
- * by a gate in `content/` present here.
+ * The JSON also carries `releases` and `delta` per state — which releases share
+ * that surface, and what changed — for humans reviewing a regeneration diff.
+ * Neither is needed at runtime, so only the four dropdown fields are lifted out.
+ *
+ * `npm run check:docs-versions` enforces the invariants this list has to hold
+ * (exactly one `stable`, unique labels and values, every version referenced by a
+ * gate in `content/` present here); `check:docs-states` separately catches the
+ * file having drifted from upstream.
  */
-export const DOCS_VERSIONS: DocsVersion[] = [
-  { label: '3.1', value: '3.1.0', stable: true },
-  { label: '3.0', value: '3.0.0' },
-];
+export const DOCS_VERSIONS: DocsVersion[] = docsStates.states.map((state) => ({
+  label: state.label,
+  value: state.value,
+  ...('stable' in state && state.stable ? { stable: true as const } : {}),
+  ...('prerelease' in state && state.prerelease ? { prerelease: true as const } : {}),
+}));
 
 /**
  * Sorted, so `resolveDocsVersion` and the dropdown do not depend on the literal

@@ -1,0 +1,55 @@
+name: Watch Pear CLI surface
+
+# The platform version dropdown lists DOC-STATES, not releases: a Pear release
+# only earns an entry when it changed the documented CLI surface (design §1.1).
+# `src/lib/docs-states.json` is generated from holepunchto/pear's `cmd/index.js`
+# and committed, so a clean checkout builds with no network.
+#
+# This job notices when upstream has moved. It deliberately only CHECKS and
+# fails — it does not regenerate and open a PR, because a new doc-state is never
+# just a data change: the reference pages need `<VersionSection>` / `<Since>` /
+# `<Until>` markers written for the delta, and only a human can do that. The
+# failing log prints the exact delta to work from.
+#
+# Follow-up when this fails:
+#   npm run gen:docs-states     # refresh src/lib/docs-states.json
+#   # then mark the delta in content/reference/pear/*, and
+#   npm run check:docs-versions # confirms every gate names a declared doc-state
+#
+# Not part of docs-lint.yml on purpose: that gates pull requests, and an upstream
+# release is not the PR author's fault — it would fail unrelated PRs.
+#
+# Like docs-lint.yml, this can't `npm install` (token-gated @tetherto/* packages)
+# so it installs just `tsx`. The generator itself is stdlib-only.
+
+on:
+  schedule:
+    # Daily at 09:00 UTC, an hour after the changelog watcher, so the two jobs
+    # do not contend for the API rate limit.
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  surface:
+    name: check Pear CLI surface
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: published
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install tsx
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/gen" tsx
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/gen/node_modules/." node_modules/
+
+      - name: Check doc-states against upstream
+        env:
+          # Lifts the anonymous rate limit; the generator reads public tags only.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./node_modules/.bin/tsx scripts/gen-docs-states.ts --check

@@ -1,6 +1,7 @@
 # Docs versioning — design proposal
 
-**Status:** design agreed · **Phases 0–1 implemented** 2026-07-29 (§9, §10); Phase 2 (dropdown) next · **Date:** 2026-07-29
+**Status:** design agreed · **Phases 0–3 implemented** — 0–1 on 2026-07-29 (§9, §10), 2 on 2026-07-30
+(§11), 3 on 2026-07-31 (§12). Phase 4 (per-major module URLs) next · **Date:** 2026-07-29
 **Context:** [V3-PLATFORM-DOCS-AUDIT.md](./V3-PLATFORM-DOCS-AUDIT.md) — the audit that motivated this
 
 **Goal:** a version dropdown for the docs, without duplicating the API reference.
@@ -204,8 +205,8 @@ sitemap-excluded — needed if we ever want an unindexed older platform view.
 | --- | --- | --- |
 | **0** ✅ | "Documented against" marker + semver-aware drift check (§5) across module **and** bare refs | **DONE 2026-07-29** — see §9 |
 | **1** ✅ | Build `<Since>` / `<Until>` + a version context; convert `cli.mdx`'s existing inline markers | **DONE 2026-07-29** — see §10 |
-| **2** | Add the platform version dropdown — **spec: [PHASE-2-VERSION-DROPDOWN-SPEC.md](./PHASE-2-VERSION-DROPDOWN-SPEC.md)** | Dropdown ships on the 4 platform pages |
-| **3** | Define the doc-state list generator: derive which Pear versions are distinct by diffing `cmd/index.js` between tags | Dropdown lists doc-states, not 26 releases/yr |
+| **2** ✅ | Add the platform version dropdown — **spec: [PHASE-2-VERSION-DROPDOWN-SPEC.md](./PHASE-2-VERSION-DROPDOWN-SPEC.md)** | **DONE 2026-07-30** — see §11 |
+| **3** ✅ | Define the doc-state list generator: derive which Pear versions are distinct by diffing `cmd/index.js` between tags | **DONE 2026-07-31** — see §12 |
 | **4** | Introduce per-major URLs for one module (hypercore, which has live drift) as the pattern | Validates per-version SEO before rolling out |
 | **5** | Extend refgen to emit per-version models; render flag/API tables from them | Drift structurally impossible rather than review-dependent |
 
@@ -878,3 +879,84 @@ changes are decisions. Verified all three cases:
 So decision 4's `pushState` semantics are intact — back/forward still steps through deliberate
 selections and re-filters — while a keyboard run costs one entry instead of one per option. That
 matters more as `DOCS_VERSIONS` grows, which Phase 3 will do automatically.
+
+---
+
+## 12. Phase 3 — implemented 2026-07-31
+
+The doc-state list is generated now, not hand-maintained.
+
+| Piece | Where |
+| --- | --- |
+| CLI surface extractor (commands, flags, args) | `scripts/pear-cli-surface.ts` |
+| Generator + `--check` | `scripts/gen-docs-states.ts` |
+| Generated, committed list | `src/lib/docs-states.json` |
+| Consumes it | `src/lib/docs-versions.ts` |
+| Scheduled upstream watch | `.github/workflows/docs-states.yml` |
+
+`npm run gen:docs-states` refreshes the list; `npm run check:docs-states` fails when upstream has
+moved.
+
+### Semantic surface, not a file hash
+
+The generator reads `cmd/index.js` structurally rather than hashing it. Pear declares its whole
+surface with `paparam` combinators, so commands, flags, args and summaries can be extracted:
+
+```js
+const multisig = command('multisig', summary('…'),
+  command('link', flag('--vanity <vanity>', '…'), …), …)
+```
+
+A file hash would call any reformat, comment edit or import reorder a new doc-state and spawn a
+dropdown entry documenting nothing — the exact outcome Phase 3 exists to prevent.
+
+**Validated against the audit's hand-recorded delta.** For v3.0.1 → v3.1.0 the extractor emits
+precisely the four documented items: `pear cores` added, `touch --vanity` added, `multisig link
+--vanity` added, and the three sidecar log flags removed. The generator then independently derived
+the same two doc-states the Phase 2 literal had been holding by hand (`3.1` stable, `3.0` covering
+3.0.0 and 3.0.1).
+
+⚠️ Two bugs the first draft had, both caught by checking against that ground truth rather than
+trusting the output:
+
+1. **Commands must be keyed by full path.** `pear cores` and `pear gc cores` share a bare name, so
+   keying on the name alone made the top-level `cores` added in 3.1.0 look like it already existed.
+2. **A parent's flags must exclude its children's.** `multisig`'s argument list contains the whole
+   `multisig link` declaration, so a naive scan credited `link --vanity` to `multisig` too and
+   double-counted the change.
+
+A third, subtler one: the fingerprint originally used `JSON.stringify(obj, Object.keys(obj).sort())`
+to get stable key order. The second argument is a **replacer allow-list**, not a sort — it dropped
+every nested field, so all surfaces fingerprinted identically and every release looked like the
+same doc-state.
+
+### What it found
+
+- **v3.0.0 and v3.0.1 have identical surfaces** — one doc-state, which is why the dropdown says
+  "3.0" and not both. Exactly the collapsing §1.1 predicted.
+- **v3.2.0-rc.0 changes nothing versus v3.1.0**, so it earns **no entry**. A prerelease is listed
+  only when its surface actually differs from current stable (decision 7 wants prereleases
+  selectable and badged — not padding the dropdown with a version that reads the same).
+
+### Labels
+
+Minor granularity (decision 5) holds only while each minor contains one doc-state. If a patch
+release changes the surface — 3.1.0 and 3.1.4 both being doc-states — two entries would claim the
+label "3.1", so in that case both fall back to their full version. `check:docs-versions` already
+asserts unique labels, so a collision fails rather than silently mis-selecting.
+
+### Deliberately not done
+
+- **`--check` does not write.** It reports and exits 1. Writing would make the next run pass on its
+  own and silently absorb an upstream change nobody reviewed — which is exactly the trap
+  `gen-curated.ts --check` sets (spec §9).
+- **Not on the PR gate.** `docs-lint.yml` gates pull requests, and an upstream release is not the
+  PR author's fault; a network check there would fail unrelated PRs. It runs on a schedule instead,
+  an hour after the changelog watcher so the two do not contend for the rate limit.
+- **No auto-PR.** A new doc-state is never just a data change: the reference pages need
+  `<VersionSection>` / `<Since>` / `<Until>` markers written for the delta, which only a human can
+  do. The failing log prints the delta to work from.
+- **Subcommand modules are not read.** The recipe is `cmd/index.js` only, which the audit found
+  carries the whole flag surface for the commands it declares (`multisig link --vanity` is there).
+  If a future release moves flag declarations into `cmd/*.js` modules, the extractor will need to
+  follow them — the symptom would be a delta that looks emptier than the release notes.
