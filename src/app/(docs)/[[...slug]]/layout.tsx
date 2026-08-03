@@ -24,14 +24,23 @@ export default function Layout({ children }: LayoutProps<'/'>) {
 
   return (
     <>
-      <DocsLayout
-        {...baseOptions()}
-        tree={{ name: 'docs', children: customTree }}
-        links={linkItems}
-      >
-        {/* Supplies the `?v=` selection that <Since>/<Until> filter on. */}
-        <DocsVersionProvider>{children}</DocsVersionProvider>
-      </DocsLayout>
+      {/*
+        The provider stays OUTSIDE DocsLayout. The dropdown has since moved into
+        the article (see version/dropdown.tsx), so `children` alone would now be
+        enough — but keeping it here costs nothing and means anything Fumadocs
+        renders itself, such as a sidebar banner or tab, can still reach the
+        context without this trap resurfacing. Wrapping a server-rendered subtree
+        in a client provider is fine in this direction.
+      */}
+      <DocsVersionProvider>
+        <DocsLayout
+          {...baseOptions()}
+          tree={{ name: 'docs', children: customTree }}
+          links={linkItems}
+        >
+          {children}
+        </DocsLayout>
+      </DocsVersionProvider>
       <KeetRoomModalMount />
     </>
   );

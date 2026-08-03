@@ -14,6 +14,9 @@ import {
 import { transformerMetaHighlight } from '@shikijs/transformers';
 import codeImport from 'remark-code-import';
 import { z } from 'zod';
+import { remarkVersionSections } from './src/lib/remark-version-sections';
+import { remarkVersionCodeLines } from './src/lib/remark-version-code-lines';
+import { transformerVersionLines } from './src/lib/shiki-version-lines';
 
 const execFile = promisify(execFileCb);
 
@@ -162,6 +165,9 @@ export default defineConfig({
       transformers: [
         ...(rehypeCodeDefaultOptions.transformers ?? []),
         transformerMetaHighlight(),
+        // Strips `[!version since=3.1.0]` from a fence row and stamps the
+        // version onto that line, so the client filter can hide single flags.
+        transformerVersionLines(),
       ],
     },
     // `remarkImage` rewrites `![alt](url)` to `mdxJsxFlowElement` inside paragraphs.
@@ -174,9 +180,20 @@ export default defineConfig({
     // `remark-code-import` lets fences pull their body from a file via
     // ` ```js file=<rootDir>/examples/... ` so doc code stays in sync with the
     // runnable apps under `examples/`. `<rootDir>` resolves to the project root.
+    // `remarkVersionSections` expands the `<VersionSection since="…" />` pragma
+    // into a `<VersionGate>` around the whole section. It runs before Fumadocs'
+    // defaults, which is fine for the TOC: `remarkHeading` uses `visit`, so it
+    // still finds headings nested inside the gate — the TOC is filtered on the
+    // client instead (see src/components/version/filter.tsx).
     remarkPlugins: (v) => [
       remarkMdxMermaid,
       [codeImport, { rootDir: process.cwd() }],
+      remarkVersionSections,
+      // Must be a REMARK pass, not part of the Shiki transformer: it moves the
+      // `[!version …]` marker out of the fence body onto the info line before
+      // `includeProcessedMarkdown` serializes the mdast, which is the only way
+      // to keep it out of the `.md` files served to LLMs.
+      remarkVersionCodeLines,
       ...v,
     ],
   },

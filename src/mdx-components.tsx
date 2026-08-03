@@ -7,6 +7,7 @@ import { Image } from '@/components/Image';
 import { Mermaid } from '@/components/mermaid';
 import { Status } from '@/components/Status';
 import { Since, Until } from '@/components/version';
+import { VersionGate } from '@/components/version/gate';
 import { cn } from '@/lib/cn';
 
 /**
@@ -49,6 +50,10 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     // Platform version annotations — see src/components/version/index.tsx
     Since,
     Until,
+    // Whole-block gating. `<VersionSection>` is a pragma consumed by
+    // remark-version-sections and compiles to this; it is intentionally NOT
+    // registered, so a stray one fails the build loudly.
+    VersionGate,
     ...components,
   };
 }

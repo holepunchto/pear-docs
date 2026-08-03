@@ -39,14 +39,35 @@ export interface InternalLink {
   path: string;
   /** Fragment portion without the leading `#`. Empty when the link has no fragment. */
   fragment: string;
+  /**
+   * The `?v=` platform version the link asks for, or `''` for none.
+   *
+   * An unversioned link is checked against the current stable release — see
+   * `STABLE_DOCS_VERSION`. A link that deliberately points at older content
+   * carries `?v=`, and is checked against that release instead.
+   */
+  version: string;
+}
+
+/** Read `v` out of a `?a=b&v=3.0` style string. Returns `''` when absent. */
+function readVersionParam(withQuery: string): string {
+  const qIdx = withQuery.indexOf('?');
+  if (qIdx === -1) return '';
+  const match = /(?:^|&)v=([^&]*)/.exec(withQuery.slice(qIdx + 1));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+/** For in-page links, where any query trails the fragment (`#foo?v=3.0`). */
+function splitFragmentAndQuery(rest: string): { fragment: string; version: string } {
+  return { fragment: rest.split('?')[0], version: readVersionParam(`?${rest.split('?')[1] ?? ''}`) };
 }
 
 /**
  * Extract all links from MDX/MD content.
  *
- * Internal links are returned with their path and fragment split apart so
- * callers can validate fragments against per-page anchor sets. Anchor-only
- * links (`#foo`) come back with an empty `path`.
+ * Internal links are returned with their path, fragment and `?v=` version split
+ * apart so callers can validate fragments against per-page anchor sets, and
+ * against version gating. Anchor-only links (`#foo`) come back with empty `path`.
  */
 export function extractLinks(content: string): {
   internal: InternalLink[];
@@ -108,18 +129,28 @@ export function extractLinks(content: string): {
 
       // In-page anchor (`#foo`)
       if (rawLink.startsWith('#')) {
-        const fragment = rawLink.slice(1).split('?')[0];
-        if (fragment) internal.push({ raw: rawLink, path: '', fragment });
+        const { fragment, version } = splitFragmentAndQuery(rawLink.slice(1));
+        if (fragment) internal.push({ raw: rawLink, path: '', fragment, version });
         continue;
       }
 
-      // Absolute internal link, possibly with fragment
+      // Absolute internal link, possibly with query and/or fragment.
       if (rawLink.startsWith('/')) {
-        const noQuery = rawLink.split('?')[0];
-        const hashIdx = noQuery.indexOf('#');
-        const path = hashIdx === -1 ? noQuery : noQuery.slice(0, hashIdx);
-        const fragment = hashIdx === -1 ? '' : noQuery.slice(hashIdx + 1);
-        if (path) internal.push({ raw: rawLink, path, fragment });
+        // Hash FIRST, then query. Splitting on `?` first truncated the fragment
+        // of every version-qualified link (`/x?v=3.0#anchor` lost `#anchor`
+        // entirely), so those links silently skipped anchor validation.
+        const hashIdx = rawLink.indexOf('#');
+        const beforeHash = hashIdx === -1 ? rawLink : rawLink.slice(0, hashIdx);
+        const afterHash = hashIdx === -1 ? '' : rawLink.slice(hashIdx + 1);
+
+        const path = beforeHash.split('?')[0];
+        // `?v=` may sit before the hash (the normal shape) or, in sloppy hrefs,
+        // after it. Accept either.
+        const version =
+          readVersionParam(beforeHash) || readVersionParam(`?${afterHash.split('?')[1] ?? ''}`);
+        const fragment = afterHash.split('?')[0];
+
+        if (path) internal.push({ raw: rawLink, path, fragment, version });
       }
     }
   }
@@ -216,6 +247,130 @@ export function extractAnchors(content: string): Set<string> {
   }
 
   return anchors;
+}
+
+/** One `since`/`until` constraint an anchor sits under. */
+export interface AnchorGate {
+  since?: string;
+  until?: string;
+}
+
+/**
+ * Map every anchor to the version gates enclosing it.
+ *
+ * An anchor with an empty array is ungated and always resolves. An anchor with
+ * gates only resolves for readers on a version all of those gates apply to —
+ * which is what makes `?v=3.0#pear-cores` checkable, and what makes a BARE link
+ * to 3.0-only content a real defect rather than an invisible one.
+ *
+ * Line-scanned rather than parsed, to match the rest of this checker (it
+ * deliberately avoids booting the MDX pipeline). Two mechanisms to track:
+ *
+ *   <VersionGate since="…">…</VersionGate>   explicit, nestable
+ *   <VersionSection since="…" />             the heading above it, until the
+ *                                            next heading of the same or higher
+ *                                            level
+ */
+export function extractAnchorGates(content: string): Map<string, AnchorGate[]> {
+  // Strip JSX comments FIRST, exactly as extractLinks does. The cli.mdx
+  // maintainer note documents this very syntax, so without this the note's
+  // placeholder `<VersionSection since="x.y.z" />` is read as real markup — and
+  // because its illustrative closing tag is `</…>` rather than `</VersionGate>`
+  // the stack never popped, leaking a phantom gate onto every later anchor.
+  const withoutFrontmatter = content
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/^---\n[\s\S]*?\n---\n/, '');
+  const gates = new Map<string, AnchorGate[]>();
+
+  /** Explicit `<VersionGate>` nesting. */
+  const stack: AnchorGate[] = [];
+  /** Gate contributed by a `<VersionSection>` pragma, plus its heading depth. */
+  let section: { depth: number; gate: AnchorGate } | null = null;
+  /** Depth of the heading immediately preceding the current line. */
+  let lastHeadingDepth = 0;
+
+  const readGate = (tag: string): AnchorGate => ({
+    since: /\bsince=["']([^"']+)["']/.exec(tag)?.[1],
+    until: /\buntil=["']([^"']+)["']/.exec(tag)?.[1],
+  });
+
+  const record = (anchor: string) => {
+    const active = [...stack, ...(section ? [section.gate] : [])];
+    // Keep the WIDEST claim if an anchor somehow appears twice: an anchor that is
+    // ungated anywhere is reachable, so do not let a gated duplicate mask that.
+    const existing = gates.get(anchor);
+    if (!existing || existing.length > active.length) gates.set(anchor, active);
+  };
+
+  const slugger = new GithubSlugger();
+  /** Heading slug awaiting a possible `<VersionSection>` on a following line. */
+  let pendingHeading: string | null = null;
+  const flushHeading = () => {
+    if (pendingHeading === null) return;
+    record(pendingHeading);
+    pendingHeading = null;
+  };
+
+  let inFence = false;
+  for (const line of withoutFrontmatter.split('\n')) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+
+    // Explicit anchors are scanned even inside fences elsewhere in this file, but
+    // gating only makes sense for real markup, so fenced lines are skipped here.
+    if (!inFence) {
+      const heading = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+      if (heading) {
+        // Flush any previous heading that turned out to carry no pragma.
+        flushHeading();
+        lastHeadingDepth = heading[1].length;
+        // A section gate ends at the next heading of the same or higher level.
+        if (section && lastHeadingDepth <= section.depth) section = null;
+        const text = stripInlineMarkdown(heading[2]);
+        // HELD, not recorded: the pragma that gates this section sits on the NEXT
+        // line, so recording the heading here marked it ungated and — because
+        // `record` keeps the widest claim — that stuck even once the pragma was
+        // seen. Hold it until we know whether a pragma follows.
+        if (text) pendingHeading = slugger.slug(text);
+      }
+
+      const pragma = /<VersionSection\b[^>]*\/?>/.exec(line);
+      if (pragma) {
+        section = { depth: lastHeadingDepth, gate: readGate(pragma[0]) };
+        // Now the held heading can be recorded, under the gate it declares.
+        flushHeading();
+      }
+
+      for (const open of line.matchAll(/<VersionGate\b[^>]*>/g)) {
+        stack.push(readGate(open[0]));
+      }
+      for (const _ of line.matchAll(/<\/VersionGate>/g)) stack.pop();
+
+      // Any other content line settles it: no pragma is coming.
+      if (!heading && !pragma && line.trim() !== '') flushHeading();
+    }
+
+    for (const m of line.matchAll(/<a\s+[^>]*\bname=["']([^"']+)["'][^>]*>/gi)) record(m[1]);
+    for (const m of line.matchAll(/\bid=["']([^"']+)["']/g)) record(m[1]);
+  }
+
+  // A heading on the very last line never meets a settling line.
+  flushHeading();
+
+  return gates;
+}
+
+/** Build a slug → (anchor → gates) map for every content file. */
+export async function buildAnchorGateMap(
+  files: string[],
+): Promise<Map<string, Map<string, AnchorGate[]>>> {
+  const map = new Map<string, Map<string, AnchorGate[]>>();
+  for (const file of files) {
+    map.set(fileToSlug(file), extractAnchorGates(await readFile(file, 'utf-8')));
+  }
+  return map;
 }
 
 /**

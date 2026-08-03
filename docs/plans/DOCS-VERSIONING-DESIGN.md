@@ -573,3 +573,308 @@ rather than hiding them. Annotate mode remains correct and is what the canonical
 `types:check`, `eslint` (one pre-existing unrelated warning in `MdxImg`), `vale`,
 `check-internal-links`, `check-includes`, `check-doctypes`, `check-upstream-pins` all clean;
 badges render in SSR HTML; gate behaviour confirmed in-browser.
+
+---
+
+## 11. Phase 2 — implemented 2026-07-29
+
+The platform version dropdown, per
+[PHASE-2-VERSION-DROPDOWN-SPEC.md](./PHASE-2-VERSION-DROPDOWN-SPEC.md).
+
+| Piece | Where |
+| --- | --- |
+| Version list, `compareVersions`, `isGateHidden`, scope test | `src/lib/docs-versions.ts` |
+| Provider with a setter (`useSetDocsVersion`) | `src/components/version/index.tsx` |
+| Dropdown (sidebar banner, platform pages only) | `src/components/version/dropdown.tsx` |
+| Block gate — renders always, decides nothing | `src/components/version/gate.tsx` |
+| The one client consumer: content + TOC | `src/components/version/filter.tsx` |
+| `<VersionSection>` pragma → `<VersionGate>` | `src/lib/remark-version-sections.ts` |
+| Single fence rows | `src/lib/shiki-version-lines.ts` |
+| `display: contents` / `display: none` rules | `src/app/global.css` |
+
+### The §5 decision: option C, and the experiment that settled it
+
+§5 flagged one unverified assumption as decisive — whether headings inside a JSX block still
+land in `page.data.toc`. **They do.** `remarkHeading` (`fumadocs-core/mdx-plugins`) collects
+headings with `visit(root, 'heading')`, which recurses into `mdxJsxFlowElement` children, so a
+gated section's headings reach the TOC exactly as before. Confirmed by running the real plugin
+over a fixture: a `##` and a `###` wrapped in a JSX block both appeared in the extracted TOC.
+
+That inverts the reasoning in §5. The TOC is *never* filtered by wrapping, whichever option is
+chosen, so **the TOC has to be filtered on the client in all three** — which removes option
+B's main advantage and makes option C strictly the simplest thing that works.
+
+**Chosen: (C).** Gated content always renders, carrying `data-version-since` /
+`data-version-until`; one client effect decides what to hide. Consequences:
+
+- The exported HTML contains **every** version's content under the single canonical URL, which
+  is what requirement 4 asks for — verified: `data-version-hidden` appears in **0** exported
+  files, so no selection is ever baked in.
+- Filtering is a class flip, so there is no re-render, no hydration mismatch, and no
+  static-export trap.
+- Hidden content is present-but-`display: none`. Acceptable because annotate mode *is* the
+  canonical view by design; `display: none` also keeps it out of find-in-page and the
+  accessibility tree, so a filtered reader does not stumble over it.
+
+### Three gating tools, one contract
+
+Everything below emits the same two data attributes, so `<VersionFilter>` is the only consumer:
+
+| Tool | Gates | Why it exists |
+| --- | --- | --- |
+| `<Since v="…" />` childless | nothing — pure badge | §10: it is the warning, never hide it |
+| `<VersionSection since="…" />` | the whole section it sits under | one line that cannot drift out of sync with the section's extent |
+| `<VersionGate since="…">…</…>` | an arbitrary block | for a `<Callout>` or paragraph that is not a section |
+| `[!version since=…]` in a fence | one row | a flag added to `--help` output is a claim about one line, and no JSX can wrap it |
+
+`<VersionSection>` grouping runs to the next heading of the same level or higher, so a gated
+`##` swallows its `###` subsections and stops at the next `##`. The pragma is **explicit** on
+purpose: §5(B) suggested inferring the extent from a leading `<Since>` badge, but that badge
+also appears mid-paragraph as an annotation, so inferring would silently gate whole sections an
+author only meant to annotate — the same class of bug as §10.
+
+`display: contents` on the gate wrapper makes it layout-transparent. Measured: a gated `<h2>`
+and an ungated one are dimensionally identical (825×32, `margin: 48px 0 24px`).
+
+### Decided by the maintainer
+
+**History: `pushState`,** not `replaceState` (the spec's stated preference). Each selection gets
+its own history entry, so back/forward steps through selections. `popstate` covers the
+back/forward direction; it does **not** fire for `pushState`, which is why the setter updates
+React state directly as well.
+
+### Notes for Phase 3 and beyond
+
+- `DOCS_VERSIONS` in `src/lib/docs-versions.ts` is the hand-maintained literal Phase 3 replaces.
+  Consumers read `DOCS_VERSIONS_NEWEST_FIRST` (sorted at module scope), so Phase 3's generator
+  may emit entries in any order. `npm run check:docs-versions` pins the invariants.
+- The dropdown writes the **label** (`?v=3.1`) for clean shareable URLs, and
+  `resolveDocsVersion` maps any version-ish value onto its doc-state, so `?v=3.0.1` selects
+  "3.0". `<Since>`/`<Until>` still compare the raw string, so a patch-level link stays precise.
+- The provider re-syncs from the URL on `pathname` change. In-site links carry no `?v=`, so a
+  selection deliberately **does not** follow the reader to a sibling page. Carrying it across
+  navigation would mean rewriting link hrefs — out of scope here, and worth a UX decision.
+- Generated `.md` / copy-page output contains the raw `<VersionGate>` wrappers and
+  `[!version …]` markers. That is pre-existing behaviour for JSX in this repo (`<Callout>`,
+  `<Status>`, `<Tabs>` already leak the same way — 24 occurrences in `cli.mdx` before this
+  change), not a new class of problem, but it is the natural thing to fix if LLM output quality
+  is ever tightened.
+
+### Verified
+
+All §8 acceptance criteria, against **both** `next dev` and the served static export (`out/`):
+
+- Dropdown on exactly the four `/reference/pear/*` pages, and **0** other exported pages.
+- Default renders everything with badges; `?v=3.0` hides `pear cores`, persisted-logs and both
+  `--vanity` rows (fence row *and* prose) while **showing** the removed sidecar log flags;
+  `?v=3.1` inverts all of it.
+- TOC drops exactly `#pear-cores` and `#persisted-logs` (25 of 27 entries visible).
+- Shared `?v=3.0` link loads pre-filtered; back/forward re-filters; changing selection keeps
+  scroll position (~8400px, not 0 — browser scroll anchoring absorbs the reflow).
+- `npm run build`, `types:check`, `vale`, `check-internal-links`, `check-includes`,
+  `check-doctypes`, `check-upstream-pins` clean. Sitemap unchanged: 137 entries, one per
+  platform page, no `?v=`, self-canonical. No console errors; light and dark both correct.
+
+⚠️ **Trap found the hard way:** a stray ` ``` ` inside the `{/* maintainer note */}` in
+`cli.mdx` broke `check-internal-links` for four anchors — MDX ignores it inside a comment, but
+the checker's markdown parse treats it as opening a fence and swallows later headings. Keep
+triple backticks out of MDX comments.
+
+### 11.1 Post-merge review round
+
+Merged `feat/add-json-flags-and-new-version-updates` (CLI reference regrouped by task, so every
+command dropped from `##` to `###`). Git's auto-merge **duplicated** `pear cores` and
+`Persisted logs`: the reorder on one side and the added pragma on the other touched the same
+heading blocks. Resolved by taking the restructured file wholesale and re-applying the six
+markers, then diffing against upstream to prove the only delta was those markers. The pragma is
+depth-relative, so demotion needed no mechanism change.
+
+An adversarial review panel then found four defects worth fixing. Two were **silent** — the
+kind that look fine in every manual check:
+
+1. **TOC filtering never ran below 1280px.** `TOC_CONTAINERS` listed `#nd-tocnav`, which does
+   not exist in fumadocs-ui 16.5.4 (zero hits in `dist`). `#nd-toc` carries `max-xl:hidden`, so
+   under 1280px the only TOC on screen is `[data-toc-popover-content]` — never touched. The
+   original verification passed because it was done at 1440px. Fixed, plus a scoped
+   `MutationObserver`, because Radix mounts the popover on first open.
+2. **An out-of-range `?v=` filtered the page while the dropdown said "All versions".**
+   `readVersionFromLocation` accepted any `\d+\.\d+`, so `?v=2.9` hid every `since` gate while
+   `resolveDocsVersion` returned `null` for the control — and the reader could not undo it,
+   because the `<select>` already sat on that option so choosing it fired no `change`. The
+   reader now degrades to annotate mode. **Lesson: the filter and the control must read the
+   selection through the same resolver.**
+3. **Hidden headings kept their ids,** so `useAnchorObserver`'s fallback
+   (`fumadocs-core/dist/toc.js`) could lock the TOC highlight onto an invisible heading: it
+   resolves watched ids with `getElementById`, which returns `display: none` elements, and their
+   all-zero rect wins the "closest to viewport top" test. Ids are now parked in
+   `data-version-id` while hidden.
+4. **A well-formed but unknown version silently disabled a gate.** `since="3.10"` (typo for
+   `3.1.0`) compiled to a `data-version-since` no selection can match, leaving the section
+   visible in every version with no error. Now caught two ways: the plugin rejects
+   non-numeric values at build time, and `check:docs-versions` rejects anything that is not a
+   declared doc-state.
+
+`scripts/check-docs-versions.ts` (`npm run check:docs-versions`) is the safety net this feature
+lacked — there is no test runner in the repo, so it follows the existing `check:*` pattern. It
+validates every `<VersionSection>`, `<VersionGate>`, `<Since>`, `<Until>` and `[!version …]`
+marker in `content/` against `DOCS_VERSIONS`, and pins the list's own invariants: exactly one
+`stable`, unique labels/values, and each `label` comparing equal to its `value` (otherwise
+selecting it would resolve to a different doc-state). Each failure class was verified by
+deliberately introducing it. It also flags an **inert** gate — a `since` at or below the oldest
+doc-state can never hide anything, so the marker is misleading.
+
+Also fixed: `readAttrs` collected errors it could never report (`VFile#fail` returns `never`, so
+every `continue` was dead) and now reports all problems with one pragma at once; the guard loop
+was off by one (N pragmas need N+1 scans, so a file with exactly 500 failed with a false "this
+is a bug"); `STABLE_DOCS_VERSION` was deleted as dead code.
+
+### 11.2 Fence-marker leak fixed, and the dropdown moved into the article
+
+**The `[!version …]` leak is fixed.** It used to survive into the processed markdown *inside a
+code fence*, so `out/reference/pear/cli.md` presented it as literal `pear touch --help` output —
+unlike the `<VersionGate>` wrappers, which a consumer discounts as tags around content, that
+invents text inside a block claiming to be verbatim.
+
+The cause was staging: `postprocess.includeProcessedMarkdown` serializes the **mdast**, and Shiki
+is a **rehype** transformer, so anything stripped in Shiki's `preprocess` was already baked into
+the `.md`. `src/lib/remark-version-code-lines.ts` now moves the marker at the remark stage, out of
+the fence body and onto the info line, and `shiki-version-lines.ts` reads it back from
+`this.options.meta.__raw` — the same channel `transformerMetaHighlight` uses for `{16,22-23}`:
+
+```text
+  --vanity <vanity>   Generate a vanity link  [!version since=3.1.0]   <- authored
+```
+becomes ```` ```text version-lines="2:since:3.1.0" ```` with a clean body. Authors keep the inline
+form because it is **self-anchoring** — a line number in the info string would silently drift the
+moment a flag is inserted above it.
+
+⚠️ The pass forces `lang` to `text` on unlabelled fences. mdast serializes `meta` straight after
+`lang`, so with `lang` empty the info line would read ```` ``` version-lines="…" ```` and
+re-parsing it would take the meta as the language. `text` renders identically to no language.
+
+Verified in the real export: `out/reference/pear/cli.md:107` and `:231` now read plain
+`--vanity <vanity>   Generate a vanity link with this prefix`. The one remaining `[!version` in
+that file is the maintainer note documenting the syntax, which is correct.
+
+**The dropdown moved from `sidebar.banner` into the article, beside the `<h1>`.** The banner hid
+it exactly when it mattered: Fumadocs renders it inside `SidebarContent`, and below 768px the
+sidebar becomes a drawer — so on a phone the control *and* the only "you are reading a filtered
+page" signal both vanished while `?v=` kept filtering. Confirmed at 375px: it wraps under the
+heading, stays visible, and filtering still works end to end.
+
+Two consequences:
+
+- The provider no longer *needs* to wrap `DocsLayout`, since nothing version-aware is passed to
+  it any more. It still does, deliberately — it costs nothing and stops the trap resurfacing if a
+  banner or tab is ever added.
+- Scoping is now enforced twice: server-side in `page.tsx` via `isPlatformPath(page.url)`, so the
+  component is not shipped to the other 143 pages at all, and again inside the component.
+
+That move also closed the aria gap: the hint is now `aria-describedby`-linked to the `<select>`
+and carries `role="status"`, so a screen reader announces what changed instead of the page
+silently losing sections (WCAG 2.1 SC 4.1.3).
+
+The review panel died on rate limits twice, and both times the same two dimensions were the
+casualties, so **`filter-client` and `spec-compliance` were audited by hand**. That found two
+more, both fixed:
+
+- `filter.tsx` decided id-parking per gate *while* iterating, so a gate that applies to the
+  selection restored its heading ids even when an outer gate kept the subtree `display: none` —
+  reintroducing the invisible-but-addressable heading for NESTED gates. Now two passes: mark
+  every gate, then ask `closest()` per id, which is order-independent. `cli.mdx` has no nested
+  gate yet, so it was verified by injecting one (inner `until="3.1.0"` inside outer
+  `since="3.1.0"`, selected 3.0).
+- A pragma inline on the heading line parses as `mdxJsxTextElement`, so `isPragma` never matched
+  and the rewrite silently did not happen. The build still failed (`VersionSection` is
+  deliberately unregistered) but with a message pointing nowhere near the mistake.
+
+⚠️ **Trap: never run `npm run build` while `next dev` is running.** Both use `out/` (dev under
+`out/dev/`), so the build deletes the manifests the dev server is holding open and every request
+starts returning `Internal Server Error` with `ENOENT … out/dev/routes-manifest.json`. The build
+itself succeeds, so it reads like a code regression when it is only a directory collision. Run
+them one at a time; verify the export from `out/` first, then restart dev for runtime checks.
+
+Worth knowing about the CSS approach: the generated rule puts `li:has(> a[href=…])` inside
+`:is(…)`, whose selector list is **forgiving**. Where `:has()` is unsupported that branch is
+dropped and the plain `a[href=…]` still hides the entry, instead of the whole rule being
+discarded as it would be in a bare comma-separated list.
+
+### 11.3 Deep links win over the selection, and the checker learned about gating
+
+**The hidden-anchor problem is fixed.** `?v=3.0#pear-cores` used to drop the reader at the top of
+the page: the target was `display: none`, so the browser had nothing to scroll to and the link
+silently did nothing.
+
+Three options, and the chosen one is the third:
+
+| Option | Why not |
+| --- | --- |
+| Keep filtering it away | The link reads as broken; the reader has no idea why. |
+| Drop the whole selection | The rest of the page changes for no visible reason. |
+| **Reveal just that section, and say why** | Honours both the link and the selection. |
+
+So a gate the selection would hide, but that holds the hash target, is **revealed** instead:
+`data-version-revealed` carries the sentence, `global.css` renders it as a `::before` note above
+the section, and `<VersionFilter>` re-scrolls (the browser already gave up). The rest of the
+selection stays filtered and the dropdown still reads `3.0`.
+
+Two things that had to be right:
+
+- The revealed gate switches to `display: block`, because a `display: contents` element
+  **generates no pseudo-elements** — the note would not render at all.
+- The re-scroll is guarded by *which hash was last scrolled to*, not merely by "something is
+  revealed". The effect also re-runs on every selection change, so an unguarded call yanked the
+  page back to the anchor every time the reader touched the dropdown. Verified: parked at
+  y=3000, switching 3.0 → 3.1 → 3.0 stays at ~3000 instead of jumping to ~9700.
+
+**`check:internal-links` now understands gating**, so this class of link is caught before it
+ships rather than being a runtime surprise:
+
+- An **unversioned** link is judged against `STABLE_DOCS_VERSION` — the release a reader
+  following a bare link is assumed to be on. A bare link to content removed by current stable
+  fails with *"does not exist in Pear 3.1 (current stable); add ?v=3.0 to link at it
+  deliberately"*.
+- A link **carrying `?v=`** is judged against that release, and fails with the versions it does
+  resolve on.
+- `?v=` must name a declared doc-state **exactly**. `resolveDocsVersion` is deliberately lenient
+  for reader input (it maps `?v=9.9` forward onto the newest doc-state), and that leniency would
+  let a typo in our own content pass silently.
+
+⚠️ Two bugs found while building it, both of which had been hiding real breakage:
+
+1. `extractLinks` did `rawLink.split('?')[0]`, which **truncated the fragment of every
+   version-qualified link** — `/x?v=3.0#anchor` lost `#anchor` entirely, so those links skipped
+   anchor validation altogether. Hash is now split before query.
+2. The first cut of `extractAnchorGates` did not strip JSX comments, so the cli.mdx maintainer
+   note — which documents this very syntax — was parsed as real markup. Its illustrative closing
+   tag is `</…>`, not `</VersionGate>`, so the stack never popped and a phantom `since="x.y.z"`
+   gate leaked onto **every** anchor in the file. It was invisible because `compareVersions`
+   reads `x.y.z` as `0.0.0`, which never hides anything.
+
+Each failure class was verified by deliberately introducing it.
+
+### 11.4 Keyboard traversal no longer floods history
+
+The last open item, now closed. The worry was that arrow-keying a **closed** `<select>` fires
+`change` on every keypress, so a keyboard user passing over options would mint a history entry
+each and then need that many Backs to leave the page.
+
+Measured on macOS: **it does not happen there.** Four real `ArrowDown` presses on the focused,
+closed select produced **zero** `change` events and zero history writes — macOS opens the native
+popup (an OS widget outside the page) and fires nothing until commit. The behaviour is specific to
+Windows and Linux Chrome/Firefox, which cannot be tested from this machine.
+
+Rather than leave a known-bad path on two platforms unaddressed, `setVersion` now collapses a
+**run** of changes inside `TRAVERSAL_WINDOW_MS` (400ms) into a single history entry —
+`replaceState` within the window, `pushState` outside it. A rapid run is a traversal; spaced
+changes are decisions. Verified all three cases:
+
+| | entries added |
+| --- | --- |
+| one selection | 1 |
+| rapid run of three | 1 |
+| two selections 600ms apart | 2 |
+
+So decision 4's `pushState` semantics are intact — back/forward still steps through deliberate
+selections and re-filters — while a keyboard run costs one entry instead of one per option. That
+matters more as `DOCS_VERSIONS` grows, which Phase 3 will do automatically.

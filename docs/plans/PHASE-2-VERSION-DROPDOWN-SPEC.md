@@ -1,6 +1,8 @@
 # Phase 2 — platform version dropdown: implementation spec
 
-**Status:** ready to implement · **Written:** 2026-07-29
+**Status:** ✅ implemented 2026-07-29 — see [DOCS-VERSIONING-DESIGN.md §11](./DOCS-VERSIONING-DESIGN.md#11-phase-2--implemented-2026-07-29)
+for what was built, the §5 decision (option C) and the experiment that settled it.
+· **Written:** 2026-07-29
 **Parent design:** [DOCS-VERSIONING-DESIGN.md](./DOCS-VERSIONING-DESIGN.md) (read §1, §2, §4, §7, §10)
 **Depends on:** Phases 0–1, merged in [PR #330](https://github.com/holepunchto/pear-docs/pull/330)
 

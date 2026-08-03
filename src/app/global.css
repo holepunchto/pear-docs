@@ -31,6 +31,59 @@
   opacity: 0.8;
 }
 
+/* Inline `code` chips must fit the line box they sit in.
+   Measured at 1440px: prose runs a 20px line box, while an inline chip was 23px
+   (13px x 1.43 line-height + 3px padding-block each side). Consecutive baselines
+   are ~21px apart, so the tinted backgrounds of chips on adjacent lines collided
+   by ~2px — most visible inside a <Callout>, where the surrounding tint reveals
+   it, but present in every wrapped paragraph.
+   `line-height: 1` brings the chip to 20px, exactly the line box, WITHOUT
+   changing paragraph height (verified: 41px before and after), so the rhythm is
+   fixed at the cause rather than by padding the notice's line-height.
+   `box-decoration-break: clone` is the second half: a chip that wraps across
+   lines was sliced flat mid-background, and now each fragment keeps its own
+   padding and rounded corners.
+   `:not(pre) >` keeps fenced blocks out of it — those set their own metrics. */
+.prose :not(pre) > code {
+  line-height: 1;
+  padding-block: 0.1rem;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Platform version gating — see src/components/version/.
+   The gate wrapper must not affect layout when visible, so it is
+   `display: contents`: a `<VersionGate>` around a heading plus its body leaves
+   prose spacing exactly as it was. `data-version-hidden` is flipped by
+   <VersionFilter> after mount, so the exported HTML always ships every version's
+   content under the one canonical URL. */
+[data-version-gate] {
+  display: contents;
+}
+
+[data-version-hidden] {
+  display: none !important;
+}
+
+/* A section the selected version does not have, shown anyway because the reader
+   deep-linked into it. Needs a real box (not `display: contents`) so the ::before
+   note can render — a display:contents element generates no pseudo-elements. */
+[data-version-revealed] {
+  display: block;
+  border-left: 2px solid var(--color-fd-primary);
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+}
+
+[data-version-revealed]::before {
+  content: attr(data-version-revealed);
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--color-fd-muted-foreground);
+}
+
 /* Stepper styling */
 .fd-step::before,
 .fd-steps [data-step]::before {
