@@ -137,28 +137,7 @@ git clone -b variant/single-thread https://github.com/holepunchto/hello-pear-bar
 
 Same `App` [`ready-resource`](https://github.com/holepunchto/ready-resource) shape and event surface (`updating`, `updating-delta`, `updated`, `update-applied`, `error`) as `main`, but `_open()` constructs `PearRuntime` directly instead of spawning a worker and wrapping its IPC in a `FramedStream`:
 
-```js
-_open() {
-  const store = new Corestore(path.join(this.dir, 'pear-runtime', 'corestore'))
-  const swarm = new Hyperswarm()
-
-  this.store = store
-  this.swarm = swarm
-
-  const pear = new PearRuntime({
-    dir: this.dir,
-    app: this.app,
-    updates: this.updates,
-    version: this.version,
-    upgrade: this.upgrade,
-    name: this.name,
-    store,
-    swarm
-  })
-
-  this.pear = pear
-  // ...
-}
+```js file=<rootDir>/examples/getting-started/hello-pear-bare-single-thread/app.js#L23-L41 title="app.js"
 ```
 
 See [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/variant/single-thread/app.js) on the `variant/single-thread` branch for the full file.
@@ -167,21 +146,12 @@ See [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/variant/singl
 
 `bin.mjs` spawns a **detached** updater and returns immediately—the foreground command never blocks on the network:
 
-```js
-if (updates !== false) {
-  App.spawnUpdater(dir, os.execPath(), isDev ? Bare.argv[1] : null, wait)
-}
+```js file=<rootDir>/examples/getting-started/hello-pear-bare-daemon/bin.mjs#L50-L57 title="bin.mjs"
 ```
 
 `App.spawnUpdater` re-invokes the same executable with a hidden `--updater` flag through [`bare-daemon`](https://github.com/holepunchto/bare-daemon):
 
-```js
-static spawnUpdater(dir, app, entrypoint, updateWindow) {
-  const args = entrypoint === null ? [] : [entrypoint]
-  args.push('--updater', '--storage', dir)
-  if (updateWindow !== undefined) args.push('--update-window', String(updateWindow))
-  return daemon.spawn(app, args)
-}
+```js file=<rootDir>/examples/getting-started/hello-pear-bare-daemon/app.js#L11-L18 title="app.js"
 ```
 
 The daemon acquires an `updater.lock` file in the storage directory—via [`fs-native-extensions`](https://github.com/holepunchto/fs-native-extensions)—so only one updater runs per storage directory at a time, waits up to `--update-window` (default 30 seconds) for an update to arrive, and logs to `<storage>/updates.log` instead of stdout since nothing is attached to read it. See [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/variant/daemon/app.js) and [`bin.mjs`](https://github.com/holepunchto/hello-pear-bare/blob/variant/daemon/bin.mjs) on the `variant/daemon` branch for the full files.

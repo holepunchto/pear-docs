@@ -111,6 +111,51 @@ const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    // hello-pear-bare's `variant/single-thread` branch: same App ready-resource
+    // shape as `main`, but `_open()` constructs PearRuntime directly instead of
+    // spawning a Bare worker — no worker, no FramedStream IPC. There's no
+    // separate worker holding demo peer-to-peer code, so unlike `hello-pear-bare`
+    // there's no "Hello from worker" line; asserts the CLI's own ready log
+    // instead, then (like `main`) stays alive since Corestore/Hyperswarm/
+    // PearRuntime hold the event loop open.
+    id: 'hello-pear-bare-single-thread',
+    dir: `${GETTING}/hello-pear-bare-single-thread`,
+    installs: ['.'],
+    artifacts: [],
+    steps: [
+      {
+        kind: 'run',
+        process: 'app',
+        app: '.',
+        cmd: './node_modules/.bin/bare bin.mjs --no-updates',
+        expect: 'CLI ready. Press Ctrl+C to stop.',
+        expectAliveMs: 1500,
+        timeoutMs: 45_000,
+      },
+    ],
+  },
+  {
+    // hello-pear-bare's `variant/daemon` branch: `--no-updates` skips
+    // `App.spawnUpdater(...)` entirely (bin.mjs's `if (updates !== false)`
+    // guard), so no `App`/PearRuntime is ever constructed on this path and the
+    // foreground command exits on its own right after logging — unlike `main`
+    // and `single-thread`, this scenario must NOT assert `expectAliveMs`.
+    id: 'hello-pear-bare-daemon',
+    dir: `${GETTING}/hello-pear-bare-daemon`,
+    installs: ['.'],
+    artifacts: [],
+    steps: [
+      {
+        kind: 'run',
+        process: 'app',
+        app: '.',
+        cmd: './node_modules/.bin/bare bin.mjs --no-updates',
+        expect: 'CLI ready.',
+        timeoutMs: 45_000,
+      },
+    ],
+  },
+  {
     id: 'hyperdht-chat',
     dir: `${CONNECT}/connect-two-peers-by-key-with-hyperdht`,
     installs: ['server-app', 'client-app'],
