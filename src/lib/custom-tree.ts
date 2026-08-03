@@ -96,6 +96,11 @@ export const customTree: Node[] = [
           },
           {
             type: 'page',
+            name: 'Migrating from Node.js',
+            url: '/explanation/migrating-from-nodejs',
+          },
+          {
+            type: 'page',
             name: 'One core, many platforms',
             url: '/explanation/bare-on-native',
           },
@@ -404,6 +409,11 @@ export const customTree: Node[] = [
         type: 'page',
         name: 'Manage installed applications',
         url: '/how-to/manage-installed-applications',
+      },
+      {
+        type: 'page',
+        name: 'Migrate a Node.js app to Bare',
+        url: '/how-to/migrate-a-nodejs-app-to-bare',
       },
       {
         type: 'page',
