@@ -143,8 +143,8 @@ export const customTree: Node[] = [
           },
           {
             type: 'page',
-            name: 'Release pipeline',
-            url: '/explanation/release-pipeline',
+            name: 'Deployment - Releasing Apps P2P',
+            url: '/explanation/deployment-releasing-apps-p2p',
           },
         ],
       },

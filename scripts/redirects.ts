@@ -133,7 +133,13 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // as a "Glossary" section, so the standalone reference page is gone.
   out.push({
     from: '/reference/release-pipeline-glossary/',
-    to: '/explanation/release-pipeline/#glossary',
+    to: '/explanation/deployment-releasing-apps-p2p/#glossary',
+  });
+
+  // "Release pipeline" was renamed "Deployment - Releasing Apps P2P"; the slug moved with it.
+  out.push({
+    from: '/explanation/release-pipeline/',
+    to: '/explanation/deployment-releasing-apps-p2p/',
   });
 
   // Troubleshooting and manage-installed-applications were promoted to
