@@ -44,6 +44,12 @@ const docTypeSchema = z.enum([
   'getting-started',
 ]);
 
+// Which product nav root(s) a page belongs to. Orthogonal to docType (which
+// quadrant) — this is which sidebar.tabs tree(s) surface the page. 'shared'
+// pages (e.g. troubleshooting) are listed in both trees. See
+// docs/plans/PEAR-BARE-SPLIT-PITCH.md for the split this backs.
+const productSchema = z.enum(['pear', 'bare', 'shared']);
+
 const tetherSeoFrontmatterSchema = z.object({
   description: z
     .string()
@@ -58,6 +64,7 @@ const tetherSeoFrontmatterSchema = z.object({
   ogImage: z.string().optional(),
   schemaType: jsonLdSchemaTypeSchema.optional(),
   docType: docTypeSchema.optional(),
+  product: productSchema.optional(),
   lastModified: z.union([z.string(), z.coerce.date()]).optional(),
   // The upstream release this reference page was written and verified against.
   // Bare SemVer, no leading `v` (e.g. "11.34.0"); prereleases allowed.
