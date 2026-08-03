@@ -65,7 +65,12 @@ class WorkerTask extends ReadyResource {
       invite: room.invite,
       info: room.info
     }))
-    rooms.sort((a, b) => a.info.at - b.info.at)
+    // A just-joined room has no `info` yet — it only arrives once its
+    // ChatAccount 'update' syncs the room metadata from the peer who created
+    // it (see joinRoom in chat-account.js). If _rooms() runs in that window,
+    // `.info` is undefined and a bare `.at` access throws, taking the whole
+    // worker down.
+    rooms.sort((a, b) => (a.info?.at ?? 0) - (b.info?.at ?? 0))
     this.pipe.write(JSON.stringify({ type: 'rooms', rooms }))
   }
 }
