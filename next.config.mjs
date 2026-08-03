@@ -69,7 +69,9 @@ const config = {
       { source: '/reference/faq', destination: '/explanation', permanent: true },
       // Release pipeline glossary was folded into the release-pipeline
       // explanation as a "Glossary" section (subtask: glossary merge).
-      { source: '/reference/release-pipeline-glossary', destination: '/explanation/release-pipeline#glossary', permanent: true },
+      { source: '/reference/release-pipeline-glossary', destination: '/explanation/deployment-releasing-apps-p2p#glossary', permanent: true },
+      // "Release pipeline" was renamed "Deployment - Releasing Apps P2P"; the slug moved too.
+      { source: '/explanation/release-pipeline', destination: '/explanation/deployment-releasing-apps-p2p', permanent: true },
       // Building-block reference docs live at /reference/building-blocks/*.
       // Keep /building-blocks/* as a legacy shortcut that redirects there.
       { source: '/building-blocks/:slug', destination: '/reference/building-blocks/:slug', permanent: true },
