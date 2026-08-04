@@ -64,6 +64,10 @@ const EXEMPT_FROM_ORPHAN = new Set<string>([
   '/how-to',
   '/reference',
   '/explanation',
+  // Bare's own root, reachable from the ProductSwitcher in every page's
+  // sidebar rather than through content-to-content links — see
+  // docs/plans/PEAR-BARE-SPLIT-PITCH.md.
+  '/bare',
 ]);
 
 const STRICT = process.argv.includes('--strict');

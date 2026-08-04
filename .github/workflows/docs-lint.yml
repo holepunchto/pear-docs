@@ -14,6 +14,8 @@ on:
       - 'content/**'
       - 'scripts/check-internal-links.ts'
       - 'scripts/check-docs-versions.ts'
+      - 'scripts/check-doctypes.ts'
+      - 'source.config.ts'
       - 'src/lib/docs-versions.ts'
       - 'scripts/helpers.ts'
       - 'scripts/gen-curated.ts'
@@ -27,6 +29,8 @@ on:
       - 'content/**'
       - 'scripts/check-internal-links.ts'
       - 'scripts/check-docs-versions.ts'
+      - 'scripts/check-doctypes.ts'
+      - 'source.config.ts'
       - 'src/lib/docs-versions.ts'
       - 'scripts/helpers.ts'
       - 'scripts/gen-curated.ts'
@@ -61,6 +65,28 @@ jobs:
           cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
       - name: Check internal links
         run: ./node_modules/.bin/tsx scripts/check-internal-links.ts
+
+  doctypes:
+    name: doctype & product invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Same isolated-install pattern as internal-links: check-doctypes.ts
+      # imports scripts/helpers.ts, which imports github-slugger. See that
+      # job for why a plain `npm install` doesn't work here.
+      - name: Install checker deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+      # Every content page must declare docType matching its Diátaxis quadrant
+      # (decisions/0001-adopt-diataxis-ia.md §8) and a valid `product`
+      # (pear/bare/shared — docs/plans/PEAR-BARE-SPLIT-PITCH.md).
+      - name: Check docType and product invariants
+        run: ./node_modules/.bin/tsx scripts/check-doctypes.ts
 
   version-gates:
     name: version gates
