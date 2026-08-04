@@ -218,6 +218,11 @@ export const bareTree: Node[] = [
       },
       {
         type: 'page',
+        name: 'Migrate a Node.js app to Bare',
+        url: '/how-to/migrate-a-nodejs-app-to-bare',
+      },
+      {
+        type: 'page',
         name: 'Troubleshoot common issues',
         url: '/how-to/troubleshooting',
       },
