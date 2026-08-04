@@ -111,6 +111,78 @@ No thin Pear-side wrapper stub is needed for the pages that move — Pear's rema
 
 ---
 
+## Phase 1 spike: findings (verified against installed `fumadocs-ui@16.5.4` / `fumadocs-core@16.5.4` source, not docs/memory)
+
+The pitch flagged one real unknown: whether `sidebar.tabs` composes with the single
+catch-all route. It does, but not the way "tabs" suggests — and this repo's `output:
+'export'` static build adds a second constraint that matters just as much.
+
+**Finding 1 — `sidebar.tabs` is a switcher UI, not a tree filter.** Read directly from
+`fumadocs-ui`'s compiled source (`layouts/docs/index.js`, `components/sidebar/page-tree.js`,
+`components/sidebar/tabs/index.js`):
+- `DocsLayout`'s `sidebar.tabs` only feeds `SidebarTabsDropdown` — a switcher of links.
+- The actual sidebar content (`SidebarPageTree`) unconditionally renders `root.children`,
+  i.e. the *entire* `tree` prop passed to `DocsLayout`, with zero filtering by which tab is
+  "active."
+- `getSidebarTabs(tree)` (the auto-derivation helper) scans for `Folder.root: true` nodes
+  and builds one `SidebarTab` per one, with a `urls: Set<string>` used only for
+  highlighting/active-state — again, not for filtering what renders.
+- Conclusion: marking two top-level folders `root: true` in one combined tree gets you a
+  tab-switcher *decoration*, but the sidebar would still show Pear's and Bare's nodes
+  stacked together underneath it. `DOCS-VERSIONING-DESIGN.md`'s spike question ("do
+  multiple `loader()` instances with distinct `baseUrl`s compose with the catch-all
+  route?") doesn't actually apply here — we aren't using multiple loaders/baseUrls (see
+  the no-URL-changes decision) — but the adjacent assumption that `sidebar.tabs` alone
+  produces a filtered sidebar view does not hold for either project and needed its own check.
+
+**Finding 2 — this is a fully static export; tree selection must happen at build time,
+not per-request.** `next.config.mjs` sets `output: 'export'` ("Fully static HTML + assets
+in `out/`, no Node server, no API at runtime"), and both `page.tsx` and `layout.tsx` under
+`(docs)/[[...slug]]/` declare `export const dynamic = 'force-static'`. There is no
+request-time server to run cookie/header-based product resolution — whatever sidebar tree
+a page ships with is decided once, at `next build`, and baked into that page's static HTML.
+
+**Finding 3 — the resolution mechanism, verified end-to-end.** `layout.tsx` sits in the
+same route segment as `page.tsx` and receives the same shape of `params` (confirmed via
+`.next/types/routes.d.ts`'s `LayoutProps<...>`/`PageProps<...>` — both carry
+`params: Promise<{ slug?: string[] }>`). `page.tsx` already does
+`source.getPage(params.slug)` to load the current page; `layout.tsx` can do the identical
+lookup to read that page's `product` frontmatter and pick a tree accordingly. Verified live
+by temporarily adding `console.log(page.data.product)` to `page.tsx` and running
+`npm run build`: **all 137 pages resolved a defined `product` value (0 `undefined`)**,
+matching the Phase 0 backfill exactly. (The debug probe was reverted after verification —
+it never landed in a commit.) One false alarm during this check: an earlier run on a stale
+checkout of this branch showed `product: undefined` for every page — that was a wrong-branch
+artifact (Phase 0's schema change wasn't present in that tree), not a real bug in the
+mechanism, and re-confirmed cleanly once back on `feat/pear-bare-split` with `.source`/`.next`
+caches cleared.
+
+**Resulting Phase 2 design (supersedes the plain "wire via `sidebar.tabs`" sketch in
+§Technical changes required, item 2):**
+1. Split `custom-tree.ts` into `pear-tree.ts` + `bare-tree.ts` — two independent `Node[]`
+   arrays, not one combined tree with `root: true` markers (Finding 1 rules that out).
+2. Make `layout.tsx` async and read `params`, exactly like `page.tsx` does today. Resolve
+   `source.getPage(params.slug)?.data.product`, then pick:
+   - `'bare'` → `bareTree`
+   - `'pear'` → `pearTree`
+   - `'shared'` or missing → `pearTree` (Pear is the default/primary product)
+3. Build the Pear/Bare switcher as a small custom component (two links to each product's
+   landing page — `/` and `/bare`), not `sidebar.tabs`/`getSidebarTabs`. Since tree
+   selection is already handled in step 2, `sidebar.tabs` can be set to `false` — or kept
+   with an explicit two-item `SidebarTabWithProps[]` (the same escape hatch
+   `DOCS-VERSIONING-DESIGN.md` found for its own dropdown) purely for free highlight/active
+   styling on top of our own logic, if that polish is wanted.
+4. **Known limitation, deferred, not blocking:** a single static HTML file can only bake in
+   one sidebar tree. For the ~6 pages tagged `product: shared` (troubleshooting + the 4
+   disappearing topic-folder indexes + `reference/index` + `how-to/index`), the deterministic
+   default in step 2 means they always render with Pear's sidebar, regardless of which tab a
+   reader arrived from. Phase 2 ships with that default plus a manual cross-link banner on
+   those pages; true "remember which tab I came from" persistence (client-side
+   localStorage read + conditional re-render post-hydration) is a follow-up, not a Phase 2
+   blocker — it touches ~6 pages, not the other 131.
+
+---
+
 ## Verification
 
 - `npm run check:internal-links` — expect **zero diff** in pass/fail before vs. after the nav-split PR (hard gate, since no slugs change).
