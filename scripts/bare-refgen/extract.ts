@@ -306,10 +306,19 @@ function returnsOf(node: ts.SignatureDeclaration): BareReturns | null {
 function throwsOf(node: ts.Node): BareThrows[] {
   const out: BareThrows[] = [];
   for (const tag of ts.getAllJSDocTags(node, (t): t is ts.JSDocTag => t.tagName.text === 'throws')) {
+    // `@throws {TYPE} condition` — TS parses the brace group as the tag's own
+    // `typeExpression`, not as text inside `comment` (unlike `@param`, whose
+    // description text and type share one grammar slot only for other tags).
+    const fromType = ts.isJSDocThrowsTag(tag) ? tag.typeExpression?.type?.getText().trim() || null : null;
     const raw = commentText(tag.comment) ?? '';
-    // `{TYPE} condition` → split the leading brace group off as the type.
-    const m = raw.match(/^\s*\{([^}]+)\}\s*(.*)$/);
-    out.push(m ? { type: m[1].trim(), condition: m[2].trim() } : { type: null, condition: raw });
+    if (fromType) {
+      out.push({ type: fromType, condition: raw });
+    } else {
+      // No parsed typeExpression (e.g. a manifest-authored string) — fall
+      // back to splitting a leading `{TYPE}` off the comment text itself.
+      const m = raw.match(/^\s*\{([^}]+)\}\s*(.*)$/);
+      out.push(m ? { type: m[1].trim(), condition: m[2].trim() } : { type: null, condition: raw });
+    }
   }
   return out;
 }

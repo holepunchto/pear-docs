@@ -60,10 +60,31 @@ const code = (s: string) => `\`${s}\``;
  */
 function mdxProse(text: string, ctx: Ctx): string {
   if (ctx.target === 'readme') return text;
-  return text
+  return fixAnchorLinks(text, ctx)
     .split(/(`[^`]*`)/)
     .map((seg, i) => (i % 2 === 1 ? seg : seg.replace(/[{}<]/g, (c) => `\\${c}`)))
     .join('');
+}
+
+/**
+ * Repair a same-page anchor link whose label names a documented type but
+ * whose target doesn't resolve — upstream TSDoc prose is sometimes reused
+ * verbatim from a README section heading that doesn't exist as a heading on
+ * this generated page (e.g. bare-pipe's TSDoc still links `IPCAcceptable` to
+ * `#ipc-handle-passing`, the README's own section anchor, when it's
+ * documented here under `#ipcacceptable`). Retargets to the real anchor when
+ * the label names a documented type; strips the link (keeps the label)
+ * otherwise — a dangling same-page anchor is never an improvement over plain
+ * text.
+ */
+function fixAnchorLinks(text: string, ctx: Ctx): string {
+  const knownAnchors = new Set(ctx.typeAnchors.values());
+  return text.replace(/\[(`[^`]+`|[^\]]+)\]\(#([^)]+)\)/g, (match, label: string, anchor: string) => {
+    if (knownAnchors.has(anchor)) return match;
+    const bare = label.replace(/^`|`$/g, '');
+    const known = ctx.typeAnchors.get(bare);
+    return known ? `[${label}](#${known})` : label;
+  });
 }
 
 /** github-slugger's result for a plain identifier heading. */
@@ -91,8 +112,9 @@ function returnsFor(ctx: Ctx, e: BareExport): string | null {
 }
 
 function throwsFor(ctx: Ctx, e: BareExport): BareThrows[] {
+  if (e.throws.length > 0) return e.throws;
   const overrides = own(ctx.layout?.throws, e.key, e.name) ?? [];
-  return [...e.throws, ...overrides.map(parseThrows)];
+  return overrides.map(parseThrows);
 }
 
 function parseThrows(s: string): BareThrows {

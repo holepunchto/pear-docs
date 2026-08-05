@@ -19,7 +19,10 @@ const layout: Layout = {
       signal:
         "Signal name or number to send (default `'SIGTERM'`); `0` probes for the process's existence without sending a signal.",
     },
-    setPriority: { pid: 'Process id (defaults to the current process).', priority: 'Nice value to set.' },
+    // `pid` only exists on the second overload (`setPriority(pid, priority)`)
+    // — extraction only tracks the first overload's params (`priority`
+    // alone), so a `pid` entry here would never have anywhere to render.
+    setPriority: { priority: 'Nice value to set (the current process, when called with one argument).' },
     chdir: { dir: 'Path of the directory to make the new working directory.' },
     getEnv: { name: 'Name of the environment variable to read.' },
     hasEnv: { name: 'Name of the environment variable to check.' },

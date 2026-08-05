@@ -100,6 +100,40 @@ test('interface signatures flatten members inherited via `extends`, including ac
   assert.doesNotMatch(sig, /import\(/, 'inherited members render by name, not a resolved import(...) path');
 });
 
+test('@throws {TYPE} condition splits the type from the typeExpression, not the comment', () => {
+  const ex = extract('throws.d.ts');
+  const risky = byName(ex, 'risky')!;
+  assert.deepEqual(risky.throws, [{ type: 'ALREADY_SENT', condition: 'the request has already been sent.' }]);
+});
+
+test('a description\'s dangling same-page anchor is repaired to the real one, or stripped', () => {
+  const iface: BareExport = {
+    key: 'IPCAcceptable', name: 'IPCAcceptable', kind: 'interface', static: false,
+    signatures: ['interface IPCAcceptable {}'], description: null, deprecated: null,
+    params: [], returns: null, throws: [], members: [],
+  };
+  const fn: BareExport = {
+    key: 'write', name: 'write', kind: 'function', static: false,
+    signatures: ['write(handle: IPCAcceptable): void'],
+    description: 'Must implement the [`IPCAcceptable`](#ipc-handle-passing) protocol.',
+    deprecated: null, params: [], returns: null, throws: [], members: [],
+  };
+  const noSuchType: BareExport = {
+    key: 'read', name: 'read', kind: 'function', static: false,
+    signatures: ['read(): void'],
+    description: 'See [`NotDocumented`](#not-documented) for details.',
+    deprecated: null, params: [], returns: null, throws: [], members: [],
+  };
+  const model: BareModel = {
+    name: 'thing', version: '1.0.0', description: null, repoUrl: null,
+    npmUrl: '', minBare: null, native: false, dependencies: [], usage: null,
+    exports: [iface, fn, noSuchType], subpaths: [], generatedAt: null,
+  };
+  const { mdx } = renderPage(model, null);
+  assert.match(mdx, /Must implement the \[`IPCAcceptable`\]\(#ipcacceptable\) protocol\./, 'retargeted to the real anchor');
+  assert.match(mdx, /See `NotDocumented` for details\./, 'link to an undocumented type is stripped, label kept');
+});
+
 test('See also states what the module builds on, from its own bare-* dependencies', () => {
   const base: Omit<BareModel, 'dependencies'> = {
     name: 'thing', version: '1.0.0', description: null, repoUrl: null,

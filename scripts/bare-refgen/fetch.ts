@@ -7,10 +7,11 @@
 
 import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, mkdtemp, readFile, rename, rm, symlink } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
+import ts from 'typescript';
 
 const execFile = promisify(execFileCb);
 
@@ -113,6 +114,116 @@ function repoUrlOf(pkg: Pkg): string | null {
     .replace(/^git\+/, '')
     .replace(/^git:\/\//, 'https://')
     .replace(/\.git$/, '');
+}
+
+// ---- upstream TSDoc PR branch preference ----------------------------------
+//
+// scripts/bare-refgen/emit-tsdoc.ts splices real TSDoc onto each module's
+// shipped .d.ts and pushes it to an open `holepunchto/<repo>` PR from the
+// user's `lucas-tortora/<repo>` fork, branch `chore/ts-doc` (see
+// docs/plans/bare-refs/handover-2026-08-05.md and the "Descriptions →
+// upstream TSDoc" section of this directory's README). Prefer that content
+// over the published tarball's bare .d.ts when a PR branch exists for this
+// repo — same API surface, richer descriptions. Metadata (version,
+// description, dependencies, …) still comes from the published tarball:
+// these PRs don't ship a release, only prose, so the version number a
+// reader would actually install stays accurate.
+//
+// The repo name is derived from `package.json`'s own `repository` field, not
+// assumed to match the npm package name — some bare-* packages' repo name
+// differs from their npm slug.
+
+const TSDOC_FORK_OWNER = 'lucas-tortora';
+const TSDOC_BRANCH = 'chore/ts-doc';
+
+function repoNameOf(pkg: Pkg): string | null {
+  const url = repoUrlOf(pkg);
+  const m = url?.match(/^https:\/\/github\.com\/[^/]+\/([^/]+)\/?$/);
+  return m ? m[1] : null;
+}
+
+/** Raw file content from a GitHub branch, or null if it doesn't exist (no PR branch, wrong path, network error, …). */
+async function fetchRawFile(ownerRepo: string, branch: string, path: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://raw.githubusercontent.com/${ownerRepo}/${branch}/${path}`);
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Every declared name in a `.d.ts`'s syntax tree — functions, classes,
+ * interfaces, type aliases, namespaces, and their methods/properties —
+ * collected as a flat bag via a plain parse (no type-checking, no cross-file
+ * resolution). A coverage floor, not a full structural diff: cheap enough to
+ * run on every candidate swap, and exactly what's needed to catch a PR
+ * branch that's silently missing something the published `.d.ts` has.
+ */
+function declaredNames(sourceText: string): Set<string> {
+  const sf = ts.createSourceFile('coverage-check.d.ts', sourceText, ts.ScriptTarget.ESNext, true);
+  const names = new Set<string>();
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isFunctionDeclaration(node) ||
+        ts.isClassDeclaration(node) ||
+        ts.isInterfaceDeclaration(node) ||
+        ts.isTypeAliasDeclaration(node) ||
+        ts.isModuleDeclaration(node) ||
+        ts.isMethodSignature(node) ||
+        ts.isMethodDeclaration(node) ||
+        ts.isPropertySignature(node) ||
+        ts.isPropertyDeclaration(node) ||
+        ts.isGetAccessorDeclaration(node) ||
+        ts.isSetAccessorDeclaration(node)) &&
+      node.name
+    ) {
+      names.add(node.name.getText());
+    } else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+      names.add(node.name.getText());
+    } else if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) {
+      // `export { a, b as c }` — a dropped re-export (bare-net silently
+      // losing `export { constants, errors, ... }`'s `errors`) is exactly
+      // the kind of gap this check exists to catch, and specifiers aren't
+      // declarations the branches above would otherwise see.
+      for (const el of node.exportClause.elements) names.add(el.name.getText());
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return names;
+}
+
+/** Whether `candidate` declares at least every name `baseline` does. */
+export function coversBaseline(baseline: string, candidate: string): boolean {
+  const base = declaredNames(baseline);
+  const cand = declaredNames(candidate);
+  for (const name of base) if (!cand.has(name)) return false;
+  return true;
+}
+
+/**
+ * Overwrite `absPath` (a file already extracted from the npm tarball, under
+ * `pkgDir`) with the same relative path's content from the user's
+ * `chore/ts-doc` fork branch, when that branch exists for this repo, ships
+ * the file, AND doesn't drop any name the published `.d.ts` declares — a PR
+ * branch can go stale relative to a package that's since shipped new API
+ * surface (confirmed: bare-fetch's fork branch is missing `Response.error`/
+ * `json`/`redirect`/`type`, added upstream after the branch was forked).
+ * Falls back to the tarball's own content otherwise — most modules don't
+ * have an open PR yet, some (e.g. `bare-dgram`) were explicitly excluded
+ * from the emit-tsdoc run, and a stale branch must never win over a fresher
+ * published one.
+ */
+async function preferTsDocBranch(pkgDir: string, pkg: Pkg, absPath: string): Promise<void> {
+  const repo = repoNameOf(pkg);
+  if (!repo) return;
+  const relPath = relative(pkgDir, absPath);
+  const content = await fetchRawFile(`${TSDOC_FORK_OWNER}/${repo}`, TSDOC_BRANCH, relPath);
+  if (content === null) return;
+  const existing = await readFile(absPath, 'utf8');
+  if (!coversBaseline(existing, content)) return;
+  await writeFile(absPath, content);
 }
 
 // ---- dependency vendoring -------------------------------------------------
@@ -229,6 +340,11 @@ export async function fetchPackage(name: string): Promise<FetchedPackage> {
     const pkg = JSON.parse(await readFile(join(pkgDir, 'package.json'), 'utf8')) as Pkg;
     await linkBareDeps(pkgDir, pkg);
 
+    const entryDts = resolveEntryDts(pkgDir, pkg);
+    const subpaths = resolveSubpaths(pkgDir, pkg, pkg.name ?? name);
+    if (entryDts) await preferTsDocBranch(pkgDir, pkg, entryDts);
+    for (const sp of subpaths) await preferTsDocBranch(pkgDir, pkg, sp.dts);
+
     return {
       name: pkg.name ?? name,
       version: pkg.version ?? '0.0.0',
@@ -237,8 +353,8 @@ export async function fetchPackage(name: string): Promise<FetchedPackage> {
       minBare: pkg.engines?.bare ?? null,
       native: pkg.addon === true,
       pkgDir,
-      entryDts: resolveEntryDts(pkgDir, pkg),
-      subpaths: resolveSubpaths(pkgDir, pkg, pkg.name ?? name),
+      entryDts,
+      subpaths,
       bareDependencies: bareDepsOf(pkg),
       cleanup,
     };

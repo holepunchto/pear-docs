@@ -15,11 +15,11 @@ const layout: Layout = {
     runInContext: {
       code: 'The JavaScript source to run.',
       context: 'A context previously created with `createContext()`.',
-      opts: OPTS,
+      options: OPTS,
     },
     runInNewContext: {
       code: 'The JavaScript source to run.',
-      opts: OPTS,
+      options: OPTS,
     },
   },
   returns: {

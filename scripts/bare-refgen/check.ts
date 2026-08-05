@@ -22,17 +22,28 @@ interface Problem {
   detail: string;
 }
 
-/** Every key AND display name in the model (recursive, incl. subpaths). */
-function allIdentities(model: BareModel): Set<string> {
-  const ids = new Set<string>();
+/**
+ * key/name → every BareExport registered under that identity (recursive,
+ * incl. subpaths). A bare `name` is not unique — a namespace-level helper
+ * and a same-named instance method legitimately share one (e.g. bare-events'
+ * static `EventEmitter.on(emitter, name, opts)` and instance `on(name, fn)`
+ * both register under `on`) — so this is a multi-map, not last-write-wins.
+ */
+function exportsByIdentity(model: BareModel): Map<string, BareExport[]> {
+  const map = new Map<string, BareExport[]>();
+  const add = (id: string, e: BareExport) => {
+    const list = map.get(id);
+    if (list) list.push(e);
+    else map.set(id, [e]);
+  };
   const walk = (e: BareExport) => {
-    ids.add(e.key);
-    ids.add(e.name);
+    add(e.key, e);
+    if (e.name !== e.key) add(e.name, e);
     e.members.forEach(walk);
   };
   model.exports.forEach(walk);
   model.subpaths.forEach((s) => s.exports.forEach(walk));
-  return ids;
+  return map;
 }
 
 /** Top-level exports whose name never appears in the rendered page. */
@@ -56,6 +67,31 @@ function layoutGaps(layout: Layout, ids: Set<string>): string[] {
   Object.keys(layout.params ?? {}).forEach((k) => refs.add(k));
   Object.keys(layout.returns ?? {}).forEach((k) => refs.add(k));
   return [...refs].filter((r) => !ids.has(r));
+}
+
+/**
+ * `layout.params[member][paramName]` entries whose `paramName` matches no
+ * real parameter of ANY export registered under that identity. `layoutGaps`
+ * above only checks the outer member key — a renamed parameter (e.g. a
+ * `.d.ts` source swap that renames `opts` to `options`) leaves the outer key
+ * valid but silently orphans the manifest's per-parameter prose, with no
+ * symptom other than a blank Description cell. Checked against every
+ * colliding export (see `exportsByIdentity`) so a namespace-level helper
+ * sharing a bare name with an instance method — different param lists, same
+ * identity string — isn't flagged just because one of the two doesn't match.
+ * Reported as `member.paramName` so it's easy to find.
+ */
+function paramKeyGaps(layout: Layout, byIdentity: Map<string, BareExport[]>): string[] {
+  const gaps: string[] = [];
+  for (const [memberRef, params] of Object.entries(layout.params ?? {})) {
+    const candidates = byIdentity.get(memberRef);
+    if (!candidates) continue; // already reported by layoutGaps
+    const realNames = new Set(candidates.flatMap((ex) => ex.params.map((p) => p.name)));
+    for (const paramName of Object.keys(params)) {
+      if (!realNames.has(paramName)) gaps.push(`${memberRef}.${paramName}`);
+    }
+  }
+  return gaps;
 }
 
 async function compilesAsMdx(mdx: string): Promise<string | null> {
@@ -97,8 +133,12 @@ async function main(): Promise<void> {
       problems.push({ module: name, kind: 'coverage', detail: `export not rendered: ${key}` });
     }
     if (layout) {
-      for (const ref of layoutGaps(layout, allIdentities(model))) {
+      const byIdentity = exportsByIdentity(model);
+      for (const ref of layoutGaps(layout, new Set(byIdentity.keys()))) {
         problems.push({ module: name, kind: 'layout', detail: `manifest ref matches no symbol: ${ref}` });
+      }
+      for (const ref of paramKeyGaps(layout, byIdentity)) {
+        problems.push({ module: name, kind: 'layout', detail: `manifest params key matches no real parameter: ${ref}` });
       }
     }
     const mdxErr = await compilesAsMdx(mdx);
