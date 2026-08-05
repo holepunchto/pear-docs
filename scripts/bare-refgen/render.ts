@@ -126,8 +126,12 @@ function linkType(type: string, ctx: Ctx): string {
     .join(' | ');
 }
 
-/** Escape `|` for use inside a GFM table cell (splits cells even in code spans). */
-const cell = (s: string) => s.replace(/\|/g, '\\|');
+/**
+ * Prepare text for a GFM table cell: escape `|` (splits cells even in code
+ * spans) and collapse embedded newlines (a literal one breaks out of the row
+ * entirely — some upstream JSDoc wraps a `@param` description across lines).
+ */
+const cell = (s: string) => s.replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
 
 /**
  * Parameters as a GFM table — one row per parameter, `?` marking optional
@@ -139,7 +143,10 @@ function paramTable(params: BareParam[], ctx: Ctx, pd: Record<string, string>): 
     const name = code(p.name + (p.optional && !p.default ? '?' : ''));
     const type = cell(linkType(p.type, ctx));
     const def = p.default ? cell(code(p.default)) : '—';
-    const text = p.description ?? own(pd, p.name) ?? '';
+    // A manifest entry wins even when the model already has text — the escape
+    // hatch for upstream JSDoc prose that reads badly rendered raw, such as
+    // an unescaped object-literal example breaking a table row or a lint rule.
+    const text = own(pd, p.name) ?? p.description ?? '';
     const desc = text ? cell(mdxProse(text, ctx)) : '—';
     return `| ${name} | ${type} | ${def} | ${desc} |`;
   });

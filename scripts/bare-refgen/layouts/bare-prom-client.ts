@@ -4,8 +4,11 @@
 // by the model — this manifest only fills the remaining gaps on the main
 // Registry / metric classes (getters that document what they return in prose
 // but carry no `@returns`, plus `Histogram.zero`'s undocumented `labels`
-// param). The config-interface property long tail is left undocumented rather
-// than fabricated. Keys are the model's qualified member keys.
+// param) and re-flows `setDefaultLabels`'s `labels` param, whose upstream
+// JSDoc wraps a JS object-literal example across lines with unescaped quotes
+// (broke the parameter table + failed prose lint). The config-interface
+// property long tail is left undocumented rather than fabricated. Keys are
+// the model's qualified member keys.
 
 import type { Layout } from '../layout';
 
@@ -13,6 +16,9 @@ const layout: Layout = {
   params: {
     'Histogram.zero': {
       labels: 'Object with label keys and values to initialize to zero.',
+    },
+    'Registry.setDefaultLabels': {
+      labels: "Name/value pairs, for example `{ defaultLabel: 'value', anotherLabel: 'value 2' }`.",
     },
   },
   returns: {
