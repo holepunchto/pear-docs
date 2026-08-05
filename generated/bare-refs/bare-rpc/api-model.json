@@ -19,7 +19,7 @@
       "signatures": [
         "interface RPC {\n  readonly idle: boolean\n  event(command: number): RPCOutgoingEvent\n  request(command: number): RPCOutgoingRequest\n}"
       ],
-      "description": null,
+      "description": "Create an RPC instance using a duplex `stream`. `onrequest` is an optional callback run when a remote request is received. This is where processing and responding to an RPC request happens. `onrequest` receives a `RPCIncomingRequest` as an argument.",
       "deprecated": null,
       "params": [],
       "returns": null,
@@ -41,14 +41,14 @@
               "type": "Duplex",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The duplex stream to frame RPC messages over, such as a pipe or socket."
             },
             {
               "name": "onrequest",
               "type": "(req: RPCIncomingRequest) => void | Promise<void>",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to. Defaults to a no-op."
             }
           ],
           "returns": null,
@@ -71,12 +71,12 @@
               "type": "number",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- A unique number identifying the event; the remote end differentiates events by it."
             }
           ],
           "returns": {
             "type": "RPCOutgoingEvent",
-            "description": null
+            "description": "an `RPCOutgoingEvent`; call `send()` on it to dispatch the one-way event."
           },
           "throws": [],
           "members": []
@@ -89,7 +89,7 @@
           "signatures": [
             "idle: boolean"
           ],
-          "description": null,
+          "description": "Whether there are no requests or responses currently in flight. Useful for determining when it is safe to tear down the underlying stream.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -112,12 +112,12 @@
               "type": "number",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- A unique number identifying the request; the remote end differentiates requests by it."
             }
           ],
           "returns": {
             "type": "RPCOutgoingRequest",
-            "description": null
+            "description": "an `RPCOutgoingRequest`; call `send()` on it to dispatch the request and `await reply()` for the response."
           },
           "throws": [],
           "members": []
@@ -154,21 +154,21 @@
               "type": "RPC",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The `RPC` instance the event arrived on."
             },
             {
               "name": "command",
               "type": "number",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The command number the event was sent with."
             },
             {
               "name": "data",
               "type": "Buffer",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The payload buffer sent with the event."
             }
           ],
           "returns": null,
@@ -183,7 +183,7 @@
           "signatures": [
             "command: number"
           ],
-          "description": null,
+          "description": "The command that the request was created with. A command is a unique number.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -198,7 +198,7 @@
           "signatures": [
             "data: Buffer | null"
           ],
-          "description": null,
+          "description": "The data buffer sent with the request.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -252,14 +252,14 @@
               "type": "RPC",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The `RPC` instance to send the event on."
             },
             {
               "name": "command",
               "type": "number",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The command number to send."
             }
           ],
           "returns": null,
@@ -312,21 +312,26 @@
               "type": "Buffer | string | null",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data."
             },
             {
               "name": "encoding",
               "type": "BufferEncoding",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- The encoding used when `data` is a string (defaults to `utf8`)."
             }
           ],
           "returns": {
             "type": "void",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "ALREADY_SENT",
+              "condition": "the event has already been sent."
+            }
+          ],
           "members": []
         },
         {
@@ -376,28 +381,28 @@
               "type": "RPC",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The `RPC` instance the request arrived on."
             },
             {
               "name": "id",
               "type": "number",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The request id, used to correlate the reply with the request."
             },
             {
               "name": "command",
               "type": "number",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The command number the request was sent with."
             },
             {
               "name": "data",
               "type": "Buffer",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The payload buffer sent with the request."
             }
           ],
           "returns": null,
@@ -427,7 +432,7 @@
           "signatures": [
             "createRequestStream(opts?: ReadableOptions): RPCIncomingStream"
           ],
-          "description": null,
+          "description": "Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for receiving the request's streamed data.",
           "deprecated": null,
           "params": [
             {
@@ -435,14 +440,19 @@
               "type": "ReadableOptions",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- Options for the returned [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream."
             }
           ],
           "returns": {
             "type": "RPCIncomingStream",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "ALREADY_RECEIVED",
+              "condition": "the request has already been received."
+            }
+          ],
           "members": []
         },
         {
@@ -453,7 +463,7 @@
           "signatures": [
             "createResponseStream(opts?: WritableOptions): RPCOutgoingStream"
           ],
-          "description": null,
+          "description": "Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending the streamed reply to the request.",
           "deprecated": null,
           "params": [
             {
@@ -461,14 +471,19 @@
               "type": "WritableOptions",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- Options for the returned [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream."
             }
           ],
           "returns": {
             "type": "RPCOutgoingStream",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "ALREADY_SENT",
+              "condition": "a response has already been sent for this request."
+            }
+          ],
           "members": []
         },
         {
@@ -509,7 +524,7 @@
           "signatures": [
             "received: boolean"
           ],
-          "description": null,
+          "description": "A boolean for whether the request has received a reply.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -524,7 +539,7 @@
           "signatures": [
             "reply(data?: Buffer | string | null, encoding?: BufferEncoding): void"
           ],
-          "description": null,
+          "description": "Send a reply to the request. `data` may be a buffer or a string encoded using `encoding`.",
           "deprecated": null,
           "params": [
             {
@@ -532,21 +547,26 @@
               "type": "Buffer | string | null",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data."
             },
             {
               "name": "encoding",
               "type": "BufferEncoding",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- The encoding used when `data` is a string (defaults to `utf8`)."
             }
           ],
           "returns": {
             "type": "void",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "ALREADY_SENT",
+              "condition": "a response has already been sent for this request."
+            }
+          ],
           "members": []
         },
         {
@@ -572,7 +592,7 @@
           "signatures": [
             "sent: boolean"
           ],
-          "description": null,
+          "description": "A boolean for whether the request has been sent.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -611,21 +631,21 @@
               "type": "RPC",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The `RPC` instance to send the request on."
             },
             {
               "name": "id",
               "type": "number",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The request id, used to correlate the reply with the request."
             },
             {
               "name": "command",
               "type": "number",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The command number to send."
             }
           ],
           "returns": null,
@@ -655,7 +675,7 @@
           "signatures": [
             "createRequestStream(opts?: WritableOptions): RPCOutgoingStream"
           ],
-          "description": null,
+          "description": "Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending data with the request.",
           "deprecated": null,
           "params": [
             {
@@ -663,14 +683,19 @@
               "type": "WritableOptions",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- Options for the returned [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream."
             }
           ],
           "returns": {
             "type": "RPCOutgoingStream",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "ALREADY_SENT",
+              "condition": "the request has already been sent."
+            }
+          ],
           "members": []
         },
         {
@@ -681,7 +706,7 @@
           "signatures": [
             "createResponseStream(opts?: ReadableOptions): RPCIncomingStream"
           ],
-          "description": null,
+          "description": "Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for receiving data in reply to the request.",
           "deprecated": null,
           "params": [
             {
@@ -689,14 +714,19 @@
               "type": "ReadableOptions",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- Options for the returned [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream."
             }
           ],
           "returns": {
             "type": "RPCIncomingStream",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "ALREADY_RECEIVED",
+              "condition": "the response has already been received."
+            }
+          ],
           "members": []
         },
         {
@@ -737,7 +767,7 @@
           "signatures": [
             "reply(encoding?: BufferEncoding): Promise<Buffer | string | null>"
           ],
-          "description": null,
+          "description": "Await the reply from the remote end to the request. `encoding` can be defined for decoding the response `data` buffer back into a string.",
           "deprecated": null,
           "params": [
             {
@@ -745,14 +775,19 @@
               "type": "BufferEncoding",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- If given, decodes the reply payload to a string using this encoding; omit to receive the raw `Buffer`."
             }
           ],
           "returns": {
             "type": "Promise<Buffer | string | null>",
-            "description": null
+            "description": "a promise that resolves with the remote end's reply payload, or rejects with the channel's teardown error if it closes before a reply arrives."
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "ALREADY_RECEIVED",
+              "condition": "a reply is already being received for this request."
+            }
+          ],
           "members": []
         },
         {
@@ -786,21 +821,26 @@
               "type": "Buffer | string | null",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data."
             },
             {
               "name": "encoding",
               "type": "BufferEncoding",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- The encoding used when `data` is a string (defaults to `utf8`)."
             }
           ],
           "returns": {
             "type": "void",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "ALREADY_SENT",
+              "condition": "the request has already been sent."
+            }
+          ],
           "members": []
         },
         {
@@ -850,28 +890,28 @@
               "type": "RPC",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The `RPC` instance the stream belongs to."
             },
             {
               "name": "request",
               "type": "RPCIncomingRequest | RPCOutgoingRequest",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The request the stream carries data for."
             },
             {
               "name": "type",
               "type": "typeof constants.type.REQUEST | typeof constants.type.RESPONSE",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- Whether the stream carries the request body (`constants.type.REQUEST`) or the response body (`constants.type.RESPONSE`)."
             },
             {
               "name": "opts",
               "type": "ReadableOptions",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- Options for the underlying [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream."
             }
           ],
           "returns": null,
@@ -910,28 +950,28 @@
               "type": "RPC",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The `RPC` instance the stream belongs to."
             },
             {
               "name": "request",
               "type": "RPCIncomingRequest | RPCOutgoingRequest",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- The request the stream carries data for."
             },
             {
               "name": "type",
               "type": "typeof constants.type.REQUEST | typeof constants.type.RESPONSE",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "- Whether the stream carries the request body (`constants.type.REQUEST`) or the response body (`constants.type.RESPONSE`)."
             },
             {
               "name": "opts",
               "type": "WritableOptions",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "- Options for the underlying [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream."
             }
           ],
           "returns": null,
@@ -1068,5 +1108,5 @@
       ]
     }
   ],
-  "generatedAt": "2026-08-05T17:43:54.426Z"
+  "generatedAt": "2026-08-05T20:22:04.674Z"
 }
