@@ -7,7 +7,6 @@
 // params / returns / throws when a declaration carries them. Nothing invented.
 
 import ts from 'typescript';
-import { relative } from 'node:path';
 import type { BareExport, BareKind, BareParam, BareReturns, BareThrows } from './model';
 
 const COMPILER_OPTIONS: ts.CompilerOptions = {
@@ -22,7 +21,7 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
 /** Keys TypeScript uses internally that never represent public API. */
 const CONSTRUCTOR_NAME = ts.InternalSymbolName.Constructor; // "__constructor"
 
-export function extractModule(entryDts: string, pkgRoot: string, moduleName?: string): BareExport[] {
+export function extractModule(entryDts: string, moduleName?: string): BareExport[] {
   const program = ts.createProgram([entryDts], COMPILER_OPTIONS);
   const checker = program.getTypeChecker();
   const sf = program.getSourceFile(entryDts);
@@ -48,20 +47,10 @@ export function extractModule(entryDts: string, pkgRoot: string, moduleName?: st
     const resolved = resolveAlias(checker, sym);
     if (seen.has(resolved)) continue;
     seen.add(resolved);
-    const ex = buildExport(checker, sym, resolved, '', 0, false, exclude, pkgRoot);
+    const ex = buildExport(checker, sym, resolved, '', 0, false, exclude);
     if (ex) exports.push(ex);
   }
   return exports;
-}
-
-/** Declaration site relative to the package root (for a GitHub blob link). */
-function sourceOf(decl: ts.Declaration, pkgRoot: string): { file: string; line: number } | null {
-  const sf = decl.getSourceFile();
-  if (!sf) return null;
-  const file = relative(pkgRoot, sf.fileName);
-  if (file.startsWith('..')) return null; // outside the package (a dependency)
-  const line = sf.getLineAndCharacterOfPosition(decl.getStart()).line + 1;
-  return { file, line };
 }
 
 /**
@@ -308,7 +297,6 @@ function buildExport(
   depth: number,
   isStatic: boolean,
   exclude: Set<ts.Symbol>,
-  pkgRoot: string,
 ): BareExport | null {
   const name = original.getName() === ts.InternalSymbolName.ExportEquals
     ? sym.getName()
@@ -378,13 +366,11 @@ function buildExport(
     for (const ref of collectMembers(checker, sym, exclude)) {
       if (seen.has(ref.sym)) continue;
       seen.add(ref.sym);
-      const child = buildExport(checker, ref.sym, ref.sym, key, depth + 1, ref.isStatic, exclude, pkgRoot);
+      const child = buildExport(checker, ref.sym, ref.sym, key, depth + 1, ref.isStatic, exclude);
       if (child) members.push(child);
     }
     members = sortMembers(members);
   }
-
-  const primaryDecl = callableDecls[0] ?? decls[0];
 
   return {
     key,
@@ -397,7 +383,6 @@ function buildExport(
     params,
     returns,
     throws,
-    source: sourceOf(primaryDecl, pkgRoot),
     members,
   };
 }

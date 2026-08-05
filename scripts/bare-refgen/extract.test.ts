@@ -15,7 +15,7 @@ import type { BareExport, BareModel } from './model';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__');
 const extract = (file: string, moduleName?: string): BareExport[] =>
-  extractModule(join(FIXTURES, file), FIXTURES, moduleName);
+  extractModule(join(FIXTURES, file), moduleName);
 
 const byName = (list: BareExport[], name: string) => list.find((e) => e.name === name);
 const names = (list: BareExport[]) => list.map((e) => e.name);

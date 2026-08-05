@@ -168,10 +168,10 @@ async function generateOne(
       minBare: pkg.minBare,
       native: pkg.native,
       usage: await usageFromResearch(name),
-      exports: extractModule(pkg.entryDts, pkg.pkgDir, pkg.name),
+      exports: extractModule(pkg.entryDts, pkg.name),
       subpaths: pkg.subpaths.map((s) => ({
         name: s.name,
-        exports: extractModule(s.dts, pkg.pkgDir, s.name),
+        exports: extractModule(s.dts, s.name),
       })),
       generatedAt,
     };

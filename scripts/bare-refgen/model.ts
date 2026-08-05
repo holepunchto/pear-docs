@@ -62,8 +62,6 @@ export interface BareExport {
   params: BareParam[];
   returns: BareReturns | null;
   throws: BareThrows[];
-  /** Declaration site, relative to the package root, for a GitHub link. */
-  source: { file: string; line: number } | null;
   /** Nested members (class/interface members, namespace exports). */
   members: BareExport[];
 }
