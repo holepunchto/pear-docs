@@ -71,8 +71,8 @@ export const customTree: Node[] = [
         children: [
           {
             type: 'page',
-            name: 'The Pear stack',
-            url: '/explanation/the-pear-stack',
+            name: 'How Pear and Bare fit together',
+            url: '/explanation/pear-and-bare',
           },
           {
             type: 'page',
