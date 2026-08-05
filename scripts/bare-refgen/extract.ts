@@ -345,7 +345,11 @@ function nodeDescription(decl: ts.Declaration): string | null {
 function jsDocParamComment(p: ts.ParameterDeclaration): string | null {
   for (const tag of ts.getJSDocParameterTags(p)) {
     const t = commentText(tag.comment);
-    if (t) return t;
+    // `@param name - description` — unlike `@throws {TYPE} …`, TypeScript
+    // doesn't parse the `- ` separator out of a plain (untyped) `@param`
+    // tag's comment; it's left as literal leading text (emit-tsdoc.ts
+    // writes exactly this style: `@param ${p} - ${desc}`).
+    if (t) return t.replace(/^-\s*/, '');
   }
   return null;
 }

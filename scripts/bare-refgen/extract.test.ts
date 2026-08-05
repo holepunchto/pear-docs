@@ -106,6 +106,12 @@ test('@throws {TYPE} condition splits the type from the typeExpression, not the 
   assert.deepEqual(risky.throws, [{ type: 'ALREADY_SENT', condition: 'the request has already been sent.' }]);
 });
 
+test('@param name - description strips the leading dash separator, not just the type', () => {
+  const ex = extract('throws.d.ts');
+  const fill = byName(ex, 'fill')!;
+  assert.equal(fill.params[0].description, 'The buffer to fill.');
+});
+
 test('a description\'s dangling same-page anchor is repaired to the real one, or stripped', () => {
   const iface: BareExport = {
     key: 'IPCAcceptable', name: 'IPCAcceptable', kind: 'interface', static: false,
