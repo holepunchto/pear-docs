@@ -126,19 +126,6 @@ function linkType(type: string, ctx: Ctx): string {
     .join(' | ');
 }
 
-function sourceUrl(ctx: Ctx, e: BareExport): string | null {
-  if (!e.source || !ctx.model.repoUrl) return null;
-  const { file, line } = e.source;
-  return `${ctx.model.repoUrl}/blob/v${ctx.model.version}/${file}#L${line}`;
-}
-
-/** The source-link line, styled for the target (subtle in MDX, plain in README). */
-function sourceLine(ctx: Ctx, e: BareExport): string | null {
-  const url = sourceUrl(ctx, e);
-  if (!url) return null;
-  return ctx.target === 'readme' ? `[source](${url})` : `<sub>[Source](${url})</sub>`;
-}
-
 /** Escape `|` for use inside a GFM table cell (splits cells even in code spans). */
 const cell = (s: string) => s.replace(/\|/g, '\\|');
 
@@ -187,9 +174,6 @@ function renderSymbol(e: BareExport, ctx: Ctx, syncSibling: BareExport | null, p
     lines.push(`#### ${code(prefix + sig)}`, '');
   }
 
-  const src = sourceLine(ctx, e);
-  if (src) lines.push(src, '');
-
   if (e.deprecated !== null) lines.push(`**Deprecated.** ${e.deprecated}`.trim(), '');
 
   const desc = describe(ctx, e);
@@ -229,13 +213,11 @@ function shouldExpandClass(e: BareExport): boolean {
   );
 }
 
-function renderClassShape(e: BareExport, ctx: Ctx): string {
+function renderClassShape(e: BareExport): string {
   const body = e.members.map((m) => `  ${m.signatures[0] ?? m.name}`);
-  const src = sourceLine(ctx, e);
   return [
     `#### ${code(e.name)}`,
     '',
-    ...(src ? [src, ''] : []),
     '```ts',
     `class ${e.name} {`,
     ...body,
@@ -261,7 +243,7 @@ function buildEntries(exportsList: BareExport[], ctx: Ctx, defaultScope = ''): E
           // Members scope to the class so `Stats.isFile` ≠ `Dirent.isFile`.
           for (const m of e.members) add(m, e.name, null, e.name);
         } else {
-          entries.push({ key: e.key, name: e.name, group: 'Classes', scope: defaultScope, sync: null, ex: e, heading: e.name, mdx: renderClassShape(e, ctx) });
+          entries.push({ key: e.key, name: e.name, group: 'Classes', scope: defaultScope, sync: null, ex: e, heading: e.name, mdx: renderClassShape(e) });
         }
         break;
       case 'namespace':
@@ -456,13 +438,4 @@ export function renderPage(model: BareModel, layout: Layout | null): { mdx: stri
   );
 
   return { mdx: tidy(parts.join('\n')), orphans };
-}
-
-/**
- * The `## API` section as plain GitHub-flavoured Markdown, for splicing into an
- * upstream README. No frontmatter, MDX components, or on-page cross-links.
- */
-export function renderReadmeApi(model: BareModel, layout: Layout | null): string {
-  const ctx: Ctx = { model, layout, typeAnchors: new Map(), target: 'readme' };
-  return tidy(apiSection(ctx).lines.join('\n'));
 }

@@ -96,8 +96,7 @@ const layout: Layout = {
     },
   ],
   // Descriptions transcribed verbatim from the bare-os README (author-written,
-  // not AI). Interim home until they land as TSDoc upstream — emit-jsdoc.ts
-  // turns these into the chore/ts-doc PR.
+  // not AI).
   describe: {
     platform:
       "Returns the operating system platform as a string. Possible values include `'android'`, `'darwin'`, `'ios'`, `'linux'`, and `'win32'`.",

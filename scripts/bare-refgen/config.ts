@@ -160,18 +160,3 @@ export function nodeParityUrl(name: string): string | null {
   const mod = NODE_PARITY[name];
   return mod ? `https://nodejs.org/api/${mod}.html` : null;
 }
-
-/**
- * How `emit-jsdoc` updates each repo's README `## API`:
- *   'markers' (default) — own only a `<!-- bare-refgen:api … -->` fenced region,
- *                         preserving any hand-written prose around it;
- *   'replace'           — overwrite the whole `## API` section;
- *   'skip'              — leave the README untouched.
- * List a module here only to override the default.
- */
-export type ReadmePolicy = 'markers' | 'replace' | 'skip';
-export const README_POLICY: Record<string, ReadmePolicy> = {};
-
-export function readmePolicyOf(name: string): ReadmePolicy {
-  return README_POLICY[name] ?? 'markers';
-}

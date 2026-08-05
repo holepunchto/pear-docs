@@ -2,7 +2,7 @@
 //
 // Emits a Markdown summary of what a regeneration changed, by diffing the
 // working-tree api-model.json files against the versions committed at git HEAD.
-// Loop A captures this into the regeneration PR body so a reviewer sees
+// The regenerate-bare-refs workflow captures this into the PR body so a reviewer sees
 // "3 methods added, 1 signature changed" instead of a 400-line diff — and
 // removed/renamed symbols (potential breaking changes) are called out.
 //

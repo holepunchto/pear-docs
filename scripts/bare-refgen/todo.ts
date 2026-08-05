@@ -113,7 +113,6 @@ async function main(): Promise<void> {
     '',
     '- [ ] Render the generated pages in the Fumadocs dev server (compile-checked only so far).',
     '- [ ] Side-by-side a few against the existing hand-written pages.',
-    '- [ ] Spot-check a source link resolves at its pinned version tag.',
     '',
   ];
 

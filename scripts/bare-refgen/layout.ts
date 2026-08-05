@@ -33,11 +33,9 @@ export interface Layout {
    */
   throws?: Record<string, string[]>;
   /**
-   * Member descriptions, keyed by member key/name. The interim home for prose
-   * while it isn't yet TSDoc in the upstream `.d.ts`; `emit-jsdoc.ts` turns
-   * these into the upstream JSDoc PR, and the renderer uses them when the model
-   * has no description of its own. Author-written (e.g. transcribed from the
-   * README), not AI-generated.
+   * Member descriptions, keyed by member key/name. The renderer uses them when
+   * the model has no description of its own. Author-written (e.g. transcribed
+   * from the README), not AI-generated.
    */
   describe?: Record<string, string>;
   /**

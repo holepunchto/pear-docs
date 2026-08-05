@@ -1,6 +1,6 @@
 // scripts/bare-refgen/poll.ts
 //
-// Release poll for Loop A. Compares the npm `latest` version of each documented
+// Release poll for the regenerate-bare-refs workflow. Compares the npm `latest` version of each documented
 // module against the committed version cache (scripts/bare-refgen/versions.json)
 // and prints the modules that bumped as a comma-separated list on stdout, so the
 // workflow can skip when nothing changed and regenerate only what moved. Prints

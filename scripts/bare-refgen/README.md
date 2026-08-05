@@ -19,7 +19,7 @@ npm run gen:bare-refs -- --write           # write into content/ (+ sync the cat
 Selection is `TOP_N` most-downloaded ∪ `ALLOWLIST`, or everything above
 `MIN_DOWNLOADS` — all in `config.ts`. Each run refreshes the version cache
 (`versions.json`); `npm run bare-refs:poll` compares it against npm `latest` and
-prints which modules bumped (Loop A uses this to regenerate only what changed).
+prints which modules bumped (the regenerate workflow uses this to regenerate only what changed).
 
 Pages are written to `generated/bare-refs/<name>.mdx` (a **preview** dir — the
 live `content/reference/bare/modules/*.mdx` pages are never touched). The
@@ -40,43 +40,33 @@ deterministic intermediate is `generated/bare-refs/<name>/api-model.json`.
 
 - Facts-only intro + a **Node.js parity link** (config `NODE_PARITY`) when the module mirrors a core module.
 - Verbatim README `## Usage`.
-- Grouped API: each symbol shows its signature, a pinned **GitHub source link** (`…/blob/v<version>/<file>#L<line>`), params (with **type cross-links** to on-page anchors), returns/throws, and — for `fs`-style modules — the `*Sync` sibling folded in as a *Synchronous form* note instead of a duplicate entry.
+- Grouped API: each symbol shows its signature, params (with **type cross-links** to on-page anchors), returns/throws, and — for `fs`-style modules — the `*Sync` sibling folded in as a *Synchronous form* note instead of a duplicate entry.
 - **Subpath entry points** (`bare-fs/promises`, `bare-stream/web`, …) as their own sections.
 
-## Descriptions → upstream TSDoc
+## Descriptions
 
 Bare `.d.ts` carry no JSDoc, so descriptions come from the layout manifest's
-`describe` map (author-written, e.g. transcribed from the README) as an interim
-home. To bootstrap those maps, `npm run bare-refs:transcribe` parses each
-module's README `## API`, matches the prose under every `#### ` heading to an
+`describe` map (author-written, e.g. transcribed from the README). This is
+the permanent home for that prose — we regenerate refs from the published
+`.d.ts` in this repo only and never push documentation changes upstream. To
+bootstrap those maps, `npm run bare-refs:transcribe` parses each module's
+README `## API`, matches the prose under every `#### ` heading to an
 extracted symbol, and writes a *suggested* map to
 `generated/bare-refs/<name>/describe.suggested.json` (also flagging README-only
 headings and still-undocumented symbols). Review it and paste the good entries
-into `layouts/<name>.ts` — nothing is applied automatically. `npm run emit:ts-doc` turns those into the real source of truth:
-
-```sh
-npm run emit:ts-doc                 # all modules
-npm run emit:ts-doc -- --only bare-os
-```
-
-For each module it clones the repo into `../ts-doc-upstream/<name>`, creates a
-`chore/ts-doc` branch, splices a `/** … */` block above each matching
-declaration in the shipped `.d.ts`, and commits. **It never pushes** — review
-with `git -C ../ts-doc-upstream/<name> show` and open the PR yourself. Once the
-TSDoc is released upstream, the extractor reads it directly and the manifest
-`describe` entries can be deleted.
+into `layouts/<name>.ts` — nothing is applied automatically.
 
 ## Validation
 
 `npm run check:bare-refs` re-renders each committed model and asserts **coverage**
 (no exported symbol silently dropped), **layout sanity** (every manifest
 `members`/`describe`/`throws` key matches a real symbol — catches typos that
-would otherwise no-op), and **MDX validity**. Loop A runs it before opening a PR,
-so a page that would drop a symbol or fail to compile never becomes a PR.
+would otherwise no-op), and **MDX validity**. The regenerate workflow runs it before
+opening a PR, so a page that would drop a symbol or fail to compile never becomes a PR.
 
 `npm run bare-refs:changelog` diffs the working-tree models against git HEAD and
 prints a Markdown summary (added / changed / **⚠ removed** symbols per module);
-Loop A puts this in the PR body so releases are reviewable at a glance.
+the regenerate workflow puts this in the PR body so releases are reviewable at a glance.
 
 ## Layout manifests — keeping the curated structure
 
@@ -85,7 +75,7 @@ author-written, never AI. Members are referenced by model key or display name;
 unlisted members fall through to their by-kind group. Fields:
 
 - **`groups`** — ordered `{ title, members[] }` for the API section ("File handles", …).
-- **`describe`** — member → one-line description (interim home before it's TSDoc upstream).
+- **`describe`** — member → one-line description.
 - **`params`** — member → `{ paramName: description }`; rendered under Parameters and emitted as `@param`.
 - **`throws`** — member → throw bullets the `.d.ts` doesn't yet annotate.
 - **`intro`** — an author lead paragraph, used instead of the auto description sentence.
@@ -94,28 +84,18 @@ unlisted members fall through to their by-kind group. Fields:
 See `layouts/bare-os.ts` for a worked example of all of these. With no manifest a
 page falls back to deterministic by-kind grouping (Functions, Classes, Types, …).
 
-## Automation (two loops)
+## Automation
 
-**Loop A — regenerate docs on release** (`.github/workflows/regenerate-bare-refs.yml`).
+**Regenerate docs on release** (`.github/workflows/regenerate-bare-refs.yml`).
 Daily poll + manual dispatch. The poll (`poll.ts` vs `versions.json`) regenerates
 only modules whose npm `latest` moved and skips entirely when nothing changed;
 `gen:bare-refs --write` writes into `content/reference/bare/modules/` and
 non-destructively syncs each module's catalog row (reference link + stability
-badge). If the pages changed it opens a review PR into `published`. The generator always pulls the latest published tarball, so a
-new release shows up as a diff (new signatures, bumped source-link version tags).
-Regen-safe: descriptions live in the manifests, so nothing is lost. Never
-auto-merges. `--write` also works locally: `npm run gen:bare-refs -- --write`.
+badge). If the pages changed it opens a review PR into `published`. The
+generator always pulls the latest published tarball, so a new release shows up
+as a diff (new or changed signatures). Regen-safe: descriptions live in the
+manifests, so nothing is lost. Never auto-merges. `--write` also works locally:
+`npm run gen:bare-refs -- --write`.
 
-**Loop B — sync upstream docs** (`.github/workflows/sync-bare-upstream.yml`).
-Manual dispatch only. `npm run emit:ts-doc [-- --pr]` regenerates each module's
-TSDoc (in the `.d.ts`) *and* its README `## API` section from the model, commits
-on `chore/ts-doc`, and — with `--pr` — pushes to your fork and opens the upstream
-PR. Requires secret `UPSTREAM_PAT` (+ `workflow` scope for repos shipping
-Actions) and variable `UPSTREAM_FORK_OWNER`; without them it stops after the
-local commit (never pushes). Reviewed by design — you trigger it deliberately so
-the change lands in a release.
-
-README updates are **non-destructive**: by default we own only a
-`<!-- bare-refgen:api start/end -->` fenced region and leave surrounding prose
-intact. Override per module in `config.README_POLICY` (`'markers'` default,
-`'replace'` for the whole `## API` section, or `'skip'`).
+This is pull-only: we regenerate reference pages from each module's published
+`.d.ts` and never push documentation changes back upstream to `holepunchto/bare-*`.
