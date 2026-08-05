@@ -11,6 +11,12 @@
     "bare-stream"
   ],
   "usage": "```js\nconst Pipe = require('bare-pipe')\n\nconst stdout = new Pipe(1)\n\nstdout.write('Hello world!\\n')\n```",
+  "extraSections": [
+    {
+      "heading": "IPC handle passing",
+      "body": "Pipes created with `ipc: true` can transfer libuv handles (named pipes, TCP sockets, UDP sockets) to a peer alongside the byte stream. The peer receives a `'handle'` event for each transferred handle, in arrival order, before the corresponding `'data'` event.\n\nSender:\n\n```js\nconst left = new Pipe(fd, { ipc: true })\nconst socket = tcp.createConnection(port)\n\nsocket.on('connect', () => {\n  left.write(Buffer.from('here'), socket)\n})\n```\n\nReceiver:\n\n```js\nconst right = new Pipe(fd, { ipc: true })\n\nright.on('handle', (type) => {\n  if (type === Pipe.constants.handle.TCP) {\n    const socket = new tcp.Socket()\n    right.accept(socket)\n    socket.on('data', console.log)\n  }\n})\n```\n\n### `IPCAcceptable` protocol\n\nAny object passed to `pipe.accept(target)` or `pipe.write(chunk, handle, ...)` must implement two well-known symbols:\n\n```js\nconst ipcHandle = Symbol.for('bare.ipc.handle')\nconst ipcAccept = Symbol.for('bare.ipc.accept')\n\nclass MyTarget {\n  get [ipcHandle]() {\n    return this._handle // An ArrayBuffer backing a libuv `uv_*_t` struct\n  }\n\n  [ipcAccept]() {\n    // Optional: Called synchronously after the handle has been transferred\n  }\n}\n```\n\n- `Symbol.for('bare.ipc.handle')` (required): A getter returning the underlying libuv handle (typically an `ArrayBuffer` whose first bytes are a `uv_stream_t` / `uv_udp_t`).\n- `Symbol.for('bare.ipc.accept')` (optional): A method invoked synchronously after the handle has been transferred. Use it to initialize per-handle state (e.g. address lookup).\n\n`Pipe`, `bare-tcp`'s `Socket`, and any compatible package implement this protocol natively, so a `bare-tcp` socket can be passed and received via `bare-pipe` IPC without any glue code.\n\nTypeScript users can import the `IPCAcceptable` interface from `bare-pipe` to type the protocol."
+    }
+  ],
   "exports": [
     {
       "key": "Pipe",
@@ -1085,5 +1091,5 @@
       ]
     }
   ],
-  "generatedAt": "2026-08-05T20:32:09.904Z"
+  "generatedAt": "2026-08-05T21:04:21.770Z"
 }

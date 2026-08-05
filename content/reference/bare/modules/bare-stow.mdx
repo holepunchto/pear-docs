@@ -325,6 +325,92 @@ Wrap the host side of a stowed bundle's transport `stream`, returning an `IPC` h
 
 **Returns** `IPC` — An `IPC` handle wrapping `stream`, with the `ready` promise and `terminate()` layered on top of `Protocol`.
 
+## Protocol
+
+The harness multiplexes a control channel and a user data channel over the underlying binary duplex stream. The `ipc` returned from `start()` is itself a duplex stream carrying the user data; control frames ride alongside it on the same handle. RPC libraries (such as `bare-rpc`) bind to `ipc` just like a raw stream.
+
+Control frames signal lifecycle events:
+
+| Direction      | Type        | Payload              |
+| :------------- | :---------- | :------------------- |
+| Worker -> Host | `ready`     | -                    |
+| Worker -> Host | `exit`      | `{ code }`           |
+| Worker -> Host | `error`     | `{ message, stack }` |
+| Host -> Worker | `terminate` | -                    |
+
+An incoming `error` frame destroys the local `ipc` with the carried error, surfacing it as a normal stream `error` event. Other control frames emit a regular event named after the type.
+
+The `ipc` handle exposes the lifecycle as events and methods on the same duplex:
+
+- `ipc.ready`: A promise that resolves once the worker has signaled ready. Rejects if the worker errors before ready.
+- `ipc.on('exit', code)`: Emitted when the worker signals exit. `code` carries the exit code.
+- `ipc.on('error', err)`: Emitted when the worker reports a fault, or when the underlying transport errors. Either way the `ipc` is destroyed.
+- `ipc.on('close')`: Emitted when the underlying transport closes.
+- `ipc.destroy()`: Standard stream destroy. Sends a `terminate` control frame to the worker and waits for the underlying transport to close.
+- `ipc.terminate()`: Like `destroy()` but resolves with the worker's exit code.
+
+The framing layer is also exported directly for embedders that bring their own transport:
+
+```js
+const protocol = require('bare-stow/protocol')
+
+const ipc = protocol.attach(stream) // Any duplex byte stream
+ipc.write(Buffer.from('payload')) // User data
+ipc.send('ready') // Control frame
+ipc.on('exit', () => {
+  /* ... */
+})
+```
+
+The host helper layers the lifecycle promise and `terminate` method on top of the protocol:
+
+```js
+const { wrap } = require('bare-stow/host')
+
+const ipc = wrap(stream) // Any duplex byte stream
+await ipc.ready
+```
+
+## CLI
+
+#### `bare-stow [flags] <entry>`
+
+Stow the module graph rooted at `<entry>`, writing the harness and bundle to the path given by `--out`.
+
+```console
+--version|-v
+--target <name>
+--client <name>
+--server <name>
+--base <path>
+--out|-o <path>
+--builtins <path>
+--imports <path>
+--defer <specifier>
+--host <name>
+--help|-h
+```
+
+##### `--target <name>`
+
+The target runtime. Required. The built-in `bare-sidecar` and `bare-worker` are resolved directly; any other `<name>` is loaded from its `bare-stow-target-<name>` package, or from `<name>` itself as a full module specifier, resolved from the working directory.
+
+##### `--client <name>` and `--server <name>`
+
+The RPC library to wire into the harness (`--client`) or the bundle entry shim (`--server`). The built-in `bare-rpc` is resolved directly; any other `<name>` is loaded from its `bare-stow-rpc-<name>` package, or from `<name>` itself as a full module specifier, resolved from the working directory.
+
+##### `--builtins <path>` and `--imports <path>`
+
+Paths to JavaScript or JSON files exporting a list of builtin module names and a map of global import overrides respectively. Forwarded to `bare-pack`.
+
+##### `--defer <specifier>`
+
+A module specifier whose resolution should be deferred. May be passed multiple times.
+
+##### `--host <name>`
+
+A host triple to build for. Must be a subset of the host triples supported by the target. May be passed multiple times. Defaults to all host triples supported by the target.
+
 ## See also
 
 - Builds on `bare-bundle`, `bare-bundle-id`, `bare-fs`, `bare-module-lexer`, `bare-module-traverse`, `bare-pack`, `bare-path`, `bare-stream`, and `bare-type-stripper`.
