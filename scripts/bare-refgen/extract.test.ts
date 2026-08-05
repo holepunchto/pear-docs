@@ -132,7 +132,7 @@ test('a description\'s dangling same-page anchor is repaired to the real one, or
   };
   const model: BareModel = {
     name: 'thing', version: '1.0.0', description: null, repoUrl: null,
-    npmUrl: '', minBare: null, native: false, dependencies: [], usage: null,
+    npmUrl: '', minBare: null, native: false, dependencies: [], usage: null, extraSections: [],
     exports: [iface, fn, noSuchType], subpaths: [], generatedAt: null,
   };
   const { mdx } = renderPage(model, null);
@@ -143,7 +143,7 @@ test('a description\'s dangling same-page anchor is repaired to the real one, or
 test('See also states what the module builds on, from its own bare-* dependencies', () => {
   const base: Omit<BareModel, 'dependencies'> = {
     name: 'thing', version: '1.0.0', description: null, repoUrl: null,
-    npmUrl: '', minBare: null, native: false, usage: null,
+    npmUrl: '', minBare: null, native: false, usage: null, extraSections: [],
     exports: [], subpaths: [], generatedAt: null,
   };
   const one = renderPage({ ...base, dependencies: ['bare-events'] }, null).mdx;
@@ -163,7 +163,7 @@ test('thin property-only class renders as a shape block, not expanded methods', 
   const ex = extract('thin.d.ts');
   const model: BareModel = {
     name: 'thin', version: '1.0.0', description: null, repoUrl: null,
-    npmUrl: '', minBare: null, native: false, dependencies: [], usage: null,
+    npmUrl: '', minBare: null, native: false, dependencies: [], usage: null, extraSections: [],
     exports: ex, subpaths: [], generatedAt: null,
   };
   const { mdx } = renderPage(model, null);

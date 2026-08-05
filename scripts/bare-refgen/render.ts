@@ -22,6 +22,7 @@ import {
   stabilityOf,
   nodeParityUrl,
 } from './config';
+import { extractAnchors } from '../helpers';
 
 /** Signatures longer than this drop to a code block below the heading. */
 const HEADING_MAX = 96;
@@ -85,6 +86,22 @@ function fixAnchorLinks(text: string, ctx: Ctx): string {
     const known = ctx.typeAnchors.get(bare);
     return known ? `[${label}](#${known})` : label;
   });
+}
+
+/**
+ * A verbatim README block (Usage, or an extra top-level section) may contain
+ * GitHub-flavoured Markdown that isn't valid MDX. The one confirmed offender
+ * so far: a bare autolink like `<https://example.com>` — CommonMark treats it
+ * as a link, but MDX always tries to parse `<…>` as JSX and chokes on the
+ * `//`. Rewritten to a normal Markdown link, which renders identically.
+ * Fence-aware: never touches text inside a ``` code block, where this
+ * pattern is inert either way (MDX doesn't try to parse JSX inside a fence).
+ */
+function mdxSafeReadmeBlock(text: string): string {
+  return text
+    .split(/(^```[\s\S]*?^```$)/m)
+    .map((seg, i) => (i % 2 === 1 ? seg : seg.replace(/<(https?:\/\/[^\s>]+)>/g, '[$1]($1)')))
+    .join('');
 }
 
 /** github-slugger's result for a plain identifier heading. */
@@ -461,11 +478,37 @@ function buildsOnLine(model: BareModel): string | null {
 
 export function renderPage(model: BareModel, layout: Layout | null): { mdx: string; orphans: string[] } {
   const ctx: Ctx = { model, layout, typeAnchors: buildTypeAnchors(model.exports), target: 'mdx' };
-  const parts: string[] = [frontmatter(model), '', stabilityBadge(model.name), '', intro(model, layout), ''];
-  if (model.usage) parts.push('## Usage', '', model.usage.trim(), '');
+  const usageBlock = model.usage ? mdxSafeReadmeBlock(model.usage.trim()) : null;
+  // Defensive: committed api-model.json files predating this field lack it.
+  const extraBlocks = (model.extraSections ?? []).map(({ heading, body }) => ({
+    heading,
+    body: mdxSafeReadmeBlock(body.trim()),
+  }));
+  const { lines: apiLines, orphans } = apiSection(ctx);
 
-  const { lines, orphans } = apiSection(ctx);
-  parts.push(...lines);
+  // Verbatim README prose sometimes links to a same-page section that this
+  // pipeline never carries over — most commonly the README's own `## API`
+  // prose, which the extracted, .d.ts-derived `## API` section replaces
+  // rather than supplements (e.g. bare-module's "Packages" section links to
+  // `#protocols`/`#commonjs-modules`, headings that only exist in the
+  // README's API prose). Compute the real anchor set this page will expose
+  // and strip (never leave dangling) any same-page link that misses it —
+  // same contract as `fixAnchorLinks()`, generalized to this content.
+  const draftForAnchors = [
+    ...(usageBlock ? ['## Usage', '', usageBlock] : []),
+    ...apiLines,
+    ...extraBlocks.flatMap(({ heading, body }) => [`## ${heading}`, '', body]),
+  ].join('\n');
+  const realAnchors = extractAnchors(draftForAnchors);
+  const stripDanglingAnchors = (text: string) =>
+    text.replace(/\[([^\]]+)\]\(#([^)]+)\)/g, (m, label: string, anchor: string) => (realAnchors.has(anchor) ? m : label));
+
+  const parts: string[] = [frontmatter(model), '', stabilityBadge(model.name), '', intro(model, layout), ''];
+  if (usageBlock) parts.push('## Usage', '', stripDanglingAnchors(usageBlock), '');
+
+  parts.push(...apiLines);
+
+  for (const { heading, body } of extraBlocks) parts.push(`## ${heading}`, '', stripDanglingAnchors(body), '');
 
   parts.push('## See also', '');
   const buildsOn = buildsOnLine(model);

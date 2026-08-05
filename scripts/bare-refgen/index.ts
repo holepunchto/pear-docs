@@ -44,6 +44,20 @@ async function usageFromResearch(name: string): Promise<string | null> {
   }
 }
 
+/** Other top-level README sections (CLI flags, protocol specs, …), captured verbatim by the same dossier. */
+async function extraSectionsFromResearch(name: string): Promise<Array<{ heading: string; body: string }>> {
+  if (!RESEARCH_JSON) return [];
+  try {
+    const recs = JSON.parse(await readFile(RESEARCH_JSON, 'utf8')) as Array<{
+      name: string;
+      extraSections?: Array<{ heading: string; body: string }>;
+    }>;
+    return recs.find((r) => r.name === name)?.extraSections ?? [];
+  } catch {
+    return [];
+  }
+}
+
 function parseOnly(): string[] | null {
   const i = process.argv.indexOf('--only');
   if (i === -1) return null;
@@ -169,6 +183,7 @@ async function generateOne(
       native: pkg.native,
       dependencies: pkg.bareDependencies,
       usage: await usageFromResearch(name),
+      extraSections: await extraSectionsFromResearch(name),
       exports: extractModule(pkg.entryDts, pkg.name),
       subpaths: pkg.subpaths.map((s) => ({
         name: s.name,

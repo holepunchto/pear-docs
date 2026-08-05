@@ -88,6 +88,15 @@ export interface BareModel {
   dependencies: string[];
   /** Upstream README `## Usage` section, verbatim, or null. */
   usage: string | null;
+  /**
+   * Other top-level upstream README sections (CLI flags, wire-protocol
+   * specs, package.json field tables, …) with no other home on the
+   * generated page, verbatim, in README order. See
+   * `scripts/research-bare-modules.ts`'s `SKIP_EXTRA_HEADINGS` for what's
+   * excluded (Usage/API/License/Related/etc — either handled elsewhere or
+   * not page-worthy).
+   */
+  extraSections: Array<{ heading: string; body: string }>;
   exports: BareExport[];
   /** Additional published entry points (`bare-fs/promises`, `bare-stream/web`). */
   subpaths: BareSubpath[];
