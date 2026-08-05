@@ -255,7 +255,12 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
 
   // "The Pears stack" was renamed "The Pear stack" to drop the pluralised
   // brand term; the slug moved with it.
-  out.push({ from: '/explanation/the-pears-stack/', to: '/explanation/the-pear-stack/' });
+  out.push({ from: '/explanation/the-pears-stack/', to: '/explanation/pear-and-bare/' });
+
+  // "The Pear stack" was retired as a named concept—the branding decision
+  // says there is no "Pear Stack" or "Pears Stack"—and reframed as a plain
+  // explainer of how the layers fit together; the slug moved with it.
+  out.push({ from: '/explanation/the-pear-stack/', to: '/explanation/pear-and-bare/' });
 
   out.sort((a, b) => a.from.localeCompare(b.from));
   return out;
