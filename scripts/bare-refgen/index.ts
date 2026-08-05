@@ -27,7 +27,7 @@ import {
   stabilityOf,
 } from './config';
 import { selectModules } from './select';
-import { fetchPackage } from './fetch';
+import { fetchPackage, cleanupDepCache } from './fetch';
 import { extractModule } from './extract';
 import { loadLayout } from './layout';
 import { renderPage } from './render';
@@ -233,17 +233,23 @@ async function main(): Promise<void> {
   const versions: Record<string, string> = {};
   const descriptions: Record<string, string | null> = {};
   const skipped: string[] = [];
-  for (const name of names) {
-    try {
-      const res = await generateOne(name, generatedAt, write, skipped);
-      if (res) {
-        ok++;
-        versions[name] = res.version;
-        descriptions[name] = res.description;
+  try {
+    for (const name of names) {
+      try {
+        const res = await generateOne(name, generatedAt, write, skipped);
+        if (res) {
+          ok++;
+          versions[name] = res.version;
+          descriptions[name] = res.description;
+        }
+      } catch (err) {
+        console.error(`  ✗ ${name}: ${(err as Error).message}`);
       }
-    } catch (err) {
-      console.error(`  ✗ ${name}: ${(err as Error).message}`);
     }
+  } finally {
+    // The shared dependency-vendor cache (see fetch.ts) is run-scoped, not
+    // per-package — clean it up once, after every module has been generated.
+    await cleanupDepCache();
   }
 
   await updateVersions(versions);

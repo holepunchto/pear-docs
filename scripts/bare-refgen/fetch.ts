@@ -7,7 +7,7 @@
 
 import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rename, rm, symlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -42,6 +42,7 @@ interface Pkg {
   engines?: Record<string, string> | null;
   addon?: boolean | null;
   repository?: string | { url?: string } | null;
+  dependencies?: Record<string, string> | null;
 }
 
 /** Depth-first search for a `types`/`typings` condition inside an exports map. */
@@ -112,6 +113,98 @@ function repoUrlOf(pkg: Pkg): string | null {
     .replace(/\.git$/, '');
 }
 
+// ---- dependency vendoring -------------------------------------------------
+//
+// Bare `.d.ts` files routinely import types from sibling `bare-*` packages
+// (`bare-events`, `bare-stream`, …), but `fetchPackage` only ever extracts the
+// ONE requested tarball — no `node_modules`, so those imports can't resolve
+// and the checker silently drops anything that depends on them (inherited
+// interface members via `extends`, symbols reached through a resolved alias,
+// …). Below, each fetched package's `bare-*` dependencies (recursively) are
+// npm-packed into a shared, run-scoped cache and symlinked into place. This
+// is a declarations-only concern — nothing here is ever executed — so a
+// deduped `npm pack` extraction stands in for a real `npm install`.
+
+let sharedDepCacheDir: string | null = null;
+const depCache = new Map<string, string | null>();
+const depClosureLinked = new Set<string>();
+
+async function depCacheRoot(): Promise<string> {
+  if (!sharedDepCacheDir) sharedDepCacheDir = await mkdtemp(join(tmpdir(), 'bare-refgen-deps-'));
+  return sharedDepCacheDir;
+}
+
+/** Delete the shared dependency cache. Call once, after the whole run finishes. */
+export async function cleanupDepCache(): Promise<void> {
+  if (sharedDepCacheDir) await rm(sharedDepCacheDir, { recursive: true, force: true });
+  sharedDepCacheDir = null;
+  depCache.clear();
+  depClosureLinked.clear();
+}
+
+/** `npm pack` + extract a single dependency into the shared cache, deduped by name. */
+async function vendorDep(name: string): Promise<string | null> {
+  if (depCache.has(name)) return depCache.get(name)!;
+  const root = await depCacheRoot();
+  const dest = join(root, name);
+  let result: string | null = dest;
+  if (!existsSync(dest)) {
+    const tmp = join(root, `.extract-${name}`);
+    try {
+      await mkdir(tmp, { recursive: true });
+      const { stdout } = await execFile(
+        'npm',
+        ['pack', name, '--json', '--pack-destination', tmp],
+        { maxBuffer: 64 * 1024 * 1024 },
+      );
+      const meta = JSON.parse(stdout) as Array<{ filename: string }>;
+      await execFile('tar', ['xzf', join(tmp, meta[0].filename), '-C', tmp]);
+      await rename(join(tmp, 'package'), dest);
+    } catch {
+      result = null; // no .d.ts shipped, fetch failed, etc — leave unresolved, same as today
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  }
+  depCache.set(name, result);
+  return result;
+}
+
+/**
+ * Symlink a package's `bare-*` dependencies into its `node_modules`, and
+ * recurse into each dependency's own `bare-*` dependencies (deduped via
+ * `depClosureLinked`, so a widely-used base package's own closure is only
+ * walked once per run, however many dependents it has).
+ */
+async function linkBareDeps(pkgDir: string, pkg: Pkg): Promise<void> {
+  const deps = Object.keys(pkg.dependencies ?? {}).filter((d) => d.startsWith('bare-'));
+  if (deps.length === 0) return;
+  const nodeModules = join(pkgDir, 'node_modules');
+  await mkdir(nodeModules, { recursive: true });
+  for (const dep of deps) {
+    const link = join(nodeModules, dep);
+    if (!existsSync(link)) {
+      const depDir = await vendorDep(dep);
+      if (!depDir) continue;
+      try {
+        await symlink(depDir, link, 'dir');
+      } catch {
+        continue;
+      }
+    }
+    if (depClosureLinked.has(dep)) continue;
+    depClosureLinked.add(dep);
+    try {
+      const depDir = await vendorDep(dep);
+      if (!depDir) continue;
+      const depPkg = JSON.parse(await readFile(join(depDir, 'package.json'), 'utf8')) as Pkg;
+      await linkBareDeps(depDir, depPkg);
+    } catch {
+      // malformed package.json in a vendored dep — leave its own deps unresolved
+    }
+  }
+}
+
 export async function fetchPackage(name: string): Promise<FetchedPackage> {
   const dir = await mkdtemp(join(tmpdir(), `bare-refgen-${name}-`));
   const cleanup = () => rm(dir, { recursive: true, force: true });
@@ -127,6 +220,7 @@ export async function fetchPackage(name: string): Promise<FetchedPackage> {
 
     const pkgDir = join(dir, 'package');
     const pkg = JSON.parse(await readFile(join(pkgDir, 'package.json'), 'utf8')) as Pkg;
+    await linkBareDeps(pkgDir, pkg);
 
     return {
       name: pkg.name ?? name,

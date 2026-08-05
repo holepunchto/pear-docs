@@ -79,6 +79,27 @@ test('ambient declare-module: exports read from the ambient module symbol', () =
   assert.equal(extract('ambient.d.ts').length, 3);
 });
 
+test('export = promotes a locally-declared class reachable only via a return type', () => {
+  const ex = extract('reachable.d.ts');
+  assert.ok(names(ex).includes('Channel'), 'export = target');
+  assert.ok(names(ex).includes('Port'), 'Port is never itself exported, only returned by connect()');
+  const port = byName(ex, 'Port')!;
+  assert.equal(port.kind, 'class');
+  assert.ok(port.members.some((m) => m.kind === 'constructor'));
+  assert.ok(port.members.some((m) => m.name === 'read'));
+});
+
+test('interface signatures flatten members inherited via `extends`, including across files', () => {
+  const ex = extract('events.d.ts');
+  const events = byName(ex, 'ThingEvents')!;
+  assert.equal(events.kind, 'interface');
+  const sig = events.signatures[0];
+  assert.match(sig, /exit: \[code: number\]/, 'own member');
+  assert.match(sig, /close: \[\]/, 'inherited member from another file');
+  assert.match(sig, /error: \[err: Error\]/, 'inherited member from another file');
+  assert.doesNotMatch(sig, /import\(/, 'inherited members render by name, not a resolved import(...) path');
+});
+
 test('thin property-only class renders as a shape block, not expanded methods', () => {
   const ex = extract('thin.d.ts');
   const model: BareModel = {

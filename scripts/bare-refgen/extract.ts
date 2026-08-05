@@ -29,7 +29,7 @@ export function extractModule(entryDts: string, moduleName?: string): BareExport
 
   const moduleSymbol = checker.getSymbolAtLocation(sf);
   let { symbols, exclude } = moduleSymbol
-    ? moduleApiSymbols(checker, moduleSymbol)
+    ? moduleApiSymbols(checker, sf, moduleSymbol)
     : { symbols: [] as ts.Symbol[], exclude: new Set<ts.Symbol>() };
 
   // Ambient fallback: some packages declare their API inside
@@ -38,7 +38,7 @@ export function extractModule(entryDts: string, moduleName?: string): BareExport
   if (symbols.length === 0) {
     const ambient = ambientModuleDecl(sf, moduleName);
     const ambientSym = ambient ? checker.getSymbolAtLocation(ambient.name) : undefined;
-    if (ambientSym) ({ symbols, exclude } = moduleApiSymbols(checker, ambientSym));
+    if (ambientSym) ({ symbols, exclude } = moduleApiSymbols(checker, sf, ambientSym));
   }
 
   const seen = new Set<ts.Symbol>();
@@ -58,10 +58,14 @@ export function extractModule(entryDts: string, moduleName?: string): BareExport
  * `export = X` it's X itself plus any DISTINCT classes/interfaces X's namespace
  * re-exports (e.g. bare-stream's Readable/Writable) promoted to siblings —
  * `exclude` then keeps those from also rendering as members of X. Static
- * helper functions/vars stay as members of X.
+ * helper functions/vars stay as members of X. Also promotes local classes/
+ * interfaces that are never exported at all but are reachable from X's own
+ * signatures (e.g. bare-broadcast-channel's `connect(): Port<T>`, where `Port`
+ * has no export of its own) — see `reachableLocalSiblings`.
  */
 function moduleApiSymbols(
   checker: ts.TypeChecker,
+  sf: ts.SourceFile,
   moduleSymbol: ts.Symbol,
 ): { symbols: ts.Symbol[]; exclude: Set<ts.Symbol> } {
   const exportEquals = moduleSymbol.exports?.get(ts.InternalSymbolName.ExportEquals);
@@ -80,7 +84,69 @@ function moduleApiSymbols(
       exclude.add(r);
     }
   });
+  for (const r of reachableLocalSiblings(checker, sf, [target, ...siblings])) {
+    siblings.push(r);
+    exclude.add(r);
+  }
   return { symbols: [target, ...siblings], exclude };
+}
+
+/**
+ * Local top-level class/interface declarations in the entry file that were
+ * never discovered as an export of X (directly or via its namespace) but ARE
+ * referenced — directly or transitively — from an already-discovered
+ * declaration's signature (a param type, return type, or heritage clause).
+ * Bare's `interface Foo {} + declare class Foo {}` merge pattern applies to
+ * these too, so a class used only as a return type (never itself exported)
+ * would otherwise vanish entirely instead of being documented as a sibling.
+ */
+function reachableLocalSiblings(
+  checker: ts.TypeChecker,
+  sf: ts.SourceFile,
+  roots: ts.Symbol[],
+): ts.Symbol[] {
+  const localTopLevel = new Map<ts.Symbol, ts.Symbol>();
+  for (const stmt of sf.statements) {
+    if (!ts.isClassDeclaration(stmt) && !ts.isInterfaceDeclaration(stmt)) continue;
+    if (!stmt.name) continue;
+    const sym = checker.getSymbolAtLocation(stmt.name);
+    if (!sym) continue;
+    const resolved = resolveAlias(checker, sym);
+    localTopLevel.set(resolved, resolved);
+  }
+
+  const included = new Set(roots);
+  const found: ts.Symbol[] = [];
+  const queue = [...roots];
+  const visitedDecls = new Set<ts.Declaration>();
+
+  function visit(node: ts.Node): void {
+    if (ts.isTypeReferenceNode(node) || ts.isExpressionWithTypeArguments(node)) {
+      const nameNode = ts.isTypeReferenceNode(node) ? node.typeName : node.expression;
+      const sym = checker.getSymbolAtLocation(nameNode);
+      if (sym) {
+        const resolved = resolveAlias(checker, sym);
+        const local = localTopLevel.get(resolved);
+        if (local && !included.has(local)) {
+          included.add(local);
+          found.push(local);
+          queue.push(local);
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  while (queue.length > 0) {
+    const sym = queue.shift()!;
+    for (const decl of sym.declarations ?? []) {
+      if (visitedDecls.has(decl)) continue;
+      visitedDecls.add(decl);
+      visit(decl);
+    }
+  }
+
+  return found;
 }
 
 /**
@@ -170,17 +236,53 @@ function stripKeywords(text: string): string {
 }
 
 /** Signature for a non-callable export: full shape for types, `name: type` else. */
-function nonCallableSignature(displayName: string, decl: ts.Declaration): string {
+function nonCallableSignature(checker: ts.TypeChecker, displayName: string, decl: ts.Declaration): string {
   if (ts.isTypeAliasDeclaration(decl)) {
     const tp = decl.typeParameters?.length
       ? `<${decl.typeParameters.map((t) => t.getText()).join(', ')}>`
       : '';
     return `type ${decl.name.text}${tp} = ${decl.type.getText()}`;
   }
-  if (ts.isInterfaceDeclaration(decl) || ts.isEnumDeclaration(decl)) {
+  if (ts.isInterfaceDeclaration(decl)) {
+    return interfaceShapeText(checker, decl);
+  }
+  if (ts.isEnumDeclaration(decl)) {
     return stripKeywords(decl.getText());
   }
   return memberSignature(displayName, decl);
+}
+
+/**
+ * An interface's full member shape — own members plus anything picked up
+ * through `extends` (e.g. `SidecarEvents extends DuplexEvents` carries
+ * `close`/`error` that `interface SidecarEvents { … }`'s own source text
+ * never shows). Walks the checker's flattened property list for coverage,
+ * but renders each member from ITS OWN declaration's source text (not
+ * `checker.typeToString`) — a cross-package inherited member would otherwise
+ * print as an absolute `import("/tmp/…/index").Type` path instead of the
+ * plain name a hand-written signature would use.
+ */
+function interfaceShapeText(checker: ts.TypeChecker, decl: ts.InterfaceDeclaration): string {
+  const sym = checker.getSymbolAtLocation(decl.name);
+  const type = sym ? checker.getDeclaredTypeOfSymbol(sym) : null;
+  if (!sym || !type) return stripKeywords(decl.getText());
+
+  const lines: string[] = [];
+  for (const prop of checker.getPropertiesOfType(type)) {
+    const name = prop.getName();
+    if (name.startsWith('__')) continue; // well-known symbols (Symbol.iterator, …)
+    const d = prop.declarations?.[0];
+    if (d && (ts.isPropertySignature(d) || ts.isPropertyDeclaration(d) || ts.isMethodSignature(d))) {
+      lines.push(`  ${stripKeywords(d.getText()).replace(/[;,]$/, '')}`);
+    } else {
+      const pType = checker.getTypeOfSymbolAtLocation(prop, decl);
+      lines.push(`  ${name}: ${checker.typeToString(pType, decl, ts.TypeFormatFlags.NoTruncation)}`);
+    }
+  }
+  const tp = decl.typeParameters?.length
+    ? `<${decl.typeParameters.map((t) => t.getText()).join(', ')}>`
+    : '';
+  return [`interface ${decl.name.text}${tp} {`, ...lines, '}'].join('\n');
 }
 
 // ---- params / returns / jsdoc -------------------------------------------
@@ -352,7 +454,7 @@ function buildExport(
       decls.find((d) => ts.isTypeAliasDeclaration(d) || ts.isInterfaceDeclaration(d)) ??
       decls.find((d) => ts.isPropertySignature(d) || ts.isPropertyDeclaration(d) || ts.isVariableDeclaration(d)) ??
       decls[0];
-    signatures.push(nonCallableSignature(displayName, valueDecl));
+    signatures.push(nonCallableSignature(checker, displayName, valueDecl));
   }
 
   const description = decls.map(nodeDescription).find(Boolean) ?? null;
