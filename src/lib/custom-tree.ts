@@ -463,6 +463,7 @@ export const customTree: Node[] = [
               { type: 'page', name: 'bare-os', url: '/reference/bare/modules/bare-os' },
               { type: 'page', name: 'bare-stream', url: '/reference/bare/modules/bare-stream' },
               { type: 'page', name: 'bare-tcp', url: '/reference/bare/modules/bare-tcp' },
+              { type: 'page', name: 'bare-ws', url: '/reference/bare/modules/bare-ws' },
               { type: 'page', name: 'bare-fetch', url: '/reference/bare/modules/bare-fetch' },
               { type: 'page', name: 'bare-crypto', url: '/reference/bare/modules/bare-crypto' },
               { type: 'page', name: 'bare-subprocess', url: '/reference/bare/modules/bare-subprocess' },
