@@ -1,13 +1,13 @@
 ---
 title: "bare-ws"
-description: "Reference for bare-ws: a WebSocket client and server for Bare, built on bare-tcp/bare-tls via bare-http1/bare-https."
+description: "WebSocket library for JavaScript"
 docType: reference
 schemaType: APIReference
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-[`bare-ws`](https://github.com/holepunchto/bare-ws) is a WebSocket client and server for [Bare](/reference/bare/runtime). Sockets are [`bare-stream`](/reference/bare/modules/bare-stream) duplex streams that perform the WebSocket handshake over an HTTP or HTTPS request. It's pure JavaScript.
+[`bare-ws`](https://github.com/holepunchto/bare-ws) — WebSocket library for JavaScript.
 
 ```sh
 npm i bare-ws
@@ -35,96 +35,461 @@ server.on('listening', () => {
 
 ### Socket
 
-#### `const socket = new ws.Socket(url[, options])`
+#### `new Socket(opts: WebSocketOptions)`
 
-Open a WebSocket connection to `url`, or wrap an already-connected socket when acting as the server side of a handshake.
+Open a WebSocket connection to `url`, or wrap an already-connected `opts.socket` when acting as the server side of a handshake.
 
 Overloads:
 
-```js
-new ws.Socket(url, options)
-new ws.Socket(options)
+```ts
+new Socket(opts: WebSocketOptions)
+new Socket(url: URL | string, opts?: WebSocketOptions)
 ```
 
-```js
-options = {
-  host: null,
-  hostname: null, // Alias for `host`, for Node.js compatibility
-  path: null,
-  port: null,
-  secure: false, // Use TLS (`wss:`) for the underlying connection
-  socket: null // An already-connected TCP socket to wrap instead of opening a new one
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | `WebSocketOptions` | — | Connection options: `host`/`hostname`, `port`, `path`, `secure`, or an already-connected `socket` to wrap. |
+
+#### `ping(data: unknown): void`
+
+Send a WebSocket ping frame with `data` as its payload.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data` | `unknown` | — | The payload of the ping frame; a string is converted to a `Buffer`. |
+
+**Throws**
+
+- `NOT_CONNECTED` — the socket has not finished connecting.
+
+#### `pong(data: unknown): void`
+
+Send a WebSocket pong frame with `data` as its payload.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data` | `unknown` | — | The payload of the pong frame; a string is converted to a `Buffer`. |
+
+**Throws**
+
+- `NOT_CONNECTED` — the socket has not finished connecting.
+
+#### `Socket.handshake(req: HTTPClientRequest, cb: (error: WebSocketError | null) => void): void`
+
+Perform the client side of the WebSocket opening handshake over `req`, calling `cb` with a `WebSocketError` if the server's response is invalid.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `req` | `HTTPClientRequest` | — | The outgoing HTTP request to upgrade; the WebSocket handshake headers are added to it. |
+| `cb` | `(error: WebSocketError \| null) => void` | — | Called once the server's response is validated, with a `WebSocketError` on failure, otherwise `null`. |
+
+#### `Socket.WebSocketEvents`
+
+```ts
+interface WebSocketEvents {
+  ping: [payload: unknown]
+  pong: [payload: unknown]
+  data: [data: unknown]
+  end: []
+  readable: []
+  piping: [dest: Writable]
+  close: []
+  error: [err: Error]
+  drain: []
+  finish: []
+  pipe: [src: Readable]
 }
 ```
 
-#### `socket.ping(data)` · `socket.pong(data)`
+#### `Socket.WebSocketOptions`
 
-Send a ping or pong frame with `data` as its payload. A string `data` is converted to a `Buffer`. Throws a `WebSocketError` with code `NOT_CONNECTED` if the socket hasn't finished connecting.
-
-#### `ws.Socket.handshake(req, cb)`
-
-Perform the client side of the WebSocket opening handshake over the HTTP request `req`, calling `cb(error)` with a `WebSocketError` if the server's response is invalid.
-
-Sockets emit `ping` and `pong` (in addition to the usual stream events).
+```ts
+interface WebSocketOptions {
+  host?: string
+  hostname?: string
+  path?: string
+  port?: string | number
+  secure?: boolean
+  socket?: TCPSocket
+}
+```
 
 ### Server
 
-#### `const server = new ws.Server([options][, onconnection])`
+#### `new Server(onconnection: (socket: WebSocket, req: HTTPClientRequest) => void)`
 
-Create a WebSocket server, optionally backed by `options.server`. `onconnection` is added as a `connection` listener, called for each successful WebSocket upgrade with `(socket, req)`.
+Create a server, optionally backed by `opts.server`, and emit `connection` for each successful WebSocket upgrade.
 
-```js
-options = {
-  secure: false // Create an HTTPS-backed server, accepting `wss:` connections
+Overloads:
+
+```ts
+new Server(onconnection: (socket: WebSocket, req: HTTPClientRequest) => void)
+new Server(opts?: WebSocketServerOptions, onconnection?: (socket: WebSocket, req: HTTPClientRequest) => void)
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onconnection` | `(socket: WebSocket, req: HTTPClientRequest) => void` | — | Called on each `'connection'` event. |
+
+#### `address(): TCPSocketAddress`
+
+Return the bound address of the underlying TCP server.
+
+#### `close(cb?: (err?: Error | null) => void): this`
+
+Stop the server from accepting new connections, calling `cb` once it has closed.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `cb?` | `(err?: Error \| null) => void` | — | Called once the underlying server has closed. |
+
+#### `listening: boolean`
+
+`true` once the underlying server is bound and accepting connections.
+
+#### `ref(): this`
+
+Ref the underlying server so it keeps the event loop alive.
+
+#### `Server.handshake(req: HTTPClientRequest, cb: (err: WebSocketError | null) => void): void`
+
+Perform the server side of the WebSocket opening handshake for `req`, writing the `101` upgrade response on `socket` and calling `cb` with a `WebSocketError` on failure.
+
+Overloads:
+
+```ts
+Server.handshake(req: HTTPClientRequest, cb: (err: WebSocketError | null) => void): void
+Server.handshake(req: HTTPClientRequest, socket: TCPSocket, cb?: (err: WebSocketError | null) => void): void
+Server.handshake(req: HTTPClientRequest, socket?: TCPSocket, head?: Buffer, cb?: (err: WebSocketError | null) => void): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `req` | `HTTPClientRequest` | — | The incoming upgrade request. |
+| `cb` | `(err: WebSocketError \| null) => void` | — | Called with a `WebSocketError` if the request is not a valid WebSocket upgrade, otherwise `null`. |
+
+#### `Server.WebSocketServerEvents`
+
+```ts
+interface WebSocketServerEvents {
+  connection: [socket: WebSocket, req: HTTPClientRequest]
+  listening: []
+  data: [data: unknown]
+  end: []
+  readable: []
+  piping: [dest: Writable]
+  close: []
+  error: [err: Error]
+  drain: []
+  finish: []
+  pipe: [src: Readable]
 }
 ```
 
-#### `server.address()` · `server.listening`
+#### `Server.WebSocketServerOptions`
 
-`server.address()` returns the bound address of the underlying TCP server. `server.listening` is `true` once the server is bound and accepting connections.
+```ts
+interface WebSocketServerOptions {
+  secure?: boolean
+  IncomingMessage?: typeof HTTPIncomingMessage
+  ServerResponse?: typeof HTTPServerResponse
+}
+```
 
-#### `server.close([cb])` · `server.ref()` · `server.unref()`
+#### `unref(): this`
 
-Stop the server from accepting new connections, calling `cb` once closed; ref/unref the underlying server.
+Unref the underlying server so it does not keep the event loop alive on its own.
 
-#### `ws.Server.handshake(req, [socket[, head]], cb)`
+## `bare-ws/global`
 
-Perform the server side of the WebSocket opening handshake for the request `req`, writing the `101` upgrade response and calling `cb(error)` with a `WebSocketError` on failure.
+### Types
 
-Servers emit `connection` and `listening`.
+#### `WebSocketConstructor`
 
-### Constants
+```ts
+type WebSocketConstructor = typeof ws.Socket
+```
 
-`ws.opcode` holds the WebSocket frame opcodes (`CONTINUATION`, `TEXT`, `BINARY`, `CLOSE`, `PING`, `PONG`) defined by RFC 6455. `ws.status` holds close status codes for protocol errors (`PROTOCOL_ERROR`) and oversized messages (`MESSAGE_TOO_LARGE`).
+The type of the `Socket` class, used to type the global `WebSocket` constructor.
 
-### Errors
+## `bare-ws/constants`
 
-Protocol violations throw a `WebSocketError` carrying a `code` and a close `status`:
+### Constants and variables
 
-| Code | Thrown when |
-| --- | --- |
-| `EXPECTED_CONTINUATION` | A fragmented message's next frame wasn't a continuation frame. |
-| `EXPECTED_MASK` | A frame from a client was missing its required mask. |
-| `INCOMPLETE_FRAME` | The buffered data doesn't yet contain a full frame. |
-| `INVALID_ACCEPT_HEADER` | The server's `Sec-WebSocket-Accept` response header didn't match the expected digest. |
-| `INVALID_ENCODING` | Data was written with an encoding other than `buffer` or `utf8`. |
-| `INVALID_KEY_HEADER` | The `Sec-WebSocket-Key` header was missing or malformed. |
-| `INVALID_OPCODE` | A frame was received with an opcode that isn't `TEXT` or `BINARY`. |
-| `INVALID_PAYLOAD_LENGTH` | A frame's payload length field was invalid. |
-| `INVALID_UPGRADE_HEADER` | The `Upgrade` header was missing or not `websocket`. |
-| `INVALID_VERSION_HEADER` | The `Sec-WebSocket-Version` header was neither `8` nor `13`. |
-| `NETWORK_ERROR` | The underlying HTTP request errored before the handshake completed. |
-| `NOT_CONNECTED` | An operation such as `ping()` or `pong()` was attempted before the socket finished connecting. |
-| `UNEXPECTED_CONTINUATION` | A continuation frame was received without a preceding fragmented frame. |
-| `UNEXPECTED_CONTROL` | A control frame was received while a fragmented message was in progress. |
-| `UNEXPECTED_RSV1` / `UNEXPECTED_RSV2` / `UNEXPECTED_RSV3` | A frame was received with a reserved RSV bit set. |
+#### `EOL: string`
 
-## Related modules
+The line ending (`\r\n`) used when writing the handshake response.
 
-Builds on `bare-crypto`, `bare-events`, [`bare-http1`](/reference/modules/bare-modules), `bare-https`, and [`bare-stream`](/reference/bare/modules/bare-stream) (see [Bare modules](/reference/modules/bare-modules)).
+#### `EOF: string`
+
+The blank-line terminator (`\r\n\r\n`) that ends the handshake response headers.
+
+#### `GUID: Buffer`
+
+The WebSocket protocol's fixed GUID, concatenated with the `Sec-WebSocket-Key` to compute the `Sec-WebSocket-Accept` digest.
+
+#### `opcode`
+
+```ts
+opcode: {
+  CONTINUATION: number
+  TEXT: number
+  BINARY: number
+  CLOSE: number
+  PING: number
+  PONG: number
+}
+```
+
+The WebSocket frame opcodes (`CONTINUATION`, `TEXT`, `BINARY`, `CLOSE`, `PING`, `PONG`) as defined by RFC 6455.
+
+#### `status: { PROTOCOL_ERROR: number; MESSAGE_TOO_LARGE: number }`
+
+WebSocket close status codes for protocol errors (`PROTOCOL_ERROR`) and oversized messages (`MESSAGE_TOO_LARGE`).
+
+## `bare-ws/errors`
+
+### WebSocketError
+
+#### `WebSocketError`
+
+```ts
+new WebSocketError(msg: string, code: string, status: number, fn?: WebSocketError, cause?: unknown)
+```
+
+An error thrown for WebSocket protocol violations, carrying a `code` and a close `status`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+| `code` | `string` | — | The error code. |
+| `status` | `number` | — | The WebSocket close status associated with the error. |
+| `fn?` | `WebSocketError` | — | Optional function to omit from the top of the generated stack trace, passed to `Error.captureStackTrace`. |
+| `cause?` | `unknown` | — | The underlying cause of the error, if any. |
+
+#### `WebSocketError.EXPECTED_CONTINUATION(msg?: string): WebSocketError`
+
+A fragmented message's next frame was not a continuation frame.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'EXPECTED_CONTINUATION'`, for the caller to throw.
+
+#### `WebSocketError.EXPECTED_MASK(msg?: string): WebSocketError`
+
+A frame from a client was missing its required mask.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'EXPECTED_MASK'`, for the caller to throw.
+
+#### `WebSocketError.INCOMPLETE_FRAME(msg?: string, length?: number): WebSocketError`
+
+The buffered data does not yet contain a full frame.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+| `length?` | `number` | — | The total byte length the frame needs before it can be decoded, stored as the error `status` (default `-1`). |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INCOMPLETE_FRAME'` and `status` set to `length`, for the caller to throw.
+
+#### `WebSocketError.INVALID_ACCEPT_HEADER(msg?: string): WebSocketError`
+
+The `Sec-WebSocket-Accept` header in the server's handshake response did not match the expected digest.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_ACCEPT_HEADER'`, for the caller to throw.
+
+#### `WebSocketError.INVALID_ENCODING(msg?: string): WebSocketError`
+
+Data was written with an encoding other than `buffer` or `utf8`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_ENCODING'`, for the caller to throw.
+
+#### `WebSocketError.INVALID_KEY_HEADER(msg?: string): WebSocketError`
+
+The `Sec-WebSocket-Key` header was missing or malformed.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_KEY_HEADER'`, for the caller to throw.
+
+#### `WebSocketError.INVALID_OPCODE(msg?: string): WebSocketError`
+
+A frame was received with an opcode that is not `TEXT` or `BINARY`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_OPCODE'`, for the caller to throw.
+
+#### `WebSocketError.INVALID_PAYLOAD_LENGTH(msg?: string): WebSocketError`
+
+A frame's payload length field was invalid.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_PAYLOAD_LENGTH'`, for the caller to throw.
+
+#### `WebSocketError.INVALID_UPGRADE_HEADER(msg?: string): WebSocketError`
+
+The `Upgrade` header was missing or not `websocket`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_UPGRADE_HEADER'`, for the caller to throw.
+
+#### `WebSocketError.INVALID_VERSION_HEADER(msg?: string): WebSocketError`
+
+The `Sec-WebSocket-Version` header was neither `8` nor `13`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'INVALID_VERSION_HEADER'`, for the caller to throw.
+
+#### `WebSocketError.NETWORK_ERROR(msg: string, cause?: unknown): WebSocketError`
+
+The underlying HTTP request errored before the handshake completed.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+| `cause?` | `unknown` | — | The underlying error. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'NETWORK_ERROR'`, for the caller to throw.
+
+#### `WebSocketError.NOT_CONNECTED(msg?: string): WebSocketError`
+
+An operation, such as `ping()` or `pong()`, was attempted before the socket finished connecting.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'NOT_CONNECTED'`, for the caller to throw.
+
+#### `WebSocketError.UNEXPECTED_CONTINUATION(msg?: string): WebSocketError`
+
+A continuation frame was received without a preceding fragmented frame.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'UNEXPECTED_CONTINUATION'`, for the caller to throw.
+
+#### `WebSocketError.UNEXPECTED_CONTROL(msg?: string): WebSocketError`
+
+A control frame was received while a fragmented message was in progress.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'UNEXPECTED_CONTROL'`, for the caller to throw.
+
+#### `WebSocketError.UNEXPECTED_RSV1(msg?: string): WebSocketError`
+
+A frame was received with the reserved RSV1 bit set.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'UNEXPECTED_RSV1'`, for the caller to throw.
+
+#### `WebSocketError.UNEXPECTED_RSV2(msg?: string): WebSocketError`
+
+A frame was received with the reserved RSV2 bit set.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'UNEXPECTED_RSV2'`, for the caller to throw.
+
+#### `WebSocketError.UNEXPECTED_RSV3(msg?: string): WebSocketError`
+
+A frame was received with the reserved RSV3 bit set.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | The error message. |
+
+**Returns** `WebSocketError` — A `WebSocketError` with `code` set to `'UNEXPECTED_RSV3'`, for the caller to throw.
 
 ## See also
 
-- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
-- [`bare-tcp`](/reference/bare/modules/bare-tcp)—the socket layer WebSocket connections run over.
-- [`bare-fetch`](/reference/bare/modules/bare-fetch)—a request/response HTTP client for the non-persistent case.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.

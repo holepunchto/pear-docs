@@ -1,15 +1,13 @@
 ---
 title: "bare-addon-resolve"
-description: "Reference for bare-addon-resolve: the low-level native-addon resolution algorithm for Bare, exposed as a generator."
+description: "Low-level addon resolution algorithm for Bare"
 docType: reference
 schemaType: APIReference
 ---
 
-[`bare-addon-resolve`](https://github.com/holepunchto/bare-addon-resolve) implements Bare's low-level resolution algorithm for **native addons**—the counterpart to [`bare-module-resolve`](/reference/bare/modules/bare-module-resolve) for `.bare` / prebuilt binaries. It's a pure-JavaScript generator that yields candidate addon URLs for a specifier.
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-<Callout type="info">
-A low-level building block. Addons normally resolve through the [runtime](/reference/bare/runtime#bareaddon) or are bundled by [`bare-pack`](/reference/modules/bare-modules); use this directly only in tooling.
-</Callout>
+[`bare-addon-resolve`](https://github.com/holepunchto/bare-addon-resolve) — Low-level addon resolution algorithm for Bare.
 
 ```sh
 npm i bare-addon-resolve
@@ -17,11 +15,13 @@ npm i bare-addon-resolve
 
 ## Usage
 
+For synchronous resolution:
+
 ```js
 const resolve = require('bare-addon-resolve')
 
-function readPackage (url) {
-  // Read and parse `url` if it exists, otherwise return null
+function readPackage(url) {
+  // Read and parse `url` if it exists, otherwise `null`
 }
 
 for (const resolution of resolve('./addon', new URL('file:///directory/'), readPackage)) {
@@ -29,36 +29,93 @@ for (const resolution of resolve('./addon', new URL('file:///directory/'), readP
 }
 ```
 
-An asynchronous form is supported by iterating with `for await`.
+For asynchronous resolution:
+
+```js
+const resolve = require('bare-addon-resolve')
+
+async function readPackage(url) {
+  // Read and parse `url` if it exists, otherwise `null`
+}
+
+for await (const resolution of resolve('./addon', new URL('file:///directory/'), readPackage)) {
+  console.log(resolution)
+}
+```
 
 ## API
 
-#### `const resolver = resolve(specifier, parentURL[, options][, readPackage])`
+### Functions
 
-Create an addon resolver. Iterate synchronously or with `for await`; each yielded value is a candidate addon `URL`.
+#### `resolve`
 
-#### `for (const resolution of resolver)`
+```ts
+resolve(specifier: string, parentURL: URL, readPackage?: (url: URL) => JSON | null): Iterable<URL>
+```
 
-Synchronously iterate the addon resolution candidates. The resolved addon is the first candidate that exists as a file on the file system.
+Resolve `specifier` relative to `parentURL`, which must be a WHATWG `URL` instance. `readPackage` is called with a `URL` instance for every package manifest to be read and must either return the parsed JSON package manifest, if it exists, or `null`. If `readPackage` returns a promise, synchronous iteration is not supported.
 
-#### `for await (const resolution of resolver)`
+**Parameters**
 
-Asynchronously iterate the addon resolution candidates. If `readPackage` returns promises, these will be awaited. The same comments as `for (const resolution of resolver)` apply.
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier to resolve. |
+| `parentURL` | `URL` | — | The URL to resolve `specifier` relative to. |
+| `readPackage?` | `(url: URL) => JSON \| null` | — | Called with the URL of each package manifest encountered; must return the parsed manifest or `null`. Returning a promise disables synchronous iteration. |
 
-<Callout type="warning">
-These functions are currently subject to change between minor releases. If using them directly, make sure to specify a tilde range (for example, `~1.10.0`) when declaring the module dependency.
-</Callout>
+**Returns** `Iterable<URL>` — Yields candidate resolution `URL`s for the caller to test, in the order the algorithm tries them.
 
-### Sub-generators
+**Throws**
 
-`resolve.addon`, `resolve.url`, `resolve.package`, `resolve.packageSelf`, `resolve.file`, `resolve.directory`, and `resolve.linked` expose the algorithm's steps—including `linked`, which resolves to `linked:` specifiers for runtimes that link addons ahead of time (such as iOS and Android). The module also exports `resolve.constants` (`UNRESOLVED`, `YIELDED`, `RESOLVED`). See the [repository README](https://github.com/holepunchto/bare-addon-resolve).
+- `INVALID_ADDON_SPECIFIER` — the addon specifier is not a valid package name or contains an invalid escape sequence.
+- `INVALID_PACKAGE_NAME` — a package manifest's `name` field is invalid (for example contains `__`).
 
-## Related modules
+### Types
 
-Builds on [`bare-module-resolve`](/reference/bare/modules/bare-module-resolve) and `bare-semver` (see [Bare modules](/reference/modules/bare-modules)).
+#### `ResolveOptions`
+
+```ts
+interface ResolveOptions {
+  builtinProtocol?: string
+  builtins?: Builtins
+  conditions?: Conditions
+  extensions?: string[]
+  host?: string
+  hosts?: string[]
+  linked?: boolean
+  linkedProtocol?: string
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
+}
+```
+
+## `bare-addon-resolve/errors`
+
+### AddonResolveError
+
+#### `AddonResolveError.INVALID_ADDON_SPECIFIER(msg: string): AddonResolveError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `AddonResolveError` — A new `AddonResolveError` with code `INVALID_ADDON_SPECIFIER`.
+
+#### `AddonResolveError.INVALID_PACKAGE_NAME(msg: string): AddonResolveError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `AddonResolveError` — A new `AddonResolveError` with code `INVALID_PACKAGE_NAME`.
+
+#### `code: string`
 
 ## See also
 
-- [`bare-module-traverse`](/reference/bare/modules/bare-module-traverse)—uses this to find a graph's addons.
-- [Bare runtime API](/reference/bare/runtime#bareaddon)—`Bare.Addon`, the runtime addon loader.
-- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.

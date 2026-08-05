@@ -1,31 +1,1078 @@
 ---
 title: "bare-prom-client"
-description: "Reference overview for bare-prom-client: a Prometheus metrics client for Bare, API-compatible with the prom-client package."
+description: "Client for prometheus"
 docType: reference
 schemaType: APIReference
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-[`bare-prom-client`](https://github.com/holepunchto/bare-prom-client) is a [Prometheus](https://prometheus.io/) metrics client for [Bare](/reference/bare/runtime), modelled on the popular [`prom-client`](https://github.com/siimon/prom-client) package. It's pure JavaScript and bundles no web framework—you expose metrics by responding to Prometheus scrapes with `await registry.metrics()`.
+[`bare-prom-client`](https://github.com/holepunchto/bare-prom-client) — Client for prometheus.
 
 ```sh
 npm i bare-prom-client
 ```
 
-## API overview
+## Usage
 
-Metrics register against a `Registry` (a default registry is provided). The four metric types are:
+See example folder for a sample usage. The library does not bundle any web
+framework. To expose the metrics, respond to Prometheus's scrape requests with
+the result of `await registry.metrics()`.
 
-- **`Counter`**— a value that only increases (requests served, errors seen).
-- **`Gauge`**— a value that goes up and down (in-flight requests, queue depth).
-- **`Histogram`**— sampled observations bucketed by configurable boundaries (request durations).
-- **`Summary`**— observations summarized as configurable quantiles.
+### Usage with Node.js's `cluster` module
 
-Each type takes a configuration object (name, help text, label names) and supports labelled series, zeroing, reset, and removal. Expose the registry's current values in Prometheus exposition format with `await registry.metrics()`; for Node-style `cluster` deployments, aggregate worker registries in the master process. See the [repository README](https://github.com/holepunchto/bare-prom-client) and its `example/` directory for the full configuration and method surface.
+Node.js's `cluster` module spawns multiple processes and hands off socket
+connections to those workers. Returning metrics from a worker's local registry
+will only reveal that individual worker's metrics, which is generally
+undesirable. To solve this, you can aggregate all of the workers' metrics in the
+master process. See `example/cluster.js` for an example.
+
+Default metrics use sensible aggregation methods. (Note, however, that the event
+loop lag mean and percentiles are averaged, which is not perfectly accurate.)
+Custom metrics are summed across workers by default. To use a different
+aggregation method, set the `aggregator` property in the metric config to one of
+'sum', 'first', 'min', 'max', 'average' or 'omit'. (See `lib/metrics/version.js`
+for an example.)
+
+If you need to expose metrics about an individual worker, you can include a
+value that is unique to the worker (such as the worker ID or process ID) in a
+label. (See `example/server.js` for an example using
+`worker_${cluster.worker.id}` as a label value.)
+
+Metrics are aggregated from the global registry by default. To use a different
+registry, call
+`client.AggregatorRegistry.setRegistries(registryOrArrayOfRegistries)` from the
+worker processes.
+
+## API
+
+### Registry
+
+#### `clear(): void`
+
+Remove all metrics from the registry
+
+#### `contentType: BoundRegistryContentType`
+
+Gets the Content-Type of the metrics for use in the response headers.
+
+#### `getMetricsAsArray(): MetricObject[]`
+
+Get all metrics as objects
+
+**Returns** [`MetricObject[]`](#metricobject) — All registered metrics as plain objects.
+
+#### `getMetricsAsJSON(): Promise<MetricObjectWithValues<MetricValue<string>>[]>`
+
+Get all metrics as objects
+
+**Returns** `Promise<MetricObjectWithValues<MetricValue<string>>[]>` — A promise resolving to all registered metrics as objects, each with its current values.
+
+#### `getSingleMetric<T extends string>(name: string): Metric<T> | undefined`
+
+Get a single metric
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The name of the metric |
+
+**Returns** `Metric<T> | undefined` — The registered metric named `name`, or `undefined` if none is registered.
+
+#### `getSingleMetricAsString(name: string): Promise<string>`
+
+Get a string representation of a single metric by name
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The name of the metric |
+
+**Returns** `Promise<string>` — A promise resolving to the exposition-format string for the named metric.
+
+#### `metrics(): Promise<string>`
+
+Get string representation for all metrics
+
+**Returns** `Promise<string>` — A promise resolving to the exposition-format string for all registered metrics.
+
+#### `registerMetric<T extends string>(metric: Metric<T>): void`
+
+Register metric to register
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `metric` | `Metric<T>` | — | Metric to add to register |
+
+#### `Registry.merge(registers: Registry[]): Registry`
+
+Merge registers
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `registers` | `Registry[]` | — | The registers you want to merge together |
+
+**Returns** `Registry` — A new `Registry` containing the metrics of every registry in `registers`.
+
+#### `Registry.OPENMETRICS_CONTENT_TYPE: OpenMetricsContentType`
+
+HTTP OpenMetrics Content-Type for metrics response headers.
+
+#### `Registry.PROMETHEUS_CONTENT_TYPE: PrometheusContentType`
+
+HTTP Prometheus Content-Type for metrics response headers.
+
+#### `removeSingleMetric(name: string): void`
+
+Remove a single metric
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The name of the metric to remove |
+
+#### `resetMetrics(): void`
+
+Reset all metrics in the registry
+
+#### `setContentType(contentType: BoundRegistryContentType): void`
+
+Set the content type of a registry. Used to change between Prometheus and
+OpenMetrics versions.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `contentType` | `BoundRegistryContentType` | — | The type of the registry |
+
+#### `setDefaultLabels(labels: object): void`
+
+Set static labels to every metric emitted by this registry
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `labels` | `object` | — | Name/value pairs, for example `{ defaultLabel: 'value', anotherLabel: 'value 2' }`. |
+
+### AggregatorRegistry
+
+#### `AggregatorRegistry.aggregate`
+
+```ts
+AggregatorRegistry.aggregate<T extends RegistryContentType>(metricsArr: Array<object>): Registry<T>
+```
+
+Creates a new Registry instance from an array of metrics that were
+created by `registry.getMetricsAsJSON()`. Metrics are aggregated using
+the method specified by their `aggregator` property, or by summation if
+`aggregator` is undefined.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `metricsArr` | `Array<object>` | — | Array of metrics, each of which created by `registry.getMetricsAsJSON()`. |
+
+**Returns** `Registry<T>` — aggregated registry.
+
+#### `AggregatorRegistry.setRegistries`
+
+```ts
+AggregatorRegistry.setRegistries(regs: | Array<
+					Registry<PrometheusContentType> | Registry<OpenMetricsContentType>
+			  >
+			| Registry<PrometheusContentType>
+			| Registry<OpenMetricsContentType>): void
+```
+
+Sets the registry or registries to be aggregated. Call from workers to
+use a registry/registries other than the default global registry.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `regs` | `\| Array< Registry<PrometheusContentType> \| Registry<OpenMetricsContentType> > \| Registry<PrometheusContentType> \| Registry<OpenMetricsContentType>` | — | Registry or registries to be aggregated. |
+
+#### `clusterMetrics(): Promise<string>`
+
+Gets aggregated metrics for all workers.
+
+**Returns** `Promise<string>` — Promise that resolves with the aggregated
+metrics.
+
+### Counter
+
+#### `new Counter(configuration: CounterConfiguration<T>)`
+
+Counters go up, and reset when the process restarts.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `configuration` | `CounterConfiguration<T>` | — | Configuration when creating a Counter metric. Name and Help is required. |
+
+#### `Counter.Internal`
+
+```ts
+interface Internal {
+  inc(value?: number): void
+}
+```
+
+#### `Counter.get(): Promise<MetricObjectWithValues<MetricValue<T>>>`
+
+Get counter metric object
+
+**Returns** `Promise<MetricObjectWithValues<MetricValue<T>>>` — A promise resolving to the counter's current value as a metric object.
+
+#### `Counter.inc(labels: LabelValues<T>, value?: number): void`
+
+Increment for given labels
+
+Overloads:
+
+```ts
+inc(labels: LabelValues<T>, value?: number): void
+inc(value?: number): void
+inc(incData: IncreaseDataWithExemplar<T>): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `labels` | `LabelValues<T>` | — | Object with label keys and values |
+| `value?` | `number` | — | The number to increment with |
+
+#### `labels(...values: string[]): Counter.Internal`
+
+Return the child for given labels
+
+Overloads:
+
+```ts
+labels(...values: string[]): Counter.Internal
+labels(labels: LabelValues<T>): Counter.Internal
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `values` | `string[]` | — | Label values |
+
+**Returns** `Counter.Internal` — Configured counter with given labels
+
+#### `Counter.remove(...values: string[]): void`
+
+Remove metrics for the given label values
+
+Overloads:
+
+```ts
+remove(...values: string[]): void
+remove(labels: LabelValues<T>): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `values` | `string[]` | — | Label values |
+
+#### `Counter.reset(): void`
+
+Reset counter values
+
+### Gauge
+
+#### `new Gauge(configuration: GaugeConfiguration<T>)`
+
+Gauges are similar to Counters but a Gauge's value can be decreased.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `configuration` | `GaugeConfiguration<T>` | — | Configuration when creating a Gauge metric. Name and Help is mandatory |
+
+#### `dec(labels: LabelValues<T>, value?: number): void`
+
+Decrement gauge
+
+Overloads:
+
+```ts
+dec(labels: LabelValues<T>, value?: number): void
+dec(value?: number): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `labels` | `LabelValues<T>` | — | Object with label keys and values |
+| `value?` | `number` | — | Value to decrement with |
+
+#### `Gauge.Internal`
+
+```ts
+interface Internal<T extends string> {
+  inc(value?: number): void
+  dec(value?: number): void
+  set(value: number): void
+  setToCurrentTime(): void
+  startTimer(): (labels?: LabelValues<T>) => number
+}
+```
+
+#### `Gauge.get(): Promise<MetricObjectWithValues<MetricValue<T>>>`
+
+Get gauge metric object
+
+**Returns** `Promise<MetricObjectWithValues<MetricValue<T>>>` — A promise resolving to the gauge's current value as a metric object.
+
+#### `Gauge.inc(labels: LabelValues<T>, value?: number): void`
+
+Increment gauge for given labels
+
+Overloads:
+
+```ts
+inc(labels: LabelValues<T>, value?: number): void
+inc(value?: number): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `labels` | `LabelValues<T>` | — | Object with label keys and values |
+| `value?` | `number` | — | The value to increment with |
+
+#### `labels(...values: string[]): Gauge.Internal<T>`
+
+Return the child for given labels
+
+Overloads:
+
+```ts
+labels(...values: string[]): Gauge.Internal<T>
+labels(labels: LabelValues<T>): Gauge.Internal<T>
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `values` | `string[]` | — | Label values |
+
+**Returns** `Gauge.Internal<T>` — Configured gauge with given labels
+
+#### `Gauge.remove(...values: string[]): void`
+
+Remove metrics for the given label values
+
+Overloads:
+
+```ts
+remove(...values: string[]): void
+remove(labels: LabelValues<T>): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `values` | `string[]` | — | Label values |
+
+#### `Gauge.reset(): void`
+
+Reset gauge values
+
+#### `set(labels: LabelValues<T>, value: number): void`
+
+Set gauge value for labels
+
+Overloads:
+
+```ts
+set(labels: LabelValues<T>, value: number): void
+set(value: number): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `labels` | `LabelValues<T>` | — | Object with label keys and values |
+| `value` | `number` | — | The value to set |
+
+#### `setToCurrentTime(labels?: LabelValues<T>): void`
+
+Set gauge value to current epoch time in seconds
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `labels?` | `LabelValues<T>` | — | Object with label keys and values |
+
+#### `Gauge.startTimer(labels?: LabelValues<T>): (labels?: LabelValues<T>) => number`
+
+Start a timer. Calling the returned function will set the gauge's value
+to the observed duration in seconds.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `labels?` | `LabelValues<T>` | — | Object with label keys and values |
+
+**Returns** `(labels?: LabelValues<T>) => number` — Function to invoke when timer should be stopped. The value it
+returns is the timed duration.
+
+### Histogram
+
+#### `new Histogram(configuration: HistogramConfiguration<T>)`
+
+Histograms track sizes and frequency of events.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `configuration` | `HistogramConfiguration<T>` | — | Configuration when creating the Histogram. Name and Help is mandatory |
+
+#### `Histogram.get(): Promise<MetricObjectWithValues<MetricValueWithName<T>>>`
+
+Get histogram metric object
+
+**Returns** `Promise<MetricObjectWithValues<MetricValueWithName<T>>>` — A promise resolving to the histogram's current buckets and counts as a metric object.
+
+#### `Histogram.Config`
+
+```ts
+interface Config {
+  buckets?: number[]
+}
+```
+
+#### `Histogram.Internal`
+
+```ts
+interface Internal<T extends string> {
+  observe(value: number): void
+  startTimer(): (labels?: LabelValues<T>) => void
+}
+```
+
+#### `labels(...values: string[]): Histogram.Internal<T>`
+
+Return the child for given labels
+
+Overloads:
+
+```ts
+labels(...values: string[]): Histogram.Internal<T>
+labels(labels: LabelValues<T>): Histogram.Internal<T>
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `values` | `string[]` | — | Label values |
+
+**Returns** `Histogram.Internal<T>` — Configured histogram with given labels
+
+#### `Histogram.observe(value: number): void`
+
+Observe value
+
+Overloads:
+
+```ts
+observe(value: number): void
+observe(labels: LabelValues<T>, value: number): void
+observe(observeData: ObserveDataWithExemplar<T>): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `number` | — | The value to observe |
+
+#### `Histogram.remove(...values: string[]): void`
+
+Remove metrics for the given label values
+
+Overloads:
+
+```ts
+remove(...values: string[]): void
+remove(labels: LabelValues<T>): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `values` | `string[]` | — | Label values |
+
+#### `Histogram.reset(): void`
+
+Reset histogram values
+
+#### `Histogram.startTimer(labels?: LabelValues<T>): (labels?: LabelValues<T>) => number`
+
+Start a timer. Calling the returned function will observe the duration in
+seconds in the histogram.
+
+Overloads:
+
+```ts
+startTimer(labels?: LabelValues<T>): (labels?: LabelValues<T>) => number
+startTimer(labels?: LabelValues<T>, exemplarLabels?: LabelValues<T>): (labels?: LabelValues<T>, exemplarLabels?: LabelValues<T>) => number
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `labels?` | `LabelValues<T>` | — | Object with label keys and values |
+
+**Returns** `(labels?: LabelValues<T>) => number` — Function to invoke when timer should be stopped. The value it
+returns is the timed duration.
+
+#### `zero(labels: LabelValues<T>): void`
+
+Initialize the metrics for the given combination of labels to zero
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `labels` | `LabelValues<T>` | — | Object with label keys and values to initialize to zero. |
+
+### Summary
+
+#### `new Summary(configuration: SummaryConfiguration<T>)`
+
+Summaries calculate percentiles of observed values.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `configuration` | `SummaryConfiguration<T>` | — | Configuration when creating Summary metric. Name and Help is mandatory |
+
+#### `Summary.get(): Promise<MetricObjectWithValues<MetricValueWithName<T>>>`
+
+Get summary metric object
+
+**Returns** `Promise<MetricObjectWithValues<MetricValueWithName<T>>>` — A promise resolving to the summary's current percentiles as a metric object.
+
+#### `labels(...values: string[]): Summary.Internal<T>`
+
+Return the child for given labels
+
+Overloads:
+
+```ts
+labels(...values: string[]): Summary.Internal<T>
+labels(labels: LabelValues<T>): Summary.Internal<T>
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `values` | `string[]` | — | Label values |
+
+**Returns** `Summary.Internal<T>` — Configured summary with given labels
+
+#### `Summary.observe(value: number): void`
+
+Observe value in summary
+
+Overloads:
+
+```ts
+observe(value: number): void
+observe(labels: LabelValues<T>, value: number): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `number` | — | The value to observe |
+
+#### `Summary.remove(...values: string[]): void`
+
+Remove metrics for the given label values
+
+Overloads:
+
+```ts
+remove(...values: string[]): void
+remove(labels: LabelValues<T>): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `values` | `string[]` | — | Label values |
+
+#### `Summary.reset(): void`
+
+Reset all values in the summary
+
+#### `Summary.startTimer(labels?: LabelValues<T>): (labels?: LabelValues<T>) => number`
+
+Start a timer. Calling the returned function will observe the duration in
+seconds in the summary.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `labels?` | `LabelValues<T>` | — | Object with label keys and values |
+
+**Returns** `(labels?: LabelValues<T>) => number` — Function to invoke when timer should be stopped
+
+#### `Summary.Config`
+
+```ts
+interface Config {
+  percentiles?: number[]
+}
+```
+
+#### `Summary.Internal`
+
+```ts
+interface Internal<T extends string> {
+  observe(value: number): void
+  startTimer(): (labels?: LabelValues<T>) => number
+}
+```
+
+### Pushgateway
+
+#### `new Pushgateway(url: string, options?: any, registry?: Registry<T>)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `string` | — | Complete url to the Pushgateway. If port is needed append url with :port |
+| `options?` | `any` | — | Options |
+| `registry?` | `Registry<T>` | — | Registry |
+
+#### `delete(params: Pushgateway.Parameters): Promise<{ resp?: unknown; body?: unknown }>`
+
+Delete all metrics for jobName
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `params` | `Pushgateway.Parameters` | — | Push parameters |
+
+**Returns** `Promise<{ resp?: unknown; body?: unknown }>` — A promise resolving with the Pushgateway HTTP response and body.
+
+#### `push(params: Pushgateway.Parameters): Promise<{ resp?: unknown; body?: unknown }>`
+
+Overwrite all metric (using PUT to Pushgateway)
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `params` | `Pushgateway.Parameters` | — | Push parameters |
+
+**Returns** `Promise<{ resp?: unknown; body?: unknown }>` — A promise resolving with the Pushgateway HTTP response and body.
+
+#### `pushAdd(params: Pushgateway.Parameters): Promise<{ resp?: unknown; body?: unknown }>`
+
+Add metric and overwrite old ones
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `params` | `Pushgateway.Parameters` | — | Push parameters |
+
+**Returns** `Promise<{ resp?: unknown; body?: unknown }>` — A promise resolving with the Pushgateway HTTP response and body.
+
+#### `Pushgateway.Parameters`
+
+```ts
+interface Parameters {
+  jobName: string
+  groupings?: {
+			[key: string]: string;
+		}
+}
+```
+
+### Functions
+
+#### `linearBuckets(start: number, width: number, count: number): number[]`
+
+Create an array with equal spacing between the elements
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `start` | `number` | — | The first value in the array |
+| `width` | `number` | — | The spacing between the elements |
+| `count` | `number` | — | The number of items in array |
+
+**Returns** `number[]` — An array with the requested number of elements
+
+#### `exponentialBuckets(start: number, factor: number, count: number): number[]`
+
+Create an array that grows exponentially
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `start` | `number` | — | The first value in the array |
+| `factor` | `number` | — | The exponential factor |
+| `count` | `number` | — | The number of items in array |
+
+**Returns** `number[]` — An array with the requested number of elements
+
+#### `validateMetricName(name: string): boolean`
+
+Validate a metric name
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The name to validate |
+
+**Returns** `boolean` — True if the metric name is valid, false if not
+
+### Constants and variables
+
+#### `register: Registry`
+
+The register that contains all metrics
+
+#### `contentType: RegistryContentType`
+
+HTTP Content-Type for metrics response headers for the default registry,
+defaults to Prometheus text format.
+
+#### `prometheusContentType: PrometheusContentType`
+
+HTTP Prometheus Content-Type for metrics response headers.
+
+#### `openMetricsContentType: OpenMetricsContentType`
+
+HTTP OpenMetrics Content-Type for metrics response headers.
+
+#### `MetricType`
+
+```ts
+enum MetricType {
+	Counter,
+	Gauge,
+	Histogram,
+	Summary,
+}
+```
+
+#### `collectDefaultMetrics`
+
+```ts
+collectDefaultMetrics: {
+	/**
+	 * Configure default metrics
+	 * @param config Configuration object for default metrics collector
+	 */
+	<T extends RegistryContentType>(
+		config?: DefaultMetricsCollectorConfiguration<T>,
+	): void;
+	/** All available default metrics */
+	metricsList: string[];
+}
+```
+
+### Types
+
+#### `Charset`
+
+```ts
+type Charset = 'utf-8'
+```
+
+#### `PrometheusMIME`
+
+```ts
+type PrometheusMIME = 'text/plain'
+```
+
+#### `PrometheusMetricsVersion`
+
+```ts
+type PrometheusMetricsVersion = '0.0.4'
+```
+
+#### `OpenMetricsMIME`
+
+```ts
+type OpenMetricsMIME = 'application/openmetrics-text'
+```
+
+#### `OpenMetricsVersion`
+
+```ts
+type OpenMetricsVersion = '1.0.0'
+```
+
+#### `OpenMetricsContentType`
+
+```ts
+type OpenMetricsContentType = `${OpenMetricsMIME}; version=${OpenMetricsVersion}; charset=${Charset}`
+```
+
+#### `PrometheusContentType`
+
+```ts
+type PrometheusContentType = `${PrometheusMIME}; version=${PrometheusMetricsVersion}; charset=${Charset}`
+```
+
+#### `RegistryContentType`
+
+```ts
+type RegistryContentType = | PrometheusContentType
+	| OpenMetricsContentType
+```
+
+#### `Collector`
+
+```ts
+type Collector = () => void
+```
+
+#### `Metric`
+
+```ts
+type Metric<T extends string = string> = | Counter<T>
+	| Gauge<T>
+	| Summary<T>
+	| Histogram<T>
+```
+
+General metric type
+
+#### `Aggregator`
+
+```ts
+type Aggregator = 'omit' | 'sum' | 'first' | 'min' | 'max' | 'average'
+```
+
+Aggregation methods, used for aggregating metrics in a Node.js cluster.
+
+#### `CollectFunction`
+
+```ts
+type CollectFunction<T> = (this: T) => void | Promise<void>
+```
+
+#### `MetricObject`
+
+```ts
+interface MetricObject {
+  name: string
+  help: string
+  type: MetricType
+  aggregator: Aggregator
+  collect: CollectFunction<any>
+}
+```
+
+#### `MetricObjectWithValues`
+
+```ts
+interface MetricObjectWithValues<T extends MetricValue<string>> {
+  values: T[]
+  name: string
+  help: string
+  type: MetricType
+  aggregator: Aggregator
+  collect: CollectFunction<any>
+}
+```
+
+#### `MetricValue`
+
+```ts
+type MetricValue<T extends string> = {
+	value: number;
+	labels: LabelValues<T>;
+}
+```
+
+#### `MetricValueWithName`
+
+```ts
+type MetricValueWithName<T extends string> = MetricValue<T> & {
+	metricName?: string;
+}
+```
+
+#### `LabelValues`
+
+```ts
+type LabelValues<T extends string> = Partial<Record<T, string | number>>
+```
+
+#### `MetricConfiguration`
+
+```ts
+interface MetricConfiguration<T extends string> {
+  name: string
+  help: string
+  labelNames?: T[] | readonly T[]
+  registers?: (
+		| Registry<PrometheusContentType>
+		| Registry<OpenMetricsContentType>
+	)[]
+  aggregator?: Aggregator
+  collect?: CollectFunction<any>
+  enableExemplars?: boolean
+}
+```
+
+#### `CounterConfiguration`
+
+```ts
+interface CounterConfiguration<T extends string> {
+  collect?: CollectFunction<Counter<T>>
+  name: string
+  help: string
+  labelNames?: T[] | readonly T[]
+  registers?: (
+		| Registry<PrometheusContentType>
+		| Registry<OpenMetricsContentType>
+	)[]
+  aggregator?: Aggregator
+  enableExemplars?: boolean
+}
+```
+
+#### `IncreaseDataWithExemplar`
+
+```ts
+interface IncreaseDataWithExemplar<T extends string> {
+  value?: number
+  labels?: LabelValues<T>
+  exemplarLabels?: LabelValues<T>
+}
+```
+
+#### `ObserveDataWithExemplar`
+
+```ts
+interface ObserveDataWithExemplar<T extends string> {
+  value: number
+  labels?: LabelValues<T>
+  exemplarLabels?: LabelValues<T>
+}
+```
+
+#### `GaugeConfiguration`
+
+```ts
+interface GaugeConfiguration<T extends string> {
+  collect?: CollectFunction<Gauge<T>>
+  name: string
+  help: string
+  labelNames?: T[] | readonly T[]
+  registers?: (
+		| Registry<PrometheusContentType>
+		| Registry<OpenMetricsContentType>
+	)[]
+  aggregator?: Aggregator
+  enableExemplars?: boolean
+}
+```
+
+#### `HistogramConfiguration`
+
+```ts
+interface HistogramConfiguration<T extends string> {
+  buckets?: number[]
+  collect?: CollectFunction<Histogram<T>>
+  name: string
+  help: string
+  labelNames?: T[] | readonly T[]
+  registers?: (
+		| Registry<PrometheusContentType>
+		| Registry<OpenMetricsContentType>
+	)[]
+  aggregator?: Aggregator
+  enableExemplars?: boolean
+}
+```
+
+#### `SummaryConfiguration`
+
+```ts
+interface SummaryConfiguration<T extends string> {
+  percentiles?: number[]
+  maxAgeSeconds?: number
+  ageBuckets?: number
+  pruneAgedBuckets?: boolean
+  compressCount?: number
+  collect?: CollectFunction<Summary<T>>
+  name: string
+  help: string
+  labelNames?: T[] | readonly T[]
+  registers?: (
+		| Registry<PrometheusContentType>
+		| Registry<OpenMetricsContentType>
+	)[]
+  aggregator?: Aggregator
+  enableExemplars?: boolean
+}
+```
+
+#### `DefaultMetricsCollectorConfiguration`
+
+```ts
+interface DefaultMetricsCollectorConfiguration<T extends RegistryContentType> {
+  register?: Registry<T>
+  prefix?: string
+  gcDurationBuckets?: number[]
+  eventLoopMonitoringPrecision?: number
+  labels?: object
+}
+```
 
 ## See also
 
-- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
-- [`bare-http1`](/reference/modules/bare-modules)—serve the metrics endpoint.
-- [Bare runtime API](/reference/bare/runtime)—the runtime this runs on.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.

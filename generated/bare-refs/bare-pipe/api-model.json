@@ -14,7 +14,7 @@
       "kind": "class",
       "static": false,
       "signatures": [
-        "interface Pipe<M extends PipeEvents = PipeEvents> extends Duplex<M>, IPCAcceptable {\n  readonly connecting: boolean\n  readonly pending: boolean\n  readonly readyState: 'open' | 'readOnly' | 'writeOnly' | 'opening'\n\n  open(fd: number, opts?: { fd?: number }, onconnect?: () => void): this\n  open(fd: number, onconnect: () => void): this\n  open(opts: { fd: number }, onconnect?: () => void): this\n\n  connect(path: string, opts?: PipeConnectOptions, onconnect?: () => void): this\n  connect(path: string, onconnect: () => void): this\n  connect(opts: PipeConnectOptions, onconnect?: () => void): this\n\n  write(\n    chunk: Buffer | string,\n    encoding: BufferEncoding,\n    handle?: IPCAcceptable,\n    cb?: (err: Error | null) => void\n  ): boolean\n  write(chunk: Buffer | string, encoding: BufferEncoding, cb?: (err: Error | null) => void): boolean\n  write(chunk: Buffer | string, handle?: IPCAcceptable, cb?: (err: Error | null) => void): boolean\n  write(chunk: Buffer | string, cb?: (err: Error | null) => void): boolean\n\n  accept<T extends IPCAcceptable>(target: T): T\n\n  ref(): this\n  unref(): this\n}"
+        "interface Pipe<M extends PipeEvents = PipeEvents> {\n  readonly connecting: boolean\n  readonly pending: boolean\n  readonly readyState: 'open' | 'readOnly' | 'writeOnly' | 'opening'\n  open(fd: number, opts?: { fd?: number }, onconnect?: () => void): this\n  connect(path: string, opts?: PipeConnectOptions, onconnect?: () => void): this\n  write(\n    chunk: Buffer | string,\n    encoding: BufferEncoding,\n    handle?: IPCAcceptable,\n    cb?: (err: Error | null) => void\n  ): boolean\n  accept<T extends IPCAcceptable>(target: T): T\n  ref(): this\n  unref(): this\n  _open(cb: StreamCallback): void\n  _predestroy(): void\n  _destroy(err: Error | null, cb: StreamCallback): void\n  readonly readable: boolean\n  readonly writable: boolean\n  readonly destroyed: boolean\n  readonly destroying: boolean\n  destroy(err?: Error | null): void\n  _read(size: number): void\n  readonly closed: boolean\n  readonly errored: Error | null\n  push(data: unknown | null, encoding?: BufferEncoding): boolean\n  unshift(data: unknown | null, encoding?: BufferEncoding): boolean\n  read(): unknown | null\n  resume(): this\n  pause(): this\n  pipe<S extends Writable>(dest: S, cb?: StreamCallback): S\n  setEncoding(encoding: BufferEncoding): void\n  _write(data: unknown, encoding: StreamEncoding, cb: StreamCallback): void\n  _writev(batch: { chunk: unknown; encoding: StreamEncoding }[], cb: StreamCallback): void\n  _final(cb: StreamCallback): void\n  end(cb?: StreamCallback): this\n  cork(): void\n  uncork(): void\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -410,7 +410,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface CreateConnectionOptions extends PipeOptions, PipeConnectOptions {}"
+        "interface CreateConnectionOptions {\n  allowHalfOpen?: boolean\n  eagerOpen?: boolean\n  ipc?: boolean\n  readBufferSize?: number\n  path?: string\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -425,7 +425,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface IPCAcceptable {\n  readonly [ipcHandle]: unknown\n  [ipcAccept]?(): void\n}"
+        "interface IPCAcceptable {\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -440,7 +440,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface PipeEvents extends DuplexEvents {\n  connect: []\n  handle: [type: number]\n}"
+        "interface PipeEvents {\n  connect: []\n  handle: [type: number]\n  data: [data: unknown]\n  end: []\n  readable: []\n  piping: [dest: Writable]\n  close: []\n  error: [err: Error]\n  drain: []\n  finish: []\n  pipe: [src: Readable]\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -593,7 +593,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface PipeServerEvents extends EventMap {\n  close: []\n  connection: [pipe: Pipe]\n  error: [err: Error]\n  listening: []\n}"
+        "interface PipeServerEvents {\n  close: []\n  connection: [pipe: Pipe]\n  error: [err: Error]\n  listening: []\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -791,7 +791,7 @@
       "kind": "class",
       "static": false,
       "signatures": [
-        "interface PipeServer<M extends PipeServerEvents = PipeServerEvents> extends EventEmitter<M> {\n  readonly listening: boolean\n\n  address(): string | null\n\n  listen(\n    path: string,\n    backlog?: number,\n    opts?: PipeServerListenOptions,\n    onlistening?: () => void\n  ): this\n  listen(path: string, backlog: number, onlistening: () => void): this\n  listen(path: string, onlistening: () => void): this\n  listen(opts: PipeServerListenOptions): this\n\n  close(onclose?: (err?: Error) => void): this\n\n  ref(): this\n  unref(): this\n}"
+        "interface PipeServer<M extends PipeServerEvents = PipeServerEvents> {\n  readonly listening: boolean\n  address(): string | null\n  listen(\n    path: string,\n    backlog?: number,\n    opts?: PipeServerListenOptions,\n    onlistening?: () => void\n  ): this\n  close(onclose?: (err?: Error) => void): this\n  ref(): this\n  unref(): this\n  addListener<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  addOnceListener<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  prependListener<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  prependOnceListener<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  removeListener<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  removeAllListeners<E extends keyof M>(name?: E): this\n  on<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  once<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  off<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  emit<E extends keyof M>(name: E, ...args: M[E]): boolean\n  listeners<E extends keyof M, R>(name: E): EventHandler<M[E], R>\n  rawListeners<E extends keyof M, R>(name: E): EventHandler<M[E], R>[]\n  eventNames(): (keyof M)[]\n  listenerCount<E extends keyof M>(name: E): number\n  getMaxListeners(): number\n  setMaxListeners(n: number): void\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -1067,5 +1067,5 @@
       ]
     }
   ],
-  "generatedAt": "2026-08-05T12:49:58.026Z"
+  "generatedAt": "2026-08-05T17:23:12.751Z"
 }

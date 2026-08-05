@@ -1,13 +1,13 @@
 ---
 title: "bare-structured-clone"
-description: "Reference for bare-structured-clone: the HTML structured-clone algorithm for Bare—structuredClone plus low-level serialize/deserialize with transfer."
+description: "Structured cloning algorithm for JavaScript"
 docType: reference
 schemaType: APIReference
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-[`bare-structured-clone`](https://github.com/holepunchto/bare-structured-clone) implements the HTML [structured-clone](https://html.spec.whatwg.org/multipage/structured-data.html) algorithm for [Bare](/reference/bare/runtime): the `structuredClone` function plus the low-level serialize/deserialize primitives that inter-thread messaging ([`bare-channel`](/reference/bare/modules/bare-channel)) is built on. It's a native addon and requires Bare `>=1.2.0`.
+[`bare-structured-clone`](https://github.com/holepunchto/bare-structured-clone) — Structured cloning algorithm for JavaScript. It is a native addon and requires Bare `>=1.2.0`.
 
 ```sh
 npm i bare-structured-clone
@@ -24,84 +24,339 @@ const buffer = new ArrayBuffer(4)
 const transferred = structuredClone(buffer, { transfer: [buffer] })
 ```
 
-Require `bare-structured-clone/global` to install `structuredClone` as a global.
+To install `structuredClone` as a global, require the `global` submodule:
+
+```js
+require('bare-structured-clone/global')
+
+const copy = structuredClone({ hello: 'world' })
+```
 
 ## API
 
-#### `const copy = structuredClone(value[, options])`
+### DataCloneError
 
-Clone `value` by serializing and then deserializing it. `options` may include a `transfer` list and an `interfaces` list:
+#### `DataCloneError.DataCloneError.ALREADY_TRANSFERRED(msg: string): DataCloneError`
 
-```js
-options = {
-  transfer: [],
-  interfaces: []
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `DataCloneError` — A new `DataCloneError` with code `ALREADY_TRANSFERRED`.
+
+#### `DataCloneError.DataCloneError.INVALID_INTERFACE(msg: string): DataCloneError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `DataCloneError` — A new `DataCloneError` with code `INVALID_INTERFACE`.
+
+#### `DataCloneError.DataCloneError.INVALID_REFERENCE(msg: string): DataCloneError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `DataCloneError` — A new `DataCloneError` with code `INVALID_REFERENCE`.
+
+#### `DataCloneError.DataCloneError.INVALID_VERSION(msg: string): DataCloneError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `DataCloneError` — A new `DataCloneError` with code `INVALID_VERSION`.
+
+#### `DataCloneError.DataCloneError.UNSERIALIZABLE_TYPE(msg: string): DataCloneError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `DataCloneError` — A new `DataCloneError` with code `UNSERIALIZABLE_TYPE`.
+
+#### `DataCloneError.DataCloneError.UNTRANSFERABLE_TYPE(msg: string): DataCloneError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `DataCloneError` — A new `DataCloneError` with code `UNTRANSFERABLE_TYPE`.
+
+### Functions
+
+#### `structuredClone`
+
+```ts
+structuredClone<T extends SerializableValue | TransferableValue>(value: T, opts?: StructuredCloneOptions): T
+```
+
+Clone `value` by serializing and then deserializing it. `opts` may include a `transfer` list and an `interfaces` list.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `T` | — | The value to clone. |
+| `opts?` | [`StructuredCloneOptions`](#structuredcloneoptions) | — | Options carrying the optional `transfer` and `interfaces` lists. |
+
+**Returns** `T` — A deep copy of `value`, with any transferred objects detached from the original.
+
+**Throws**
+
+- `UNSERIALIZABLE_TYPE` — `value`, or a value it references, is of a type that cannot be serialized (for example a function, a symbol, or a detached `ArrayBuffer`).
+- `UNTRANSFERABLE_TYPE` — a value in the `transfer` list cannot be transferred.
+- `ALREADY_TRANSFERRED` — a value in the `transfer` list has already been transferred.
+- `INVALID_INTERFACE` — a serializable or transferable value has an interface that is not present in the `interfaces` list.
+
+### Types
+
+#### `StructuredCloneOptions`
+
+```ts
+interface StructuredCloneOptions {
+  transfer: TransferableValue[]
+  interfaces: (SerializableConstructor | TransferableConstructor)[]
 }
 ```
 
-`transfer` is an array of `ArrayBuffer` and `Transferable` objects whose ownership is transferred to the clone. After transfer, the original objects are detached. `interfaces` is an array of `Serializable` and `Transferable` constructors that may appear in `value`; each constructor must be present at both serialize and deserialize time.
+#### `SerializableConstructor`
 
-### Low-level serialization
+```ts
+interface SerializableConstructor<T = unknown> {
+}
+```
 
-#### `serialize(value[, forStorage[, interfaces]])` · `serializeWithTransfer(value[, transferList[, interfaces]])`
+#### `TransferableConstructor`
 
-Produce a serialized representation, optionally with a transfer list.
+```ts
+interface TransferableConstructor<T = unknown> {
+}
+```
 
-#### `deserialize(serialized[, interfaces])` · `deserializeWithTransfer(serialized[, interfaces])`
+#### `SerializedTransfer`
 
-Reconstruct a value from its serialized form.
+```ts
+interface SerializedTransfer {
+  type: typeof constants.type.TRANSFER
+  transfers: (
+    | SerializedArrayBufferTransfer
+    | SerializedResizableArrayBufferTransfer
+    | SerializedTransferableTransfer
+  )[]
+  value: SerializedValue
+}
+```
 
-#### `preencode(state, serialized)` · `encode(state, serialized)` · `const serialized = decode(state)`
+#### `SerializedArrayBufferTransfer`
 
-The wire codec used to move serialized values across a boundary, plus `constants`, `symbols`, and the `Serializable` / `Transferable` base classes for custom types.
+```ts
+interface SerializedArrayBufferTransfer {
+  type: typeof constants.type.ARRAYBUFFER
+  id: number
+  backingStore: ArrayBuffer
+}
+```
 
-#### `class Serializable`
+#### `SerializedResizableArrayBufferTransfer`
 
-Base class for custom serializable interfaces. Subclasses must implement two methods keyed by the symbols above:
+```ts
+interface SerializedResizableArrayBufferTransfer {
+  type: typeof constants.type.RESIZABLEARRAYBUFFER
+  id: number
+  backingStore: ArrayBuffer
+  maxByteLength: number
+}
+```
 
-```js
-const { Serializable, symbols } = require('bare-structured-clone')
+#### `SerializedTransferableTransfer`
 
-class MySerializable extends Serializable {
-  [symbols.serialize](forStorage) {
-    // Return a `SerializableValue` describing this instance
-  }
+```ts
+interface SerializedTransferableTransfer {
+  type: typeof constants.type.TRANSFERABLE
+  id: number
+  interface: number
+  value: SerializedValue
+}
+```
 
-  static [symbols.deserialize](serialized) {
-    // Return a new instance reconstructed from `serialized`
+### Classes
+
+#### `Serializable`
+
+```ts
+class Serializable {
+}
+```
+
+#### `Transferable`
+
+```ts
+class Transferable {
+  detached: boolean
+}
+```
+
+## `bare-structured-clone/constants`
+
+### Constants and variables
+
+#### `constants`
+
+```ts
+constants: {
+  VERSION: number
+
+  type: {
+    // Primitive types
+    UNDEFINED: 0
+    NULL: 1
+    TRUE: 2
+    FALSE: 3
+    NUMBER: 4
+    BIGINT: 5
+    STRING: 6
+
+    // Builtin objects
+    DATE: 7
+    REGEXP: 8
+    ERROR: 9
+
+    // Builtin binary data objects
+    ARRAYBUFFER: 10
+    RESIZABLEARRAYBUFFER: 11
+    SHAREDARRAYBUFFER: 12
+    GROWABLESHAREDARRAYBUFFER: 13
+    TYPEDARRAY: 14
+    DATAVIEW: 15
+
+    // Builtin composite objects
+    MAP: 16
+    SET: 17
+    ARRAY: 18
+    OBJECT: 19
+
+    // Object references
+    REFERENCE: 20
+
+    // Object transfers
+    TRANSFER: 21
+
+    // Platform objects
+    URL: 22
+    BUFFER: 23
+    EXTERNAL: 24
+    SERIALIZABLE: 25
+    TRANSFERABLE: 26
+
+    typedarray: {
+      UINT8ARRAY: 1
+      UINT8CLAMPEDARRAY: 2
+      INT8ARRAY: 3
+      UINT16ARRAY: 4
+      INT16ARRAY: 5
+      UINT32ARRAY: 6
+      INT32ARRAY: 7
+      BIGUINT64ARRAY: 8
+      BIGINT64ARRAY: 9
+      FLOAT16ARRAY: 12
+      FLOAT32ARRAY: 10
+      FLOAT64ARRAY: 11
+    }
+
+    error: {
+      AGGREGATE: 1
+      EVAL: 2
+      RANGE: 3
+      REFERENCE: 4
+      SYNTAX: 5
+      TYPE: 6
+      URI: 7
+    }
   }
 }
 ```
 
-The constructor must be registered via the `interfaces` option on both ends of the clone.
+Numeric tags used in serialized values. Also available as `require('bare-structured-clone/constants')`.
 
-#### `class Transferable`
+## `bare-structured-clone/errors`
 
-Base class for custom transferable interfaces. Instances carry a `detached` boolean that flips to `true` once ownership has been transferred. Subclasses must implement two methods keyed by the symbols above:
+### DataCloneError
 
-```js
-const { Transferable, symbols } = require('bare-structured-clone')
+#### `DataCloneError.DataCloneError.ALREADY_TRANSFERRED(msg: string): DataCloneError`
 
-class MyTransferable extends Transferable {
-  [symbols.detach]() {
-    // Release ownership and return a `SerializableValue` describing
-    // the detached state
-  }
+**Parameters**
 
-  static [symbols.attach](serialized) {
-    // Return a new instance that takes ownership of `serialized`
-  }
-}
-```
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
 
-The constructor must be registered via the `interfaces` option on both ends of the clone. The base `detach` implementation sets `detached` to `true`; subclasses should call `super[symbols.detach]()` after releasing their state.
+**Returns** `DataCloneError` — A new `DataCloneError` with code `ALREADY_TRANSFERRED`.
 
-## Related modules
+#### `DataCloneError.DataCloneError.INVALID_INTERFACE(msg: string): DataCloneError`
 
-Builds on [`bare-buffer`](/reference/modules/bare-modules), `bare-type`, and [`bare-url`](/reference/bare/modules/bare-url) (see [Bare modules](/reference/modules/bare-modules)).
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `DataCloneError` — A new `DataCloneError` with code `INVALID_INTERFACE`.
+
+#### `DataCloneError.DataCloneError.INVALID_REFERENCE(msg: string): DataCloneError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `DataCloneError` — A new `DataCloneError` with code `INVALID_REFERENCE`.
+
+#### `DataCloneError.DataCloneError.INVALID_VERSION(msg: string): DataCloneError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `DataCloneError` — A new `DataCloneError` with code `INVALID_VERSION`.
+
+#### `DataCloneError.DataCloneError.UNSERIALIZABLE_TYPE(msg: string): DataCloneError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `DataCloneError` — A new `DataCloneError` with code `UNSERIALIZABLE_TYPE`.
+
+#### `DataCloneError.DataCloneError.UNTRANSFERABLE_TYPE(msg: string): DataCloneError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `DataCloneError` — A new `DataCloneError` with code `UNTRANSFERABLE_TYPE`.
 
 ## See also
 
-- [`bare-channel`](/reference/bare/modules/bare-channel) and [`bare-broadcast-channel`](/reference/bare/modules/bare-broadcast-channel)—inter-thread messaging built on this.
-- [Bare modules](/reference/modules/bare-modules)—the full `bare-*` catalog.
-- [Bare runtime API](/reference/bare/runtime#barethread)—`Bare.Thread`.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.
