@@ -17,6 +17,14 @@ Goal: evolve (not reverse) #303 — keep the "Pear stack" story fully intact for
 
 ## Foundational call: no URL changes, no physical file moves (phase 1)
 
+**Superseded by Phase 6 (below).** This section describes phases 0–5, which
+deliberately avoided URL changes. Phase 6 — originally scoped as "deferred,
+separate RFC" — was explicitly pulled forward and completed: every page now
+lives under `content/pear/**` or `content/bare/**` with a real `/pear` or
+`/bare` URL prefix. Keeping this section as historical record of *why* phases
+0–5 were built the way they were; see "Phase 6: physical reorg — findings"
+near the end of this document for what actually changed and how.
+
 Product identity is a **nav-tree/sidebar-tab construct only**. `src/lib/custom-tree.ts` is already hand-written and file-path-independent (a tree node's `url` doesn't have to match where the file lives), so splitting it into two trees requires zero file moves and zero URL changes for the ~137 existing pages.
 
 Why this matters: it means `scripts/helpers.ts` (`CONTENT_DIR`, `fileToSlug`, `getFiles`) and `check-internal-links.ts` need **no code changes at all** — the entire link-checking toolchain keeps working, because the single-content-tree assumption it's built on stays true. It also means zero redirects and zero SEO risk in this phase. A later, separately-approved physical `content/pear/**` + `content/bare/**` reorg with real URL prefixes is explicitly out of scope here (see Phase 6).
@@ -99,15 +107,15 @@ No thin Pear-side wrapper stub is needed for the pages that move — Pear's rema
 
 ## Phased rollout
 
-| Phase | Work | Risk |
-|---|---|---|
-| 0 — Frontmatter backfill | Add `product` field; tag all ~137 pages | Low |
-| 1 — Nav-split spike | Prototype `sidebar.tabs` + combined tree against the single loader on a throwaway branch; confirm it composes with the catch-all route | Medium — the one real unknown |
-| 2 — Nav split | Split `custom-tree.ts`; wire `DocsLayout.sidebar.tabs` + branding switch; ship minimal `content/bare/index.mdx` + repurposed `use-bare-standalone.mdx` so the tab isn't empty at launch; land Bare logo asset | Medium-high, biggest structural PR |
-| 3 — Tooling hardening | Update `check-cross-links.ts` exemptions; add product-invariant to `check-doctypes.ts` and wire into CI; editorial pass on `_snippets/*` | Low, parallel to Phase 4 |
-| 4 — Gap-filling content | Bare getting-started + CLI quickstart, native-addon how-to, debug/test how-to, Bare release notes, re-surface `bundle-a-bare-app.mdx`, audit chat-app pages for building-block context | Low per item, largest total effort — ship as several small PRs |
-| 5 — Examples/CI documentation | Comment-only labeling in `examples.yml`; optional physical `examples/{pear,bare}` split, explicitly deferred | Low |
-| 6 — Deferred, separate RFC | Physical `content/pear/**` + `content/bare/**` reorg with real URL/prefix changes; per-product SEO branding; deeper native-addon reference | Not part of this proposal |
+| Phase | Work | Risk | Status |
+|---|---|---|---|
+| 0 — Frontmatter backfill | Add `product` field; tag all ~137 pages | Low | ✅ Done |
+| 1 — Nav-split spike | Prototype `sidebar.tabs` + combined tree against the single loader on a throwaway branch; confirm it composes with the catch-all route | Medium — the one real unknown | ✅ Done — see findings below |
+| 2 — Nav split | Split `custom-tree.ts`; wire tree selection + branding switch; ship minimal `content/bare/index.mdx` + repurposed `use-bare-standalone.mdx` so the tab isn't empty at launch | Medium-high, biggest structural PR | ✅ Done — logo asset still deferred |
+| 3 — Tooling hardening | Update `check-cross-links.ts` exemptions; add product-invariant to `check-doctypes.ts` and wire into CI | Low, parallel to Phase 4 | ✅ Done — `_snippets/*` editorial pass still open |
+| 4 — Gap-filling content | Bare getting-started + CLI quickstart, native-addon how-to, debug/test how-to, Bare release notes, re-surface `bundle-a-bare-app.mdx`, audit chat-app pages for building-block context | Low per item, largest total effort — ship as several small PRs | Not started |
+| 5 — Examples/CI documentation | Comment-only labeling in `examples.yml`; optional physical `examples/{pear,bare}` split, explicitly deferred | Low | ✅ Done |
+| 6 — Physical reorg | `content/pear/**` + `content/bare/**` with real URL/prefix changes; no shared directory, shared pages live under `content/pear/` with `external: true` cross-links from Bare's tree | Was "deferred, separate RFC" — explicitly pulled forward and completed | ✅ Done — see findings below; per-product SEO branding and deeper native-addon reference still out of scope |
 
 ---
 
@@ -183,7 +191,77 @@ caches cleared.
 
 ---
 
+## Phase 6: physical reorg — findings and decisions
+
+Pulled forward from "deferred, separate RFC" at the user's explicit direction,
+with two decisions given up front: **no shared content directory** (pages
+tagged `product: shared` move into `content/pear/`, not a third directory),
+and Bare's nav reaches them via **`external: true` cross-links** rather than
+duplicating or symlinking them into `content/bare/`.
+
+**What moved.** 138 of 140 pages, via `git mv`, into `content/pear/**` or
+`content/bare/**` by their existing `product` tag (`shared` → `pear`).
+`content/index.mdx` (Pear's root) and `content/bare/index.mdx` (Bare's root)
+did **not** move — neither one's URL gets a prefix, so `/` stays Pear's
+landing page (protecting its existing SEO) and `/bare` stays exactly where
+Phase 2 already put it.
+
+**Mechanical execution, not hand-editing.** At this scale (138 moves, ~2061
+internal links, 7 tree nodes, 222 redirects) hand-editing was not a realistic
+option. The approach: compute an old-URL → new-URL map once from the
+pre-move tree plus each page's `product` tag, then move files and rewrite
+every reference from that single map — not ad hoc regexes per file. Link
+rewriting matched path tokens bounded by the same delimiters
+`check-internal-links.ts` already uses (`(`, `"`, `'` on the left; `)`, `"`,
+`'`, `#`, `?` on the right) rather than naive substring replacement, so e.g.
+`/how-to` and `/how-to/troubleshooting` couldn't collide.
+
+**Downstream code that assumed a flat `content/` tree, found by grepping for
+`content/reference`, `content/how-to`, etc. across `scripts/` and `src/`
+before moving anything:**
+
+| File | Assumption that broke | Fix |
+|---|---|---|
+| `layout.tsx` | Picked the sidebar tree via `source.getPage(params.slug)?.data.product` | Simplified to `slug?.[0] === 'bare'` — the URL itself now carries product identity, so the frontmatter lookup is redundant for routing (frontmatter still drives OG/schema) |
+| `pear-tree.ts` / `bare-tree.ts` | Every `url:` was an unprefixed slug | Rewritten via the same old→new map; 7 `bare-tree.ts` nodes pointing at now-Pear-hosted shared pages got `external: true` |
+| `scripts/redirects.ts` | Auto-derived legacy-redirect scanners (`buildHowToTopics`, building-blocks/helpers/tools `listSlugs`) walked a flat `content/how-to`, `content/reference/**` | Scanners now walk `content/{pear,bare}/how-to` and `content/bare/reference/**`; every existing hardcoded destination re-prefixed; **added** 138 new single-hop legacy→new redirects (222 total, verified zero duplicate `from` paths) |
+| `scripts/check-doctypes.ts` | `expectedDocType` read the first path segment after `content/` as the Diátaxis quadrant | Strips a leading `pear`/`bare` segment first |
+| `scripts/check-cross-links.ts` | Canonical slugs, module-directory prefixes, and `EXEMPT_FROM_ORPHAN` were hardcoded unprefixed paths | All re-prefixed; exemption set now reflects that Bare has no native how-to/explanation/reference quadrant landing of its own (those are the `shared` pages, reached externally) |
+| `scripts/check-examples.ts` | `HOW_TO_DIR` was one directory | Merges `content/pear/how-to/**` and `content/bare/how-to/**` |
+| `add-api-github-links.ts`, `audit-reference-docs.ts`, `gen-curated.ts`, `research-bare-modules.ts`, `refgen/{extract-grouping,rate,type-registry}.ts` | Hardcoded `content/reference/**` constants | Path constants updated to the new roots — **but these are maintainer-run generators** (upstream clones, GitHub API) that couldn't be exercised end-to-end in this pass. Mechanical fix, matching the pattern of every check script above; treat as unverified until next actual run. |
+
+**What did NOT need a code change**, and why that matters: `scripts/helpers.ts`'s
+`getFiles`/`fileToSlug` are purely path-derived with no flat-tree assumption
+baked in, so they, and everything built only on top of them
+(`check-internal-links.ts`, `check-includes.ts`, sitemap/OG/llms.txt
+generation, search indexing), kept working across the reorg with zero edits.
+That's the one part of the original "Foundational call" section that held up
+even after the call itself got reversed.
+
+**Verified**: `types:check`, `check:doctypes`, `check:internal-links`
+(140/140), `check:cross-links` (no new orphans, no coverage regression vs.
+pre-Phase-6), `check:includes`, full `npm run build` (140 pages, sitemap has
+140 unique `/pear`- and `/bare`-prefixed entries, zero dupes), `check:redirects`
+(222/222 stubs + `_redirects` lines verified against the built `out/`
+directory), lint (pre-existing errors only, none in touched files). Manually
+confirmed in-browser: a moved Bare page renders with Bare's sidebar; clicking
+an `external: true` link from Bare's How To section lands on the shared page
+rendering with Pear's full sidebar, as designed.
+
+**Still open**: per-product branding/logo (design asset dependency, unchanged
+from Phase 2), the `_snippets/*` editorial pass, and Phase 4's gap-filling
+content — none of these were in scope for the physical reorg itself.
+
+---
+
 ## Verification
+
+*(Written for phases 0–5, before Phase 6 reversed the no-URL-changes call —
+see "Phase 6: physical reorg — findings" above for what actually changed.
+`check:internal-links` and `check:doctypes` stayed correct through the
+reorg with zero code changes to the first, a one-line quadrant-stripping fix
+to the second; every other bullet below is superseded by that section's
+"Verified" paragraph.)*
 
 - `npm run check:internal-links` — expect **zero diff** in pass/fail before vs. after the nav-split PR (hard gate, since no slugs change).
 - `npm run check:doctypes` (extended) — all pages declare a valid `product`; existing directory→docType invariant stays green.
