@@ -167,6 +167,7 @@ async function generateOne(
       npmUrl: `https://www.npmjs.com/package/${pkg.name}`,
       minBare: pkg.minBare,
       native: pkg.native,
+      dependencies: pkg.bareDependencies,
       usage: await usageFromResearch(name),
       exports: extractModule(pkg.entryDts, pkg.name),
       subpaths: pkg.subpaths.map((s) => ({

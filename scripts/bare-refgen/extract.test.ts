@@ -100,11 +100,30 @@ test('interface signatures flatten members inherited via `extends`, including ac
   assert.doesNotMatch(sig, /import\(/, 'inherited members render by name, not a resolved import(...) path');
 });
 
+test('See also states what the module builds on, from its own bare-* dependencies', () => {
+  const base: Omit<BareModel, 'dependencies'> = {
+    name: 'thing', version: '1.0.0', description: null, repoUrl: null,
+    npmUrl: '', minBare: null, native: false, usage: null,
+    exports: [], subpaths: [], generatedAt: null,
+  };
+  const one = renderPage({ ...base, dependencies: ['bare-events'] }, null).mdx;
+  assert.match(one, /- Builds on `bare-events`\.\n/);
+
+  const two = renderPage({ ...base, dependencies: ['bare-events', 'bare-stream'] }, null).mdx;
+  assert.match(two, /- Builds on `bare-events` and `bare-stream`\.\n/);
+
+  const three = renderPage({ ...base, dependencies: ['bare-events', 'bare-path', 'bare-stream'] }, null).mdx;
+  assert.match(three, /- Builds on `bare-events`, `bare-path`, and `bare-stream`\.\n/);
+
+  const none = renderPage({ ...base, dependencies: [] }, null).mdx;
+  assert.doesNotMatch(none, /Builds on/);
+});
+
 test('thin property-only class renders as a shape block, not expanded methods', () => {
   const ex = extract('thin.d.ts');
   const model: BareModel = {
     name: 'thin', version: '1.0.0', description: null, repoUrl: null,
-    npmUrl: '', minBare: null, native: false, usage: null,
+    npmUrl: '', minBare: null, native: false, dependencies: [], usage: null,
     exports: ex, subpaths: [], generatedAt: null,
   };
   const { mdx } = renderPage(model, null);

@@ -84,6 +84,8 @@ export interface BareModel {
   minBare: string | null;
   /** True when package.json has `"addon": true` (a native addon). */
   native: boolean;
+  /** This module's own `bare-*` dependencies, from package.json, sorted. */
+  dependencies: string[];
   /** Upstream README `## Usage` section, verbatim, or null. */
   usage: string | null;
   exports: BareExport[];

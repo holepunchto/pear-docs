@@ -27,6 +27,8 @@ export interface FetchedPackage {
   entryDts: string | null;
   /** Additional published entry points that ship declarations. */
   subpaths: { name: string; dts: string }[];
+  /** This package's own `bare-*` dependencies, from `package.json`, sorted. */
+  bareDependencies: string[];
   /** Call to delete the temp checkout when done. */
   cleanup: () => Promise<void>;
 }
@@ -170,6 +172,11 @@ async function vendorDep(name: string): Promise<string | null> {
   return result;
 }
 
+/** A package's own `bare-*` dependencies, sorted — used for both resolution and the "Builds on …" See-also line. */
+function bareDepsOf(pkg: Pkg): string[] {
+  return Object.keys(pkg.dependencies ?? {}).filter((d) => d.startsWith('bare-')).sort();
+}
+
 /**
  * Symlink a package's `bare-*` dependencies into its `node_modules`, and
  * recurse into each dependency's own `bare-*` dependencies (deduped via
@@ -177,7 +184,7 @@ async function vendorDep(name: string): Promise<string | null> {
  * walked once per run, however many dependents it has).
  */
 async function linkBareDeps(pkgDir: string, pkg: Pkg): Promise<void> {
-  const deps = Object.keys(pkg.dependencies ?? {}).filter((d) => d.startsWith('bare-'));
+  const deps = bareDepsOf(pkg);
   if (deps.length === 0) return;
   const nodeModules = join(pkgDir, 'node_modules');
   await mkdir(nodeModules, { recursive: true });
@@ -232,6 +239,7 @@ export async function fetchPackage(name: string): Promise<FetchedPackage> {
       pkgDir,
       entryDts: resolveEntryDts(pkgDir, pkg),
       subpaths: resolveSubpaths(pkgDir, pkg, pkg.name ?? name),
+      bareDependencies: bareDepsOf(pkg),
       cleanup,
     };
   } catch (err) {

@@ -428,6 +428,15 @@ function apiSection(ctx: Ctx): { lines: string[]; orphans: string[] } {
 
 const tidy = (s: string) => s.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
 
+/** "Builds on `a`, `b`, and `c`." from this module's own `bare-*` dependencies. */
+function buildsOnLine(model: BareModel): string | null {
+  if (model.dependencies.length === 0) return null;
+  const items = model.dependencies.map(code);
+  const last = items[items.length - 1];
+  const joined = items.length === 1 ? last : `${items.slice(0, -1).join(', ')}${items.length > 2 ? ',' : ''} and ${last}`;
+  return `- Builds on ${joined}.`;
+}
+
 export function renderPage(model: BareModel, layout: Layout | null): { mdx: string; orphans: string[] } {
   const ctx: Ctx = { model, layout, typeAnchors: buildTypeAnchors(model.exports), target: 'mdx' };
   const parts: string[] = [frontmatter(model), '', stabilityBadge(model.name), '', intro(model, layout), ''];
@@ -437,6 +446,8 @@ export function renderPage(model: BareModel, layout: Layout | null): { mdx: stri
   parts.push(...lines);
 
   parts.push('## See also', '');
+  const buildsOn = buildsOnLine(model);
+  if (buildsOn) parts.push(buildsOn);
   for (const s of layout?.seeAlso ?? []) parts.push(`- ${s}`);
   parts.push(
     `- [${FAMILY === 'bare' ? 'Bare' : 'Pear'} modules](${CATALOG_ROUTE}) — the full \`${PREFIX}*\` catalog.`,
