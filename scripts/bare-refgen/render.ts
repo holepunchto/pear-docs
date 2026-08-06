@@ -259,9 +259,9 @@ function shouldExpandClass(e: BareExport): boolean {
   );
 }
 
-function renderClassShape(e: BareExport): string {
+function renderClassShape(e: BareExport, ctx: Ctx): string {
   const body = e.members.map((m) => `  ${m.signatures[0] ?? m.name}`);
-  return [
+  const lines = [
     `#### ${code(e.name)}`,
     '',
     '```ts',
@@ -269,10 +269,20 @@ function renderClassShape(e: BareExport): string {
     ...body,
     '}',
     '```',
-  ].join('\n');
+  ];
+  const desc = describe(ctx, e);
+  if (desc) lines.push('', mdxProse(desc, ctx));
+  return lines.join('\n');
 }
 
 // ---- flattening the model into renderable entries -----------------------
+
+/** Same grouping a top-level export of this kind would get. */
+function groupForKind(kind: BareExport['kind']): string {
+  if (kind === 'function') return 'Functions';
+  if (kind === 'interface' || kind === 'typeAlias') return 'Types';
+  return 'Constants and variables';
+}
 
 function buildEntries(exportsList: BareExport[], ctx: Ctx, defaultScope = ''): Entry[] {
   const entries: Entry[] = [];
@@ -289,7 +299,7 @@ function buildEntries(exportsList: BareExport[], ctx: Ctx, defaultScope = ''): E
           // Members scope to the class so `Stats.isFile` ≠ `Dirent.isFile`.
           for (const m of e.members) add(m, e.name, null, e.name);
         } else {
-          entries.push({ key: e.key, name: e.name, group: 'Classes', scope: defaultScope, sync: null, ex: e, heading: e.name, mdx: renderClassShape(e) });
+          entries.push({ key: e.key, name: e.name, group: 'Classes', scope: defaultScope, sync: null, ex: e, heading: e.name, mdx: renderClassShape(e, ctx) });
         }
         break;
       case 'namespace':
@@ -299,6 +309,13 @@ function buildEntries(exportsList: BareExport[], ctx: Ctx, defaultScope = ''): E
         // Fold the `*Sync` sibling into the async primary rather than repeating.
         if (e.name.endsWith('Sync') && fnNames.has(e.name.slice(0, -4))) break;
         add(e, 'Functions', fnByName.get(`${e.name}Sync`) ?? null);
+        // A function merged with a namespace (`declare namespace X { export
+        // ... }`, e.g. bare-structured-clone's `structuredClone.serialize`)
+        // carries its statics in `.members` — route each into the group its
+        // own kind would pick at the top level, scoped to the parent name so
+        // `structuredClone.serialize` reads distinctly from a same-named
+        // top-level export.
+        for (const m of e.members) add(m, groupForKind(m.kind), null, e.name);
         break;
       }
       case 'interface':

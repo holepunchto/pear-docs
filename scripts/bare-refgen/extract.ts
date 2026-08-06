@@ -473,9 +473,15 @@ function buildExport(
   const description = decls.map(nodeDescription).find(Boolean) ?? null;
   const deprecated = deprecationOf(decls);
 
-  // Recurse into class/interface/namespace members (bounded depth).
+  // Recurse into class/interface/namespace members (bounded depth). Also
+  // covers a function's namespace-merge statics (`declare function X(...);
+  // declare namespace X { export function y() {...} }`, e.g.
+  // bare-structured-clone's `structuredClone.serialize`) — `symbolKind`
+  // prefers 'function' over 'namespace' in KIND_PRECEDENCE for these merged
+  // symbols, so `kind` alone would miss the namespace's exports entirely;
+  // `sym.exports` is only populated when such a merge exists.
   let members: BareExport[] = [];
-  const isContainer = kind === 'class' || kind === 'interface' || kind === 'namespace';
+  const isContainer = kind === 'class' || kind === 'interface' || kind === 'namespace' || !!sym.exports?.size;
   if (isContainer && depth < MAX_DEPTH) {
     const seen = new Set<ts.Symbol>();
     for (const ref of collectMembers(checker, sym, exclude)) {

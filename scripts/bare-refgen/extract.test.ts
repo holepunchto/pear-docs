@@ -89,6 +89,17 @@ test('export = promotes a locally-declared class reachable only via a return typ
   assert.ok(port.members.some((m) => m.name === 'read'));
 });
 
+test('a function merged with a namespace exposes the namespace exports as members', () => {
+  const ex = extract('funcns.d.ts');
+  assert.equal(ex.length, 1, 'single top-level export');
+  const clone = ex[0];
+  assert.equal(clone.name, 'clone');
+  assert.equal(clone.kind, 'function', "symbolKind still prefers 'function' over 'namespace'");
+  const memberNames = clone.members.map((m) => m.name);
+  assert.ok(memberNames.includes('clone.serialize'), 'namespace-exported function surfaces as a static member');
+  assert.ok(memberNames.includes('clone.tag'), 'namespace-exported const surfaces as a static member');
+});
+
 test('interface signatures flatten members inherited via `extends`, including across files', () => {
   const ex = extract('events.d.ts');
   const events = byName(ex, 'ThingEvents')!;
@@ -170,4 +181,15 @@ test('thin property-only class renders as a shape block, not expanded methods', 
   assert.match(mdx, /```ts\nclass Err \{/, 'rendered as a class shape');
   assert.match(mdx, /code: string/, 'includes the property');
   assert.doesNotMatch(mdx, /^#### `code/m, 'property is not its own heading');
+});
+
+test('a thin class shape block also renders a layout describe override (was silently dropped)', () => {
+  const ex = extract('thin.d.ts');
+  const model: BareModel = {
+    name: 'thin', version: '1.0.0', description: null, repoUrl: null,
+    npmUrl: '', minBare: null, native: false, dependencies: [], usage: null, extraSections: [],
+    exports: ex, subpaths: [], generatedAt: null,
+  };
+  const { mdx } = renderPage(model, { describe: { Err: 'Thrown when something goes wrong.' } });
+  assert.match(mdx, /```ts\nclass Err \{[\s\S]*?\}\n```\n\nThrown when something goes wrong\./, 'description follows the shape block');
 });
