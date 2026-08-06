@@ -434,7 +434,20 @@ function frontmatter(model: BareModel): string {
     .replace(/"/g, "'")
     .replace(/\s+/g, ' ')
     .trim();
-  return ['---', `title: "${model.name}"`, `description: "${desc}"`, 'docType: reference', 'schemaType: APIReference', '---'].join('\n');
+  return [
+    '---',
+    `title: "${model.name}"`,
+    `description: "${desc}"`,
+    'docType: reference',
+    'schemaType: APIReference',
+    // `model.version` is already `pkg.version` resolved by fetchPackage() during
+    // this run (see scripts/bare-refgen/index.ts) — bare SemVer, no leading
+    // "v", matching source.config.ts's `upstreamVersion` zod pattern exactly.
+    // Unblocks scripts/check-upstream-pins.ts, which already scans this
+    // directory but has had nothing to grade on these pages until now.
+    `upstreamVersion: "${model.version}"`,
+    '---',
+  ].join('\n');
 }
 
 function stabilityBadge(name: string): string {
