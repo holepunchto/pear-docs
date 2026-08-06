@@ -1,0 +1,1031 @@
+{
+  "name": "bare-stow",
+  "version": "0.1.5",
+  "description": "Module bundling and harness generation for Bare",
+  "repoUrl": "https://github.com/holepunchto/bare-stow",
+  "npmUrl": "https://www.npmjs.com/package/bare-stow",
+  "minBare": null,
+  "native": false,
+  "dependencies": [
+    "bare-bundle",
+    "bare-bundle-id",
+    "bare-fs",
+    "bare-module-lexer",
+    "bare-module-traverse",
+    "bare-pack",
+    "bare-path",
+    "bare-stream",
+    "bare-type-stripper"
+  ],
+  "usage": "Given an entry module `core.js` that exports a `start` function receiving the IPC stream and an optional `ready` callback. The function may optionally return (or resolve to) a function that runs before the bundle exits:\n\n```js\nmodule.exports = async function start(ipc, ready) {\n  ipc.on('data', (data) => {\n    // Handle messages from the host.\n  })\n\n  // Optionally call `ready()` to signal readiness early. Otherwise it is\n  // signaled automatically when `start()` resolves.\n  ready()\n\n  return async function stop() {\n    // Clean up before the bundle exits.\n  }\n}\n```\n\nThe `ipc` argument is a duplex byte stream. Anything written to it is delivered to the host, and `'data'` events fire when the host writes back.\n\nStow it for the `bare-sidecar` target:\n\n```js\nconst stow = require('bare-stow')\n\nconst entry = new URL('file:///app/core.js')\nconst out = new URL('file:///app/out/index.js')\n\nfor await (const artifact of stow(entry, 'bare-sidecar', out)) {\n  console.log(artifact.url.href)\n}\n```\n\nOr equivalently from the command line:\n\n```console\n$ bare-stow --target bare-sidecar --out ./out/index.js ./core.js\n```\n\nThis writes the harness to `out` and the bundle alongside it. The harness can then be required from the host and booted with `start()`. The harness awaits the worker's `ready` signal before resolving, so by the time `start()` returns the bundle is up:\n\n```js\nconst harness = require('/app/out/index.js')\n\nconst { ipc } = await harness.start()\n\nipc.write(Buffer.from('hello from the host'))\n\nipc.on('exit', (code) => {\n  console.log('bundle exited with', code)\n})\n\n// Request a graceful shutdown.\nipc.destroy()\n```",
+  "extraSections": [
+    {
+      "heading": "Protocol",
+      "body": "The harness multiplexes a control channel and a user data channel over the underlying binary duplex stream. The `ipc` returned from `start()` is itself a duplex stream carrying the user data; control frames ride alongside it on the same handle. RPC libraries (such as `bare-rpc`) bind to `ipc` just like a raw stream.\n\nControl frames signal lifecycle events:\n\n| Direction      | Type        | Payload              |\n| :------------- | :---------- | :------------------- |\n| Worker -> Host | `ready`     | -                    |\n| Worker -> Host | `exit`      | `{ code }`           |\n| Worker -> Host | `error`     | `{ message, stack }` |\n| Host -> Worker | `terminate` | -                    |\n\nAn incoming `error` frame destroys the local `ipc` with the carried error, surfacing it as a normal stream `error` event. Other control frames emit a regular event named after the type.\n\nThe `ipc` handle exposes the lifecycle as events and methods on the same duplex:\n\n- `ipc.ready`: A promise that resolves once the worker has signaled ready. Rejects if the worker errors before ready.\n- `ipc.on('exit', code)`: Emitted when the worker signals exit. `code` carries the exit code.\n- `ipc.on('error', err)`: Emitted when the worker reports a fault, or when the underlying transport errors. Either way the `ipc` is destroyed.\n- `ipc.on('close')`: Emitted when the underlying transport closes.\n- `ipc.destroy()`: Standard stream destroy. Sends a `terminate` control frame to the worker and waits for the underlying transport to close.\n- `ipc.terminate()`: Like `destroy()` but resolves with the worker's exit code.\n\nThe framing layer is also exported directly for embedders that bring their own transport:\n\n```js\nconst protocol = require('bare-stow/protocol')\n\nconst ipc = protocol.attach(stream) // Any duplex byte stream\nipc.write(Buffer.from('payload')) // User data\nipc.send('ready') // Control frame\nipc.on('exit', () => {\n  /* ... */\n})\n```\n\nThe host helper layers the lifecycle promise and `terminate` method on top of the protocol:\n\n```js\nconst { wrap } = require('bare-stow/host')\n\nconst ipc = wrap(stream) // Any duplex byte stream\nawait ipc.ready\n```"
+    },
+    {
+      "heading": "CLI",
+      "body": "#### `bare-stow [flags] <entry>`\n\nStow the module graph rooted at `<entry>`, writing the harness and bundle to the path given by `--out`.\n\n```console\n--version|-v\n--target <name>\n--client <name>\n--server <name>\n--base <path>\n--out|-o <path>\n--builtins <path>\n--imports <path>\n--defer <specifier>\n--host <name>\n--help|-h\n```\n\n##### `--target <name>`\n\nThe target runtime. Required. The built-in `bare-sidecar` and `bare-worker` are resolved directly; any other `<name>` is loaded from its `bare-stow-target-<name>` package, or from `<name>` itself as a full module specifier, resolved from the working directory.\n\n##### `--client <name>` and `--server <name>`\n\nThe RPC library to wire into the harness (`--client`) or the bundle entry shim (`--server`). The built-in `bare-rpc` is resolved directly; any other `<name>` is loaded from its `bare-stow-rpc-<name>` package, or from `<name>` itself as a full module specifier, resolved from the working directory.\n\n##### `--builtins <path>` and `--imports <path>`\n\nPaths to JavaScript or JSON files exporting a list of builtin module names and a map of global import overrides respectively. Forwarded to `bare-pack`.\n\n##### `--defer <specifier>`\n\nA module specifier whose resolution should be deferred. May be passed multiple times.\n\n##### `--host <name>`\n\nA host triple to build for. Must be a subset of the host triples supported by the target. May be passed multiple times. Defaults to all host triples supported by the target."
+    }
+  ],
+  "exports": [
+    {
+      "key": "stow",
+      "name": "stow",
+      "kind": "function",
+      "static": false,
+      "signatures": [
+        "stow(entry: URL | string, target: Target | TargetName, out: URL | string, opts?: StowOptions): AsyncGenerator<StowArtifact>"
+      ],
+      "description": "Bundle the module graph rooted at `entry` for `target`, writing a harness plus bundle to `out`.",
+      "deprecated": null,
+      "params": [
+        {
+          "name": "entry",
+          "type": "URL | string",
+          "optional": false,
+          "default": null,
+          "description": "The entry module to bundle, as a `file:` URL or path string."
+        },
+        {
+          "name": "target",
+          "type": "Target | TargetName",
+          "optional": false,
+          "default": null,
+          "description": "The bundling target: a `Target` object, or a target name resolved to one (the built-in `bare-sidecar` and `bare-worker`, or a `bare-stow-target-<name>` package)."
+        },
+        {
+          "name": "out",
+          "type": "URL | string",
+          "optional": false,
+          "default": null,
+          "description": "The path to write the harness to, as a `file:` URL or path string; the bundle is written alongside it."
+        },
+        {
+          "name": "opts",
+          "type": "StowOptions",
+          "optional": true,
+          "default": null,
+          "description": "Options; see [`StowOptions`](#stowoptions)."
+        }
+      ],
+      "returns": {
+        "type": "AsyncGenerator<StowArtifact>",
+        "description": "An async generator that yields each written artifact's `url` as it is produced — the harness first, then the bundle, then any offloaded addon or asset files."
+      },
+      "throws": [
+        {
+          "type": null,
+          "condition": "The `target` argument is missing."
+        },
+        {
+          "type": null,
+          "condition": "The `out` argument is missing."
+        },
+        {
+          "type": null,
+          "condition": "A host in `opts.hosts` is not supported by the resolved target."
+        }
+      ],
+      "members": [
+        {
+          "key": "stow.RPCName",
+          "name": "stow.RPCName",
+          "kind": "typeAlias",
+          "static": true,
+          "signatures": [
+            "type RPCName = 'bare-rpc'"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "stow.TargetName",
+          "name": "stow.TargetName",
+          "kind": "typeAlias",
+          "static": true,
+          "signatures": [
+            "type TargetName = 'bare-sidecar' | 'bare-worker'"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Target",
+      "name": "Target",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Target {\n  name: string\n  linked: boolean\n  offload: boolean | { addons?: boolean; assets?: boolean }\n  format: 'bundle' | 'bundle.cjs' | 'bundle.mjs' | 'bundle.json'\n  encoding: string | null\n  extension: string\n  module?: 'esm' | 'cjs'\n  hosts: string[]\n  generate(context: TargetContext): Artifact[]\n}"
+      ],
+      "description": "A bundling target, such as `bare-sidecar` or `bare-worker`, describing how to package and boot a bundle on a given host runtime.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Target.encoding",
+          "name": "encoding",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "encoding: string | null"
+          ],
+          "description": "The text encoding used when the bundle format wraps the bundle as a string, or `null` when the bundle is written as raw bytes.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Target.extension",
+          "name": "extension",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "extension: string"
+          ],
+          "description": "The file extension used for the target's harness artifact.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Target.format",
+          "name": "format",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "format: 'bundle' | 'bundle.cjs' | 'bundle.mjs' | 'bundle.json'"
+          ],
+          "description": "The encoding format of the written bundle artifact.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Target.generate",
+          "name": "generate",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "generate(context: TargetContext): Artifact[]"
+          ],
+          "description": "Generate the harness artifacts for `context`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "context",
+              "type": "TargetContext",
+              "optional": false,
+              "default": null,
+              "description": "The target context describing the bundle to embed and the RPC wiring to splice in."
+            }
+          ],
+          "returns": {
+            "type": "Artifact[]",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Target.hosts",
+          "name": "hosts",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "hosts: string[]"
+          ],
+          "description": "The host triples the target supports.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Target.linked",
+          "name": "linked",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "linked: boolean"
+          ],
+          "description": "Whether the bundle links against its dependencies rather than inlining them.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Target.module",
+          "name": "module",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "module: 'esm' | 'cjs'"
+          ],
+          "description": "The module system the harness is generated in, `'esm'` or `'cjs'`. When unset, it follows the output path's extension or nearest `package.json` `type`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Target.name",
+          "name": "name",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "name: string"
+          ],
+          "description": "The target's name.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Target.offload",
+          "name": "offload",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "offload: boolean | { addons?: boolean; assets?: boolean }"
+          ],
+          "description": "Whether native addons and/or assets are written out as sibling files instead of being inlined into the bundle.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "TargetContext",
+      "name": "TargetContext",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface TargetContext {\n  bundleSpecifier: string\n  ipc: string\n  rpc: string\n  module: 'esm' | 'cjs'\n  client: RPCClient | null\n}"
+      ],
+      "description": "The context passed to a target's `generate()`, describing the bundle to embed and the RPC wiring to splice in.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "TargetContext.bundleSpecifier",
+          "name": "bundleSpecifier",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "bundleSpecifier: string"
+          ],
+          "description": "The module specifier the harness uses to load the bundle, relative to the harness itself.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TargetContext.client",
+          "name": "client",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "client: RPCClient | null"
+          ],
+          "description": "The resolved client RPC wiring to splice into the harness, or `null` when no client RPC was requested.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TargetContext.ipc",
+          "name": "ipc",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "ipc: string"
+          ],
+          "description": "The identifier bound to the IPC stream in generated harness code.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TargetContext.module",
+          "name": "module",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "module: 'esm' | 'cjs'"
+          ],
+          "description": "The module system the harness is generated in, `'esm'` or `'cjs'`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TargetContext.rpc",
+          "name": "rpc",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "rpc: string"
+          ],
+          "description": "The identifier bound to the RPC client/server in generated harness code.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "RPC",
+      "name": "RPC",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface RPC {\n  name: string\n  generate(context: RPCContext): Artifact[]\n}"
+      ],
+      "description": "An RPC library adapter that generates the wiring code spliced into a stowed bundle's harness or entry shim.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "RPC.generate",
+          "name": "generate",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "generate(context: RPCContext): Artifact[]"
+          ],
+          "description": "Generate the RPC wiring artifacts for `context`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "context",
+              "type": "RPCContext",
+              "optional": false,
+              "default": null,
+              "description": "The RPC context describing the identifiers, module system, and role to generate wiring for."
+            }
+          ],
+          "returns": {
+            "type": "Artifact[]",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPC.name",
+          "name": "name",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "name: string"
+          ],
+          "description": "The RPC adapter's name.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "RPCContext",
+      "name": "RPCContext",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface RPCContext {\n  ipc: string\n  rpc: string\n  module: 'esm' | 'cjs'\n  role: 'client' | 'server'\n}"
+      ],
+      "description": "The context passed to an RPC adapter's `generate()`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "RPCContext.ipc",
+          "name": "ipc",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "ipc: string"
+          ],
+          "description": "The identifier bound to the IPC stream in generated code.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCContext.module",
+          "name": "module",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "module: 'esm' | 'cjs'"
+          ],
+          "description": "The module system the generated code targets, `'esm'` or `'cjs'`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCContext.role",
+          "name": "role",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "role: 'client' | 'server'"
+          ],
+          "description": "Whether the generated wiring is for the `'client'` (harness side) or `'server'` (bundle entry shim side).",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCContext.rpc",
+          "name": "rpc",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "rpc: string"
+          ],
+          "description": "The identifier bound to the RPC client/server in generated code.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "RPCClient",
+      "name": "RPCClient",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface RPCClient {\n  source: string\n  type: string\n}"
+      ],
+      "description": "The resolved client RPC wiring, carrying both the runtime source to splice into the harness and the type declaration to splice into the harness's `.d.ts`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "RPCClient.source",
+          "name": "source",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "source: string"
+          ],
+          "description": "The generated runtime source for the client RPC wiring.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCClient.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: string"
+          ],
+          "description": "The generated type declaration for the client RPC wiring.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Artifact",
+      "name": "Artifact",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Artifact {\n  extension?: string\n  source: string\n}"
+      ],
+      "description": "A single generated source artifact, such as a harness or a type declaration.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Artifact.extension",
+          "name": "extension",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "extension: string"
+          ],
+          "description": "The file extension the artifact should be written with alongside the primary output, or unset to write it to the primary output path itself.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Artifact.source",
+          "name": "source",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "source: string"
+          ],
+          "description": "The artifact's source text.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "StowOptions",
+      "name": "StowOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface StowOptions {\n  client?: RPC | RPCName\n  server?: RPC | RPCName\n  resolveTarget?(name: string): Target\n  resolveRPC?(name: string): RPC\n  concurrency?: number\n  base?: URL | string\n  defaultType?: number\n  builtinProtocol?: string\n  builtins?: Builtins\n  conditions?: Conditions\n  extensions?: string[]\n  host?: string\n  hosts?: string[]\n  linkedProtocol?: string\n  matchedConditions?: string[]\n  resolutions?: ResolutionsMap\n}"
+      ],
+      "description": "Options for `stow()`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "StowOptions.client",
+          "name": "client",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "client: RPC | RPCName"
+          ],
+          "description": "The RPC library (or its name) to wire into the harness.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "StowOptions.resolveRPC",
+          "name": "resolveRPC",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "resolveRPC(name: string): RPC"
+          ],
+          "description": "Resolve an RPC name to an `RPC`, overriding the default RPC resolution.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The RPC name to resolve to an `RPC`."
+            }
+          ],
+          "returns": {
+            "type": "RPC",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "StowOptions.resolveTarget",
+          "name": "resolveTarget",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "resolveTarget(name: string): Target"
+          ],
+          "description": "Resolve a target name to a `Target`, overriding the default target resolution.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The target name to resolve to a `Target`."
+            }
+          ],
+          "returns": {
+            "type": "Target",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "StowOptions.server",
+          "name": "server",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "server: RPC | RPCName"
+          ],
+          "description": "The RPC library (or its name) to wire into the bundle's entry shim.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "StowArtifact",
+      "name": "StowArtifact",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface StowArtifact {\n  url: URL\n}"
+      ],
+      "description": "An artifact written by `stow()`, yielded once its file has been written.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "StowArtifact.url",
+          "name": "url",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "url: URL"
+          ],
+          "description": "The file URL the artifact was written to.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    }
+  ],
+  "subpaths": [
+    {
+      "name": "bare-stow/protocol",
+      "exports": [
+        {
+          "key": "Protocol",
+          "name": "Protocol",
+          "kind": "class",
+          "static": false,
+          "signatures": [
+            "interface Protocol<E extends ProtocolEvents = ProtocolEvents> {\n  send(type: string, payload?: object): Promise<void>\n  _open(cb: StreamCallback): void\n  _predestroy(): void\n  _destroy(err: Error | null, cb: StreamCallback): void\n  readonly readable: boolean\n  readonly writable: boolean\n  readonly destroyed: boolean\n  readonly destroying: boolean\n  destroy(err?: Error | null): void\n  _read(size: number): void\n  readonly closed: boolean\n  readonly errored: Error | null\n  push(data: unknown | null, encoding?: BufferEncoding): boolean\n  unshift(data: unknown | null, encoding?: BufferEncoding): boolean\n  read(): unknown | null\n  resume(): this\n  pause(): this\n  pipe<S extends Writable>(dest: S, cb?: StreamCallback): S\n  setEncoding(encoding: BufferEncoding): void\n  _write(data: unknown, encoding: StreamEncoding, cb: StreamCallback): void\n  _writev(batch: { chunk: unknown; encoding: StreamEncoding }[], cb: StreamCallback): void\n  _final(cb: StreamCallback): void\n  write(data: unknown, encoding?: BufferEncoding, cb?: StreamCallback): boolean\n  end(cb?: StreamCallback): this\n  cork(): void\n  uncork(): void\n}"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": [
+            {
+              "key": "Protocol.constructor",
+              "name": "Protocol",
+              "kind": "constructor",
+              "static": false,
+              "signatures": [
+                "new Protocol(stream: Duplex)"
+              ],
+              "description": "Attach a `Protocol` to the given underlying duplex byte `stream`.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "stream",
+                  "type": "Duplex",
+                  "optional": false,
+                  "default": null,
+                  "description": "The underlying duplex byte stream to multiplex the control and user-data channels over."
+                }
+              ],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "Protocol.send",
+              "name": "send",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "send(type: string, payload?: object): Promise<void>"
+              ],
+              "description": "Send a control frame of `type` with an optional JSON-serializable `payload`.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "type",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The control frame type, for example `'ready'`, `'exit'`, `'error'`, or `'terminate'`."
+                },
+                {
+                  "name": "payload",
+                  "type": "object",
+                  "optional": true,
+                  "default": null,
+                  "description": "An optional JSON-serializable payload carried with the frame."
+                }
+              ],
+              "returns": {
+                "type": "Promise<void>",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            }
+          ]
+        },
+        {
+          "key": "ProtocolEvents",
+          "name": "ProtocolEvents",
+          "kind": "interface",
+          "static": false,
+          "signatures": [
+            "interface ProtocolEvents {\n  ready: []\n  terminate: []\n  exit: [code: number]\n  data: [data: unknown]\n  end: []\n  readable: []\n  piping: [dest: Writable]\n  close: []\n  error: [err: Error]\n  drain: []\n  finish: []\n  pipe: [src: Readable]\n}"
+          ],
+          "description": "The events emitted by a `Protocol`, in addition to the standard duplex stream events.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": [
+            {
+              "key": "ProtocolEvents.exit",
+              "name": "exit",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "exit: [code: number]"
+              ],
+              "description": "Emitted when the worker signals exit, carrying its exit `code`.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "ProtocolEvents.ready",
+              "name": "ready",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "ready: []"
+              ],
+              "description": "Emitted when the worker signals it is ready.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "ProtocolEvents.terminate",
+              "name": "terminate",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "terminate: []"
+              ],
+              "description": "Emitted when a `terminate` control frame is received.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            }
+          ]
+        },
+        {
+          "key": "attach",
+          "name": "attach",
+          "kind": "function",
+          "static": false,
+          "signatures": [
+            "attach(stream: Duplex): Protocol"
+          ],
+          "description": "Attach a `Protocol` to `stream`, an underlying duplex byte stream.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "stream",
+              "type": "Duplex",
+              "optional": false,
+              "default": null,
+              "description": "Any duplex byte stream to attach the protocol to."
+            }
+          ],
+          "returns": {
+            "type": "Protocol",
+            "description": "A `Protocol` multiplexing control and user-data frames over `stream`."
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "CONTROL",
+          "name": "CONTROL",
+          "kind": "variable",
+          "static": false,
+          "signatures": [
+            "CONTROL: number"
+          ],
+          "description": "The frame type marker identifying a control-channel frame.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "USER",
+          "name": "USER",
+          "kind": "variable",
+          "static": false,
+          "signatures": [
+            "USER: number"
+          ],
+          "description": "The frame type marker identifying a user-data-channel frame.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "name": "bare-stow/host",
+      "exports": [
+        {
+          "key": "wrap",
+          "name": "wrap",
+          "kind": "function",
+          "static": false,
+          "signatures": [
+            "wrap(stream: Duplex): IPC"
+          ],
+          "description": "Wrap the host side of a stowed bundle's transport `stream`, returning an `IPC` handle with lifecycle helpers layered on top of the `Protocol`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "stream",
+              "type": "Duplex",
+              "optional": false,
+              "default": null,
+              "description": "The host side of a stowed bundle's transport (any duplex byte stream)."
+            }
+          ],
+          "returns": {
+            "type": "IPC",
+            "description": "An `IPC` handle wrapping `stream`, with the `ready` promise and `terminate()` layered on top of `Protocol`."
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "IPC",
+          "name": "IPC",
+          "kind": "class",
+          "static": false,
+          "signatures": [
+            "interface IPC {\n  readonly ready: Promise<void>\n  terminate(): Promise<number | undefined>\n  send(type: string, payload?: object): Promise<void>\n  _open(cb: StreamCallback): void\n  _predestroy(): void\n  _destroy(err: Error | null, cb: StreamCallback): void\n  readonly readable: boolean\n  readonly writable: boolean\n  readonly destroyed: boolean\n  readonly destroying: boolean\n  destroy(err?: Error | null): void\n  _read(size: number): void\n  readonly closed: boolean\n  readonly errored: Error | null\n  push(data: unknown | null, encoding?: BufferEncoding): boolean\n  unshift(data: unknown | null, encoding?: BufferEncoding): boolean\n  read(): unknown | null\n  resume(): this\n  pause(): this\n  pipe<S extends Writable>(dest: S, cb?: StreamCallback): S\n  setEncoding(encoding: BufferEncoding): void\n  _write(data: unknown, encoding: StreamEncoding, cb: StreamCallback): void\n  _writev(batch: { chunk: unknown; encoding: StreamEncoding }[], cb: StreamCallback): void\n  _final(cb: StreamCallback): void\n  write(data: unknown, encoding?: BufferEncoding, cb?: StreamCallback): boolean\n  end(cb?: StreamCallback): this\n  cork(): void\n  uncork(): void\n}"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": [
+            {
+              "key": "IPC.constructor",
+              "name": "IPC",
+              "kind": "constructor",
+              "static": false,
+              "signatures": [
+                "new IPC(stream: Duplex)"
+              ],
+              "description": "Wrap the host side of a stowed bundle's transport `stream`.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "stream",
+                  "type": "Duplex",
+                  "optional": false,
+                  "default": null,
+                  "description": "The host side of a stowed bundle's transport (any duplex byte stream)."
+                }
+              ],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "IPC.ready",
+              "name": "ready",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "ready: Promise<void>"
+              ],
+              "description": "A promise that resolves once the worker has signaled ready, and rejects if the worker errors before then.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "IPC.terminate",
+              "name": "terminate",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "terminate(): Promise<number | undefined>"
+              ],
+              "description": "Send a `terminate` control frame to the worker and resolve with its exit code once it exits.",
+              "deprecated": null,
+              "params": [],
+              "returns": {
+                "type": "Promise<number | undefined>",
+                "description": "The worker's exit `code` once it exits."
+              },
+              "throws": [],
+              "members": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "generatedAt": "2026-08-06T15:05:05.374Z"
+}

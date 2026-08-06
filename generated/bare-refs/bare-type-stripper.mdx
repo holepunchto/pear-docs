@@ -1,0 +1,120 @@
+---
+title: "bare-type-stripper"
+description: "Heuristic lexer for stripping TypeScript type syntax to produce plain JavaScript"
+docType: reference
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-type-stripper`](https://github.com/holepunchto/bare-type-stripper) — Heuristic lexer for stripping TypeScript type syntax to produce plain JavaScript. It is a native addon.
+
+```sh
+npm i bare-type-stripper
+```
+
+## Usage
+
+```js
+const strip = require('bare-type-stripper')
+
+strip(`
+  const x: number = 1
+  function f<T>(xs: T[]): T { return xs[0] }
+`).toString()
+
+// '
+//   const x         = 1
+//   function f   (xs   )    { return xs[0] }
+// '
+```
+
+## API
+
+### Functions
+
+#### `strip(input: string | Buffer, encoding?: BufferEncoding, opts?: object): Buffer`
+
+Strip TypeScript-only syntax from `input` and return plain JavaScript as a `Buffer`. Stripped regions are replaced with spaces (newlines preserved) so the output has the same byte length as the input, keeping stack traces and source positions aligned.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `input` | `string` \| `Buffer` | — | The TypeScript source to strip, as a string or a `Buffer`. |
+| `encoding?` | `BufferEncoding` | — | Encoding used to decode `input` when it is a string (default `'utf8'`); ignored when `input` is already a `Buffer`. |
+| `opts?` | `object` | — | An options object; currently unused. |
+
+**Throws**
+
+- `TypeError` — `input` is neither a string nor a buffer.
+- `SyntaxError` — the source contains non-erasable TypeScript syntax (`enum`/`const enum`, `namespace`/`module` with a body, parameter properties, or angle-bracket type assertions).
+
+#### `strip.lex`
+
+```ts
+strip.lex(input: string | Buffer, encoding?: BufferEncoding, opts?: object): [start: number, end: number, flags?: number][]
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `input` | `string` \| `Buffer` | — | — |
+| `encoding?` | `BufferEncoding` | — | — |
+| `opts?` | `object` | — | — |
+
+### Constants and variables
+
+#### `strip.constants`
+
+```ts
+strip.constants: {
+    SEMI: number
+    PAREN: number
+    ERROR: number
+  }
+```
+
+## What gets stripped
+
+| Construct                 | Example                               |
+| :------------------------ | :------------------------------------ |
+| Type annotations          | `const x: number = 1`                 |
+| Type aliases              | `type Foo = number`                   |
+| Interfaces                | `interface Foo { x: number }`         |
+| Type-only imports/exports | `import type { Foo } from 'mod'`      |
+| Generics at declarations  | `function f<T>(x: T): T`              |
+| Generics at call sites    | `foo<number>()`                       |
+| Generic arrow functions   | `<T>(x: T) => x`                      |
+| Type assertions           | `x as Foo`, `x satisfies Foo`         |
+| Non-null assertion        | `obj!.foo`                            |
+| Optional parameter marker | `function f(x?: T)`                   |
+| Definite assignment       | `let x!: number`                      |
+| Class member modifiers    | `public`, `private`, `readonly`, etc. |
+| `implements` clauses      | `class C implements I`                |
+| `declare` statements      | `declare const x: number`             |
+| Overload signatures       | `function f(x: string): void`         |
+| Abstract members          | `abstract foo(): void`                |
+
+## What is left alone
+
+- Decorators - they emit runtime code and are valid JavaScript syntax.
+
+## What throws
+
+Constructs with runtime semantics that a purely lexical stripper cannot reproduce are marked with the `ERROR` flag, and `strip()` throws a `SyntaxError` when it meets one:
+
+- `enum` / `const enum` declarations - they emit a runtime object.
+- `namespace` / `module` declarations with bodies - they emit runtime code.
+- Parameter properties - `constructor(public x: number)` implies a `this.x = x` assignment that stripping the modifier would silently lose.
+- Old-style angle-bracket type assertions (`<Foo>expr`) - indistinguishable from JSX, which is not supported.
+
+## Limitations
+
+The stripper targets plain `.ts` sources; JSX (`.tsx`) is not supported and is reported as non-erasable syntax.
+
+## See also
+
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.

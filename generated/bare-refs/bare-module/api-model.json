@@ -1,0 +1,1302 @@
+{
+  "name": "bare-module",
+  "version": "6.4.0",
+  "description": "Module support for JavaScript",
+  "repoUrl": "https://github.com/holepunchto/bare-module",
+  "npmUrl": "https://www.npmjs.com/package/bare-module",
+  "minBare": ">=1.29.4",
+  "native": true,
+  "dependencies": [
+    "bare-bundle",
+    "bare-module-lexer",
+    "bare-module-resolve",
+    "bare-path",
+    "bare-type-stripper",
+    "bare-url"
+  ],
+  "usage": "A module is loaded by its WHATWG `URL`. The source may be read through the module's [protocol](#protocols) or passed in directly:\n\n```js\nconst Module = require('bare-module')\n\n// Load a module directly from source, without it existing on disk.\nconst foo = await Module.load(\n  new URL('file:///foo.js'),\n  'module.exports = function add (a, b) { return a + b }'\n)\n\nfoo.exports(2, 3)\n// 5\n```\n\nTo resolve and load specifiers relative to a directory, as `require()` does, create a `require()` bound to a parent URL. The default protocol has no backing store of its own and cannot read from the file system, so pass a [protocol](#protocols) that serves the source:\n\n```js\nconst Module = require('bare-module')\n\nconst require = Module.createRequire('file:///directory/', { protocol })\n\n// Resolves and loads `file:///directory/foo.js`, reading it through `protocol`.\nconst foo = require('./foo.js')\n```\n\nThe same machinery backs the `require()` and `import` available to modules as they run; see [CommonJS modules](#commonjs-modules) and [ECMAScript modules](#ecmascript-modules) for what each exposes.",
+  "extraSections": [
+    {
+      "heading": "Packages",
+      "body": "A package is a directory with a `package.json` file.\n\n### Fields\n\n#### `\"name\"`\n\n```json\n{\n  \"name\": \"my-package\"\n}\n```\n\nThe name of the package. This is used for [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm), [self-referencing](#self-referencing), and importing packages by name.\n\n#### `\"version\"`\n\n```json\n{\n  \"version\": \"1.2.3\"\n}\n```\n\nThe current version of the package. This is used for [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm).\n\n#### `\"type\"`\n\n```json\n{\n  \"type\": \"module\"\n}\n```\n\nThe module format used for `.js` files. If not defined, `.js` files are interpreted as CommonJS. If set to `\"module\"`, `.js` files are instead interpreted as ES modules.\n\n#### `\"exports\"`\n\n```json\n{\n  \"exports\": {\n    \".\": \"./index.js\"\n  }\n}\n```\n\nThe entry points of the package. If defined, only the modules explicitly exported by the package may be imported when importing the package by name.\n\n##### Subpath exports\n\nA package may define more than one entry point by declaring several subpaths with the main export being `\".\"`:\n\n```json\n{\n  \"exports\": {\n    \".\": \"./index.js\",\n    \"./submodule\": \"./lib/submodule.js\"\n  }\n}\n```\n\nWhen importing the package by name, `require('my-package')` will resolve to `<modules>/my-package/index.js` whereas `require('my-package/submodule')` will resolve to `<modules>/my-package/lib/submodule.js`.\n\n##### Conditional exports\n\nConditional exports allow packages to provide different exports for different conditions, such as the loading method the importing module uses (e.g. `require()` vs `import`):\n\n```json\n{\n  \"exports\": {\n    \".\": {\n      \"import\": \"./index.mjs\",\n      \"require\": \"./index.cjs\"\n    }\n  }\n}\n```\n\nWhen importing the package by name, `require('my-package')` will resolve to `<modules>/my-package/index.cjs` whereas `import 'my-package'` will resolve to `<modules>/my-package/index.mjs`.\n\nSimilarly, conditional exports can be used to provide different entry points for different runtimes:\n\n```json\n{\n  \"exports\": {\n    \".\": {\n      \"bare\": \"./bare.js\",\n      \"node\": \"./node.js\"\n    }\n  }\n}\n```\n\nTo provide a fallback for when no other conditions match, the `\"default\"` condition can be declared:\n\n```json\n{\n  \"exports\": {\n    \".\": {\n      \"bare\": \"./bare.js\",\n      \"node\": \"./node.js\",\n      \"default\": \"./fallback.js\"\n    }\n  }\n}\n```\n\nThe following conditions are supported, listed in order from most specific to least specific as conditions should be defined:\n\n| Condition      | Description                                                                                                                         |\n| :------------- | :---------------------------------------------------------------------------------------------------------------------------------- |\n| `\"import\"`     | Matches when the package is loaded via `import` or `import()`.                                                                      |\n| `\"require\"`    | Matches when the package is loaded via `require()`.                                                                                 |\n| `\"asset\"`      | Matches when the package is loaded via `require.asset()`.                                                                           |\n| `\"addon\"`      | Matches when the package is loaded via `require.addon()`.                                                                           |\n| `\"bare\"`       | Matches for any [Bare](https://github.com/holepunchto/bare) environment.                                                            |\n| `\"node\"`       | Matches for any Node.js environment.                                                                                                |\n| `\"<platform>\"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values. |\n| `\"<arch>\"`     | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.             |\n| `\"simulator\"`  | Matches when Bare was compiled for a simulator.                                                                                     |\n| `\"default\"`    | The fallback that always matches. This condition should always be last.                                                             |\n\nExport conditions are evaluated in the order they are defined in the `\"exports\"` field. This means that less specific conditionals defined first will override more specific conditions define later. For example, the following will always call `./fallback.js` because `\"default\"` always matches and is defined first.\n\n```json\n{\n  \"exports\": {\n    \".\": {\n      \"default\": \"./fallback.js\",\n      \"bare\": \"./bare.js\"\n    }\n  }\n}\n```\n\nThis is why the general rule is that conditions should be from most specific to least specific when defined.\n\n##### Self-referencing\n\nWithin a package, exports defined in the `\"exports\"` field can be referenced by importing the package by name. For example, given the following `package.json`...\n\n```json\n{\n  \"name\": \"my-package\",\n  \"exports\": {\n    \".\": \"./index.js\",\n    \"./submodule\": \"./lib/submodule.js\"\n  }\n}\n```\n\n...any module within `my-package` may reference these entry points using either `require('my-package')` or `require('my-package/submodule')`.\n\n##### Exports sugar\n\nIf a package defines only a single export, `\".\"`, it may leave out the subpath entirely:\n\n```json\n{\n  \"exports\": \"./index.js\"\n}\n```\n\n#### `\"imports\"`\n\nA private mapping for import specifiers within the package itself. Similar to `\"exports\"`, the `\"imports\"` field can be used to conditional import other packages within the package. But unlike `\"exports\"`, `\"imports\"` permits mapping to external packages.\n\nThe rules are otherwise analogous to the [`\"exports\"`](#conditional-exports) field.\n\n##### Subpath imports\n\nJust like exports, subpaths can be used when importing a module internally.\n\n```json\n{\n  \"imports\": {\n    \".\": \"./index.js\",\n    \"./submodule\": \"./lib/submodule.js\"\n  }\n}\n```\n\n##### Conditional imports\n\nAdding conditional imports allows importing different packages based on the configured conditions. As an example:\n\n```json\n{\n  \"imports\": {\n    \"bar\": {\n      \"require\": \"./baz.cjs\",\n      \"import\": \"./baz.mjs\"\n    }\n  }\n}\n```\n\nWhen importing the package `bar` as `require('bar')` will resolve to `./baz.cjs`, but when importing with `import('bar')` will resolve to `./baz.mjs`.\n\nTo provide a fallback for when no other conditions are met, the `\"default\"` condition can be configured like so:\n\n```json\n{\n  \"imports\": {\n    \"bar\": {\n      \"require\": \"./baz.cjs\",\n      \"asset\": \"./baz.txt\",\n      \"default\": \"./baz.mjs\"\n    }\n  }\n}\n```\n\nThe following conditions are supported, listed in order from most specific to least specific as conditions should be defined:\n\n| Condition      | Description                                                                                                                         |\n| :------------- | :---------------------------------------------------------------------------------------------------------------------------------- |\n| `\"import\"`     | Matches when the package is loaded via `import` or `import()`.                                                                      |\n| `\"require\"`    | Matches when the package is loaded via `require()`.                                                                                 |\n| `\"asset\"`      | Matches when the package is loaded via `require.asset()`.                                                                           |\n| `\"addon\"`      | Matches when the package is loaded via `require.addon()`.                                                                           |\n| `\"bare\"`       | Matches for any [Bare](https://github.com/holepunchto/bare) environment.                                                            |\n| `\"node\"`       | Matches for any Node.js environment.                                                                                                |\n| `\"<platform>\"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values. |\n| `\"<arch>\"`     | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.             |\n| `\"simulator\"`  | Matches when Bare was compiled for a simulator.                                                                                     |\n| `\"default\"`    | The fallback that always matches. This condition should always be last.                                                             |\n\nThe general rule is that conditions should be from most specific to least specific when defined.\n\n##### `#` Prefix\n\nAll import maps are private to the package and allow mapping to external packages. Entries in `\"imports\"` may start with `#` to disambiguate from external packages, but it is not required unlike in Node.js.\n\n#### `\"engines\"`\n\n```json\n{\n  \"engines\": {\n    \"bare\": \">=1.0.5\"\n  }\n}\n```\n\nThe `\"engines\"` field defines the engine requirements of the package. During module resolution, the versions declared by `Bare.versions` will be tested against the requirements declared by the package and resolution fail if they're not satisfied."
+    }
+  ],
+  "exports": [
+    {
+      "key": "Module",
+      "name": "Module",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "interface Module {\n  readonly builtins: Builtins\n  readonly cache: Cache\n  readonly conditions: Conditions\n  readonly defaultType: number\n  readonly dirname: string\n  exports: unknown\n  readonly filename: string\n  readonly id: string\n  readonly imports: ImportsMap\n  readonly main: Module\n  readonly path: string\n  readonly protocol: Protocol\n  readonly resolutions: ResolutionsMap\n  readonly type: number\n  readonly url: URL\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Module.constructor",
+          "name": "Module",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new Module(url: URL)"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.builtins",
+          "name": "builtins",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "builtins: Builtins"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.cache",
+          "name": "cache",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "cache: Cache"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.conditions",
+          "name": "conditions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "conditions: Conditions"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.defaultType",
+          "name": "defaultType",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "defaultType: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.dirname",
+          "name": "dirname",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "dirname: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.exports",
+          "name": "exports",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "exports: unknown"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.filename",
+          "name": "filename",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "filename: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.id",
+          "name": "id",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "id: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.imports",
+          "name": "imports",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "imports: ImportsMap"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.main",
+          "name": "main",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "main: Module"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.asset",
+          "name": "Module.asset",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "Module.asset(specifier: string, parentURL: URL, opts?: Options): URL"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "specifier",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "parentURL",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "Options",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "URL",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.builtinModules",
+          "name": "Module.builtinModules",
+          "kind": "variable",
+          "static": true,
+          "signatures": [
+            "Module.builtinModules: Module[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.cache",
+          "name": "Module.cache",
+          "kind": "property",
+          "static": true,
+          "signatures": [
+            "Module.cache: Cache"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.constants",
+          "name": "Module.constants",
+          "kind": "variable",
+          "static": true,
+          "signatures": [
+            "Module.constants: {\n  states: {\n    EVALUATED: number\n    SYNTHESIZED: number\n    RUN: number\n  }\n  types: {\n    SCRIPT: number\n    MODULE: number\n    JSON: number\n    BUNDLE: number\n    ADDON: number\n    BINARY: number\n    TEXT: number\n    ASSET: number\n  }\n}"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.createRequire",
+          "name": "Module.createRequire",
+          "kind": "function",
+          "static": true,
+          "signatures": [
+            "Module.createRequire(parentURL: string | URL, opts?: CreateRequireOptions): Require"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "parentURL",
+              "type": "string | URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "CreateRequireOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Require",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.isBuiltin",
+          "name": "Module.isBuiltin",
+          "kind": "function",
+          "static": true,
+          "signatures": [
+            "Module.isBuiltin(): boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "boolean",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.load",
+          "name": "Module.load",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "Module.load(url: URL, opts: LoadOptions): Module",
+            "Module.load(url: URL, source?: Buffer | string | Bundle | null, opts?: LoadOptions): Module"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "LoadOptions",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Module",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.protocol",
+          "name": "Module.protocol",
+          "kind": "property",
+          "static": true,
+          "signatures": [
+            "Module.protocol: Protocol"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.resolve",
+          "name": "Module.resolve",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "Module.resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): URL"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "specifier",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "parentURL",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "ResolveOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "URL",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.protocol",
+          "name": "protocol",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "protocol: Protocol"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.resolutions",
+          "name": "resolutions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "resolutions: ResolutionsMap"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Module.url",
+          "name": "url",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "url: URL"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Attributes",
+      "name": "Attributes",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Attributes {\n  type: Lowercase<keyof typeof constants.types>\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Attributes.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: Lowercase<keyof typeof constants.types>"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Cache",
+      "name": "Cache",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Cache {\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": []
+    },
+    {
+      "key": "Options",
+      "name": "Options",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Options {\n  attributes?: Attributes\n  builtins?: Builtins\n  cache?: Cache\n  conditions?: Conditions\n  defaultType?: number\n  imports?: ImportsMap\n  main?: Module\n  protocol?: Protocol\n  referrer?: Module\n  resolutions?: ResolutionsMap\n  type?: number\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Options.attributes",
+          "name": "attributes",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "attributes: Attributes"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Options.builtins",
+          "name": "builtins",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "builtins: Builtins"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Options.cache",
+          "name": "cache",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "cache: Cache"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Options.conditions",
+          "name": "conditions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "conditions: Conditions"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Options.defaultType",
+          "name": "defaultType",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "defaultType: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Options.imports",
+          "name": "imports",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "imports: ImportsMap"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Options.main",
+          "name": "main",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "main: Module"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Options.protocol",
+          "name": "protocol",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "protocol: Protocol"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Options.referrer",
+          "name": "referrer",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "referrer: Module"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Options.resolutions",
+          "name": "resolutions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "resolutions: ResolutionsMap"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Options.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "LoadOptions",
+      "name": "LoadOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface LoadOptions {\n  isDynamicImport?: boolean\n  isImport?: boolean\n  attributes?: Attributes\n  builtins?: Builtins\n  cache?: Cache\n  conditions?: Conditions\n  defaultType?: number\n  imports?: ImportsMap\n  main?: Module\n  protocol?: Protocol\n  referrer?: Module\n  resolutions?: ResolutionsMap\n  type?: number\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "LoadOptions.isDynamicImport",
+          "name": "isDynamicImport",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "isDynamicImport: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LoadOptions.isImport",
+          "name": "isImport",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "isImport: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "ResolveOptions",
+      "name": "ResolveOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface ResolveOptions {\n  isImport?: boolean\n  attributes?: Attributes\n  builtins?: Builtins\n  cache?: Cache\n  conditions?: Conditions\n  defaultType?: number\n  imports?: ImportsMap\n  main?: Module\n  protocol?: Protocol\n  referrer?: Module\n  resolutions?: ResolutionsMap\n  type?: number\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "ResolveOptions.isImport",
+          "name": "isImport",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "isImport: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "ModuleProtocol",
+      "name": "ModuleProtocol",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "interface ModuleProtocol {\n  preresolve(specifier: string, parentURL: URL): string\n  postresolve(url: URL): URL\n  resolve(specifier: string, parentURL: URL, imports: ImportsMap): URL\n  exists(url: URL, type: number): boolean\n  read(url: URL): Buffer | string | null\n  addon(url: URL): URL\n  asset(url: URL): URL\n  extend(methods: Partial<ModuleProtocol>): ModuleProtocol\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "ModuleProtocol.constructor",
+          "name": "ModuleProtocol",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new ModuleProtocol(methods?: Partial<ModuleProtocol>, context?: ModuleProtocol)"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "methods",
+              "type": "Partial<ModuleProtocol>",
+              "optional": true,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "context",
+              "type": "ModuleProtocol",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ModuleProtocol.addon",
+          "name": "addon",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "addon(url: URL): URL"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "URL",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ModuleProtocol.asset",
+          "name": "asset",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "asset(url: URL): URL"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "URL",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ModuleProtocol.exists",
+          "name": "exists",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "exists(url: URL, type: number): boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "type",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "boolean",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ModuleProtocol.extend",
+          "name": "extend",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "extend(methods: Partial<ModuleProtocol>): ModuleProtocol"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "methods",
+              "type": "Partial<ModuleProtocol>",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "ModuleProtocol",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ModuleProtocol.postresolve",
+          "name": "postresolve",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "postresolve(url: URL): URL"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "URL",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ModuleProtocol.preresolve",
+          "name": "preresolve",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "preresolve(specifier: string, parentURL: URL): string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "specifier",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "parentURL",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "string",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ModuleProtocol.read",
+          "name": "read",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "read(url: URL): Buffer | string | null"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Buffer | string | null",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ModuleProtocol.resolve",
+          "name": "resolve",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "resolve(specifier: string, parentURL: URL, imports: ImportsMap): URL"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "specifier",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "parentURL",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "imports",
+              "type": "ImportsMap",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "URL",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "CreateRequireOptions",
+      "name": "CreateRequireOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface CreateRequireOptions {\n  module?: Module\n  attributes?: Attributes\n  builtins?: Builtins\n  cache?: Cache\n  conditions?: Conditions\n  defaultType?: number\n  imports?: ImportsMap\n  main?: Module\n  protocol?: Protocol\n  referrer?: Module\n  resolutions?: ResolutionsMap\n  type?: number\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "CreateRequireOptions.module",
+          "name": "module",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "module: Module"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "RequireOptions",
+      "name": "RequireOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface RequireOptions {\n  with?: Attributes\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "RequireOptions.with",
+          "name": "with",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "with: Attributes"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "RequireAddon",
+      "name": "RequireAddon",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface RequireAddon {\n  host: string\n  resolve: (specifier: string, parentURL?: URL) => unknown\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "RequireAddon.host",
+          "name": "host",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "host: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RequireAddon.resolve",
+          "name": "resolve",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "resolve: (specifier: string, parentURL?: URL) => unknown"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Require",
+      "name": "Require",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Require {\n  main: Module\n  cache: Cache\n  resolve: (specifier: string, parentURL?: URL) => string\n  addon: RequireAddon\n  asset: (specifier: string, parentURL?: URL) => string\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Require.addon",
+          "name": "addon",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "addon: RequireAddon"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Require.asset",
+          "name": "asset",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "asset: (specifier: string, parentURL?: URL) => string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Require.cache",
+          "name": "cache",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "cache: Cache"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Require.main",
+          "name": "main",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "main: Module"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Require.resolve",
+          "name": "resolve",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "resolve: (specifier: string, parentURL?: URL) => string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    }
+  ],
+  "subpaths": [],
+  "generatedAt": "2026-08-06T15:05:05.374Z"
+}
