@@ -81,6 +81,23 @@ async function updateVersions(versions: Record<string, string>): Promise<void> {
 }
 
 /**
+ * Merge this run's skip outcomes into the `_skipped.json` cache. `names` is
+ * only the modules touched by this run (the full selection, or `--only`'s
+ * narrower list) — entries for every other module are left untouched so an
+ * `--only` run can't clobber skip status recorded by earlier runs. Modules
+ * IN `names` get their status fully replaced (added if newly skipped,
+ * dropped if they now ship usable .d.ts), mirroring updateVersions' per-key
+ * overwrite above but for an array instead of a dict.
+ */
+export async function updateSkipped(skippedPath: string, names: string[], skipped: string[]): Promise<void> {
+  const existing: string[] = existsSync(skippedPath) ? JSON.parse(await readFile(skippedPath, 'utf8')) : [];
+  const touched = new Set(names);
+  const retained = existing.filter((name) => !touched.has(name));
+  const merged = Array.from(new Set([...retained, ...skipped])).sort();
+  await writeFile(skippedPath, JSON.stringify(merged, null, 2) + '\n');
+}
+
+/**
  * Section new catalog rows land under when a module has no existing row at
  * all. It's a parking spot, not a judgment call about where the module
  * belongs — `todo.ts` flags every name added this way so a person moves it to
@@ -271,7 +288,7 @@ async function main(): Promise<void> {
   await updateVersions(versions);
   // Record modules that were selected but ship no usable .d.ts, so the TODO can
   // flag them (they need upstream types before they can be documented).
-  await writeFile(join(OUT_DIR, '_skipped.json'), JSON.stringify(skipped.sort(), null, 2) + '\n');
+  await updateSkipped(join(OUT_DIR, '_skipped.json'), names, skipped);
   if (write) {
     const added = await syncCatalog(Object.keys(versions), descriptions);
     // Record modules that got a brand-new catalog row under the fallback
@@ -284,7 +301,9 @@ async function main(): Promise<void> {
   if (skipped.length) console.log(`   ⚠ skipped (no .d.ts shipped): ${skipped.join(', ')}`);
 }
 
-main().catch((err) => {
-  console.error('Error:', err);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+  main().catch((err) => {
+    console.error('Error:', err);
+    process.exit(1);
+  });
+}
