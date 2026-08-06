@@ -3,11 +3,28 @@
 // upstream README usage example and lib/{socket,server,errors}.js
 // (holepunchto/bare-ws, main branch). Error codes and defaults quoted from
 // lib/errors.js and their throw sites in lib/socket.js.
+//
+// `Socket.WebSocketOptions`/`Server.WebSocketServerOptions` (and
+// `*.WebSocketEvents`) render as a single `interface { ... }` shape block,
+// not a parameter table — the renderer only ever calls `describe()` once per
+// interface export, so a `describe` key of the form `Interface.propName`
+// (the `*.WebSocketOptions.secure` etc. entries below) is silently ignored;
+// only the whole-interface key (`Socket.WebSocketOptions`) actually renders.
+// This is a latent, wider gap (any per-property `Interface.prop` describe
+// key across any layout is dead the same way) worth a real fix eventually —
+// out of scope here. The per-property entries are left in place since a
+// future renderer fix would pick them up; the whole-interface keys added
+// here are the one that currently works, packing in the same facts.
 
 import type { Layout } from '../layout';
 
 const layout: Layout = {
   groups: [],
+  seeAlso: [
+    "It's pure JavaScript. Sockets are [`bare-stream`](/reference/bare/modules/bare-stream) duplex streams that perform the WebSocket handshake over an HTTP or HTTPS request.",
+    '[`bare-tcp`](/reference/bare/modules/bare-tcp) — the socket layer WebSocket connections run over.',
+    '[`bare-fetch`](/reference/bare/modules/bare-fetch) — a request/response HTTP client for the non-persistent case.',
+  ],
   params: {
     'Socket.constructor': {
       opts: 'Connection options: `host`/`hostname`, `port`, `path`, `secure`, or an already-connected `socket` to wrap.',

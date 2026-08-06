@@ -1,13 +1,16 @@
 // scripts/bare-refgen/layouts/bare-module-resolve.ts
 //
-// Editorial layout for bare-module-resolve. Only two members make it through
-// extraction today (the `resolve` function and the `ResolveOptions`
-// interface) — the .d.ts's `declare namespace resolve { ... }` block (module,
-// url, preresolved, package, packageSelf, packageExports, packageImports,
-// packageImportsExports, packageTarget, builtinTarget, file, directory,
-// constants, Resolver, and several supporting type aliases) never reaches
-// api-model.json, so there's nothing to group there. groups is intentionally
-// left empty: with just these two members the default kind-based headings
+// Editorial layout for bare-module-resolve. The .d.ts's `declare namespace
+// resolve { ... }` block (module, url, preresolved, package, packageSelf,
+// packageExports, packageImports, packageImportsExports, packageTarget,
+// builtinTarget, file, directory, constants, Resolver, and several
+// supporting type aliases) now extracts as members of `resolve` as of the
+// extract.ts/render.ts fix that recovers a function's namespace-merge
+// statics — see docs/plans/bare-refs/handover-2026-08-05.md §14. None carry
+// upstream JSDoc, and the old page never documented them individually either
+// (just listed the names and pointed at the README for signatures) — same
+// treatment kept here in `seeAlso` rather than fabricated per-function prose.
+// groups is intentionally left empty: the default kind-based headings
 // (Functions / Types) already read cleanly and a custom grouping would add
 // ceremony without benefit.
 
@@ -15,6 +18,11 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   groups: [],
+  seeAlso: [
+    "The algorithm's steps are exposed on `resolve` for fine-grained use (`resolve.module`, `resolve.url`, `resolve.preresolved`, `resolve.deferred`, `resolve.package`, `resolve.packageSelf`, `resolve.packageExports`, `resolve.packageImports`, `resolve.packageImportsExports`, `resolve.packageTarget`, `resolve.builtinTarget`, `resolve.file`, and `resolve.directory`); they're subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.2.3`) when declaring the module dependency. See the [repository README](https://github.com/holepunchto/bare-module-resolve) for each step's signature and options.",
+    'A low-level building block. Most applications resolve modules implicitly through the [runtime](/reference/bare/runtime) or bundle with [`bare-pack`](/reference/modules/bare-modules); reach for this directly only when implementing tooling.',
+    'Paired with [`bare-addon-resolve`](/reference/bare/modules/bare-addon-resolve) — the matching algorithm for native addons — and used by [`bare-module-traverse`](/reference/bare/modules/bare-module-traverse) to walk a whole module graph.',
+  ],
   // Grounded in the existing `resolve` TSDoc (bare-module-resolve.describe.json)
   // and, for the ModuleResolveError factories, in the message text each call
   // site in index.js actually constructs (lib/errors.js just forwards `msg`

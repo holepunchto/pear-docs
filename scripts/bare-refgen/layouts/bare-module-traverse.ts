@@ -6,6 +6,15 @@
 // `defaultProbeModule` (undefined) and `defaultResolveModule` (identity) in
 // index.js. The resolve subpath functions (default/bare/node, exported as
 // `resolve` under their own subpaths) share one signature.
+//
+// The `traverse.*` step generators (addons, assets, constants, imports,
+// link, module, package, preresolved, Traversal) now extract as members of
+// `traverse` as of the extract.ts/render.ts fix that recovers a function's
+// namespace-merge statics — see
+// docs/plans/bare-refs/handover-2026-08-05.md §14. None carry upstream
+// JSDoc, and the old page never documented them individually either (just
+// listed the names and their versioning caveat) — same treatment kept here
+// in `seeAlso` rather than fabricated per-function prose.
 
 import type { Layout } from '../layout';
 
@@ -16,6 +25,10 @@ const resolverParams = {
 };
 
 const layout: Layout = {
+  seeAlso: [
+    "It's the engine behind [`bare-pack`](/reference/modules/bare-modules) — a low-level building block; use `bare-pack` to produce a bundle, and reach for this directly only when building tooling on top of the graph.",
+    'The step generators exposed on `traverse` (`traverse.module`, `traverse.package`, `traverse.preresolved`, `traverse.imports`, `traverse.addons`, and `traverse.assets`) are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.2.3`) when declaring the dependency. See the [repository README](https://github.com/holepunchto/bare-module-traverse) for each step generator.',
+  ],
   params: {
     traverse: {
       entry: 'The WHATWG `URL` of the entry module to root the graph at.',

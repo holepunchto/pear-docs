@@ -13,6 +13,9 @@
 import type { Layout } from '../layout';
 
 const layout: Layout = {
+  seeAlso: [
+    "It's pure JavaScript, modelled on and API-compatible with the Node.js [`prom-client`](https://github.com/siimon/prom-client) package.",
+  ],
   params: {
     'Histogram.zero': {
       labels: 'Object with label keys and values to initialize to zero.',

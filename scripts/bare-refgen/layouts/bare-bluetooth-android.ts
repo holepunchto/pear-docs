@@ -11,6 +11,10 @@
 import type { Layout } from '../layout';
 
 const layout: Layout = {
+  seeAlso: [
+    'Runs on Android only — on Apple platforms use [`bare-bluetooth-apple`](/reference/bare/modules/bare-bluetooth-apple).',
+    '[One core, many platforms](/explanation/bare-on-native) — using platform bindings from a native shell.',
+  ],
   params: {
     'BluetoothError.constructor': {
       msg: 'A human-readable error message.',
