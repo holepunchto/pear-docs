@@ -8,7 +8,7 @@ import { CopyPageButton, ViewOptions } from '@/components/ai/page-actions';
 import { UpstreamVersion } from '@/components/UpstreamVersion';
 import { VersionFilter } from '@/components/version/filter';
 import { VersionDropdown } from '@/components/version/dropdown';
-import { isPlatformPath } from '@/lib/docs-versions';
+import { getVersionAxis } from '@/lib/version-axes';
 import { pageMarkdownUrl } from '@/lib/page-markdown-url';
 import { gitConfig } from '@/lib/layout.shared';
 import {
@@ -42,11 +42,13 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
       {/*
         The platform version dropdown sits beside the <h1> rather than in the
         sidebar, so it survives the sub-768px drawer. Gated here as well as
-        inside the component so it is not shipped to the other 143 pages at all.
+        inside the component so it is not shipped to the other pages at all —
+        `getVersionAxis` covers Pear's four platform pages plus the three
+        independent Bare axes (cli/runtime/bare-kit), and nothing else.
       */}
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
         <DocsTitle>{page.data.title}</DocsTitle>
-        {isPlatformPath(page.url) ? <VersionDropdown /> : null}
+        {getVersionAxis(page.url) ? <VersionDropdown /> : null}
       </div>
       <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
       <div className="flex flex-row gap-2 items-center border-b pb-6">

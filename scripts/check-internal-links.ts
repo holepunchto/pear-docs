@@ -12,11 +12,8 @@ import {
   assetExists,
   type AnchorGate,
 } from './helpers';
-import {
-  DOCS_VERSIONS_NEWEST_FIRST,
-  STABLE_DOCS_VERSION,
-  isGateHidden,
-} from '../src/lib/docs-versions';
+import { isGateHidden } from '../src/lib/docs-versions';
+import { getVersionAxis, versionsNewestFirst, stableVersion, type VersionAxis } from '../src/lib/version-axes';
 
 interface BrokenLink {
   file: string;
@@ -26,17 +23,19 @@ interface BrokenLink {
 }
 
 /**
- * Exact membership: an authored link may only name a declared label or value.
+ * Exact membership within `axis`: an authored link may only name a declared
+ * label or value ON THE TARGET PAGE'S OWN AXIS — a `?v=1.28` link to
+ * `runtime.mdx` is checked against `bare-runtime`'s doc-states, not Pear's or
+ * `bare-cli`'s, since each Bare page tracks its own surface independently
+ * (design decision: three independent axes, not one shared "Bare" version).
  *
- * Deliberately NOT `resolveDocsVersion`, which is lenient by design — it maps a
+ * Deliberately NOT `resolveVersion`, which is lenient by design — it maps a
  * reader's arbitrary `?v=9.9` forward onto the newest doc-state. That leniency is
  * right for user input and wrong here, where it would let a typo'd version in our
  * own content resolve to something plausible and pass silently.
  */
-function isDeclaredDocState(version: string): boolean {
-  return DOCS_VERSIONS_NEWEST_FIRST.some(
-    (v) => v.label === version || v.value === version,
-  );
+function isDeclaredDocState(axis: VersionAxis, version: string): boolean {
+  return axis.versions.some((v) => v.label === version || v.value === version);
 }
 
 /** Whether an anchor's enclosing gates all apply to `version`. */
@@ -44,11 +43,11 @@ function anchorVisibleAt(gates: AnchorGate[], version: string): boolean {
   return !gates.some((g) => isGateHidden(version, g.since, g.until));
 }
 
-/** The declared doc-states an anchor does resolve on — used to suggest a fix. */
-function versionsShowing(gates: AnchorGate[]): string[] {
-  return DOCS_VERSIONS_NEWEST_FIRST.filter((v) =>
-    anchorVisibleAt(gates, v.label),
-  ).map((v) => v.label);
+/** The declared doc-states (within `axis`) an anchor does resolve on — used to suggest a fix. */
+function versionsShowing(axis: VersionAxis, gates: AnchorGate[]): string[] {
+  return versionsNewestFirst(axis)
+    .filter((v) => anchorVisibleAt(gates, v.label))
+    .map((v) => v.label);
 }
 
 async function main() {
@@ -77,6 +76,10 @@ async function main() {
 
       // Resolve the slug to look up in the anchor map.
       const targetSlug = link.path === '' ? currentSlug : link.path;
+      // The axis a `?v=`/gate on the TARGET page is interpreted against — each
+      // Bare page tracks its own surface, so this must be looked up per link,
+      // not assumed to be Pear's (or any other page's) axis.
+      const targetAxis = getVersionAxis(targetSlug);
 
       // Validate the page itself exists (skip for in-page links since they
       // always target the current file, which exists by construction).
@@ -85,16 +88,26 @@ async function main() {
         continue;
       }
 
-      // A `?v=` naming no declared doc-state can never filter to anything
-      // sensible, so flag it wherever it appears.
-      if (link.version && !isDeclaredDocState(link.version)) {
+      // A `?v=` on a page with no registered axis has nothing to resolve
+      // against at all; a `?v=` naming no declared doc-state on its own axis
+      // can never filter to anything sensible. Either way, flag it.
+      if (link.version && !targetAxis) {
+        brokenLinks.push({
+          file,
+          link: link.raw,
+          type: 'version',
+          detail: `?v=${link.version} — target page ${targetSlug} has no registered version axis`,
+        });
+        continue;
+      }
+      if (link.version && targetAxis && !isDeclaredDocState(targetAxis, link.version)) {
         brokenLinks.push({
           file,
           link: link.raw,
           type: 'version',
           detail:
-            `?v=${link.version} is not a declared doc-state ` +
-            `(have ${DOCS_VERSIONS_NEWEST_FIRST.map((v) => v.label).join(', ')})`,
+            `?v=${link.version} is not a declared doc-state for "${targetAxis.label}" ` +
+            `(have ${versionsNewestFirst(targetAxis).map((v) => v.label).join(', ')})`,
         });
         continue;
       }
@@ -116,23 +129,27 @@ async function main() {
         // link to a hidden section drops the reader at the top of the page. An
         // unversioned link is judged against the current stable release, because
         // that is what a reader following it is assumed to be running; a link
-        // carrying `?v=` is judged against that release instead.
+        // carrying `?v=` is judged against that release instead. A page with no
+        // axis has no gates to speak of (check:docs-versions already flags any
+        // stray marker there as a hard error), so there's nothing to check.
         const gates = anchorGateMap.get(targetSlug)?.get(link.fragment) ?? [];
-        const target = link.version || STABLE_DOCS_VERSION.label;
-        if (!anchorVisibleAt(gates, target)) {
-          const showing = versionsShowing(gates);
-          brokenLinks.push({
-            file,
-            link: link.raw,
-            type: 'fragment',
-            detail: link.version
-              ? `"${link.fragment}" is gated away at ?v=${link.version}` +
-                (showing.length ? `; it resolves on ${showing.join(', ')}` : '')
-              : `"${link.fragment}" does not exist in Pear ${target} (current stable)` +
-                (showing.length
-                  ? `; add ?v=${showing[0]} to link at it deliberately`
-                  : '; it is gated away on every declared version'),
-          });
+        if (targetAxis && gates.length > 0) {
+          const target = link.version || stableVersion(targetAxis).label;
+          if (!anchorVisibleAt(gates, target)) {
+            const showing = versionsShowing(targetAxis, gates);
+            brokenLinks.push({
+              file,
+              link: link.raw,
+              type: 'fragment',
+              detail: link.version
+                ? `"${link.fragment}" is gated away at ?v=${link.version}` +
+                  (showing.length ? `; it resolves on ${showing.join(', ')}` : '')
+                : `"${link.fragment}" does not exist in ${targetAxis.label.replace(/ version$/, '')} ${target} (current stable)` +
+                  (showing.length
+                    ? `; add ?v=${showing[0]} to link at it deliberately`
+                    : '; it is gated away on every declared version'),
+            });
+          }
         }
       }
     }
