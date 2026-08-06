@@ -55,6 +55,20 @@ interface Entry {
 const code = (s: string) => `\`${s}\``;
 
 /**
+ * House-style fixes for prose that flows through verbatim from upstream
+ * .d.ts TSDoc, READMEs, or manifest text — none of which are written against
+ * this site's Vale rules (Google.Latin bans "e.g."/"i.e."; Google.OptionalPlurals
+ * bans "word(s)"). Applied wherever such prose renders, since fresh upstream
+ * content keeps reintroducing both — a one-off content edit doesn't stick.
+ */
+function houseStyle(text: string): string {
+  return text
+    .replace(/\be\.g\.\s*/gi, 'for example ')
+    .replace(/\bi\.e\.\s*/gi, 'that is ')
+    .replace(/\b(\w+)\(s\)/g, '$1s');
+}
+
+/**
  * Make author prose safe to drop into MDX: escape `{`, `}`, `<` outside inline
  * code (they'd otherwise start a JS expression or JSX element). Code spans are
  * left untouched. No-op for the README (plain Markdown) target.
@@ -63,7 +77,7 @@ function mdxProse(text: string, ctx: Ctx): string {
   if (ctx.target === 'readme') return text;
   return fixAnchorLinks(text, ctx)
     .split(/(`[^`]*`)/)
-    .map((seg, i) => (i % 2 === 1 ? seg : seg.replace(/[{}<]/g, (c) => `\\${c}`)))
+    .map((seg, i) => (i % 2 === 1 ? seg : houseStyle(seg).replace(/[{}<]/g, (c) => `\\${c}`)))
     .join('');
 }
 
@@ -100,7 +114,7 @@ function fixAnchorLinks(text: string, ctx: Ctx): string {
 function mdxSafeReadmeBlock(text: string): string {
   return text
     .split(/(^```[\s\S]*?^```$)/m)
-    .map((seg, i) => (i % 2 === 1 ? seg : seg.replace(/<(https?:\/\/[^\s>]+)>/g, '[$1]($1)')))
+    .map((seg, i) => (i % 2 === 1 ? seg : houseStyle(seg.replace(/<(https?:\/\/[^\s>]+)>/g, '[$1]($1)'))))
     .join('');
 }
 
@@ -530,7 +544,7 @@ export function renderPage(model: BareModel, layout: Layout | null): { mdx: stri
   parts.push('## See also', '');
   const buildsOn = buildsOnLine(model);
   if (buildsOn) parts.push(buildsOn);
-  for (const s of layout?.seeAlso ?? []) parts.push(`- ${s}`);
+  for (const s of layout?.seeAlso ?? []) parts.push(`- ${mdxProse(s, ctx)}`);
   parts.push(
     `- [${FAMILY === 'bare' ? 'Bare' : 'Pear'} modules](${CATALOG_ROUTE}) — the full \`${PREFIX}*\` catalog.`,
     ...(EXTRA_SEE_ALSO ? [`- ${EXTRA_SEE_ALSO}`] : []),

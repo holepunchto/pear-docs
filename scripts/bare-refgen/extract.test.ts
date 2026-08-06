@@ -170,6 +170,21 @@ test('See also states what the module builds on, from its own bare-* dependencie
   assert.doesNotMatch(none, /Builds on/);
 });
 
+test('house-style fixes (no "e.g."/"i.e."/optional plurals) apply to describe text, usage blocks, and seeAlso', () => {
+  const base: BareModel = {
+    name: 'thing', version: '1.0.0', description: null, repoUrl: null,
+    npmUrl: '', minBare: null, native: false, dependencies: [], extraSections: [],
+    exports: [], subpaths: [], generatedAt: null,
+    usage: 'Accepts a flag (e.g. `--verbose`).',
+  };
+  const { mdx } = renderPage(base, {
+    seeAlso: ['Extension(s) are matched case-insensitively, e.g. `.js` or `.JS`.'],
+  });
+  assert.doesNotMatch(mdx, /\be\.g\.|\bi\.e\.|\(s\)/, 'no Vale-flagged Latin abbreviation or optional plural survives');
+  assert.match(mdx, /for example `--verbose`/, 'usage block gets the house-style fix');
+  assert.match(mdx, /Extensions are matched case-insensitively, for example `\.js`/, 'seeAlso gets the house-style fix');
+});
+
 test('thin property-only class renders as a shape block, not expanded methods', () => {
   const ex = extract('thin.d.ts');
   const model: BareModel = {
