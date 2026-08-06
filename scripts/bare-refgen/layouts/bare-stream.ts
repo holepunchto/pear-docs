@@ -21,6 +21,17 @@ const STRING_ENCODING = "Encoding used to convert a string `data` to a `Buffer`;
 const CHUNK_ENCODING = "Encoding of `data`, or `'buffer'` if it is not a string.";
 
 const layout: Layout = {
+  // NOTE: two old-page facts are NOT restored below — genuine upstream gaps,
+  // not layout fixes. `bare-stream/promises`: the package's own
+  // package.json#exports maps `./promises` to `promises.js` with no `types`
+  // entry at all (unlike `.`/`./web`/`./global`, which all have one) — it's
+  // untyped upstream, invisible to this .d.ts-driven pipeline by design.
+  // `isEnding`/`isFinishing`: confirmed absent from the current published
+  // `index.d.ts` entirely (checked via `npm pack bare-stream`), alongside the
+  // other `isStream`/`isEnded`/etc. helpers that IS documented here.
+  seeAlso: [
+    "It's pure JavaScript and underpins much of the `bare-*` ecosystem—[`bare-fs`](/reference/bare/modules/bare-fs), [`bare-tcp`](/reference/bare/modules/bare-tcp), and others return its streams.",
+  ],
   groups: [
     {
       title: 'Stream basics',

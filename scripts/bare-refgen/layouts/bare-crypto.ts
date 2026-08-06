@@ -18,6 +18,17 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   groups: [],
+  // Restores two facts present on the old hand-written page but dropped by
+  // the describe.json prose (which only covers the synchronous behavior):
+  // `randomFill` also has a non-blocking, callback-based form distinct from
+  // the fully synchronous `randomFillSync`, and `pbkdf2` is available in
+  // both synchronous and callback-based asynchronous forms.
+  describe: {
+    randomFill:
+      'Fill `buffer` with cryptographically secure random bytes, optionally restricted to `[offset, offset + size)`. `offset` defaults to `0` and `size` to `buffer.byteLength - offset`. Returns the same `buffer`. Accepts an optional `callback` for a non-blocking, asynchronous form, distinct from the fully synchronous `randomFillSync`.',
+    pbkdf2:
+      'Derive a key from `password` and `salt` using the specified `digest` algorithm and number of `iterations`. Returns a `keylen`-byte `Buffer`. `password` and `salt` may be strings or `ArrayBufferView`s. Accepts an optional `callback` for an asynchronous form — PBKDF2 key derivation is available in both synchronous (`pbkdf2Sync`) and callback-based asynchronous forms.',
+  },
   params: {
     'Hash.constructor': {
       algorithm:

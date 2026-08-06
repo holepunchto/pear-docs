@@ -6,6 +6,15 @@
 
 import type { Layout } from '../layout';
 
+// NOTE re the regression audit: `TLSSocketOptions.host`/`.ca`/`.alpnProtocols`
+// already carry the old page's exact SNI/CA/ALPN prose via real .d.ts TSDoc —
+// no layout override needed. The TLS server's method surface
+// (listen/address/close/ref/unref) is a genuine upstream `.d.ts` gap:
+// `TLSNetServer extends EventEmitter<TLSNetServerEvents>` and declares only
+// `readonly listening: boolean` itself — none of those methods are typed
+// anywhere in the published package (confirmed via `npm pack bare-tls`), so
+// there is no member here to attach a description to.
+
 const layout: Layout = {
   groups: [],
   params: {

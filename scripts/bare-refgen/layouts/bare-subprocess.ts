@@ -2,6 +2,19 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   groups: [],
+  seeAlso: [
+    "It's a native addon and requires Bare `>=1.7.0`; it's available on desktop (Windows, macOS, Linux).",
+  ],
+  describe: {
+    'SpawnOptions.shell':
+      "A shell path, or `true` to use the platform default (`/bin/sh`, `/system/bin/sh` on Android, or `cmd.exe` on Windows).",
+    'SpawnOptions.stdio':
+      "Per-stream stdio configuration. `'pipe'` creates a pipe; `'overlapped'` is like `'pipe'` but opens the pipe in Windows overlapped mode; `'ignore'`/`'inherit'`/`'ipc'` behave as their names suggest. At most one slot may be `'ipc'`.",
+    'SpawnOptions.serialization':
+      "The IPC message serialization mode. `'json'` sends `JSON.stringify`-encoded, newline-delimited messages. `'advanced'` is length-prefixed structured clone via `bare-structured-clone`, supporting `Date`, `Map`, `Buffer`, etc. `'binary'` is an unframed raw pipe — no message boundaries.",
+    'SpawnSyncOptions.input': "Written to the child's `stdin` before it starts.",
+    'SpawnSyncOptions.maxBuffer': "The size of the buffer allocated to capture each `'pipe'` stdio slot.",
+  },
   params: {
     spawn: {
       file: 'The executable to spawn; a string path or a `file://` URL.',

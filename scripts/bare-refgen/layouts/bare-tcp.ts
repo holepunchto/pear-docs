@@ -9,6 +9,7 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   groups: [],
+  seeAlso: ['Sockets are [`bare-stream`](/reference/bare/modules/bare-stream) duplex streams.'],
   params: {
     TCPSocket: {
       opts: 'Options; `readBufferSize` defaults to `65536`, and `allowHalfOpen` and `eagerOpen` to `true`.',

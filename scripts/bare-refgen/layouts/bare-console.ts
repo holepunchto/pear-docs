@@ -9,9 +9,13 @@ import type { Layout } from '../layout';
 const labelDefault = { label: 'The label identifying the timer or counter (default `\'default\'`).' };
 
 const layout: Layout = {
+  seeAlso: [
+    "It's pure JavaScript.",
+    '[`bare-inspector`](/reference/bare/modules/bare-inspector) — deeper debugging via the V8 inspector.',
+  ],
   params: {
     'Console.constructor': {
-      log: 'The logging backend to write through. Defaults to a `bare-logger` instance, or `bare-system-logger` on Android.',
+      log: 'The logging backend to write through. Defaults to a `bare-logger` instance, or `bare-system-logger` on Android. The object must implement the methods used by console operations: `{ debug(...data), info(...data), warn(...data), error(...data), clear(), format(...data) }`.',
     },
     'Console.assert': {
       condition: 'The value tested for truthiness; when falsy, `data` is logged.',

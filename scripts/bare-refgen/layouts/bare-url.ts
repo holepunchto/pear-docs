@@ -6,6 +6,11 @@
 
 import type { Layout } from '../layout';
 
+// NOTE: `URL.format(parts)` (documented on the old hand-written page) does
+// not exist anywhere in the extracted model — a genuine upstream `.d.ts` gap
+// (already flagged in earlier bare-refgen review notes), not a layout fix.
+// Needs an upstream typing PR, not addressed here.
+
 const layout: Layout = {
   seeAlso: [
     '[`bare-path`](/reference/bare/modules/bare-path) — provides the platform-specific path handling used by `fileURLToPath`/`pathToFileURL`.',

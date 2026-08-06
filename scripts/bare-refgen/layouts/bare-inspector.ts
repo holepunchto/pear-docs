@@ -15,6 +15,23 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   groups: [],
+  // Cross-references transcribed verbatim (reworded minimally) from the old
+  // hand-written page's intro and "See also" section.
+  seeAlso: [
+    "It's the in-process counterpart to the [`bare`](/reference/bare/cli) `--inspect` flag, and what `pear-inspect` exposes remotely over [Hyperswarm](/reference/building-blocks/hyperswarm).",
+    '[`bare-console`](/reference/bare/modules/bare-console) — everyday logging and timing.',
+  ],
+  // `HeapSnapshot`/`InspectorHeapSnapshot` (the main-export and duplicated
+  // bare-inspector/heap-snapshot submodule names for the same class) have no
+  // model description, so the fallback below is what actually renders. It
+  // restates the bare-inspector.describe.json prose plus the old page's fact
+  // that the snapshot can also be consumed by async-iterating it.
+  describe: {
+    HeapSnapshot:
+      "A readable stream of a V8 heap snapshot taken over `session`, using the inspector protocol's `HeapProfiler.takeHeapSnapshot`. Pipe it to a file (for example with a `.heapsnapshot` extension) to load it in Chrome DevTools, or async-iterate it with `for await (const chunk of snapshot)`, receiving it as a sequence of `Buffer` chunks.",
+    InspectorHeapSnapshot:
+      "A readable stream of a V8 heap snapshot taken over `session`, using the inspector protocol's `HeapProfiler.takeHeapSnapshot`. Pipe it to a file (for example with a `.heapsnapshot` extension) to load it in Chrome DevTools, or async-iterate it with `for await (const chunk of snapshot)`, receiving it as a sequence of `Buffer` chunks.",
+  },
   params: {
     'Session.constructor': {
       onpaused: 'Called whenever the debugger pauses; return `true` to keep the pause, or a falsy value to resume immediately (the default resumes).',

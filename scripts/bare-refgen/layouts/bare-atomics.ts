@@ -7,6 +7,9 @@
 import type { Layout } from '../layout';
 
 const layout: Layout = {
+  seeAlso: [
+    '[`bare-channel`](/reference/bare/modules/bare-channel) and [`bare-broadcast-channel`](/reference/bare/modules/bare-broadcast-channel)—higher-level message passing between threads.',
+  ],
   params: {
     'Mutex.constructor': {
       opts: 'Options; set `recursive: true` to let the owning thread lock the mutex more than once (default `false`). May also carry an existing `handle` to wrap.',

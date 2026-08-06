@@ -12,6 +12,8 @@ const layout: Layout = {
     "[`bare-os`](https://github.com/holepunchto/bare-os) exposes operating-system information and process utilities for [Bare](/reference/bare/runtime), closely mirroring the Node.js `os` module so most Node code ports directly.",
   seeAlso: [
     '[`bare-process`](/reference/bare/modules/bare-process) — process-level control that complements these OS utilities.',
+    'The higher-level `bare-env` wraps `getEnv`/`setEnv`/etc. into a `process.env`-style object.',
+    '[Bare runtime API](/reference/bare/runtime) — `Bare.platform` and `Bare.arch` for compile-time identifiers.',
   ],
   params: {
     kill: {

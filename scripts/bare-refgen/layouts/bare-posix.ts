@@ -9,6 +9,9 @@
 import type { Layout } from '../layout';
 
 const layout: Layout = {
+  seeAlso: [
+    '[`bare-os`](/reference/bare/modules/bare-os) — portable OS utilities, including `userInfo` / `groupInfo`.',
+  ],
   params: {
     setgid: {
       id: 'The group to switch to: a numeric group ID, or a group name resolved via `getgrnam`.',

@@ -33,6 +33,15 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   groups: [],
+  // `Range.parse` already has a real .d.ts-sourced description (comparison
+  // operators, partial versions, logical OR) — describe() only falls back to
+  // layout prose when the .d.ts has none, so the additional range syntaxes
+  // below can't be appended there. seeAlso is the only free-text slot left.
+  seeAlso: [
+    'Beyond comparison operators, `Range.parse()` also supports caret ranges (`^1.2.3`), tilde ranges (`~1.2.3` or `~>1.2.3`), X-ranges and wildcards (`1.2.x`, `1.*`, `*`), and hyphen ranges (`1.2.3 - 2.3.4`).',
+    "It's pure JavaScript and underpins Bare's module/addon resolution.",
+    '[`bare-module-resolve`](/reference/bare/modules/bare-module-resolve) — uses semver ranges during resolution.',
+  ],
   params: {
     'errors.INVALID_RANGE': {
       msg: 'The error message.',

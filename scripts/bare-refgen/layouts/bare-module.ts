@@ -12,6 +12,10 @@
 import type { Layout } from '../layout';
 
 const layout: Layout = {
+  seeAlso: [
+    '[`bare-module-resolve`](/reference/bare/modules/bare-module-resolve) and [`bare-module-traverse`](/reference/bare/modules/bare-module-traverse) — the resolution and traversal algorithms underneath.',
+    '[Bare runtime API](/reference/bare/runtime#bareaddon) — `Bare.Addon`, the native-addon loader `require.addon` builds on.',
+  ],
   params: {
     'Module.constructor': {
       url: 'The WHATWG `URL` identifying the module.',

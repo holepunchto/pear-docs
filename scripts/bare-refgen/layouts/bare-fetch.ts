@@ -9,6 +9,18 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   groups: [],
+  // NOTE: `Request`/`Response.clone()` (present on the old hand-written
+  // page) does not exist anywhere in the extracted model — not on Request,
+  // Response, or the bare-fetch/body Body class — so it isn't restored here;
+  // either an upstream `.d.ts` gap or an extractor limitation, not a layout
+  // fix. Same for `fetch.Request`/`.Response`/`.Headers` as *properties* —
+  // that fact is restored below via seeAlso since `fetch` already has a
+  // model description (describe() only falls back to layout prose when the
+  // .d.ts has none, so it can't be extended in place).
+  seeAlso: [
+    'The `fetch.Request`, `fetch.Response`, and `fetch.Headers` constructors are also attached to the function.',
+    "It's pure JavaScript, built on [`bare-http1`](/reference/modules/bare-modules) and `bare-https`.",
+  ],
   params: {
     fetch: {
       input: 'The URL string, `URL`, or `Request` to fetch.',

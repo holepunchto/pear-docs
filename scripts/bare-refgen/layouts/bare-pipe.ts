@@ -7,6 +7,9 @@
 import type { Layout } from '../layout';
 
 const layout: Layout = {
+  seeAlso: [
+    '[`bare-subprocess`](/reference/bare/modules/bare-subprocess) — uses pipes for child-process stdio.',
+  ],
   params: {
     Pipe: {
       path: 'A file descriptor to open (number), or a path to connect to (string).',
