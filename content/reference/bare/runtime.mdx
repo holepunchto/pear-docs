@@ -18,12 +18,27 @@ changed:
 This axis is independent of `bare-cli` and `bare-kit` — each Bare page tracks its own
 surface, not one shared "Bare version".
 
-As of 2026-08-06, the generated delta across the tracked window (1.23.5 -> 1.31.0) has
-no marker-worthy change to what's documented on THIS page: `Bare.Addon`/`Bare.Thread`
-becoming top-level siblings in 1.31.0 is a .d.ts authoring change only — both remain
-reachable as `Bare.Addon`/`Bare.Thread` at runtime via the namespace merge, so it is not
-a real surface change. The `Bare.versions` index-signature parameter rename (`package` ->
-`library`, 1.28.2) is a type-only cosmetic change. `Bare.exiting`/`Bare.suspended`/
+As of 2026-08-06, across the tracked window (1.23.5 -> 1.31.0):
+
+`Bare.Addon`/`Bare.Thread` becoming top-level siblings in 1.31.0 (same release as the
+delta below) is a .d.ts authoring change only — both remain reachable as
+`Bare.Addon`/`Bare.Thread` at runtime via the namespace merge, so that part is not a real
+surface change. BUT the same commit (holepunchto/bare#172, "Add `new Addon(url)` and
+deprecate existing addon APIs") also added a genuine new `Addon` constructor and deprecated
+four existing members — `Addon.cache`/`.load()`/`.resolve()`, `Thread.create()` — which
+IS a real, marker-worthy change and is now reflected in the `## Bare.Addon` / `## Bare.Thread`
+sections below with `<Since v="1.31.0" />`. First pass at this delta wrongly lumped the whole
+block in with the cosmetic rename because most of it (host/url/exports/etc.) genuinely was
+just the rename — the giveaway missed on first read was that `Addon.constructor` had no `-`
+counterpart, i.e. it wasn't a rename at all. `scripts/bare-model-surface.ts`'s fingerprint was
+also blind to `deprecated` status at the time (fixed since — it's now a first-class fingerprinted
+field, and deprecated members surface explicitly in the printed delta, including across a
+rename boundary). `Bare.simulator` was ALSO marked `@deprecated` back in 1.27.0, per the
+delta below — left undocumented here on purpose, since it was never described on this page to
+begin with and isn't worth introducing now just to badge it deprecated.
+
+The `Bare.versions` index-signature parameter rename (`package` -> `library`, 1.28.2) is a
+type-only cosmetic change — no marker needed. `Bare.exiting`/`Bare.suspended`/
 `Bare.suspending` were removed in 1.27.0 but carried no JSDoc upstream and were never
 documented on this page, so there is nothing accurate to backfill with <Until> — do not
 guess their semantics from the property names alone. */}
@@ -151,10 +166,9 @@ Loads native addons—typically C/C++ shared libraries.
 This is an advanced API most users never touch directly; native addons are normally loaded for you by the modules that need them.
 </Callout>
 
-- `Addon.cache`— the global cache of loaded addons.
+- `new Addon(url)` <Since v="1.31.0" /> — load a static or dynamic addon from a `url` whose protocol is `builtin:`, `linked:`, or `file:`. Throws for any other protocol, or if loading fails. Returns an `addon` with `addon.url` and `addon.exports`.
 - `Addon.host`— the target triplet identifying the current addon host.
-- `Addon.resolve(specifier, parentURL[, options])`— resolve a native-addon specifier to a `url`.
-- `Addon.load(url[, options])`— load a static or dynamic addon. Returns an `addon` with `addon.url` and `addon.exports`.
+- <Since v="1.31.0" label="Deprecated in 1.31.0" /> `Addon.cache`, `Addon.load(url)`, `Addon.resolve(specifier, parentURL[, options])`— superseded by `new Addon(url)`. Still work, but new code should use the constructor.
 
 ## `Bare.Thread`
 
@@ -162,7 +176,8 @@ Lightweight threads with synchronous joins—similar to Node.js workers but with
 
 - `Thread.isMainThread`— `true` on the main thread.
 - `Thread.self`— the current thread as a `ThreadProxy`, or `null` on the main thread. `Thread.self.data` is the data passed on creation.
-- `new Thread([filename][, options][, callback])` (or `Thread.create(...)`)— start a thread running `filename`. If `callback` is given, its body runs on the new thread with `Thread.self.data` as its argument. Options: `data`, `transfer`, `source`, `encoding`, `stackSize`.
+- `new Thread([filename][, options][, callback])`— start a thread running `filename`. If `callback` is given, its body runs on the new thread with `Thread.self.data` as its argument. Options: `data`, `transfer`, `source`, `encoding`, `stackSize`.
+- <Since v="1.31.0" label="Deprecated in 1.31.0" /> `Thread.create(...)`— equivalent to `new Thread(...)`. Still works, but new code should use the constructor.
 - `thread.joined`— whether the thread has been joined.
 - `thread.join()`— block until the thread exits.
 - `thread.suspend([linger])`, `thread.wakeup([deadline])`, `thread.resume()`, `thread.terminate()`— drive the thread's lifecycle, equivalent to calling the matching `Bare.*` method inside it.
