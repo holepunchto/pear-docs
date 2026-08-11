@@ -1,13 +1,12 @@
 # Reference generation improvement plan — corestore
-Generated from `holepunchto/corestore` at **v7.11.0** (`a0ad080939`) on 2026-07-14T14:05:33.431Z.
-**Doc-completeness: 47%** — 7 of 15 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
+Generated from `holepunchto/corestore` at **v7.12.0** (`afc087f35a`) on 2026-08-11T14:23:33.205Z.
+**Doc-completeness: 50%** — 7 of 14 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
-**100%** of the hand-authored page is reproduced — 27 of 27 documented symbols (`content/reference/helpers/corestore.mdx`).
-### Extra in generated model (24)
+**100%** of the hand-authored page is reproduced — 28 of 28 documented symbols (`content/reference/helpers/corestore.mdx`).
+### Extra in generated model (23)
 _Found in source but absent from the curated page — candidate additions (or internal symbols to filter)._
 - `add`
-- `closed`
 - `cores`
 - `corestores`
 - `count`
@@ -31,7 +30,7 @@ _Found in source but absent from the curated page — candidate additions (or in
 - `watchIndex`
 - `watchers`
 ## Completeness gaps
-### Undocumented parameters (8)
+### Undocumented parameters (7)
 
 _Cause: parameter present in the signature but not described — README gap or extractor name-mismatch._
 
@@ -39,25 +38,23 @@ _Cause: parameter present in the signature but not described — README gap or e
 - `store.watch((core) => {})` → fn
 - `store.unwatch(callback)` → fn
 - `await store.suspend()` → options
-- `const storeB = storeA.session()` → opts
 - `const store = store.namespace(name)` → opts
 - `const stream = store.replicate(optsOrStream)` → isInitiator, opts
 - `store.on('group-active', (topic) => {})` → update
 
 ## Enhancements
-### Return value not explained (7)
+### Return value not explained (6)
 
 _Cause: signature captures a scalar return but no prose/shape explains it — clarity enhancement._
 
 - `const handle = store.notifyGroup(topic)`
-- `const storeB = storeA.session()`
 - `const store = store.namespace(name)`
 - `const stream = store.list(namespace)`
 - `const stream = store.replicate(optsOrStream)`
 - `const core = store.get(key | { name: 'a-name', ...hypercoreOpts})`
 - `const keypair = await store.createKeyPair(name, ns = this.ns)`
 
-### No example (11)
+### No example (10)
 
 _Cause: no code fence under the README entry — add a usage snippet._
 
@@ -65,7 +62,6 @@ _Cause: no code fence under the README entry — add a usage snippet._
 - `const handle = store.notifyGroup(topic)`
 - `await store.suspend()`
 - `await store.resume()`
-- `const storeB = storeA.session()`
 - `const stream = store.list(namespace)`
 - `const core = store.get(key | { name: 'a-name', ...hypercoreOpts})`
 - `const keypair = await store.createKeyPair(name, ns = this.ns)`
@@ -120,8 +116,9 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `handle.pending`
 - `handle.destroyed`
 
-### Stale README (not found in source) (1)
+### Stale README (not found in source) (2)
 
 _Cause: README documents a symbol the AST pass did not find — stale docs, or an extractor miss (events/getters/re-exports)._
 
+- `const storeB = storeA.session()`
 - `const stream = handle.update(opts = {})`

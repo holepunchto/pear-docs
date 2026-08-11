@@ -164,6 +164,11 @@ export const customTree: Node[] = [
     index: { type: 'page', name: 'How To', url: '/how-to' },
     children: [
       {
+        type: 'page',
+        name: 'Browse commands with the interactive menu',
+        url: '/how-to/browse-commands-with-the-interactive-menu',
+      },
+      {
         type: 'folder',
         name: 'Connect to peers',
         index: { type: 'page', name: 'Connect to peers', url: '/how-to/connect-to-peers' },

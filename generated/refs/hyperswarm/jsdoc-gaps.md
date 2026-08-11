@@ -1,6 +1,6 @@
 # JSDoc gap report — hyperswarm
 
-`holepunchto/hyperswarm` at **v4.17.0** · **100%** of published members fully documented (16/16) · 13 source member(s) not in the manifest (internal or unfiled) — not graded.
+`holepunchto/hyperswarm` at **v4.17.0** · **94%** of published members fully documented (15/16) · 13 source member(s) not in the manifest (internal or unfiled) — not graded.
 
 Coverage by dimension: **descriptions 100%** · **param types 100%** · **typed returns 100%** · **examples 100%**. (Prose is usually present; the gap is mostly types.)
 
@@ -8,7 +8,11 @@ Work through the checklist below in the source repo. Each item adds the JSDoc ne
 
 See the [JSDoc convention](../../../scripts/refgen/JSDOC_CONVENTION.md) for the exact format each item expects.
 
-✅ Every graded member is fully documented.
+## To do (1)
+
+### `index.js`
+
+- [ ] L24 `const swarm = new Hyperswarm(opts = {})` — add @param description for `opts`
 
 ## Documented but not reachable in source (5)
 
