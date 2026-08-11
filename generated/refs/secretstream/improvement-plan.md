@@ -1,5 +1,5 @@
 # Reference generation improvement plan — secretstream
-Generated from `holepunchto/hyperswarm-secret-stream` at **v6.9.1** (`4d8cf7de16`) on 2026-06-11T12:37:04.576Z.
+Generated from `holepunchto/hyperswarm-secret-stream` at **v6.9.1** (`3df4ba9571`) on 2026-06-11T12:37:04.576Z.
 **Doc-completeness: 73%** — 11 of 15 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page

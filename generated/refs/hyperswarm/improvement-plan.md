@@ -1,5 +1,5 @@
 # Reference generation improvement plan — hyperswarm
-Generated from `holepunchto/hyperswarm` at **v4.17.0** (`88b2c706d5`) on 2026-06-11T12:36:57.272Z.
+Generated from `holepunchto/hyperswarm` at **v4.17.0** (`e7f465753c`) on 2026-06-11T12:36:57.272Z.
 **Doc-completeness: 74%** — 14 of 19 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page

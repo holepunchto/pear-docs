@@ -1,17 +1,15 @@
 # Reference generation improvement plan — hyperdht
-Generated from `holepunchto/hyperdht` at **v6.33.0** (`00aa764947`) on 2026-07-14T14:05:28.491Z.
+Generated from `holepunchto/hyperdht` at **v6.33.0** (`06e70e3cc8`) on 2026-08-11T14:23:34.800Z.
 **Doc-completeness: 9%** — 1 of 11 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
-**100%** of the hand-authored page is reproduced — 23 of 23 documented symbols (`content/reference/building-blocks/hyperdht.mdx`).
-### Extra in generated model (18)
+**100%** of the hand-authored page is reproduced — 27 of 27 documented symbols (`content/reference/building-blocks/hyperdht.mdx`).
+### Extra in generated model (14)
 _Found in source but absent from the curated page — candidate additions (or internal symbols to filter)._
 - `DEFAULTS`
 - `connectRawStream`
 - `connectionKeepAlive`
 - `createRawStream`
-- `defaultKeyPair`
-- `findPeer`
 - `hash`
 - `listening`
 - `lookupAndUnannounce`
@@ -20,9 +18,7 @@ _Found in source but absent from the curated page — candidate additions (or in
 - `pool`
 - `rawStreams`
 - `register`
-- `resume`
 - `stats`
-- `suspend`
 - `validateLocalAddresses`
 ## Completeness gaps
 ### Undocumented parameters (10)
