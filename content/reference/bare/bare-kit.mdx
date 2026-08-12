@@ -5,6 +5,27 @@ docType: reference
 schemaType: APIReference
 ---
 
+{/* Maintainer note: this page's doc-states come from src/lib/bare-kit-docs-states.json,
+generated from holepunchto/react-native-bare-kit's index.d.ts by
+scripts/gen-bare-docs-states.ts — run `npm run gen:bare-docs-states` to refresh, then
+review the printed delta and add/adjust the markers below for anything that changed.
+`Since` = added in that release, `Until` = removed in it; pass `label` to override the
+badge text. Four tools, by the size of what changed:
+  <Since v="x.y.z" />                  inline badge on a sentence. Never hidden — it is the warning.
+  <VersionSection since="x.y.z" />     one line directly under a heading; gates that whole section.
+  <VersionGate since="x.y.z">…</…>     gates a block that is not a whole section, for example a single <Callout>.
+  --flag  Description  [!version since=x.y.z]    gates one row inside a fenced help block.
+This axis tracks `react-native-bare-kit` specifically (the only canonical typed surface —
+the native iOS/Android `Worklet` bindings ship no .d.ts) and is independent of `bare-cli`
+and `bare-runtime`.
+
+As of 2026-08-06, `WorkletEvents.idle` (added)/`.start`/`.terminate` (removed, 0.14.0) and
+the `suspend`/`wakeup` payload types are not yet documented in prose on this page at all —
+worth a follow-up to add a "## Events" section, at which point those deltas should get
+markers too. The `Worklet.constructor` overload change (0.10.5, adding `new Worklet(id,
+options)`) is similarly undocumented here — see the existing aside in the versioning plan
+about this page lagging the .d.ts on `update()` and the two-constructor form. */}
+
 [`bare-kit`](https://github.com/holepunchto/bare-kit) embeds [Bare](/reference/bare/runtime) in native application development. It provides a web-worker-like API for starting and managing isolated Bare threads—called **worklets**—each exposing an IPC channel with bindings for several languages. [`react-native-bare-kit`](https://github.com/holepunchto/react-native-bare-kit) wraps the same API for React Native and Expo. For the architecture this enables, see [One core, many platforms](/explanation/bare-on-native).
 
 <Callout type="info">
@@ -15,15 +36,28 @@ A *worklet* is an isolated Bare thread managed by the host app. The name avoids 
 
 A worklet runs a Bare entry script on a background thread. Create one, start it with an entry filename and source, and manage its [lifecycle](/reference/bare/runtime#lifecycle).
 
+### Constructor
+
+- `new Worklet([options])`— create a worklet.
+- `new Worklet(id, [options])` <Since v="0.10.5" />— create a worklet with an explicit `id`, distinguishing it from other worklets managed by the same host.
+
 ### Actions
 
 - `start(filename, source[, arguments])`— start the worklet running `source` as `filename`.
 - `suspend()`— suspend execution.
 - `suspend(linger)`— suspend, keeping the process alive for `linger` milliseconds before it fully exits.
 - `resume()`— resume a suspended worklet.
+- `wakeup([deadline])`— wake the worklet during suspension. Work may run until `deadline`, after which it suspends again.
+- `update(state)`— notify the worklet of a host app-lifecycle change (React Native's `AppStateStatus`), so it can react to foreground/background transitions.
 - `terminate()`— terminate the worklet.
 
-A configuration object can optionally set a `memoryLimit` or attach assets.
+<Callout type="info">
+`suspend`, `resume`, `wakeup`, and `update` are also available as **static** methods (`Worklet.suspend()`, etc.), driving every worklet the host manages at once rather than one instance.
+</Callout>
+
+<VersionGate since="0.9.2">
+A configuration object can optionally set a `memoryLimit` or attach assets. <Since v="0.9.2" />
+</VersionGate>
 
 ### React Native
 
@@ -77,6 +111,7 @@ worklet.start("/app.js", source, StandardCharsets.UTF_8, null);
 ```
 
 ## IPC
+<VersionSection since="0.9.1" />
 
 Bare Kit provides an IPC abstraction for communication between the host app and a worklet, with both synchronous and asynchronous read/write.
 

@@ -89,11 +89,17 @@ const GETTING = 'getting-started';
 const SCENARIOS: Scenario[] = [
   {
     // hello-pear-bare: the three-layer template (bin.mjs entry -> app.js host
-    // -> Bare worker). Runs with the pinned `bare-runtime` devDep via
-    // ./node_modules/.bin/bare so the boot is independent of the host's PATH
-    // `bare` version, then asserts the worker's "Hello from worker" reaches the
+    // -> Bare worker). Asserts the worker's "Hello from worker" reaches the
     // host over IPC — i.e. the full PearRuntime.run spawn + argv + FramedStream
     // round-trip works. `--no-updates` keeps it off the network.
+    //
+    // Uses the PATH `bare` (preflight requires it) rather than the local
+    // `bare-runtime` devDep: `./node_modules/.bin/bare` cannot be relied on.
+    // `bare-runtime` and its per-platform package (e.g. bare-runtime-linux-x64)
+    // both declare the same `bin` name, so npm skips the conflicting shim on
+    // Linux, and the platform binary lands without the executable bit — the
+    // local path fails with either ENOENT or EACCES there while working on
+    // macOS. All the other scenarios below already invoke `bare` from PATH.
     id: 'hello-pear-bare',
     dir: `${GETTING}/hello-pear-bare`,
     installs: ['.'],
@@ -103,9 +109,54 @@ const SCENARIOS: Scenario[] = [
         kind: 'run',
         process: 'app',
         app: '.',
-        cmd: './node_modules/.bin/bare bin.mjs --no-updates',
+        cmd: 'bare bin.mjs --no-updates',
         expect: 'Hello from worker',
         expectAliveMs: 1500,
+        timeoutMs: 45_000,
+      },
+    ],
+  },
+  {
+    // hello-pear-bare's `variant/single-thread` branch: same App ready-resource
+    // shape as `main`, but `_open()` constructs PearRuntime directly instead of
+    // spawning a Bare worker — no worker, no FramedStream IPC. There's no
+    // separate worker holding demo peer-to-peer code, so unlike `hello-pear-bare`
+    // there's no "Hello from worker" line; asserts the CLI's own ready log
+    // instead, then (like `main`) stays alive since Corestore/Hyperswarm/
+    // PearRuntime hold the event loop open.
+    id: 'hello-pear-bare-single-thread',
+    dir: `${GETTING}/hello-pear-bare-single-thread`,
+    installs: ['.'],
+    artifacts: [],
+    steps: [
+      {
+        kind: 'run',
+        process: 'app',
+        app: '.',
+        cmd: 'bare bin.mjs --no-updates',
+        expect: 'CLI ready. Press Ctrl+C to stop.',
+        expectAliveMs: 1500,
+        timeoutMs: 45_000,
+      },
+    ],
+  },
+  {
+    // hello-pear-bare's `variant/daemon` branch: `--no-updates` skips
+    // `App.spawnUpdater(...)` entirely (bin.mjs's `if (updates !== false)`
+    // guard), so no `App`/PearRuntime is ever constructed on this path and the
+    // foreground command exits on its own right after logging — unlike `main`
+    // and `single-thread`, this scenario must NOT assert `expectAliveMs`.
+    id: 'hello-pear-bare-daemon',
+    dir: `${GETTING}/hello-pear-bare-daemon`,
+    installs: ['.'],
+    artifacts: [],
+    steps: [
+      {
+        kind: 'run',
+        process: 'app',
+        app: '.',
+        cmd: 'bare bin.mjs --no-updates',
+        expect: 'CLI ready.',
         timeoutMs: 45_000,
       },
     ],
@@ -608,6 +659,43 @@ function preflight(): string[] {
   return missing;
 }
 
+/**
+ * The `hello-pear-*` scenarios boot `pear-runtime`, whose native addon needs a
+ * reasonably current Bare. An older PATH `bare` (e.g. the standalone `bare`
+ * package at 1.28.0) dies with an opaque V8 abort — "Cannot construct
+ * SharedArrayBuffer with BackingStore of ArrayBuffer" — rather than anything
+ * naming a version. Warn instead of failing: the other scenarios run fine on
+ * older runtimes, so this must not block them.
+ */
+const MIN_BARE_FOR_PEAR_RUNTIME = [1, 29, 0];
+
+function warnOnOldBare(): void {
+  const r = spawnSync('bare', ['--version'], { encoding: 'utf-8', env: childEnv() });
+  const raw = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+  const m = raw.match(/v?(\d+)\.(\d+)\.(\d+)/);
+  if (!m) return;
+
+  const found = [Number(m[1]), Number(m[2]), Number(m[3])];
+
+  if (compareVersion(found, MIN_BARE_FOR_PEAR_RUNTIME) < 0) {
+    console.error(
+      `[test-examples] warning: PATH bare is v${found.join('.')}, older than ` +
+        `v${MIN_BARE_FOR_PEAR_RUNTIME.join('.')}.\n` +
+        `  The hello-pear-* scenarios boot pear-runtime and will abort inside V8 on this version.\n` +
+        `  Fix: npm i -g bare-runtime (uninstall a conflicting global \`bare\` package first —\n` +
+        `  both provide a \`bare\` bin, and npm silently keeps the existing one).\n`
+    );
+  }
+}
+
+function compareVersion(a: number[], b: number[]): number {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d !== 0) return d < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
 interface Args {
   filter?: string;
 }
@@ -649,6 +737,7 @@ async function main(): Promise<void> {
     );
     process.exit(1);
   }
+  warnOnOldBare();
 
   const selected = args.filter
     ? SCENARIOS.filter((s) => s.id === args.filter)

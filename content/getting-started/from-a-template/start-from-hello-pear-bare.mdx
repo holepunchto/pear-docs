@@ -22,6 +22,8 @@ If you want to build a desktop app instead, follow the [hello-pear-electron temp
 
 <include>../../_snippets/_install-pear-cli-callout.mdx</include>
 
+<include>../../_snippets/_interactive-menu-callout.mdx</include>
+
 ## Clone and run
 
 ### 1. Clone the repository
@@ -117,6 +119,57 @@ flowchart LR
   swarm <-->|"replicate update drive"| peers((seeding peers))
 ```
 
+## Variants
+
+The `main` branch above (a Bare worker thread) is one of three process shapes `holepunchto/hello-pear-bare` ships. All three share the same `upgrade` link, the same per-platform build targets, and the same [`pear install`](/reference/pear/cli#pear-install)/[`pear seed`](/explanation/availability-and-blind-peering#seeding-with-pear-seed) release flow. What differs is `app.js`, `bin.mjs`, and their dependencies—and **neither variant has a `workers/` directory at all**, so the `workers/main.js` row in [Map the template](#map-the-template) applies to `main` only; on both variants the peer-to-peer code and the updater live in the same process tree as the CLI. Pick the branch that matches how your CLI runs:
+
+| Branch | Shape | Use it for |
+| --- | --- | --- |
+| [`main`](https://github.com/holepunchto/hello-pear-bare) (this page) | `pear-runtime` inside a Bare [worker](/explanation/workers) thread | Long-lived programs (services, REPLs, TUIs) that keep peer-to-peer logic off the main thread. |
+| [`variant/single-thread`](https://github.com/holepunchto/hello-pear-bare/tree/variant/single-thread) | `pear-runtime` constructed directly in the main Bare process—no worker, no IPC framing | Long-lived programs whose peer-to-peer logic doesn't need a separate thread. |
+| [`variant/daemon`](https://github.com/holepunchto/hello-pear-bare/tree/variant/daemon) | `pear-runtime` runs inside a detached [`bare-daemon`](https://github.com/holepunchto/bare-daemon) process that the foreground command spawns and returns from immediately | Short-lived CLI invocations (like `git`) that shouldn't block on an update check—the command exits while the daemon updates in the background. |
+
+Clone whichever branch fits, swapping it into step 1 of [Clone and run](#clone-and-run):
+
+```bash
+git clone -b variant/single-thread https://github.com/holepunchto/hello-pear-bare
+```
+
+### `single-thread`
+
+Same `App` [`ready-resource`](https://github.com/holepunchto/ready-resource) shape as `main`, emitting the `updating`, `updated`, `update-applied`, and `error` events `bin.mjs` logs—plus `updating-delta`, which carries download progress and which `main`'s worker never actually forwards. (`main` also emits a generic `message` event for anything else the worker writes over the pipe; with no worker, single-thread has no equivalent.) The difference is in `_open()`, which constructs `PearRuntime` directly instead of spawning a worker and wrapping its IPC in a `FramedStream`:
+
+```js file=<rootDir>/examples/getting-started/hello-pear-bare-single-thread/app.js#L23-L41 title="app.js"
+```
+
+See [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/variant/single-thread/app.js) on the `variant/single-thread` branch for the full file.
+
+### `daemon`
+
+`bin.mjs` spawns a **detached** updater and returns immediately—the foreground command never blocks on the network:
+
+```js file=<rootDir>/examples/getting-started/hello-pear-bare-daemon/bin.mjs#L50-L57 title="bin.mjs"
+```
+
+`App.spawnUpdater` re-invokes the same executable with a hidden `--updater` flag through [`bare-daemon`](https://github.com/holepunchto/bare-daemon):
+
+```js file=<rootDir>/examples/getting-started/hello-pear-bare-daemon/app.js#L11-L18 title="app.js"
+```
+
+The daemon acquires an `updater.lock` file in the storage directory—via [`fs-native-extensions`](https://github.com/holepunchto/fs-native-extensions)—so only one updater runs per storage directory at a time, and logs to `<storage>/updates.log` instead of stdout, since nothing is attached to read it.
+
+`--update-window` (default `30000`, in milliseconds) bounds only how long the daemon waits for a download to **start**. Once one starts, it stays alive until the update is applied or errors out, however long that takes. See [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/variant/daemon/app.js) and [`bin.mjs`](https://github.com/holepunchto/hello-pear-bare/blob/variant/daemon/bin.mjs) on the `variant/daemon` branch for the full files.
+
+Give a run longer to pick up a download before the daemon gives up:
+
+```bash
+npm start -- --updates --update-window 60000
+```
+
+<Callout type="warn">
+Two steps from [Clone and run](#clone-and-run) behave differently on this branch. `npm start` **returns immediately** rather than staying up, so there is no `Ctrl+C` to press. And because the foreground process never constructs [`pear-runtime`](/reference/pear/runtime), an unreplaced placeholder `upgrade` link does **not** fail with `INVALID_URL` in your terminal—the detached updater writes that error to `<storage>/updates.log`. Check that file first whenever updates appear not to run.
+</Callout>
+
 ## Build a standalone binary
 
 [`bare-build`](https://github.com/holepunchto/bare-build) compiles `bin.mjs` and its dependencies into a single standalone executable with no peer dependencies—users don't need Node.js, Bare, or the [Pear CLI](/reference/pear/cli) installed. Build for your current host with:
@@ -195,7 +248,7 @@ Before you ship, set your identity in `package.json`:
 - [Start from a template](/getting-started/from-a-template)—both boilerplates, side by side.
 - [Start from the hello-pear-electron template](/getting-started/from-a-template/start-from-hello-pear-electron)—the desktop counterpart, with a renderer, preload bridge, and Bare worker.
 - [Inside Bare](/explanation/bare-runtime)—what the runtime this template builds on actually is, and its lifecycle.
-- [The Pear stack](/explanation/the-pear-stack)—where Bare and Pear sit relative to each other.
+- [How Pear and Bare fit together](/explanation/pear-and-bare)—where Bare and Pear sit relative to each other.
 - [Runtime and languages](/explanation/runtime-and-languages)—where Bare fits among Pear's runtimes.
 - [Bundle a Bare app](/how-to/run-on-native/bundle-a-bare-app)—the `bare-pack` and `bare-build` paths behind `npm run make`.
 - [Bare modules](/reference/modules/bare-modules)—the Bare standard library this template builds on.

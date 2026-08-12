@@ -1,5 +1,5 @@
 # Reference generation improvement plan — hyperbee
-Generated from `holepunchto/hyperbee` at **v2.27.3** (`de90efc77b`) on 2026-06-11T12:36:51.644Z.
+Generated from `holepunchto/hyperbee` at **v2.27.3** (`012caaf19b`) on 2026-06-11T12:36:51.644Z.
 **Doc-completeness: 67%** — 18 of 27 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
