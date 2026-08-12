@@ -1,0 +1,68 @@
+---
+title: Holepunch GitHub Actions
+description: >-
+  Reference for the shared composite GitHub Actions in holepunchto/actions—Pear
+  app CI, release publishing, recovery, and the Bare native-addon prebuild
+  pipeline.
+docType: reference
+product: pear
+schemaType: APIReference
+---
+
+[`holepunchto/actions`](https://github.com/holepunchto/actions) is a collection of reusable composite GitHub Actions for building, signing, publishing, and recovering Pear applications and Holepunch modules. Reference one with:
+
+```yaml
+- uses: holepunchto/actions/<name>@v1
+```
+
+<Callout type="info">
+There is no project-scaffolding action. To bootstrap a new Pear project, clone the [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) template. The actions below automate CI/CD once a project exists.
+</Callout>
+
+## Pear app CI/CD
+
+| Action | Purpose | Key inputs / outputs |
+| --- | --- | --- |
+| <a name="make-pear-app"></a>[`make-pear-app`](https://github.com/holepunchto/actions/tree/main/make-pear-app) | Run `npm run make` for the host OS with code signing and notarization, then upload distributables as artifacts. Handles its own `setup-node` + `npm ci`; precede it with `actions/checkout@v4`. See [Build and sign desktop apps in CI](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci). | In: `channel` (required), `upgrade_key`, macOS signing/notarization (`macos_certificate_base64`, `macos_p12_password`, `macos_codesign_identity`, `macos_notarization_method` = `appstore_connect` \| `apple_id_password`, plus the matching API-key or Apple-ID fields), Windows signing (`windows_signing_method` = `windows_cert_sha1` \| `windows_cert_pfx`, plus cert fields), `linux_set_up_snapcraft`. Out: `artifact-links` |
+| [`pear-ci`](https://github.com/holepunchto/actions/tree/main/pear-ci) | Stage a directory into a [Hyperdrive](/bare/reference/building-blocks/hyperdrive) on every run, producing a stable `pear://` link. Documented in full at [pear-ci GitHub Action](/pear/reference/ci-and-release/pear-ci-action). | `primary-key`, `namespace`, `target`, `dry-run`; out: `pr-url` |
+| [`pear-provision-recover`](https://github.com/holepunchto/actions/tree/main/pear-provision-recover) | Recover a provision drive from the network into a new writable drive (runs the `pear-provision-recover` CLI). Used to rebuild write access—see [Recovering from lost write access](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#recovering-from-lost-write-access). | `path`, `key`, `length`, `blobs-length`, `primary-key`, `name` (all required) |
+
+## Release
+
+| Action | Purpose | Key inputs |
+| --- | --- | --- |
+| [`publish`](https://github.com/holepunchto/actions/tree/main/publish) | `npm publish` (honoring dist-tag and workspaces) then create a GitHub release via `create-release`. | `tag` (default `latest`), `workspaces`, `include-workspace-root`, `node-auth-token` |
+| [`create-release`](https://github.com/holepunchto/actions/tree/main/create-release) | `npm pack` the packages and attach the tarballs to a `gh release create` for the current ref. | `workspaces`, `include-workspace-root` |
+| [`trigger-canary`](https://github.com/holepunchto/actions/tree/main/trigger-canary) | Dispatch a `release` event to the `holepunchto/canary-tests` repo so downstream canary tests run against a new release. | `repository`, `ref`, `token` (all required) |
+
+## Bare native-addon prebuilds
+
+For authors of native [Bare](/bare/reference/modules/bare-modules) addons who build prebuilt binaries across platforms in CI. The typical shape is a build matrix where each job runs `compile-prebuilds`, then a final job merges the per-platform artifacts.
+
+| Action | Purpose | Key inputs |
+| --- | --- | --- |
+| [`compile-prebuilds`](https://github.com/holepunchto/actions/tree/main/compile-prebuilds) | Install `bare-make`, then `generate` / `build` / `install` a native prebuild for one platform + arch, optionally uploading it. | `platform` (required), `arch` (required), `flags`, `tags`, `prefix` (default `prebuilds`), `upload` |
+| [`upload-prebuilds`](https://github.com/holepunchto/actions/tree/main/upload-prebuilds) | Upload a compiled prebuild as an artifact named `<platform>-<arch><tags>`. | `platform` (required), `arch` (required), `tags`, `prefix` |
+| [`download-prebuilds`](https://github.com/holepunchto/actions/tree/main/download-prebuilds) | Download all prebuild artifacts into one directory (`merge-multiple`). | `prefix` (default `prebuilds`) |
+| [`merge-prebuilds`](https://github.com/holepunchto/actions/tree/main/merge-prebuilds) | Download every per-platform prebuild artifact and re-upload them as a single `prebuilds` artifact. |—|
+
+### Project and toolchain setup
+
+These are the building blocks the prebuild and release actions compose; you can also use them directly.
+
+| Action | Purpose |
+| --- | --- |
+| [`checkout`](https://github.com/holepunchto/actions/tree/main/checkout) | `actions/checkout` with `persist-credentials: false`. |
+| [`setup-node`](https://github.com/holepunchto/actions/tree/main/setup-node) | Install Node.js LTS and configure the npm registry/scope for auth. |
+| [`node-base`](https://github.com/holepunchto/actions/tree/main/node-base) | `checkout` + `setup-node` + `npm install` (with `allow-git`, `force-install`, registry/scope/auth options). |
+| [`setup-bare`](https://github.com/holepunchto/actions/tree/main/setup-bare) | Install the `bare-runtime` globally. |
+| [`bare-base`](https://github.com/holepunchto/actions/tree/main/bare-base) | `node-base` + `setup-bare`: configure a Bare project on a runner. |
+| [`setup-llvm`](https://github.com/holepunchto/actions/tree/main/setup-llvm), [`setup-nasm`](https://github.com/holepunchto/actions/tree/main/setup-nasm), [`setup-swift`](https://github.com/holepunchto/actions/tree/main/setup-swift), [`swift-base`](https://github.com/holepunchto/actions/tree/main/swift-base) | Install the compilers and toolchains (LLVM, NASM, Swift) used when compiling native prebuilds and platform-specific code. |
+| [`setup-socket`](https://github.com/holepunchto/actions/tree/main/setup-socket), [`setup-mininet`](https://github.com/holepunchto/actions/tree/main/setup-mininet) | Install supporting tooling: `setup-socket` configures Socket.dev supply-chain scanning; `setup-mininet` installs Mininet and Open vSwitch for network-emulation tests. |
+
+## See also
+
+- [Build and sign desktop apps in CI](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci)—the `make-pear-app` walkthrough.
+- [Publish with GitHub Actions](/pear/how-to/operate-an-app/github-actions/publish-with-github-actions) and [pear-ci GitHub Action](/pear/reference/ci-and-release/pear-ci-action)—staging with `pear-ci`.
+- [Build desktop distributables](/pear/how-to/operate-an-app/build-and-package/build-desktop-distributables)—the manual signing flow `make-pear-app` automates.
+- [Bare modules](/bare/reference/modules/bare-modules)—the runtime the prebuild pipeline targets.

@@ -1,0 +1,121 @@
+---
+title: Build desktop distributables
+description: >-
+  Produce signed macOS, Windows, and Linux artifacts for a Pear Electron app,
+  then assemble a multi-architecture deployment directory for pear stage.
+docType: how-to
+product: pear
+schemaType: TechArticle
+---
+
+This guide shows you how to **produce per-OS distributables** and assemble a **deployment directory** that `pear stage` can consume. It assumes you already ship with Electron tooling (for example Electron Forge) and a Pear release line; for the overall pipeline, read [Release pipeline](/pear/explanation/deployment-releasing-apps-p2p) and [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment).
+
+<Callout type="info">
+To run all of this on hosted runners instead of by hand on each OS, see [Build and sign desktop apps in CI](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci)—the [`make-pear-app`](/pear/reference/ci-and-release/github-actions#make-pear-app) action automates the signing and notarization steps below.
+</Callout>
+
+## Before you begin
+
+- [Node.js](https://nodejs.org/) and npm on each build host (or CI runners) for the target OS.
+- [`pear` CLI](/pear/reference/pear/cli) available (`npx pear`) for later `pear build` / `pear stage` steps.
+- Branding fields filled in `package.json` (`name`, `productName`, `description`, `author`, `license`) and icons under `build/` where your template expects them.
+
+## Checklist (all platforms)
+
+Complete these before you cut binaries you will ship to others:
+
+- Application metadata and icons are **final for the brand** you are releasing under.
+- You know which **release line** link (development, staging, rc, etc.) this build will track—see [Release pipeline](/pear/explanation/deployment-releasing-apps-p2p).
+- For **macOS** and **Windows** production paths, plan **vendor signing** up front (same certificate across builds for MSIX updates).
+
+## macOS
+
+1. On a Mac, run `npm run make` (runs `electron-forge make` with darwin makers from [`forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js)).
+2. Unsigned local `.app` bundles are fine for **your machine**; **other Macs** will quarantine unsigned builds. For OTA installs on other machines you need **code signing and notarization** with Apple credentials.
+3. Set the environment variables your [`forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js) reads:
+
+   ```sh
+   MAC_CODESIGN_IDENTITY=identity KEYCHAIN_PROFILE=notary-profile npm run make
+   ```
+
+   `KEYCHAIN_PROFILE` is the [notarytool keychain profile](https://www.electronforge.io/guides/code-signing/code-signing-macos) name configured on the build host.
+
+4. Maintain `build/entitlements.mac.plist` for Hardened Runtime. Notarized apps require it; the defaults cover Bare native-addon compatibility:
+
+   - `cs.allow-jit`—required for V8/Bare JIT compilation.
+   - `cs.allow-unsigned-executable-memory`—required for the Bare runtime.
+
+   Add or remove entitlements here as needed (`com.apple.security.device.camera`, `com.apple.security.device.microphone`, etc.). To load third-party native addons that dynamically link shared libraries built by a different developer, also add `cs.disable-library-validation`.
+
+5. If you are using `pear` ≤ v2.2.15, add a `pear.stage.include` entry that keeps `.github` folders so notarization does not break on stripped resources:
+
+   ```json
+   { "pear": { "stage": { "include": [".github"] } } }
+   ```
+
+Follow the [Electron Forge macOS code signing guide](https://www.electronforge.io/guides/code-signing/code-signing-macos) for credential setup.
+
+## Windows
+
+1. Install [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) and [PowerShell 7+](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows) on the build host.
+2. On Windows, run `npm run make`.
+3. Without signing credentials, [`@electron-forge/maker-msix`](https://www.npmjs.com/package/@electron-forge/maker-msix) generates a **self-signed** development certificate matching the `Publisher` field in `build/AppxManifest.xml`. The certificate is cached locally and reused across builds on the same machine, but is **not portable**—building on a different machine or clearing the cert store generates a new one.
+4. Edit `build/AppxManifest.xml` so `Name`, `Publisher`, `DisplayName`, and the executable path are correct for your brand. Several of these are declared in multiple locations.
+5. Install with `Add-AppxPackage .\out\<AppName>-win32-x64\<AppName>.msix`; uninstall with `Get-AppxPackage -Name <AppName> | Remove-AppxPackage`.
+6. For production MSIX, point `WINDOWS_SIGN_HOOK` at a signing hook module that loads your persistent certificate (see [`forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js)):
+
+   ```sh
+   WINDOWS_SIGN_HOOK=path/to/sign-hook.js npm run make
+   ```
+
+   Keep the **`Publisher`** field in `AppxManifest.xml` exactly equal to the certificate's `CN`—Windows rejects MSIX updates when the publisher string drifts, breaking OTA. Use the same certificate across every release for the lifetime of the install base.
+
+See [Microsoft's MSIX signing documentation](https://learn.microsoft.com/en-us/windows/msix/package/create-certificate-package-signing).
+
+## Linux
+
+1. On Linux (or a Linux CI runner), run `npm run make`. The template [`forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js) also configures Flatpak and Snap makers via `pear-electron-forge-maker-flatpak` and `pear-electron-forge-maker-snap`.
+2. Verify the produced AppImage (or your chosen format) launches on a clean VM before you fold it into the deployment directory.
+
+## Build the deployment directory
+
+After you have one build **per target architecture** (darwin arm64/x64, linux arm64/x64, win32 x64, etc.), run `pear build` to merge them into a **single deployment directory** (typically `package.json` + `by-arch/.../app`).
+
+- Run `pear build` **outside** the application source tree, or pass `--target` to a sibling folder—never nest the deployment folder inside a tree that will itself be staged, or sizes will balloon on every stage. See [Troubleshoot desktop releases](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases).
+
+Example shape (paths illustrative only):
+
+```bash skip="signed-build"
+pear build --package=./my-app/package.json \
+  --darwin-arm64-app ./out/MyApp-darwin-arm64/MyApp.app \
+  --darwin-x64-app ./out/MyApp-darwin-x64/MyApp.app \
+  --linux-arm64-app ./out/MyApp-linux-arm64/MyApp.AppImage \
+  --linux-x64-app ./out/MyApp-linux-x64/MyApp.AppImage \
+  --win32-x64-app ./out/MyApp-win32-x64/MyApp.msix \
+  --target my-app-1.2.3
+```
+
+Then continue with **dry-run** and real **`pear stage`** as described in [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment).
+
+## Where to go next
+
+- [Submit to app stores](/pear/how-to/operate-an-app/build-and-package/submit-to-app-stores)—package the Linux artifacts above for Flathub and the Snap Store.
+- [Build and sign desktop apps in CI](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci)—automate this whole flow with the `make-pear-app` GitHub Action.
+- [Desktop release npm scripts](/pear/reference/ci-and-release/desktop-release-npm-scripts)—common `npm` entry points in sample repos.
+- [Troubleshoot desktop releases](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases)—OTA did not land, `pear stage` sizes exploded, or keys were lost.
+- [Release pipeline glossary](/pear/explanation/deployment-releasing-apps-p2p#glossary)—terminology for links, lines, and multisig.
+
+<Callout type="info">
+
+**Related documentation**
+
+**Getting Started:** [Part 1: Chat](/pear/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat) · [Part 2: Production-shaped](/pear/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app) · [Part 3: Ship](/pear/getting-started/build-a-peer-to-peer-chat/ship) · [Part 4: Update](/pear/getting-started/build-a-peer-to-peer-chat/update)
+
+**Operating an app**
+
+- [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment)
+- [Distribute as a binary](/pear/how-to/operate-an-app/build-and-package/distribute-as-binary)
+- [Manage installed applications](/pear/how-to/manage-installed-applications)
+- [Troubleshoot common issues](/pear/how-to/troubleshooting)
+
+</Callout>

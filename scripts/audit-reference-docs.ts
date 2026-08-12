@@ -2,7 +2,9 @@
  * Reference docs accuracy audit (Phase 2–4 helper for the review plan).
  *
  * This script supports the manual API/CLI review of the 17 reference pages under
- * `content/reference/{building-blocks,helpers,tools}/`. It does not replace reading
+ * `content/bare/reference/{building-blocks,helpers,tools}/` (moved from
+ * `content/reference/...` in the Phase 6 physical reorg — see
+ * docs/plans/PEAR-BARE-SPLIT-PITCH.md). It does not replace reading
  * upstream READMEs or running quickstarts; it automates the first pass:
  *
  *   1. Structural checks — frontmatter, stub detection (single GitHub link only).
@@ -69,9 +71,9 @@ const UPSTREAM_MAP: Record<string, string> = {
 
 /** The three reference subtrees included in the audit. */
 const CATEGORIES = [
-  { dir: 'content/reference/building-blocks', type: 'library' as const },
-  { dir: 'content/reference/helpers', type: 'library' as const },
-  { dir: 'content/reference/tools', type: 'cli' as const },
+  { dir: 'content/bare/reference/building-blocks', type: 'library' as const },
+  { dir: 'content/bare/reference/helpers', type: 'library' as const },
+  { dir: 'content/bare/reference/tools', type: 'cli' as const },
 ];
 
 /**

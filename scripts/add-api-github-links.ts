@@ -657,8 +657,8 @@ function processConfigMdx(
 }
 
 const dirs = [
-  'content/reference/building-blocks',
-  'content/reference/helpers',
+  'content/bare/reference/building-blocks',
+  'content/bare/reference/helpers',
 ];
 
 let totalUpdated = 0;
@@ -692,7 +692,7 @@ for (const dir of dirs) {
 }
 
 // CLI tool docs.
-const toolsDir = join(process.cwd(), 'content/reference/tools');
+const toolsDir = join(process.cwd(), 'content/bare/reference/tools');
 if (existsSync(toolsDir)) {
   for (const file of readdirSync(toolsDir).filter((f) => f.endsWith('.mdx'))) {
     const slug = basename(file, '.mdx');
@@ -718,8 +718,8 @@ if (existsSync(toolsDir)) {
   }
 }
 
-// Pear CLI doc (content/reference/cli.mdx -> holepunchto/pear cmd/*.js).
-const cliPath = join(process.cwd(), 'content/reference/pear/cli.mdx');
+// Pear CLI doc (content/pear/reference/pear/cli.mdx -> holepunchto/pear cmd/*.js).
+const cliPath = join(process.cwd(), 'content/pear/reference/pear/cli.mdx');
 const pearDir = join(UPSTREAM_ROOT, 'pear');
 if (existsSync(cliPath) && existsSync(pearDir)) {
   const cfg: RepoConfig = { org: 'holepunchto', repo: 'pear' };
@@ -732,8 +732,8 @@ if (existsSync(cliPath) && existsSync(pearDir)) {
   );
 }
 
-// Configuration doc (content/reference/pear/configuration.mdx -> pear-state + pear).
-const configPath = join(process.cwd(), 'content/reference/pear/configuration.mdx');
+// Configuration doc (content/pear/reference/pear/configuration.mdx -> pear-state + pear).
+const configPath = join(process.cwd(), 'content/pear/reference/pear/configuration.mdx');
 if (existsSync(configPath)) {
   const urls = new Map<string, string>();
   const configMissed: string[] = [];

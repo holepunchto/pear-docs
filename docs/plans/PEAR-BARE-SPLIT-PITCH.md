@@ -11,7 +11,7 @@ Goal: evolve (not reverse) #303 — keep the "Pear stack" story fully intact for
 **Decisions already made** (via stakeholder Q&A, do not revisit):
 1. **Same app, two nav roots.** One Next.js/fumadocs app, a product switcher (fumadocs `sidebar.tabs`) between a Pear tab and a Bare tab — not separate repos/domains. Cross-links stay as relative internal paths.
 2. **Bare owns the shared "building blocks" layer** (Hypercore, Hyperswarm, Autobase, Corestore, Hyperdrive, Hyperbee, HyperDHT, Localdrive, Mirrordrive, Secretstream, Compact encoding, Protomux, and the Hyper-tools) as its ecosystem/modules layer. Pear's how-tos cross-link out to Bare's copy rather than duplicating.
-3. **Evolve #303.** Keep `explanation/the-pear-stack.mdx` and the "Pear stack" framing exactly as-is for Pear readers; Bare gets its own front door alongside it, not instead of it.
+3. **Evolve #303.** Keep `explanation/the-pear-stack.mdx` and the "Pear stack" framing exactly as-is for Pear readers; Bare gets its own front door alongside it, not instead of it. **Superseded by an independent branding decision merged from `published`:** "the Pear stack" was retired as a named term; the page is now `explanation/pear-and-bare.mdx` ("How Pear and Bare fit together"), still Pear-only and still the same bridge role — only the name and file changed.
 
 ---
 
@@ -41,7 +41,7 @@ Two genuinely new pages get new paths: `content/bare/index.mdx` (Bare's landing 
 |---|---|---|
 | Landing | `content/index.mdx` | Light copy edit acknowledging the Bare tab |
 | Getting Started | Chat tutorial (4), templates (`hello-pear-electron`, `hello-pear-bare`) | Unchanged — `hello-pear-bare` stays here (it's the Pear-on-Bare/OTA path via `pear touch`/`pear install`, not a Bare-only tutorial); add one callout pointing Bare-only readers to Bare's new hello-world tutorial |
-| About Pear (explanation) | `the-pear-stack`, `peer-to-peer-demystified`, `runtime-and-languages`, `dependencies-and-network` (4, was 7); storage section keeps `storage-and-distribution`, `availability-and-blind-peering` (2, was 3); building/shipping (3); Built with Pear (2 external) | 3 pages leave for Bare (`use-bare-standalone`, `bare-runtime`, `bare-on-native`); bridge pages stay Pear-only per decision 3 |
+| About Pear (explanation) | `pear-and-bare` (renamed from `the-pear-stack`, see decision 3), `peer-to-peer-demystified`, `runtime-and-languages`, `dependencies-and-network` (4, was 7); storage section keeps `storage-and-distribution`, `availability-and-blind-peering` (2, was 3); building/shipping (3); Built with Pear (2 external) | 3 pages leave for Bare (`use-bare-standalone`, `bare-runtime`, `bare-on-native`); bridge pages stay Pear-only per decision 3 |
 | How To | New grouping **"Extend your chat app"** (7 pages, zero file moves — see judgment calls below); `operate-an-app/**` (17, unchanged); `manage-installed-applications`; `troubleshooting` (shared, appears in both trees) | The 5 old topic folders (connect-to-peers, store-and-replicate, blind-peering, manage-identity, stream-and-share-media) disappear as *folders* from Pear's tree — surviving Pear pages regroup under one label; `run-on-native/**` (5) leaves entirely |
 | Reference | `reference/pear/*` (4); `ci-and-release/*` (3); Modules shrinks to `pear-modules.mdx` only | Bare/building-blocks/helpers/tools content drops out, replaced by one pointer to Bare's Reference tab |
 | Release Overview | Unchanged, Pear-primary | Gains a cross-link to Bare's own release notes once that exists |
@@ -251,6 +251,52 @@ rendering with Pear's full sidebar, as designed.
 **Still open**: per-product branding/logo (design asset dependency, unchanged
 from Phase 2), the `_snippets/*` editorial pass, and Phase 4's gap-filling
 content — none of these were in scope for the physical reorg itself.
+
+---
+
+## Phase 7: sync with `published` — findings
+
+`published` (this repo's deployed mainline) advanced independently while this
+branch did Phases 0–6, landing: 39 new `bare-*` module reference pages, one
+new how-to (`browse-commands-with-the-interactive-menu.mdx`, `pear --menu`),
+the branding decision that retired "the Pear stack" as a named term in favor
+of "How Pear and Bare fit together" (`the-pear-stack.mdx` → `pear-and-bare.mdx`),
+a JSDoc-first reference-generation pipeline, and per-reference-page version
+dropdowns — none of which this branch had.
+
+**Why a plain rebase couldn't replay Phase 6 as-is.** Git's rename/rebase
+machinery replays Phase 6's move commit as a patch against `published`'s
+tip. For files `published` only *edited* at their old path, the patch either
+merged cleanly (many did) or silently resolved in favor of whichever side
+git's heuristic guessed — in several cases keeping this branch's now-stale
+pre-`published` prose (old "the Pear stack" wording and links) instead of
+`published`'s newer text, with no conflict marker to flag it. For files
+`published` *added* at an old path inside a since-renamed directory (the 39
+new bare modules), git flagged a location conflict per file but couldn't
+merge their content — pure adds have nothing to 3-way-merge against.
+
+**Resolution: regenerate, don't replay.** Rather than resolve ~40 rename and
+content conflicts by hand, the physical-reorg commit was rebuilt fresh: the
+verified Phase 6 tree (`content/pear/**`, `content/bare/**`, `pear-tree.ts`,
+`bare-tree.ts`, and the reorg-aware scripts) was restored as the base, then
+every file `published` had changed or added was copied in at its mapped
+product-prefixed location and put through the same two mechanical passes
+Phase 6 itself used — an old-URL → new-URL link rewrite (927 replacements
+across 98 files) and an `<include>` relative-depth fix for `_snippets`
+references (25 fixes across 10 files) — plus a `product` frontmatter
+backfill (96 files) for the pages `published` never tagged. `pear-tree.ts`
+and `bare-tree.ts` got the three `custom-tree.ts` additions ported in by
+hand (the `pear-and-bare` rename, the new how-to page, the 39 module nodes);
+`redirects.ts` needed one manual 3-way conflict resolved (collapsing the
+`the-pears-stack` → `the-pear-stack` → `pear-and-bare` redirect chain to a
+single hop, prefixed) plus the same set of new-page redirects added by hand.
+
+**Verified**: `check:doctypes`, `check:internal-links` (180/180, one stale
+prefixed link to the old `the-pear-stack` slug in `content/bare/index.mdx`
+found and fixed), `check:cross-links` (no hard orphans; new module pages
+show the same single-inbound-link pattern as the pre-existing ones),
+`check:includes`, `types:check`, full `npm run build` (180 pages, sitemap
+180/180 unique), `check:redirects` (263/263, zero duplicate `from` paths).
 
 ---
 

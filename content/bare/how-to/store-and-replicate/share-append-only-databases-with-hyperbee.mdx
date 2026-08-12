@@ -1,0 +1,179 @@
+---
+title: "Share append-only databases with Hyperbee"
+description: "Writer and reader peers with Hyperbee, Corestore, and Hyperswarm."
+docType: how-to
+product: bare
+schemaType: TechArticle
+---
+
+[Hyperbee](/bare/reference/building-blocks/hyperbee) is an append-only B-tree based on [Hypercore](/bare/reference/building-blocks/hypercore).
+It provides a key/value-store API with methods to insert and get key/value pairs, perform atomic batch insertions, and create sorted iterators.
+This guide uses [Corestore](/bare/reference/helpers/corestore) and [Hyperswarm](/bare/reference/building-blocks/hyperswarm) to manage and replicate the underlying core; see [Work with many Hypercores using Corestore](/bare/how-to/store-and-replicate/work-with-many-hypercores-using-corestore) if those concepts are unfamiliar.
+
+<include>../../../_snippets/_from-a-template-callout.mdx</include>
+
+This guide consists of three applications:
+* [`bee-writer-app`](#create-the-bee-writer-app) - stores 1,000 entries from a given dictionary file into a Hyperbee instance.
+* [`bee-reader-app`](#create-the-bee-reader-app) - queries the Hyperbee instance for key/value pairs.
+* [`core-reader-app`](#inspect-the-hyperbee-as-a-hypercore) - inspects the Hyperbee as a Hypercore.
+
+## Create the bee writer app
+The `bee-writer-app` stores 1,000 entries from a given dictionary file into a Hyperbee instance. The Corestore instance used to create the Hyperbee instance is replicated using Hyperswarm. This enables other peers to replicate their Corestore instance and sparsely (on-demand) download the dictionary data into their local Hyperbee instances.
+
+### Create the `bee-writer-app` directory and add dependencies
+Start the `bee-writer-app` project with the following commands:
+
+```sh example=hyperbee-kv step=setup
+mkdir bee-writer-app
+cd bee-writer-app
+npm init -y
+npm pkg set type="module"
+npm install corestore hyperswarm hyperbee b4a bare-fs bare-process
+```
+
+This will install the following dependencies:
+
+- [`bare-fs`](https://www.npmjs.com/package/bare-fs): A module for working with file systems.
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`hyperswarm`](/bare/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`corestore`](/bare/reference/helpers/corestore): A module for working with Corestore.
+- [`hyperbee`](/bare/reference/building-blocks/hyperbee): A module for working with Hyperbee.
+- [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
+
+
+### Add the `bee-writer-app` logic
+
+Create the `bee-writer-app/index.js` file with the following content:
+
+A [Corestore](/bare/reference/helpers/corestore) holds the backing core (L8), and a [Hyperswarm](/bare/reference/building-blocks/hyperswarm) replicates it on every connection (L10–L14). The Hyperbee is built on a named core (L17) with UTF-8 key/value encoding (L20–L23). Once the core is ready (L26) it joins the swarm on the core's discovery key (L29), and the writable key is printed only after the topic is announced to the DHT (L32–L34). On the first run ([`core.length <= 1`](/bare/reference/building-blocks/hypercore#corelength)), the dictionary is loaded and inserted in a single atomic batch (L38–L47); on later runs it just re-seeds the existing data (L48–L50).
+
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/share-append-only-databases-with-hyperbee/bee-writer-app/index.js title="bee-writer-app/index.js" lineNumbers {8,10-14,17,20-23,26,29,32-34,38-47} skip="example-import"
+```
+### Save the `dict.json` file
+
+Save the `dict.json` file to the `bee-writer-app` directory. The `dict.json` file contains 1,000 dictionary words. This file holds the data that will be stored in the Hyperbee instance, and will be imported into the Hyperbee instance if it is the first time the script is run.
+
+<Callout type="info">
+[Click here to save `dict.json`](/dict.json).
+</Callout>
+
+{/* @harness example=hyperbee-kv step=copy from=examples/how-to/store-and-replicate/share-append-only-databases-with-hyperbee/bee-writer-app/index.js to=bee-writer-app/index.js */}
+{/* @harness example=hyperbee-kv step=copy from=public/dict.json to=bee-writer-app/dict.json */}
+
+### Run the `bee-writer-app`
+
+In one terminal, run `bee-writer-app` with `bare`.
+
+```sh example=hyperbee-kv step=run process=writer expect="bee key:" capture-key="bee key: ([0-9a-f]+)" timeout=60000
+bare bee-writer-app
+```
+
+## Create the bee reader app
+
+The `bee-reader-app` creates a `Corestore` instance and replicates it using the `Hyperswarm` instance to the same topic as `bee-writer-app`. On every word entered in the command line, it will download the respective data to the local `Hyperbee` instance.
+
+### Create the `bee-reader-app` directory and add dependencies
+
+Create the `bee-reader-app` project with the following commands:
+
+```sh example=hyperbee-kv step=setup
+mkdir bee-reader-app
+cd bee-reader-app
+npm init -y
+npm pkg set type="module"
+npm install corestore hyperswarm hyperbee b4a bare-pipe bare-process
+```
+
+This will install the following dependencies:
+
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`hyperswarm`](/bare/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`corestore`](/bare/reference/helpers/corestore): A module for working with Corestore.
+- [`hyperbee`](/bare/reference/building-blocks/hyperbee): A module for working with Hyperbee.
+- [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
+
+### Add the `bee-reader-app` logic
+
+Create the `bee-reader-app/index.js` file with the following content:
+
+The reader takes the writer's public key as a command-line argument (L8–L10) and opens that core through its own [Corestore](/bare/reference/helpers/corestore) (L13), replicated over [Hyperswarm](/bare/reference/building-blocks/hyperswarm) (L15–L19). The core is reopened from the supplied key (L22) and wrapped in a Hyperbee with matching UTF-8 encoding (L25–L28). After `ready()` (L31) it joins the same topic (L37) and reads words from stdin (L39): each query calls `bee.get(word)` and prints the value, downloading only the blocks needed to satisfy it (L41–L48).
+
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/share-append-only-databases-with-hyperbee/bee-reader-app/index.js title="bee-reader-app/index.js" lineNumbers {8-10,13,15-19,22,25-28,31,37,39,41-48} skip="example-import"
+```
+
+{/* @harness example=hyperbee-kv step=copy from=examples/how-to/store-and-replicate/share-append-only-databases-with-hyperbee/bee-reader-app/index.js to=bee-reader-app/index.js */}
+
+### Run the `bee-reader-app`
+
+In another terminal, run the `bee-reader-app` with `bare` and pass it the core key from the [`bee-writer-app`](#run-the-bee-writer-app).
+
+```sh example=hyperbee-kv step=run process=reader cmd="bare bee-reader-app ${key}" expect="core key here is:" timeout=45000
+bare bee-reader-app <SUPPLY THE KEY HERE>
+```
+
+{/* @harness example=hyperbee-kv step=send process=reader data="hello\n" delay=3000 */}
+{/* @harness example=hyperbee-kv step=expect process=reader contains="hello" timeout=30000 */}
+
+Query the database by entering a key from the [`dict file`](#save-the-dictjson-file) to lookup into the `bee-reader-app` terminal and hitting return.
+
+<Callout type="info">
+Each application has its own Corestore directory: `./bee-reader-storage` for the reader and `./bee-writer-storage` for the writer.
+Look at the disk space for the `bee-reader-app` storage path after each query and notice that it's significantly smaller than `bee-writer-app`.
+This is because Hyperbee only downloads the [Hypercore](/bare/reference/building-blocks/hypercore) blocks it needs to satisfy each query, a feature called **sparse downloading**.
+</Callout>
+
+<Callout type="tip">
+A Hyperbee is itself a Hypercore: its B-tree nodes are stored as Hypercore blocks.
+That's what makes the next section possible—inspecting the same data as a raw Hypercore.
+</Callout>
+
+## Inspect the Hyperbee as a Hypercore
+
+### Create the `core-reader-app` directory and add dependencies
+
+Finally create the `core-reader-app` project with the following commands:
+
+```sh skip="manual-walkthrough"
+mkdir core-reader-app
+cd core-reader-app
+npm init -y
+npm pkg set type="module"
+npm install corestore hyperswarm hyperbee b4a bare-process
+```
+
+This will install the following dependencies:
+
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`hyperswarm`](/bare/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`corestore`](/bare/reference/helpers/corestore): A module for working with Corestore.
+- [`hyperbee`](/bare/reference/building-blocks/hyperbee): A module for working with Hyperbee.
+- [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
+
+### Add the `core-reader-app` logic
+
+Create the `core-reader-app/index.js` file with the following content:
+
+This app treats the Hyperbee purely as a [Hypercore](/bare/reference/building-blocks/hypercore). It imports Hyperbee's `Node` encoding directly so it can decode tree nodes (L6), takes the writer's key as an argument (L8–L10), and opens the core through a [Corestore](/bare/reference/helpers/corestore) (L13) replicated over [Hyperswarm](/bare/reference/building-blocks/hyperswarm) (L15–L19). The core is reopened from the key and made ready (L22–L24), then joins the topic and waits for the swarm to flush (L27–L28). After pulling the latest metadata with [`core.update()`](/bare/reference/building-blocks/hypercore#await-coreupdateoptions) (L31), it fetches the last block by sequence number (L33–L34) and logs it both raw and decoded through `Node.decode` (L37–L38).
+
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/share-append-only-databases-with-hyperbee/core-reader-app/index.js title="core-reader-app/index.js" lineNumbers {6,8-10,13,15-19,22-24,27-28,31,33-34,37-38} skip="example-import"
+```
+
+### Run the `core-reader-app`
+
+In another terminal, run the `core-reader-app` with `bare`, passing the core key from the [`bee-writer-app`](#run-the-bee-writer-app):
+
+```sh skip="manual-walkthrough"
+bare core-reader-app <SUPPLY KEY HERE>
+```
+
+You can now examine the Hyperbee as if it were just a Hypercore.
+
+The `core-reader-app` will continually download and log the last block of the Hypercore containing the Hyperbee data.
+Note that these blocks are encoded using Hyperbee's `Node` encoding, which has been imported directly from `Hyperbee` for the purposes of explanation.
+
+## See also
+
+- [Create a full peer-to-peer filesystem with Hyperdrive](/bare/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—a richer data structure built on the same Hyperbee primitive.
+- [Work with many Hypercores using Corestore](/bare/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—the Corestore patterns this guide builds on.
+- [Hyperbee reference](/bare/reference/building-blocks/hyperbee)—full API.
+- [Corestore reference](/bare/reference/helpers/corestore)—full API for the store used to manage and replicate the backing core.

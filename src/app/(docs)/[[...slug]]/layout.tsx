@@ -3,7 +3,6 @@ import type { LinkItemType } from 'fumadocs-ui/layouts/shared';
 import { baseOptions } from '@/lib/layout.shared';
 import { pearTree } from '@/lib/pear-tree';
 import { bareTree } from '@/lib/bare-tree';
-import { source } from '@/lib/source';
 import { KeetIcon } from '@/components/keet-icon';
 import KeetRoomModalMount from '@/components/keet-modal';
 import { DocsVersionProvider } from '@/components/version';
@@ -13,12 +12,14 @@ export const dynamic = 'force-static';
 
 export default async function Layout({ children, params }: LayoutProps<'/[[...slug]]'>) {
   const { slug } = await params;
-  const page = source.getPage(slug);
-  // Fully static export (see docs/plans/PEAR-BARE-SPLIT-PITCH.md, "Phase 1
-  // spike: findings") — the sidebar tree is picked once, at build time, from
-  // this page's own `product` frontmatter. 'shared' pages and pages with no
-  // `product` default to Pear's tree.
-  const product = page?.data.product === 'bare' ? 'bare' : 'pear';
+  // Since Phase 6 (docs/plans/PEAR-BARE-SPLIT-PITCH.md) every URL under Bare
+  // carries a real `/bare` prefix, so the tree can be picked from the URL
+  // itself — no frontmatter lookup needed. This replaced an earlier version
+  // that read the current page's `product` field via `source.getPage()`;
+  // that mechanism is still how each *page* renders correctly (frontmatter
+  // still drives OG/schema/SEO), but routing the sidebar off the URL is
+  // simpler and can't drift from where a page actually lives on disk.
+  const product = slug?.[0] === 'bare' ? 'bare' : 'pear';
   const tree = product === 'bare' ? bareTree : pearTree;
 
   // Keet renders as an icon link in the navbar. Its href is a placeholder hash —

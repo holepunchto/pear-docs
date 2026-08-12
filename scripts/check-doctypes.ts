@@ -81,10 +81,14 @@ function expectedDocType(file: string): string | null {
 
   if (norm === ROOT_INDEX) return ROOT_INDEX_DOCTYPE;
 
-  // Strip the content/ prefix and pick the first path segment as the
-  // quadrant. content/how-to/connect-to-peers/foo.mdx -> "how-to".
+  // Strip the content/ prefix, then a leading product segment if present
+  // (content/pear/** and content/bare/** since the Phase 6 physical reorg —
+  // see docs/plans/PEAR-BARE-SPLIT-PITCH.md). What's left is the Diátaxis
+  // quadrant. content/pear/how-to/connect-to-peers/foo.mdx -> "how-to".
   const rel = norm.replace(/^content\//, '');
-  const quadrant = rel.split('/')[0];
+  const segments = rel.split('/');
+  if (segments[0] === 'pear' || segments[0] === 'bare') segments.shift();
+  const quadrant = segments[0];
 
   return QUADRANT_DOCTYPE[quadrant] ?? null;
 }

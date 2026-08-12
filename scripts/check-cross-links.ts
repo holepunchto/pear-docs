@@ -61,12 +61,14 @@ const COVERAGE_REPORT_MIN_MENTIONS = 3;
 
 const EXEMPT_FROM_ORPHAN = new Set<string>([
   '/',
-  '/how-to',
-  '/reference',
-  '/explanation',
+  '/pear/how-to',
+  '/pear/reference',
+  '/pear/explanation',
   // Bare's own root, reachable from the ProductSwitcher in every page's
   // sidebar rather than through content-to-content links — see
-  // docs/plans/PEAR-BARE-SPLIT-PITCH.md.
+  // docs/plans/PEAR-BARE-SPLIT-PITCH.md. Bare has no native how-to/reference/
+  // explanation quadrant landing of its own (those are the three `product:
+  // shared` pages above, linked externally from bare-tree.ts instead).
   '/bare',
 ]);
 
@@ -74,29 +76,29 @@ const STRICT = process.argv.includes('--strict');
 
 /** Curated canonical terms for pages whose title isn't a single distinctive word. */
 const CURATED_CANONICALS: Canonical[] = [
-  { slug: '/reference/pear/cli', term: 'Pear CLI', aliases: ['`pear` CLI'] },
-  { slug: '/reference/pear/runtime', term: '`pear-runtime`', aliases: ['pear-runtime module'] },
-  { slug: '/reference/pear/configuration', term: 'Pear configuration' },
-  { slug: '/reference/pear/api', term: 'Pear API' },
-  { slug: '/reference/modules/pear-modules', term: 'Pear modules' },
-  { slug: '/reference/modules/bare-modules', term: 'Bare modules' },
-  { slug: '/explanation/runtime-and-languages', term: 'Runtime and languages' },
-  { slug: '/explanation/storage-and-distribution', term: 'Storage and distribution' },
-  { slug: '/explanation/dependencies-and-network', term: 'Dependencies and network' },
+  { slug: '/pear/reference/pear/cli', term: 'Pear CLI', aliases: ['`pear` CLI'] },
+  { slug: '/pear/reference/pear/runtime', term: '`pear-runtime`', aliases: ['pear-runtime module'] },
+  { slug: '/pear/reference/pear/configuration', term: 'Pear configuration' },
+  { slug: '/pear/reference/pear/api', term: 'Pear API' },
+  { slug: '/pear/reference/modules/pear-modules', term: 'Pear modules' },
+  { slug: '/bare/reference/modules/bare-modules', term: 'Bare modules' },
+  { slug: '/pear/explanation/runtime-and-languages', term: 'Runtime and languages' },
+  { slug: '/pear/explanation/storage-and-distribution', term: 'Storage and distribution' },
+  { slug: '/pear/explanation/dependencies-and-network', term: 'Dependencies and network' },
 ];
 
 /**
  * Build the canonical-term list:
- *   - everything under /reference/{building-blocks,helpers,tools}, with the
- *     term derived from the file basename (titlecased)
+ *   - everything under /bare/reference/{building-blocks,helpers,tools}, with
+ *     the term derived from the file basename (titlecased)
  *   - merged with the curated list above
  */
 function buildCanonicals(files: string[]): Canonical[] {
   const fromTree: Canonical[] = [];
   const moduleDirs = [
-    '/reference/building-blocks/',
-    '/reference/helpers/',
-    '/reference/tools/',
+    '/bare/reference/building-blocks/',
+    '/bare/reference/helpers/',
+    '/bare/reference/tools/',
   ];
   for (const file of files) {
     const slug = fileToSlug(file);

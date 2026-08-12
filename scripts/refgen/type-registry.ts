@@ -13,7 +13,10 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const REFS_DIR = 'generated/refs';
-const CONTENT_ROOT = 'content/reference';
+// content/reference/ moved to content/bare/reference/ in the Phase 6 physical
+// reorg (docs/plans/PEAR-BARE-SPLIT-PITCH.md) — every module this resolves
+// routes for is `product: bare`.
+const CONTENT_ROOT = 'content/bare/reference';
 
 /** Platform / built-in type → external docs URL. Primitives are intentionally omitted. */
 const EXTERNAL: Record<string, string> = {
@@ -35,7 +38,7 @@ const ALIASES: Record<string, string> = {
   NoiseSecretStream: 'SecretStream',
 };
 
-/** Locate `<slug>.mdx` under content/reference and return its site route, or null. */
+/** Locate `<slug>.mdx` under content/bare/reference and return its site route, or null. */
 function routeForSlug(slug: string, dir = CONTENT_ROOT): string | null {
   let entries: string[];
   try {
@@ -49,7 +52,7 @@ function routeForSlug(slug: string, dir = CONTENT_ROOT): string | null {
       const hit = routeForSlug(slug, p);
       if (hit) return hit;
     } else if (e === `${slug}.mdx`) {
-      // content/reference/building-blocks/hypercore.mdx → /reference/building-blocks/hypercore
+      // content/bare/reference/building-blocks/hypercore.mdx → /bare/reference/building-blocks/hypercore
       return '/' + p.replace(/^content\//, '').replace(/\.mdx$/, '');
     }
   }
