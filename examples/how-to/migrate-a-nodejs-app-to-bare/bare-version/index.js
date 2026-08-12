@@ -2,7 +2,7 @@ import fs from 'bare-fs'
 import path from 'bare-path'
 import process from 'bare-process'
 
-const outFile = path.join(process.cwd(), 'status.json')
+const outFile = path.join(process.cwd(), process.argv[2] || 'status.json')
 const status = { runtime: 'bare' }
 
 fs.writeFileSync(outFile, JSON.stringify(status))
