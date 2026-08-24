@@ -138,95 +138,9 @@ Things to notice:
 - **Lines 26–27 and 29–30:** `WorkerTask` extends [`ready-resource`](https://www.npmjs.com/package/ready-resource) so open/close are explicit lifecycle steps. [`graceful-goodbye`](https://www.npmjs.com/package/graceful-goodbye) registers its `close()` for shutdown. Once ready, line 30 resumes the stream so buffered frames flow.
 - **Lines 32–34:** the `console.log` lines print the storage path, the chosen name, and the room invite—handy when running two peers from the terminal.
 
-</Step>
-
-<Step>
-
-## Trace `WorkerTask`
-
-Open `workers/worker-task.js`. This is the worker's "main object"—it owns a Corestore, a Hyperswarm, and a `ChatRoom`, and it speaks JSON to the renderer over the pipe:
-
-```js file=<rootDir>/examples/getting-started/pear-chat/workers/worker-task.js title="workers/worker-task.js" lineNumbers {18-28,42-49,58-61,63-67}
-```
-
-The lifecycle is canonical Pear shape:
-
-- **Construct (L9–L29)**—wire dependencies, do not perform I/O. The [Corestore](/bare/reference/helpers/corestore), [Hyperswarm](/bare/reference/building-blocks/hyperswarm), and `ChatRoom` are created. On every swarm `connection` the store replicates and the peer count ticks (L20–L24); the room's `update` event is wired to a debounced `_messages()` push (L27–L28).
-- **`_open()` (L31–L50)**—open the store and room, subscribe to incoming renderer IPC (JSON parsed off the pipe, L35–L45), then push the room's invite (L48) and the first batch of messages (L49) to the renderer.
-- **`_peers()` (L58–L61)**—every connect/disconnect writes a `{ type: 'peers', count }` frame, which lights the renderer's status dot.
-- **`_messages()` (L63–L67)**—read every message from the room, sort by timestamp, and write a `{ type: 'messages', messages }` frame. Runs once on open and again, debounced, on every room `update`.
-
-The two additions over the bare scaffold are the **peer counter** and the **invite push** (L48)—the worker hands the renderer the room code so the UI can show a working "Copy invite" button.
-
 <Callout type="info">
-For why P2P state is owned by the worker rather than the renderer, read [Workers](/pear/explanation/workers).
+The worker's internals—`WorkerTask`'s Corestore/Hyperswarm wiring, the Autobase-backed `ChatRoom` with blind-pairing invites, and the generated `spec/` schema—are pure peer-to-peer logic with nothing Pear-specific about it. [A production Autobase-backed chat room](/bare/explanation/autobase-backed-chat-room) traces all three in detail. The rest of this tutorial covers the Electron shell around that worker.
 </Callout>
-
-</Step>
-
-<Step>
-
-## Read `ChatRoom`
-
-`workers/chat-room.js` is the actual peer-to-peer data structure. It combines four building blocks:
-
-- An [Autobase](/bare/reference/building-blocks/autobase) so multiple writers (each peer's local core) merge into one deterministic materialised view.
-- A [HyperDB](https://www.npmjs.com/package/hyperdb) view (a [Hyperbee](/bare/reference/building-blocks/hyperbee)-derived database) for the `messages` and `invites` tables.
-- [HyperDispatch](https://www.npmjs.com/package/hyperdispatch) for typed Autobase `append` payloads (`@pear-chat/add-message`, `@pear-chat/add-writer`, `@pear-chat/add-invite`).
-- [`blind-pairing`](https://www.npmjs.com/package/blind-pairing) so a new peer joins with only a short invite code—the inviter never sees the joiner's key in plaintext.
-
-These come together when peer **B** joins peer **A**'s room.
-
-**1. A creates an invite.** `getInvite()` appends a `@pear-chat/add-invite` record to the Autobase and returns a [z32](https://www.npmjs.com/package/z32)-encoded invite code (this is the string the worker pushes to the renderer's copy button):
-
-```js file=<rootDir>/examples/getting-started/pear-chat/workers/chat-room.js#L127-L137 title="workers/chat-room.js"
-```
-
-**2. B pairs as a candidate.** In `_open`, an empty local core *and* an `--invite` means the room uses [`blind-pairing`](https://www.npmjs.com/package/blind-pairing) as a candidate to reach **A** over the swarm and receive the Autobase keys:
-
-```js file=<rootDir>/examples/getting-started/pear-chat/workers/chat-room.js#L37-L47 title="workers/chat-room.js"
-```
-
-**3. A confirms and adds B as a writer.** A's `pairing.addMember` `onadd` handler resolves the invite, calls `addWriter(B.key)`, and hands back the Autobase root and encryption keys:
-
-```js file=<rootDir>/examples/getting-started/pear-chat/workers/chat-room.js#L72-L85 title="workers/chat-room.js"
-```
-
-**4. B opens the shared Autobase.** With those keys, **B** opens the base, joins the discovery topic on the swarm, and waits for the writable signal before replicating:
-
-```js file=<rootDir>/examples/getting-started/pear-chat/workers/chat-room.js#L52-L68 title="workers/chat-room.js"
-```
-
-Any message either peer adds is appended to its local Autobase core, replicated through the swarm, and applied to the shared HyperDB view. The room emits `update` on every Autobase update; `WorkerTask` debounces those into a single `{ type: 'messages', messages }` write back to the renderer.
-
-<Callout type="info">
-For the deeper picture of Autobase merging, read [From append-only logs to files](/bare/explanation/from-logs-to-files).
-</Callout>
-
-</Step>
-
-<Step>
-
-## Understand `spec/`
-
-The `spec/` directory holds **generated** code—that's why `npm run build` had to run before the first start. `schema.js` at the repo root regenerates everything in `spec/` from declarative definitions, in three blocks.
-
-`spec/schema/`—the canonical record shapes (`writer`, `invite`, `message`) registered with HyperSchema:
-
-```js file=<rootDir>/examples/getting-started/pear-chat/schema.js#L9-L34 title="schema.js — records"
-```
-
-`spec/db/`—typed HyperDB collections (`@pear-chat/messages`, `@pear-chat/invites`), each keyed by `id`:
-
-```js file=<rootDir>/examples/getting-started/pear-chat/schema.js#L36-L48 title="schema.js — collections"
-```
-
-`spec/dispatch/`—typed [Autobase](/bare/reference/building-blocks/autobase) append-payload encoders, one per record type:
-
-```js file=<rootDir>/examples/getting-started/pear-chat/schema.js#L50-L55 title="schema.js — dispatch"
-```
-
-You do not normally edit files under `spec/`. To change a message shape or add a record type, edit `schema.js` and re-run `npm run build:db`. For why P2P apps benefit from schema-first design, see [Schema-first design](/pear/explanation/workers#schema-first-design).
 
 </Step>
 
@@ -386,7 +300,7 @@ A complete P2P desktop chat with persistence, pairing, OTA-update wiring, and th
 | Shell | `electron/main.js`, `electron/preload.js` | [Pear desktop application architecture](/pear/explanation/pear-desktop-architecture) |
 | Updater | `workers/main.js` (PearRuntime OTA in Bare) | [Pear OTA](/pear/reference/pear/runtime) |
 | Worker | `workers/index.js`, `workers/worker-task.js` | [Workers](/pear/explanation/workers) |
-| Room | `workers/chat-room.js` | [Autobase](/bare/reference/building-blocks/autobase) + [blind-pairing](https://www.npmjs.com/package/blind-pairing) |
+| Room | `workers/chat-room.js` | [A production Autobase-backed chat room](/bare/explanation/autobase-backed-chat-room) |
 | Storage | `Corestore`, `HyperDB` view | [Corestore](/bare/reference/helpers/corestore), [Hyperbee](/bare/reference/building-blocks/hyperbee) |
 | Transport | `electron/preload.js`, framed worker pipe | JSON messages over `window.bridge` IPC |
 | UI | `renderer/index.html`, `renderer/app.js` | Vanilla DOM + [Tailwind CSS](https://tailwindcss.com/); copy-invite + peer dot |
@@ -397,13 +311,14 @@ A complete P2P desktop chat with persistence, pairing, OTA-update wiring, and th
 
 Or pick a capability to add on top of this scaffold—each how-to under [the How To guides](/pear/how-to) documents only the **delta** over this exact code:
 
-- [Add blind peering to a chat app](/pear/how-to/blind-peering/add-blind-peering-to-a-chat-app)—keep the room online when its writers are offline.
-- [Add Keet identity to a chat app](/pear/how-to/manage-identity/add-keet-identity-to-a-chat-app)—anchor messages to a portable identity key.
-- [Host multiple rooms in one chat app](/pear/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app)—extend from one room to an account with many.
-- [Share files in a peer-to-peer app](/pear/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app)—swap the room's HyperDB view for a [Hyperdrive](/bare/reference/building-blocks/hyperdrive).
+- [Add blind peering to a chat app](/bare/how-to/blind-peering/add-blind-peering-to-a-chat-app)—keep the room online when its writers are offline.
+- [Add Keet identity to a chat app](/bare/how-to/manage-identity/add-keet-identity-to-a-chat-app)—anchor messages to a portable identity key.
+- [Host multiple rooms in one chat app](/bare/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app)—extend from one room to an account with many.
+- [Share files in a peer-to-peer app](/bare/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app)—swap the room's HyperDB view for a [Hyperdrive](/bare/reference/building-blocks/hyperdrive).
 
 Or zoom out to the conceptual picture:
 
+- [A production Autobase-backed chat room](/bare/explanation/autobase-backed-chat-room)—the worker-side Corestore/Hyperswarm/Autobase/blind-pairing internals this tutorial builds around.
 - [Pear desktop application architecture](/pear/explanation/pear-desktop-architecture)—why a production app splits OTA updates, storage, and workers.
 - [Workers](/pear/explanation/workers)—what a Bare worker is and why P2P state lives there.
 - [Release pipeline](/pear/explanation/deployment-releasing-apps-p2p)—staging links, multisig, and the OTA loop.

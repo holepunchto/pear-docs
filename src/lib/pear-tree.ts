@@ -79,17 +79,12 @@ export const pearTree: Node[] = [
           },
           {
             type: 'page',
-            name: 'Peer-to-peer, demystified',
-            url: '/pear/explanation/peer-to-peer-demystified',
-          },
-          {
-            type: 'page',
             name: 'Runtime and languages',
             url: '/pear/explanation/runtime-and-languages',
           },
           {
             type: 'page',
-            name: 'Dependencies and network',
+            name: 'Dependencies',
             url: '/pear/explanation/dependencies-and-network',
           },
         ],
@@ -105,7 +100,7 @@ export const pearTree: Node[] = [
           },
           {
             type: 'page',
-            name: 'Availability and blind peering',
+            name: 'Availability and distribution',
             url: '/pear/explanation/availability-and-blind-peering',
           },
         ],
@@ -146,47 +141,6 @@ export const pearTree: Node[] = [
     name: 'How To',
     index: { type: 'page', name: 'How To', url: '/pear/how-to' },
     children: [
-      {
-        type: 'folder',
-        name: 'Extend your chat app',
-        children: [
-          {
-            type: 'page',
-            name: 'Host multiple rooms in one chat app',
-            url: '/pear/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app',
-          },
-          {
-            type: 'page',
-            name: 'Add blind peering to a chat app',
-            url: '/pear/how-to/blind-peering/add-blind-peering-to-a-chat-app',
-          },
-          {
-            type: 'page',
-            name: 'Add Keet identity to a chat app',
-            url: '/pear/how-to/manage-identity/add-keet-identity-to-a-chat-app',
-          },
-          {
-            type: 'page',
-            name: 'Share files in a peer-to-peer app',
-            url: '/pear/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app',
-          },
-          {
-            type: 'page',
-            name: 'Back up photos in a peer-to-peer app',
-            url: '/pear/how-to/stream-and-share-media/back-up-photos-in-a-peer-to-peer-app',
-          },
-          {
-            type: 'page',
-            name: 'Stream stored video in a peer-to-peer app',
-            url: '/pear/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app',
-          },
-          {
-            type: 'page',
-            name: 'Stream a live camera in a peer-to-peer app',
-            url: '/pear/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app',
-          },
-        ],
-      },
       {
         type: 'folder',
         name: 'Release & distribute your app',

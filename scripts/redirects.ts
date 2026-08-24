@@ -458,6 +458,23 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/reference/tools/hypertele'), to: withSlash('/bare/reference/tools/hypertele') });
   out.push({ from: withSlash('/release-overview'), to: withSlash('/pear/release-overview') });
 
+  // --- Pear/Bare re-scoping: pages that were briefly at /pear/... under the
+  // Phase 6 prefixing above, then reclassified to Bare because their content
+  // is peer-to-peer app logic (Hyperswarm/Autobase/Hyperdrive/keet-identity-key)
+  // rather than a pear CLI/pear-* module action. See docs/plans/PEAR-BARE-SPLIT-PITCH.md.
+  out.push({ from: withSlash('/pear/explanation/peer-to-peer-demystified'), to: withSlash('/bare/explanation/peer-to-peer-demystified') });
+  out.push({ from: withSlash('/pear/how-to/blind-peering'), to: withSlash('/bare/how-to/blind-peering') });
+  out.push({ from: withSlash('/pear/how-to/blind-peering/add-blind-peering-to-a-chat-app'), to: withSlash('/bare/how-to/blind-peering/add-blind-peering-to-a-chat-app') });
+  out.push({ from: withSlash('/pear/how-to/connect-to-peers'), to: withSlash('/bare/how-to/connect-to-peers') });
+  out.push({ from: withSlash('/pear/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app'), to: withSlash('/bare/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app') });
+  out.push({ from: withSlash('/pear/how-to/manage-identity'), to: withSlash('/bare/how-to/manage-identity') });
+  out.push({ from: withSlash('/pear/how-to/manage-identity/add-keet-identity-to-a-chat-app'), to: withSlash('/bare/how-to/manage-identity/add-keet-identity-to-a-chat-app') });
+  out.push({ from: withSlash('/pear/how-to/stream-and-share-media'), to: withSlash('/bare/how-to/stream-and-share-media') });
+  out.push({ from: withSlash('/pear/how-to/stream-and-share-media/back-up-photos-in-a-peer-to-peer-app'), to: withSlash('/bare/how-to/stream-and-share-media/back-up-photos-in-a-peer-to-peer-app') });
+  out.push({ from: withSlash('/pear/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app'), to: withSlash('/bare/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app') });
+  out.push({ from: withSlash('/pear/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app'), to: withSlash('/bare/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app') });
+  out.push({ from: withSlash('/pear/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app'), to: withSlash('/bare/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app') });
+
   out.sort((a, b) => a.from.localeCompare(b.from));
   return out;
 }

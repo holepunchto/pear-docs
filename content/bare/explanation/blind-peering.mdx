@@ -1,0 +1,92 @@
+---
+title: "Blind peering"
+description: "A dedicated replicator that stores and serves Hypercores and Autobases without decrypting them—running a blind-peer server and wiring the client into an app."
+docType: explanation
+product: bare
+schemaType: WebPage
+---
+
+A **blind peer** is a dedicated replicator that stores and serves [Hypercores](/bare/reference/building-blocks/hypercore) **without decrypting or interpreting** their contents. Blind peering is one way of **putting the server in serverless**: always-on reachability like a hosted service, but the operator never holds the plaintext. It joins swarms on request and caches blocks so other peers can find a source. Blind peering separates "make this core findable" from "I personally hold the plaintext."
+
+<Callout type="info">
+For seeding your own application with `pear seed`, and for finding the keys behind a Pear app bundle, see [Availability and distribution](/pear/explanation/availability-and-blind-peering). This page is about the third-party replication service instead.
+</Callout>
+
+The stack has three parts:
+
+1. **[blind-peer](https://github.com/holepunchto/blind-peer)**—server library that accepts peering requests and replicates cores.
+2. **[blind-peering](https://github.com/holepunchto/blind-peering)**—client library used inside applications to register cores or Autobases with a blind peer.
+3. **[blind-peer-cli](https://github.com/holepunchto/blind-peer-cli)**—CLI that runs a blind peer as a standalone server (provides the `blind-peer` command).
+
+## Running a blind peer server
+
+Install the CLI and start the server:
+
+```bash
+npm i -g blind-peer-cli
+blind-peer
+```
+
+On startup the process logs (as ndjson) a `Listening at <key>` line—that public key is the blind peer's identity, and clients use it as one of their configured `keys`. The default disk budget is 100 GB; cap it with `-m <size>` (megabytes).
+
+For production, run `blind-peer` under a service manager. Example systemd unit:
+
+```toml
+[Unit]
+Description=Blind Peer
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/blind-peer -m 10000 --trusted-peer <your-public-key>
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Pass `--trusted-peer <public-key>` to authorize a specific peer to announce on the blind peer (set `announce: true` on its requests). The public key here is the identity of the peer that will make those requests—the `Listening at <key>` value logged by that peer's own swarm node.
+
+## Registering cores from an application
+
+Wire the client to your app's existing [Hyperswarm](/bare/reference/building-blocks/hyperswarm) and [Corestore](/bare/reference/helpers/corestore):
+
+```js
+import BlindPeering from 'blind-peering'
+import Hyperswarm from 'hyperswarm'
+import Corestore from 'corestore'
+
+const store = new Corestore(storage)
+const swarm = new Hyperswarm()
+swarm.on('connection', (conn) => store.replicate(conn))
+
+const BLIND_PEER_KEYS = ['<blind-peer-public-key-hex>']
+const blinds = new BlindPeering(swarm.dht, store.namespace('blind-peering'), {
+  keys: BLIND_PEER_KEYS
+})
+
+// Ask the blind peers to keep a single Hypercore available…
+await blinds.addCore(core)
+
+// …or a whole Autobase (all of its writer and view cores).
+await blinds.addAutobase(base)
+```
+<Callout type="tip">
+`addCore` / `addAutobase` connect to the closest configured blind peers and request that they replicate and seed the given cores—without the blind peer ever being able to read them.
+</Callout>
+
+Consider letting users configure which blind peers they trust—default infrastructure may not match privacy or jurisdiction requirements (for example location-sensitive data).
+
+## Trusted peers and discovery keys
+
+When a blind peer runs with `--trusted-peer`, it recognizes seed requests signed by that key and joins the swarm for the requested core. That is more targeted than broadcasting blindly: peers looking for a specific core use its **discovery key** as a [Hyperswarm](/bare/reference/building-blocks/hyperswarm) topic, so participants in that topic are likely to hold or want the same data.
+
+Blind peering does not replace end-to-end encryption or capability checks on the cores themselves; it only improves **reachability** by keeping an always-on replica on the network.
+
+## See also
+
+- [Availability and distribution](/pear/explanation/availability-and-blind-peering)—seeding your own application with `pear seed`, and finding the keys behind a bundle.
+- [Keep data available with blind peering](/bare/how-to/blind-peering/keep-data-available-with-blind-peering)—step-by-step walkthrough of the client library above.
+- [Add blind peering to a chat app](/bare/how-to/blind-peering/add-blind-peering-to-a-chat-app)—the same client layered onto a chat app worker.
+- [Autobase reference](/bare/reference/building-blocks/autobase)—multi-writer cores often registered with blind peering.
+- [Hyperswarm reference](/bare/reference/building-blocks/hyperswarm)—topic-based discovery blind peers participate in.

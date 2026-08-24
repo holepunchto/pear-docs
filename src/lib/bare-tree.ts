@@ -39,6 +39,31 @@ export const bareTree: Node[] = [
       },
       {
         type: 'page',
+        name: 'Peer-to-peer, demystified',
+        url: '/bare/explanation/peer-to-peer-demystified',
+      },
+      {
+        type: 'page',
+        name: 'Blind peering',
+        url: '/bare/explanation/blind-peering',
+      },
+      {
+        type: 'page',
+        name: 'Native addons',
+        url: '/bare/explanation/native-addons',
+      },
+      {
+        type: 'page',
+        name: 'Structured RPC and schema-first design',
+        url: '/bare/explanation/rpc-and-schemas',
+      },
+      {
+        type: 'page',
+        name: 'A production Autobase-backed chat room',
+        url: '/bare/explanation/autobase-backed-chat-room',
+      },
+      {
+        type: 'page',
         name: 'From append-only logs to files',
         url: '/bare/explanation/from-logs-to-files',
       },
@@ -52,7 +77,7 @@ export const bareTree: Node[] = [
       {
         type: 'folder',
         name: 'Connect to peers',
-        index: { type: 'page', name: 'Connect to peers', url: '/pear/how-to/connect-to-peers', external: true },
+        index: { type: 'page', name: 'Connect to peers', url: '/bare/how-to/connect-to-peers' },
         children: [
           {
             type: 'page',
@@ -63,6 +88,11 @@ export const bareTree: Node[] = [
             type: 'page',
             name: 'Connect to many peers by topic with Hyperswarm',
             url: '/bare/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm',
+          },
+          {
+            type: 'page',
+            name: 'Host multiple rooms in one chat app',
+            url: '/bare/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app',
           },
         ],
       },
@@ -91,31 +121,41 @@ export const bareTree: Node[] = [
       {
         type: 'folder',
         name: 'Blind peering',
-        index: { type: 'page', name: 'Blind peering', url: '/pear/how-to/blind-peering', external: true },
+        index: { type: 'page', name: 'Blind peering', url: '/bare/how-to/blind-peering' },
         children: [
           {
             type: 'page',
             name: 'Keep data available with blind peering',
             url: '/bare/how-to/blind-peering/keep-data-available-with-blind-peering',
           },
+          {
+            type: 'page',
+            name: 'Add blind peering to a chat app',
+            url: '/bare/how-to/blind-peering/add-blind-peering-to-a-chat-app',
+          },
         ],
       },
       {
         type: 'folder',
         name: 'Manage identity',
-        index: { type: 'page', name: 'Manage identity', url: '/pear/how-to/manage-identity', external: true },
+        index: { type: 'page', name: 'Manage identity', url: '/bare/how-to/manage-identity' },
         children: [
           {
             type: 'page',
             name: 'Create a portable identity with Keet identity keys',
             url: '/bare/how-to/manage-identity/create-a-portable-identity-with-keet-identity-key',
           },
+          {
+            type: 'page',
+            name: 'Add Keet identity to a chat app',
+            url: '/bare/how-to/manage-identity/add-keet-identity-to-a-chat-app',
+          },
         ],
       },
       {
         type: 'folder',
         name: 'Stream and share media',
-        index: { type: 'page', name: 'Stream and share media', url: '/pear/how-to/stream-and-share-media', external: true },
+        index: { type: 'page', name: 'Stream and share media', url: '/bare/how-to/stream-and-share-media' },
         children: [
           {
             type: 'page',
@@ -126,6 +166,26 @@ export const bareTree: Node[] = [
             type: 'page',
             name: 'Store and serve large media with Hyperblobs',
             url: '/bare/how-to/stream-and-share-media/store-and-serve-large-media-with-hyperblobs',
+          },
+          {
+            type: 'page',
+            name: 'Share files in a peer-to-peer app',
+            url: '/bare/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app',
+          },
+          {
+            type: 'page',
+            name: 'Back up photos in a peer-to-peer app',
+            url: '/bare/how-to/stream-and-share-media/back-up-photos-in-a-peer-to-peer-app',
+          },
+          {
+            type: 'page',
+            name: 'Stream stored video in a peer-to-peer app',
+            url: '/bare/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app',
+          },
+          {
+            type: 'page',
+            name: 'Stream a live camera in a peer-to-peer app',
+            url: '/bare/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app',
           },
         ],
       },
@@ -188,6 +248,11 @@ export const bareTree: Node[] = [
             type: 'page',
             name: 'Bare Kit',
             url: '/bare/reference/bare/bare-kit',
+          },
+          {
+            type: 'page',
+            name: 'Native-addon CI prebuilds',
+            url: '/bare/reference/native-addon-prebuilds',
           },
           {
             type: 'folder',
@@ -381,4 +446,5 @@ export const bareTree: Node[] = [
       },
     ],
   },
+  { type: 'page', name: 'Release Overview', url: '/bare/release-overview' },
 ];
