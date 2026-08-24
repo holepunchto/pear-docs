@@ -20,6 +20,10 @@ const config = [
       // Static export output (already covered by next defaults, listed here
       // for clarity and so future tooling sees the full set in one place).
       'out/**',
+      // The search + MCP service is a separate Next app with its own tsconfig,
+      // deployed as its own Sevalla Application. It is linted from inside
+      // `service/`, not by the docs site's React-flavored config.
+      'service/**',
     ],
   },
   {

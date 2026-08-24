@@ -1,0 +1,144 @@
+# Rebuild service/data/*.json when the docs change, and push it.
+#
+# This is the search service's deploy trigger. Sevalla watches this repo and
+# redeploys the Application on push, so committing a changed index IS the
+# deployment. The Sevalla build itself never runs this — it has no reason to,
+# because the index is committed.
+#
+# The run is a no-op when nothing indexable changed: scripts/build-index.ts
+# compares content with the volatile `builtAt`/`sourceRef` fields masked out and
+# leaves the files alone if the substance matches. A docs commit that touches
+# only, say, a component therefore produces no diff, no push and no redeploy.
+name: Build search index
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Everything the index is derived from.
+      - 'content/**'
+      - 'examples/**' # code fences transclude from here via `file=<rootDir>/…`
+      - 'scripts/helpers.ts' # owns the file→slug mapping the index is keyed on
+      - 'service/scripts/**'
+      - 'service/lib/models.ts' # switching encoder invalidates every vector
+      - '.github/workflows/build-search-index.yml'
+  workflow_dispatch:
+
+# Two runs pushing to the same branch would race on the index.
+concurrency:
+  group: build-search-index
+  cancel-in-progress: false
+
+jobs:
+  build-index:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: service/package-lock.json
+
+      # Only the service's own dependencies. The docs site's install is not
+      # needed to build the index — corpus extraction reads content/**
+      # directly and imports scripts/helpers.ts, which pulls in nothing beyond
+      # node builtins and github-slugger.
+      - name: Install
+        working-directory: service
+        run: npm ci --no-audit --no-fund
+        env:
+          # ~1 GB of prebuilds that no CPU-only runner will ever load.
+          npm_config_onnxruntime_node_install_cuda: skip
+          # The repo-root .npmrc env-substitutes ${GITHUB_TOKEN} for the
+          # token-gated @tetherto/* packages. npm scopes project config to the
+          # nearest package.json — service/ — so it should never be read here,
+          # and this service depends on no @tetherto package either way. Setting
+          # it anyway costs nothing and removes the whole failure class if npm's
+          # config lookup ever reaches further up.
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # Content-addressed by the model registry, so this key only moves when the
+      # encoder does.
+      - name: Cache encoder weights
+        uses: actions/cache@v4
+        with:
+          path: service/models
+          key: encoder-${{ hashFiles('service/lib/models.ts') }}-q8
+
+      - name: Vendor encoder
+        working-directory: service
+        run: npm run fetch:model
+
+      - name: Build index
+        working-directory: service
+        env:
+          DOCS_REF: ${{ github.sha }}
+        run: npm run build:index
+
+      - name: Detect change
+        id: diff
+        run: |
+          if git diff --quiet -- service/data; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Index unchanged — nothing to deploy."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- service/data
+          fi
+
+      # Everything below only runs for a real change, so an unchanged index
+      # costs one embedding pass and nothing else.
+      - name: Typecheck and build
+        if: steps.diff.outputs.changed == 'true'
+        working-directory: service
+        run: |
+          npm run typecheck
+          npm run build
+
+      # The push below deploys straight to Sevalla, so prove the new index
+      # actually serves first. A corrupt or dimension-mismatched index fails at
+      # startup, which would otherwise land as a broken deploy.
+      - name: Smoke test
+        if: steps.diff.outputs.changed == 'true'
+        working-directory: service
+        env:
+          PORT: '8787'
+        run: |
+          npm start &
+          server=$!
+          trap 'kill $server 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:8787/api/health && break
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:8787/api/health | tee /tmp/health.json
+          node -e 'const h=require("/tmp/health.json"); if(!h.ok||!h.chunks){console.error("health check failed");process.exit(1)}'
+          curl -sf -X POST http://127.0.0.1:8787/api/search \
+            -H 'Content-Type: application/json' \
+            -d '{"query":"how do peers find each other","topK":3}' > /tmp/search.json
+          node -e 'const r=require("/tmp/search.json"); if(!r.hits||r.hits.length===0){console.error("search returned no hits");process.exit(1)} console.log("top hit:", r.hits[0].url)'
+          curl -sf -X POST http://127.0.0.1:8787/mcp \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+            | sed -n 's/^data: //p' | head -1 > /tmp/tools.json
+          node -e 'const t=require("/tmp/tools.json").result.tools.map(x=>x.name); for(const w of ["search_docs","fetch_doc"]) if(!t.includes(w)){console.error("missing MCP tool "+w);process.exit(1)} console.log("mcp tools:", t.join(", "))'
+
+      - name: Commit and push
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add service/data
+          git commit \
+            -m "chore(service): rebuild search index for ${SHA:0:7}" \
+            -m "Generated by .github/workflows/build-search-index.yml."
+          # Another run may have landed while this one was embedding.
+          git pull --rebase --autostash
+          git push
+        env:
+          SHA: ${{ github.sha }}
