@@ -11,9 +11,14 @@
  * Run after `next build`: tsx scripts/generate-agent-skills-index.ts
  */
 import { createHash } from 'node:crypto';
-import { readFile, writeFile, readdir, stat } from 'node:fs/promises';
+import { readFile, writeFile, readdir, stat, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  parseSkillFrontMatter,
+  validateSkillDescription,
+  validateSkillName,
+} from './agent-skills-shared';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = path.join(ROOT, 'out');
@@ -21,22 +26,9 @@ const SKILLS_DIR = path.join(OUT_DIR, '.well-known', 'agent-skills');
 const INDEX_PATH = path.join(SKILLS_DIR, 'index.json');
 const SCHEMA = 'https://schemas.agentskills.io/discovery/0.2.0/schema.json';
 
-// lowercase alphanumeric + single hyphens; no leading/trailing/double hyphen
-const NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-
-function parseFrontMatter(raw: string, file: string): { name: string; description: string } {
-  const match = /^---\n([\s\S]*?)\n---/.exec(raw);
-  if (!match) throw new Error(`${file}: missing YAML front matter (--- ... ---)`);
-
-  const fields: Record<string, string> = {};
-  for (const line of match[1].split('\n')) {
-    const kv = /^([a-zA-Z-]+):\s*(.*)$/.exec(line);
-    if (kv) fields[kv[1]] = kv[2].trim();
-  }
-  if (!fields.name || !fields.description) {
-    throw new Error(`${file}: front matter must set both name and description`);
-  }
-  return { name: fields.name, description: fields.description };
+async function writeIndex(skills: unknown[]): Promise<void> {
+  await mkdir(SKILLS_DIR, { recursive: true });
+  await writeFile(INDEX_PATH, `${JSON.stringify({ $schema: SCHEMA, skills }, null, 2)}\n`);
 }
 
 async function main(): Promise<void> {
@@ -46,9 +38,10 @@ async function main(): Promise<void> {
       .filter((d) => d.isDirectory())
       .map((d) => d.name)
       .sort();
-  } catch {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     console.log(`No ${SKILLS_DIR} — writing an empty skills index`);
-    await writeFile(INDEX_PATH, `${JSON.stringify({ $schema: SCHEMA, skills: [] }, null, 2)}\n`);
+    await writeIndex([]);
     return;
   }
 
@@ -59,18 +52,13 @@ async function main(): Promise<void> {
     if (!s?.isFile()) throw new Error(`${dir}/ has no SKILL.md`);
 
     const buf = await readFile(skillPath); // Buffer — hash the exact served bytes
-    const raw = buf.toString('utf8');
-    const { name, description } = parseFrontMatter(raw, `${dir}/SKILL.md`);
+    const { name, description } = parseSkillFrontMatter(buf.toString('utf8'), `${dir}/SKILL.md`);
 
     if (name !== dir) {
       throw new Error(`${dir}/SKILL.md: front matter name "${name}" must match its directory name`);
     }
-    if (!NAME_RE.test(name) || name.length > 64) {
-      throw new Error(`${dir}/SKILL.md: name "${name}" violates the a-z0-9/hyphen naming rule`);
-    }
-    if (description.length > 1024) {
-      throw new Error(`${dir}/SKILL.md: description exceeds 1024 characters`);
-    }
+    validateSkillName(name, `${dir}/SKILL.md`);
+    validateSkillDescription(description, `${dir}/SKILL.md`);
 
     skills.push({
       name,
@@ -81,7 +69,7 @@ async function main(): Promise<void> {
     });
   }
 
-  await writeFile(INDEX_PATH, `${JSON.stringify({ $schema: SCHEMA, skills }, null, 2)}\n`);
+  await writeIndex(skills);
   console.log(`Wrote ${INDEX_PATH} with ${skills.length} skill(s)`);
 }
 

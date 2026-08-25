@@ -1,6 +1,6 @@
 ---
 name: hypercore
-description: Use when working with Hypercore, the append-only log at the base of the Holepunch stack — creating a core, appending and reading blocks, and replicating a core between peers.
+description: Use when working with Hypercore, the append-only log underlying Pear's peer-to-peer building blocks — creating a core, appending and reading blocks, and replicating a core between peers.
 ---
 
 # Hypercore
