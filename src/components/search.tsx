@@ -57,10 +57,13 @@ function toResults(hits: Hit[]): SortedResult[] {
     const pageUrl = h.url.split('#')[0];
     if (!seenPage.has(pageUrl)) {
       seenPage.add(pageUrl);
-      out.push({ id: pageUrl, url: pageUrl, type: 'page', content: h.title });
+      out.push({ id: `page:${pageUrl}`, url: pageUrl, type: 'page', content: h.title });
     }
+    // Ids are namespaced by row kind because a hit on a page's LEAD section has
+    // no anchor, so its url IS the page url — an unprefixed id would collide with
+    // the page row above it and React would see two children with the same key.
     out.push({
-      id: h.url,
+      id: `text:${h.url}`,
       url: h.url,
       type: 'text',
       content: h.heading || h.snippet,
