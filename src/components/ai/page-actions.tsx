@@ -9,6 +9,7 @@ import {
   Plug,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { MCP_ENDPOINT } from '@/lib/search-service';
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
 import {
   Popover,
@@ -19,16 +20,10 @@ import {
 
 const markdownCache = new Map<string, string>();
 
-/**
- * Origin of the search + MCP service (see service/README.md). Unset at build
- * time, the MCP option below is not rendered at all — better no button than one
- * that hands out a command pointing nowhere.
- */
-const MCP_URL = process.env.NEXT_PUBLIC_SEARCH_API_URL
-  ? `${process.env.NEXT_PUBLIC_SEARCH_API_URL.replace(/\/$/, '')}/mcp`
-  : '';
-const MCP_COMMAND = MCP_URL
-  ? `claude mcp add --transport http pear-docs ${MCP_URL}`
+// Resolved in one place — see src/lib/search-service.ts, which currently carries
+// a temporary local pin.
+const MCP_COMMAND = MCP_ENDPOINT
+  ? `claude mcp add --transport http pear-docs ${MCP_ENDPOINT}`
   : '';
 
 const optionClassName =

@@ -13,6 +13,7 @@ import {
 import { useDocsSearch } from 'fumadocs-core/search/client';
 import type { SortedResult } from 'fumadocs-core/search';
 import { create } from '@orama/orama';
+import { SEARCH_SERVICE_ORIGIN } from '@/lib/search-service';
 import { useEffect, useRef, useState } from 'react';
 
 function initOrama() {
@@ -23,11 +24,12 @@ function initOrama() {
 }
 
 /**
- * Semantic search backed by the `service/` Application (see service/README.md).
- * Unset at build time, everything below is skipped and the static Orama index is
- * the only search — which is what keeps this safe to ship ahead of the service.
+ * Semantic search backed by the `service/` Application. Resolved in one place —
+ * see src/lib/search-service.ts, which currently carries a temporary local pin.
+ * Whenever it is unreachable, everything below falls through to the static Orama
+ * index, which is what keeps this safe to ship ahead of the service.
  */
-const SEARCH_API = process.env.NEXT_PUBLIC_SEARCH_API_URL?.replace(/\/$/, '');
+const SEARCH_API = SEARCH_SERVICE_ORIGIN;
 
 const DEBOUNCE_MS = 150;
 // Past this, fall back rather than leave the user watching a spinner. The
