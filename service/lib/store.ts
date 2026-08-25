@@ -50,6 +50,41 @@ export function deepUrl(m: ChunkMeta): string {
 const MAX_QUERY_CHARS = 512;
 const MAX_QUERY_TERMS = 32;
 
+/**
+ * Normalize a title or query for exact-match comparison: lowercase, strip
+ * punctuation, collapse whitespace.
+ */
+function normalizeTitle(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Bonus for a chunk whose page title IS the query — a navigational lookup like
+ * "Hyperdrive" or "Corestore", where the user wants the reference page, not
+ * prose that happens to discuss it.
+ *
+ * The per-term lexical blend below cannot separate these cases: for "Hyperdrive"
+ * both the reference page and "Create a full peer-to-peer filesystem with
+ * Hyperdrive" match the single query term in their title, so both take the same
+ * boost and cosine alone decides — which the wordier how-to wins (0.9161 vs
+ * 0.9017). The same tie let `…/hyperdrive/#drivebatch` outrank its own page's
+ * lead, and `…/corestore/#storestorage` outrank Corestore's.
+ *
+ * Exact title equality is a much sharper signal, so it is worth more, and it goes
+ * overwhelmingly to the LEAD chunk (`anchor === ''`) so the result links to the
+ * top of the page rather than an arbitrary section of it. Sections of the same
+ * page get a token amount, enough to keep them ahead of unrelated pages.
+ *
+ * Sized against the measured gaps it has to close — 0.011 (Hyperbee) and 0.019
+ * (Corestore) — with room for the ~0.04 Hyperdrive case, while staying far below
+ * the ~0.1+ margins that separate genuinely different topics.
+ */
+const EXACT_TITLE_LEAD_BOOST = 0.15;
+const EXACT_TITLE_SECTION_BOOST = 0.03;
+
 /** Lowercased, de-duplicated query terms (length ≥ 2) for lexical blending. */
 function queryTerms(q: string): string[] {
   return [...new Set(q.slice(0, MAX_QUERY_CHARS).toLowerCase().match(/[a-z0-9]+/g) || [])]
@@ -84,6 +119,7 @@ export class DocStore {
   private matrix = new Float32Array(0); // [n * dim] dequantized, normalized
   private headingLc: string[] = []; // lowercased title+heading, per chunk
   private contentLc: string[] = []; // lowercased title+heading+content, per chunk
+  private titleNorm: string[] = []; // normalized page title, per chunk
   private pages = new Map<string, DocPage>();
 
   async load() {
@@ -109,6 +145,7 @@ export class DocStore {
     this.meta = new Array(n);
     this.headingLc = new Array(n);
     this.contentLc = new Array(n);
+    this.titleNorm = new Array(n);
     for (let i = 0; i < n; i++) {
       const c = index.chunks[i];
       this.meta[i] = {
@@ -121,6 +158,7 @@ export class DocStore {
       };
       this.headingLc[i] = `${c.title} ${c.heading}`.toLowerCase();
       this.contentLc[i] = `${c.title} ${c.heading} ${c.content}`.toLowerCase();
+      this.titleNorm[i] = normalizeTitle(c.title ?? '');
       const buf = Buffer.from(c.q, 'base64');
       // A short/corrupt payload would poison the matrix without a word: reading
       // past the buffer yields `undefined`, `undefined > 127` is false, so
@@ -158,6 +196,7 @@ export class DocStore {
   search(queryVec: Float32Array, topK = 8, queryText?: string): SearchHit[] {
     const n = this.meta.length;
     const terms = queryText ? queryTerms(queryText) : [];
+    const qNorm = queryText ? normalizeTitle(queryText) : '';
     const scores = new Array<{ i: number; s: number }>(n);
     for (let i = 0; i < n; i++) {
       const off = i * this.dim;
@@ -174,7 +213,11 @@ export class DocStore {
         // Fraction of query terms matched, heading weighted higher. Bounded boost.
         lex = (inHeading + 0.4 * inBody) / terms.length;
       }
-      scores[i] = { i, s: dot + 0.12 * lex };
+      let exact = 0;
+      if (qNorm && this.titleNorm[i] === qNorm) {
+        exact = this.meta[i].anchor ? EXACT_TITLE_SECTION_BOOST : EXACT_TITLE_LEAD_BOOST;
+      }
+      scores[i] = { i, s: dot + 0.12 * lex + exact };
     }
     scores.sort((a, b) => b.s - a.s);
     return scores.slice(0, topK).map(({ i, s }) => ({ ...this.meta[i], deepUrl: deepUrl(this.meta[i]), score: s }));

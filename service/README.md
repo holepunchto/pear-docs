@@ -206,6 +206,23 @@ Ranking is cosine over int8-quantized normalized vectors plus a bounded lexical
 boost for query terms appearing in a heading (strong) or body (weak), deduped to
 one hit per section with a per-page diversity cap.
 
+On top of that, a chunk whose page title **is** the query — a navigational lookup
+like `Hyperdrive` or `Corestore` — takes a much larger bonus, almost all of it on
+the page's lead chunk. The per-term blend cannot separate those cases: for
+`Hyperdrive`, the reference page and "Create a full peer-to-peer filesystem with
+Hyperdrive" both match the one query term in their title, so both take the same
+boost and cosine alone decides — which the wordier how-to won. The same tie put
+`…/corestore/#storestorage` above Corestore's own lead. Exact title equality is a
+sharper signal and is scored accordingly.
+
+### Deploying UI changes
+
+`NEXT_PUBLIC_SEARCH_API_URL` is read at **build** time by the docs site's static
+export, not at runtime. It must be set in the **Static Site's** build
+environment — setting it only on the Application does nothing. Without it the
+search dialog silently uses the Orama index and the MCP action is not rendered,
+which looks exactly like a deploy that did not take.
+
 ONNX intra-op threads default to 1. Left unset, onnxruntime sizes its pool from
 the *host's* core count, which on a fractional-vCPU pod means a dozen threads
 fighting over half a core; a query is one short sequence through a 12-layer
