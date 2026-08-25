@@ -6,6 +6,7 @@ import {
   Copy,
   ExternalLinkIcon,
   FileText,
+  Plug,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
@@ -17,6 +18,18 @@ import {
 } from 'fumadocs-ui/components/ui/popover';
 
 const markdownCache = new Map<string, string>();
+
+/**
+ * Origin of the search + MCP service (see service/README.md). Unset at build
+ * time, the MCP option below is not rendered at all — better no button than one
+ * that hands out a command pointing nowhere.
+ */
+const MCP_URL = process.env.NEXT_PUBLIC_SEARCH_API_URL
+  ? `${process.env.NEXT_PUBLIC_SEARCH_API_URL.replace(/\/$/, '')}/mcp`
+  : '';
+const MCP_COMMAND = MCP_URL
+  ? `claude mcp add --transport http pear-docs ${MCP_URL}`
+  : '';
 
 const optionClassName =
   'text-sm p-2 rounded-lg inline-flex items-center gap-2 hover:text-fd-accent-foreground hover:bg-fd-accent [&_svg]:size-4';
@@ -180,6 +193,22 @@ export function CopyPageButton({
               <ExternalLinkIcon className="text-fd-muted-foreground size-3.5 ms-auto" />
             </button>
           </PopoverClose>
+
+          {MCP_COMMAND ? (
+            <PopoverClose asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard.writeText(MCP_COMMAND);
+                }}
+                className={cn(optionClassName)}
+                title={MCP_COMMAND}
+              >
+                <Plug className="text-fd-muted-foreground" />
+                Copy MCP install command
+              </button>
+            </PopoverClose>
+          ) : null}
         </PopoverContent>
       </Popover>
     </div>
