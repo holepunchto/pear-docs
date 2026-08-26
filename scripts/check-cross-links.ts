@@ -64,12 +64,15 @@ const EXEMPT_FROM_ORPHAN = new Set<string>([
   '/pear/how-to',
   '/pear/reference',
   '/pear/explanation',
-  // Bare's own root, reachable from the ProductSwitcher in every page's
-  // sidebar rather than through content-to-content links — see
-  // docs/plans/PEAR-BARE-SPLIT-PITCH.md. Bare has no native how-to/reference/
-  // explanation quadrant landing of its own (those are the three `product:
-  // shared` pages above, linked externally from bare-tree.ts instead).
+  // Bare's own root and quadrant landings, reachable from the
+  // ProductSwitcher / sidebar rather than through content-to-content links —
+  // see docs/plans/PEAR-BARE-SPLIT-PITCH.md. Bare's explanation landing is
+  // the repurposed content/bare/explanation/use-bare-standalone.mdx, which
+  // picks up inbound links like any other content page, so it isn't listed
+  // here.
   '/bare',
+  '/bare/how-to',
+  '/bare/reference',
 ]);
 
 const STRICT = process.argv.includes('--strict');

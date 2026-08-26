@@ -8,12 +8,14 @@ import type { Node } from 'fumadocs-core/page-tree';
  * this backs, and its Phase 6 section for the physical content/pear +
  * content/bare reorg that gave every URL below its real /bare prefix.
  *
- * `external: true` marks the ~6 nodes that point at pages tagged
- * `product: shared` (troubleshooting, and a few topic-folder landings whose
- * remaining children split across both trees). Per-page decision: no shared
- * content directory — those pages physically live under content/pear/ — so
- * from Bare's tree they render as plain, non-prefetched links into Pear's
- * URL space rather than pretending to be Bare-native pages.
+ * `external: true` marks the node that points at a page tagged
+ * `product: shared` (troubleshooting). Per-page decision: no shared
+ * content directory — that page physically lives under content/pear/ — so
+ * from Bare's tree it renders as a plain, non-prefetched link into Pear's
+ * URL space rather than pretending to be a Bare-native page. The How To and
+ * Reference quadrant landings are Bare's own
+ * (content/bare/how-to/index.mdx, content/bare/reference/index.mdx), not
+ * external.
  */
 export const bareTree: Node[] = [
   { type: 'page', name: 'Bare', url: '/bare' },
@@ -72,7 +74,7 @@ export const bareTree: Node[] = [
   {
     type: 'folder',
     name: 'How To',
-    index: { type: 'page', name: 'How To', url: '/pear/how-to', external: true },
+    index: { type: 'page', name: 'How To', url: '/bare/how-to' },
     children: [
       {
         type: 'folder',
@@ -232,7 +234,7 @@ export const bareTree: Node[] = [
   {
     type: 'folder',
     name: 'Reference',
-    index: { type: 'page', name: 'Reference', url: '/pear/reference', external: true },
+    index: { type: 'page', name: 'Reference', url: '/bare/reference' },
     children: [
       {
         type: 'folder',
