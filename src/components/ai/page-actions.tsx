@@ -6,8 +6,10 @@ import {
   Copy,
   ExternalLinkIcon,
   FileText,
+  Plug,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { MCP_ENDPOINT } from '@/lib/search-service';
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
 import {
   Popover,
@@ -17,6 +19,12 @@ import {
 } from 'fumadocs-ui/components/ui/popover';
 
 const markdownCache = new Map<string, string>();
+
+// Resolved in one place — see src/lib/search-service.ts, which currently carries
+// a temporary local pin.
+const MCP_COMMAND = MCP_ENDPOINT
+  ? `claude mcp add --transport http pear-docs ${MCP_ENDPOINT}`
+  : '';
 
 const optionClassName =
   'text-sm p-2 rounded-lg inline-flex items-center gap-2 hover:text-fd-accent-foreground hover:bg-fd-accent [&_svg]:size-4';
@@ -180,6 +188,22 @@ export function CopyPageButton({
               <ExternalLinkIcon className="text-fd-muted-foreground size-3.5 ms-auto" />
             </button>
           </PopoverClose>
+
+          {MCP_COMMAND ? (
+            <PopoverClose asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard.writeText(MCP_COMMAND);
+                }}
+                className={cn(optionClassName)}
+                title={MCP_COMMAND}
+              >
+                <Plug className="text-fd-muted-foreground" />
+                Copy MCP install command
+              </button>
+            </PopoverClose>
+          ) : null}
         </PopoverContent>
       </Popover>
     </div>
