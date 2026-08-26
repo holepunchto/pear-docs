@@ -68,7 +68,7 @@ npm run android
 ```
 
 <Callout type="info">
-Both scripts run `scripts/check-upgrade.js` first, which parses `package.json`'s `upgrade` field with [`pear-link`](https://github.com/holepunchto/pear-link) and refuses to launch on an invalid link—so a leftover placeholder fails fast with a clear message instead of silently killing the worklet at startup. Requires Xcode ≥ 26.2 for iOS (iOS ≥ 15.1) and Android ≥ API 29.
+Both scripts run `scripts/check-upgrade.js` first, which parses `package.json`'s `upgrade` field with [`pear-link`](https://github.com/holepunchto/pear-link) and refuses to launch on an invalid link—so a leftover placeholder fails fast with a clear message instead of silently killing the worklet at startup. Requires Node.js ≥ 20.19.4, plus Xcode ≥ 26.2 for iOS (iOS ≥ 15.1) and Android ≥ API 29.
 </Callout>
 
 Development builds always load JavaScript from Metro, so the update path itself isn't exercised. Use the release variants for that:
@@ -85,7 +85,7 @@ npm run production:android
 | [`src/App.tsx`](https://github.com/holepunchto/hello-pear-react-native/blob/main/src/App.tsx) | The frontend—starts the worklet, wires the update UI. | Yes—this is your UI. |
 | [`workers/main.js`](https://github.com/holepunchto/hello-pear-react-native/blob/main/workers/main.js) | The app logic—a [Bare](/reference/modules/bare-modules) worker that owns the swarm, storage, and updater. | Yes—this is your backend. |
 | [`package.json`](https://github.com/holepunchto/hello-pear-react-native/blob/main/package.json) | App metadata, scripts, and the `upgrade` link. | Yes—branding and release link. |
-| [`pear.json`](https://github.com/holepunchto/hello-pear-react-native/blob/main/pear.json) | The `updates.minver` compatibility floor and multisig config placeholder for production. | At production time. |
+| [`pear.json`](https://github.com/holepunchto/hello-pear-react-native/blob/main/pear.json) | The `updates.minver` compatibility floor. Ships inside every OTA payload, so a `multisig` block added here travels with it. | At production time. |
 | [`app.json`](https://github.com/holepunchto/hello-pear-react-native/blob/main/app.json) | Expo config—icons, bundle identifiers, and the `pear-runtime-react-native` config plugin registration. | Yes—brand assets and platform identifiers. |
 | [`metro.config.js`](https://github.com/holepunchto/hello-pear-react-native/blob/main/metro.config.js) | Merges the React Native and Expo Metro defaults, used to produce OTA payloads. | Rarely. |
 | [`scripts/check-upgrade.js`](https://github.com/holepunchto/hello-pear-react-native/blob/main/scripts/check-upgrade.js) | Validates `package.json#upgrade` before `npm run ios`/`android` hand off to Expo. | Rarely. |
@@ -124,6 +124,7 @@ There's no bridge or preload layer here—`src/App.tsx` talks to the worker dire
 | Direction | Message | Meaning |
 | --- | --- | --- |
 | view → worker | `pear:applyUpdate` | Apply a downloaded update and report back. |
+| worker → view | `Hello from worker` | Sent once when the worker comes up. The template's view ignores it; it's there as a liveness check you can hook. |
 | worker → view | `updating` | An update started downloading. |
 | worker → view | `updated` | The update is staged; ready to apply. |
 | worker → view | `minver-required` | The available update needs a newer native build—see [the `minver` gate](/reference/pear/mobile#the-minver-gate). Mobile-only; desktop has no equivalent. |
@@ -145,7 +146,7 @@ Before you ship:
 
 - `package.json`—set `name`, `productName`, `version`, and the `upgrade` `pear://` link.
 - `app.json`—replace the icons and splash assets, and set `ios.bundleIdentifier` and `android.package`.
-- `pear.json`—set `updates.minver` whenever a release changes the native/OTA contract (see [the `minver` gate](/reference/pear/mobile#the-minver-gate)), and fill the multisig placeholders at production time.
+- `pear.json`—set `updates.minver` whenever a release changes the native/OTA contract (see [the `minver` gate](/reference/pear/mobile#the-minver-gate)). The template ships this file with `updates.minver` only; add a `multisig` block at production time, and note that editing it derives a different production key while editing `minver` does not.
 
 ## Where to go next
 
