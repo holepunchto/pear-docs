@@ -642,12 +642,21 @@ pear gc cores --help
 
 ```
 ⚠️  WARNING one or more cores of <link|name> are writable, clearing them cannot be undone. To confirm type "CLEAR"
-Clear <link|name> cores? 
+Clear <link|name> cores? clear
+
+✖ uppercase CLEAR to confirm
+
+Clear <link|name> cores? CLEAR
+Cleared core ~ pear://<key>
+Cleared content core ~ pear://<key>
+✔ Success
 ```
 
-Only the literal uppercase `CLEAR` is accepted; anything else prints `✖ uppercase CLEAR to confirm`. Pass `--force` (`-f`) to skip the prompt.
+Only the literal uppercase `CLEAR` is accepted. Anything else prints `✖ uppercase CLEAR to confirm` and **asks again**—the prompt loops until it gets `CLEAR`, and there is no wrong answer that makes it give up. One prompt covers the whole invocation, however many cores the argument resolved to. Pass `--force` (`-f`) to skip it.
 
-**This changes scripted behavior.** On 3.2.0 and earlier, a writable core was silently skipped and reported as such, so `pear gc cores <link>` never blocked. From 3.3.0 the same command waits on a prompt, and under `--force` it *clears* writable cores instead of skipping them. Add `--force` to any automation that clears cores it owns.
+<Callout type="warn">
+**This breaks unattended scripts, and it does not break them by failing.** On 3.2.0 and earlier a writable core was silently skipped, so `pear gc cores <link>` never blocked. From 3.3.0 it prompts—and because empty input re-prompts rather than aborting, a piped or redirected stdin sends it into an **infinite loop** instead of an error you could catch. `--force` is mandatory for automation; under it, writable cores are *cleared* rather than skipped.
+</Callout>
 </Callout>
 
 Answering the prompt with `CLEAR` has the same effect as `--force`: the writable cores are cleared, not skipped. A core the local corestore has never seen is skipped rather than treated as an error, and the output says which—`Skipped clearing core ~ <link>. The core is writable or does not exist in the corestore`. Writability is checked per link, on the metadata core, so a writable *content* core under a non-writable metadata core is skipped without ever raising the prompt.
