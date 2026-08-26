@@ -90,7 +90,7 @@ Most commands accept `--json`—use it for anything that parses a command's resu
 Most commands close the stream with a `tag: "final"` object whose `data` carries `success` alongside any result fields, as `pear touch --json` does with `{"success": true, "key": "…", "link": "pear://…"}`. Two exceptions to code defensively around: some commands emit **no** `final` object at all—`pear versions --json` emits only its `platform`, `runtimes`, `libraries`, and `modules` tags—and some emit a bare `final` with no `data`, as `pear multisig keys list --json` does. Treat a missing `success` as "no status reported" rather than as failure.
 
 <Callout type="info">
-[`pear touch`](#pear-touch-flags) is the practical exception: its default output is already nothing but the bare `pear://<key>` link on its own line, so it's safe to consume directly without `--json`—for example `LINK=$(pear touch)`.
+[`pear touch`](#pear-touch-flags) used to be the practical exception: its default output was nothing but the bare `pear://<key>` link, so `LINK=$(pear touch)` was safe. <Since v="3.3.0" /> That no longer holds—the [next-step hint](#next-step-hints) is written to **stdout** after the link, so command substitution captures it too. Use `--json` and read `.data.link`, or take the first line.
 </Callout>
 
 For commands that take a subcommand, **where you put `--json` matters—and it is not the same for all of them**, because each command declares the flag at a different level of its tree:
@@ -118,10 +118,24 @@ Generate a link, assemble a deployment folder, and sync it to the network—in t
 
 Creates a Pear link. Pear links hold a key, this is the basis for application discovery.
 
-Default output is just the `pear://<key>` link on its own line—safe to capture directly in a script (`LINK=$(pear touch)`) without needing [`--json`](#json-output).
+Default output starts with the `pear://<key>` link on its own line. <Until v="3.3.0" /> On 3.2.0 and earlier that was the whole of it, so `LINK=$(pear touch)` captured just the link.
 
 <VersionGate since="3.3.0">
-<Since v="3.3.0" /> A [next-step hint](#next-step-hints) follows the link, summarizing which deployment path to take—`stage` for local and development checks, `provision` for prerelease and QA, `multisig` for production—and suggesting `pear stage --dry-run <link> <dir>`. It is written after the link and suppressed under `--json`, so `LINK=$(pear touch)` still captures just the link.
+<Since v="3.3.0" /> A [next-step hint](#next-step-hints) follows the link, summarizing which deployment path to take—`stage` for local and development checks, `provision` for prerelease and QA, `multisig` for production—and suggesting `pear stage --dry-run <link> <dir>`:
+
+```
+pear://<key>
+
+  Deployment operations
+    stage      Local/dev checks, unsigned builds, branches, throwaways
+    provision  Prerelease, stakeholder preview, QA, or dogfooding
+    multisig   Production, stakeholder multisig, machine-independent
+
+  Use the link above
+    $ pear stage --dry-run pear://<key> <dir>
+```
+
+The hint goes to **stdout**, not stderr, so `LINK=$(pear touch)` captures the whole block rather than the link alone. Scripts should use [`--json`](#json-output) and read `.data.link`, which omits the hint entirely, or keep only the first line.
 </VersionGate>
 
 ```
@@ -131,7 +145,7 @@ Default output is just the `pear://<key>` link on its own line—safe to capture
 ```
 
 <VersionGate since="3.1.0">
-`--vanity` mines for a key whose z32-encoded form starts with the given prefix. It works by generating keys until one starts with what you asked for, so the value must contain only z32 characters—anything else is rejected with `Vanity key must contain only z32 characters`—and generation slows sharply as the prefix grows. Prefixes longer than four characters print a warning, and because it goes to **stderr** rather than stdout, `LINK=$(pear touch --vanity pear)` still captures just the link. <Since v="3.1.0" /> Not available on 3.0.1 or earlier.
+`--vanity` mines for a key whose z32-encoded form starts with the given prefix. It works by generating keys until one starts with what you asked for, so the value must contain only z32 characters—anything else is rejected with `Vanity key must contain only z32 characters`—and generation slows sharply as the prefix grows. Prefixes longer than four characters print a warning; that warning goes to **stderr** rather than stdout, so it alone does not disturb command substitution—but from 3.3.0 the next-step hint does, so prefer `--json` here too. <Since v="3.1.0" /> Not available on 3.0.1 or earlier.
 </VersionGate>
 
 ### `pear build [flags]`
@@ -531,10 +545,9 @@ Manage the background sidecar process, reclaim disk space, and check what's inst
 
 <a name="pear-sidecar"></a>
 
-The Pear Sidecar is a local-running IPC server for corestore access.
+The sidecar is a local IPC server that brokers corestore access for every running Pear app.
 
-This command instructs any existing sidecar process to shutdown
-and then becomes the sidecar.
+Running `pear sidecar` shuts down any existing sidecar and takes over as the new one, staying attached to this terminal.
 
 | Command | Description |
 | --- | --- |
@@ -593,9 +606,23 @@ A core is a single append-only log in Pear's local corestore. `pear gc cores` de
 </Callout>
 
 ```
-  --force|-f    Clear writable cores without confirmation   [!version since=3.3.0]
-  --json        Newline delimited JSON output
-  --help|-h     Show help
+  --json      Newline delimited JSON output
+  --help|-h   Show help
+```
+
+`--force` belongs to the `cores` subcommand, not to `pear gc` itself, and `--json` is the other way round—it is a `pear gc` flag and so goes **before** the subcommand (see [`--json` position](#json-output)):
+
+```
+pear gc cores --help
+
+  Clear corestore cores
+
+  Arguments:
+    <link|name>   Clear the cores belonging to this link or app name
+
+  Flags:
+    --force|-f    Clear writable cores without confirmation   [!version since=3.3.0]
+    --help|-h     Show help
 ```
 
 #### Clearing by application name
