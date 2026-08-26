@@ -412,6 +412,11 @@ export const customTree: Node[] = [
       },
       {
         type: 'page',
+        name: 'Add typed RPC to a Pear app',
+        url: '/how-to/add-typed-rpc-to-a-pear-app',
+      },
+      {
+        type: 'page',
         name: 'Manage installed applications',
         url: '/how-to/manage-installed-applications',
       },
