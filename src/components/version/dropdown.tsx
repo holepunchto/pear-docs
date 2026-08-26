@@ -10,9 +10,14 @@
  * filtering. In the article it is present at every width, next to the heading the
  * reader is already looking at.
  *
- * Scoped to `/reference/pear/*` — the four Pear platform pages. Module and bare
- * reference pages track their own npm versions, so a platform dropdown on
- * `hypercore` would assert exactly the false model the design forbids (§1).
+ * Generic over `VersionAxis` (src/lib/version-axes.ts) — originally hard-coded
+ * to Pear's four platform pages and its one `DOCS_VERSIONS` list, generalized
+ * so the same component serves the three independent Bare axes (`bare-cli`,
+ * `bare-runtime`, `bare-kit`) too, each with its own label and doc-state list.
+ * Module and building-block reference pages register no axis at all, so this
+ * renders nothing there — a version dropdown on `hypercore` or a `bare-*`
+ * module page would assert exactly the false model the design forbids (design
+ * doc §1: those track their own npm package version, not a shared axis).
  *
  * A native `<select>` rather than Fumadocs' `SidebarTabsDropdown`: that
  * primitive is URL-based (`isTabActive` compares pathname), and our versions are
@@ -27,17 +32,13 @@
 
 import { usePathname } from 'next/navigation';
 import { useDocsVersion, useSetDocsVersion } from '@/components/version';
-import {
-  DOCS_VERSIONS_NEWEST_FIRST,
-  isPlatformPath,
-  resolveDocsVersion,
-} from '@/lib/docs-versions';
+import { getVersionAxis, resolveVersion, versionsNewestFirst } from '@/lib/version-axes';
 
 /** Value of the "no selection" option; `?v=` is removed when it is picked. */
 const ANNOTATE = '';
 
-const SELECT_ID = 'pear-platform-version';
-const HINT_ID = 'pear-platform-version-hint';
+const SELECT_ID = 'docs-platform-version';
+const HINT_ID = 'docs-platform-version-hint';
 
 function optionLabel(label: string, stable?: boolean, prerelease?: boolean) {
   if (prerelease) return `${label} (prerelease)`;
@@ -50,10 +51,11 @@ export function VersionDropdown() {
   const version = useDocsVersion();
   const setVersion = useSetDocsVersion();
 
-  if (!isPlatformPath(pathname)) return null;
+  const axis = getVersionAxis(pathname);
+  if (!axis) return null;
 
-  // `?v=3.0.1` selects the "3.0" option: the dropdown is minor-granular.
-  const current = resolveDocsVersion(version);
+  // `?v=1.28.5` selects the "1.28" option: the dropdown is minor-granular.
+  const current = resolveVersion(version, axis);
 
   return (
     <div className="flex shrink-0 flex-col gap-1 sm:items-end">
@@ -62,7 +64,7 @@ export function VersionDropdown() {
           htmlFor={SELECT_ID}
           className="text-xs font-medium whitespace-nowrap text-fd-muted-foreground"
         >
-          Pear version
+          {axis.label}
         </label>
         <select
           id={SELECT_ID}
@@ -76,7 +78,7 @@ export function VersionDropdown() {
           className="rounded-md border border-fd-border bg-fd-background px-2 py-1 text-sm text-fd-foreground transition-colors hover:bg-fd-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fd-primary"
         >
           <option value={ANNOTATE}>All versions</option>
-          {DOCS_VERSIONS_NEWEST_FIRST.map((v) => (
+          {versionsNewestFirst(axis).map((v) => (
             <option key={v.value} value={v.label}>
               {optionLabel(v.label, v.stable, v.prerelease)}
             </option>
@@ -94,7 +96,7 @@ export function VersionDropdown() {
         className="text-xs text-fd-muted-foreground sm:text-right"
       >
         {current
-          ? `Showing only what Pear ${current.label} has.`
+          ? `Showing only what ${axis.label.replace(/ version$/, '')} ${current.label} has.`
           : 'Showing every release, with badges on the differences.'}
       </p>
     </div>

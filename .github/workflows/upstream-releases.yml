@@ -76,9 +76,12 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install checker deps (tsx only)
+      # `typescript` is needed too now: gen-bare-docs-states.ts (via
+      # scripts/bare-refgen/extract.ts's TS Compiler API walker) parses the
+      # bare-runtime/bare-kit .d.ts surfaces.
+      - name: Install checker deps (tsx, typescript)
         run: |
-          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx typescript
           mkdir -p node_modules
           cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
 
@@ -101,6 +104,62 @@ jobs:
             echo ''
             echo '```'
             cat /tmp/pin-drift.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Same advisory shape as the pin-drift step above, for the three Bare
+      # platform pages' version dropdowns (bare-cli, bare-runtime, bare-kit):
+      # `--check` only reports whether holepunchto/bare or
+      # holepunchto/react-native-bare-kit's documented surface has moved past
+      # what's committed in src/lib/bare-*-docs-states.json — it never writes
+      # or opens a PR. A new doc-state needs a human to add matching
+      # <VersionSection>/<Since>/<Until> markers in content/reference/bare/*,
+      # which an unattended commit can't do, so this must never fail the job
+      # (continue-on-error, no strict mode). See
+      # docs/plans/DOCS-VERSIONING-DESIGN.md and scripts/gen-bare-docs-states.ts.
+      - name: Report Bare doc-state drift
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./node_modules/.bin/tsx scripts/gen-bare-docs-states.ts --check | tee /tmp/bare-docs-states-drift.txt || true
+          {
+            echo '## Bare doc-state drift'
+            echo ''
+            echo '```'
+            cat /tmp/bare-docs-states-drift.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Commit-level heads-up, not release-level like every check above it: has
+      # the latest commit touching each watched repo's SOURCE-OF-TRUTH FILE
+      # (a shipped .d.ts, prioritized, or the real entry file for the ~14
+      # repos with none) moved since we last looked? Deliberately finer-grained
+      # than tag-watching — a real API change can sit on a default branch for
+      # weeks before a release ships, and that gap is exactly what let a
+      # deprecation slip through undetected earlier in this axis's history.
+      #
+      # `--check` never writes scripts/upstream-commits-state.json, so — same
+      # rule as the pin-drift and doc-state steps above — a changed entry
+      # keeps showing up every day until a human runs
+      # `npm run check:upstream-commits` (no --check) locally, reviews the
+      # diff at the printed commit URL, and commits the moved baseline. That
+      # is deliberate: silently auto-clearing itself would mean a missed day's
+      # summary is a missed change forever, which defeats the point of a
+      # heads-up. Re-run `npm run resolve:upstream-commits` separately (not
+      # part of this daily job) whenever the watched module list itself
+      # changes, e.g. a new bare-* module gets added to bare-refgen.
+      - name: Report upstream commit-level changes
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./node_modules/.bin/tsx scripts/check-upstream-commits.ts --check | tee /tmp/upstream-commits.txt || true
+          {
+            echo '## Upstream commit-level changes'
+            echo ''
+            echo '```'
+            cat /tmp/upstream-commits.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 

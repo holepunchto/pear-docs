@@ -4,12 +4,21 @@ name: Watch boilerplate upstreams
 # examples/getting-started/ and import code from them with remark-code-import
 # (```js file=<rootDir>/examples/getting-started/<name>/...). GitHub won't let
 # us subscribe to another org's repo events, so instead of a true webhook
-# "watcher" this job polls the upstream default branches on a schedule and opens
-# a tracking issue when a vendored snapshot falls behind upstream — the cue to
-# refresh the files and re-check the imported line ranges.
+# "watcher" this job polls each upstream's branch on a schedule (the default
+# branch, or `ref` where a snapshot tracks a non-default branch) and opens a
+# tracking issue when a vendored copy falls behind upstream — the cue to
+# refresh it and re-check the imported line ranges. Most entries below track
+# a whole vendored *directory* snapshot (`path`); the `hello-pear-worker`
+# entry instead tracks one deliberately-reshaped *file* — the inlined copy of
+# its `index.js` at `examples/getting-started/hello-pear-electron/workers/main.js`
+# (see that snapshot's README) — via `file` instead of `path`, which also
+# swaps in file-appropriate wording for the tracking issue it files.
 #
-# When you refresh a snapshot, bump the matching `pinned` SHA below (and the
-# snapshot's README); the next run sees no drift and auto-closes the issue.
+# When you refresh a snapshot, bump the matching `pinned` SHA below AND the
+# snapshot's provenance record — that is the bespoke README for snapshots whose
+# README this repo authors (hello-pear-bare, hello-pear-electron), or SNAPSHOT.md
+# for snapshots that vendor upstream's own README verbatim (the variants). The
+# next run sees no drift and auto-closes the issue.
 
 on:
   schedule:
@@ -32,12 +41,36 @@ jobs:
         include:
           - name: hello-pear-bare
             repo: holepunchto/hello-pear-bare
-            pinned: c62e69bc47ec8b926587fd6979ab9b7e8a16d6fb
+            pinned: e391b8a8330e514df4fe37cd6dfc7572a4d0e21e
             path: examples/getting-started/hello-pear-bare
           - name: hello-pear-electron
             repo: holepunchto/hello-pear-electron
-            pinned: 9e8085a7ae0313150d05fd9d5ad6c0ba8b297243
+            pinned: 5da5c1b46f34baeae0e16d0c5c6c743b51c56ced
             path: examples/getting-started/hello-pear-electron
+          # The two hello-pear-bare variants live on long-lived non-default
+          # branches, so they set `ref` explicitly. Without it the poll below
+          # would compare a variant snapshot against `main`'s HEAD and file a
+          # drift issue that could never close.
+          - name: hello-pear-bare-single-thread
+            repo: holepunchto/hello-pear-bare
+            ref: variant/single-thread
+            pinned: 31934aea35f3c0e32d357941218f95b325abbddb
+            path: examples/getting-started/hello-pear-bare-single-thread
+          - name: hello-pear-bare-daemon
+            repo: holepunchto/hello-pear-bare
+            ref: variant/daemon
+            pinned: 1f0cebf406f42dd1b3e90fc7e74e9831631e6441
+            path: examples/getting-started/hello-pear-bare-daemon
+          # holepunchto/hello-pear-worker is not vendored as a directory
+          # snapshot — only workers/main.js above is an inlined, deliberately
+          # reshaped copy of its index.js (see that README's "Deliberate
+          # deviations from upstream"). It sets `file` instead of `path`,
+          # which the shell step below uses to swap in file-appropriate
+          # wording for the tracking issue.
+          - name: hello-pear-worker
+            repo: holepunchto/hello-pear-worker
+            pinned: b906d27c98341b184a2907d9529585e4b876691c
+            file: examples/getting-started/hello-pear-electron/workers/main.js
     steps:
       - name: Compare upstream HEAD to the vendored snapshot
         env:
@@ -46,10 +79,17 @@ jobs:
           NAME: ${{ matrix.name }}
           PINNED: ${{ matrix.pinned }}
           VENDOR_PATH: ${{ matrix.path }}
+          # Empty for snapshots vendored from the default branch; a branch name
+          # for snapshots vendored from elsewhere (e.g. `variant/daemon`).
+          REF: ${{ matrix.ref }}
+          # Set only for the single-file hello-pear-worker entry; empty (and
+          # unused) for the four directory-snapshot entries, which use
+          # VENDOR_PATH instead.
+          FILE: ${{ matrix.file }}
         run: |
           set -euo pipefail
 
-          branch=$(gh api "repos/${REPO}" --jq '.default_branch')
+          branch="${REF:-$(gh api "repos/${REPO}" --jq '.default_branch')}"
           head_sha=$(gh api "repos/${REPO}/commits/${branch}" --jq '.sha')
           title="Refresh vendored snapshot: ${NAME}"
 
@@ -75,19 +115,42 @@ jobs:
           fi
 
           compare="https://github.com/${REPO}/compare/${PINNED}...${head_sha}"
-          body=$(printf '%s\n' \
-            "[\`${REPO}\`](https://github.com/${REPO}) has new commits since the snapshot vendored at \`${VENDOR_PATH}\`." \
-            "" \
-            "- Pinned: \`${PINNED}\`" \
-            "- Upstream \`${branch}\`: \`${head_sha}\`" \
-            "- Changes: ${compare}" \
-            "" \
-            "The docs import code from this snapshot via \`remark-code-import\`. To refresh:" \
-            "" \
-            "1. Copy the imported upstream files into \`${VENDOR_PATH}\` at \`${head_sha}\`." \
-            "2. Re-check the \`#L…\` ranges in the importing \`.mdx\`." \
-            "3. Update the \`pinned\` SHA for \`${NAME}\` in \`.github/workflows/watch-boilerplates.yml\` and the snapshot README." \
-            "" \
-            "_Opened automatically by the Watch boilerplate upstreams workflow._")
+
+          if [ -n "${FILE:-}" ]; then
+            # Single-file entry (hello-pear-worker): no vendored directory,
+            # and the refresh is a deliberate re-inline, not a plain copy —
+            # word the issue accordingly instead of the directory phrasing.
+            body=$(printf '%s\n' \
+              "[\`${REPO}\`](https://github.com/${REPO}) has new commits since \`${FILE}\` was last synced to it." \
+              "" \
+              "- Pinned: \`${PINNED}\`" \
+              "- Upstream \`${branch}\`: \`${head_sha}\`" \
+              "- Changes: ${compare}" \
+              "" \
+              "\`${FILE}\` is an inlined copy of \`${REPO}\`'s \`index.js\`, deliberately reshaped rather than left as upstream's two-line \`require('hello-pear-worker')\` — see that file's snapshot README, \"Deliberate deviations from upstream\". To refresh:" \
+              "" \
+              "1. Re-inline \`${branch}\`'s \`index.js\` at \`${head_sha}\` into \`${FILE}\`, preserving the deliberate deviations described in the README (do not replace it with a plain \`require('hello-pear-worker')\`)." \
+              "2. Re-check the \`#L…\` ranges in the \`.mdx\` that imports from \`${FILE}\` — a shifted range fails silently." \
+              "3. Run \`npm run check:workers-in-sync\`, and copy \`${FILE}\` byte-for-byte over any of the other nine \`examples/**/workers/main.js\` copies it reports as drifted." \
+              "4. Update the \`pinned\` SHA for \`${NAME}\` in \`.github/workflows/watch-boilerplates.yml\`." \
+              "" \
+              "_Opened automatically by the Watch boilerplate upstreams workflow._")
+          else
+            body=$(printf '%s\n' \
+              "[\`${REPO}\`](https://github.com/${REPO}) has new commits since the snapshot vendored at \`${VENDOR_PATH}\`." \
+              "" \
+              "- Pinned: \`${PINNED}\`" \
+              "- Upstream \`${branch}\`: \`${head_sha}\`" \
+              "- Changes: ${compare}" \
+              "" \
+              "The docs import code from this snapshot via \`remark-code-import\`. To refresh:" \
+              "" \
+              "1. Copy the imported upstream files into \`${VENDOR_PATH}\` from \`${branch}\` at \`${head_sha}\`, keeping any deliberate local deviations (e.g. the placeholder \`upgrade\` link in \`package.json\`)." \
+              "2. Re-check the \`#L…\` ranges in the importing \`.mdx\` — a shifted range fails silently." \
+              "3. Update the \`pinned\` SHA for \`${NAME}\` in \`.github/workflows/watch-boilerplates.yml\` and the snapshot's provenance record (its bespoke \`README.md\`, or \`SNAPSHOT.md\` where the README is vendored from upstream)." \
+              "4. Re-run the snapshot's scenario: \`npm run test:examples -- --filter=${NAME}\` (if one exists)." \
+              "" \
+              "_Opened automatically by the Watch boilerplate upstreams workflow._")
+          fi
 
           gh issue create --repo "${GITHUB_REPOSITORY}" --title "${title}" --body "${body}"

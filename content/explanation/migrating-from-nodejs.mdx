@@ -1,0 +1,73 @@
+---
+title: "Migrating from Node.js"
+description: "What actually changes in your code and mental model when an existing Node.js app moves to Bare—module resolution, native addons, concurrency, and the npm compatibility strategy."
+docType: explanation
+schemaType: WebPage
+---
+
+Bare's surface looks enough like Node.js's that porting can feel like it should be a search-and-replace on `require` calls. For most application code, it is. But a few things work differently underneath, and knowing which ones saves time before you start rather than after something breaks in a way that looks like a bug.
+
+<Callout type="info">
+- For what Bare is and why it's shaped this way, see [Inside Bare](/explanation/bare-runtime).
+- For the step-by-step port, see [Migrate a Node.js app to Bare](/how-to/migrate-a-nodejs-app-to-bare).
+</Callout>
+
+## The standard library is opt-in, not built in
+
+This is the one change that touches almost every file. Node ships `fs`, `http`, `crypto`, and the rest baked into the binary. Bare ships none of it—`fs`, `http`, and friends are installable [`bare-*` modules](/reference/modules/bare-modules) you add only when your code actually calls into them (see [Inside Bare](/explanation/bare-runtime#what-bare-adds-and-what-it-leaves-out) for why). Concretely, this means every `require('fs')` or `import 'node:path'` in your codebase needs a matching `npm install`, not just an import-path change. The [Node.js compatibility table](/reference/modules/bare-modules#nodejs-compatibility) is the reference for which module maps to which.
+
+## Module resolution works differently
+
+Node's module system distinguishes CommonJS and ESM fairly strictly—file extensions, the `package.json` `"type"` field, and separate resolution algorithms for each. Bare's module system ([`bare-module`](/reference/bare/modules/bare-module), built on the lower-level [`bare-module-resolve`](/reference/bare/modules/bare-module-resolve) and [`bare-module-traverse`](/reference/bare/modules/bare-module-traverse)) treats CJS/ESM interop as bidirectional by default: `require`-ing an ESM module and `import`-ing a CJS module both work without the ceremony Node sometimes demands. In practice this means less friction porting mixed-module-system dependency trees, but it also means you shouldn't assume Node's resolution edge cases (conditional exports quirks, `.mjs`/`.cjs` extension rules) carry over unchanged—verify by running the code rather than reasoning from Node's spec.
+
+## Native addons need rebuilding
+
+If your app or one of its dependencies has a native addon (anything with a `.node` file or a `binding.gyp`), it won't load under Bare as-is. Addons built against Node-API target Node's ABI, not Bare's. Two paths forward: rebuild the addon against Bare's native-addon API directly, or reach for [`bare-compat-napi`](https://github.com/holepunchto/bare-compat-napi), which provides Node-API-compatible headers so many existing addons build against Bare with little to no source change. Either way, this is usually the slowest part of a migration—budget time for it separately from the builtin-swapping work.
+
+## Concurrency: threads, not clusters
+
+`worker_threads` maps to [`bare-worker`](https://github.com/holepunchto/bare-worker) (higher-level) or [`Bare.Thread`](/reference/bare/runtime#barethread) (lower-level); both give you Bare's lightweight threads with synchronous joins and `SharedArrayBuffer` support. There's no equivalent to Node's `cluster` module—if your app forks worker processes to use multiple cores, that pattern needs to be rebuilt on threads or on Bare's process-spawning modules ([`bare-subprocess`](/reference/bare/modules/bare-subprocess), [`bare-daemon`](https://github.com/holepunchto/bare-daemon)) rather than ported directly.
+
+If you're heading toward a Pear app rather than a standalone one, note that Pear's [worker](/explanation/workers) model is a different thing again—a separate process behind an IPC stream, not a thread. That stream carries raw bytes, unlike Node's `child_process`/`worker_threads` messaging, which structures and clones objects for you. For anything beyond a few one-off signals, [`bare-rpc`](/explanation/workers#structured-rpc-over-ipc) layers a request/response protocol on top of the same stream, closer to what `.send()`/`postMessage()` give you for free in Node.
+
+## Fewer globals are ambient
+
+Bare does provide globals—just a smaller set than Node. `Buffer`, `console`, `URL`, `URLSearchParams`, the timer functions, `queueMicrotask`, and `structuredClone` are all ambiently available, and `__dirname`/`__filename` work in CommonJS modules exactly as they do in Node. The gap is elsewhere:
+
+| Ambient in Node | In Bare |
+| --- | --- |
+| `process` | import [`bare-process`](https://github.com/holepunchto/bare-process) |
+| `fetch` | import [`bare-fetch`](/reference/bare/modules/bare-fetch) |
+| `TextEncoder` / `TextDecoder` | import [`bare-encoding`](https://github.com/holepunchto/bare-encoding) |
+| `AbortController` | import [`bare-abort-controller`](https://github.com/holepunchto/bare-abort-controller) |
+| `performance` | import [`bare-performance`](https://github.com/holepunchto/bare-performance) |
+
+In practice `process` is the one that bites most often, since so much Node code reads `process.env` or `process.argv` without importing anything. Each `bare-*` module that shadows a Node global ships a `/global.js` submodule that installs it globally, which is the escape hatch when you're running code you can't edit—see [Writing a module with support for Bare & Node.js](/how-to/troubleshooting#writing-a-module-with-support-for-bare--nodejs) for that pattern. For code you *are* writing, prefer the explicit import: it keeps dependencies visible and upgradeable piecemeal.
+
+<Callout type="info">
+Which globals are ambient can shift between Bare releases (this reflects Bare v1.28.0). If something is unexpectedly `undefined`, check the [`Bare` runtime reference](/reference/bare/runtime) and the [Bare modules catalog](/reference/modules/bare-modules) rather than assuming Node's set carries over.
+</Callout>
+
+## The suspend/resume lifecycle
+
+This one rarely matters for a server-side migration, but it's a real behavioral difference worth knowing about: Bare models an explicit process lifecycle (`suspend` → `idle` → `resume`) so it can behave correctly when embedded in a mobile app that gets backgrounded. Node has no equivalent concept—a Node process just runs until it's killed. If your migrated app might ever run embedded (see [One core, many platforms](/explanation/bare-on-native)) rather than purely as a standalone process, the [full lifecycle](/reference/bare/runtime#lifecycle) is worth reading before you get there, not after—[Handle app suspension](/how-to/run-on-native/handle-app-suspension) covers what your code actually needs to do about it.
+
+## Choosing a porting strategy
+
+There are three ways to close the gap between what your code expects and what Bare provides, in decreasing order of how much they hide from you:
+
+- **[`bare-node-runtime`](https://github.com/holepunchto/bare-node-runtime)**—a compatibility layer installed once, which reinstates Node's globals (`require('bare-node-runtime/global')`) and supplies an import map (`bare-node-runtime/imports`) for loading packages written against Node. Least code churn; the closest thing to "just run it." Best when the code you're porting isn't yours to edit.
+- **[`bare-node`](https://github.com/holepunchto/bare-node) alias wrappers**—per-builtin shims installed with npm's alias syntax (`npm i bare-fs fs@npm:bare-node-fs`), so an unmodified `require('fs')` resolves to `bare-fs`. Each wrapper is a one-line re-export, so npm dedupes the real module even when several dependencies pull it in. Note there's no `bare-node` package to install—the repo publishes the individual `bare-node-*` wrappers.
+- **Direct `bare-*` module swaps**—replace each `require('x')` with its specific `bare-x` equivalent from the [compatibility table](/reference/modules/bare-modules#nodejs-compatibility). Most edits up front, but the result only carries the modules you actually use, which matters if bundle size or embeddability is a goal (see [Inside Bare](/explanation/bare-runtime#what-bare-adds-and-what-it-leaves-out) on why that's the point of the opt-in standard library in the first place).
+
+These aren't exclusive: a common path is a compatibility layer to get something running, then direct replacements in your own code as you touch each file, leaving the shims to cover dependencies. If you maintain a library that must run on both runtimes, an [import map](/how-to/troubleshooting#writing-a-module-with-support-for-bare--nodejs) in its own `package.json` is the mechanism—it applies to that package only, not its dependencies.
+
+## See also
+
+- [Migrate a Node.js app to Bare](/how-to/migrate-a-nodejs-app-to-bare)—the step-by-step port, including a worked example.
+- [Node.js compatibility](/reference/modules/bare-modules#nodejs-compatibility)—the full builtin-to-`bare-*` mapping table.
+- [Inside Bare](/explanation/bare-runtime)—what the runtime is, its lifecycle, and why its standard library is opt-in.
+- [Using Bare on its own](/explanation/use-bare-standalone)—running Bare standalone, without Pear.
+- [Handle app suspension](/how-to/run-on-native/handle-app-suspension)—what your code needs to do on `suspend`, if you end up running embedded.
+- [Troubleshoot common issues](/how-to/troubleshooting#bare)—fixes for missing builtins, import maps, and `bare-pack` pitfalls.
+- [`bare-compat-napi`](https://github.com/holepunchto/bare-compat-napi)—Node-API compatibility headers for native addons.

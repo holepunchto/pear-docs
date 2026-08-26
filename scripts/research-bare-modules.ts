@@ -73,6 +73,13 @@ interface Record_ {
   apiMethods: number;
   usage: string | null;
   api: string | null;
+  /**
+   * Every other top-level `## ` README section beyond Usage/API/meta —
+   * CLI flag references, wire-protocol specs, package.json field tables,
+   * and similar worked material with no other home on the generated page.
+   * Captured generically, same verbatim-passthrough contract as `usage`.
+   */
+  extraSections: Array<{ heading: string; body: string }>;
   inCatalog: boolean;
   catalogDescription: string | null;
   inboundDeps: number;
@@ -100,6 +107,46 @@ async function ghReadme(repo: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Headings whose body isn't page-worthy reference content: process/meta
+ * sections (License, Contributing, Testing, …), or ones the generated page
+ * already surfaces its own way (Usage/API are captured separately above;
+ * Related/See also is auto-generated from package.json `dependencies`).
+ */
+const SKIP_EXTRA_HEADINGS = new Set([
+  'usage', 'api', 'license', 'licence', 'install', 'installation',
+  'contributing', 'contribution', 'contributions', 'requirements',
+  'testing', 'tests', 'table of contents', 'toc', 'related',
+  'related modules', 'related packages', 'see also', 'background',
+  'motivation', 'overview', 'getting started', 'acknowledgements',
+  'acknowledgments', 'badges', 'changelog', 'faq', 'security',
+  'benchmark', 'benchmarks', 'performance',
+]);
+
+/**
+ * Every top-level `## ` section beyond the skip list, verbatim, in README
+ * order — see `SKIP_EXTRA_HEADINGS`. Sibling to `usage`/`api` above but
+ * heading-name-agnostic: it doesn't matter what a module calls its extra
+ * section (`CLI`, `Protocol`, `Packages`, …), only that it isn't one of the
+ * ones already handled elsewhere.
+ */
+function extraSections(md: string): Array<{ heading: string; body: string }> {
+  const lines = md.split('\n');
+  const headings: Array<{ heading: string; start: number }> = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (/^##\s/.test(lines[i])) headings.push({ heading: lines[i].replace(/^##\s*/, '').trim(), start: i + 1 });
+  }
+  const out: Array<{ heading: string; body: string }> = [];
+  for (let i = 0; i < headings.length; i++) {
+    const { heading, start } = headings[i];
+    if (SKIP_EXTRA_HEADINGS.has(heading.toLowerCase())) continue;
+    const end = i + 1 < headings.length ? headings[i + 1].start - 1 : lines.length;
+    const body = lines.slice(start, end).join('\n').trim();
+    if (body) out.push({ heading, body });
+  }
+  return out;
 }
 
 /** Body of a `## <headingRe>` section, up to the next `## ` heading. */
@@ -197,6 +244,7 @@ async function main(): Promise<void> {
       apiMethods,
       usage,
       api,
+      extraSections: extraSections(readme),
       inCatalog: catalog.has(name),
       catalogDescription: catalog.get(name) ?? null,
       inboundDeps: 0, // filled below

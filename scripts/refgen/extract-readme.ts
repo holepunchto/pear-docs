@@ -182,6 +182,14 @@ export function primaryName(signature: string): string | null {
   // trailing `.prop`
   const prop = signature.match(/\.([a-zA-Z_$][\w$]*)\s*$/);
   if (prop) return prop[1];
+  // Bare lowercase identifier, no call/dot/new at all — a heading documenting an
+  // object's SHAPE via a following field list (e.g. compact-encoding's `state`)
+  // rather than a call signature. Capitalized bare words (AutoStore, Stats, Dir,
+  // …) are class/type names introducing a nested section of #### method
+  // headings, not shape entries — restricting to a lowercase first letter by
+  // convention excludes them (verified against 20 holepunchto READMEs).
+  const bareValue = signature.match(/^([a-z_$][\w$]*)$/);
+  if (bareValue) return bareValue[1];
   return null;
 }
 
@@ -263,9 +271,21 @@ function splitTopLevel(s: string): string[] {
 function paramFromListItem(item: any): ReadmeParam | null {
   const text = toText(item).trim();
   const m = text.match(/^`?([.\w$\[\]]+)`?\s*[-–:]\s*(.+)$/s);
-  if (!m) return null;
-  let name = m[1].replace(/[`\[\]]/g, '');
-  return { name, optional: false, description: m[2].trim().replace(/\s+/g, ' ') };
+  if (m) {
+    let name = m[1].replace(/[`\[\]]/g, '');
+    return { name, optional: false, description: m[2].trim().replace(/\s+/g, ' ') };
+  }
+  // Some READMEs write field bullets as plain subject-verb sentences instead of
+  // a dash/colon list, e.g. "`start` is the byte offset to start encoding/
+  // decoding at." (compact-encoding's `state` shape). Reuse PARAM_SUBJECT_VERB,
+  // the same pattern assignParamDescriptions() uses for paragraph prose below —
+  // only fires when the dash/colon form above didn't already match.
+  const sv = text.match(/^`?([.\w$\[\]]+)`?\s+(.+)$/s);
+  if (sv && PARAM_SUBJECT_VERB.test(sv[2])) {
+    let name = sv[1].replace(/[`\[\]]/g, '');
+    return { name, optional: false, description: sv[2].trim().replace(/\s+/g, ' ') };
+  }
+  return null;
 }
 
 /**

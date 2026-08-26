@@ -7,7 +7,12 @@
 import Ajv from 'ajv';
 import { MODEL_SCHEMA, type ApiModel } from './model';
 
-const ajv = new Ajv({ allErrors: true });
+// strict: false — MODEL_SCHEMA uses `format: "date-time"` for `generatedAt`, and
+// ajv's default strict mode throws on formats it can't validate without the
+// separate `ajv-formats` package (which the CI install step doesn't pull in).
+// This is shape validation, not format enforcement, so ignoring the unknown
+// format is the correct behavior here, not a workaround.
+const ajv = new Ajv({ allErrors: true, strict: false });
 const validateFn = ajv.compile(MODEL_SCHEMA);
 
 /** Throws with a readable message if the model violates the schema. */

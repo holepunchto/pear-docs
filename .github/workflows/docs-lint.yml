@@ -22,6 +22,13 @@ on:
       - '.vale.ini'
       - '.github/styles/**'
       - '.github/workflows/docs-lint.yml'
+      - 'public/.well-known/**'
+      - 'public/_headers'
+      - 'scripts/check-agent-ready-metadata.ts'
+      - 'scripts/generate-agent-skills-index.ts'
+      - 'scripts/inject-content-signals.ts'
+      - 'scripts/agent-skills-shared.ts'
+      - 'scripts/schemas/**'
   pull_request:
     paths:
       - 'content/**'
@@ -35,6 +42,13 @@ on:
       - '.vale.ini'
       - '.github/styles/**'
       - '.github/workflows/docs-lint.yml'
+      - 'public/.well-known/**'
+      - 'public/_headers'
+      - 'scripts/check-agent-ready-metadata.ts'
+      - 'scripts/generate-agent-skills-index.ts'
+      - 'scripts/inject-content-signals.ts'
+      - 'scripts/agent-skills-shared.ts'
+      - 'scripts/schemas/**'
   workflow_dispatch:
 
 jobs:
@@ -62,6 +76,26 @@ jobs:
       - name: Check internal links
         run: ./node_modules/.bin/tsx scripts/check-internal-links.ts
 
+  agent-ready:
+    name: agent-ready metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Reads only public/ (committed source), no build needed — see the
+      # docstring in check-agent-ready-metadata.ts. tsx + js-yaml + ajv are
+      # all public on npm; same throwaway-prefix install as internal-links,
+      # for the same @tetherto/* token-gating reason.
+      - name: Install checker deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx js-yaml ajv
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+      - name: Check agent-ready metadata
+        run: ./node_modules/.bin/tsx scripts/check-agent-ready-metadata.ts
+
   version-gates:
     name: version gates
     runs-on: ubuntu-latest
@@ -70,13 +104,13 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      # Only tsx: check-docs-versions.ts imports nothing but src/lib/docs-versions.ts,
-      # which is self-contained. Same throwaway-prefix dance as internal-links,
-      # because a plain `npm install` here would need the token-gated
-      # @tetherto/* packages. See that job for the full explanation.
+      # tsx + github-slugger: check-docs-versions.ts imports scripts/helpers.ts
+      # for fileToSlug, which needs github-slugger. Same throwaway-prefix dance
+      # as internal-links, because a plain `npm install` here would need the
+      # token-gated @tetherto/* packages. See that job for the full explanation.
       - name: Install tsx
         run: |
-          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
           mkdir -p node_modules
           cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
       # Catches a gate whose version is well-formed but not a real doc-state —

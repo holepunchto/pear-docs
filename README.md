@@ -1,6 +1,6 @@
 # Pear Docs
 
-Official documentation for the [Pear](https://pears.com) platform by Holepunch.
+Official documentation for the [Pear](https://pears.com) platform.
 
 * Source code and content of the docs website.
 * Automation scripts for link checking and documentation quality.
@@ -154,3 +154,4 @@ under `decisions/`. The current site IA is documented in
 * [Pear Website](https://pears.com)
 * [Holepunch](https://holepunch.to)
 * [Fumadocs](https://fumadocs.dev)
+

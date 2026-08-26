@@ -133,7 +133,13 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // as a "Glossary" section, so the standalone reference page is gone.
   out.push({
     from: '/reference/release-pipeline-glossary/',
-    to: '/explanation/release-pipeline/#glossary',
+    to: '/explanation/deployment-releasing-apps-p2p/#glossary',
+  });
+
+  // "Release pipeline" was renamed "Deployment - Releasing Apps P2P"; the slug moved with it.
+  out.push({
+    from: '/explanation/release-pipeline/',
+    to: '/explanation/deployment-releasing-apps-p2p/',
   });
 
   // Troubleshooting and manage-installed-applications were promoted to
@@ -249,7 +255,10 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
 
   // "The Pears stack" was renamed "The Pear stack" to drop the pluralised
   // brand term; the slug moved with it.
-  out.push({ from: '/explanation/the-pears-stack/', to: '/explanation/the-pear-stack/' });
+  out.push({ from: '/explanation/the-pears-stack/', to: '/explanation/pear-and-bare/' });
+
+  // "the-pear-stack" retired as a named term; slug moved.
+  out.push({ from: '/explanation/the-pear-stack/', to: '/explanation/pear-and-bare/' });
 
   out.sort((a, b) => a.from.localeCompare(b.from));
   return out;

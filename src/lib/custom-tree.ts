@@ -17,7 +17,7 @@ import type { Node } from 'fumadocs-core/page-tree';
  *     the site's `trailingSlash` mode.
  */
 export const customTree: Node[] = [
-  { type: 'page', name: 'Pear by Holepunch', url: '/' },
+  { type: 'page', name: 'Pear', url: '/' },
   {
     type: 'folder',
     name: 'Getting Started',
@@ -71,8 +71,8 @@ export const customTree: Node[] = [
         children: [
           {
             type: 'page',
-            name: 'The Pear stack',
-            url: '/explanation/the-pear-stack',
+            name: 'How Pear and Bare fit together',
+            url: '/explanation/pear-and-bare',
           },
           {
             type: 'page',
@@ -93,6 +93,11 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Inside Bare',
             url: '/explanation/bare-runtime',
+          },
+          {
+            type: 'page',
+            name: 'Migrating from Node.js',
+            url: '/explanation/migrating-from-nodejs',
           },
           {
             type: 'page',
@@ -143,8 +148,8 @@ export const customTree: Node[] = [
           },
           {
             type: 'page',
-            name: 'Release pipeline',
-            url: '/explanation/release-pipeline',
+            name: 'Deployment - Releasing Apps P2P',
+            url: '/explanation/deployment-releasing-apps-p2p',
           },
         ],
       },
@@ -163,6 +168,11 @@ export const customTree: Node[] = [
     name: 'How To',
     index: { type: 'page', name: 'How To', url: '/how-to' },
     children: [
+      {
+        type: 'page',
+        name: 'Browse commands with the interactive menu',
+        url: '/how-to/browse-commands-with-the-interactive-menu',
+      },
       {
         type: 'folder',
         name: 'Connect to peers',
@@ -407,6 +417,11 @@ export const customTree: Node[] = [
       },
       {
         type: 'page',
+        name: 'Migrate a Node.js app to Bare',
+        url: '/how-to/migrate-a-nodejs-app-to-bare',
+      },
+      {
+        type: 'page',
         name: 'Troubleshoot common issues',
         url: '/how-to/troubleshooting',
       },
@@ -463,6 +478,8 @@ export const customTree: Node[] = [
               { type: 'page', name: 'bare-os', url: '/reference/bare/modules/bare-os' },
               { type: 'page', name: 'bare-stream', url: '/reference/bare/modules/bare-stream' },
               { type: 'page', name: 'bare-tcp', url: '/reference/bare/modules/bare-tcp' },
+              { type: 'page', name: 'bare-http1', url: '/reference/bare/modules/bare-http1' },
+              { type: 'page', name: 'bare-ws', url: '/reference/bare/modules/bare-ws' },
               { type: 'page', name: 'bare-fetch', url: '/reference/bare/modules/bare-fetch' },
               { type: 'page', name: 'bare-crypto', url: '/reference/bare/modules/bare-crypto' },
               { type: 'page', name: 'bare-subprocess', url: '/reference/bare/modules/bare-subprocess' },
@@ -477,6 +494,7 @@ export const customTree: Node[] = [
               { type: 'page', name: 'bare-bluetooth-apple', url: '/reference/bare/modules/bare-bluetooth-apple' },
               { type: 'page', name: 'bare-module', url: '/reference/bare/modules/bare-module' },
               { type: 'page', name: 'bare-url', url: '/reference/bare/modules/bare-url' },
+              { type: 'page', name: 'bare-path', url: '/reference/bare/modules/bare-path' },
               { type: 'page', name: 'bare-atomics', url: '/reference/bare/modules/bare-atomics' },
               { type: 'page', name: 'bare-timers', url: '/reference/bare/modules/bare-timers' },
               { type: 'page', name: 'bare-pipe', url: '/reference/bare/modules/bare-pipe' },
@@ -496,6 +514,33 @@ export const customTree: Node[] = [
               { type: 'page', name: 'bare-union-bundle', url: '/reference/bare/modules/bare-union-bundle' },
               { type: 'page', name: 'bare-mime', url: '/reference/bare/modules/bare-mime' },
               { type: 'page', name: 'bare-apk', url: '/reference/bare/modules/bare-apk' },
+              { type: 'page', name: 'bare-abort', url: '/reference/bare/modules/bare-abort' },
+              { type: 'page', name: 'bare-assert', url: '/reference/bare/modules/bare-assert' },
+              { type: 'page', name: 'bare-buffer', url: '/reference/bare/modules/bare-buffer' },
+              { type: 'page', name: 'bare-bundle', url: '/reference/bare/modules/bare-bundle' },
+              { type: 'page', name: 'bare-bundle-id', url: '/reference/bare/modules/bare-bundle-id' },
+              { type: 'page', name: 'bare-collabora', url: '/reference/bare/modules/bare-collabora' },
+              { type: 'page', name: 'bare-dns', url: '/reference/bare/modules/bare-dns' },
+              { type: 'page', name: 'bare-encoding', url: '/reference/bare/modules/bare-encoding' },
+              { type: 'page', name: 'bare-env', url: '/reference/bare/modules/bare-env' },
+              { type: 'page', name: 'bare-events', url: '/reference/bare/modules/bare-events' },
+              { type: 'page', name: 'bare-format', url: '/reference/bare/modules/bare-format' },
+              { type: 'page', name: 'bare-hrtime', url: '/reference/bare/modules/bare-hrtime' },
+              { type: 'page', name: 'bare-https', url: '/reference/bare/modules/bare-https' },
+              { type: 'page', name: 'bare-inspect', url: '/reference/bare/modules/bare-inspect' },
+              { type: 'page', name: 'bare-logger', url: '/reference/bare/modules/bare-logger' },
+              { type: 'page', name: 'bare-net', url: '/reference/bare/modules/bare-net' },
+              { type: 'page', name: 'bare-pack', url: '/reference/bare/modules/bare-pack' },
+              { type: 'page', name: 'bare-process', url: '/reference/bare/modules/bare-process' },
+              { type: 'page', name: 'bare-readline', url: '/reference/bare/modules/bare-readline' },
+              { type: 'page', name: 'bare-realm', url: '/reference/bare/modules/bare-realm' },
+              { type: 'page', name: 'bare-signals', url: '/reference/bare/modules/bare-signals' },
+              { type: 'page', name: 'bare-stdio', url: '/reference/bare/modules/bare-stdio' },
+              { type: 'page', name: 'bare-stow', url: '/reference/bare/modules/bare-stow' },
+              { type: 'page', name: 'bare-tty', url: '/reference/bare/modules/bare-tty' },
+              { type: 'page', name: 'bare-type', url: '/reference/bare/modules/bare-type' },
+              { type: 'page', name: 'bare-vm', url: '/reference/bare/modules/bare-vm' },
+              { type: 'page', name: 'bare-zlib', url: '/reference/bare/modules/bare-zlib' },
             ],
           },
         ],
