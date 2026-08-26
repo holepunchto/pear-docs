@@ -652,6 +652,11 @@ export const customTree: Node[] = [
             name: 'Protomux',
             url: '/reference/helpers/protomux',
           },
+          {
+            type: 'page',
+            name: 'HRPC',
+            url: '/reference/helpers/hrpc',
+          },
         ],
       },
       {
