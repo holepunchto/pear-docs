@@ -34,9 +34,9 @@ Register the request/response shapes on a [hyperschema](https://github.com/holep
 const Hyperschema = require('hyperschema')
 
 const schema = Hyperschema.from('./spec/hyperschema')
-const ns = schema.namespace('worker')
+const schemaNs = schema.namespace('worker')
 
-ns.register({
+schemaNs.register({
   name: 'status-response',
   fields: [
     { name: 'peers', type: 'uint' },
@@ -44,7 +44,7 @@ ns.register({
   ]
 })
 
-ns.register({
+schemaNs.register({
   name: 'log-event',
   fields: [
     { name: 'message', type: 'string' }
@@ -54,7 +54,7 @@ ns.register({
 Hyperschema.toDisk(schema)
 ```
 
-`getStatus` takes no arguments, so it needs no request type—only `status-response`. The `log` event needs a request type (`log-event`) and no response, since it never expects a reply.
+`getStatus` carries no meaningful argument, so it needs no custom request *shape*—only `status-response`. It still needs *a* request type when the method is registered below: every HRPC method has a request, and a primitive stands in when there is nothing to send. The `log` event needs a request type (`log-event`) and no response, since it never expects a reply.
 
 </Step>
 
@@ -62,7 +62,7 @@ Hyperschema.toDisk(schema)
 
 ### Register RPC methods and generate
 
-Point `HRPCBuilder` at the same schema directory and register each method. `getStatus` is a plain request/response call; `log` sets `send: true` on its request and omits `response` entirely, marking it fire-and-forget:
+Point `HRPCBuilder` at the same schema directory and register each method. `getStatus` is a plain request/response call—it takes no meaningful argument, so it uses the primitive `string` as its request type rather than a registered shape. `log` sets `send: true` on its request and omits `response` entirely, marking it fire-and-forget:
 
 ```js skip="snippet-illustration"
 // spec/build.js, continued
@@ -73,6 +73,7 @@ const ns = hrpc.namespace('worker')
 
 ns.register({
   name: 'get-status',
+  request: { name: 'string', stream: false },
   response: { name: '@worker/status-response', stream: false }
 })
 
@@ -128,11 +129,11 @@ const rpc = new HRPC(IPC)
 
 rpc.onLog(({ message }) => console.log('[worker]', message))
 
-const status = await rpc.getStatus()
+const status = await rpc.getStatus('')
 console.log(`${status.peers} peer(s), up ${status.uptimeSeconds}s`)
 ```
 
-Method names and encodings can't drift out of sync between the two files, because both compile from the one schema in `spec/`.
+Every generated method takes its request value as the first argument, so `getStatus`—registered against the primitive `string`—is called with an empty string. Method names and encodings can't drift out of sync between the two files, because both compile from the one schema in `spec/`.
 
 </Step>
 
