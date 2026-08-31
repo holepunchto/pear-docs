@@ -36,7 +36,7 @@ flowchart LR
 ```js file=<rootDir>/examples/how-to/run-on-native/snake-mobile/workers/main.custom.js#L1 title="workers/main.js" skip="example-import"
 ```
 
-snake-mobile's `package.json` still carries a copy of the same `imports` block `hello-pear-worker` uses, left over from before this worker was written—but nothing here requires the bare specifier `pear-runtime` that it remaps, so the field is inert. Don't copy it into a mobile-only worker; requiring `pear-mobile` directly is simpler and is what this worker actually does.
+snake-mobile's `package.json` carries a copy of the same `imports` block `hello-pear-worker` uses, but nothing in this app requires the bare specifier `pear-runtime` that it remaps, so the field has no effect here. Don't copy it into a mobile-only worker; requiring `pear-mobile` directly is simpler and is what this worker actually does.
 </Callout>
 
 <Steps>
@@ -45,9 +45,14 @@ snake-mobile's `package.json` still carries a copy of the same `imports` block `
 
 ### Add a second Hyperswarm for the game topic
 
-The updater swarm from `hello-pear-worker` stays exactly as-is. Alongside it, open a second `Hyperswarm` for the actual multiplayer topic, and gate its connection handler on whether a game is currently joined—a peer connecting before anyone has created or joined one gets dropped immediately rather than left dangling:
+The updater swarm from `hello-pear-worker` stays exactly as-is. Alongside it, open a second `Hyperswarm` for the actual multiplayer topic, plus a `joined` variable holding the current topic:
 
-```js file=<rootDir>/examples/how-to/run-on-native/snake-mobile/workers/main.custom.js#L68-L75 title="workers/main.js" skip="example-import"
+```js file=<rootDir>/examples/how-to/run-on-native/snake-mobile/workers/main.custom.js#L49-L54 title="workers/main.js" skip="example-import"
+```
+
+`joined` doubles as a gate on the connection handler: a peer that connects before anyone has created or joined a game is dropped immediately rather than left dangling. Everything after that gate is the per-peer wiring that forwards traffic to the view:
+
+```js file=<rootDir>/examples/how-to/run-on-native/snake-mobile/workers/main.custom.js#L68-L90 title="workers/main.js" skip="example-import"
 ```
 
 `joined` is `null` until [`joinGame`](#serialize-join-and-leave) sets it, and back to `null` once [`leaveGame`](#serialize-join-and-leave) runs—so this same check also rejects any peer that reconnects mid-leave.
@@ -59,6 +64,11 @@ The updater swarm from `hello-pear-worker` stays exactly as-is. Alongside it, op
 ### Serialize join and leave
 
 Only one game topic is ever joined at a time, and a fast leave-then-join from the UI must not race two discovery sessions for the same topic. `enqueue` chains every `joinGame`/`leaveGame` call onto one promise so they always run in order:
+
+```js file=<rootDir>/examples/how-to/run-on-native/snake-mobile/workers/main.custom.js#L56-L62 title="workers/main.js" skip="example-import"
+```
+
+The two functions it serializes:
 
 ```js file=<rootDir>/examples/how-to/run-on-native/snake-mobile/workers/main.custom.js#L96-L118 title="workers/main.js" skip="example-import"
 ```
@@ -72,6 +82,10 @@ The comment on `leaveGame` matters: Hyperswarm keeps connections open across `le
 ### Extend the protocol
 
 `hello-pear-worker` speaks plain strings (`'updating'`, `'pear:applyUpdate'`, ...). A custom worker is free to speak whatever it wants over the same `FramedStream`-framed pipe—here, small JSON envelopes with a `type` field:
+
+<Callout type="info">
+Hand-rolled envelopes like these are worth reaching for only while the protocol is small. Once it grows past a handful of messages, [`hrpc`](https://www.npmjs.com/package/hrpc) generates typed methods for both ends from one schema instead—see [Structured RPC over IPC](/explanation/workers#structured-rpc-over-ipc). It rides any duplex stream, including this worklet pipe.
+</Callout>
 
 ```js file=<rootDir>/examples/how-to/run-on-native/snake-mobile/workers/main.custom.js#L120-L146 title="workers/main.js" skip="example-import"
 ```
@@ -109,6 +123,7 @@ The `handleMessage` switch that sets `screen` from each incoming worker message�
 - [Start from the hello-pear-react-native template](/getting-started/from-a-template/start-from-hello-pear-react-native)—the template this guide extends.
 - [Pear Mobile OTA](/reference/pear/mobile)—the `pear-mobile` API the updater half still runs on.
 - [One core, many platforms](/explanation/bare-on-native)—why the worker's peer-to-peer logic is portable regardless of what protocol it speaks.
-- [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge)—a typed, schema-generated alternative to hand-rolled JSON messages like the ones here.
+- [Structured RPC over IPC](/explanation/workers#structured-rpc-over-ipc)—replacing these hand-rolled JSON envelopes with schema-generated typed methods once the protocol grows past a few messages.
+- [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge)—the `bare-rpc` equivalent, for when one end is a native shell rather than JavaScript.
 - [Handle app suspension](/how-to/run-on-native/handle-app-suspension)—keep both Hyperswarm instances in step with the OS lifecycle.
 - [`holepunchto/snake-mobile`](https://github.com/holepunchto/snake-mobile)—the full app, including the game engine, screens, and UI this guide doesn't cover.
