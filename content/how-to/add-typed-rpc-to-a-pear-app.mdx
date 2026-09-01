@@ -29,29 +29,7 @@ npm i hrpc hyperschema
 
 Register the request/response shapes on a [hyperschema](https://github.com/holepunchto/hyperschema) namespace and write it to disk. Schemas are append-only and versioned—add fields later, never renumber or remove one:
 
-```js skip="snippet-illustration"
-// spec/build.js
-const Hyperschema = require('hyperschema')
-
-const schema = Hyperschema.from('./spec/hyperschema')
-const schemaNs = schema.namespace('worker')
-
-schemaNs.register({
-  name: 'status-response',
-  fields: [
-    { name: 'peers', type: 'uint' },
-    { name: 'uptimeSeconds', type: 'uint' }
-  ]
-})
-
-schemaNs.register({
-  name: 'log-event',
-  fields: [
-    { name: 'message', type: 'string' }
-  ]
-})
-
-Hyperschema.toDisk(schema)
+```js file=<rootDir>/examples/how-to/add-typed-rpc-to-a-pear-app/build-spec.js#L1-L21 title="build-spec.js" skip="example-import"
 ```
 
 `getStatus` carries no meaningful argument, so it needs no custom request *shape*—only `status-response`. It still needs *a* request type when the method is registered below: every HRPC method has a request, and a primitive stands in when there is nothing to send. The `log` event needs a request type (`log-event`) and no response, since it never expects a reply.
@@ -64,28 +42,10 @@ Hyperschema.toDisk(schema)
 
 Point `HRPCBuilder` at the same schema directory and register each method. `getStatus` is a plain request/response call—it takes no meaningful argument, so it uses the primitive `string` as its request type rather than a registered shape. `log` sets `send: true` on its request and omits `response` entirely, marking it fire-and-forget:
 
-```js skip="snippet-illustration"
-// spec/build.js, continued
-const HRPCBuilder = require('hrpc')
-
-const hrpc = HRPCBuilder.from('./spec/hyperschema', './spec/hrpc')
-const ns = hrpc.namespace('worker')
-
-ns.register({
-  name: 'get-status',
-  request: { name: 'string', stream: false },
-  response: { name: '@worker/status-response', stream: false }
-})
-
-ns.register({
-  name: 'log',
-  request: { name: '@worker/log-event', send: true }
-})
-
-HRPCBuilder.toDisk(hrpc)
+```js file=<rootDir>/examples/how-to/add-typed-rpc-to-a-pear-app/build-spec.js#L23-L39 title="build-spec.js (continued)" skip="example-import"
 ```
 
-Run the build script (`node spec/build.js`) to write `spec/hyperschema/` and `spec/hrpc/` to disk. Re-run it whenever the schema changes—commit the generated `spec/` directory, don't gitignore it, so both sides of the IPC stream always compile from the same generated code.
+Run the build script (`node build-spec.js`) to write `spec/hyperschema/` and `spec/hrpc/` to disk. Re-run it whenever the schema changes—commit the generated `spec/` directory, don't gitignore it, so both sides of the IPC stream always compile from the same generated code.
 
 </Step>
 
@@ -95,19 +55,7 @@ Run the build script (`node spec/build.js`) to write `spec/hyperschema/` and `sp
 
 Construct `HRPC` over `Bare.IPC` and register a handler for `getStatus`. Call `rpc.log(...)` whenever there's something to report—it returns immediately, no response awaited:
 
-```js skip="snippet-illustration"
-// workers/main.js
-const HRPC = require('../spec/hrpc')
-
-const rpc = new HRPC(Bare.IPC)
-const startedAt = Date.now()
-
-rpc.onGetStatus(() => ({
-  peers: swarm.connections.size,
-  uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000)
-}))
-
-rpc.log({ message: 'worker ready' })
+```js file=<rootDir>/examples/how-to/add-typed-rpc-to-a-pear-app/workers/rpc-worker.js title="workers/rpc-worker.js" skip="example-import"
 ```
 
 (`swarm` here is whatever [Hyperswarm](/reference/building-blocks/hyperswarm) instance the worker already holds—this guide only adds the RPC layer on top of it.)
@@ -120,17 +68,7 @@ rpc.log({ message: 'worker ready' })
 
 The host side constructs `HRPC` over the same `IPC` stream returned by [`pear.run`](/reference/pear/runtime#running-workers), calls `getStatus()` like any async function, and listens for `log` events:
 
-```js skip="snippet-illustration"
-// main process
-const HRPC = require('./spec/hrpc')
-
-const IPC = pear.run('./workers/main.js', [pear.storage])
-const rpc = new HRPC(IPC)
-
-rpc.onLog(({ message }) => console.log('[worker]', message))
-
-const status = await rpc.getStatus('')
-console.log(`${status.peers} peer(s), up ${status.uptimeSeconds}s`)
+```js file=<rootDir>/examples/how-to/add-typed-rpc-to-a-pear-app/host.js title="host.js" skip="example-import"
 ```
 
 A generated unary method takes its request value as the first argument, so `getStatus`—registered against the primitive `string`—is called with an empty string. Method names and encodings can't drift out of sync between the two files, because both compile from the one schema in `spec/`.
