@@ -56,6 +56,11 @@ export const customTree: Node[] = [
             name: 'Start from the hello-pear-bare template',
             url: '/getting-started/from-a-template/start-from-hello-pear-bare',
           },
+          {
+            type: 'page',
+            name: 'Start from the hello-pear-react-native template',
+            url: '/getting-started/from-a-template/start-from-hello-pear-react-native',
+          },
         ],
       },
     ],
@@ -443,6 +448,7 @@ export const customTree: Node[] = [
             url: '/reference/pear/cli',
           },
           { type: 'page', name: 'Pear OTA', url: '/reference/pear/runtime' },
+          { type: 'page', name: 'Pear Mobile OTA', url: '/reference/pear/mobile' },
           {
             type: 'page',
             name: 'Configuration',
