@@ -84,6 +84,7 @@ interface Scenario {
 const CONNECT = 'how-to/connect-to-peers';
 const STORE = 'how-to/store-and-replicate';
 const STREAM = 'how-to/stream-and-share-media';
+const HOWTO = 'how-to';
 const GETTING = 'getting-started';
 
 const SCENARIOS: Scenario[] = [
@@ -303,6 +304,27 @@ const SCENARIOS: Scenario[] = [
         app: 'core-reader-app',
         cmd: 'bare index.js ${key}',
         expect: 'Raw Block',
+        timeoutMs: 45_000,
+      },
+    ],
+  },
+  {
+    // Pure codegen — no networking, no Bare runtime, so this runs under plain
+    // `node` and finishes in a second. It exists because the guide's snippets
+    // are imported from this app: an invalid `ns.register(...)` (for example
+    // omitting `request`, which hrpc's builder dereferences unguarded) throws
+    // here, so the page cannot ship a registration that would not build.
+    id: 'hrpc-codegen',
+    dir: `${HOWTO}/add-typed-rpc-to-a-pear-app`,
+    installs: ['.'],
+    artifacts: [],
+    steps: [
+      {
+        kind: 'run',
+        process: 'codegen',
+        app: '.',
+        cmd: 'node build-spec.js',
+        expect: 'generated spec/hyperschema and spec/hrpc',
         timeoutMs: 45_000,
       },
     ],

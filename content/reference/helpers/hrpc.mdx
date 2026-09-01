@@ -1,0 +1,123 @@
+---
+title: "HRPC"
+description: "Schema-generated typed RPC client and server stubs over a duplex stream."
+upstreamVersion: "4.3.1"
+seoTitle: "HRPC: Schema-Generated Typed RPC"
+docType: reference
+schemaType: APIReference
+---
+
+<Status level="stable" />
+
+`HRPC` generates typed RPC client and server stubs from a schema, instead of hand-writing command ids and encoders. Define request and response shapes once with [`hyperschema`](https://github.com/holepunchto/hyperschema), register the methods that use them, and HRPC writes a JavaScript module with a real method for each one—`rpc.commandA(...)` to call it, `rpc.onCommandA(...)` to handle it—on top of [`bare-rpc`](/reference/modules/bare-modules) framing. This is the recommended default for structured request/response between a Pear app's host and worker; see [Structured RPC over IPC](/explanation/workers#structured-rpc-over-ipc) for when to reach for it instead of a lighter option. For source and releases, see the [HRPC repository](https://github.com/holepunchto/hrpc).
+
+## Install
+
+```sh
+npm i hrpc hyperschema
+```
+
+## Define a schema
+
+Register your request and response shapes on a [`hyperschema`](https://github.com/holepunchto/hyperschema) namespace and write it to disk. Schemas are append-only and versioned, so fields can be added later without breaking peers on an older build—never renumber or remove an existing field.
+
+```js
+const Hyperschema = require('hyperschema')
+
+const schema = Hyperschema.from('./spec/hyperschema')
+const ns = schema.namespace('example')
+
+ns.register({
+  name: 'command-a-request',
+  fields: [
+    { name: 'foo', type: 'uint' },
+    { name: 'bar', type: 'string' }
+  ]
+})
+
+ns.register({
+  name: 'command-a-response',
+  fields: [
+    { name: 'baz', type: 'string' },
+    { name: 'qux', type: 'uint' }
+  ]
+})
+
+Hyperschema.toDisk(schema)
+```
+
+## Register RPC methods and generate
+
+Point `HRPCBuilder` at the same schema directory, register each method against the request/response types just defined, and write the generated client/server module to disk:
+
+```js
+const HRPCBuilder = require('hrpc')
+
+const hrpc = HRPCBuilder.from('./spec/hyperschema', './spec/hrpc')
+const ns = hrpc.namespace('example')
+
+ns.register({
+  name: 'command-a',
+  request: { name: '@example/command-a-request', stream: false },
+  response: { name: '@example/command-a-response', stream: false }
+})
+
+HRPCBuilder.toDisk(hrpc)
+```
+
+Redefining an already-registered method with a different schema or `stream` value throws, so a schema/method mismatch between host and worker fails at build time rather than as a silent wire-format bug.
+
+## Use the generated client
+
+Both sides import the same generated module and construct it over their end of the duplex stream—`Bare.IPC` inside a Pear worker, the `IPC` returned by [`pear.run`](/reference/pear/runtime#running-workers) on the host:
+
+```js
+const HRPC = require('./spec/hrpc')
+
+const rpc = new HRPC(stream)
+
+rpc.onCommandA((data) => {
+  return { baz: 'quo', qux: data.foo + 1 }
+})
+
+const response = await rpc.commandA({ foo: 80, bar: 'imbar' })
+```
+
+Method names and encodings can't drift out of sync between the two ends, because both are generated from the one schema. See the [HRPC example](https://github.com/holepunchto/hrpc/blob/main/example.js) for a complete runnable version of the two steps above.
+
+## Interaction patterns
+
+`request` and `response` are each independently marked `stream: true` or `stream: false` when a method is registered, so a method can be a plain call-and-reply, one-way, or streaming on either side:
+
+- **Unary** (`stream: false` / `stream: false`, shown above)—one request, one response.
+- **Send-only**—give `request` a `send: true` option and omit `response` entirely for a fire-and-forget event with no reply expected.
+- **Duplex** (`stream: true` / `stream: true`)—the handler and the caller each get a stream instead of a single value:
+
+```js
+// registered with request: { ..., stream: true }, response: { ..., stream: true }
+rpc.onCommandA((stream) => {
+  stream.on('data', (data) => console.log('received:', data))
+  stream.write({ baz: 'pong', qux: 0 })
+})
+
+const duplex = rpc.commandA()
+duplex.write({ foo: 1, bar: 'ping' })
+duplex.on('data', (data) => console.log('reply:', data))
+```
+
+## When not to use this
+
+Two lighter alternatives, for when a schema and a build step are more machinery than the protocol needs:
+
+- **[tiny-buffer-rpc](https://www.npmjs.com/package/tiny-buffer-rpc)**—request/response pairing with no schema file and no generator: register a small integer id with a [compact-encoding](/reference/helpers/compact-encoding) codec directly at the call site. `send` is a plain function rather than a required duplex stream, so it also fits transports that aren't a stream at all.
+- **[bare-rpc](/reference/modules/bare-modules)**—the framing layer HRPC itself is built on. Reach for it directly only when HRPC's codegen doesn't fit, such as bridging to a shell in a language HRPC has no generator for yet—Kotlin today—see [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge). Swift and C are *not* such cases: [`hrpc-swift`](https://github.com/holepunchto/hrpc-swift) and [`hrpc-c`](https://github.com/holepunchto/hrpc-c) both extend this builder and emit wire-compatible stubs from the same schema.
+
+## See also
+
+- [Add typed RPC to a Pear app](/how-to/add-typed-rpc-to-a-pear-app)—the worked how-to: install, schema, codegen, wiring up both ends.
+- [Structured RPC over IPC](/explanation/workers#structured-rpc-over-ipc)—when to reach for HRPC versus a lighter option, in the context of a Pear app's host/worker split.
+- [Running workers in the runtime reference](/reference/pear/runtime#running-workers)—`pear.run` and the `IPC` duplex stream HRPC rides on.
+- [`bare-rpc` reference](/reference/modules/bare-modules)—the command-framing layer underneath.
+- [Compact encoding](/reference/helpers/compact-encoding)—the codec format `hyperschema` generates.
+- [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge)—the same schema-first approach for a native shell instead of a Bare worker.
+- The upstream source: [`hrpc`](https://github.com/holepunchto/hrpc) and [`hyperschema`](https://github.com/holepunchto/hyperschema).

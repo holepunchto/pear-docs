@@ -83,9 +83,45 @@ It points at a per-app directory the host has already prepared (see [Storage and
 
 ## Structured RPC over IPC
 
-Raw Inter-Process Communication (IPC) carries **bytes**, not typed messages. For a handful of one-off signals, length-preserving writes or newline-delimited JSON may be enough (see [Compact encoding](/reference/helpers/compact-encoding) for binary framing). As the host–worker protocol grows, manually pairing requests and responses becomes error-prone.
+Raw Inter-Process Communication (IPC) carries **bytes**, not typed messages. That's fine for a one-off signal or two, but manually pairing requests and responses stops scaling almost immediately—**[HRPC](/reference/helpers/hrpc) is the recommended default** for host↔worker communication beyond that.
 
-**[bare-rpc](/reference/modules/bare-modules)** adds a thin Remote Procedure Call (RPC) layer on top of a duplex stream. Each message has a numeric command id and a payload; handlers dispatch on `req.command`:
+**HRPC** generates typed client and server stubs from a schema. Define request and response types (typically via [hyperschema](https://www.npmjs.com/package/hyperschema)), register methods, run the code generator, and import the result—both sides get real method names instead of numeric command ids to keep straight by hand:
+
+```js
+import HRPC from './spec/hrpc/index.js'
+
+const rpc = new HRPC(Bare.IPC)
+
+rpc.onHello(({ world }) => ({
+  message: `Hello ${world}, from worker`
+}))
+
+await rpc.hello({ world: 'host' })
+```
+
+The host side constructs `new HRPC(IPC)` with the same generated module. Method names and encodings stay in sync because both sides compile from one schema definition—see the [HRPC reference](/reference/helpers/hrpc) for the full schema-to-codegen walkthrough.
+
+Two lighter alternatives, for when a schema and build step are more machinery than the protocol needs:
+
+**[tiny-buffer-rpc](https://www.npmjs.com/package/tiny-buffer-rpc)** gives request/response pairing without any schema or codegen—you register a small integer id with a [compact-encoding](/reference/helpers/compact-encoding) codec directly at the call site:
+
+```js
+import RPC from 'tiny-buffer-rpc'
+import c from 'compact-encoding'
+
+const rpc = new RPC((data) => Bare.IPC.write(data))
+Bare.IPC.on('data', (data) => rpc.recv(data))
+
+rpc.register(0, {
+  request: c.string,
+  response: c.string,
+  onrequest: (world) => `Hello ${world}, from worker`
+})
+```
+
+It has no notion of a stream—`send` is a plain function—so it also works over transports that aren't a duplex, like a WebSocket message handler.
+
+**[bare-rpc](/reference/modules/bare-modules)** is the thinner layer HRPC itself is built on: a numeric command id and a payload, with handlers dispatching on `req.command` by hand. Reach for it directly only when HRPC's codegen doesn't fit—for example bridging to a shell written in a language HRPC has no generator for yet, such as Kotlin, where [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge) uses it with hyperschema for cross-language codecs instead. (Swift and C do have HRPC generators—[`hrpc-swift`](https://github.com/holepunchto/hrpc-swift) and [`hrpc-c`](https://github.com/holepunchto/hrpc-c).)
 
 ```js
 import RPC from 'bare-rpc'
@@ -102,31 +138,14 @@ const req = rpc.request(RPC_MESSAGE)
 req.send(Buffer.from('Hello from worker'))
 ```
 
-Share command constants between host and worker (a shared `commands.mjs` module works well). `bare-rpc` scales to moderate protocols but still leaves schema, versioning, and method naming to you.
-
-**[hrpc](https://www.npmjs.com/package/hrpc)** generates typed client and server stubs from a schema. Define request and response types (often via [hyperschema](https://www.npmjs.com/package/hyperschema)), register methods, run the code generator, and import the result:
-
-```js
-import HRPC from './spec/hrpc/index.js'
-
-const rpc = new HRPC(Bare.IPC)
-
-rpc.onHello(({ world }) => ({
-  message: `Hello ${world}, from worker`
-}))
-
-await rpc.hello({ world: 'host' })
-```
-
-The host side constructs `new HRPC(IPC)` with the same generated module. Method names and encodings stay in sync because both sides compile from one definition.
-
 | Approach | Best for |
 | --- | --- |
-| Raw IPC | Prototypes, single-channel streaming |
-| bare-rpc | Small fixed command sets, mobile worklets |
-| HRPC | Many methods, evolving schemas, shared types |
+| **[HRPC](/reference/helpers/hrpc)** | The default. Typed stubs, schema keeps both sides in sync as the protocol grows. |
+| tiny-buffer-rpc | A handful of methods, no interest in a schema/build step. |
+| bare-rpc | The command-framing layer itself—cross-language bridges, or building your own codegen on top. |
+| Raw IPC | A quick prototype, or genuinely one-shot signals. |
 
-Stay on raw IPC until message pairing hurts; adopt HRPC when the protocol is large enough that hand-maintained command ids become a maintenance burden.
+Start with HRPC unless you have a specific reason not to: the schema pays for itself as soon as a method's shape needs to change without breaking the other side mid-protocol.
 
 ## Schema-first design
 
@@ -171,6 +190,8 @@ Each worker is its own [Bare](/reference/modules/bare-modules) process, has its 
 ## See also
 
 - [Running workers in the runtime reference](/reference/pear/runtime#running-workers)—covers `pear.run`, the `IPC` duplex stream, and `Bare.IPC` on the worker side.
+- [Add typed RPC to a Pear app](/how-to/add-typed-rpc-to-a-pear-app)—the worked how-to for the HRPC pattern described above.
+- [HRPC reference](/reference/helpers/hrpc)—full API for the recommended RPC layer.
 - [Runtime and languages](/explanation/runtime-and-languages)—the broader "Pear-end / UI" pattern, Bare's role, and how non-JavaScript code joins in via native addons.
 - [Pear desktop application architecture](/explanation/pear-desktop-architecture)—how workers, the preload bridge, and the OTA updater fit together in a real Electron app.
 - [Storage and distribution](/explanation/storage-and-distribution)—where `pear.storage` actually points on each operating system.
