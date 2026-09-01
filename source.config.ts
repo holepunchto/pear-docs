@@ -16,6 +16,7 @@ import codeImport from 'remark-code-import';
 import { z } from 'zod';
 import { remarkVersionSections } from './src/lib/remark-version-sections';
 import { remarkVersionCodeLines } from './src/lib/remark-version-code-lines';
+import { remarkStripMdxComments } from './src/lib/remark-strip-mdx-comments';
 import { transformerVersionLines } from './src/lib/shiki-version-lines';
 
 const execFile = promisify(execFileCb);
@@ -201,6 +202,10 @@ export default defineConfig({
       // `includeProcessedMarkdown` serializes the mdast, which is the only way
       // to keep it out of the `.md` files served to LLMs.
       remarkVersionCodeLines,
+      // Same reason: MDX comments render as nothing but survive mdast
+      // serialization, so maintainer notes were being published in the `.md`
+      // files served to LLMs.
+      remarkStripMdxComments,
       ...v,
     ],
   },

@@ -16,20 +16,30 @@ function makeResponsive(svg: string): string {
 }
 
 export async function Mermaid({ chart }: { chart: string }) {
+  // Only the rendering is guarded. Returning JSX from inside the `try` would
+  // put the returned component's own render errors under this `catch`, which
+  // React does not actually route here — see react-hooks/error-boundaries.
+  let svg: string | null = null;
   try {
-    const svg = renderMermaidSVG(chart, {
-      bg: 'var(--color-fd-background)',
-      fg: 'var(--color-fd-foreground)',
-      interactive: true,
-      transparent: true,
-    });
-
-    return <MermaidZoom svg={makeResponsive(svg)} />;
+    svg = makeResponsive(
+      renderMermaidSVG(chart, {
+        bg: 'var(--color-fd-background)',
+        fg: 'var(--color-fd-foreground)',
+        interactive: true,
+        transparent: true,
+      }),
+    );
   } catch {
+    svg = null;
+  }
+
+  if (svg === null) {
     return (
       <CodeBlock title="Mermaid">
         <Pre>{chart}</Pre>
       </CodeBlock>
     );
   }
+
+  return <MermaidZoom svg={svg} />;
 }

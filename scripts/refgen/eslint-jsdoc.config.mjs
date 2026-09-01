@@ -17,7 +17,7 @@
 
 import jsdoc from 'eslint-plugin-jsdoc'
 
-export default [
+const config = [
   {
     files: ['index.js', 'lib/**/*.js'],
     ignores: ['**/*.test.js', 'test/**', 'tests/**'],
@@ -62,3 +62,5 @@ export default [
     },
   },
 ]
+
+export default config;
