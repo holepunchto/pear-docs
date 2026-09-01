@@ -2,6 +2,8 @@ name: Docs lint
 
 # Gates docs changes on every PR (and on push to main):
 #   - internal-links: the in-repo link/anchor/asset checker.
+#   - code-imports:   `file=...#L…` ranges resolve, are in bounds, and render
+#                     balanced code (a wrong range fails silently otherwise).
 #   - vale:           Google-style prose linting of content/.
 # External links are network-flaky, so they run on a schedule instead
 # (see .github/workflows/external-links.yml).
@@ -13,6 +15,10 @@ on:
     paths:
       - 'content/**'
       - 'scripts/check-internal-links.ts'
+      - 'scripts/check-code-imports.ts'
+      # Editing a vendored example shifts line numbers and can silently
+      # invalidate a `file=...#L…` range, so example changes run this too.
+      - 'examples/**'
       - 'scripts/check-docs-versions.ts'
       - 'src/lib/docs-versions.ts'
       - 'scripts/helpers.ts'
@@ -33,6 +39,10 @@ on:
     paths:
       - 'content/**'
       - 'scripts/check-internal-links.ts'
+      - 'scripts/check-code-imports.ts'
+      # Editing a vendored example shifts line numbers and can silently
+      # invalidate a `file=...#L…` range, so example changes run this too.
+      - 'examples/**'
       - 'scripts/check-docs-versions.ts'
       - 'src/lib/docs-versions.ts'
       - 'scripts/helpers.ts'
@@ -75,6 +85,25 @@ jobs:
           cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
       - name: Check internal links
         run: ./node_modules/.bin/tsx scripts/check-internal-links.ts
+
+  code-imports:
+    name: code imports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Same throwaway-prefix trick as the internal-links job above: a full
+      # `npm install` can't run here (token-gated @tetherto/* packages), and
+      # scripts/helpers.ts imports github-slugger as an ESM bare specifier.
+      - name: Install checker deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+      - name: Check code-import ranges
+        run: ./node_modules/.bin/tsx scripts/check-code-imports.ts
 
   agent-ready:
     name: agent-ready metadata
