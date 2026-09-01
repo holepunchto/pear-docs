@@ -47,7 +47,7 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
       */}
       <DocsVersionProvider>
         <DocsLayout
-          {...baseOptions()}
+          {...baseOptions(product)}
           tree={{ name: 'docs', children: tree }}
           links={linkItems}
           sidebar={{ banner: <ProductSwitcher active={product} /> }}
