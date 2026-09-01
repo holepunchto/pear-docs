@@ -116,7 +116,11 @@ function stripLiterals(src: string): string {
     if (mode === 'code') {
       if (c === '/' && n === '/') { mode = 'line'; i += 2; continue; }
       if (c === '/' && n === '*') { mode = 'block'; i += 2; continue; }
-      if (c === '/' && (lastSig === '' || REGEX_PRECEDERS.has(lastSig))) {
+      // `/>` is a JSX self-closing tag, never a regex start. Without this, a
+      // line like `<Foo bar={baz} />` looks like a regex opening right after
+      // the `}` preceder, and the "literal" swallows the rest of the line —
+      // including its braces — which reports balanced TSX as unbalanced.
+      if (c === '/' && n !== '>' && (lastSig === '' || REGEX_PRECEDERS.has(lastSig))) {
         mode = 'regex'; inCharClass = false; i++; continue;
       }
       if (c === "'") { mode = 'single'; i++; continue; }
