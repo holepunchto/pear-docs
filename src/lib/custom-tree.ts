@@ -305,6 +305,11 @@ export const customTree: Node[] = [
           },
           {
             type: 'page',
+            name: 'Add custom peer-to-peer logic to a React Native app',
+            url: '/how-to/run-on-native/add-custom-p2p-logic-to-a-react-native-app',
+          },
+          {
+            type: 'page',
             name: 'Type a native RPC bridge',
             url: '/how-to/run-on-native/type-a-native-rpc-bridge',
           },
