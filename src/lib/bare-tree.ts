@@ -13,14 +13,9 @@ import type { Node } from 'fumadocs-core/page-tree';
  * examples (mostly `pear-chat`/Electron, not Bare-standalone), not part of
  * the Bare runtime itself.
  *
- * `external: true` marks nodes that point at pages tagged `product: shared`
- * (troubleshooting) or that live in another product's tree entirely (P2P).
- * Per-page decision: no shared content directory — troubleshooting
- * physically lives under content/pear/ — so from Bare's tree it renders as
- * a plain, non-prefetched link rather than pretending to be a Bare-native
- * page. The How To and Reference quadrant landings are Bare's own
- * (content/bare/how-to/index.mdx, content/bare/reference/index.mdx), not
- * external.
+ * Troubleshooting is Bare's own page (content/bare/how-to/troubleshooting.mdx),
+ * not shared — each product now has its own troubleshooting guide, cross-
+ * linked to the other two.
  */
 export const bareTree: Node[] = [
   { type: 'page', name: 'Bare', url: '/bare' },
@@ -108,8 +103,7 @@ export const bareTree: Node[] = [
       {
         type: 'page',
         name: 'Troubleshoot common issues',
-        url: '/pear/how-to/troubleshooting',
-        external: true,
+        url: '/bare/how-to/troubleshooting',
       },
     ],
   },

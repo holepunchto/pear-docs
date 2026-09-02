@@ -12,12 +12,11 @@ import type { Node } from 'fumadocs-core/page-tree';
  * not part of Bare's own codebase, and most of their worked examples build
  * a Pear (Electron) app, not a Bare-standalone one.
  *
- * `external: true` marks the node that points at a page tagged
- * `product: shared` (troubleshooting) — that page physically lives under
- * content/pear/, same as it does for bare-tree.ts. The How To and Reference
- * quadrant landings are P2P's own; "About P2P" repurposes the relocated
- * Pear<->Bare bridge page as its index, same pattern bare-tree.ts uses for
- * `use-bare-standalone.mdx`.
+ * Troubleshooting is P2P's own page (content/p2p/how-to/troubleshooting.mdx),
+ * not shared — each product now has its own troubleshooting guide, cross-
+ * linked to the other two. The How To and Reference quadrant landings are
+ * P2P's own; "About P2P" repurposes the relocated Pear<->Bare bridge page as
+ * its index, same pattern bare-tree.ts uses for `use-bare-standalone.mdx`.
  */
 export const p2pTree: Node[] = [
   { type: 'page', name: 'P2P', url: '/p2p' },
@@ -213,8 +212,7 @@ export const p2pTree: Node[] = [
       {
         type: 'page',
         name: 'Troubleshoot common issues',
-        url: '/pear/how-to/troubleshooting',
-        external: true,
+        url: '/p2p/how-to/troubleshooting',
       },
     ],
   },
