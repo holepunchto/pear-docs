@@ -40,6 +40,18 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
   return (
     <>
       {/*
+        A plain block-level sibling above DocsLayout's own grid (#nd-docs-layout),
+        not a DocsLayout prop — Fumadocs' own `nav`/tab mechanisms render as grid
+        items sharing a single-row `grid-area: main` cell with the page content
+        (see fumadocs-ui/dist/layouts/docs/client.js's `gridTemplate`), so
+        anything placed there without dedicated row space gets stretched to the
+        cell's full height and covers the content. Living outside the grid
+        entirely avoids that.
+      */}
+      <header className="sticky top-0 z-40 flex items-center gap-4 border-b bg-fd-background px-4 py-2">
+        <ProductSwitcher active={product} />
+      </header>
+      {/*
         The provider stays OUTSIDE DocsLayout. The dropdown has since moved into
         the article (see version/dropdown.tsx), so `children` alone would now be
         enough — but keeping it here costs nothing and means anything Fumadocs
@@ -52,7 +64,6 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
           {...baseOptions(product)}
           tree={{ name: 'docs', children: tree }}
           links={linkItems}
-          sidebar={{ banner: <ProductSwitcher active={product} /> }}
         >
           {children}
         </DocsLayout>

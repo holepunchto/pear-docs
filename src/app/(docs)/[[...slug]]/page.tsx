@@ -5,7 +5,6 @@ import { getMDXComponents } from '@/mdx-components';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { CopyPageButton, ViewOptions } from '@/components/ai/page-actions';
-import { SectionNav } from '@/components/section-nav';
 import { UpstreamVersion } from '@/components/UpstreamVersion';
 import { VersionFilter } from '@/components/version/filter';
 import { VersionDropdown } from '@/components/version/dropdown';
@@ -28,11 +27,6 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  // Same rule DocsLayout uses to pick a tree (see `[[...slug]]/layout.tsx`):
-  // routing off the URL's first segment, not page frontmatter, so it can't
-  // drift from which tree the sidebar is actually showing.
-  const product = params.slug?.[0] === 'bare' ? 'bare' : params.slug?.[0] === 'p2p' ? 'p2p' : 'pear';
-
   const MDX = page.data.body;
   const markdownForCopy = await getLLMText(page);
   const markdownUrl = pageMarkdownUrl(page.url);
@@ -45,7 +39,6 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
   return (
     <DocsPage toc={page.data.toc} full={page.data.full} tableOfContent={{style: 'clerk'}}>
       {jsonLd ? <DocsJsonLd data={jsonLd} /> : null}
-      <SectionNav product={product} pathname={page.url} />
       {/*
         The platform version dropdown sits beside the <h1> rather than in the
         sidebar, so it survives the sub-768px drawer. Gated here as well as
