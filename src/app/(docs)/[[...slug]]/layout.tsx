@@ -8,6 +8,7 @@ import { KeetIcon } from '@/components/keet-icon';
 import KeetRoomModalMount from '@/components/keet-modal';
 import { DocsVersionProvider } from '@/components/version';
 import { ProductSwitcher } from '@/components/product-switcher';
+import { ProductNavBar } from '@/components/product-nav-bar';
 
 export const dynamic = 'force-static';
 
@@ -48,8 +49,8 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
         cell's full height and covers the content. Living outside the grid
         entirely avoids that.
       */}
-      <header className="sticky top-0 z-40 flex items-center gap-4 border-b bg-fd-background px-4 py-2">
-        <ProductSwitcher active={product} />
+      <header className="sticky top-0 z-40 border-b bg-fd-background px-4 py-2">
+        <ProductNavBar active={product} />
       </header>
       {/*
         The provider stays OUTSIDE DocsLayout. The dropdown has since moved into
@@ -64,6 +65,7 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
           {...baseOptions(product)}
           tree={{ name: 'docs', children: tree }}
           links={linkItems}
+          sidebar={{ banner: <ProductSwitcher active={product} /> }}
         >
           {children}
         </DocsLayout>
