@@ -26,7 +26,7 @@ interface Mismatch {
 }
 
 /** Keep in sync with `productSchema` in source.config.ts. */
-const VALID_PRODUCTS = new Set(['pear', 'bare', 'shared']);
+const VALID_PRODUCTS = new Set(['pear', 'bare', 'p2p', 'shared']);
 
 /**
  * Top-level directory under content/ -> required docType for every .mdx
@@ -82,12 +82,12 @@ function expectedDocType(file: string): string | null {
   if (norm === ROOT_INDEX) return ROOT_INDEX_DOCTYPE;
 
   // Strip the content/ prefix, then a leading product segment if present
-  // (content/pear/** and content/bare/** since the Phase 6 physical reorg —
-  // see docs/plans/PEAR-BARE-SPLIT-PITCH.md). What's left is the Diátaxis
-  // quadrant. content/pear/how-to/connect-to-peers/foo.mdx -> "how-to".
+  // (content/pear/**, content/bare/**, content/p2p/** since the physical
+  // reorgs — see docs/plans/PEAR-BARE-SPLIT-PITCH.md). What's left is the
+  // Diátaxis quadrant. content/pear/how-to/connect-to-peers/foo.mdx -> "how-to".
   const rel = norm.replace(/^content\//, '');
   const segments = rel.split('/');
-  if (segments[0] === 'pear' || segments[0] === 'bare') segments.shift();
+  if (segments[0] === 'pear' || segments[0] === 'bare' || segments[0] === 'p2p') segments.shift();
   const quadrant = segments[0];
 
   return QUADRANT_DOCTYPE[quadrant] ?? null;

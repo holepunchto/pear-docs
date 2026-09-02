@@ -657,8 +657,8 @@ function processConfigMdx(
 }
 
 const dirs = [
-  'content/bare/reference/building-blocks',
-  'content/bare/reference/helpers',
+  'content/p2p/reference/building-blocks',
+  'content/p2p/reference/helpers',
 ];
 
 let totalUpdated = 0;
@@ -692,7 +692,7 @@ for (const dir of dirs) {
 }
 
 // CLI tool docs.
-const toolsDir = join(process.cwd(), 'content/bare/reference/tools');
+const toolsDir = join(process.cwd(), 'content/p2p/reference/tools');
 if (existsSync(toolsDir)) {
   for (const file of readdirSync(toolsDir).filter((f) => f.endsWith('.mdx'))) {
     const slug = basename(file, '.mdx');

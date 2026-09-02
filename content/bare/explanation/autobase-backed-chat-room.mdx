@@ -6,7 +6,7 @@ product: bare
 schemaType: TechArticle
 ---
 
-[`pear-chat`](https://github.com/holepunchto/pear-docs/tree/preview/examples/getting-started/pear-chat) is a real, production-shaped multi-writer chat room—the same scaffold [Reshape into a production app](/pear/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app) wires into an Electron shell, and the base every "Extend your chat app" how-to modifies. This page traces the worker-side P2P code itself: a [Corestore](/bare/reference/helpers/corestore) + [Hyperswarm](/bare/reference/building-blocks/hyperswarm) + [Autobase](/bare/reference/building-blocks/autobase) worker task, a `ChatRoom` built from Autobase and blind-pairing, and the generated schema that keeps them typed. None of this is Pear-specific—the same code runs identically in any Bare process.
+[`pear-chat`](https://github.com/holepunchto/pear-docs/tree/preview/examples/getting-started/pear-chat) is a real, production-shaped multi-writer chat room—the same scaffold [Reshape into a production app](/pear/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app) wires into an Electron shell, and the base every "Extend your chat app" how-to modifies. This page traces the worker-side P2P code itself: a [Corestore](/p2p/reference/helpers/corestore) + [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) + [Autobase](/p2p/reference/building-blocks/autobase) worker task, a `ChatRoom` built from Autobase and blind-pairing, and the generated schema that keeps them typed. None of this is Pear-specific—the same code runs identically in any Bare process.
 
 <Callout type="info">
 Clone the repo to follow along:
@@ -31,7 +31,7 @@ Open `workers/worker-task.js`. This is the worker's "main object"—it owns a Co
 
 The lifecycle is a canonical shape for this kind of worker:
 
-- **Construct (L9–L29)**—wire dependencies, do not perform I/O. The [Corestore](/bare/reference/helpers/corestore), [Hyperswarm](/bare/reference/building-blocks/hyperswarm), and `ChatRoom` are created. On every swarm `connection` the store replicates and the peer count ticks (L20–L24); the room's `update` event is wired to a debounced `_messages()` push (L27–L28).
+- **Construct (L9–L29)**—wire dependencies, do not perform I/O. The [Corestore](/p2p/reference/helpers/corestore), [Hyperswarm](/p2p/reference/building-blocks/hyperswarm), and `ChatRoom` are created. On every swarm `connection` the store replicates and the peer count ticks (L20–L24); the room's `update` event is wired to a debounced `_messages()` push (L27–L28).
 - **`_open()` (L31–L50)**—open the store and room, subscribe to incoming host IPC (JSON parsed off the pipe, L35–L45), then push the room's invite (L48) and the first batch of messages (L49) back.
 - **`_peers()` (L58–L61)**—every connect/disconnect writes a `{ type: 'peers', count }` frame.
 - **`_messages()` (L63–L67)**—read every message from the room, sort by timestamp, and write a `{ type: 'messages', messages }` frame. Runs once on open and again, debounced, on every room `update`.
@@ -42,8 +42,8 @@ The two additions over a bare-minimum worker are the **peer counter** and the **
 
 `workers/chat-room.js` is the actual peer-to-peer data structure. It combines four building blocks:
 
-- An [Autobase](/bare/reference/building-blocks/autobase) so multiple writers (each peer's local core) merge into one deterministic materialised view.
-- A [HyperDB](https://www.npmjs.com/package/hyperdb) view (a [Hyperbee](/bare/reference/building-blocks/hyperbee)-derived database) for the `messages` and `invites` tables.
+- An [Autobase](/p2p/reference/building-blocks/autobase) so multiple writers (each peer's local core) merge into one deterministic materialised view.
+- A [HyperDB](https://www.npmjs.com/package/hyperdb) view (a [Hyperbee](/p2p/reference/building-blocks/hyperbee)-derived database) for the `messages` and `invites` tables.
 - [HyperDispatch](https://www.npmjs.com/package/hyperdispatch) for typed Autobase `append` payloads (`@pear-chat/add-message`, `@pear-chat/add-writer`, `@pear-chat/add-invite`).
 - [`blind-pairing`](https://www.npmjs.com/package/blind-pairing) so a new peer joins with only a short invite code—the inviter never sees the joiner's key in plaintext.
 
@@ -89,7 +89,7 @@ The `spec/` directory holds **generated** code—that's why `npm run build` had 
 ```js file=<rootDir>/examples/getting-started/pear-chat/schema.js#L36-L48 title="schema.js — collections"
 ```
 
-`spec/dispatch/`—typed [Autobase](/bare/reference/building-blocks/autobase) append-payload encoders, one per record type:
+`spec/dispatch/`—typed [Autobase](/p2p/reference/building-blocks/autobase) append-payload encoders, one per record type:
 
 ```js file=<rootDir>/examples/getting-started/pear-chat/schema.js#L50-L55 title="schema.js — dispatch"
 ```
@@ -102,4 +102,4 @@ You do not normally edit files under `spec/`. To change a message shape or add a
 - [Structured RPC and schema-first design](/bare/explanation/rpc-and-schemas)—why schema-first design matters for peer-to-peer apps.
 - [Add blind peering to a chat app](/bare/how-to/blind-peering/add-blind-peering-to-a-chat-app)—keep this room online when its writers are offline.
 - [Host multiple rooms in one chat app](/bare/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app)—extend from one room to an account with many.
-- [Autobase reference](/bare/reference/building-blocks/autobase)—the multi-writer log API.
+- [Autobase reference](/p2p/reference/building-blocks/autobase)—the multi-writer log API.

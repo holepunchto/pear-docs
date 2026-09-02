@@ -71,9 +71,9 @@ const UPSTREAM_MAP: Record<string, string> = {
 
 /** The three reference subtrees included in the audit. */
 const CATEGORIES = [
-  { dir: 'content/bare/reference/building-blocks', type: 'library' as const },
-  { dir: 'content/bare/reference/helpers', type: 'library' as const },
-  { dir: 'content/bare/reference/tools', type: 'cli' as const },
+  { dir: 'content/p2p/reference/building-blocks', type: 'library' as const },
+  { dir: 'content/p2p/reference/helpers', type: 'library' as const },
+  { dir: 'content/p2p/reference/tools', type: 'cli' as const },
 ];
 
 /**

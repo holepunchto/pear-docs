@@ -99,9 +99,9 @@ const CURATED_CANONICALS: Canonical[] = [
 function buildCanonicals(files: string[]): Canonical[] {
   const fromTree: Canonical[] = [];
   const moduleDirs = [
-    '/bare/reference/building-blocks/',
-    '/bare/reference/helpers/',
-    '/bare/reference/tools/',
+    '/p2p/reference/building-blocks/',
+    '/p2p/reference/helpers/',
+    '/p2p/reference/tools/',
   ];
   for (const file of files) {
     const slug = fileToSlug(file);

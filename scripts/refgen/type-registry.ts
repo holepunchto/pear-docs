@@ -52,7 +52,7 @@ function routeForSlug(slug: string, dir = CONTENT_ROOT): string | null {
       const hit = routeForSlug(slug, p);
       if (hit) return hit;
     } else if (e === `${slug}.mdx`) {
-      // content/bare/reference/building-blocks/hypercore.mdx → /bare/reference/building-blocks/hypercore
+      // content/p2p/reference/building-blocks/hypercore.mdx → /p2p/reference/building-blocks/hypercore
       return '/' + p.replace(/^content\//, '').replace(/\.mdx$/, '');
     }
   }

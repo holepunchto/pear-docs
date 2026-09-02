@@ -3,17 +3,22 @@ import type { Node } from 'fumadocs-core/page-tree';
 /**
  * Bare's sidebar tree. Rendered by <DocsLayout> when the current URL starts
  * with `/bare` — see `src/app/(docs)/[[...slug]]/layout.tsx`. Sibling of
- * `pear-tree.ts`; both split off the single `customTree` that used to live in
- * `custom-tree.ts`. See docs/plans/PEAR-BARE-SPLIT-PITCH.md for the split
- * this backs, and its Phase 6 section for the physical content/pear +
- * content/bare reorg that gave every URL below its real /bare prefix.
+ * `pear-tree.ts` and `p2p-tree.ts`; all three split off the single
+ * `customTree` that used to live in `custom-tree.ts`. See
+ * docs/plans/PEAR-BARE-SPLIT-PITCH.md for the original 2-product split this
+ * backs. The peer-to-peer building blocks (Hypercore, Hyperswarm, Autobase,
+ * Hyperbee, Hyperdrive, HyperDHT), their helpers/tools, most of Bare's old
+ * how-to topic folders, and 4 explanation pages moved out to `p2p-tree.ts`
+ * in a follow-up split — they're independent repos with their own worked
+ * examples (mostly `pear-chat`/Electron, not Bare-standalone), not part of
+ * the Bare runtime itself.
  *
- * `external: true` marks the node that points at a page tagged
- * `product: shared` (troubleshooting). Per-page decision: no shared
- * content directory — that page physically lives under content/pear/ — so
- * from Bare's tree it renders as a plain, non-prefetched link into Pear's
- * URL space rather than pretending to be a Bare-native page. The How To and
- * Reference quadrant landings are Bare's own
+ * `external: true` marks nodes that point at pages tagged `product: shared`
+ * (troubleshooting) or that live in another product's tree entirely (P2P).
+ * Per-page decision: no shared content directory — troubleshooting
+ * physically lives under content/pear/ — so from Bare's tree it renders as
+ * a plain, non-prefetched link rather than pretending to be a Bare-native
+ * page. The How To and Reference quadrant landings are Bare's own
  * (content/bare/how-to/index.mdx, content/bare/reference/index.mdx), not
  * external.
  */
@@ -41,16 +46,6 @@ export const bareTree: Node[] = [
       },
       {
         type: 'page',
-        name: 'Peer-to-peer, demystified',
-        url: '/bare/explanation/peer-to-peer-demystified',
-      },
-      {
-        type: 'page',
-        name: 'Blind peering',
-        url: '/bare/explanation/blind-peering',
-      },
-      {
-        type: 'page',
         name: 'Native addons',
         url: '/bare/explanation/native-addons',
       },
@@ -61,13 +56,9 @@ export const bareTree: Node[] = [
       },
       {
         type: 'page',
-        name: 'A production Autobase-backed chat room',
-        url: '/bare/explanation/autobase-backed-chat-room',
-      },
-      {
-        type: 'page',
-        name: 'From append-only logs to files',
-        url: '/bare/explanation/from-logs-to-files',
+        name: 'How the stack fits together →',
+        url: '/p2p/explanation/how-the-stack-fits-together',
+        external: true,
       },
     ],
   },
@@ -77,119 +68,10 @@ export const bareTree: Node[] = [
     index: { type: 'page', name: 'How To', url: '/bare/how-to' },
     children: [
       {
-        type: 'folder',
-        name: 'Connect to peers',
-        index: { type: 'page', name: 'Connect to peers', url: '/bare/how-to/connect-to-peers' },
-        children: [
-          {
-            type: 'page',
-            name: 'Connect two peers by key with HyperDHT',
-            url: '/bare/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht',
-          },
-          {
-            type: 'page',
-            name: 'Connect to many peers by topic with Hyperswarm',
-            url: '/bare/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm',
-          },
-          {
-            type: 'page',
-            name: 'Host multiple rooms in one chat app',
-            url: '/bare/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app',
-          },
-        ],
-      },
-      {
-        type: 'folder',
-        name: 'Store and replicate',
-        index: { type: 'page', name: 'Store and replicate', url: '/bare/how-to/store-and-replicate' },
-        children: [
-          {
-            type: 'page',
-            name: 'Replicate and persist with Hypercore',
-            url: '/bare/how-to/store-and-replicate/replicate-and-persist-with-hypercore',
-          },
-          {
-            type: 'page',
-            name: 'Work with many Hypercores using Corestore',
-            url: '/bare/how-to/store-and-replicate/work-with-many-hypercores-using-corestore',
-          },
-          {
-            type: 'page',
-            name: 'Share append-only databases with Hyperbee',
-            url: '/bare/how-to/store-and-replicate/share-append-only-databases-with-hyperbee',
-          },
-        ],
-      },
-      {
-        type: 'folder',
-        name: 'Blind peering',
-        index: { type: 'page', name: 'Blind peering', url: '/bare/how-to/blind-peering' },
-        children: [
-          {
-            type: 'page',
-            name: 'Keep data available with blind peering',
-            url: '/bare/how-to/blind-peering/keep-data-available-with-blind-peering',
-          },
-          {
-            type: 'page',
-            name: 'Add blind peering to a chat app',
-            url: '/bare/how-to/blind-peering/add-blind-peering-to-a-chat-app',
-          },
-        ],
-      },
-      {
-        type: 'folder',
-        name: 'Manage identity',
-        index: { type: 'page', name: 'Manage identity', url: '/bare/how-to/manage-identity' },
-        children: [
-          {
-            type: 'page',
-            name: 'Create a portable identity with Keet identity keys',
-            url: '/bare/how-to/manage-identity/create-a-portable-identity-with-keet-identity-key',
-          },
-          {
-            type: 'page',
-            name: 'Add Keet identity to a chat app',
-            url: '/bare/how-to/manage-identity/add-keet-identity-to-a-chat-app',
-          },
-        ],
-      },
-      {
-        type: 'folder',
-        name: 'Stream and share media',
-        index: { type: 'page', name: 'Stream and share media', url: '/bare/how-to/stream-and-share-media' },
-        children: [
-          {
-            type: 'page',
-            name: 'Create a full peer-to-peer filesystem with Hyperdrive',
-            url: '/bare/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive',
-          },
-          {
-            type: 'page',
-            name: 'Store and serve large media with Hyperblobs',
-            url: '/bare/how-to/stream-and-share-media/store-and-serve-large-media-with-hyperblobs',
-          },
-          {
-            type: 'page',
-            name: 'Share files in a peer-to-peer app',
-            url: '/bare/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app',
-          },
-          {
-            type: 'page',
-            name: 'Back up photos in a peer-to-peer app',
-            url: '/bare/how-to/stream-and-share-media/back-up-photos-in-a-peer-to-peer-app',
-          },
-          {
-            type: 'page',
-            name: 'Stream stored video in a peer-to-peer app',
-            url: '/bare/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app',
-          },
-          {
-            type: 'page',
-            name: 'Stream a live camera in a peer-to-peer app',
-            url: '/bare/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app',
-          },
-        ],
+        type: 'page',
+        name: 'Connect peers, replicate data, share media →',
+        url: '/p2p/how-to',
+        external: true,
       },
       {
         type: 'folder',
@@ -342,101 +224,6 @@ export const bareTree: Node[] = [
       },
       {
         type: 'folder',
-        name: 'Building blocks',
-        children: [
-          {
-            type: 'page',
-            name: 'Hypercore',
-            url: '/bare/reference/building-blocks/hypercore',
-          },
-          {
-            type: 'page',
-            name: 'Hyperbee',
-            url: '/bare/reference/building-blocks/hyperbee',
-          },
-          {
-            type: 'page',
-            name: 'Hyperdrive',
-            url: '/bare/reference/building-blocks/hyperdrive',
-          },
-          {
-            type: 'page',
-            name: 'Autobase',
-            url: '/bare/reference/building-blocks/autobase',
-          },
-          {
-            type: 'page',
-            name: 'HyperDHT',
-            url: '/bare/reference/building-blocks/hyperdht',
-          },
-          {
-            type: 'page',
-            name: 'Hyperswarm',
-            url: '/bare/reference/building-blocks/hyperswarm',
-          },
-        ],
-      },
-      {
-        type: 'folder',
-        name: 'Helpers',
-        children: [
-          {
-            type: 'page',
-            name: 'Corestore',
-            url: '/bare/reference/helpers/corestore',
-          },
-          {
-            type: 'page',
-            name: 'Localdrive',
-            url: '/bare/reference/helpers/localdrive',
-          },
-          {
-            type: 'page',
-            name: 'Mirrordrive',
-            url: '/bare/reference/helpers/mirrordrive',
-          },
-          {
-            type: 'page',
-            name: 'Secretstream',
-            url: '/bare/reference/helpers/secretstream',
-          },
-          {
-            type: 'page',
-            name: 'Compact encoding',
-            url: '/bare/reference/helpers/compact-encoding',
-          },
-          {
-            type: 'page',
-            name: 'Protomux',
-            url: '/bare/reference/helpers/protomux',
-          },
-        ],
-      },
-      {
-        type: 'folder',
-        name: 'Tools',
-        children: [
-          {
-            type: 'page',
-            name: 'Hypershell',
-            url: '/bare/reference/tools/hypershell',
-          },
-          {
-            type: 'page',
-            name: 'Hypertele',
-            url: '/bare/reference/tools/hypertele',
-          },
-          {
-            type: 'page',
-            name: 'Hyperbeam',
-            url: '/bare/reference/tools/hyperbeam',
-          },
-          { type: 'page', name: 'Hyperssh', url: '/bare/reference/tools/hyperssh' },
-          { type: 'page', name: 'Drives', url: '/bare/reference/tools/drives' },
-        ],
-      },
-      {
-        type: 'folder',
         name: 'Modules',
         children: [
           {
@@ -445,6 +232,12 @@ export const bareTree: Node[] = [
             url: '/bare/reference/modules/bare-modules',
           },
         ],
+      },
+      {
+        type: 'page',
+        name: 'Building blocks, helpers & tools →',
+        url: '/p2p/reference',
+        external: true,
       },
     ],
   },

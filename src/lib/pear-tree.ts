@@ -2,15 +2,18 @@ import type { Node } from 'fumadocs-core/page-tree';
 
 /**
  * Pear's sidebar tree. Rendered by <DocsLayout> whenever the current URL
- * does NOT start with `/bare` (i.e. `/`, or anything under `/pear`) — see
- * `src/app/(docs)/[[...slug]]/layout.tsx`. Sibling of `bare-tree.ts`; both
- * split off the single `customTree` that used to live in `custom-tree.ts`.
- * See docs/plans/PEAR-BARE-SPLIT-PITCH.md for the split this backs, and its
- * Phase 6 section for the physical content/pear + content/bare reorg that
- * gave every URL below (except the site root, `/`) its real /pear prefix.
- * Pages tagged `product: shared` live here too — no separate shared
- * directory — with an `external: true` cross-link from bare-tree.ts where
- * Bare's own nav needs to reach them.
+ * does NOT start with `/bare` or `/p2p` (i.e. `/`, or anything under
+ * `/pear`) — see `src/app/(docs)/[[...slug]]/layout.tsx`. Sibling of
+ * `bare-tree.ts` and `p2p-tree.ts`; all three split off the single
+ * `customTree` that used to live in `custom-tree.ts`. See
+ * docs/plans/PEAR-BARE-SPLIT-PITCH.md for the original 2-product split this
+ * backs. Pear narrowed further in a follow-up split: the whole
+ * `build-a-peer-to-peer-chat`/`from-a-template` Getting Started tutorial
+ * moved to `p2p-tree.ts` (it teaches P2P building blocks, not CLI
+ * mechanics), leaving Pear's own Getting Started a short "install +
+ * ship an existing app" page. Pages tagged `product: shared` live here too
+ * — no separate shared directory — with an `external: true` cross-link from
+ * bare-tree.ts/p2p-tree.ts where those trees need to reach them.
  *
  * Conventions (same as the pre-split tree):
  *   - Order goes simple → complex.
@@ -22,46 +25,9 @@ import type { Node } from 'fumadocs-core/page-tree';
 export const pearTree: Node[] = [
   { type: 'page', name: 'Pear', url: '/' },
   {
-    type: 'folder',
+    type: 'page',
     name: 'Getting Started',
-    index: {
-      type: 'page',
-      name: 'Introduction',
-      url: '/pear/getting-started',
-    },
-    children: [
-      {
-        type: 'folder',
-        name: 'Build a peer-to-peer chat',
-        children: [
-          { type: 'page', name: 'Introduction', url: '/pear/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat' },
-          { type: 'page', name: 'Reshape into a production app', url: '/pear/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app' },
-          { type: 'page', name: 'Ship your app', url: '/pear/getting-started/build-a-peer-to-peer-chat/ship' },
-          { type: 'page', name: 'Deploy over-the-air updates', url: '/pear/getting-started/build-a-peer-to-peer-chat/update' },
-        ],
-      },
-      {
-        type: 'folder',
-        name: 'Start from a template',
-        index: {
-          type: 'page',
-          name: 'Start from a template',
-          url: '/pear/getting-started/from-a-template',
-        },
-        children: [
-          {
-            type: 'page',
-            name: 'Start from the hello-pear-electron template',
-            url: '/pear/getting-started/from-a-template/start-from-hello-pear-electron',
-          },
-          {
-            type: 'page',
-            name: 'Start from the hello-pear-bare template',
-            url: '/pear/getting-started/from-a-template/start-from-hello-pear-bare',
-          },
-        ],
-      },
-    ],
+    url: '/pear/getting-started',
   },
   {
     type: 'folder',
@@ -74,8 +40,9 @@ export const pearTree: Node[] = [
         children: [
           {
             type: 'page',
-            name: 'How Pear and Bare fit together',
-            url: '/pear/explanation/pear-and-bare',
+            name: 'How the stack fits together →',
+            url: '/p2p/explanation/how-the-stack-fits-together',
+            external: true,
           },
           {
             type: 'page',
@@ -312,7 +279,12 @@ export const pearTree: Node[] = [
           },
           {
             type: 'page',
-            name: 'Bare modules & building blocks →',
+            name: 'Building blocks & helpers →',
+            url: '/p2p/reference',
+          },
+          {
+            type: 'page',
+            name: 'Bare modules →',
             url: '/bare',
           },
         ],

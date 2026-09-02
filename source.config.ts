@@ -48,8 +48,11 @@ const docTypeSchema = z.enum([
 // Which product nav root(s) a page belongs to. Orthogonal to docType (which
 // quadrant) — this is which sidebar.tabs tree(s) surface the page. 'shared'
 // pages (e.g. troubleshooting) are listed in both trees. See
-// docs/plans/PEAR-BARE-SPLIT-PITCH.md for the split this backs.
-const productSchema = z.enum(['pear', 'bare', 'shared']);
+// docs/plans/PEAR-BARE-SPLIT-PITCH.md for the 2-product split this backs.
+// 'p2p' added for the follow-up 3-product split: the building blocks
+// (Hypercore, Hyperswarm, Autobase, ...) and their how-tos/Getting Started
+// moved out of Bare into their own root — see git history for the pitch.
+const productSchema = z.enum(['pear', 'bare', 'p2p', 'shared']);
 
 const tetherSeoFrontmatterSchema = z.object({
   description: z

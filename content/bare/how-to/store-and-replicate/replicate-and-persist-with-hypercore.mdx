@@ -12,10 +12,10 @@ schemaType: TechArticle
 
 In this guide you'll extend the ephemeral chat example in [Connect Many Peers](/bare/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm) by using Hypercore to add two significant new features:
 
-* **Persistence**: The owner of the Hypercore can add messages at any time, and they'll be persisted to disk. Whenever they come online, readers can replicate these messages over [Hyperswarm](/bare/reference/building-blocks/hyperswarm).
-* **Many Readers:** New messages added to the Hypercore will be broadcast to interested readers. The owner gives each reader a reading capability ([`core.key`](/bare/reference/building-blocks/hypercore#corekey)) and a corresponding discovery key ([`core.discoveryKey`](/bare/reference/building-blocks/hypercore#corediscoverykey)). The former is used to authorize the reader, ensuring that they have permission to read messages, and the latter is used to discover the owner (and other readers) on the swarm.
+* **Persistence**: The owner of the Hypercore can add messages at any time, and they'll be persisted to disk. Whenever they come online, readers can replicate these messages over [Hyperswarm](/p2p/reference/building-blocks/hyperswarm).
+* **Many Readers:** New messages added to the Hypercore will be broadcast to interested readers. The owner gives each reader a reading capability ([`core.key`](/p2p/reference/building-blocks/hypercore#corekey)) and a corresponding discovery key ([`core.discoveryKey`](/p2p/reference/building-blocks/hypercore#corediscoverykey)). The former is used to authorize the reader, ensuring that they have permission to read messages, and the latter is used to discover the owner (and other readers) on the swarm.
 
-[`Hypercore`](/bare/reference/building-blocks/hypercore) is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. 
+[`Hypercore`](/p2p/reference/building-blocks/hypercore) is a secure, distributed append-only log. It is built for sharing enormous datasets and streams of real-time data. 
 It has a secure transport protocol, making it easy to build fast and scalable peer-to-peer applications.
 
 The following example consists of two Pear Terminal Applications: [`writer-app`](#create-the-writer-app) and [`reader-app`](#create-the-reader-app).
@@ -25,7 +25,7 @@ When these two applications are opened, two peers are created and connected to e
 
 ## Create the writer app
 
-The `writer-app` stores command-line input to a Hypercore instance and replicates that instance to other peers over [Hyperswarm](/bare/reference/building-blocks/hyperswarm).
+The `writer-app` stores command-line input to a Hypercore instance and replicates that instance to other peers over [Hyperswarm](/p2p/reference/building-blocks/hyperswarm).
 
 ### Create the writer-app directory and add dependencies
 
@@ -43,15 +43,15 @@ This command installs the following dependencies:
 
 - [`bare-path`](https://www.npmjs.com/package/bare-path): A module for working with paths.
 - [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
-- [`hyperswarm`](/bare/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
-- [`hypercore`](/bare/reference/building-blocks/hypercore): A module for working with Hypercore.
+- [`hyperswarm`](/p2p/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`hypercore`](/p2p/reference/building-blocks/hypercore): A module for working with Hypercore.
 - [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
 
 ### Add the app logic
 
 Create the `writer-app/index.js` file with the following content.
 
-The writer creates a Hyperswarm and destroys it cleanly on `SIGINT` (L8–L9), then opens a local Hypercore backed by `./storage/writer-storage` (L11). `core.key` and `core.discoveryKey` are only available after [`core.ready()`](/bare/reference/building-blocks/hypercore#await-coreready) resolves, so it awaits that before logging the hex-encoded key readers will need (L14–L15). Every chunk of stdin is appended as its own block (L18). Finally it joins the swarm on the `discoveryKey` and replicates the core to each incoming connection (L22–L23):
+The writer creates a Hyperswarm and destroys it cleanly on `SIGINT` (L8–L9), then opens a local Hypercore backed by `./storage/writer-storage` (L11). `core.key` and `core.discoveryKey` are only available after [`core.ready()`](/p2p/reference/building-blocks/hypercore#await-coreready) resolves, so it awaits that before logging the hex-encoded key readers will need (L14–L15). Every chunk of stdin is appended as its own block (L18). Finally it joins the swarm on the `discoveryKey` and replicates the core to each incoming connection (L22–L23):
 
 ```javascript file=<rootDir>/examples/how-to/store-and-replicate/replicate-and-persist-with-hypercore/writer-app/index.js title="writer-app/index.js" lineNumbers {8-9,11,14-15,18,22-23} skip="example-import"
 ```
@@ -78,14 +78,14 @@ This command installs the following dependencies:
 
 - [`bare-path`](https://www.npmjs.com/package/bare-path): A module for working with paths.
 - [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
-- [`hyperswarm`](/bare/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
-- [`hypercore`](/bare/reference/building-blocks/hypercore): A module for working with Hypercore.
+- [`hyperswarm`](/p2p/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`hypercore`](/p2p/reference/building-blocks/hypercore): A module for working with Hypercore.
 
 ### Add the reader-app logic
 
 Create the `reader-app/index.js` file with the following content.
 
-Like the writer, the reader sets up a Hyperswarm with `SIGINT` cleanup (L7–L8). It opens its Hypercore with the writer's key passed on the command line (`Bare.argv[2]`), which makes it a read-only replica, and awaits `core.ready()` (L10–L11). It joins the swarm on the same `discoveryKey` and replicates over each connection (L13–L14), then [`swarm.flush()`](/bare/reference/building-blocks/hyperswarm#await-swarmflush) waits until all discoverable peers are connected (L17) before [`core.update()`](/bare/reference/building-blocks/hypercore#await-coreupdateoptions) pulls the latest length from the writer (L19). It records the current [`core.length`](/bare/reference/building-blocks/hypercore#corelength) and tails the core from that point with a live read stream, logging each new block as it arrives (L21–L24):
+Like the writer, the reader sets up a Hyperswarm with `SIGINT` cleanup (L7–L8). It opens its Hypercore with the writer's key passed on the command line (`Bare.argv[2]`), which makes it a read-only replica, and awaits `core.ready()` (L10–L11). It joins the swarm on the same `discoveryKey` and replicates over each connection (L13–L14), then [`swarm.flush()`](/p2p/reference/building-blocks/hyperswarm#await-swarmflush) waits until all discoverable peers are connected (L17) before [`core.update()`](/p2p/reference/building-blocks/hypercore#await-coreupdateoptions) pulls the latest length from the writer (L19). It records the current [`core.length`](/p2p/reference/building-blocks/hypercore#corelength) and tails the core from that point with a live read stream, logging each new block as it arrives (L21–L24):
 
 ```javascript file=<rootDir>/examples/how-to/store-and-replicate/replicate-and-persist-with-hypercore/reader-app/index.js title="reader-app/index.js" lineNumbers {7-8,10-11,13-14,17,19,21-24} skip="example-import"
 ```
@@ -100,7 +100,7 @@ In one terminal, run `writer-app` with `bare`:
 bare writer-app
 ```
 
-The `writer-app` will output the [Hypercore](/bare/reference/building-blocks/hypercore) key.
+The `writer-app` will output the [Hypercore](/p2p/reference/building-blocks/hypercore) key.
 
 In another terminal, open the `reader-app` and pass it the key:
 
@@ -116,8 +116,8 @@ As inputs are made to the terminal running the writer application, outputs shoul
 ## See also
 
 - [Work with many Hypercores using Corestore](/bare/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended pattern when you need more than one core per process.
-- [From append-only logs to files](/bare/explanation/from-logs-to-files)—how Hypercore, Hyperblobs, and [Hyperdrive](/bare/reference/building-blocks/hyperdrive) relate.
+- [From append-only logs to files](/bare/explanation/from-logs-to-files)—how Hypercore, Hyperblobs, and [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) relate.
 - [Share append-only databases with Hyperbee](/bare/how-to/store-and-replicate/share-append-only-databases-with-hyperbee)—key/value store built on Hypercore.
 - [Storage and distribution](/pear/explanation/storage-and-distribution)—where these cores live on disk.
-- [Hypercore reference](/bare/reference/building-blocks/hypercore)—full API for the append-only log used in this guide.
-- [Hyperswarm reference](/bare/reference/building-blocks/hyperswarm)—full API for the topic-based discovery and replication used here.
+- [Hypercore reference](/p2p/reference/building-blocks/hypercore)—full API for the append-only log used in this guide.
+- [Hyperswarm reference](/p2p/reference/building-blocks/hyperswarm)—full API for the topic-based discovery and replication used here.

@@ -97,29 +97,29 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
     }
   }
 
-  // Building-block reference docs live at /bare/reference/building-blocks/<slug>/
+  // Building-block reference docs live at /p2p/reference/building-blocks/<slug>/
   // (100% Bare-tagged — see docs/plans/PEAR-BARE-SPLIT-PITCH.md). Keep
   // /building-blocks/<slug>/ as a legacy path only.
-  for (const slug of listSlugs(`${contentRoot}/bare/reference/building-blocks`)) {
+  for (const slug of listSlugs(`${contentRoot}/p2p/reference/building-blocks`)) {
     out.push({
       from: withSlash(`/building-blocks/${slug}`),
-      to: withSlash(`/bare/reference/building-blocks/${slug}`),
+      to: withSlash(`/p2p/reference/building-blocks/${slug}`),
     });
   }
 
-  // /helpers/<slug>/  ->  /bare/reference/helpers/<slug>/
-  for (const slug of listSlugs(`${contentRoot}/bare/reference/helpers`)) {
+  // /helpers/<slug>/  ->  /p2p/reference/helpers/<slug>/
+  for (const slug of listSlugs(`${contentRoot}/p2p/reference/helpers`)) {
     out.push({
       from: withSlash(`/helpers/${slug}`),
-      to: withSlash(`/bare/reference/helpers/${slug}`),
+      to: withSlash(`/p2p/reference/helpers/${slug}`),
     });
   }
 
-  // /tools/<slug>/  ->  /bare/reference/tools/<slug>/
-  for (const slug of listSlugs(`${contentRoot}/bare/reference/tools`)) {
+  // /tools/<slug>/  ->  /p2p/reference/tools/<slug>/
+  for (const slug of listSlugs(`${contentRoot}/p2p/reference/tools`)) {
     out.push({
       from: withSlash(`/tools/${slug}`),
-      to: withSlash(`/bare/reference/tools/${slug}`),
+      to: withSlash(`/p2p/reference/tools/${slug}`),
     });
   }
 
@@ -430,32 +430,32 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/reference/bare/modules/bare-ws'), to: withSlash('/bare/reference/bare/modules/bare-ws') });
   out.push({ from: withSlash('/reference/bare/modules/bare-zlib'), to: withSlash('/bare/reference/bare/modules/bare-zlib') });
   out.push({ from: withSlash('/reference/bare/runtime'), to: withSlash('/bare/reference/bare/runtime') });
-  out.push({ from: withSlash('/reference/building-blocks/autobase'), to: withSlash('/bare/reference/building-blocks/autobase') });
-  out.push({ from: withSlash('/reference/building-blocks/hyperbee'), to: withSlash('/bare/reference/building-blocks/hyperbee') });
-  out.push({ from: withSlash('/reference/building-blocks/hypercore'), to: withSlash('/bare/reference/building-blocks/hypercore') });
-  out.push({ from: withSlash('/reference/building-blocks/hyperdht'), to: withSlash('/bare/reference/building-blocks/hyperdht') });
-  out.push({ from: withSlash('/reference/building-blocks/hyperdrive'), to: withSlash('/bare/reference/building-blocks/hyperdrive') });
-  out.push({ from: withSlash('/reference/building-blocks/hyperswarm'), to: withSlash('/bare/reference/building-blocks/hyperswarm') });
+  out.push({ from: withSlash('/reference/building-blocks/autobase'), to: withSlash('/p2p/reference/building-blocks/autobase') });
+  out.push({ from: withSlash('/reference/building-blocks/hyperbee'), to: withSlash('/p2p/reference/building-blocks/hyperbee') });
+  out.push({ from: withSlash('/reference/building-blocks/hypercore'), to: withSlash('/p2p/reference/building-blocks/hypercore') });
+  out.push({ from: withSlash('/reference/building-blocks/hyperdht'), to: withSlash('/p2p/reference/building-blocks/hyperdht') });
+  out.push({ from: withSlash('/reference/building-blocks/hyperdrive'), to: withSlash('/p2p/reference/building-blocks/hyperdrive') });
+  out.push({ from: withSlash('/reference/building-blocks/hyperswarm'), to: withSlash('/p2p/reference/building-blocks/hyperswarm') });
   out.push({ from: withSlash('/reference/ci-and-release/desktop-release-npm-scripts'), to: withSlash('/pear/reference/ci-and-release/desktop-release-npm-scripts') });
   out.push({ from: withSlash('/reference/ci-and-release/github-actions'), to: withSlash('/pear/reference/ci-and-release/github-actions') });
   out.push({ from: withSlash('/reference/ci-and-release/pear-ci-action'), to: withSlash('/pear/reference/ci-and-release/pear-ci-action') });
-  out.push({ from: withSlash('/reference/helpers/compact-encoding'), to: withSlash('/bare/reference/helpers/compact-encoding') });
-  out.push({ from: withSlash('/reference/helpers/corestore'), to: withSlash('/bare/reference/helpers/corestore') });
-  out.push({ from: withSlash('/reference/helpers/localdrive'), to: withSlash('/bare/reference/helpers/localdrive') });
-  out.push({ from: withSlash('/reference/helpers/mirrordrive'), to: withSlash('/bare/reference/helpers/mirrordrive') });
-  out.push({ from: withSlash('/reference/helpers/protomux'), to: withSlash('/bare/reference/helpers/protomux') });
-  out.push({ from: withSlash('/reference/helpers/secretstream'), to: withSlash('/bare/reference/helpers/secretstream') });
+  out.push({ from: withSlash('/reference/helpers/compact-encoding'), to: withSlash('/p2p/reference/helpers/compact-encoding') });
+  out.push({ from: withSlash('/reference/helpers/corestore'), to: withSlash('/p2p/reference/helpers/corestore') });
+  out.push({ from: withSlash('/reference/helpers/localdrive'), to: withSlash('/p2p/reference/helpers/localdrive') });
+  out.push({ from: withSlash('/reference/helpers/mirrordrive'), to: withSlash('/p2p/reference/helpers/mirrordrive') });
+  out.push({ from: withSlash('/reference/helpers/protomux'), to: withSlash('/p2p/reference/helpers/protomux') });
+  out.push({ from: withSlash('/reference/helpers/secretstream'), to: withSlash('/p2p/reference/helpers/secretstream') });
   out.push({ from: withSlash('/reference/modules/bare-modules'), to: withSlash('/bare/reference/modules/bare-modules') });
   out.push({ from: withSlash('/reference/modules/pear-modules'), to: withSlash('/pear/reference/modules/pear-modules') });
   out.push({ from: withSlash('/reference/pear/api'), to: withSlash('/pear/reference/pear/api') });
   out.push({ from: withSlash('/reference/pear/cli'), to: withSlash('/pear/reference/pear/cli') });
   out.push({ from: withSlash('/reference/pear/configuration'), to: withSlash('/pear/reference/pear/configuration') });
   out.push({ from: withSlash('/reference/pear/runtime'), to: withSlash('/pear/reference/pear/runtime') });
-  out.push({ from: withSlash('/reference/tools/drives'), to: withSlash('/bare/reference/tools/drives') });
-  out.push({ from: withSlash('/reference/tools/hyperbeam'), to: withSlash('/bare/reference/tools/hyperbeam') });
-  out.push({ from: withSlash('/reference/tools/hypershell'), to: withSlash('/bare/reference/tools/hypershell') });
-  out.push({ from: withSlash('/reference/tools/hyperssh'), to: withSlash('/bare/reference/tools/hyperssh') });
-  out.push({ from: withSlash('/reference/tools/hypertele'), to: withSlash('/bare/reference/tools/hypertele') });
+  out.push({ from: withSlash('/reference/tools/drives'), to: withSlash('/p2p/reference/tools/drives') });
+  out.push({ from: withSlash('/reference/tools/hyperbeam'), to: withSlash('/p2p/reference/tools/hyperbeam') });
+  out.push({ from: withSlash('/reference/tools/hypershell'), to: withSlash('/p2p/reference/tools/hypershell') });
+  out.push({ from: withSlash('/reference/tools/hyperssh'), to: withSlash('/p2p/reference/tools/hyperssh') });
+  out.push({ from: withSlash('/reference/tools/hypertele'), to: withSlash('/p2p/reference/tools/hypertele') });
   out.push({ from: withSlash('/release-overview'), to: withSlash('/pear/release-overview') });
 
   // --- Pear/Bare re-scoping: pages that were briefly at /pear/... under the
