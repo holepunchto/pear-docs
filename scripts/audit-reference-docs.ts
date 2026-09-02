@@ -2,8 +2,9 @@
  * Reference docs accuracy audit (Phase 2–4 helper for the review plan).
  *
  * This script supports the manual API/CLI review of the 17 reference pages under
- * `content/bare/reference/{building-blocks,helpers,tools}/` (moved from
- * `content/reference/...` in the Phase 6 physical reorg — see
+ * `content/p2p/reference/{building-blocks,helpers,tools}/` (moved from
+ * `content/reference/...` in the Phase 6 physical reorg, then from
+ * `content/bare/reference/...` in the follow-up 3-product split — see
  * docs/plans/PEAR-BARE-SPLIT-PITCH.md). It does not replace reading
  * upstream READMEs or running quickstarts; it automates the first pass:
  *

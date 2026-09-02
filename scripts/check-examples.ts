@@ -42,14 +42,16 @@ import { join, dirname, resolve, delimiter } from 'node:path';
 import { spawn, ChildProcess, spawnSync } from 'node:child_process';
 import { CONTENT_DIR, getFiles } from './helpers';
 
-// How-to pages split across content/pear/how-to/** and content/bare/how-to/**
-// since the Phase 6 physical reorg (docs/plans/PEAR-BARE-SPLIT-PITCH.md).
-// HOW_TO_DIR stays for messaging only; getHowToFiles() merges both trees.
-const HOW_TO_DIR = `${CONTENT_DIR}/{pear,bare}/how-to`;
+// How-to pages split across content/{pear,bare,p2p}/how-to/** since the
+// Phase 6 physical reorg (docs/plans/PEAR-BARE-SPLIT-PITCH.md) and the
+// follow-up 3-product split. HOW_TO_DIR stays for messaging only;
+// getHowToFiles() merges all three trees.
+const HOW_TO_DIR = `${CONTENT_DIR}/{pear,bare,p2p}/how-to`;
 async function getHowToFiles(): Promise<string[]> {
   return [
     ...(await getFiles(join(CONTENT_DIR, 'pear', 'how-to'))),
     ...(await getFiles(join(CONTENT_DIR, 'bare', 'how-to'))),
+    ...(await getFiles(join(CONTENT_DIR, 'p2p', 'how-to'))),
   ];
 }
 const TMP_DIR = '.examples-tmp';

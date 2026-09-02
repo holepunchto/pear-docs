@@ -23,11 +23,11 @@ app to update from). The `pear.stage.*` block (`entrypoints`, `ignore`,
 `only`, `purge`) controls what `pear stage` syncs — there is no `pear.type`
 or `permissions` field.
 
-Getting-started path: https://docs.pears.com/getting-started/
+Getting-started path: https://docs.pears.com/p2p/getting-started/
 Full walkthrough (build a P2P chat app end to end):
-https://docs.pears.com/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat/
+https://docs.pears.com/p2p/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat/
 Desktop architecture (main/renderer/worker split):
-https://docs.pears.com/explanation/pear-desktop-architecture/
+https://docs.pears.com/pear/explanation/pear-desktop-architecture/
 Terminal template (hello-pear-bare):
-https://docs.pears.com/getting-started/from-a-template/start-from-hello-pear-bare/
-Configuration reference: https://docs.pears.com/reference/pear/configuration/
+https://docs.pears.com/p2p/getting-started/from-a-template/start-from-hello-pear-bare/
+Configuration reference: https://docs.pears.com/pear/reference/pear/configuration/

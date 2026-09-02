@@ -38,11 +38,20 @@ import { VERSION_AXES } from '../src/lib/version-axes';
 
 const exec = promisify(execFile);
 
-/** Only reference pages track an upstream release. */
+/**
+ * Only reference pages track an upstream release.
+ *
+ * Pre-existing bug fixed here, unrelated to the P2P split: these paths were
+ * missing their product-prefix segment entirely since the original 2-product
+ * physical reorg (content/reference/building-blocks/ never existed — it was
+ * always content/bare/reference/building-blocks/), so this script silently
+ * audited zero building-blocks/helpers pages via the try/catch below. Now
+ * pointed at the current, correct locations post the P2P split.
+ */
 const REFERENCE_GLOBS = [
-  `${CONTENT_DIR}/reference/building-blocks`,
-  `${CONTENT_DIR}/reference/helpers`,
-  `${CONTENT_DIR}/reference/bare`,
+  `${CONTENT_DIR}/p2p/reference/building-blocks`,
+  `${CONTENT_DIR}/p2p/reference/helpers`,
+  `${CONTENT_DIR}/bare/reference/bare`,
 ];
 
 /**

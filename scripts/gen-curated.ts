@@ -36,9 +36,9 @@ const REFS_DIR = 'generated/refs';
 // Since the Phase 6 physical reorg (docs/plans/PEAR-BARE-SPLIT-PITCH.md),
 // reference pages live under content/{pear,bare}/reference/ instead of a
 // single content/reference/. Every manifest today targets a building-block/
-// helper (all `product: bare`), but search both roots so this doesn't
+// helper (all `product: p2p`), but search all three roots so this doesn't
 // silently stop finding a page if that ever changes.
-const CONTENT_ROOTS = ['content/bare/reference', 'content/pear/reference'];
+const CONTENT_ROOTS = ['content/p2p/reference', 'content/bare/reference', 'content/pear/reference'];
 
 /** Slugs that have a layout manifest. */
 function manifestSlugs(): string[] {
