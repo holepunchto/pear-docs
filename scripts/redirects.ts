@@ -285,7 +285,7 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/explanation/bare-runtime'), to: withSlash('/bare/explanation/bare-runtime') });
   out.push({ from: withSlash('/explanation/dependencies-and-network'), to: withSlash('/pear/explanation/dependencies-and-network') });
   out.push({ from: withSlash('/explanation/deployment-releasing-apps-p2p'), to: withSlash('/pear/explanation/deployment-releasing-apps-p2p') });
-  out.push({ from: withSlash('/explanation/from-logs-to-files'), to: withSlash('/bare/explanation/from-logs-to-files') });
+  out.push({ from: withSlash('/explanation/from-logs-to-files'), to: withSlash('/p2p/explanation/from-logs-to-files') });
   out.push({ from: withSlash('/explanation/migrating-from-nodejs'), to: withSlash('/bare/explanation/migrating-from-nodejs') });
   out.push({ from: withSlash('/explanation/pear-desktop-architecture'), to: withSlash('/pear/explanation/pear-desktop-architecture') });
   out.push({ from: withSlash('/explanation/peer-to-peer-demystified'), to: withSlash('/pear/explanation/peer-to-peer-demystified') });
@@ -462,7 +462,7 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // Phase 6 prefixing above, then reclassified to Bare because their content
   // is peer-to-peer app logic (Hyperswarm/Autobase/Hyperdrive/keet-identity-key)
   // rather than a pear CLI/pear-* module action. See docs/plans/PEAR-BARE-SPLIT-PITCH.md.
-  out.push({ from: withSlash('/pear/explanation/peer-to-peer-demystified'), to: withSlash('/bare/explanation/peer-to-peer-demystified') });
+  out.push({ from: withSlash('/pear/explanation/peer-to-peer-demystified'), to: withSlash('/p2p/explanation/peer-to-peer-demystified') });
   out.push({ from: withSlash('/pear/how-to/blind-peering'), to: withSlash('/p2p/how-to/blind-peering') });
   out.push({ from: withSlash('/pear/how-to/blind-peering/add-blind-peering-to-a-chat-app'), to: withSlash('/p2p/how-to/blind-peering/add-blind-peering-to-a-chat-app') });
   out.push({ from: withSlash('/pear/how-to/connect-to-peers'), to: withSlash('/p2p/how-to/connect-to-peers') });
