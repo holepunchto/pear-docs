@@ -2,69 +2,98 @@ import Link from 'next/link';
 import { ArrowDown, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
-export type ProductKey = 'pear' | 'bare';
+export type ProductKey = 'pear' | 'p2p' | 'bare';
 
-interface Product { name: string; href: string; tagline: string; blurb: string }
+interface Product { key: ProductKey; name: string; href: string; tagline: string; blurb: string }
 
 /**
  * Hrefs live here, matching product-switcher.tsx. Note: check-internal-links
  * only walks content/, so these are NOT link-checked — every page rendering
  * this also carries the same destinations as checked prose links.
+ *
+ * Order is the dependency chain, top to bottom: Pear depends on both P2P
+ * and Bare; P2P depends on Bare. Bare depends on nothing here.
  */
-const PRODUCTS: Record<ProductKey, Product> = {
-  pear: {
+const TIERS: Product[] = [
+  {
+    key: 'pear',
     name: 'Pear',
     href: '/',
     tagline: 'The peer-to-peer platform',
     blurb:
       'Runtime, CLI, and over-the-air updates for building, sharing, and updating peer-to-peer apps on desktop, mobile, and terminal.',
   },
-  bare: {
+  {
+    key: 'p2p',
+    name: 'P2P',
+    href: '/p2p',
+    tagline: 'The peer-to-peer building blocks',
+    blurb:
+      'Hypercore, Hyperswarm, Autobase, and the rest — independent modules for storage, discovery, and replication. Not tied to Pear; usable from any Bare or Node.js app.',
+  },
+  {
+    key: 'bare',
     name: 'Bare',
     href: '/bare',
     tagline: 'The zero-core JavaScript runtime',
     blurb:
       'A module system, native addons, and threads — everything else is opt-in. Embed it in a native app, or compile a script into one standalone binary.',
   },
-};
+];
 
-const EXPLAINER_HREF = '/pear/explanation/pear-and-bare';
+const EXPLAINER_HREF = '/p2p/explanation/how-the-stack-fits-together';
 
 /**
- * Above-the-fold signpost, rendered from content/index.mdx and
- * content/bare/index.mdx; registered in src/mdx-components.tsx.
+ * Above-the-fold signpost, rendered from content/index.mdx,
+ * content/p2p/index.mdx, and content/bare/index.mdx; registered in
+ * src/mdx-components.tsx.
  *
- * The connector always points Pear -> Bare so the relationship, not the
- * current tab, is the message.
+ * Always a vertical 3-tier stack — Pear on top, P2P in the middle, Bare at
+ * the base — reflecting the real dependency chain, not just three peers.
+ * The stack order never changes with `active`; only the "You are here"
+ * highlight and which tiers are clickable do. This also means there's no
+ * responsive branching to maintain: a stack is inherently vertical at every
+ * viewport width, unlike the old 2-node pairwise version this replaced.
  *
  * Mermaid cannot do this job: mermaid.tsx renders an SVG string that
  * mermaid-zoom.tsx injects into a zoom handler, so clicks zoom and nodes
  * can never be links.
  *
  * NOTE: JSX serializes verbatim into the generated .md, so agents reading
- * /index.md see an empty tag. Both landing pages repeat this pointer as
+ * /index.md see an empty tag. Every landing page repeats this pointer as
  * prose on purpose — do not delete those sentences as duplicates.
+ *
+ * The strict linear stack slightly understates the real graph — Pear also
+ * depends on Bare directly, not only transitively through P2P — but the
+ * sr-only summary below states that explicitly, so the simplified visual
+ * doesn't misinform, it just doesn't draw every edge.
  */
 export function ProductRelationship({ active }: { active: ProductKey }) {
-  // MDX props aren't type-checked; a typo'd active="Bare" degrades to Pear.
-  const current: ProductKey = active === 'bare' ? 'bare' : 'pear';
+  // MDX props aren't type-checked; an unrecognized value degrades to Pear.
+  const current: ProductKey = active === 'p2p' || active === 'bare' ? active : 'pear';
+  const currentName = TIERS.find((t) => t.key === current)!.name;
 
   return (
-    <nav aria-label="Pear and Bare" className="not-prose my-6 rounded-xl border bg-fd-card/50 p-3 sm:p-4">
+    <nav aria-label="Pear, P2P, and Bare" className="not-prose my-6 rounded-xl border bg-fd-card/50 p-3 sm:p-4">
       <p className="sr-only">
-        Pear, the peer-to-peer platform, is built on Bare, the zero-core
-        JavaScript runtime. You are reading the {PRODUCTS[current].name} docs.
+        Pear, the peer-to-peer platform, is built on both P2P, the
+        peer-to-peer building blocks, and Bare, the zero-core JavaScript
+        runtime underneath everything. P2P is itself built on Bare. You are
+        reading the {currentName} docs.
       </p>
 
-      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:gap-3">
-        <ProductPanel product={PRODUCTS.pear} isActive={current === 'pear'} />
-        <RelationshipConnector />
-        <ProductPanel product={PRODUCTS.bare} isActive={current === 'bare'} />
+      <div className="flex flex-col items-stretch gap-2">
+        {TIERS.map((tier, i) => (
+          <div key={tier.key} className="flex flex-col items-stretch gap-2">
+            <ProductPanel product={tier} isActive={tier.key === current} />
+            {i < TIERS.length - 1 ? <TierConnector /> : null}
+          </div>
+        ))}
       </div>
 
       <p className="mt-3 text-center text-sm text-fd-muted-foreground">
         <Link href={EXPLAINER_HREF} className="font-medium underline underline-offset-2 hover:no-underline">
-          How Pear and Bare fit together
+          How the stack fits together
         </Link>{' '}
         walks every layer, from the native C foundations up to the apps you run.
       </p>
@@ -97,7 +126,7 @@ function ProductPanel({ product, isActive }: { product: Product; isActive: boole
     </>
   );
 
-  const shell = 'flex-1 rounded-lg border p-4';
+  const shell = 'rounded-lg border p-4';
 
   if (isActive) {
     return <div aria-current="page" className={cn(shell, 'border-fd-primary/50 bg-fd-primary/5')}>{body}</div>;
@@ -117,15 +146,14 @@ function ProductPanel({ product, isActive }: { product: Product; isActive: boole
   );
 }
 
-/** Direction is fixed Pear -> Bare and never flips with `active`. */
-function RelationshipConnector() {
+/** Points down the stack — Pear builds on the tier below it, and so on. */
+function TierConnector() {
   return (
-    <div aria-hidden className="flex shrink-0 items-center justify-center gap-1.5 sm:w-16 sm:flex-col sm:gap-1">
+    <div aria-hidden className="flex items-center justify-center gap-1.5 self-center">
       <span className="text-[0.6875rem] font-medium uppercase tracking-wider text-fd-muted-foreground">
         builds on
       </span>
-      <ArrowDown className="size-4 shrink-0 text-fd-muted-foreground sm:hidden" />
-      <ArrowRight className="hidden size-4 shrink-0 text-fd-muted-foreground sm:block" />
+      <ArrowDown className="size-4 shrink-0 text-fd-muted-foreground" />
     </div>
   );
 }

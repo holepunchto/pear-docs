@@ -53,19 +53,19 @@ function withSlash(p: string): string {
 }
 
 /**
- * Walk content/{pear,bare}/how-to/<topic>/<slug>.mdx and return a slug ->
+ * Walk content/{pear,bare,p2p}/how-to/<topic>/<slug>.mdx and return a slug ->
  * {topic, product} map. Used for building both /howto/<slug>/ and
  * /reference/<misfiled>/ redirect destinations. Legacy URLs are flat (no
  * topic or product in the path), so the redirect destination needs both
  * looked up from the live tree — that way new how-tos get a redirect for
- * free, and re-shuffling pages between topics (or between Pear and Bare)
+ * free, and re-shuffling pages between topics (or between products)
  * doesn't require editing this file.
  */
 function buildHowToTopics(
   contentRoot: string,
-): Map<string, { topic: string; product: 'pear' | 'bare' }> {
-  const slugToTopic = new Map<string, { topic: string; product: 'pear' | 'bare' }>();
-  for (const product of ['pear', 'bare'] as const) {
+): Map<string, { topic: string; product: 'pear' | 'bare' | 'p2p' }> {
+  const slugToTopic = new Map<string, { topic: string; product: 'pear' | 'bare' | 'p2p' }>();
+  for (const product of ['pear', 'bare', 'p2p'] as const) {
     const howToRoot = join(contentRoot, product, 'how-to');
     for (const topic of listSubdirs(howToRoot)) {
       for (const slug of listSlugs(join(howToRoot, topic))) {
@@ -270,8 +270,8 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // "The Pears stack" was renamed "The Pear stack" then retired entirely as
   // a named term (superseded by "How Pear and Bare fit together"); both old
   // slugs collapse straight to the current, now-prefixed URL.
-  out.push({ from: '/explanation/the-pears-stack/', to: '/pear/explanation/pear-and-bare/' });
-  out.push({ from: '/explanation/the-pear-stack/', to: '/pear/explanation/pear-and-bare/' });
+  out.push({ from: '/explanation/the-pears-stack/', to: '/p2p/explanation/how-the-stack-fits-together/' });
+  out.push({ from: '/explanation/the-pear-stack/', to: '/p2p/explanation/how-the-stack-fits-together/' });
 
   // --- Phase 6: product-prefix migration ------------------------------------
   // docs/plans/PEAR-BARE-SPLIT-PITCH.md. Every page that already existed
@@ -295,7 +295,7 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/explanation/peer-to-peer-demystified'), to: withSlash('/p2p/explanation/peer-to-peer-demystified') });
   out.push({ from: withSlash('/explanation/runtime-and-languages'), to: withSlash('/pear/explanation/runtime-and-languages') });
   out.push({ from: withSlash('/explanation/storage-and-distribution'), to: withSlash('/pear/explanation/storage-and-distribution') });
-  out.push({ from: withSlash('/explanation/pear-and-bare'), to: withSlash('/pear/explanation/pear-and-bare') });
+  out.push({ from: withSlash('/explanation/pear-and-bare'), to: withSlash('/p2p/explanation/how-the-stack-fits-together') });
   out.push({ from: withSlash('/explanation/use-bare-standalone'), to: withSlash('/bare/explanation/use-bare-standalone') });
   out.push({ from: withSlash('/explanation/workers'), to: withSlash('/pear/explanation/workers') });
   // The pre-reorg /getting-started/ URL served the chat-building tutorial,

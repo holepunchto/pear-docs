@@ -73,6 +73,13 @@ const EXEMPT_FROM_ORPHAN = new Set<string>([
   '/bare',
   '/bare/how-to',
   '/bare/reference',
+  // P2P's own root and quadrant landings, same reasoning. P2P's explanation
+  // landing is the repurposed content/p2p/explanation/
+  // how-the-stack-fits-together.mdx, which — like use-bare-standalone.mdx —
+  // picks up real inbound links, so it isn't listed here either.
+  '/p2p',
+  '/p2p/how-to',
+  '/p2p/reference',
 ]);
 
 const STRICT = process.argv.includes('--strict');
