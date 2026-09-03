@@ -112,6 +112,7 @@ export const pearTree: Node[] = [
         type: 'folder',
         name: 'Release & distribute your app',
         index: { type: 'page', name: 'Release & distribute your app', url: '/pear/how-to/operate-an-app' },
+        defaultOpen: true,
         children: [
           {
             type: 'folder',
