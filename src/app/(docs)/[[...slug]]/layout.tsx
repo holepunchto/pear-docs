@@ -2,15 +2,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import type { LinkItemType } from 'fumadocs-ui/layouts/shared';
-import { baseOptions, gitConfig } from '@/lib/layout.shared';
+import { baseOptions } from '@/lib/layout.shared';
 import { pearTree } from '@/lib/pear-tree';
 import { bareTree } from '@/lib/bare-tree';
 import { p2pTree } from '@/lib/p2p-tree';
 import { KeetIcon } from '@/components/keet-icon';
 import KeetRoomModalMount from '@/components/keet-modal';
 import { DocsVersionProvider } from '@/components/version';
-import { ProductSwitcher } from '@/components/product-switcher';
 import { ProductNavBar } from '@/components/product-nav-bar';
+import { SearchBarButton } from '@/components/search-bar-button';
 
 export const dynamic = 'force-static';
 
@@ -33,7 +33,6 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
   const markSrc = product === 'bare' ? '/bare-1.svg' : '/pear-1.svg';
   const wordmark = product === 'bare' ? 'Bare Docs' : product === 'p2p' ? 'P2P Docs' : 'Pear Docs';
   const homeUrl = product === 'bare' ? '/bare' : product === 'p2p' ? '/p2p' : '/';
-  const githubUrl = `https://github.com/${gitConfig.user}/${gitConfig.repo}`;
 
   // Keet renders as an icon link in the navbar. Its href is a placeholder hash —
   // `KeetRoomModalMount` intercepts clicks on `a[aria-label="Keet"]` and opens
@@ -59,24 +58,26 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
         cell's full height and covers the content. Living outside the grid
         entirely avoids that.
       */}
-      <header className="sticky top-0 z-40 overflow-x-auto border-b bg-fd-background px-4 py-3">
-        <div className="flex w-max items-center gap-8">
-          <Link
-            href={homeUrl}
-            className="flex shrink-0 items-center gap-2 font-semibold text-nowrap text-fd-foreground"
-          >
-            <Image src={markSrc} alt="" width={24} height={24} />
-            {wordmark}
-          </Link>
+      <header className="sticky top-0 z-40 flex items-center border-b bg-fd-background">
+        {/*
+          Fixed to the sidebar's own width (268px, matched by measuring the
+          rendered sidebar — see --fd-sidebar-width) so the logo sits in the
+          same column as the sidebar and the nav links below start exactly
+          where the sidebar ends. Not reactive to the sidebar's collapse
+          state — that variable is scoped to #nd-docs-layout's descendants,
+          and this header is a sibling of that grid, not one — an accepted
+          gap rather than wiring a second SidebarProvider just for this.
+        */}
+        <Link
+          href={homeUrl}
+          className="flex w-[268px] shrink-0 items-center gap-2 py-4 ps-4 font-semibold text-nowrap text-fd-foreground max-md:w-auto max-md:pe-4"
+        >
+          <Image src={markSrc} alt="" width={24} height={24} />
+          {wordmark}
+        </Link>
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-4 overflow-x-auto py-3 pe-4">
           <ProductNavBar active={product} />
-          <a
-            href={githubUrl}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="ms-auto shrink-0 text-sm font-medium text-nowrap text-fd-muted-foreground transition-colors hover:text-fd-foreground"
-          >
-            GitHub
-          </a>
+          <SearchBarButton className="w-56 shrink-0" />
         </div>
       </header>
       {/*
@@ -92,7 +93,7 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
           {...baseOptions(product)}
           tree={{ name: 'docs', children: tree }}
           links={linkItems}
-          sidebar={{ banner: <ProductSwitcher active={product} /> }}
+          searchToggle={{ enabled: false }}
         >
           {children}
         </DocsLayout>

@@ -7,7 +7,7 @@ export type ProductKey = 'pear' | 'p2p' | 'bare';
 interface Product { key: ProductKey; name: string; href: string; tagline: string; blurb: string }
 
 /**
- * Hrefs live here, matching product-switcher.tsx. Note: check-internal-links
+ * Hrefs live here, matching product-nav-bar.tsx. Note: check-internal-links
  * only walks content/, so these are NOT link-checked — every page rendering
  * this also carries the same destinations as checked prose links.
  *
