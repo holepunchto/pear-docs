@@ -1,0 +1,100 @@
+---
+title: "Build and sign desktop apps with GitHub Actions"
+description: >-
+  Build, code-sign, and notarize a Pear Electron app on macOS, Windows, and
+  Linux from GitHub Actions with the make-pear-app action, then hand the
+  artifacts to pear build or pear-ci.
+docType: how-to
+schemaType: TechArticle
+---
+
+This is the CI automation of [Build desktop distributables](/how-to/operate-an-app/build-and-package/build-desktop-distributables). Instead of running `npm run make` by hand on a Mac, a Windows box, and a Linux box and wiring signing credentials into each, you run one matrix job that uses the [`make-pear-app`](/reference/ci-and-release/github-actions#make-pear-app) action on hosted runners for every OS at once.
+
+`make-pear-app` runs your `npm run make` script—the same [`forge.config.js`](https://github.com/holepunchto/hello-pear-electron/blob/main/forge.config.js) the manual guide uses—and sets the signing environment variables that file reads. It imports the Apple certificate and stores notarytool credentials on macOS, installs the certificate on Windows, sets up Snapcraft on Linux, then uploads each platform's output as a build artifact.
+
+<include>../../../_snippets/_install-pear-cli-callout.mdx</include>
+
+## Before you begin
+
+You need:
+
+1. A [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron)-shaped repository whose `npm run make` produces distributables (see [Desktop release npm scripts](/reference/ci-and-release/desktop-release-npm-scripts)).
+2. Signing credentials stored as [repository secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions):
+   - **macOS**: base64-encoded distribution certificate (`.p12`) and its password, the code-signing identity, and notarization credentials—either App Store Connect API key (`appstore_connect`) or Apple ID + app-specific password (`apple_id_password`).
+   - **Windows**: either a certificate SHA-1 thumbprint (`windows_cert_sha1`) or a base64-encoded `.pfx` and its password (`windows_cert_pfx`).
+3. The `pear://` link this build should track as its `channel`/`upgrade_key` (see [Set the upgrade link](/how-to/operate-an-app/manual-deployment/deployment#1-set-the-upgrade-link)).
+
+## Add the workflow
+
+Create `.github/workflows/build.yml`. Check out the repository, then run [`make-pear-app`](/reference/ci-and-release/github-actions#make-pear-app) per OS (it handles `setup-node` and `npm ci` internally):
+
+```yaml skip="ci-config"
+name: Build desktop app
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: make
+        uses: holepunchto/actions/make-pear-app@v1
+        with:
+          channel: production
+          upgrade_key: ${{ vars.PEAR_UPGRADE_KEY }}
+
+          # macOS signing + notarization
+          macos_certificate_base64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          macos_p12_password: ${{ secrets.MACOS_P12_PASSWORD }}
+          macos_codesign_identity: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
+          macos_notarization_method: appstore_connect
+          macos_api_key_base64: ${{ secrets.MACOS_API_KEY_BASE64 }}
+          macos_api_key_id: ${{ secrets.MACOS_API_KEY_ID }}
+          macos_api_issuer: ${{ secrets.MACOS_API_ISSUER }}
+
+          # Windows signing
+          windows_signing_method: windows_cert_pfx
+          windows_cert_pfx_base64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          windows_cert_password: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+```
+
+The action validates its inputs per OS and fails fast if a required signing field is missing, so the macOS leg only needs the macOS inputs, the Windows leg only the Windows ones, and the Linux leg needs neither.
+
+## Choose the signing methods
+
+`make-pear-app` branches on two method inputs that mirror the manual environment variables in [Build desktop distributables](/how-to/operate-an-app/build-and-package/build-desktop-distributables):
+
+- **`macos_notarization_method`**
+  - `appstore_connect`—requires `macos_api_key_base64`, `macos_api_key_id`, `macos_api_issuer`.
+  - `apple_id_password`—requires `macos_apple_id`, `macos_apple_password`, `macos_apple_team_id`.
+
+  Either way you also pass `macos_certificate_base64`, `macos_p12_password`, and `macos_codesign_identity`. The action imports the cert into a temporary keychain and stores notarytool credentials—the CI equivalent of setting `MAC_CODESIGN_IDENTITY` and `KEYCHAIN_PROFILE`.
+- **`windows_signing_method`**
+  - `windows_cert_sha1`—requires `windows_cert_sha1` (a thumbprint already on the runner).
+  - `windows_cert_pfx`—requires `windows_cert_pfx_base64` and `windows_cert_password`; the action imports the `.pfx` and derives the thumbprint.
+
+  This drives `WINDOWS_CERT_SHA1` and points `WINDOWS_SIGN_HOOK` at the action's bundled hook. Keep the `Publisher` in `build/AppxManifest.xml` equal to the certificate `CN` or MSIX OTA updates break—see [the Windows section](/how-to/operate-an-app/build-and-package/build-desktop-distributables#windows).
+
+On Linux, set `linux_set_up_snapcraft: false` if you do not build a Snap and want to skip the Snapcraft/LXD setup.
+
+## Use the artifacts
+
+`make-pear-app` exposes an `artifact-links` output and uploads each OS's build as a workflow artifact. Collect them in a follow-up job, run [`pear build`](/how-to/operate-an-app/build-and-package/build-desktop-distributables#build-the-deployment-directory) to assemble the multi-architecture deployment directory, then `pear stage` it as in [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment).
+
+To make publishing fully hands-off, hand the deployment directory to [`pear-ci`](/how-to/operate-an-app/github-actions/publish-with-github-actions): `make-pear-app` produces the signed build, and `pear-ci` stages it to a stable `pear://` link on every push.
+
+## See also
+
+- [Build desktop distributables](/how-to/operate-an-app/build-and-package/build-desktop-distributables)—the manual per-OS make, signing, and notarization this automates.
+- [Publish with GitHub Actions](/how-to/operate-an-app/github-actions/publish-with-github-actions)—stage the resulting build with `pear-ci`.
+- [Holepunch GitHub Actions](/reference/ci-and-release/github-actions)—every shared action, inputs, and outputs.
+- [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment)—covers `pear build`, `pear stage`, and release lines.
+- [Desktop release npm scripts](/reference/ci-and-release/desktop-release-npm-scripts)—the `npm run make` entry point the action calls.

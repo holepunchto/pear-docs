@@ -1,0 +1,658 @@
+---
+title: "bare-crypto"
+description: "Cryptographic primitives for JavaScript"
+docType: reference
+schemaType: APIReference
+upstreamVersion: "1.15.3"
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-crypto`](https://github.com/holepunchto/bare-crypto) — Cryptographic primitives for JavaScript. It is a native addon.
+
+Mirrors the Node.js [`crypto`](https://nodejs.org/api/crypto.html) module.
+
+```sh
+npm i bare-crypto
+```
+
+## Usage
+
+```js
+const crypto = require('bare-crypto')
+
+const hash = crypto.createHash('sha256')
+
+hash.update('Hello, world!')
+
+const digest = hash.digest('hex')
+
+console.log(digest)
+```
+
+## API
+
+### Hash
+
+#### `new Hash(algorithm: HashAlgorithm | number, opts?: TransformOptions<CryptoHash>)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `algorithm` | `HashAlgorithm` \| `number` | — | The hash algorithm, as a string (for example `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`. |
+| `opts?` | `TransformOptions<CryptoHash>` | — | Options forwarded to the `Transform` constructor from `bare-stream`. |
+
+**Throws**
+
+- `UNKNOWN_HASH` — `algorithm` is a string that does not name a supported hash algorithm.
+
+#### `Hash.digest(encoding: BufferEncoding): string`
+
+Finalize the hash and return the digest. If `encoding` is provided (and is not `'buffer'`), the digest is returned as a string in that encoding; otherwise as a `Buffer`. Further calls to `update()` or `digest()` throw.
+
+Overloads:
+
+```ts
+digest(encoding: BufferEncoding): string
+digest(): Buffer
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `encoding` | `BufferEncoding` | — | The encoding for the returned digest; omit (or pass `'buffer'`) to get a `Buffer`. |
+
+#### `Hash.HashAlgorithm`
+
+```ts
+type HashAlgorithm = | 'md5'
+  | 'sha-1'
+  | 'sha-256'
+  | 'sha-384'
+  | 'sha-512'
+  | 'blake2b-256'
+  | 'ripemd-160'
+```
+
+#### `Hash.update(data: string, encoding?: BufferEncoding): this`
+
+Push `data` into the hash. If `data` is a string, it is decoded using `encoding` (defaults to `'utf8'`). Returns the same `hash` for chaining. Throws once `digest()` has been called.
+
+Overloads:
+
+```ts
+update(data: string, encoding?: BufferEncoding): this
+update(data: Buffer, encoding?: 'buffer'): this
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data` | `string` | — | The data to push into the hash. |
+| `encoding?` | `BufferEncoding` | — | The encoding of `data` when it is a string (defaults to `'utf8'`). |
+
+### Hmac
+
+#### `Hmac`
+
+```ts
+new Hmac(algorithm: HashAlgorithm | number, key: string | Buffer, opts?: TransformOptions<CryptoHmac>)
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `algorithm` | `HashAlgorithm` \| `number` | — | The hash algorithm, as a string (for example `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`. |
+| `key` | `string` \| `Buffer` | — | The HMAC key; a string is decoded using the `encoding` option (defaults to `'utf8'`). |
+| `opts?` | `TransformOptions<CryptoHmac>` | — | Options forwarded to the `Transform` constructor from `bare-stream`. |
+
+**Throws**
+
+- `UNKNOWN_HASH` — `algorithm` is a string that does not name a supported hash algorithm.
+
+#### `Hmac.digest(encoding: BufferEncoding): string`
+
+Finalize the HMAC. Same semantics as `hash.digest()`.
+
+Overloads:
+
+```ts
+digest(encoding: BufferEncoding): string
+digest(): Buffer
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `encoding` | `BufferEncoding` | — | The encoding for the returned digest; omit (or pass `'buffer'`) to get a `Buffer`. |
+
+#### `Hmac.update(data: string, encoding?: BufferEncoding): this`
+
+Push `data` into the HMAC. Same semantics as `hash.update()`.
+
+Overloads:
+
+```ts
+update(data: string, encoding?: BufferEncoding): this
+update(data: Buffer, encoding?: 'buffer'): this
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data` | `string` | — | The data to push into the HMAC. |
+| `encoding?` | `BufferEncoding` | — | The encoding of `data` when it is a string (defaults to `'utf8'`). |
+
+### Cipheriv
+
+#### `Cipheriv`
+
+```ts
+new Cipheriv(algorithm: CipherAlgorithm | number, key: string | Buffer, iv: string | Buffer, opts?: TransformOptions<Cipheriv>)
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `algorithm` | `CipherAlgorithm` \| `number` | — | The cipher algorithm, as a string or a numeric constant from `constants.cipher`. |
+| `key` | `string` \| `Buffer` | — | The encryption key; must match the algorithm's required length. |
+| `iv` | `string` \| `Buffer` | — | The initialization vector / nonce; must match the algorithm's required length. |
+| `opts?` | `TransformOptions<Cipheriv>` | — | Options forwarded to `Transform`; may include `encoding` (defaults to `'utf8'`) and, for AEAD algorithms, `authTagLength` (defaults to `16`; must be `12`, `14`, or `16`). |
+
+**Throws**
+
+- `UNKNOWN_CIPHER` — `algorithm` is a string that does not name a supported cipher.
+- `RangeError` — `key` or `iv` does not match the algorithm's required length, or (AEAD) `authTagLength` is not `12`, `14`, or `16`.
+
+#### `Cipheriv.final(outputEncoding?: BufferEncoding): string | Buffer`
+
+Finalize encryption. For AEAD ciphers, the auth tag becomes available via `getAuthTag()` after this call.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `outputEncoding?` | `BufferEncoding` | — | If provided, the final output is returned as a string in this encoding. |
+
+#### `getAuthTag(): Buffer`
+
+Return the auth tag produced by `final()`. AEAD ciphers only.
+
+#### `Cipheriv.setAAD(buffer: string | Buffer, opts?: { encoding?: BufferEncoding }): this`
+
+Provide additional authenticated data. AEAD ciphers only. The `options` may include an `encoding` for string inputs.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `buffer` | `string` \| `Buffer` | — | The additional authenticated data. |
+| `opts?` | `{ encoding?: BufferEncoding }` | — | May include an `encoding` for string `buffer` inputs. |
+
+#### `setAutoPadding(pad: unknown): this`
+
+Enable or disable automatic padding. Block ciphers only.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `pad` | `unknown` | — | `true` to enable automatic padding, `false` to disable it. |
+
+#### `Cipheriv.update`
+
+```ts
+update(data: string | Buffer, inputEncoding?: BufferEncoding, outputEncoding?: BufferEncoding): string | Buffer
+```
+
+Encrypt a chunk. Returns a `Buffer`, or a string if `outputEncoding` is provided. For AEAD ciphers, encrypted output is delivered all at once from `final()`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data` | `string` \| `Buffer` | — | The chunk to encrypt. |
+| `inputEncoding?` | `BufferEncoding` | — | The encoding of `data` when it is a string. |
+| `outputEncoding?` | `BufferEncoding` | — | If provided, the encrypted result is returned as a string in this encoding. |
+
+### Decipheriv
+
+#### `Decipheriv`
+
+```ts
+new Decipheriv(algorithm: CipherAlgorithm | number, key: string | Buffer, iv: string | Buffer, opts?: TransformOptions<Cipheriv>)
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `algorithm` | `CipherAlgorithm` \| `number` | — | The cipher algorithm, as a string or a numeric constant from `constants.cipher`. |
+| `key` | `string` \| `Buffer` | — | The decryption key; must match the algorithm's required length. |
+| `iv` | `string` \| `Buffer` | — | The initialization vector / nonce; must match the algorithm's required length. |
+| `opts?` | `TransformOptions<Cipheriv>` | — | Accepts the same options as `createCipheriv`. |
+
+**Throws**
+
+- `UNKNOWN_CIPHER` — `algorithm` is a string that does not name a supported cipher.
+- `RangeError` — `key` or `iv` does not match the algorithm's required length, or (AEAD) `authTagLength` is not `12`, `14`, or `16`.
+
+#### `Decipheriv.final(outputEncoding?: BufferEncoding): string | Buffer`
+
+Finalize decryption. For AEAD ciphers, `setAuthTag()` must be called before `final()`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `outputEncoding?` | `BufferEncoding` | — | If provided, the final output is returned as a string in this encoding. |
+
+#### `Decipheriv.setAAD(buffer: string | Buffer, opts?: { encoding?: BufferEncoding }): this`
+
+Provide additional authenticated data. AEAD ciphers only. The `options` may include an `encoding` for string inputs.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `buffer` | `string` \| `Buffer` | — | The additional authenticated data. |
+| `opts?` | `{ encoding?: BufferEncoding }` | — | May include an `encoding` for string `buffer` inputs. |
+
+#### `setAuthTag(authTag: string | Buffer, encoding?: BufferEncoding): this`
+
+Set the expected auth tag prior to calling `final()`. AEAD ciphers only.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `authTag` | `string` \| `Buffer` | — | The expected authentication tag. |
+| `encoding?` | `BufferEncoding` | — | The encoding of `authTag` when it is a string. |
+
+#### `setAutoPadding(pad: boolean): this`
+
+Enable or disable automatic padding. Block ciphers only.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `pad` | `boolean` | — | `true` to enable automatic padding, `false` to disable it. |
+
+#### `Decipheriv.update`
+
+```ts
+update(data: string | Buffer, inputEncoding?: BufferEncoding, outputEncoding?: BufferEncoding): string | Buffer
+```
+
+Decrypt a chunk. Same semantics as `cipher.update()`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data` | `string` \| `Buffer` | — | The chunk to decrypt. |
+| `inputEncoding?` | `BufferEncoding` | — | The encoding of `data` when it is a string. |
+| `outputEncoding?` | `BufferEncoding` | — | If provided, the decrypted result is returned as a string in this encoding. |
+
+### Functions
+
+#### `createHash(algorithm: HashAlgorithm | number, opts?: TransformOptions<Hash>): Hash`
+
+Create a new `Hash` instance with the specified `algorithm`. `algorithm` may be a string (for example `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`. The `options` are forwarded to the `Transform` constructor from `bare-stream` (\<https://github.com/holepunchto/bare-stream>).
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `algorithm` | `HashAlgorithm` \| `number` | — | The hash algorithm, as a string (for example `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`. |
+| `opts?` | `TransformOptions<Hash>` | — | Options forwarded to the `Transform` constructor from `bare-stream`. |
+
+**Throws**
+
+- `UNKNOWN_HASH` — `algorithm` is a string that does not name a supported hash algorithm.
+
+#### `createHmac`
+
+```ts
+createHmac(algorithm: HashAlgorithm | number, key: string | Buffer, opts?: TransformOptions<Hmac>): Hmac
+```
+
+Create a new `Hmac` instance using `algorithm` and `key`. `key` may be a string or `ArrayBufferView`. If `key` is a string, an `encoding` option (defaults to `'utf8'`) controls how it is decoded. The `options` are also forwarded to `Transform`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `algorithm` | `HashAlgorithm` \| `number` | — | The hash algorithm, as a string (for example `'sha256'`, `'sha-256'`) or a numeric constant from `constants.hash`. |
+| `key` | `string` \| `Buffer` | — | The HMAC key; a string is decoded using the `encoding` option (defaults to `'utf8'`). |
+| `opts?` | `TransformOptions<Hmac>` | — | Options forwarded to the `Transform` constructor from `bare-stream`. |
+
+**Throws**
+
+- `UNKNOWN_HASH` — `algorithm` is a string that does not name a supported hash algorithm.
+
+#### `createCipheriv`
+
+```ts
+createCipheriv(algorithm: CipherAlgorithm | number, key: string | Buffer, iv: string | Buffer, opts?: TransformOptions<Cipheriv>): Cipheriv
+```
+
+Create a new `Cipheriv` instance using `algorithm`, `key`, and `iv` (initialization vector / nonce). `key` and `iv` must match the algorithm's required lengths. For AEAD algorithms (for example `AES128GCM`, `CHACHA20POLY1305`), the `options` may include an `authTagLength` (defaults to `16`).
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `algorithm` | `CipherAlgorithm` \| `number` | — | The cipher algorithm, as a string or a numeric constant from `constants.cipher`. |
+| `key` | `string` \| `Buffer` | — | The encryption key; must match the algorithm's required length. |
+| `iv` | `string` \| `Buffer` | — | The initialization vector / nonce; must match the algorithm's required length. |
+| `opts?` | `TransformOptions<Cipheriv>` | — | Options forwarded to `Transform`; may include `encoding` (defaults to `'utf8'`) and, for AEAD algorithms, `authTagLength` (defaults to `16`; must be `12`, `14`, or `16`). |
+
+**Throws**
+
+- `UNKNOWN_CIPHER` — `algorithm` is a string that does not name a supported cipher.
+- `RangeError` — `key` or `iv` does not match the algorithm's required length, or (AEAD) `authTagLength` is not `12`, `14`, or `16`.
+
+#### `createDecipheriv`
+
+```ts
+createDecipheriv(algorithm: CipherAlgorithm | number, key: string | Buffer, iv: string | Buffer, opts?: TransformOptions<Cipheriv>): Decipheriv
+```
+
+Create a new `Decipheriv` instance using `algorithm`, `key`, and `iv`. Accepts the same `options` as `createCipheriv`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `algorithm` | `CipherAlgorithm` \| `number` | — | The cipher algorithm, as a string or a numeric constant from `constants.cipher`. |
+| `key` | `string` \| `Buffer` | — | The decryption key; must match the algorithm's required length. |
+| `iv` | `string` \| `Buffer` | — | The initialization vector / nonce; must match the algorithm's required length. |
+| `opts?` | `TransformOptions<Cipheriv>` | — | Accepts the same options as `createCipheriv`. |
+
+**Throws**
+
+- `UNKNOWN_CIPHER` — `algorithm` is a string that does not name a supported cipher.
+- `RangeError` — `key` or `iv` does not match the algorithm's required length, or (AEAD) `authTagLength` is not `12`, `14`, or `16`.
+
+#### `randomBytes(size: number): Buffer`
+
+Generate `size` cryptographically secure random bytes.
+
+Overloads:
+
+```ts
+randomBytes(size: number): Buffer
+randomBytes(size: number, callback: (err: Error | null, buffer: Buffer) => void): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `size` | `number` | — | The number of random bytes to generate. |
+
+#### `randomFill`
+
+```ts
+randomFill<B extends ArrayBuffer | ArrayBufferView>(buffer: B, offset?: number, size?: number): B
+```
+
+Fill `buffer` with cryptographically secure random bytes, optionally restricted to `[offset, offset + size)`. `offset` defaults to `0` and `size` to `buffer.byteLength - offset`. Returns the same `buffer`. Accepts an optional `callback` for a non-blocking, asynchronous form, distinct from the fully synchronous `randomFillSync`.
+
+Synchronous form: `randomFillSync<B extends ArrayBuffer | ArrayBufferView>(buffer: B, offset?: number, size?: number): B`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `buffer` | `B` | — | The buffer to fill. |
+| `offset?` | `number` | — | Offset at which filling starts (defaults to `0`). |
+| `size?` | `number` | — | Amount to fill (defaults to `buffer.byteLength - offset`). |
+
+**Throws**
+
+- `RangeError` — `offset`, `size`, or `offset + size` is out of range for `buffer`.
+
+#### `randomUUID(): string`
+
+Generate a random RFC 4122 version-4 UUID string.
+
+#### `pbkdf2`
+
+```ts
+pbkdf2(password: string | ArrayBuffer | ArrayBufferView, salt: string | ArrayBuffer | ArrayBufferView, iterations: number, keylen: number, digest: HashAlgorithm | number): Buffer
+```
+
+Derive a key from `password` and `salt` using the specified `digest` algorithm and number of `iterations`. Returns a `keylen`-byte `Buffer`. `password` and `salt` may be strings or `ArrayBufferView`s. Accepts an optional `callback` for an asynchronous form — PBKDF2 key derivation is available in both synchronous (`pbkdf2Sync`) and callback-based asynchronous forms.
+
+Synchronous form: `pbkdf2Sync(password: string | ArrayBufferView, salt: string | ArrayBufferView, iterations: number, keylen: number, digest: HashAlgorithm | number): Buffer`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `password` | `string` \| `ArrayBuffer` \| `ArrayBufferView` | — | The password to derive the key from. |
+| `salt` | `string` \| `ArrayBuffer` \| `ArrayBufferView` | — | The salt. |
+| `iterations` | `number` | — | The number of PBKDF2 iterations; must be between `1` and `2^32 - 1`. |
+| `keylen` | `number` | — | The length in bytes of the derived key. |
+| `digest` | `HashAlgorithm` \| `number` | — | The hash algorithm, as a string or a numeric constant from `constants.hash`. |
+
+**Throws**
+
+- `RangeError` — `iterations` or `keylen` is out of range.
+- `UNKNOWN_HASH` — `digest` is a string that does not name a supported hash algorithm.
+
+#### `generateKeyPair`
+
+```ts
+generateKeyPair(type: SignatureAlgorithm | Lowercase<SignatureAlgorithm>): {
+  publicKey: CryptoKey
+  privateKey: CryptoKey
+}
+```
+
+Generate a new asymmetric key pair. `type` may be a string (for example `'ed25519'`) or a numeric constant from `constants.keyType`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `type` | `SignatureAlgorithm \| Lowercase<SignatureAlgorithm>` | — | The key type, as a string (for example `'ed25519'`) or a numeric constant from `constants.keyType`. |
+
+**Throws**
+
+- `UNKNOWN_KEY_TYPE` — `type` is a string that does not name a supported key type.
+
+#### `sign(algorithm: null, data: ArrayBuffer | ArrayBufferView, key: CryptoKey): Buffer`
+
+Sign `data` using `key`. For Ed25519, `algorithm` is ignored — pass `null`. `data` may be an `ArrayBuffer` or `ArrayBufferView`. Returns a `Buffer` containing the signature.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `algorithm` | `null` | — | Ignored for Ed25519 — pass `null`. |
+| `data` | `ArrayBuffer` \| `ArrayBufferView` | — | The data to sign. |
+| `key` | `CryptoKey` | — | The key to sign with. |
+
+#### `verify`
+
+```ts
+verify(algorithm: null, data: ArrayBuffer | ArrayBufferView, key: CryptoKey, signature: Buffer): boolean
+```
+
+Verify that `signature` is a valid signature over `data` for `key`. Returns `true` or `false`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `algorithm` | `null` | — | Ignored for Ed25519 — pass `null`. |
+| `data` | `ArrayBuffer` \| `ArrayBufferView` | — | The signed data. |
+| `key` | `CryptoKey` | — | The key to verify against. |
+| `signature` | `Buffer` | — | The signature to check. |
+
+#### `timingSafeEqual(a: ArrayBuffer | ArrayBufferView, b: ArrayBuffer | ArrayBufferView): boolean`
+
+Compare two `ArrayBuffer`s or `ArrayBufferView`s in constant time. Returns `true` if `a` and `b` contain the same bytes, otherwise `false`. Throws a `RangeError` if `a` and `b` differ in byte length. Use this whenever comparing MACs, signatures, capability tokens, or other secret-equality checks.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `a` | `ArrayBuffer` \| `ArrayBufferView` | — | The first buffer to compare. |
+| `b` | `ArrayBuffer` \| `ArrayBufferView` | — | The second buffer to compare. |
+
+**Throws**
+
+- `RangeError` — `a` and `b` differ in byte length.
+
+### Constants and variables
+
+#### `constants`
+
+```ts
+constants: {
+  hash: Record<HashAlgorithm, number>
+  signature: Record<SignatureAlgorithm, number>
+  cipher: Record<CipherAlgorithm, number>
+  keyType: Record<SignatureAlgorithm, number>
+}
+```
+
+The supported algorithm constants: `hash` (hash algorithms), `cipher` (symmetric cipher algorithms), `signature` (signature algorithms), and `keyType` (asymmetric key types).
+
+#### `webcrypto`
+
+A namespace implementing a subset of the W3C Web Crypto API (\<https://w3c.github.io/webcrypto>). Exposes `Crypto`, `SubtleCrypto`, `CryptoKey`, `getRandomValues`, `randomUUID`, and `subtle` (a pre-constructed `SubtleCrypto` instance). Supports HMAC, Ed25519, PBKDF2, and SHA-1 / SHA-256 / SHA-384 / SHA-512.
+
+## `bare-crypto/web`
+
+### Functions
+
+#### `getRandomValues`
+
+```ts
+getRandomValues<B extends ArrayBuffer | ArrayBufferView>(buffer: B, offset?: number, size?: number): B
+```
+
+Fill `array` with cryptographically secure random bytes and return the same `array`. Equivalent to `randomFillSync(array)`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `buffer` | `B` | — | The buffer to fill. |
+| `offset?` | `number` | — | Offset at which filling starts (defaults to `0`). |
+| `size?` | `number` | — | Amount to fill (defaults to `buffer.byteLength - offset`). |
+
+**Throws**
+
+- `RangeError` — `offset`, `size`, or `offset + size` is out of range for `buffer`.
+
+#### `web.randomUUID(): string`
+
+Generate a random RFC 4122 version-4 UUID string.
+
+### Constants and variables
+
+#### `CryptoKey`
+
+#### `subtle: SubtleCrypto`
+
+### Types
+
+#### `SubtleCrypto`
+
+```ts
+interface SubtleCrypto {
+  generateKey(
+    algorithm: { name: 'HMAC'; hash: HashArg; length?: number },
+    extractable: boolean,
+    usages: ('sign' | 'verify')[]
+  ): Promise<CryptoKey<'HMAC'>>
+  importKey(
+    format: 'raw',
+    keyData: Buffer | ArrayBuffer,
+    algorithm: { name: 'HMAC'; hash: HashArg },
+    extractable: boolean,
+    usages: ('sign' | 'verify')[]
+  ): Promise<CryptoKey<'HMAC'>>
+  exportKey(format: 'raw' | 'spki' | 'pkcs8', key: CryptoKey): Promise<ArrayBuffer>
+  sign(algorithm: 'HMAC' | 'Ed25519', key: CryptoKey, data: Buffer): Promise<ArrayBuffer>
+  verify(
+    algorithm: 'HMAC' | 'Ed25519',
+    key: CryptoKey,
+    signature: ArrayBuffer,
+    data: Buffer
+  ): Promise<boolean>
+  deriveBits(
+    algorithm: { name: 'PBKDF2'; hash: HashArg; salt: Buffer; iterations: number } | 'PBKDF2',
+    key: CryptoKey,
+    length: number
+  ): Promise<ArrayBuffer>
+  deriveKey(
+    algorithm: { name: 'PBKDF2'; hash: HashArg; salt: Buffer; iterations: number },
+    baseKey: CryptoKey,
+    derivedKeyType: { name: 'HMAC'; hash: HashArg },
+    extractable: boolean,
+    usages: ('sign' | 'verify')[]
+  ): Promise<CryptoKey>
+  digest(algorithm: HashArg, data: Buffer): Promise<ArrayBuffer>
+}
+```
+
+#### `Crypto`
+
+```ts
+interface Crypto {
+  readonly subtle: SubtleCrypto
+  getRandomValues<B extends ArrayBuffer | ArrayBufferView>(array: B): B
+  randomUUID(): string
+}
+```
+
+#### `JWK`
+
+```ts
+interface JWK {
+  alg?: string
+  crv?: string
+  d?: string
+  ext?: boolean
+  k?: string
+  key_ops?: string[]
+  kty?: string
+  use?: string
+  x?: string
+}
+```
+
+#### `HashArg`
+
+```ts
+type HashArg = 'SHA-1' | 'SHA-256' | 'SHA-384' | 'SHA-512' | { name: HashArg }
+```
+
+## `bare-crypto/global`
+
+### Constants and variables
+
+#### `crypto`
+
+Installed as a global by importing `bare-crypto/global`, along with `Crypto`, `CryptoKey`, and `SubtleCrypto`.
+
+## See also
+
+- Builds on `bare-assert` and `bare-stream`.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.

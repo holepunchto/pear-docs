@@ -1,0 +1,75 @@
+---
+title: "Create a portable identity with Keet identity keys"
+description: "Derive a portable identity from a mnemonic, attest a per-device key, then sign and verify data with it—the Pear/Bare logic, no UI required."
+docType: how-to
+schemaType: TechArticle
+---
+
+<Callout type="info">
+
+**This guide focuses on the Pear/Bare logic.** It shows [`keet-identity-key`](https://www.npmjs.com/package/keet-identity-key) on its own—no Electron, no UI. For the same identity wired into a full desktop chat app, see the worked example [`pear-chat-identity`](https://github.com/holepunchto/pear-docs/tree/preview/examples/how-to/manage-identity/keet-identity) and its walkthrough, [Add Keet identity to a chat app](/how-to/manage-identity/add-keet-identity-to-a-chat-app).
+
+</Callout>
+
+A [Hypercore](/reference/building-blocks/hypercore) key identifies a *log*, not a *person*.
+[`keet-identity-key`](https://www.npmjs.com/package/keet-identity-key) gives you a **portable identity**: a key derived from a 24-word mnemonic that stays the same across devices and reinstalls.
+Each device generates its own throwaway key pair, which the identity **attests**—so you can sign data on any device and anyone can verify it was authored by the same person, without ever copying the identity's secret onto that device.
+
+Without the identity, you would need to share a secret between devices to sign data—and that secret would need to be copied onto each device.
+With the identity, you can sign data on any device and anyone can verify it was authored by the same person, without ever copying the identity's secret onto that device.
+
+<Callout type="info">
+This is purely Pear-end logic: it runs in a [Bare](/reference/modules/bare-modules) worker (or any Bare/Node process) and never touches a UI.
+</Callout>
+
+<include>../../_snippets/_from-a-template-callout.mdx</include>
+
+## The model
+
+| Concept | What it is |
+| --- | --- |
+| **Mnemonic** | 24 words. The root secret—back it up like a wallet seed. |
+| **Identity** | Derived from the mnemonic. Its `identityPublicKey` is stable everywhere. |
+| **Device key pair** | A fresh, per-device key. Never leaves the device. |
+| **Device proof** | The identity's signature attesting that the device key speaks for it. |
+| **Data proof** | A signature over a payload, made with the device key, anchored to the identity. |
+
+## Add the dependencies
+
+```sh skip="install-instruction"
+npm install keet-identity-key hypercore-crypto
+```
+
+## Derive the identity and attest a device
+
+Generate (or load) a mnemonic (L5), derive the identity from it (L7), then mint a fresh per-device key pair (L11) and bootstrap it—the identity attests the device key and returns a `deviceProof` (L12):
+
+```js file=<rootDir>/examples/how-to/manage-identity/create-a-portable-identity-with-keet-identity-key/index.js#L1-L12 title="index.js" lineNumbers {5,7,11-12} skip="example-import"
+```
+
+Persist the mnemonic, not the device key—a new device re-derives the identity from the same mnemonic and bootstraps a fresh device key of its own.
+
+## Sign data
+
+Take a payload (L15) and attest it with the device key. The resulting proof (L16) carries the chain back to the identity:
+
+```js file=<rootDir>/examples/how-to/manage-identity/create-a-portable-identity-with-keet-identity-key/index.js#L15-L16 title="index.js" lineNumbers {15-16} skip="example-import"
+```
+
+Attach `proof` to whatever you append to your [Hypercore](/reference/building-blocks/hypercore)/Autobase alongside the payload.
+
+## Verify data
+
+Any peer replicating the data can verify it was authored by the expected identity—pass the proof, the payload, and the expected `identityPublicKey`, and `verify` returns truthy only for a valid proof (L19–L21). No shared secret needed:
+
+```js file=<rootDir>/examples/how-to/manage-identity/create-a-portable-identity-with-keet-identity-key/index.js#L19-L22 title="index.js" lineNumbers {19-21} skip="example-import"
+```
+
+Because verification only needs the public `identityPublicKey`, you can stamp every message with a proof and let every reader confirm authorship across reinstalls and across machines.
+
+## See also
+
+- [Add Keet identity to a chat app](/how-to/manage-identity/add-keet-identity-to-a-chat-app)—this primitive wired into a full desktop chat, stamping every message with a verifiable identity.
+- [Connect two peers by key with HyperDHT](/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht)—once you have a stable identity key, you can dial it directly.
+- [Secretstream](/reference/helpers/secretstream)—the noise-based encrypted transport that authenticates connections by public key.
+- [Workers](/explanation/workers)—why identity belongs in the worker, not the renderer.

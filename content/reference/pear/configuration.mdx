@@ -1,0 +1,296 @@
+---
+title: "Configuration"
+description: "Pear package.json fields and pear application configuration."
+docType: reference
+schemaType: APIReference
+---
+
+<Status level="stable" />
+
+## `package.json`
+<a name="package-json"></a>
+
+The `package.json` is used by `pear` and [`pear-runtime`](/reference/pear/runtime) for application builds, delivery and updates.
+
+### `version`
+
+In order for an OTA update to occur from `pear-runtime`, the `package.json` `version` field must be updated before deploying an application update.
+
+### `upgrade`
+
+The `upgrade` field of the `package.json` should hold a `pear://` link to seeded application:
+
+
+Example:
+```json
+{
+  "name": "my-app",
+  "version": "1.2.3",
+  "upgrade": "pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o",
+  ...
+}
+```
+
+## `package.json` `pear` field
+<a name="pear"></a>
+
+[Field source on GitHub](https://github.com/holepunchto/pear-state/blob/v1.1.0/index.js#L66)
+
+### `pear.stage <Object>`
+<a name="pear-stage"></a>
+
+Staging configuration options.
+
+#### `pear.stage.entrypoints <Array>`
+<a name="pear-stage-entrypoints"></a>
+
+[Field source on GitHub](https://github.com/holepunchto/pear-state/blob/v1.1.0/index.js#L83)
+
+An array of entrypoint paths as staging start-points in addition to (deduped) main entry point.
+
+#### `pear.stage.ignore <Array>`
+<a name="pear-stage-ignore"></a>
+
+[Field source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/subsystems/sidecar/ops/stage.js#L71)
+
+An array of file paths to ignore relative to `package.json` file.
+
+#### `pear.stage.only <Array>`
+<a name="pear-stage-only"></a>
+
+[Field source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/subsystems/sidecar/ops/stage.js)
+
+Restrict staging to the given path prefixes—only entries under these paths are staged. Merged with any [`pear stage --only`](/reference/pear/cli#pear-stage) values. Accepts an array (a comma-separated string is also accepted).
+
+#### `pear.stage.purge <Boolean>`
+<a name="pear-stage-purge"></a>
+
+[Field source on GitHub](https://github.com/holepunchto/pear/blob/v3.1.0/subsystems/sidecar/ops/stage.js)
+
+When `true`, removes entries from a previous stage that are now ignored—the config equivalent of [`pear stage --purge`](/reference/pear/cli#pear-stage). Defaults to `false`.
+
+#### `pear.stage.include <Array>`
+<a name="pear-stage-include"></a>
+
+**REMOVED**
+
+Removed in Pear v3: it fed the `pear stage` JavaScript static-analysis / warmup phase (used mainly with the removed `pear stage --compact` flag), and `pear stage` no longer reads it. To control what is staged in v3, use [`pear.stage.ignore`](#pear-stage-ignore) (or the [`pear.stage.only`](#pear-stage-only) filter).
+
+_For `pear` ≤ v2.6.5 (named `pear.stage.includes` in ≤ v2.2.15):_ explicitly declared paths to include so files not recognized during `pear stage`'s JavaScript static analysis — non-JavaScript files, or files required/imported via an expression like `require(getPkgName())` — were still staged.
+
+#### `pear.stage.defer <Array>`
+<a name="pear-stage-defer"></a>
+
+**REMOVED**
+
+Removed in Pear v3 together with the `pear stage` static-analysis (compact/warmup) phase it applied to; `pear stage` no longer reads it.
+
+_For `pear` ≤ v2.6.5:_ an array of dependency specifiers (as used with `require`/`import`) to declare as uninstalled optional or peer dependencies, so the static-analysis steps during `pear stage` (compact and warmup phases) would step over patterns like `try { require('a-dep') } catch { fallback() }`. `pear stage` printed skip hints for such dependencies.
+
+### Deprecated & removed fields
+
+`pear run` was removed in Pear v3, along with the `pear stage` static-analysis / warmup phase. The fields below related to those. Verified against `pear-state` and the `pear` repo (v3): some are still **deprecated** (accepted but discouraged) while others are **removed** (no longer read by `pear`). Use **[Pear OTA](/reference/pear/runtime)** (the `pear-runtime` module) instead.
+
+### `pear.name <String>`
+<a name="pear-name"></a>
+
+[Field source on GitHub](https://github.com/holepunchto/pear-state/blob/v1.1.0/index.js#L53)
+
+**DEPRECATED**
+
+The name of the application. Overrides `package.json` `name`.
+
+### `pear.pre <String>`
+<a name="pear-pre"></a>
+
+**REMOVED**
+
+Removed in Pear v3: the `pear` CLI no longer reads `pear.pre`.
+
+A specifier such as `./path/to/pre.js` or `some-module`, or `pear-electron/pre`.
+
+The specifier must point to a script that executes prior to run-from-disk, prior to stage but **not** prior to run-from-link:
+
+* `pear run ./some-dir` - `pre` specifier executes prior
+* `pear stage ./some-dir` - `pre` specifier executes prior
+* `pear run pear://some/link` - `pre` specifier **does not** execute
+
+When a `pre` script runs, it has a `pipe` available, obtained via [`pear-pipe`](https://github.com/holepunchto/pear-pipe). The `pipe` carries values encoded with [`compact-encoding`](https://github.com/holepunchto/compact-encoding) `any` encoding (an encoded object, like JSON).
+
+The first encoded object sent on `pipe` is the application configuration. The first response `pear run` or `pear stage` expects back on the script's `pipe` is another `any`-encoded configuration object. This lets the pre-script return a mutated configuration to the calling command.
+
+The application then loads with that mutated configuration. With `pear run`, the mutated configuration is used at runtime. With `pear stage`, the mutated configuration overrides the application drive's `manifest` property.
+
+To view any mutated configuration after staging, run `pear info --manifest <link>`.
+
+### `pear.routes <Object|String>`
+<a name="pear-routes"></a>
+
+[Field source on GitHub](https://github.com/holepunchto/pear-state/blob/v1.1.0/index.js#L86)
+
+**DEPRECATED**
+
+By default, [`pear run`](/reference/pear/cli#pear-run-flags-linkdir-app-args) considers link pathnames to be entrypoints. This means `pear run` can execute any valid file staged to a Pear application. For example `pear run pear://<key>/some/path.js` would run some/path.js if it's valid. In that case [`Pear.app.route`](/reference/pear/api#pearapproute-string) would contain `/some/path.js` and [`Pear.app.entrypoint`](/reference/pear/api#pearappentrypoint-string) would also contain `/some/path.js`.
+
+To opt-out, and only allow top-level running set `Pear.routes` to `.` or `/` (it means the same thing):
+
+```json
+{
+  "pear": {
+    "routes": "."
+  }
+}
+```
+
+This redirects all paths to the entrypoint.
+
+In this case `pear run pear://<key>/some/path.js` would run the application entrypoint, [`Pear.app.route`](/reference/pear/api#pearapproutes-string) would contain `/some/path.js` while [`Pear.app.entrypoint`](/reference/pear/api#pearappentrypoint-string) would also be `/` - because `Pear.app.route` holds the raw pathname whereas `Pear.app.entrypoint` holds the mapped pathname.
+
+The `pear.routes` configuration can also be an object where the keys are pathnames to map from, and the values are pathnames to map to:
+
+```json
+{
+  "pear": {
+    "routes": {
+      "/from/path": "/to/path"
+    }
+  }
+}
+```
+
+When `routes: "."` is used in conjunction with [`pear-electron`](https://github.com/holepunchto/pear-electron) and [`pear-bridge`](https://github.com/holepunchto/pear-bridge) [`waypoint`](https://github.com/holepunchto/pear-bridge/#options) option this enables in-app single-page-application routing.
+
+
+### `pear.unrouted <Array>`
+<a name="pear-unrouted"></a>
+
+[Field source on GitHub](https://github.com/holepunchto/pear-state/blob/v1.1.0/index.js#L87)
+
+**DEPRECATED**
+
+Array of paths to exclude from any routing rules in [`pear.routes`](#pearroutes-objectstring).
+
+### `pear.assets <Object>`
+<a name="pear-assets"></a>
+
+[Field source on GitHub](https://github.com/holepunchto/pear/blob/v2.6.5/subsystems/sidecar/lib/pod.js#L650)
+
+**REMOVED**
+
+{/* Maintainer note: re-check once pear-electron ships a Pear v3-compatible release (still on 1.7.x/pear-state@^1.0.2 as of this writing)—if it wires pear.assets through pear-runtime this section should be revisited. */}
+
+Not read as of Pear v3: `pear-state` still carries an `assets` property through to `Pear.config`/`Pear.app`, but nothing populates it from `package.json` any more—it stays the empty default. The `pear gc assets` cleanup command is also gone, and the runtime-side [`Pear.app.assets`](/reference/pear/api#pear-app-assets) property is itself REMOVED. [Pear OTA](/reference/pear/runtime), the v3 embeddable runtime, has no replacement asset-fetching mechanism, and [`pear-electron`](https://github.com/holepunchto/pear-electron)—previously the only consumer of this field—has not been updated for Pear v3.
+
+Historically (Pear ≤ v2), this declared assets to fetch and store on disk on behalf of the application.
+
+By convention namespaces (the object keys) described the asset type.
+
+In particular, Desktop applications used the `ui` namespace to declare UI assets.
+
+Asset objects took the form `{link, name?, only?}`.
+
+* `link` `<String>` - Required. The  `pear://<fork>.<length>.<key>` link to fetch the assets from. The link must contain the full version (`fork.length.key`)
+* `name` `<String>` - Optional. Used in UI integration libraries such as [`pear-electron`](https://github.com/holepunchto/pear-electron) to determine bin name.
+* `only` `<Array<String>>` - Optional. An array of drive keys (pathnames) to exclusively fetch from the link with interpolation support for a special `%%HOST%%` keyword which is mapped to `<platform>-<architecture>` as in: `linux-x64`, `darwin-arm64` etc. This is useful for asset builds per OS and CPU architecture.
+
+Example:
+
+```json
+{
+  "pear": {
+    "assets": {
+      "ui": {
+        "link": "pear://0.940.pkzpbccx8ojp4516p7abompuhyj5gcpqfux1s9e7e4zzcdhyhdto",
+        "name": "Pear Runtime",
+        "only": [
+          "/boot.bundle",
+          "/by-arch/%%HOST%%",
+          "/prebuilds/%%HOST%%"
+        ]
+      }
+    }
+  }
+}
+```
+
+The `pear.assets` config wasn't only for User Interface runtimes, such as [`pear-electron`](https://github.com/holepunchto/pear-electron). It applied to any assets that needed to be placed on disk, such as large language model (LLM) assets, prebuilds, and other runtimes or binaries.
+
+Declared assets were updated onto user machines passively while the application was running. Initial assets were fetched on first run by the (pre-v3) embedded Pear runtime; application installers and distributables prefetched them so they were in place before first run.
+
+Assets could be declared directly on `pear.assets` as described, but when used in combination with [`pear.pre`](#pear-pre), installable modules such as [`pear-electron`](https://github.com/holepunchto/pear-electron) could also automatically define assets (and other configuration) on behalf of the application.
+
+Assets were stored in the platform folder, retrieved via `Pear.app.assets[namespace].path`—see [`Pear.app.assets`](/reference/pear/api#pear-app-assets) for the shape this took.
+
+###  `pear.links <Object|Array>`
+<a name="pear-links"></a>
+
+[Field source on GitHub](https://github.com/holepunchto/pear-state/blob/v1.1.0/index.js#L80)
+
+**DEPRECATED**
+
+Storing and managing Pear application links and domains.
+
+`links` can be an object or an array. If it's an object, naming the key makes it easy to reference from [`Pear.config.links`](/reference/pear/api#pearconfig-object)
+
+By default in Pear apps, only requests to the sidecar host (127.0.0.1:9342) are allowed. Additional hosts and trusted keys must be added in `pear.links` to allow access.
+
+Any Pear links that the app trusts to run (for example, as a worker) must be added and any HTTP or HTTPS domains that the app wants to access must also be added, including localhost.
+
+Adding `"https://*"` or `"http://*"` will trust all domains based on their respective protocol.
+
+Note that this is only for requests that the Pear app makes itself such as loading assets.
+
+```json
+{
+  // ...
+  "pear": {
+    // accessed at runtime using Pear.config.links[index], for example Pear.config.links[0] for pear://somePearKey
+    "links": [
+      "pear://somePearKey",
+      "https://example.com"
+    ]
+    // OR
+    // accessed at runtime using Pear.config.links.name, for example Pear.config.links.myWorker for myWorker
+    "links": {
+      "myWorker": "pear://somePearKey",
+      "host": "https://example.com"
+    }
+  }
+}
+```
+
+
+### `pear.gui <Object>`
+<a name="pear-gui"></a>
+
+**DEPRECATED**
+
+Graphical User Interface configuration options.
+
+This is a namespace reserved for UI integration libraries to use for configuration options.
+
+Defined per UI Integration library.
+
+* [pear-electron pear.gui](https://github.com/holepunchto/pear-electron#graphical-user-interface-options-)
+
+#### `pear.stage.prefetch <Array>`
+
+**REMOVED**
+
+Removed in Pear v3. (In Pear v2 it was superseded by [`pear.stage.include`](#pear-stage-include), which is itself removed in v3.)
+
+### `pear.userAgent <string>`
+<a name="pear-useragent"></a>
+
+**REMOVED**
+
+Former default was a template literal that interpolated `Pear.#state.id` after the `Pear ` prefix.
+
+Removed in Pear v3; not read by `pear`. Use `pear.gui.userAgent` per [pear-electron pear.gui](https://github.com/holepunchto/pear-electron#graphical-user-interface-options-)
+
+## See also
+
+- [Pear CLI](/reference/pear/cli)—the commands that read these fields (`pear stage`, `pear seed`, `pear build`).
+- [Pear API](/reference/pear/api)—how `Pear.config` and `Pear.app.*` surface configuration values at runtime.
+- [`pear-runtime` reference](/reference/pear/runtime)—embedding the runtime that consumes `package.json` and these fields.
+- [Distribute as a binary](/how-to/operate-an-app/build-and-package/distribute-as-binary)—how `pear.stage` and `pear.assets` interact with binary releases.

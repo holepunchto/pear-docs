@@ -1,0 +1,536 @@
+{
+  "name": "bare-broadcast-channel",
+  "version": "0.2.0",
+  "description": "Multi-producer, multi-consumer inter-thread broadcast messaging for JavaScript",
+  "repoUrl": "https://github.com/holepunchto/bare-broadcast-channel",
+  "npmUrl": "https://www.npmjs.com/package/bare-broadcast-channel",
+  "minBare": null,
+  "native": true,
+  "dependencies": [
+    "bare-events",
+    "bare-stream",
+    "bare-structured-clone"
+  ],
+  "usage": "```js\nconst BroadcastChannel = require('bare-broadcast-channel')\nconst { Thread } = Bare\n\nconst channel = new BroadcastChannel()\n\nconst consumer = (label) =>\n  new Thread(__filename, { data: { handle: channel.handle, label } }, async ({ handle, label }) => {\n    const BroadcastChannel = require('bare-broadcast-channel')\n    const port = BroadcastChannel.from(handle).connect()\n    console.log(label, 'got', await port.read())\n    await port.close()\n  })\n\nconst a = consumer('a')\nconst b = consumer('b')\n\nconst port = channel.connect()\n\nwhile (port.peers < 2) await new Promise((r) => setTimeout(r, 10))\n\nawait port.write('hello')\nawait port.close()\n\na.join()\nb.join()\n```",
+  "extraSections": [],
+  "exports": [
+    {
+      "key": "BroadcastChannel",
+      "name": "BroadcastChannel",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "interface BroadcastChannel<T = unknown> {\n  readonly handle: SharedArrayBuffer\n  readonly interfaces: SerializableConstructor[]\n  connect(): Port<T>\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "BroadcastChannel.constructor",
+          "name": "BroadcastChannel",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new BroadcastChannel(opts?: BroadcastChannelOptions)"
+          ],
+          "description": "Create a new broadcast channel. The channel is backed by a `SharedArrayBuffer` exposed as `channel.handle` that can be passed to other threads to share the channel across them.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "BroadcastChannelOptions",
+              "optional": true,
+              "default": null,
+              "description": "Channel options; `handle` backs the channel with an existing `SharedArrayBuffer`, `interfaces` registers serializable and transferable interfaces (default `[]`), and `portCapacity` defaults to `1024`."
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BroadcastChannel.from",
+          "name": "BroadcastChannel.from",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BroadcastChannel.from(handle: SharedArrayBuffer, opts?: BroadcastChannelOptions): BroadcastChannel"
+          ],
+          "description": "Restore a channel from its `SharedArrayBuffer` `handle`. `options` accepts the same fields as the constructor, except for `handle`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "handle",
+              "type": "SharedArrayBuffer",
+              "optional": false,
+              "default": null,
+              "description": "The `SharedArrayBuffer` backing the channel, as exposed by `channel.handle`."
+            },
+            {
+              "name": "opts",
+              "type": "BroadcastChannelOptions",
+              "optional": true,
+              "default": null,
+              "description": "The same options as the constructor, except `handle`."
+            }
+          ],
+          "returns": {
+            "type": "BroadcastChannel",
+            "description": "A channel backed by the given `handle`."
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BroadcastChannel.MAX_PORTS",
+          "name": "BroadcastChannel.MAX_PORTS",
+          "kind": "property",
+          "static": true,
+          "signatures": [
+            "BroadcastChannel.MAX_PORTS: number"
+          ],
+          "description": "Maximum number of ports that may connect to a single channel over its lifetime.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BroadcastChannel.connect",
+          "name": "connect",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "connect(): Port<T>"
+          ],
+          "description": "Connect a new port to the channel. Throws if `MAX_PORTS` has been reached. Port slots are not reused, so the cap applies to the total number of connections over the channel's lifetime, not the number of concurrently connected ports.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Port<T>",
+            "description": "A new port connected to the channel."
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BroadcastChannel.handle",
+          "name": "handle",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "handle: SharedArrayBuffer"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BroadcastChannel.interfaces",
+          "name": "interfaces",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "interfaces: SerializableConstructor[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Port",
+      "name": "Port",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "interface Port<T = unknown> {\n  readonly peers: number\n  ref(): void\n  unref(): void\n  read(): Promise<T | null>\n  readSync(): T | null\n  write(value: T): Promise<boolean>\n  writeSync(value: T): boolean\n  createReadStream(opts?: ReadableOptions<Port<T>>): Readable\n  createWriteStream(opts?: WritableOptions<Port<T>>): Writable\n  createStream(opts?: DuplexOptions<Port<T>>): Duplex\n  close(): Promise<void>\n  addListener<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  addOnceListener<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  prependListener<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  prependOnceListener<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  removeListener<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  removeAllListeners<E extends keyof M>(name?: E): this\n  on<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  once<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  off<E extends keyof M, R>(name: E, fn: EventHandler<M[E], R>): this\n  emit<E extends keyof M>(name: E, ...args: M[E]): boolean\n  listeners<E extends keyof M, R>(name: E): EventHandler<M[E], R>\n  rawListeners<E extends keyof M, R>(name: E): EventHandler<M[E], R>[]\n  eventNames(): (keyof M)[]\n  listenerCount<E extends keyof M>(name: E): number\n  getMaxListeners(): number\n  setMaxListeners(n: number): void\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Port.constructor",
+          "name": "Port",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new Port(channel: BroadcastChannel<T>)"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "channel",
+              "type": "BroadcastChannel<T>",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Port.close",
+          "name": "close",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "close(): Promise<void>"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Port.createReadStream",
+          "name": "createReadStream",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "createReadStream(opts?: ReadableOptions<Port<T>>): Readable"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "ReadableOptions<Port<T>>",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Readable",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Port.createStream",
+          "name": "createStream",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "createStream(opts?: DuplexOptions<Port<T>>): Duplex"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "DuplexOptions<Port<T>>",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Duplex",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Port.createWriteStream",
+          "name": "createWriteStream",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "createWriteStream(opts?: WritableOptions<Port<T>>): Writable"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "WritableOptions<Port<T>>",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Writable",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Port.peers",
+          "name": "peers",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "peers: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Port.read",
+          "name": "read",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "read(): Promise<T | null>"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<T | null>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Port.readSync",
+          "name": "readSync",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "readSync(): T | null"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "T | null",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Port.ref",
+          "name": "ref",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "ref(): void"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Port.unref",
+          "name": "unref",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "unref(): void"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Port.write",
+          "name": "write",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "write(value: T): Promise<boolean>"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "value",
+              "type": "T",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<boolean>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Port.writeSync",
+          "name": "writeSync",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "writeSync(value: T): boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "value",
+              "type": "T",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "boolean",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "BroadcastChannelOptions",
+      "name": "BroadcastChannelOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface BroadcastChannelOptions {\n  handle?: SharedArrayBuffer\n  interfaces?: SerializableConstructor[]\n  portCapacity?: number\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "BroadcastChannelOptions.handle",
+          "name": "handle",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "handle: SharedArrayBuffer"
+          ],
+          "description": "The `SharedArrayBuffer` backing the channel. Pass this to other threads to share the channel.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BroadcastChannelOptions.interfaces",
+          "name": "interfaces",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "interfaces: SerializableConstructor[]"
+          ],
+          "description": "The serializable and transferable interfaces registered on the channel.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BroadcastChannelOptions.portCapacity",
+          "name": "portCapacity",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "portCapacity: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "PortEvents",
+      "name": "PortEvents",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface PortEvents {\n  peers: [count: number]\n  close: []\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PortEvents.close",
+          "name": "close",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "close: []"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PortEvents.peers",
+          "name": "peers",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "peers: [count: number]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    }
+  ],
+  "subpaths": [],
+  "generatedAt": "2026-08-06T18:23:53.585Z"
+}

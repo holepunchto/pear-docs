@@ -1,0 +1,230 @@
+name: Watch upstream releases
+
+# The docs changelog (content/release-overview/index.mdx) is a hand-curated record of
+# module changes, but humans shouldn't have to notice upstream releases by
+# hand. This job polls the watched repos (scripts/upstream-releases.json) on a
+# schedule; when a repo has releases/tags newer than the recorded baseline
+# (scripts/upstream-releases-state.json), the checker inserts DRAFT entries
+# under the changelog's `changelog:insert` marker and this workflow opens a
+# review PR. A docs human curates the wording — flags Breaking items, adds
+# migration links — before merge.
+#
+# One rolling PR branch (changelog/upstream-drafts) collects the drafts. When
+# an earlier run left that branch open, this run RESUMES it: the branch's
+# state file is already advanced, so only genuinely new releases are appended
+# on top, and any human curation commits pushed to the PR are preserved
+# (never force-push this branch from published — that clobbers curation). The
+# state file travels with the PR: baselines only land on `published` once the
+# curated PR merges.
+#
+# Like docs-lint.yml, this can't `npm install` (token-gated @tetherto/*
+# packages) — it installs just `tsx` into a throwaway prefix. The checker
+# itself is stdlib-only.
+
+on:
+  schedule:
+    # Daily, 08:00 UTC — early enough that a release from the previous day
+    # has a review PR waiting in the morning.
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    name: check upstream releases
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: published
+
+      - name: Resume the open drafts branch when one exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # A previous run may have left an OPEN review PR whose branch holds
+          # both un-merged drafts and human curation commits. Stacking this
+          # run on top of it preserves that work; starting from `published`
+          # would regenerate the same drafts and the final push would clobber
+          # the curation. Only resume when the PR is still open — a branch
+          # left behind by a closed-without-merge PR would otherwise keep
+          # resurrecting its rejected drafts.
+          branch="changelog/upstream-drafts"
+          remote_sha=""
+          if git fetch origin "${branch}" 2>/dev/null; then
+            remote_sha=$(git rev-parse FETCH_HEAD)
+          fi
+          open_pr=$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${branch}" --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -n "${open_pr}" ] && [ -n "${remote_sha}" ]; then
+            git checkout -B "${branch}" "${remote_sha}"
+            echo "Resumed drafts branch behind open PR #${open_pr}."
+          else
+            git checkout -B "${branch}"
+            echo "No open drafts PR; starting from published."
+          fi
+          # The PR step force-pushes with this exact lease, so a curation
+          # commit pushed while this job runs fails the push instead of
+          # being clobbered (empty = the remote branch must not exist yet).
+          echo "DRAFTS_REMOTE_SHA=${remote_sha}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # `typescript` is needed too now: gen-bare-docs-states.ts (via
+      # scripts/bare-refgen/extract.ts's TS Compiler API walker) parses the
+      # bare-runtime/bare-kit .d.ts surfaces.
+      - name: Install checker deps (tsx, typescript)
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx typescript
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+
+      - name: Detect new releases and insert draft entries
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./node_modules/.bin/tsx scripts/check-upstream-releases.ts
+
+      # Reports how far each reference page's `upstreamVersion` has drifted from
+      # npm latest, graded by SemVer. Intentionally advisory: an older pin is
+      # valid for the version it documents, so this must never fail the job —
+      # hence no `--strict` and `continue-on-error`. See
+      # docs/plans/DOCS-VERSIONING-DESIGN.md §5.
+      - name: Report upstream pin drift
+        continue-on-error: true
+        run: |
+          ./node_modules/.bin/tsx scripts/check-upstream-pins.ts | tee /tmp/pin-drift.txt || true
+          {
+            echo '## Upstream pin drift'
+            echo ''
+            echo '```'
+            cat /tmp/pin-drift.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Same advisory shape as the pin-drift step above, for the three Bare
+      # platform pages' version dropdowns (bare-cli, bare-runtime, bare-kit):
+      # `--check` only reports whether holepunchto/bare or
+      # holepunchto/react-native-bare-kit's documented surface has moved past
+      # what's committed in src/lib/bare-*-docs-states.json — it never writes
+      # or opens a PR. A new doc-state needs a human to add matching
+      # <VersionSection>/<Since>/<Until> markers in content/reference/bare/*,
+      # which an unattended commit can't do, so this must never fail the job
+      # (continue-on-error, no strict mode). See
+      # docs/plans/DOCS-VERSIONING-DESIGN.md and scripts/gen-bare-docs-states.ts.
+      - name: Report Bare doc-state drift
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./node_modules/.bin/tsx scripts/gen-bare-docs-states.ts --check | tee /tmp/bare-docs-states-drift.txt || true
+          {
+            echo '## Bare doc-state drift'
+            echo ''
+            echo '```'
+            cat /tmp/bare-docs-states-drift.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Commit-level heads-up, not release-level like every check above it: has
+      # the latest commit touching each watched repo's SOURCE-OF-TRUTH FILE
+      # (a shipped .d.ts, prioritized, or the real entry file for the ~14
+      # repos with none) moved since we last looked? Deliberately finer-grained
+      # than tag-watching — a real API change can sit on a default branch for
+      # weeks before a release ships, and that gap is exactly what let a
+      # deprecation slip through undetected earlier in this axis's history.
+      #
+      # `--check` never writes scripts/upstream-commits-state.json, so — same
+      # rule as the pin-drift and doc-state steps above — a changed entry
+      # keeps showing up every day until a human runs
+      # `npm run check:upstream-commits` (no --check) locally, reviews the
+      # diff at the printed commit URL, and commits the moved baseline. That
+      # is deliberate: silently auto-clearing itself would mean a missed day's
+      # summary is a missed change forever, which defeats the point of a
+      # heads-up. Re-run `npm run resolve:upstream-commits` separately (not
+      # part of this daily job) whenever the watched module list itself
+      # changes, e.g. a new bare-* module gets added to bare-refgen.
+      - name: Report upstream commit-level changes
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./node_modules/.bin/tsx scripts/check-upstream-commits.ts --check | tee /tmp/upstream-commits.txt || true
+          {
+            echo '## Upstream commit-level changes'
+            echo ''
+            echo '```'
+            cat /tmp/upstream-commits.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update the review PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- content/release-overview/index.mdx scripts/upstream-releases-state.json; then
+            echo "No new releases; nothing to PR."
+            exit 0
+          fi
+
+          branch="changelog/upstream-drafts"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add content/release-overview/index.mdx scripts/upstream-releases-state.json
+          git commit -m "chore(changelog): draft entries for new upstream releases"
+          # Lease-guarded push (DRAFTS_REMOTE_SHA set by the resume step):
+          # fast-forwards a resumed open-PR branch, replaces a stale branch
+          # from a closed PR, and fails safely if anyone pushed curation
+          # commits while this job was running.
+          git push --force-with-lease="refs/heads/${branch}:${DRAFTS_REMOTE_SHA}" -u origin "${branch}"
+
+          # List every draft heading the branch adds over published (not just
+          # this run's), so an updated PR body stays complete.
+          releases=$(git diff origin/published..HEAD -- content/release-overview/index.mdx \
+            | grep '^+### ' | sed 's/^+### /- /' || true)
+
+          # Tripwire: the CLI reference pins its "Command source on GitHub"
+          # links to `main` until Pear v3 is tagged (see the maintainer note
+          # at the top of content/reference/pear/cli.mdx). Surface the re-pin
+          # chore the moment a v3 tag shows up. NOTE: the literal "pear (CLI)"
+          # here must match the `name` for holepunchto/pear in
+          # scripts/upstream-releases.json — keep them in sync.
+          repin=""
+          if printf '%s\n' "${releases}" | grep -qE '^- pear \(CLI\) — v3([^0-9]|$)'; then
+            repin="⚠️ **A pear v3 tag was detected.** Re-pin the \"Command source on GitHub\" links in \`content/reference/pear/cli.mdx\` from \`main\` to the new tag (see the maintainer note at the top of that file), then remove the note."
+          fi
+
+          title="Changelog: curate draft entries for new upstream releases"
+          body=$(printf '%s\n' \
+            "New upstream releases were detected and inserted as **draft** changelog entries:" \
+            "" \
+            "${releases}" \
+            "" \
+            "${repin}" \
+            "" \
+            "**Review checklist** (see the \`TODO(curate)\` comments in the diff):" \
+            "" \
+            "- [ ] Reword upstream notes for docs readers (what it means for their app)" \
+            "- [ ] Flag breaking items with \`**Breaking:**\` and link migration guidance" \
+            "- [ ] Fold entries into the right dated section; remove the \`(draft)\` heading suffix" \
+            "- [ ] Delete the \`TODO(curate)\` comments" \
+            "" \
+            "_Opened automatically by the Watch upstream releases workflow. Scheduled reruns stack new drafts on this branch without touching curation commits._")
+
+          existing=$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${branch}" --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -n "${existing}" ]; then
+            echo "Updating open PR #${existing}."
+            gh pr edit "${existing}" --repo "${GITHUB_REPOSITORY}" --body "${body}"
+          else
+            gh pr create --repo "${GITHUB_REPOSITORY}" --base published \
+              --title "${title}" --body "${body}"
+          fi
