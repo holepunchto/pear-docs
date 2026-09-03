@@ -120,7 +120,24 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
       <DocsVersionProvider>
         <DocsLayout
           {...baseOptions(product)}
-          tree={{ name: 'docs', children: tree }}
+          // `$id` is fumadocs' own documented field for this: "ID for the
+          // node, unique in all page trees." Without it, every product's
+          // tree wrapper object gets same auto-assigned id ("0", from a
+          // useRef counter that restarts at 0 per TreeContextProvider
+          // instance — see fumadocs-ui/dist/contexts/tree.js). Fumadocs'
+          // useFooterItems() caches its flattened prev/next list in a
+          // module-level Map keyed by that id, which persists across the
+          // whole `next build` process — so once any one product's page
+          // populates the "0" cache entry, every other product's pages
+          // rendered afterward in that same process read back the WRONG
+          // (first product's) footer list on the server, while a client
+          // hydration (fresh module state, empty cache) computes the
+          // correct one — a real cross-request cache collision, and the
+          // root cause of a site-wide hydration mismatch on the
+          // Previous/Next page footer links. Setting our own stable,
+          // per-product id here means fumadocs' `root.$id ??= ...` never
+          // overwrites it, so each product gets its own cache entry.
+          tree={{ name: 'docs', children: tree, $id: product }}
           links={linkItems}
           nav={{ component: <MobileSidebarTrigger /> }}
           searchToggle={{ enabled: false }}
