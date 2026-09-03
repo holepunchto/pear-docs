@@ -11,6 +11,7 @@ import KeetRoomModalMount from '@/components/keet-modal';
 import { DocsVersionProvider } from '@/components/version';
 import { ProductNavBar } from '@/components/product-nav-bar';
 import { SearchBarButton } from '@/components/search-bar-button';
+import { MobileSidebarTrigger } from '@/components/mobile-sidebar-trigger';
 
 export const dynamic = 'force-static';
 
@@ -57,27 +58,45 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
         anything placed there without dedicated row space gets stretched to the
         cell's full height and covers the content. Living outside the grid
         entirely avoids that.
+
+        Two distinct layouts below `md` vs at `md` and up — rendered twice
+        (nav links, search) and toggled with hidden/flex per breakpoint,
+        rather than one flex row trying to reflow across both. The
+        one-row-that-reflows version this replaced looked fine at both
+        endpoints individually but broke in between: items would shrink,
+        wrap mid-word, or scroll off-screen with no visible affordance.
+        Two intentional layouts are more code but each one is predictable.
       */}
-      <header className="sticky top-0 z-40 flex items-center border-b bg-fd-background">
-        {/*
-          Fixed to the sidebar's own width (268px, matched by measuring the
-          rendered sidebar — see --fd-sidebar-width) so the logo sits in the
-          same column as the sidebar and the nav links below start exactly
-          where the sidebar ends. Not reactive to the sidebar's collapse
-          state — that variable is scoped to #nd-docs-layout's descendants,
-          and this header is a sibling of that grid, not one — an accepted
-          gap rather than wiring a second SidebarProvider just for this.
-        */}
-        <Link
-          href={homeUrl}
-          className="flex w-[268px] shrink-0 items-center gap-2 py-4 ps-4 font-semibold text-nowrap text-fd-foreground max-md:w-auto max-md:pe-4"
-        >
-          <Image src={markSrc} alt="" width={24} height={24} />
-          {wordmark}
-        </Link>
-        <div className="flex min-w-0 flex-1 items-center justify-between gap-4 overflow-x-auto py-3 pe-4">
+      <header className="sticky top-0 z-40 border-b bg-fd-background">
+        <div className="flex items-center gap-3 px-4 py-3 md:gap-0 md:py-0">
+          {/*
+            md:w-[268px] matches the sidebar's own rendered width (measured),
+            so the logo sits in the same column as the sidebar and the nav
+            row below starts exactly where the sidebar ends. Not reactive to
+            the sidebar's collapse state — that variable is scoped to
+            #nd-docs-layout's descendants, and this header is a sibling of
+            that grid, not one — an accepted gap rather than wiring a second
+            SidebarProvider just for this. Below `md` there's no sidebar
+            column to match, so it's just an inline logo.
+          */}
+          <Link
+            href={homeUrl}
+            className="flex shrink-0 items-center gap-2 font-semibold text-nowrap text-fd-foreground md:w-[268px] md:py-4 md:ps-4"
+          >
+            <Image src={markSrc} alt="" width={24} height={24} />
+            {wordmark}
+          </Link>
+          {/* >= md: nav links + full search bar share the rest of the row. */}
+          <div className="hidden min-w-0 flex-1 items-center justify-between gap-4 overflow-x-auto py-3 pe-4 md:flex">
+            <ProductNavBar active={product} />
+            <SearchBarButton className="w-56 shrink-0" />
+          </div>
+          {/* < md: just the icon-only search, next to the logo. */}
+          <SearchBarButton className="ms-auto shrink-0 md:hidden" />
+        </div>
+        {/* < md: nav links get their own scrollable row below. */}
+        <div className="overflow-x-auto border-t px-4 py-2.5 md:hidden">
           <ProductNavBar active={product} />
-          <SearchBarButton className="w-56 shrink-0" />
         </div>
       </header>
       {/*
@@ -93,7 +112,9 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
           {...baseOptions(product)}
           tree={{ name: 'docs', children: tree }}
           links={linkItems}
+          nav={{ component: <MobileSidebarTrigger /> }}
           searchToggle={{ enabled: false }}
+          sidebar={{ collapsible: false }}
         >
           {children}
         </DocsLayout>

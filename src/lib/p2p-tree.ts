@@ -19,7 +19,7 @@ import type { Node } from 'fumadocs-core/page-tree';
  * its index, same pattern bare-tree.ts uses for `use-bare-standalone.mdx`.
  */
 export const p2pTree: Node[] = [
-  { type: 'page', name: 'P2P', url: '/p2p' },
+  { type: 'page', name: 'P2P Building Blocks', url: '/p2p' },
   {
     type: 'folder',
     name: 'Getting Started',
