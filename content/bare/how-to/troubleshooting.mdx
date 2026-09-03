@@ -1,0 +1,56 @@
+---
+title: "Troubleshoot common issues"
+description: "Fixes for Bare runtime issues."
+docType: how-to
+product: bare
+schemaType: TechArticle
+---
+
+Troubleshooting confusing scenarios while developing with the Bare runtime. See [Runtime and languages](/pear/explanation/runtime-and-languages) for background, or [Migrate a Node.js app to Bare](/bare/how-to/migrate-a-nodejs-app-to-bare) if you're porting an existing app.
+
+Looking for Pear CLI or deployment issues instead? See [Pear's troubleshooting guide](/pear/how-to/troubleshooting). Looking for peer-to-peer building-block issues instead? See [P2P's troubleshooting guide](/p2p/how-to/troubleshooting).
+
+### Missing builtin Modules when Running with Bare
+
+Bare doesn't ship every Node.js builtin. If a module throws `MODULE_NOT_FOUND` for a builtin like `fs` or `path`, it likely means the module was written for Node.js only.
+
+#### Writing a module with Support for Bare & Node.js
+
+Use `bare` as a package export condition alongside `node` to point at a Bare-compatible entry point:
+
+```json
+{
+  "name": "my-module",
+  "exports": {
+    ".": {
+      "bare": "./index-bare.js",
+      "node": "./index-node.js",
+      "default": "./index.js"
+    }
+  }
+}
+```
+
+#### Running Third-Party Modules Written for Node.js
+
+If a third-party module has no `bare` export condition and depends on Node.js-only builtins, it can't run under Bare unchanged. Check for a Bare-compatible alternative, or wrap the missing builtin with a polyfill package.
+
+### `AddonError: ADDON_NOT_FOUND: Cannot find addon` when running Bare
+
+This means a native addon required by a module wasn't built or bundled for the current platform/architecture. Rebuild the addon for your target, or confirm the module publishes prebuilds for it.
+
+### `bare-pack` with conditional module loading
+
+`bare-pack` bundles by statically resolving `require`/`import` calls, so conditionally loaded modules (`require(cond ? 'a' : 'b')`) can be missed and omitted from the bundle. If you see:
+
+```
+Error: Cannot find module 'my-conditional-dep'
+```
+
+at runtime from a packed app, but not when running unpacked, make the conditional require explicit (e.g. two separate static `require` calls with the condition wrapping them) so `bare-pack` can see both branches.
+
+## See also
+
+- [Bare modules reference](/bare/reference/modules/bare-modules)—the full list of Bare's built-in and `bare-*` modules.
+- [Migrate a Node.js app to Bare](/bare/how-to/migrate-a-nodejs-app-to-bare)—porting an existing Node.js app, including the builtin/addon issues above.
+- [Runtime and languages](/pear/explanation/runtime-and-languages)—how Bare fits into the wider Pear stack.

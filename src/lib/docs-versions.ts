@@ -11,7 +11,7 @@
  * §1.1). Until then, add an entry here when a release changes the documented
  * surface.
  *
- * Scope: the four `content/reference/pear/*` platform pages ONLY. Module and
+ * Scope: the four `content/pear/reference/pear/*` platform pages ONLY. Module and
  * bare reference pages are versioned by their own npm versions and must never
  * appear behind this dropdown (design §1) — see `isPlatformPath`.
  */
@@ -137,14 +137,14 @@ export function isGateHidden(
  * this. Showing it on `hypercore` would assert exactly the false model the
  * design forbids: that module APIs move with the platform version.
  */
-const PLATFORM_PREFIX = '/reference/pear/';
+const PLATFORM_PREFIX = '/pear/reference/pear/';
 
 /** Whether `pathname` is one of the Pear platform reference pages. */
 export function isPlatformPath(pathname: string | null | undefined): boolean {
   if (!pathname) return false;
   // `trailingSlash: true`, but tolerate either shape.
   const p = pathname.endsWith('/') ? pathname : `${pathname}/`;
-  // A trailing-slash-only match would be the (nonexistent) `/reference/pear`
+  // A trailing-slash-only match would be the (nonexistent) `/pear/reference/pear`
   // index; require something after the prefix.
   return p.startsWith(PLATFORM_PREFIX) && p.length > PLATFORM_PREFIX.length;
 }

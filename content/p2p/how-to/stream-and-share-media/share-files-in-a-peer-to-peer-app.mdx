@@ -1,0 +1,131 @@
+---
+title: "Share files in a peer-to-peer app"
+description: >-
+  Swap the hello-pear-electron room for a Hyperdrive so peers can publish files into a
+  shared folder and replicate them through the same scaffold.
+docType: how-to
+product: p2p
+schemaType: TechArticle
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+This guide shows you how to **swap the [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) room for a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive)** so peers share files instead of messages. The reference implementation is [`pear-file-sharing`](https://github.com/holepunchto/pear-docs/tree/preview/examples/how-to/stream-and-share-media/file-sharing).
+
+<include>../../../_snippets/_frontend-template-callout.mdx</include>
+
+- [Create a full peer-to-peer filesystem with Hyperdrive](/p2p/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—the building block this guide layers a desktop UI on top of.
+
+## Before you begin
+
+- A working clone of `hello-pear-electron` (or your own app built from the getting-started path).
+- Familiarity with [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) and [Localdrive](/p2p/reference/helpers/localdrive).
+
+## What changes
+
+| Layer | Change |
+| --- | --- |
+| Dependencies | Add [`hyperdrive`](https://www.npmjs.com/package/hyperdrive), [`localdrive`](https://www.npmjs.com/package/localdrive), and [`hypercore-id-encoding`](https://www.npmjs.com/package/hypercore-id-encoding). |
+| Worker | Add a `DriveRoom`: each peer owns a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) mirrored from a local `my-drive` folder, and the [Autobase](/p2p/reference/building-blocks/autobase) view tracks the set of drive keys so peers mirror each others' drives into `shared-drives`. |
+| Worker teardown | Cancel the mirror/file-list interval timers in `_close` before closing the room → swarm → store. |
+| Worker messages | Push a `drives` message (each drive plus its files) and handle an `add-file` message that copies a chosen file into `my-drive`. |
+| Renderer | Render a per-drive file list with an "add file" picker. |
+
+## Steps
+
+<Steps>
+
+<Step>
+
+### Add the dependencies
+
+```bash skip="desktop-gui"
+npm install hyperdrive localdrive hypercore-id-encoding
+```
+
+</Step>
+
+<Step>
+
+### Add a `DriveRoom` worker
+
+Create `workers/drive-room.js` (`DriveRoom`) by adapting `chat-room.js`. The pairing, [Autobase](/p2p/reference/building-blocks/autobase), and writer plumbing stay the same; what changes is the data each peer publishes:
+
+- Each peer owns one **[Hyperdrive](/p2p/reference/building-blocks/hyperdrive)** (`this.myDrive`) backed by a local `my-drive` folder (`this.myLocalDrive`, a [`localdrive`](https://www.npmjs.com/package/localdrive)). `_uploadMyDrive` (L160) publishes the drive key to the Autobase (L162), joins the swarm on it (L163), and mirrors the folder into the Hyperdrive on a 1-second timer (L165–L166), so dropping a file into `my-drive` publishes it to peers.
+- The Autobase view stores just the **set of drive keys** (`@pear-file-sharing/drives`). `_downloadSharedDrives` (L141) replicates every peer's Hyperdrive: it opens a per-key `LocalDrive` under `shared-drives` (L147), reuses `myDrive` or constructs a peer Hyperdrive from the key (L149), mirrors the drive down on every `append` (L152–L153), and joins the swarm on its discovery key (L156).
+
+```js file=<rootDir>/examples/how-to/stream-and-share-media/file-sharing/workers/drive-room.js#L141-L167 title="workers/drive-room.js" lineNumbers {141,147,149,152-153,156,160,162-163,165-166} skip="example-import"
+```
+
+</Step>
+
+<Step>
+
+### Preserve the `clearInterval` teardown
+
+`pear-file-sharing` runs two polling loops: `DriveRoom._uploadMyDrive` mirrors the user's `my-drive` folder into the Hyperdrive, and `WorkerTask` rebuilds the file list for the renderer. Both store their timer handles, and `_close` clears them (L62) before the standard room → swarm → store chain (L63–L65). **Do not drop this**, or shutdown leaks an interval timer:
+
+```js file=<rootDir>/examples/how-to/stream-and-share-media/file-sharing/workers/worker-task.js#L61-L66 title="workers/worker-task.js" lineNumbers {62,63-65} skip="example-import"
+```
+
+`DriveRoom._close` does the same for its own `uploadInterval`. The [`graceful-goodbye`](https://www.npmjs.com/package/graceful-goodbye) hook in `workers/index.js` is what fires this on SIGINT / IPC end.
+
+</Step>
+
+<Step>
+
+### Surface the drives over the worker pipe
+
+The worker uses a HyperDispatch for its Autobase, with `add-drive` standing in for `add-message` (`schema.js` registers the `drive`/`drives` schemas and the `add-drive` dispatch). Regenerate `spec/`:
+
+```bash skip="desktop-gui"
+npm run build:db
+```
+
+The worker–renderer transport stays the plain-JSON-over-[`framed-stream`](https://www.npmjs.com/package/framed-stream) pipe in hello-pear-electron—no HRPC. `WorkerTask._open` wires both ends: it parses each plain-JSON message off the pipe (L44–L50), and an `add-file` message copies the chosen file into the `my-drive` folder (L51–L53) where `_uploadMyDrive` picks it up. A 1-second interval starts `_drives` (L56), and the initial invite is written back to the renderer (L58):
+
+```js file=<rootDir>/examples/how-to/stream-and-share-media/file-sharing/workers/worker-task.js#L37-L59 title="workers/worker-task.js" lineNumbers {44-50,51-53,56,58} skip="example-import"
+```
+
+`_drives` reads each mirrored drive folder off disk and writes the full list—drive name plus its files as `file://` URIs—back to the renderer as a `drives` message. It walks every known drive (L69), reads its mirrored folder recursively (L74–L77), builds the drive plus its files as `file://` URIs (L84–L85), pins the user's own drive first (L89–L92), and writes the `drives` message over the pipe (L94):
+
+```js file=<rootDir>/examples/how-to/stream-and-share-media/file-sharing/workers/worker-task.js#L68-L95 title="workers/worker-task.js" lineNumbers {69,74-77,84-85,89-92,94} skip="example-import"
+```
+
+</Step>
+
+<Step>
+
+### Update the renderer
+
+In the vanilla `renderer/app.js`, render a list grouped by drive—each peer's drive and its files, with the user's own drive pinned first. Add a drag-and-drop zone plus a "browse" file picker that send an `add-file` message over the worker pipe. Use `bridge.getPathForFile(file)` (L35)—backed by `webUtils.getPathForFile`, already exposed in `electron/preload.js` of hello-pear-electron—to turn each picked file into a local path the worker can copy, then send it as an `add-file` message (L36). `renderDrives` builds one card per drive and links each file to its `file://` URI (L43–L100). The drop zone (L111–L115) and the "browse" picker (L117–L120) both feed `addFiles`, and incoming worker messages route `drives`/`invite` events to the renderer (L131–L132):
+
+```js file=<rootDir>/examples/how-to/stream-and-share-media/file-sharing/renderer/app.js title="renderer/app.js" lineNumbers {35,36,43-100,111-115,117-120,131-132} skip="example-import"
+```
+
+</Step>
+
+</Steps>
+
+## Run it
+
+```bash skip="desktop-gui"
+npm run build
+
+# user1: create room + print invite + watch folder
+npm start -- --storage /tmp/files-user1 --name user1
+```
+
+Drop files into the path printed as `My drive:` in the terminal. They appear in the file list. In a second terminal:
+
+```bash skip="desktop-gui"
+npm start -- --storage /tmp/files-user2 --name user2 --invite <invite>
+```
+
+user2's app lists user1's files. They are mirrored down into the `shared-drives` folder automatically, and each entry links to the local `file://` path on disk.
+
+## Where to go next
+
+- [Create a full peer-to-peer filesystem with Hyperdrive](/p2p/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—the underlying mechanics.
+- [Stream stored video in a peer-to-peer app](/p2p/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app)—same scaffold, range-served blobs instead of files.
+- [From append-only logs to files](/p2p/explanation/from-logs-to-files)—why a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) ends up looking like a filesystem.

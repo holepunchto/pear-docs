@@ -1,0 +1,51 @@
+---
+title: "Native-addon CI prebuilds"
+description: >-
+  Reference for the holepunchto/actions GitHub Actions that compile, upload,
+  and merge native Bare-addon prebuilds across platforms in CI.
+docType: reference
+product: bare
+schemaType: APIReference
+---
+
+[`holepunchto/actions`](https://github.com/holepunchto/actions) is a collection of reusable composite GitHub Actions. This page covers the ones for authors of native [Bare](/bare/reference/modules/bare-modules) addons who build prebuilt binaries across platforms in CI. Reference one with:
+
+```yaml
+- uses: holepunchto/actions/<name>@v1
+```
+
+<Callout type="info">
+See [Native addons](/bare/explanation/native-addons) for writing the addon itself. This page covers only the CI pipeline that builds prebuilt binaries for every platform once the addon exists.
+</Callout>
+
+## Prebuild pipeline
+
+The typical shape is a build matrix where each job runs `compile-prebuilds`, then a final job merges the per-platform artifacts.
+
+| Action | Purpose | Key inputs |
+| --- | --- | --- |
+| [`compile-prebuilds`](https://github.com/holepunchto/actions/tree/main/compile-prebuilds) | Install `bare-make`, then `generate` / `build` / `install` a native prebuild for one platform + arch, optionally uploading it. | `platform` (required), `arch` (required), `flags`, `tags`, `prefix` (default `prebuilds`), `upload` |
+| [`upload-prebuilds`](https://github.com/holepunchto/actions/tree/main/upload-prebuilds) | Upload a compiled prebuild as an artifact named `<platform>-<arch><tags>`. | `platform` (required), `arch` (required), `tags`, `prefix` |
+| [`download-prebuilds`](https://github.com/holepunchto/actions/tree/main/download-prebuilds) | Download all prebuild artifacts into one directory (`merge-multiple`). | `prefix` (default `prebuilds`) |
+| [`merge-prebuilds`](https://github.com/holepunchto/actions/tree/main/merge-prebuilds) | Download every per-platform prebuild artifact and re-upload them as a single `prebuilds` artifact. |—|
+
+## Project and toolchain setup
+
+These are the building blocks the prebuild actions compose; you can also use them directly.
+
+| Action | Purpose |
+| --- | --- |
+| [`checkout`](https://github.com/holepunchto/actions/tree/main/checkout) | `actions/checkout` with `persist-credentials: false`. |
+| [`setup-node`](https://github.com/holepunchto/actions/tree/main/setup-node) | Install Node.js LTS and configure the npm registry/scope for auth. |
+| [`node-base`](https://github.com/holepunchto/actions/tree/main/node-base) | `checkout` + `setup-node` + `npm install` (with `allow-git`, `force-install`, registry/scope/auth options). |
+| [`setup-bare`](https://github.com/holepunchto/actions/tree/main/setup-bare) | Install the `bare-runtime` globally. |
+| [`bare-base`](https://github.com/holepunchto/actions/tree/main/bare-base) | `node-base` + `setup-bare`: configure a Bare project on a runner. |
+| [`setup-llvm`](https://github.com/holepunchto/actions/tree/main/setup-llvm), [`setup-nasm`](https://github.com/holepunchto/actions/tree/main/setup-nasm), [`setup-swift`](https://github.com/holepunchto/actions/tree/main/setup-swift), [`swift-base`](https://github.com/holepunchto/actions/tree/main/swift-base) | Install the compilers and toolchains (LLVM, NASM, Swift) used when compiling native prebuilds and platform-specific code. |
+| [`setup-socket`](https://github.com/holepunchto/actions/tree/main/setup-socket), [`setup-mininet`](https://github.com/holepunchto/actions/tree/main/setup-mininet) | Install supporting tooling: `setup-socket` configures Socket.dev supply-chain scanning; `setup-mininet` installs Mininet and Open vSwitch for network-emulation tests. |
+
+## See also
+
+- [Native addons](/bare/explanation/native-addons)—writing the addon this pipeline builds.
+- [`bare-make` reference](/bare/reference/bare/modules/bare-make)—the build tool `compile-prebuilds` runs.
+- [Bare modules](/bare/reference/modules/bare-modules)—the runtime the prebuild pipeline targets.
+- [Holepunch GitHub Actions](/pear/reference/ci-and-release/github-actions)—the same `holepunchto/actions` collection's Pear app CI/CD and release actions.

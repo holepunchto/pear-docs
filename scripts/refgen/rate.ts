@@ -23,9 +23,11 @@ export interface Parity {
   extra: string[]; // in the model, not on the curated page
 }
 
-const REFERENCE_ROOT = 'content/reference';
+// content/reference/ moved to content/bare/reference/ in the Phase 6 physical
+// reorg (docs/plans/PEAR-BARE-SPLIT-PITCH.md).
+const REFERENCE_ROOT = 'content/bare/reference';
 
-/** Locate <slug>.mdx anywhere under content/reference. */
+/** Locate <slug>.mdx anywhere under content/bare/reference. */
 function findMdx(slug: string, root = REFERENCE_ROOT): string | null {
   let found: string | null = null;
   const walk = (dir: string) => {

@@ -1,0 +1,718 @@
+---
+title: "bare-module"
+description: "Module support for JavaScript"
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "6.4.0"
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-module`](https://github.com/holepunchto/bare-module) — Module support for JavaScript. It is a native addon and requires Bare `>=1.29.4`.
+
+```sh
+npm i bare-module
+```
+
+## Usage
+
+A module is loaded by its WHATWG `URL`. The source may be read through the module's protocol or passed in directly:
+
+```js
+const Module = require('bare-module')
+
+// Load a module directly from source, without it existing on disk.
+const foo = await Module.load(
+  new URL('file:///foo.js'),
+  'module.exports = function add (a, b) { return a + b }'
+)
+
+foo.exports(2, 3)
+// 5
+```
+
+To resolve and load specifiers relative to a directory, as `require()` does, create a `require()` bound to a parent URL. The default protocol has no backing store of its own and cannot read from the file system, so pass a protocol that serves the source:
+
+```js
+const Module = require('bare-module')
+
+const require = Module.createRequire('file:///directory/', { protocol })
+
+// Resolves and loads `file:///directory/foo.js`, reading it through `protocol`.
+const foo = require('./foo.js')
+```
+
+The same machinery backs the `require()` and `import` available to modules as they run; see CommonJS modules and ECMAScript modules for what each exposes.
+
+## API
+
+### Module
+
+#### `new Module(url: URL)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The WHATWG `URL` identifying the module. |
+
+#### `builtins: Builtins`
+
+A map of builtin module specifiers mapped to the loaded module.
+
+#### `cache: Cache`
+
+A cache of loaded modules for this module. Defaults to `Module.cache`.
+
+#### `conditions: Conditions`
+
+An array of conditions used to resolve dependencies while loading the module. See [Conditional exports](https://github.com/holepunchto/bare-module#conditional-exports) for possible values.
+
+#### `defaultType: number`
+
+The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See `Module.constants.types` for possible values.
+
+#### `dirname: string`
+
+The directory portion of `module.url`.
+
+#### `exports: unknown`
+
+The exports from the module.
+
+#### `filename: string`
+
+The file portion of `module.url`.
+
+#### `id: string`
+
+#### `imports: ImportsMap`
+
+The import map when the module was loaded.
+
+#### `main: Module`
+
+The module representing the entry script where the program was launched.
+
+#### `Module.asset(specifier: string, parentURL: URL, opts?: Options): URL`
+
+Get the asset URL by resolving `specifier` relative to `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The asset specifier to resolve. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `specifier` relative to. |
+| `opts?` | [`Options`](#options) | — | Resolution options. |
+
+**Returns** `URL` — The WHATWG `URL` of the resolved asset.
+
+**Throws**
+
+- `ASSET_NOT_FOUND` — no asset matching `specifier` could be found relative to `parentURL`.
+- `TypeError` — `specifier` is not a string.
+
+#### `Module.builtinModules: Module[]`
+
+Always an empty array; provided for Node.js compatibility.
+
+#### `Module.cache: Cache`
+
+#### `Module.constants`
+
+```ts
+Module.constants: {
+  states: {
+    EVALUATED: number
+    SYNTHESIZED: number
+    RUN: number
+  }
+  types: {
+    SCRIPT: number
+    MODULE: number
+    JSON: number
+    BUNDLE: number
+    ADDON: number
+    BINARY: number
+    TEXT: number
+    ASSET: number
+  }
+}
+```
+
+Constants describing module states (`EVALUATED`, `SYNTHESIZED`, `RUN`) and module types (`SCRIPT`, `MODULE`, `JSON`, `BUNDLE`, `ADDON`, `BINARY`, `TEXT`, `ASSET`).
+
+#### `Module.createRequire(parentURL: string | URL, opts?: CreateRequireOptions): Require`
+
+Create a preconfigured `require()` bound to `parentURL`, so specifiers resolve and load relative to it.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `parentURL` | `string` \| `URL` | — | The parent URL that the returned `require()` resolves and loads specifiers relative to. |
+| `opts?` | [`CreateRequireOptions`](#createrequireoptions) | — | Options for the created `require()`, such as its `protocol` and `cache`. |
+
+**Returns** [`Require`](#require) — A `require()` bound to `parentURL`, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.
+
+#### `Module.isBuiltin(): boolean`
+
+Always returns `false`; provided for Node.js compatibility.
+
+#### `Module.load(url: URL, opts: LoadOptions): Module`
+
+Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will be passed to the matching `extension` for the `url`.
+
+Overloads:
+
+```ts
+Module.load(url: URL, opts: LoadOptions): Module
+Module.load(url: URL, source?: Buffer | string | Bundle | null, opts?: LoadOptions): Module
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The WHATWG `URL` of the module to load. |
+| `opts` | [`LoadOptions`](#loadoptions) | — | Load options; may carry a `source` to load directly instead of reading it through the protocol. |
+
+**Returns** `Module` — The loaded `Module`, reusing the cached instance if `url` was already loaded.
+
+**Throws**
+
+- `TYPE_INCOMPATIBLE` — a module is already cached for `url` with a type incompatible with the requested `type`.
+
+#### `Module.protocol: Protocol`
+
+The `ModuleProtocol` class for resolving, reading and loading modules. See [Protocols](https://github.com/holepunchto/bare-module#protocols) for usage.
+
+#### `Module.resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): URL`
+
+Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier to resolve. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `specifier` relative to. |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | Resolution options. |
+
+**Returns** `URL` — The WHATWG `URL` that `specifier` resolves to.
+
+**Throws**
+
+- `MODULE_NOT_FOUND` — no module matching `specifier` could be found relative to `parentURL`.
+- `TypeError` — `specifier` is not a string.
+
+#### `path: string`
+
+#### `protocol: Protocol`
+
+The `ModuleProtocol` class for resolving, reading and loading modules. See [Protocols](https://github.com/holepunchto/bare-module#protocols) for usage.
+
+#### `resolutions: ResolutionsMap`
+
+A map of preresolved imports with keys being serialized parent URLs and values being `"imports"` maps.
+
+#### `type: number`
+
+The type of the module. See `Module.constants.types` for possible values.
+
+#### `url: URL`
+
+The WHATWG `URL` identifier of the module.
+
+### ModuleProtocol
+
+#### `new ModuleProtocol(methods?: Partial<ModuleProtocol>, context?: ModuleProtocol)`
+
+Defines how modules are resolved, read and loaded; custom protocols can serve modules from outside the file system, such as a `Hyperdrive` or a `bare-bundle`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `methods?` | `Partial<ModuleProtocol>` | — | Protocol method overrides; any of `preresolve`, `postresolve`, `resolve`, `exists`, `read`, `addon`, or `asset`. |
+| `context?` | `ModuleProtocol` | — | An existing protocol to fall back to for any method not provided in `methods`. |
+
+#### `addon(url: URL): URL`
+
+Post-process URLs for addons before `postresolve()`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The resolved addon `URL` to post-process. |
+
+#### `asset(url: URL): URL`
+
+Post-process URLs for assets before `postresolve()`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The resolved asset `URL` to post-process. |
+
+#### `exists(url: URL, type: number): boolean`
+
+Return whether the URL exists.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The `URL` to check for existence. |
+| `type` | `number` | — | The module type being probed (see `Module.constants.types`). |
+
+#### `extend(methods: Partial<ModuleProtocol>): ModuleProtocol`
+
+Create a new protocol that uses this protocol as its context, overriding the given `methods`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `methods` | `Partial<ModuleProtocol>` | — | Protocol method overrides for the new protocol. |
+
+**Returns** `ModuleProtocol` — A new `ModuleProtocol` that uses this protocol as its context, with `methods` overriding.
+
+#### `postresolve(url: URL): URL`
+
+Process the resolved URL; can be used to convert file paths, etc.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The resolved `URL` to post-process. |
+
+**Returns** `URL` — The (possibly transformed) resolved `URL`.
+
+#### `preresolve(specifier: string, parentURL: URL): string`
+
+Preprocess the `specifier` and `parentURL` before the resolve algorithm is called.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier being resolved. |
+| `parentURL` | `URL` | — | The `URL` the specifier is resolved relative to. |
+
+**Returns** `string` — The (possibly rewritten) specifier to pass into the resolve algorithm.
+
+#### `read(url: URL): Buffer | string | null`
+
+Return the source code of a URL, represented as a string or buffer.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The `URL` to read. |
+
+**Returns** `Buffer` | `string` | `null` — The source of `url` as a `Buffer` or `string`, or `null` if it does not exist.
+
+#### `resolve(specifier: string, parentURL: URL, imports: ImportsMap): URL`
+
+Resolve the `specifier` to a URL.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier to resolve. |
+| `parentURL` | `URL` | — | The `URL` to resolve `specifier` relative to. |
+| `imports` | `ImportsMap` | — | The `"imports"` map to apply during resolution. |
+
+### Types
+
+#### `Attributes`
+
+```ts
+interface Attributes {
+  type: Lowercase<keyof typeof constants.types>
+}
+```
+
+Import attributes instructing how a module should be loaded.
+
+#### `Cache`
+
+```ts
+interface Cache {
+}
+```
+
+A map of module URL `href`s to loaded modules.
+
+#### `Options`
+
+```ts
+interface Options {
+  attributes?: Attributes
+  builtins?: Builtins
+  cache?: Cache
+  conditions?: Conditions
+  defaultType?: number
+  imports?: ImportsMap
+  main?: Module
+  protocol?: Protocol
+  referrer?: Module
+  resolutions?: ResolutionsMap
+  type?: number
+}
+```
+
+#### `LoadOptions`
+
+```ts
+interface LoadOptions {
+  isDynamicImport?: boolean
+  isImport?: boolean
+  attributes?: Attributes
+  builtins?: Builtins
+  cache?: Cache
+  conditions?: Conditions
+  defaultType?: number
+  imports?: ImportsMap
+  main?: Module
+  protocol?: Protocol
+  referrer?: Module
+  resolutions?: ResolutionsMap
+  type?: number
+}
+```
+
+#### `ResolveOptions`
+
+```ts
+interface ResolveOptions {
+  isImport?: boolean
+  attributes?: Attributes
+  builtins?: Builtins
+  cache?: Cache
+  conditions?: Conditions
+  defaultType?: number
+  imports?: ImportsMap
+  main?: Module
+  protocol?: Protocol
+  referrer?: Module
+  resolutions?: ResolutionsMap
+  type?: number
+}
+```
+
+#### `CreateRequireOptions`
+
+```ts
+interface CreateRequireOptions {
+  module?: Module
+  attributes?: Attributes
+  builtins?: Builtins
+  cache?: Cache
+  conditions?: Conditions
+  defaultType?: number
+  imports?: ImportsMap
+  main?: Module
+  protocol?: Protocol
+  referrer?: Module
+  resolutions?: ResolutionsMap
+  type?: number
+}
+```
+
+#### `RequireOptions`
+
+```ts
+interface RequireOptions {
+  with?: Attributes
+}
+```
+
+Options for `require()`; `with` holds the import attributes.
+
+#### `RequireAddon`
+
+```ts
+interface RequireAddon {
+  host: string
+  resolve: (specifier: string, parentURL?: URL) => unknown
+}
+```
+
+The `require.addon` function: imports addon modules, with `host` and `resolve` attached.
+
+#### `Require`
+
+```ts
+interface Require {
+  main: Module
+  cache: Cache
+  resolve: (specifier: string, parentURL?: URL) => string
+  addon: RequireAddon
+  asset: (specifier: string, parentURL?: URL) => string
+}
+```
+
+The function returned by `Module.createRequire()`: resolves and loads modules relative to its parent URL, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.
+
+## Packages
+
+A package is a directory with a `package.json` file.
+
+### Fields
+
+#### `"name"`
+
+```json
+{
+  "name": "my-package"
+}
+```
+
+The name of the package. This is used for [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm), [self-referencing](#self-referencing), and importing packages by name.
+
+#### `"version"`
+
+```json
+{
+  "version": "1.2.3"
+}
+```
+
+The current version of the package. This is used for [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm).
+
+#### `"type"`
+
+```json
+{
+  "type": "module"
+}
+```
+
+The module format used for `.js` files. If not defined, `.js` files are interpreted as CommonJS. If set to `"module"`, `.js` files are instead interpreted as ES modules.
+
+#### `"exports"`
+
+```json
+{
+  "exports": {
+    ".": "./index.js"
+  }
+}
+```
+
+The entry points of the package. If defined, only the modules explicitly exported by the package may be imported when importing the package by name.
+
+##### Subpath exports
+
+A package may define more than one entry point by declaring several subpaths with the main export being `"."`:
+
+```json
+{
+  "exports": {
+    ".": "./index.js",
+    "./submodule": "./lib/submodule.js"
+  }
+}
+```
+
+When importing the package by name, `require('my-package')` will resolve to `<modules>/my-package/index.js` whereas `require('my-package/submodule')` will resolve to `<modules>/my-package/lib/submodule.js`.
+
+##### Conditional exports
+
+Conditional exports allow packages to provide different exports for different conditions, such as the loading method the importing module uses (for example `require()` vs `import`):
+
+```json
+{
+  "exports": {
+    ".": {
+      "import": "./index.mjs",
+      "require": "./index.cjs"
+    }
+  }
+}
+```
+
+When importing the package by name, `require('my-package')` will resolve to `<modules>/my-package/index.cjs` whereas `import 'my-package'` will resolve to `<modules>/my-package/index.mjs`.
+
+Similarly, conditional exports can be used to provide different entry points for different runtimes:
+
+```json
+{
+  "exports": {
+    ".": {
+      "bare": "./bare.js",
+      "node": "./node.js"
+    }
+  }
+}
+```
+
+To provide a fallback for when no other conditions match, the `"default"` condition can be declared:
+
+```json
+{
+  "exports": {
+    ".": {
+      "bare": "./bare.js",
+      "node": "./node.js",
+      "default": "./fallback.js"
+    }
+  }
+}
+```
+
+The following conditions are supported, listed in order from most specific to least specific as conditions should be defined:
+
+| Condition      | Description                                                                                                                         |
+| :------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| `"import"`     | Matches when the package is loaded via `import` or `import()`.                                                                      |
+| `"require"`    | Matches when the package is loaded via `require()`.                                                                                 |
+| `"asset"`      | Matches when the package is loaded via `require.asset()`.                                                                           |
+| `"addon"`      | Matches when the package is loaded via `require.addon()`.                                                                           |
+| `"bare"`       | Matches for any [Bare](https://github.com/holepunchto/bare) environment.                                                            |
+| `"node"`       | Matches for any Node.js environment.                                                                                                |
+| `"<platform>"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values. |
+| `"<arch>"`     | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.             |
+| `"simulator"`  | Matches when Bare was compiled for a simulator.                                                                                     |
+| `"default"`    | The fallback that always matches. This condition should always be last.                                                             |
+
+Export conditions are evaluated in the order they are defined in the `"exports"` field. This means that less specific conditionals defined first will override more specific conditions define later. For example, the following will always call `./fallback.js` because `"default"` always matches and is defined first.
+
+```json
+{
+  "exports": {
+    ".": {
+      "default": "./fallback.js",
+      "bare": "./bare.js"
+    }
+  }
+}
+```
+
+This is why the general rule is that conditions should be from most specific to least specific when defined.
+
+##### Self-referencing
+
+Within a package, exports defined in the `"exports"` field can be referenced by importing the package by name. For example, given the following `package.json`...
+
+```json
+{
+  "name": "my-package",
+  "exports": {
+    ".": "./index.js",
+    "./submodule": "./lib/submodule.js"
+  }
+}
+```
+
+...any module within `my-package` may reference these entry points using either `require('my-package')` or `require('my-package/submodule')`.
+
+##### Exports sugar
+
+If a package defines only a single export, `"."`, it may leave out the subpath entirely:
+
+```json
+{
+  "exports": "./index.js"
+}
+```
+
+#### `"imports"`
+
+A private mapping for import specifiers within the package itself. Similar to `"exports"`, the `"imports"` field can be used to conditional import other packages within the package. But unlike `"exports"`, `"imports"` permits mapping to external packages.
+
+The rules are otherwise analogous to the [`"exports"`](#conditional-exports) field.
+
+##### Subpath imports
+
+Just like exports, subpaths can be used when importing a module internally.
+
+```json
+{
+  "imports": {
+    ".": "./index.js",
+    "./submodule": "./lib/submodule.js"
+  }
+}
+```
+
+##### Conditional imports
+
+Adding conditional imports allows importing different packages based on the configured conditions. As an example:
+
+```json
+{
+  "imports": {
+    "bar": {
+      "require": "./baz.cjs",
+      "import": "./baz.mjs"
+    }
+  }
+}
+```
+
+When importing the package `bar` as `require('bar')` will resolve to `./baz.cjs`, but when importing with `import('bar')` will resolve to `./baz.mjs`.
+
+To provide a fallback for when no other conditions are met, the `"default"` condition can be configured like so:
+
+```json
+{
+  "imports": {
+    "bar": {
+      "require": "./baz.cjs",
+      "asset": "./baz.txt",
+      "default": "./baz.mjs"
+    }
+  }
+}
+```
+
+The following conditions are supported, listed in order from most specific to least specific as conditions should be defined:
+
+| Condition      | Description                                                                                                                         |
+| :------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| `"import"`     | Matches when the package is loaded via `import` or `import()`.                                                                      |
+| `"require"`    | Matches when the package is loaded via `require()`.                                                                                 |
+| `"asset"`      | Matches when the package is loaded via `require.asset()`.                                                                           |
+| `"addon"`      | Matches when the package is loaded via `require.addon()`.                                                                           |
+| `"bare"`       | Matches for any [Bare](https://github.com/holepunchto/bare) environment.                                                            |
+| `"node"`       | Matches for any Node.js environment.                                                                                                |
+| `"<platform>"` | Matches when equal to `Bare.platform`. See [`Bare.platform`](https://github.com/holepunchto/bare#bareplatform) for possible values. |
+| `"<arch>"`     | Matches when equal to `Bare.arch`. See [`Bare.arch`](https://github.com/holepunchto/bare#barearch) for possible values.             |
+| `"simulator"`  | Matches when Bare was compiled for a simulator.                                                                                     |
+| `"default"`    | The fallback that always matches. This condition should always be last.                                                             |
+
+The general rule is that conditions should be from most specific to least specific when defined.
+
+##### `#` Prefix
+
+All import maps are private to the package and allow mapping to external packages. Entries in `"imports"` may start with `#` to disambiguate from external packages, but it is not required unlike in Node.js.
+
+#### `"engines"`
+
+```json
+{
+  "engines": {
+    "bare": ">=1.0.5"
+  }
+}
+```
+
+The `"engines"` field defines the engine requirements of the package. During module resolution, the versions declared by `Bare.versions` will be tested against the requirements declared by the package and resolution fail if they're not satisfied.
+
+## See also
+
+- Builds on `bare-bundle`, `bare-module-lexer`, `bare-module-resolve`, `bare-path`, `bare-type-stripper`, and `bare-url`.
+- [`bare-module-resolve`](/bare/reference/bare/modules/bare-module-resolve) and [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse) — the resolution and traversal algorithms underneath.
+- [Bare runtime API](/bare/reference/bare/runtime#bareaddon) — `Bare.Addon`, the native-addon loader `require.addon` builds on.
+- [Bare modules](/bare/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

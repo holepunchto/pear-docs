@@ -1,0 +1,85 @@
+---
+title: "Structured RPC and schema-first design"
+description: "Layering typed request/response calls on top of a raw IPC duplex stream with bare-rpc and hrpc, then generating the wire format from one schema with hyperschema, hyperdb, and hyperdispatch."
+docType: explanation
+product: bare
+schemaType: WebPage
+---
+
+Raw Inter-Process Communication (IPC) carries **bytes**, not typed messages. For a handful of one-off signals, length-preserving writes or newline-delimited JSON may be enough (see [Compact encoding](/p2p/reference/helpers/compact-encoding) for binary framing). As a protocol between two processes grows, manually pairing requests and responses becomes error-prone.
+
+<Callout type="info">
+This page assumes two Bare (or Bare-and-host) processes talking over an IPC duplex stream—for example a [Pear worker](/pear/explanation/workers#the-ipc-contract) and its host. The same code applies to any process pair that shares a duplex stream.
+</Callout>
+
+## Structured RPC over IPC
+
+**[bare-rpc](/bare/reference/modules/bare-modules)** adds a thin Remote Procedure Call (RPC) layer on top of a duplex stream. Each message has a numeric command id and a payload; handlers dispatch on `req.command`:
+
+```js
+import RPC from 'bare-rpc'
+
+export const RPC_MESSAGE = 1
+
+const rpc = new RPC(Bare.IPC, (req) => {
+  if (req.command === RPC_MESSAGE) {
+    console.log(req.data.toString())
+  }
+})
+
+const req = rpc.request(RPC_MESSAGE)
+req.send(Buffer.from('Hello from worker'))
+```
+
+Share command constants between both sides (a shared `commands.mjs` module works well). `bare-rpc` scales to moderate protocols but still leaves schema, versioning, and method naming to you.
+
+**[hrpc](https://www.npmjs.com/package/hrpc)** generates typed client and server stubs from a schema. Define request and response types (often via [hyperschema](https://www.npmjs.com/package/hyperschema)), register methods, run the code generator, and import the result:
+
+```js
+import HRPC from './spec/hrpc/index.js'
+
+const rpc = new HRPC(Bare.IPC)
+
+rpc.onHello(({ world }) => ({
+  message: `Hello ${world}, from worker`
+}))
+
+await rpc.hello({ world: 'host' })
+```
+
+The other side constructs `new HRPC(IPC)` with the same generated module. Method names and encodings stay in sync because both sides compile from one definition.
+
+| Approach | Best for |
+| --- | --- |
+| Raw IPC | Prototypes, single-channel streaming |
+| bare-rpc | Small fixed command sets, mobile worklets |
+| HRPC | Many methods, evolving schemas, shared types |
+
+Stay on raw IPC until message pairing hurts; adopt HRPC when the protocol is large enough that hand-maintained command ids become a maintenance burden.
+
+## Schema-first design
+
+Larger apps push this further: instead of hand-writing encoders, they **declare every data shape once** and generate the byte-level machinery from that single definition. In a peer-to-peer app this is not just ergonomics—it's a correctness requirement, for two reasons a client–server app doesn't face:
+
+### No server normalizes the wire format
+Peers replicate raw bytes directly to each other, and any two peers may be running different builds. If one peer encodes a message differently than another decodes it, replication produces garbage—there's no central authority to reconcile them. **Every peer has to agree on the format ahead of time.**
+
+### Append-only logs are immutable and permanent
+Blocks written to a [Hypercore](/p2p/reference/building-blocks/hypercore) or [Autobase](/p2p/reference/building-blocks/autobase) are signed and replicated forever; you can't migrate them later. **Today's encoding must still decode in next year's build, so the format has to evolve in a backward-compatible way (add optional fields, never renumber existing ones).**
+
+The schema-first toolchain solves both by deriving everything from one declaration. A single schema file (run via a build step like `npm run build:db`) typically generates:
+
+- **[hyperschema](https://www.npmjs.com/package/hyperschema)**—the canonical field definitions every other generator consumes, using stable field numbering so additions stay compatible.
+- **[hyperdb](https://www.npmjs.com/package/hyperdb)**—typed, compactly-encoded collections for what's stored on disk.
+- **[hyperdispatch](https://www.npmjs.com/package/hyperdispatch)**—typed encoders for the payloads appended to an Autobase.
+- **[hrpc](https://www.npmjs.com/package/hrpc)**—the typed RPC stubs from the section above.
+
+Because storage, replication, and the IPC contract are all generated from the same source, they can't drift out of sync, and the generated code is the part you don't edit by hand. **This is the role a database schema and API contract play in a client–server stack—but pushed down to the wire and disk format so every peer and every version shares it.** [A production Autobase-backed chat room](/p2p/explanation/autobase-backed-chat-room#understand-spec) walks a concrete `schema.js` and its generated `spec/` directory.
+
+## See also
+
+- [Workers](/pear/explanation/workers)—the IPC contract this page builds on, in a Pear app.
+- [Compact encoding reference](/p2p/reference/helpers/compact-encoding)—binary framing for raw IPC messages.
+- [Autobase reference](/p2p/reference/building-blocks/autobase)—the multi-writer log `hyperdispatch`-encoded payloads are appended to.
+- [A production Autobase-backed chat room](/p2p/explanation/autobase-backed-chat-room)—a worked example with a generated `spec/` directory.
+- [P2P Reference](/p2p/reference)—`hyperschema`, `hyperdb`, and `hyperdispatch` sit alongside the building blocks this schema-first toolchain generates code for; none has a dedicated reference page here yet, so their own repos are the source of truth.

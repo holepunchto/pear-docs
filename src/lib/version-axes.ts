@@ -13,7 +13,7 @@
  * `holepunchto/react-native-bare-kit`) were decided to track their own
  * surfaces independently (see docs/plans/DOCS-VERSIONING-DESIGN.md and the
  * plan for this change). Each axis is scoped to an EXACT page path, not a
- * prefix — `/reference/bare/` would otherwise also match all 76 generated
+ * prefix — `/bare/reference/bare/` would otherwise also match all 76 generated
  * module pages, which must never show a platform-style dropdown (design
  * doc §1: modules version by their own npm package, not a shared axis).
  */
@@ -57,29 +57,29 @@ export const VERSION_AXES: VersionAxis[] = [
     key: 'pear',
     label: 'Pear version',
     pagePaths: [
-      '/reference/pear/cli',
-      '/reference/pear/api',
-      '/reference/pear/configuration',
-      '/reference/pear/runtime',
+      '/pear/reference/pear/cli',
+      '/pear/reference/pear/api',
+      '/pear/reference/pear/configuration',
+      '/pear/reference/pear/runtime',
     ],
     versions: DOCS_VERSIONS,
   },
   {
     key: 'bare-cli',
     label: 'Bare CLI version',
-    pagePaths: ['/reference/bare/cli'],
+    pagePaths: ['/bare/reference/bare/cli'],
     versions: toDocsVersions(bareCliStates),
   },
   {
     key: 'bare-runtime',
     label: 'Bare runtime version',
-    pagePaths: ['/reference/bare/runtime'],
+    pagePaths: ['/bare/reference/bare/runtime'],
     versions: toDocsVersions(bareRuntimeStates),
   },
   {
     key: 'bare-kit',
     label: 'Bare Kit version',
-    pagePaths: ['/reference/bare/bare-kit'],
+    pagePaths: ['/bare/reference/bare/bare-kit'],
     versions: toDocsVersions(bareKitStates),
   },
 ];

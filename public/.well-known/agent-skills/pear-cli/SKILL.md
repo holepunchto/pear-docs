@@ -20,6 +20,6 @@ Key concepts:
 - `pear info` / `pear dump` / `pear changelog` / `pear cores` — read-only inspection, no writes.
 - There is no `pear dev` command, and `pear run` no longer launches an app — apps now embed the `pear-runtime` (Pear OTA) library directly instead of being launched by the CLI.
 
-Full reference: https://docs.pears.com/reference/pear/cli/
-Configuration (package.json `pear` block): https://docs.pears.com/reference/pear/configuration/
-Migrating off `pear run`: https://docs.pears.com/how-to/operate-an-app/migration/
+Full reference: https://docs.pears.com/pear/reference/pear/cli/
+Configuration (package.json `pear` block): https://docs.pears.com/pear/reference/pear/configuration/
+Migrating off `pear run`: https://docs.pears.com/pear/how-to/operate-an-app/migration/

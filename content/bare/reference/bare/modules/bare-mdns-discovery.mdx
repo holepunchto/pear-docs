@@ -1,0 +1,421 @@
+---
+title: "bare-mdns-discovery"
+description: "bare-mdns-discovery"
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "0.2.3"
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-mdns-discovery`](https://github.com/holepunchto/bare-mdns-discovery) — bare-mdns-discovery.
+
+```sh
+npm i bare-mdns-discovery
+```
+
+## Usage
+
+### Low-level mDNS queries
+
+```javascript
+const { MDNS } = require('bare-mdns-discovery')
+
+const mdns = new MDNS({ debug: true })
+await mdns.ready()
+
+mdns.on('records', (records, rinfo) => {
+  console.log('from:', rinfo.address)
+  for (const r of records) {
+    console.log(r.type, r.name, r.data)
+  }
+})
+
+mdns.query('_services._dns-sd._udp.local')
+mdns.query('_http._tcp.local')
+mdns.query('_googlecast._tcp.local')
+
+setTimeout(() => mdns.close(), 10000)
+```
+
+### Service discovery
+
+```javascript
+const { Discovery } = require('bare-mdns-discovery')
+
+const discovery = new Discovery({ service: 'googlecast' })
+await discovery.ready()
+
+discovery.on('service', (service) => {
+  console.log('Found:', service.name, service.address, service.port)
+})
+
+const services = await discovery.discover(10) // 10 second timeout
+console.log('All services:', services)
+
+await discovery.close()
+```
+
+### Extending for specific services
+
+```javascript
+const { Discovery } = require('bare-mdns-discovery')
+
+class MyServiceDiscovery extends Discovery {
+  constructor(opts = {}) {
+    super({ ...opts, service: 'myservice' })
+  }
+
+  _parseService(records, rinfo) {
+    const service = super._parseService(records, rinfo)
+    if (!service) return null
+
+    // Add custom filtering or fields
+    return {
+      ...service,
+      customField: service.txt.someKey
+    }
+  }
+}
+```
+
+## API
+
+### MDNS
+
+#### `new MDNS(opts?: MDNSOptions)`
+
+Send and receive raw mDNS queries and records over UDP multicast. Extends `ReadyResource`; open it with `ready()` and release its socket with `close()`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | [`MDNSOptions`](#mdnsoptions) | — | Options; see [`MDNSOptions`](#mdnsoptions). |
+
+#### `debug: boolean`
+
+Whether internal activity is logged to the console (default `false`).
+
+#### `emit(event: 'records', records: Record[], rinfo: RecordInfo): boolean`
+
+Overloads:
+
+```ts
+emit(event: 'records', records: Record[], rinfo: RecordInfo): boolean
+emit(event: 'error', err: Error): boolean
+emit(event: 'ready'): boolean
+emit(event: 'close'): boolean
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `event` | `'records'` | — | — |
+| `records` | [`Record[]`](#record) | — | — |
+| `rinfo` | [`RecordInfo`](#recordinfo) | — | — |
+
+#### `off(event: 'records', listener: (records: Record[], rinfo: RecordInfo) => void): this`
+
+Overloads:
+
+```ts
+off(event: 'records', listener: (records: Record[], rinfo: RecordInfo) => void): this
+off(event: 'error', listener: (err: Error) => void): this
+off(event: 'ready', listener: () => void): this
+off(event: 'close', listener: () => void): this
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `event` | `'records'` | — | — |
+| `listener` | `(records: Record[], rinfo: RecordInfo) => void` | — | — |
+
+#### `on(event: 'records', listener: (records: Record[], rinfo: RecordInfo) => void): this`
+
+Overloads:
+
+```ts
+on(event: 'records', listener: (records: Record[], rinfo: RecordInfo) => void): this
+on(event: 'error', listener: (err: Error) => void): this
+on(event: 'ready', listener: () => void): this
+on(event: 'close', listener: () => void): this
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `event` | `'records'` | — | — |
+| `listener` | `(records: Record[], rinfo: RecordInfo) => void` | — | — |
+
+#### `once(event: 'records', listener: (records: Record[], rinfo: RecordInfo) => void): this`
+
+Overloads:
+
+```ts
+once(event: 'records', listener: (records: Record[], rinfo: RecordInfo) => void): this
+once(event: 'error', listener: (err: Error) => void): this
+once(event: 'ready', listener: () => void): this
+once(event: 'close', listener: () => void): this
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `event` | `'records'` | — | — |
+| `listener` | `(records: Record[], rinfo: RecordInfo) => void` | — | — |
+
+#### `query(name: string, type?: number): void`
+
+Sends an mDNS query for `name`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The DNS name to query for, for example `'_http._tcp.local'`. |
+| `type?` | `number` | — | The DNS record type to request (default `TYPE.PTR`). |
+
+#### `socket: object | null`
+
+The underlying UDP socket, or `null` before the resource has opened.
+
+### Discovery
+
+#### `new Discovery(opts?: DiscoveryOptions)`
+
+Discovers instances of a specific mDNS `service` (such as `'googlecast'` or `'http'`) by periodically querying for it and parsing SRV, TXT, and address records into `Service` objects. Extends `MDNS`; subclass and override `_parseService` to customize how records are turned into a `Service` for a given service type.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | [`DiscoveryOptions`](#discoveryoptions) | — | Options; see [`DiscoveryOptions`](#discoveryoptions). |
+
+#### `discover(opts?: { first?: boolean; timeout?: number }): Promise<Service[]>`
+
+Queries for the configured service every 2 seconds until `timeout` milliseconds elapse (default `10000`), or resolves early when `opts.first` is set and a service has been found.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `{ first?: boolean; timeout?: number }` | — | Options: `timeout` is how long, in milliseconds, to keep querying before resolving (default `10000`); set `first` to resolve as soon as the first service is found instead of waiting out the timeout. |
+
+**Returns** `Promise<Service[]>` — The discovered `Service` objects — a single-element array when `opts.first` resolved early.
+
+#### `emit(event: 'service', service: Service): boolean`
+
+Overloads:
+
+```ts
+emit(event: 'service', service: Service): boolean
+emit(event: 'records', records: Record[], rinfo: RecordInfo): boolean
+emit(event: 'error', err: Error): boolean
+emit(event: 'ready'): boolean
+emit(event: 'close'): boolean
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `event` | `'service'` | — | — |
+| `service` | [`Service`](#service) | — | — |
+
+#### `off(event: 'service', listener: (service: Service) => void): this`
+
+Overloads:
+
+```ts
+off(event: 'service', listener: (service: Service) => void): this
+off(event: 'records', listener: (records: Record[], rinfo: RecordInfo) => void): this
+off(event: 'error', listener: (err: Error) => void): this
+off(event: 'ready', listener: () => void): this
+off(event: 'close', listener: () => void): this
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `event` | `'service'` | — | — |
+| `listener` | `(service: Service) => void` | — | — |
+
+#### `on(event: 'service', listener: (service: Service) => void): this`
+
+Overloads:
+
+```ts
+on(event: 'service', listener: (service: Service) => void): this
+on(event: 'records', listener: (records: Record[], rinfo: RecordInfo) => void): this
+on(event: 'error', listener: (err: Error) => void): this
+on(event: 'ready', listener: () => void): this
+on(event: 'close', listener: () => void): this
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `event` | `'service'` | — | — |
+| `listener` | `(service: Service) => void` | — | — |
+
+#### `once(event: 'service', listener: (service: Service) => void): this`
+
+Overloads:
+
+```ts
+once(event: 'service', listener: (service: Service) => void): this
+once(event: 'records', listener: (records: Record[], rinfo: RecordInfo) => void): this
+once(event: 'error', listener: (err: Error) => void): this
+once(event: 'ready', listener: () => void): this
+once(event: 'close', listener: () => void): this
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `event` | `'service'` | — | — |
+| `listener` | `(service: Service) => void` | — | — |
+
+#### `service: string`
+
+The mDNS service name being discovered.
+
+#### `services: Map<string, Service>`
+
+A map of discovered services, keyed by service `uid`, accumulated since the last `discover()` call.
+
+### Constants and variables
+
+#### `TYPE`
+
+```ts
+TYPE: {
+    readonly A: 1
+    readonly PTR: 12
+    readonly TXT: 16
+    readonly AAAA: 28
+    readonly SRV: 33
+  }
+```
+
+DNS record type numbers used in mDNS queries and records, per RFC 6762: `A`, `PTR`, `TXT`, `AAAA`, and `SRV`.
+
+#### `MDNS_ADDR: '224.0.0.251'`
+
+The IPv4 multicast address used for mDNS, `224.0.0.251`, per RFC 6762.
+
+#### `MDNS_PORT: 5353`
+
+The UDP port used for mDNS, `5353`, per RFC 6762.
+
+### Types
+
+#### `RecordInfo`
+
+```ts
+interface RecordInfo {
+  address: string
+  port: number
+  family: 'IPv4' | 'IPv6'
+  size: number
+}
+```
+
+The remote address information for a received mDNS packet: `address`, `port`, `family`, and the packet `size` in bytes.
+
+#### `SRVData`
+
+```ts
+interface SRVData {
+  priority: number
+  weight: number
+  port: number
+  target: string
+}
+```
+
+The parsed data of an SRV record: `priority`, `weight`, `port`, and `target` hostname.
+
+#### `TXTData`
+
+```ts
+interface TXTData {
+}
+```
+
+The parsed key/value pairs of a TXT record. A key with no `=` in its entry is stored with the value `true`.
+
+#### `Record`
+
+```ts
+interface Record {
+  name: string
+  type: number
+  class: number
+  flush: boolean
+  ttl: number
+  data: string | TXTData | SRVData | Buffer
+}
+```
+
+A single parsed DNS resource record from an mDNS response: `name`, `type`, `class`, the `flush` cache-flush bit, `ttl`, and the type-specific `data`.
+
+#### `Service`
+
+```ts
+interface Service {
+  uid: string
+  name: string
+  address: string
+  addresses: {
+      ipv4: string | null
+      ipv6: string[]
+    }
+  port: number
+  target: string
+  txt: TXTData
+}
+```
+
+A discovered service: its unique id, `name`, resolved `address`, all known `addresses` (IPv4 and IPv6), `port`, SRV `target` hostname, and `txt` record data.
+
+#### `MDNSOptions`
+
+```ts
+interface MDNSOptions {
+  debug?: boolean
+  iface?: string
+}
+```
+
+Options for `MDNS`. `debug` logs internal activity to the console. `iface` is the IPv4 address of the network interface to bind multicast membership on; required on Android, where it must be the WiFi interface IP so the kernel delivers mDNS responses on the correct interface.
+
+#### `DiscoveryOptions`
+
+```ts
+interface DiscoveryOptions {
+  service?: string
+  debug?: boolean
+  iface?: string
+}
+```
+
+Options for `Discovery`, extending `MDNSOptions` with `service`, the mDNS service name to query for (for example `'googlecast'`).
+
+## See also
+
+- Builds on `bare-dgram`.
+- Without `iface` set, Android's `addMembership` falls back to the OS default interface, which may not be the WiFi interface, so responses are silently dropped — pass the WiFi IP, for example from `bare-wifi-android`'s `getWifiIP()`.
+- `Discovery`'s `service` option is given without the DNS prefix/suffix — `'http'` or `'googlecast'`, not `'_http._tcp.local'`.
+- [Bare modules](/bare/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

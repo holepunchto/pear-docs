@@ -10,6 +10,6 @@ involved) and running it under Bare: which built-ins differ, which npm
 packages need a `bare-*` equivalent or the `bare-node` shim, and what
 commonly breaks first (native addons especially).
 
-How-to: https://docs.pears.com/how-to/migrate-a-nodejs-app-to-bare/
+How-to: https://docs.pears.com/bare/how-to/migrate-a-nodejs-app-to-bare/
 Explanation of the underlying differences:
-https://docs.pears.com/explanation/migrating-from-nodejs/
+https://docs.pears.com/bare/explanation/migrating-from-nodejs/

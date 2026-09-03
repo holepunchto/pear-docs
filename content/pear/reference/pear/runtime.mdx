@@ -1,0 +1,182 @@
+---
+title: "Pear OTA"
+description: "Pear OTA (the pear-runtime module) for peer-to-peer application deployment and over-the-air updates."
+seoTitle: "Pear OTA: P2P App Deployment & OTA Updates"
+docType: reference
+product: pear
+schemaType: APIReference
+---
+
+# Pear OTA
+
+**Pear OTA** is the embeddable over-the-air update library for Pear, provided by the [`pear-runtime`](https://github.com/holepunchto/pear-runtime) module. It enables applications to be deployed peer-to-peer with the [`pear cli`](/pear/reference/pear/cli).
+
+Embedding the `pear-runtime` library into an application provides the following capabilities:
+
+* Over-the-Air Peer-to-peer (OTA P2P) updates
+* Application P2P storage management
+* Embedded [Bare](/bare/reference/modules/bare-modules) workers
+
+For background on why Pear runs on Bare instead of Node, see [Runtime and languages](/pear/explanation/runtime-and-languages).
+
+Install the [`pear-runtime`](https://github.com/holepunchto/pear-runtime) module into any JS-capable application:
+
+```sh
+npm install pear-runtime
+```
+
+## Package.json Configuration
+
+Add an `upgrade` field with a `pear://...` link. 
+
+Use `pear touch` to create a link.
+
+Example:
+
+```json
+{
+  "version": "1.0.0",
+  "upgrade": "pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o",
+  ...
+}
+```
+
+## Instantiate
+
+In an applications entrypoint create an instance of [`PearRuntime`](https://github.com/holepunchto/pear-runtime/blob/v1.3.1/index.js#L8):
+
+```js
+const path = require('path')
+const { version, upgrade, name } = require('./package.json')
+const PearRuntime = require('pear-runtime')
+const dir = path.join('path', 'to', 'app', 'storage') // eg ~/.config/{name}
+const app = path.join('application', 'path') // eg process.execPath, may also be null
+const pear = new PearRuntime({ dir, version, upgrade, name, app })
+pear.on('error', console.error) // network errors etc.
+```
+
+### Options
+
+- `dir` `<String>` - Required. Directory to store runtime data (for example the app data dir).
+- `upgrade` `<String>` - Required. Pear upgrade link, typically from the `package.json` `upgrade` field.
+- `name` `<String>` - Required. The application's product name.
+- `version` `<String>` - Current app version; used to decide whether an update should be stored. Defaults to `0.0.0-0`.
+- `app` `<String>` - Path to the app bundle (`.app`, `.AppImage`, and so on); used by `applyUpdate()` for bundled apps.
+- `updates` `<Boolean>` - Set to `false` to opt out of updates. Defaults to `true`.
+- `storage` `<String>` - Override the peer-to-peer application storage path. Defaults to `<dir>/app-storage`.
+- `store` `<Corestore>` & `swarm` `<Hyperswarm>` - Supply an existing [Corestore](/p2p/reference/helpers/corestore) and [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) for update replication. Both must be passed together; when omitted, `pear-runtime` creates and swarms its own.
+- `bundled` `<Boolean>` - Whether the application is bundled. Defaults to `!!app`.
+- `delay` `<Integer>` - Maximum random delay in milliseconds before a detected update is fetched. Defaults to one hour—see [Tune `delay` for live OTA visibility](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#tune-pearruntime-delay-for-live-ota-visibility).
+- `skipUpdate` `<Function>` - <Since v="3.3.0" /> Async predicate called before each update check. Return a truthy value to skip that check—useful for holding updates back while the app is mid-task. Defaults to `null` (never skip). Available from `pear-runtime-updater` v3.4.0, which ships with Pear 3.3.0.
+
+## Updates
+
+An update occurs when a seeded application drive is written to - see [Deployment](/pear/how-to/operate-an-app/manual-deployment/deployment).
+
+Update events are emitted by the instance's `updater`. When an update occurs it emits `updating`, then `updated` once the new version is staged. Apply the staged update with `pear.updater.applyUpdate()`.
+
+```js
+pear.updater.on('updating', () => {
+  // update view to indicate updating in progress
+})
+```
+
+```js
+pear.updater.on('updated', () => {
+  // update view to indicate application updated, then apply it
+  pear.updater.applyUpdate()
+})
+```
+
+### Disabling Updates
+
+To opt-out of updates set the `updates` option to `false`:
+
+```js
+const pear = new PearRuntime({ dir, version, upgrade, name, app, updates: false })
+```
+
+Perhaps support a `--no-updates` flag:
+
+```js
+const pear = new PearRuntime({ dir, version, upgrade, name, app, updates: !NO_UPDATES_FLAG })
+```
+
+## Storage
+
+The `dir` option defines where peer-to-peer storage should be kept.
+
+The [`pear.storage`](https://github.com/holepunchto/pear-runtime/blob/v1.3.1/index.js#L24) property holds a path to application storage, this value should be passed as [`Corestore`](/p2p/reference/helpers/corestore) storage argument.
+
+For local development, specifying different `dir` values for different running instances allows for local end-to-end flow.
+
+For example, an application could support `--storage|-s` flag:
+
+```js
+const pear = new PearRuntime({ dir: STORAGE_FLAG, version, upgrade, name, app })
+```
+
+Then pass `-s /tmp/storage-a` to one instance and `-s /tmp/storage-b` to another.
+
+The separate application instances can then interact without conflicting.
+
+## Lifecycle
+
+Instantiation is eager—`pear-runtime` starts opening its store and swarm as soon as `new PearRuntime(opts)` returns. Await `pear.ready()` to know when that initialization has completed.
+
+```js
+await pear.ready()
+```
+
+Await `pear.close()` during application teardown to shut down the embedded runtime, including OTA updates:
+
+```js
+goodbye(() => pear.close()) // e.g. via graceful-goodbye
+```
+
+## Running Workers
+
+To run a Bare worker, [`PearRuntime.run`](https://github.com/holepunchto/pear-runtime/blob/v1.3.1/index.js#L9) takes its entrypoint with any args. It is a **static** method (so it can be called directly, for example from an Electron main process); the instance exposes [`pear.run`](https://github.com/holepunchto/pear-runtime/blob/v1.3.1/index.js#L50) as an alias for it:
+
+```js
+const IPC = PearRuntime.run('./path/to/js/file.js', ['some', 'args'])
+```
+
+`IPC` is a duplex stream for Inter-Process Communication. Use this to communicate with the worker.
+
+The idea is to put all application peer-to-peer code into a main worker that then acts as a local backend for the application view layer.
+
+```js
+const IPC = pear.run('./workers/main.js', [pear.storage])
+IPC.on('data', (data) => { 
+  console.log('data from worker', data)
+})
+IPC.write('hello')
+```
+
+The `workers/main.js` would then be executed with an embedded Bare runtime. 
+
+The other side of the IPC stream can be accessed inside the worker as `Bare.IPC`.
+
+Note how `pear.storage` is passed in as a the first arguments, this can be accessed via `Bare.argv[2]`.
+
+```js
+const Corestore = require('corestore')
+const storage = Bare.argv[2]
+
+Bare.IPC.on('data', (data) => console.log(data.toString()))
+
+Bare.IPC.write('Hello from worker')
+
+const corestore = new Corestore(storage)
+//.. do more with corestore..
+```
+
+## See also
+
+- [Pear CLI](/pear/reference/pear/cli)—the command-line counterpart to embedding `pear-runtime` in an app.
+- [Configuration](/pear/reference/pear/configuration)—the `package.json` fields that govern stage, seed, and update behaviour.
+- [Bare modules](/bare/reference/modules/bare-modules)—the runtime workers above are Bare workers.
+- [Corestore](/p2p/reference/helpers/corestore)—what `pear.storage` plugs into.
+- [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment)—production build flow that pairs with this runtime.
+- [Runtime and languages](/pear/explanation/runtime-and-languages)—design rationale for running on Bare.
