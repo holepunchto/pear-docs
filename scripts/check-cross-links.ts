@@ -109,6 +109,7 @@ function prettifyModuleName(basename: string): string {
   const specialCase: Record<string, string> = {
     hyperdht: 'HyperDHT',
     hyperssh: 'HyperSSH',
+    hrpc: 'HRPC',
   };
   if (specialCase[basename]) return specialCase[basename];
   return basename

@@ -1,5 +1,5 @@
 # Reference generation improvement plan — protomux
-Generated from `holepunchto/protomux` at **v3.11.0** (`a2a911a940`) on 2026-06-11T12:37:03.361Z.
+Generated from `holepunchto/protomux` at **v3.11.0** (`0dc481994f`) on 2026-06-11T12:37:03.361Z.
 **Doc-completeness: 50%** — 7 of 14 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page

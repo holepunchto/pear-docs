@@ -5,9 +5,14 @@
 // MDX page (using the per-module layout manifest when present), and write both
 // the page and the intermediate api-model.json to generated/bare-refs/.
 //
-// Writes ONLY to the preview dir — never to content/. Manual command:
-//   npm run gen:bare-refs            # regenerate all
+// Writes to the preview dir by default. `--write` ALSO overwrites the published
+// page in content/ (see `generateOne`), so any hand-edit made directly to
+// content/reference/bare/modules/*.mdx is lost on the next `--write` run —
+// change the generator or the module's layout manifest instead.
+//
+//   npm run gen:bare-refs                          # regenerate all, preview only
 //   npm run gen:bare-refs -- --only bare-fs,bare-os
+//   npm run gen:bare-refs -- --only bare-dns --write   # promote into content/
 //
 // Run: npx tsx scripts/bare-refgen/index.ts
 

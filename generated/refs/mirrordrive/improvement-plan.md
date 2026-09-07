@@ -1,5 +1,5 @@
 # Reference generation improvement plan — mirrordrive
-Generated from `holepunchto/mirror-drive` at **v1.14.2** (`26e9d38b82`) on 2026-06-11T12:37:02.155Z.
+Generated from `holepunchto/mirror-drive` at **v1.14.2** (`6963e8905e`) on 2026-06-11T12:37:02.155Z.
 **Doc-completeness: 100%** — 3 of 3 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page

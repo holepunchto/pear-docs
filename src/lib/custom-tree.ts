@@ -96,6 +96,11 @@ export const customTree: Node[] = [
           },
           {
             type: 'page',
+            name: 'Migrating from Node.js',
+            url: '/explanation/migrating-from-nodejs',
+          },
+          {
+            type: 'page',
             name: 'One core, many platforms',
             url: '/explanation/bare-on-native',
           },
@@ -163,6 +168,11 @@ export const customTree: Node[] = [
     name: 'How To',
     index: { type: 'page', name: 'How To', url: '/how-to' },
     children: [
+      {
+        type: 'page',
+        name: 'Browse commands with the interactive menu',
+        url: '/how-to/browse-commands-with-the-interactive-menu',
+      },
       {
         type: 'folder',
         name: 'Connect to peers',
@@ -402,8 +412,18 @@ export const customTree: Node[] = [
       },
       {
         type: 'page',
+        name: 'Add typed RPC to a Pear app',
+        url: '/how-to/add-typed-rpc-to-a-pear-app',
+      },
+      {
+        type: 'page',
         name: 'Manage installed applications',
         url: '/how-to/manage-installed-applications',
+      },
+      {
+        type: 'page',
+        name: 'Migrate a Node.js app to Bare',
+        url: '/how-to/migrate-a-nodejs-app-to-bare',
       },
       {
         type: 'page',
@@ -636,6 +656,11 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Protomux',
             url: '/reference/helpers/protomux',
+          },
+          {
+            type: 'page',
+            name: 'HRPC',
+            url: '/reference/helpers/hrpc',
           },
         ],
       },

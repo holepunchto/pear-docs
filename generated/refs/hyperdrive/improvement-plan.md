@@ -1,20 +1,17 @@
 # Reference generation improvement plan — hyperdrive
-Generated from `holepunchto/hyperdrive` at **v13.3.3** (`f582adb810`) on 2026-07-14T14:05:29.956Z.
-**Doc-completeness: 53%** — 24 of 45 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
+Generated from `holepunchto/hyperdrive` at **v13.3.3** (`6b562402af`) on 2026-08-11T14:23:36.305Z.
+**Doc-completeness: 52%** — 23 of 44 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
-**100%** of the hand-authored page is reproduced — 45 of 45 documented symbols (`content/reference/building-blocks/hyperdrive.mdx`).
-### Extra in generated model (19)
+**100%** of the hand-authored page is reproduced — 48 of 48 documented symbols (`content/reference/building-blocks/hyperdrive.mdx`).
+### Extra in generated model (16)
 _Found in source but absent from the curated page — candidate additions (or internal symbols to filter)._
-- `blobs`
 - `closeMonitors`
 - `closed`
 - `emit`
 - `encryptionKey`
 - `getContentKey`
 - `getContentManifest`
-- `getDriveKey`
-- `monitor`
 - `monitors`
 - `normalizePath`
 - `off`
@@ -77,7 +74,7 @@ _Cause: signature captures a scalar return but no prose/shape explains it — cl
 - `const mirror = drive.mirror(out, [options])`
 - `const ws = drive.createWriteStream(path, [options])`
 
-### No example (29)
+### No example (28)
 
 _Cause: no code fence under the README entry — add a usage snippet._
 
@@ -94,7 +91,6 @@ _Cause: no code fence under the README entry — add a usage snippet._
 - `const blobsLength = await drive.getBlobsLength(checkout)`
 - `const snapshot = drive.checkout(version)`
 - `const batch = drive.batch()`
-- `await batch.flush()`
 - `await drive.put(path, buffer, [options])`
 - `await drive.del(path)`
 - `const comparison = drive.compare(entryA, entryB)`
@@ -135,3 +131,9 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `drive.monitors`
 - `drive.on('blobs', blobs)`
 - `drive.on('content-key', key)`
+
+### Stale README (not found in source) (1)
+
+_Cause: README documents a symbol the AST pass did not find — stale docs, or an extractor miss (events/getters/re-exports)._
+
+- `await batch.flush()`

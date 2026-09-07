@@ -1,5 +1,5 @@
 # Reference generation improvement plan — autobase
-Generated from `holepunchto/autobase` at **v7.28.1** (`14cf8f2aea`) on 2026-06-11T12:36:50.001Z.
+Generated from `holepunchto/autobase` at **v7.28.1** (`2c79852525`) on 2026-06-11T12:36:50.001Z.
 **Doc-completeness: 63%** — 19 of 30 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page

@@ -1,16 +1,15 @@
 # Reference generation improvement plan — hypercore
-Generated from `holepunchto/hypercore` at **v11.34.0** (`97aecf97ef`) on 2026-07-14T14:05:26.984Z.
+Generated from `holepunchto/hypercore` at **v11.35.1** (`54c1afb8c7`) on 2026-08-11T14:23:31.283Z.
 **Doc-completeness: 76%** — 45 of 59 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
-**100%** of the hand-authored page is reproduced — 67 of 67 documented symbols (`content/reference/building-blocks/hypercore.mdx`).
-### Extra in generated model (63)
+**100%** of the hand-authored page is reproduced — 71 of 71 documented symbols (`content/reference/building-blocks/hypercore.mdx`).
+### Extra in generated model (61)
 _Found in source but absent from the curated page — candidate additions (or internal symbols to filter)._
 - `DefaultEncryption`
 - `SMALL_WANTS`
 - `activeRequests`
 - `applyProof`
-- `byteLength`
 - `cancel`
 - `clearRequests`
 - `closed`
@@ -28,9 +27,9 @@ _Found in source but absent from the curated page — candidate additions (or in
 - `exclusive`
 - `extensions`
 - `generateRemoteProofForTreeNode`
+- `getManifest`
 - `globalCache`
 - `live`
-- `manifest`
 - `missingNodes`
 - `off`
 - `on`
@@ -39,7 +38,6 @@ _Found in source but absent from the curated page — candidate additions (or in
 - `on:end`
 - `on:error`
 - `on:finish`
-- `on:migrate`
 - `on:readable`
 - `once`
 - `ongc`
@@ -47,8 +45,8 @@ _Found in source but absent from the curated page — candidate additions (or in
 - `onwait`
 - `opened`
 - `opening`
+- `parseManifest`
 - `preload`
-- `purge`
 - `push`
 - `recover`
 - `recoverFromRemoteProof`
@@ -166,7 +164,7 @@ _Cause: no code fence under the README entry — add a usage snippet._
 - `core.on('ready')`
 
 ## Drift
-### Undocumented in README (in source) (99)
+### Undocumented in README (in source) (101)
 
 _Cause: public method in source with no README entry — add upstream docs, or confirm it is internal._
 
@@ -174,6 +172,7 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `Hypercore.SMALL_WANTS`
 - `Hypercore.enable(flag)`
 - `Hypercore.setRecoveryPeers(peers)`
+- `Hypercore.parseManifest(manifest, key)`
 - `Hypercore.clearRequests(session, err)`
 - `Hypercore.destroyRequests(session, err)`
 - `await Hypercore.treeHashFromStorage(session, length = session.length)`
@@ -181,6 +180,7 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `core.replicator`
 - `core.clearRequests(activeRequests, error)`
 - `core.manifest`
+- `core.getManifest(options = {})`
 - `core.byteLength`
 - `core.contiguousByteLength`
 - `core.globalCache`

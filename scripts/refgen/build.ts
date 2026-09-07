@@ -94,11 +94,29 @@ function buildClassMethods(
 ): RefMethod[] {
   const readmeStatic = (e: ReadmeEntry) => staticFromSignature(e.signature, className);
 
+  // A README entry documents a different symbol than an AST member of the same
+  // bare name when its own receiver disagrees with this class's receiver — e.g.
+  // compact-encoding's per-encoder contract method `enc.encode(state, val)`
+  // (## Encoder API) has nothing to do with the AST's top-level namespace helper
+  // `cenc.encode(enc, val)` (## Helpers) even though both are named "encode".
+  // Only compare when both sides have an opinion and the entry isn't a static
+  // call (`ClassName.member`, a different receiver shape entirely).
+  const receiverConflicts = (e: ReadmeEntry) =>
+    !!e.receiver && !!receiver && !readmeStatic(e) && e.receiver !== receiver;
+
   // Key on name AND static-ness so a `static key(manifest)` and an instance
   // `get key()` match their respective README entries instead of colliding.
+  // Entries that conflict on receiver are excluded here (tracked in
+  // `conflictKeys` instead) so they never get merged onto an unrelated AST
+  // member — they surface as their own README-only entry in step 2.
   const readmeByKey = new Map<string, ReadmeEntry>();
+  const conflictKeys = new Set<string>();
   for (const e of entries) {
     const k = mapKey(e.name, readmeStatic(e), e.event);
+    if (receiverConflicts(e)) {
+      if (!readmeByKey.has(k)) conflictKeys.add(k);
+      continue;
+    }
     if (!readmeByKey.has(k)) readmeByKey.set(k, e);
   }
 
@@ -112,6 +130,11 @@ function buildClassMethods(
     const k = mapKey(m.name, m.static, m.event);
     const doc = readmeByKey.get(k);
     if (doc) usedReadme.add(k);
+    // This AST member has no real doc, and the only README entry sharing its
+    // bare key documents an unrelated receiver (see `conflictKeys` above) — drop
+    // the AST-only version so it doesn't shadow the correctly-documented entry
+    // step 2 adds under the same key.
+    if (!doc && conflictKeys.has(k)) continue;
 
     // JSDoc fills facts the README is silent on. Param TYPES always come from
     // JSDoc (the README has none); descriptions/returns/examples fill gaps.
@@ -142,7 +165,15 @@ function buildClassMethods(
     methods.push({
       name: m.name,
       ...(m.event ? { event: m.event } : {}),
-      signature: ensureAwait(doc?.signature ?? reconstructSignature(className, m, receiver), m.async),
+      // A README signature that isn't call-shaped (no `(` at all — e.g. a bare
+      // `state` heading documenting an object's shape rather than a function
+      // call) is less informative as a heading than the AST's reconstructed
+      // call signature, even though its prose/params are the right content to
+      // merge. Prefer the reconstruction for display in that case only.
+      signature: ensureAwait(
+        doc?.signature?.includes('(') ? doc.signature : reconstructSignature(className, m, receiver),
+        m.async
+      ),
       kind: m.kind,
       static: m.static,
       async: m.async,

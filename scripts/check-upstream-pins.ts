@@ -34,6 +34,7 @@ import { readFile } from 'fs/promises';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { CONTENT_DIR, getFiles } from './helpers';
+import { VERSION_AXES } from '../src/lib/version-axes';
 
 const exec = promisify(execFile);
 
@@ -57,6 +58,25 @@ const REPO_TO_NPM: Record<string, string> = {
 };
 
 type Severity = 'ok' | 'info' | 'warn' | 'action' | 'unpinned' | 'unknown';
+
+/**
+ * Pages that carry their own version dropdown, by page URL.
+ *
+ * `/reference/bare/cli`, `/reference/bare/runtime`, and `/reference/bare/bare-kit`
+ * each document several upstream releases at once behind a dropdown
+ * (src/lib/version-axes.ts). A single `upstreamVersion` cannot describe such a
+ * page, so reporting them as an unpinned backlog was a false positive — it asked
+ * for a pin that would be wrong whichever release it named. They are skipped.
+ *
+ * `/reference/pear/*` is on an axis too but is not in REFERENCE_GLOBS, so it
+ * never reaches this check.
+ */
+const AXIS_PAGES = new Set(VERSION_AXES.flatMap((axis) => axis.pagePaths));
+
+/** `reference/bare/cli.mdx` -> `/reference/bare/cli`. */
+function pageUrl(page: string): string {
+  return `/${page.replace(/\.mdx?$/, '').replace(/\/index$/, '')}`;
+}
 
 interface Row {
   page: string;
@@ -199,6 +219,8 @@ async function main() {
   for (const file of pages) {
     const content = await readFile(file, 'utf8');
     const page = file.replace(`${CONTENT_DIR}/`, '');
+
+    if (AXIS_PAGES.has(pageUrl(page))) continue;
 
     const fmPin = pinFromFrontmatter(content);
     const { repo, tag, conflict } = pinFromSrcLinks(content);

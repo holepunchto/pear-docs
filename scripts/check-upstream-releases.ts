@@ -120,14 +120,14 @@ function bodyBullets(body: string | null): string[] {
   return bullets.slice(0, MAX_BODY_LINES).map(sanitizeMdx);
 }
 
-function renderDraftBlock(module: Watched, releases: Release[]): string {
+function renderDraftBlock(watched: Watched, releases: Release[]): string {
   const chunks: string[] = [];
   for (const release of releases) {
     const date = release.published_at ? release.published_at.slice(0, 10) : 'undated tag';
     const bullets = bodyBullets(release.body);
     chunks.push(
       [
-        `### ${module.name} — ${release.tag_name}`,
+        `### ${watched.name} — ${release.tag_name}`,
         '',
         `{/* TODO(curate): draft from the ${date} upstream release — reword for readers, flag Breaking items, add migration links. Source: ${release.html_url} */}`,
         '',
@@ -149,32 +149,32 @@ async function main() {
   const drafts: string[] = [];
   const detected: string[] = [];
 
-  for (const module of config.watched) {
-    const releases = await fetchReleases(module.repo);
+  for (const watched of config.watched) {
+    const releases = await fetchReleases(watched.repo);
     if (releases.length === 0) {
-      console.log(`· ${module.repo}: no releases`);
+      console.log(`· ${watched.repo}: no releases`);
       continue;
     }
 
-    const lastSeen = state[module.repo];
+    const lastSeen = state[watched.repo];
     if (!lastSeen) {
       // First run for this repo: baseline without generating history entries.
-      state[module.repo] = releases[0].tag_name;
-      console.log(`· ${module.repo}: baselined at ${releases[0].tag_name}`);
+      state[watched.repo] = releases[0].tag_name;
+      console.log(`· ${watched.repo}: baselined at ${releases[0].tag_name}`);
       continue;
     }
 
     const seenIx = releases.findIndex((r) => r.tag_name === lastSeen);
     const fresh = seenIx === -1 ? releases : releases.slice(0, seenIx);
     if (fresh.length === 0) {
-      console.log(`· ${module.repo}: up to date (${lastSeen})`);
+      console.log(`· ${watched.repo}: up to date (${lastSeen})`);
       continue;
     }
 
-    drafts.push(renderDraftBlock(module, fresh));
-    detected.push(...fresh.map((r) => `${module.repo}@${r.tag_name}`));
-    state[module.repo] = releases[0].tag_name;
-    console.log(`✚ ${module.repo}: ${fresh.map((r) => r.tag_name).join(', ')}`);
+    drafts.push(renderDraftBlock(watched, fresh));
+    detected.push(...fresh.map((r) => `${watched.repo}@${r.tag_name}`));
+    state[watched.repo] = releases[0].tag_name;
+    console.log(`✚ ${watched.repo}: ${fresh.map((r) => r.tag_name).join(', ')}`);
   }
 
   if (drafts.length > 0) {

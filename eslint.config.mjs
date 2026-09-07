@@ -20,6 +20,9 @@ const config = [
       // Static export output (already covered by next defaults, listed here
       // for clarity and so future tooling sees the full set in one place).
       'out/**',
+      // Git worktrees checked out inside the repo. Without this, every finding
+      // in src/ and scripts/ is reported once per worktree.
+      '.claude/worktrees/**',
     ],
   },
   {

@@ -50,23 +50,37 @@ function rcompare(a: Version, b: Version): number {
 
 /**
  * Resolve the latest stable tag + its commit SHA via `git ls-remote --tags`.
- * Annotated-tag peeled refs (`^{}`) are preferred so the SHA is the commit, not
- * the tag object. Pre-releases (`-rc`, `-beta`, …) are skipped.
+ * Annotated tags emit two lines: a bare `refs/tags/<tag>` (the SHA of the tag
+ * OBJECT, not the commit) and a peeled `refs/tags/<tag>^{}` (the SHA of the
+ * commit it points to). Lightweight tags emit only the bare line, whose SHA
+ * already IS the commit. Do NOT pass `--refs` here — that flag suppresses the
+ * peeled lines, leaving only the tag-object SHA for annotated tags (every
+ * repo this generator watches uses annotated tags, so that flag silently
+ * recorded the wrong SHA everywhere). Pre-releases (`-rc`, `-beta`, …) are
+ * skipped.
  */
 export function resolveLatestStable(cfg: RepoConfig): Resolved {
-  const out = execFileSync('git', ['ls-remote', '--tags', '--refs', repoUrl(cfg)], {
+  const out = execFileSync('git', ['ls-remote', '--tags', repoUrl(cfg)], {
     encoding: 'utf8',
   });
 
-  // Map tag -> {sha, version}; with --refs the peeled commit SHA is what we get.
-  const candidates: { tag: string; sha: string; version: Version }[] = [];
+  // tag -> commit sha, preferring the peeled (^{}) line when both exist for a
+  // tag. git emits the bare line before its peeled counterpart, but the
+  // `peeled ||` check makes this independent of that ordering.
+  const shaByTag = new Map<string, string>();
   for (const line of out.split('\n')) {
     const m = line.match(/^([0-9a-f]{40})\s+refs\/tags\/(.+)$/);
     if (!m) continue;
+    const peeled = m[2].endsWith('^{}');
     const tag = m[2].replace(/\^\{\}$/, '');
+    if (peeled || !shaByTag.has(tag)) shaByTag.set(tag, m[1]);
+  }
+
+  const candidates: { tag: string; sha: string; version: Version }[] = [];
+  for (const [tag, sha] of shaByTag) {
     const version = parseVersion(tag);
     if (!version || version.pre) continue; // skip non-semver and pre-releases
-    candidates.push({ tag, sha: m[1], version });
+    candidates.push({ tag, sha, version });
   }
 
   if (candidates.length === 0) {

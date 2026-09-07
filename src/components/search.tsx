@@ -1,43 +1,28 @@
-  'use client';
-  import {
-    SearchDialog,
-    SearchDialogClose,
-    SearchDialogContent,
-    SearchDialogHeader,
-    SearchDialogIcon,
-    SearchDialogInput,
-    SearchDialogList,
-    SearchDialogOverlay,
-    type SharedProps,
-  } from 'fumadocs-ui/components/dialog/search';
-  import { useDocsSearch } from 'fumadocs-core/search/client';
-  import { create } from '@orama/orama';
+'use client';
+import type { SharedProps } from 'fumadocs-ui/components/dialog/search';
+import {
+  InkeepModalSearchAndChat,
+  type InkeepModalSearchAndChatProps,
+} from '@inkeep/cxkit-react';
+import { useTheme } from 'next-themes';
 
-  function initOrama() {
-    return create({
-      schema: { _: 'string' },
-      language: 'english',
-    });
-  }
+export default function CustomSearchDialog({ open, onOpenChange }: SharedProps) {
+  const { resolvedTheme } = useTheme();
 
-  export default function CustomSearchDialog(props: SharedProps) {
-    const { search, setSearch, query } = useDocsSearch({
-      from: '/api/search.json',
-      type: 'static',
-      initOrama,
-    });
+  const config: InkeepModalSearchAndChatProps = {
+    baseSettings: {
+      apiKey: process.env.NEXT_PUBLIC_INKEEP_API_KEY!,
+      organizationDisplayName: 'Pear Docs',
+      primaryBrandColor: resolvedTheme === 'dark' ? '#bbde5c' : '#759300',
+      colorMode: {
+        forcedColorMode: resolvedTheme === 'dark' ? 'dark' : 'light',
+      },
+    },
+    modalSettings: {
+      isOpen: open,
+      onOpenChange,
+    },
+  };
 
-    return (
-      <SearchDialog search={search} onSearchChange={setSearch} isLoading={query.isLoading} {...props}>
-        <SearchDialogOverlay />
-        <SearchDialogContent>
-          <SearchDialogHeader>
-            <SearchDialogIcon />
-            <SearchDialogInput />
-            <SearchDialogClose />
-          </SearchDialogHeader>
-          <SearchDialogList items={query.data !== 'empty' ? query.data : null} />
-        </SearchDialogContent>
-      </SearchDialog>
-    );
-  }
+  return <InkeepModalSearchAndChat {...config} />;
+}

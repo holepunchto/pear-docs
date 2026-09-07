@@ -27,7 +27,7 @@ function MdxImg({
   const srcStr = typeof src === 'string' ? src : undefined;
   return (
     <ImageZoom src={srcStr} alt={alt ?? ''}>
-      {/* eslint-disable-next-line jsx-a11y/alt-text, @next/next/no-img-element */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         {...rest}
         src={src}

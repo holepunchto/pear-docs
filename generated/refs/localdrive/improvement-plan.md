@@ -1,5 +1,5 @@
 # Reference generation improvement plan — localdrive
-Generated from `holepunchto/localdrive` at **v2.2.1** (`e9b7f3326a`) on 2026-06-11T12:37:00.928Z.
+Generated from `holepunchto/localdrive` at **v2.2.1** (`5eaf513932`) on 2026-06-11T12:37:00.928Z.
 **Doc-completeness: 43%** — 6 of 14 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page

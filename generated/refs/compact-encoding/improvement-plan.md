@@ -1,6 +1,6 @@
 # Reference generation improvement plan — compact-encoding
-Generated from `holepunchto/compact-encoding` at **v3.3.0** (`e67abec0fb`) on 2026-07-14T14:05:31.955Z.
-**Doc-completeness: 0%** — 0 of 2 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
+Generated from `holepunchto/compact-encoding` at **v3.3.0** (`191fe35870`) on 2026-08-11T14:22:51.402Z.
+**Doc-completeness: 100%** — 1 of 1 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
 **100%** of the hand-authored page is reproduced — 29 of 29 documented symbols (`content/reference/helpers/compact-encoding.mdx`).
@@ -52,27 +52,18 @@ _Found in source but absent from the curated page — candidate additions (or in
 - `utf16le`
 - `utf8`
 ## Completeness gaps
-### Undocumented parameters (2)
-
-_Cause: parameter present in the signature but not described — README gap or extractor name-mismatch._
-
-- `enc.encode(state, val)` → enc, m
-- `val = enc.decode(state)` → enc
-
 ## Enhancements
-### No example (2)
+### No example (1)
 
 _Cause: no code fence under the README entry — add a usage snippet._
 
-- `enc.encode(state, val)`
-- `val = enc.decode(state)`
+- `cenc.state(start = 0, end = 0, buffer = null)`
 
 ## Drift
-### Undocumented in README (in source) (71)
+### Undocumented in README (in source) (70)
 
 _Cause: public method in source with no README entry — add upstream docs, or confirm it is internal._
 
-- `cenc.state(start = 0, end = 0, buffer = null)`
 - `cenc.raw`
 - `cenc.uint`
 - `cenc.uint8`
@@ -144,8 +135,10 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `cenc.stringRecord`
 - `cenc.from(enc)`
 
-### Stale README (not found in source) (1)
+### Stale README (not found in source) (3)
 
 _Cause: README documents a symbol the AST pass did not find — stale docs, or an extractor miss (events/getters/re-exports)._
 
 - `enc.preencode(state, val)`
+- `enc.encode(state, val)`
+- `val = enc.decode(state)`

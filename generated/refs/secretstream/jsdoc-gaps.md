@@ -1,6 +1,6 @@
 # JSDoc gap report — secretstream
 
-`holepunchto/hyperswarm-secret-stream` at **v6.9.1** · **100%** of published members fully documented (24/24) · 4 source member(s) not in the manifest (internal or unfiled) — not graded.
+`holepunchto/hyperswarm-secret-stream` at **v6.9.1** · **96%** of published members fully documented (23/24) · 4 source member(s) not in the manifest (internal or unfiled) — not graded.
 
 Coverage by dimension: **descriptions 100%** · **param types 100%** · **typed returns 100%** · **examples 100%**. (Prose is usually present; the gap is mostly types.)
 
@@ -8,7 +8,11 @@ Work through the checklist below in the source repo. Each item adds the JSDoc ne
 
 See the [JSDoc convention](../../../scripts/refgen/JSDOC_CONVENTION.md) for the exact format each item expects.
 
-✅ Every graded member is fully documented.
+## To do (1)
+
+### `index.js`
+
+- [ ] L16 `const s = new SecretStream(isInitiator, [rawStream], [options])` — add @param description for `opts`
 
 ## Documented but not reachable in source (1)
 
