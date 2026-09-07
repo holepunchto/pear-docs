@@ -140,6 +140,7 @@ export const bareTree: Node[] = [
               { type: 'page', name: 'bare-os', url: '/bare/reference/bare/modules/bare-os' },
               { type: 'page', name: 'bare-stream', url: '/bare/reference/bare/modules/bare-stream' },
               { type: 'page', name: 'bare-tcp', url: '/bare/reference/bare/modules/bare-tcp' },
+              { type: 'page', name: 'bare-dgram', url: '/bare/reference/bare/modules/bare-dgram' },
               { type: 'page', name: 'bare-http1', url: '/bare/reference/bare/modules/bare-http1' },
               { type: 'page', name: 'bare-ws', url: '/bare/reference/bare/modules/bare-ws' },
               { type: 'page', name: 'bare-fetch', url: '/bare/reference/bare/modules/bare-fetch' },

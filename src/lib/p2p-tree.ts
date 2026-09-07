@@ -173,6 +173,11 @@ export const p2pTree: Node[] = [
         ],
       },
       {
+        type: 'page',
+        name: 'Add typed RPC to a Pear app',
+        url: '/p2p/how-to/add-typed-rpc-to-a-pear-app',
+      },
+      {
         type: 'folder',
         name: 'Stream and share media',
         index: { type: 'page', name: 'Stream and share media', url: '/p2p/how-to/stream-and-share-media' },
@@ -290,6 +295,11 @@ export const p2pTree: Node[] = [
             type: 'page',
             name: 'Protomux',
             url: '/p2p/reference/helpers/protomux',
+          },
+          {
+            type: 'page',
+            name: 'HRPC',
+            url: '/p2p/reference/helpers/hrpc',
           },
         ],
       },
