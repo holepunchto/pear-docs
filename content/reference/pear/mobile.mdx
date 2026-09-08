@@ -1,0 +1,112 @@
+---
+title: "Pear Mobile OTA"
+description: "Pear Mobile OTA (the pear-mobile module) for embedding Pear's over-the-air updates and Bare worklets into React Native and Expo apps."
+seoTitle: "Pear Mobile OTA: React Native P2P Updates"
+docType: reference
+schemaType: APIReference
+---
+
+# Pear Mobile OTA
+
+**Pear Mobile OTA** is the mobile counterpart to [Pear OTA](/reference/pear/runtime), provided by the [`pear-mobile`](https://github.com/holepunchto/pear-mobile) module. It embeds the same over-the-air update and storage model into React Native and Expo apps, running the peer-to-peer core in a Bare worklet via [`react-native-bare-kit`](/reference/bare/bare-kit) instead of a desktop `pear-runtime` process.
+
+<Callout type="warn">
+`pear-mobile` is MVP and experimental—its API may still change.
+</Callout>
+
+Install it into a React Native or Expo app:
+
+```sh
+npm install pear-mobile
+```
+
+## Two entry points, one package
+
+Unlike desktop's `pear-runtime`, which is required the same way on both sides of a worker boundary, `pear-mobile` resolves to a **different export depending on which side requires it**—governed by its `package.json` `exports` conditions:
+
+- From the **React Native/Expo JS thread**—the `react-native` condition—`pear-mobile` is a static launcher for the worklet: [`PearRuntime.run(filename, bundle, argv)`](https://github.com/holepunchto/pear-mobile/blob/v4.3.0/react-native.js).
+- From **inside the Bare worklet** (`workers/main.js`)—the default condition—`pear-mobile` is [the same shape as desktop's `PearRuntime` class](https://github.com/holepunchto/pear-mobile/blob/v4.3.0/bare.js): `new PearRuntime(opts)`, with `.storage`, `.updater`, `.ready()`, and `.close()`.
+
+This is also why [`hello-pear-worker`](https://github.com/holepunchto/hello-pear-worker) works unmodified across desktop and mobile templates: it always does `require('pear-runtime')`, and its own conditional `imports` map redirects that specifier to `pear-mobile` on iOS, Android, and simulator hosts. See [Where the app logic goes](/getting-started/from-a-template/start-from-hello-pear-react-native#where-the-app-logic-goes) for that in context.
+
+## Starting the worklet (React Native side)
+
+```js
+import PearRuntime from 'pear-mobile'
+import bundle from './worker.bundle.js'
+
+const IPC = PearRuntime.run('/worker.bundle', bundle, [
+  updatesEnabled.toString(),
+  version,
+  upgrade,
+  productName
+])
+```
+
+`PearRuntime.run` is **static**—there is no instance on this side. It starts a [`react-native-bare-kit`](/reference/bare/bare-kit) `Worklet` with the given entry filename and bundle, passes `argv` through as the worklet's positional `Bare.argv`, and returns the worklet's `IPC` duplex. Unlike desktop's `PearRuntime.run(specifier, args)`, mobile takes the bundle's **content** (`bundle`) rather than just a path—there is no filesystem for the worklet to load from on a device, so the JS source has to be handed over directly. Bundle the worker first with [`bare-pack`](https://github.com/holepunchto/bare-pack) (see [Bundle a Bare app](/how-to/run-on-native/bundle-a-bare-app)); a stale bundle fails silently rather than erroring.
+
+## Instantiating (inside the worklet)
+
+```js
+const PearRuntime = require('pear-mobile') // or require('pear-runtime') via hello-pear-worker's redirect
+const pear = new PearRuntime({ dir, version, upgrade, name, app })
+pear.on('error', console.error)
+pear.on('minver-required', ({ minver, version }) => {
+  // prompt the user to update from the App Store / Play Store
+})
+```
+
+### Options
+
+- `upgrade` `<String>` - Required. Pear upgrade link, typically from the `package.json` `upgrade` field.
+- `name` `<String>` - Required. The application's product name.
+- `version` `<String>` - Current app version; used to decide whether an update should be stored.
+- `dir` `<String>` - Directory to store runtime data. Defaults to the platform's persistent app-data directory (resolved via [`bare-storage`](/reference/modules/bare-modules)'s `persistent()`—iOS: the app's Application Support directory; Android: the app's `files` directory).
+- `storage` `<String>` - Override the peer-to-peer application storage path. Defaults to `<dir>/app-storage`.
+- `app` `<String>` - Path to the installed OTA bundle, as booted by the native code. `applyUpdate()` swaps the staged payload into it; staging itself happens under `<dir>/pear-runtime/next/`. Defaults to `<dir>/pear-runtime/ota`.
+- `store` `<Corestore>` & `swarm` `<Hyperswarm>` - Supply an existing [Corestore](/reference/helpers/corestore) and [Hyperswarm](/reference/building-blocks/hyperswarm) for update replication. Both must be passed together; when omitted, `pear-mobile` creates and swarms its own.
+- `updates` `<Boolean>` - Set to `false` to opt out of updates.
+- `bootstrap` `<Array>` - Override the [HyperDHT](/reference/building-blocks/hyperdht) bootstrap nodes used for update replication.
+- `skipUpdate` `<Function>` - Optional async hook, checked before the built-in `minver` gate. Return `true` to skip an available update for a reason of your own.
+
+## Updates
+
+Update events mirror desktop [Pear OTA](/reference/pear/runtime#updates)—`pear.updater` emits `updating`, then `updated` once the new version is staged:
+
+```js
+pear.updater.on('updating', () => {
+  // update view to indicate updating in progress
+})
+pear.updater.on('updated', () => {
+  // update view to indicate update ready; call pear.updater.applyUpdate() when the user confirms
+})
+```
+
+### The `minver` gate
+
+Mobile adds one event desktop doesn't have. Before taking an update, `pear-mobile` reads `/pear.json` from the update drive and compares its `updates.minver` against the **running native version**:
+
+- native version is `>=` `minver` — the update proceeds as normal.
+- native version is `<` `minver` — nothing is downloaded, and the instance emits `minver-required` with `{ minver, version }` instead.
+
+This exists because a mobile OTA replaces the **JavaScript bundle only**—native code changes still require an App Store / Play Store release, so an OTA payload can require a newer native build than the one it's about to update. Set `pear.json` `updates.minver` whenever a release changes the native/OTA contract; see [Version management](https://github.com/holepunchto/hello-pear-react-native#version-management) in the `hello-pear-react-native` README for the full sequencing rules.
+
+## Lifecycle
+
+Instantiation is eager, same as desktop—`pear-mobile` starts opening its store and swarm as soon as `new PearRuntime(opts)` returns:
+
+```js
+await pear.ready()
+```
+
+```js
+goodbye(() => pear.close()) // e.g. via graceful-goodbye
+```
+
+## See also
+
+- [Pear OTA](/reference/pear/runtime)—the desktop counterpart this module mirrors.
+- [`hello-pear-worker`](https://github.com/holepunchto/hello-pear-worker)—the shared worker that requires `pear-runtime` and lets each template's `package.json` redirect it to `pear-mobile` on mobile.
+- [Start from the hello-pear-react-native template](/getting-started/from-a-template/start-from-hello-pear-react-native)—this module in a working template.
+- [Bare Kit](/reference/bare/bare-kit)—the `Worklet` and `IPC` API `pear-mobile` runs on.
+- [Handle app suspension](/how-to/run-on-native/handle-app-suspension)—keeping the worklet in step with the OS lifecycle.
