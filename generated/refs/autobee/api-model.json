@@ -1,0 +1,1460 @@
+{
+  "slug": "autobee",
+  "repo": {
+    "org": "holepunchto",
+    "repo": "autobee"
+  },
+  "description": "Bee based autobase",
+  "tag": "v2.2.2",
+  "sha": "30b7e97d84c4a2a66aece841fdfc2e77ba6e2d41",
+  "generatedAt": "2026-09-08T13:41:04.756Z",
+  "sections": [
+    {
+      "title": "Usage",
+      "markdown": "## Usage\n\n```js\nconst Autobee = require('autobee')\nconst Corestore = require('corestore')\n\nconst store = new Corestore('./my-db')\n\nconst db = new Autobee(store, null, { apply })\nawait db.ready()\n\n// append some data\nawait db.append(Buffer.from(JSON.stringify({ hello: 'world' })))\n\n// read it back from the view\nconst node = await db.view.get(Buffer.from('latest'))\nconsole.log(JSON.parse(node.value))\n\nasync function apply(nodes, view, host) {\n  for (const node of nodes) {\n    const op = JSON.parse(node.value)\n\n    if (op.addWriter) host.addWriter(op.addWriter)\n    if (op.removeWriter) host.removeWriter(op.removeWriter)\n\n    const w = view.write()\n    w.tryPut(Buffer.from('latest'), node.value)\n    await w.flush()\n  }\n}\n```\n\nTo add a second writer and replicate:\n\n```js\nconst db1 = new Autobee(store1, null, { apply })\nawait db1.ready()\n\n// share db1.key with others so they can join\nconst db2 = new Autobee(store2, db1.key, { apply })\nawait db2.ready()\n\n// db1 adds db2 as a writer\nawait db1.append(Buffer.from(JSON.stringify({ addWriter: db2.local.id })))\n\n// replicate using any stream\nconst s1 = db1.replicate(true)\nconst s2 = db2.replicate(false)\ns1.pipe(s2).pipe(s1)\n```"
+    }
+  ],
+  "classes": [
+    {
+      "name": "Autobee",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "const db = new Autobee(store, [key], [options])",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "store",
+              "optional": false,
+              "description": "`store` is a Corestore."
+            },
+            {
+              "name": "key",
+              "optional": true,
+              "default": "null",
+              "description": "`key` is the public key of an existing Autobee to join — omit or pass `null` to create a new one."
+            },
+            {
+              "name": "handlers",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "description": "Create a new Autobee. `store` is a Corestore. `key` is the public key of an existing Autobee to join — omit or pass `null` to create a new one.",
+          "options": [
+            {
+              "name": "encryptionKey",
+              "default": "Buffer",
+              "description": "32-byte key to encrypt all data at rest"
+            },
+            {
+              "name": "encrypted",
+              "default": "false",
+              "description": "set true if using encryptionKey"
+            },
+            {
+              "name": "keyPair",
+              "description": "custom signing key pair for the local writer"
+            },
+            {
+              "name": "optimistic",
+              "default": "true",
+              "description": "allow optimistic writes from unknown writers"
+            },
+            {
+              "name": "fastForward",
+              "description": "see Fast-forward"
+            }
+          ],
+          "examples": [
+            "{\n  apply (nodes, view, host) {},  // called with batches of new nodes to apply to the view\n  open (bee, db) {},             // called to create a custom view, return it\n  close (view) {},               // called when the db closes\n  update (view, changes) {},     // called after apply when the view has been updated\n  encryptionKey: Buffer,         // 32-byte key to encrypt all data at rest\n  encrypted: false,              // set true if using encryptionKey\n  keyPair: { publicKey, secretKey }, // custom signing key pair for the local writer\n  optimistic: true,              // allow optimistic writes from unknown writers\n  isTrusted (key, reference) {}, // do we trust this writer, see Fast-forward\n  mostRecentTrusted (target, reference) {}, // the head we vouch for, see Fast-forward\n  fastForward: {}                // see Fast-forward\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L32",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "GENESIS",
+          "signature": "Autobee.GENESIS",
+          "kind": "property",
+          "static": true,
+          "async": false,
+          "params": [],
+          "description": "`{ length: 0, key: null }`. The empty head used to represent the genesis state.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L162",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "isAutobee",
+          "signature": "Autobee.isAutobee(val)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "auto",
+              "optional": false
+            }
+          ],
+          "returns": "Returns `true` if `val` is an Autobee instance.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L164",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "isIndexer",
+          "signature": "db.isIndexer",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "`true` if this writer is an indexer.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L168",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "writable",
+          "signature": "db.writable",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "`true` if this instance has been added as a writer.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L172",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "activeWriters",
+          "signature": "db.activeWriters",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L177",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "flushes",
+          "signature": "db.flushes",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L181",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "busy",
+          "signature": "db.busy",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L185",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getExternalWriters",
+          "signature": "db.getExternalWriters()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L252",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getWriterViews",
+          "signature": "db.getWriterViews(key)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L261",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "cores",
+          "signature": "await db.cores(options = {})",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "options",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L271",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getViewEncryption",
+          "signature": "Autobee.getViewEncryption(bootstrap, encryptionKey, name)",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "bootstrap",
+              "optional": false
+            },
+            {
+              "name": "encryptionKey",
+              "optional": false
+            },
+            {
+              "name": "name",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L324",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "views",
+          "signature": "views = db.views()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "Returns the current system and view core positions.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L328",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "replicate",
+          "signature": "stream = db.replicate(isInitiator)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "...args",
+              "optional": true
+            }
+          ],
+          "description": "Create a replication stream. Pass `true` for the initiating side, `false` for the other.",
+          "examples": [
+            "const s1 = db1.replicate(true)\nconst s2 = db2.replicate(false)\ns1.pipe(s2).pipe(s1)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L406",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "flush",
+          "signature": "await db.flush()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "description": "Wait until all known writers have been fully indexed.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L412",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "hintWakeup",
+          "signature": "db.hintWakeup(wakeup)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "wakeup",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L416",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "openViewAt",
+          "signature": "db.openViewAt(oplog)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "oplog",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L421",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "openCore",
+          "signature": "db.openCore(key)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L428",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getMostRecentHead",
+          "signature": "db.getMostRecentHead()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L440",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "bumpSoon",
+          "signature": "db.bumpSoon()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L588",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "update",
+          "signature": "await db.update()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Trigger a new apply cycle. Useful after replication to process new data.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L610",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "updated",
+          "signature": "await db.updated()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "description": "Wait until the current apply cycle has finished.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L614",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "getLastError",
+          "signature": "db.getLastError()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L627",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "readOplog",
+          "signature": "await db.readOplog(core, length, opts = null)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "core",
+              "optional": false
+            },
+            {
+              "name": "length",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "null"
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L874",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "setLocal",
+          "signature": "await db.setLocal(key, [options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            },
+            {
+              "name": "options",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "description": "Rotate the local writer to a different key. The new writer takes over as the active oplog.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L913",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "prepareBatch",
+          "signature": "await db.prepareBatch(batch)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "batch",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L1192",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "applyBacklog",
+          "signature": "await db.applyBacklog(batches)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "batches",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L1216",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "decodeValue",
+          "signature": "value = Autobee.decodeValue(buf, [opts])",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "buf",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": true
+            }
+          ],
+          "description": "Decode an Autobee block back to its value.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L1313",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "encodeValue",
+          "signature": "buf = Autobee.encodeValue(value, [opts])",
+          "kind": "method",
+          "static": true,
+          "async": false,
+          "params": [
+            {
+              "name": "value",
+              "optional": false
+            },
+            {
+              "name": "opts",
+              "optional": true
+            }
+          ],
+          "description": "Encode a value into an Autobee block with optional metadata.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L1317",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "wakeup",
+          "signature": "await db.wakeup({ key, length })",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "options",
+              "optional": false
+            }
+          ],
+          "description": "Hint that a new writer core is available at `key` with at least `length` entries. Used to wake up replication when you learn about a peer out of band.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L1323",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "append",
+          "signature": "await db.append(value | values)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "values",
+              "optional": false
+            },
+            {
+              "name": "options",
+              "optional": true,
+              "default": "{}"
+            }
+          ],
+          "description": "Append one or more values to the local writer. Triggers an apply cycle.",
+          "examples": [
+            "await db.append(Buffer.from('hello'))\nawait db.append([buf1, buf2, buf3])",
+            "await db.append(buf, { optimistic: true })"
+          ],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L1329",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "moveTo",
+          "signature": "await db.moveTo(head)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "head",
+              "optional": false
+            }
+          ],
+          "description": "Fast-forward onto an oplog head, ignoring the usual distance and conservative checks. Resolves `{ to, from }`.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L1407",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "replay",
+          "signature": "db.replay()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L1604",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "ready",
+          "signature": "await db.ready()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "close",
+          "signature": "await db.close()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "opened",
+          "signature": "db.opened",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "closed",
+          "signature": "db.closed",
+          "kind": "getter",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "signature": "db.on(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "once",
+          "signature": "db.once(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "off",
+          "signature": "db.off(event, listener)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "listener",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "emit",
+          "signature": "db.emit(event, [...args])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "event",
+              "optional": false
+            },
+            {
+              "name": "...args",
+              "optional": true
+            }
+          ],
+          "examples": [],
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "encrypted",
+          "signature": "db.encrypted",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L48",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "bootstrapWeight",
+          "signature": "db.bootstrapWeight",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L49",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getSystemEncryption",
+          "signature": "db.getSystemEncryption",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L51",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "getViewEncryption",
+          "signature": "db.getViewEncryption",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L52",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "store",
+          "signature": "db.store",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L65",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "key",
+          "signature": "db.key",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "The public key of this Autobee. Share this with peers so they can join.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L67",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "discoveryKey",
+          "signature": "db.discoveryKey",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "The discovery key. Use this to find peers on the network.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L68",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "id",
+          "signature": "db.id",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "The public key encoded as a hex string.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L69",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "bootstrap",
+          "signature": "db.bootstrap",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L70",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "stats",
+          "signature": "db.stats",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L72",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "system",
+          "signature": "db.system",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L75",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "bee",
+          "signature": "db.bee",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Alias for `db.view`.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L81",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "view",
+          "signature": "db.view",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "A read-only snapshot of the Hyperbee view. Updated after each apply cycle. Use the standard [Hyperbee](https://github.com/holepunks/hyperbee) API to read from it.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L82",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "optimistic",
+          "signature": "db.optimistic",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L83",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "name",
+          "signature": "db.name",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L85",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "local",
+          "signature": "db.local",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "The local writer Hypercore. Use `db.local.key` or `db.local.id` to identify this writer to others.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L87",
+          "source": [
+            "ast",
+            "readme"
+          ]
+        },
+        {
+          "name": "encryptionKey",
+          "signature": "db.encryptionKey",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L88",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "keyPair",
+          "signature": "db.keyPair",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L89",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "writers",
+          "signature": "db.writers",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L90",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "bumping",
+          "signature": "db.bumping",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L91",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "bootFrom",
+          "signature": "db.bootFrom",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L99",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "trusted",
+          "signature": "db.trusted",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L104",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "ff",
+          "signature": "db.ff",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L106",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "fastForwarding",
+          "signature": "db.fastForwarding",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L107",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "fastForwardTo",
+          "signature": "db.fastForwardTo",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L108",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "legacyViews",
+          "signature": "db.legacyViews",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L124",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "interrupted",
+          "signature": "db.interrupted",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L145",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "wakeupCapability",
+          "signature": "db.wakeupCapability",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L151",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "previousDrain",
+          "signature": "db.previousDrain",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L153",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "interrupt",
+          "signature": "db.on('interrupt', interrupted)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "interrupted",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L637",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "update",
+          "signature": "db.on('update', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L638",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "error",
+          "signature": "db.on('error', err)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "err",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L651",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "rotate-local-writer",
+          "signature": "db.on('rotate-local-writer', listener)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L961",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "on",
+          "event": "move-to",
+          "signature": "db.on('move-to', to, from)",
+          "kind": "event",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "to",
+              "optional": false
+            },
+            {
+              "name": "from",
+              "optional": false
+            }
+          ],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/autobee/blob/v2.2.2/index.js#L1600",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "addWriter",
+          "signature": "host.addWriter(key, [options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            },
+            {
+              "name": "options",
+              "optional": true
+            }
+          ],
+          "description": "Add a writer by public key (Buffer or hex string). Options:",
+          "options": [
+            {
+              "name": "isIndexer",
+              "default": "true",
+              "description": "default"
+            }
+          ],
+          "examples": [
+            "{\n  isIndexer: true // default\n}"
+          ],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "removeWriter",
+          "signature": "host.removeWriter(key)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            }
+          ],
+          "description": "Remove a writer by public key (Buffer or hex string).",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "ackWriter",
+          "signature": "host.ackWriter(key)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            }
+          ],
+          "description": "Acknowledge a writer without changing their permissions.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "interrupt",
+          "signature": "host.interrupt(reason)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "reason",
+              "optional": false
+            }
+          ],
+          "description": "Interrupt the current apply cycle. The db emits `'interrupt'` with the reason. Useful for pausing apply while waiting on external data.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "createAnchor",
+          "signature": "anchor = await host.createAnchor()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Create an anchor node. Returns `{ key, length }`. Anchors are used to create a verifiable checkpoint in the log that can be used by future writers to prove causal ordering.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "genesis",
+          "signature": "host.genesis",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "`true` if the system has not yet processed any nodes. Use this to bootstrap the first writer.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "isTrusted",
+          "signature": "isTrusted(key, reference)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false
+            },
+            {
+              "name": "reference",
+              "optional": false
+            }
+          ],
+          "returns": "Return whether `key` is a writer you trust, judged against the `reference` view.",
+          "description": "Positive answers are cached until an undo rewinds the view, and the default is `true` unless you supply `mostRecentTrusted`, in which case it is `false`.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "mostRecentTrusted",
+          "signature": "mostRecentTrusted(target, reference)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "target",
+              "optional": false
+            },
+            {
+              "name": "reference",
+              "optional": false
+            }
+          ],
+          "returns": "Return the oplog head you most recently vouched for, given the `target` view being considered.",
+          "description": "Called at flush time to stamp your own oplog (with your view as `target` and a `null` reference), and again per candidate during discovery.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "boot",
+          "signature": "fastForward.boot",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Pass one of `head` or `legacy`, not both.",
+          "options": [
+            {
+              "name": "head",
+              "description": "oplog head to boot from"
+            },
+            {
+              "name": "legacy",
+              "description": "pre-2.0 pointer, see below"
+            }
+          ],
+          "examples": [
+            "{\n  head: { key, length },       // oplog head to boot from\n  legacy: { key, length },     // pre-2.0 pointer, see below\n  bootCondition (target, reference) {} // optional gate on the view we would land on\n}"
+          ],
+          "source": [
+            "readme"
+          ]
+        },
+        {
+          "name": "conservative",
+          "signature": "fastForward.conservative",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "description": "Defaults to `true`: only fast-forward onto a head a connected peer can serve whole.",
+          "examples": [],
+          "source": [
+            "readme"
+          ]
+        }
+      ]
+    }
+  ]
+}
