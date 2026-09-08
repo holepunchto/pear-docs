@@ -456,6 +456,11 @@ export const customTree: Node[] = [
           { type: 'page', name: 'Pear Mobile OTA', url: '/reference/pear/mobile' },
           {
             type: 'page',
+            name: 'Mobile OTA Boot Control',
+            url: '/reference/pear/mobile-boot-control',
+          },
+          {
+            type: 'page',
             name: 'Configuration',
             url: '/reference/pear/configuration',
           },
