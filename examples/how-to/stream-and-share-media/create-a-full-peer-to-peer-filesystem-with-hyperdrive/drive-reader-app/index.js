@@ -15,7 +15,7 @@ if (!key) throw new Error('provide a key')
 const store = new Corestore('./drive-reader-storage')
 
 const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0), () => process.exit(0)))
 
 // replication of store on connection with other peers
 swarm.on('connection', conn => store.replicate(conn))
