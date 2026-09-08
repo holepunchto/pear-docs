@@ -1,6 +1,6 @@
 /* global __DEV__ */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { LinearGradient } from 'expo-linear-gradient'
 import { reloadAppAsync } from 'expo-modules-core'
 import { StatusBar } from 'expo-status-bar'
@@ -17,8 +17,12 @@ const appName = productName ?? name
 export default function App() {
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
-  const [applyUpdate, setApplyUpdate] = useState<(() => void) | null>(null)
   const shouldReload = useRef(false)
+  const pipeRef = useRef<InstanceType<typeof FramedStream> | null>(null)
+
+  const applyUpdate = useCallback(() => {
+    pipeRef.current?.write('pear:applyUpdate')
+  }, [])
 
   useEffect(() => {
     const IPC = PearRuntime.run('/worker.bundle', bundle, [
@@ -28,8 +32,7 @@ export default function App() {
       appName
     ])
     const pipe = new FramedStream(IPC)
-
-    setApplyUpdate(() => () => pipe.write('pear:applyUpdate'))
+    pipeRef.current = pipe
 
     pipe.on('data', (data) => {
       const parsed = b4a.toString(data)
@@ -73,6 +76,7 @@ export default function App() {
     pipe.on('error', (err) => console.error(err))
 
     return () => {
+      pipeRef.current = null
       pipe.destroy()
     }
   }, [])
@@ -99,12 +103,12 @@ export default function App() {
         <Text style={styles.title}>{title}</Text>
         {(status === 'updated' || status === 'applying') && (
           <Pressable
-            disabled={status === 'applying' || !applyUpdate}
+            disabled={status === 'applying'}
             onPress={() => {
               setStatus('applying')
               try {
                 shouldReload.current = true
-                applyUpdate?.()
+                applyUpdate()
               } catch (err) {
                 shouldReload.current = false
                 setError(`Update failed: ${err instanceof Error ? err.message : String(err)}`)
