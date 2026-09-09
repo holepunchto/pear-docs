@@ -10,8 +10,6 @@ import { KeetIcon } from '@/components/keet-icon';
 import KeetRoomModalMount from '@/components/keet-modal';
 import { DocsVersionProvider } from '@/components/version';
 import { ProductNavBar } from '@/components/product-nav-bar';
-import { SearchBarButton } from '@/components/search-bar-button';
-import { MobileSidebarTrigger } from '@/components/mobile-sidebar-trigger';
 
 export const dynamic = 'force-static';
 
@@ -59,30 +57,14 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
         cell's full height and covers the content. Living outside the grid
         entirely avoids that.
 
-        Two distinct layouts, on two different breakpoints:
-
-        - `md` (768px) is Fumadocs' own hardcoded breakpoint for showing the
-          real sidebar — the logo's own `md:w-[268px]` tracks that width so
-          it stays aligned with the sidebar whenever it's visible.
-        - The nav links + search bar sharing one inline row need
-          comfortably more room than that (measured: overflows and shows a
-          scrollbar anywhere under ~920px). A second, wider custom
-          breakpoint (940px, picked with a bit of margin past that
-          measurement) decides THAT layout independently — below it, nav
-          and search fall back to the same compact/stacked treatment as
-          true mobile even though the sidebar itself may already be
-          visible (in the 768–940px gap).
-
-        Rendered twice (nav links, search) and toggled with hidden/flex per
-        breakpoint, rather than one flex row trying to reflow across every
-        width. The one-row-that-reflows version this replaced looked fine
-        at both endpoints individually but broke in between: items would
-        shrink, wrap mid-word, or scroll off-screen with a visible
-        scrollbar. Two intentional layouts are more code but each one is
-        predictable — and neither ever needs to scroll.
+        `md` (768px) is Fumadocs' own hardcoded breakpoint for showing the
+        real sidebar — the logo's own `md:w-[268px]` tracks that width so it
+        stays aligned with the sidebar whenever it's visible. Below `md`
+        there's no sidebar column to match, so it's just an inline logo and
+        the nav row sits below it, both scrollable if they ever don't fit.
       */}
       <header className="sticky top-0 z-40 border-b bg-fd-background">
-        <div className="flex items-center gap-3 px-4 py-3 min-[940px]:gap-0 min-[940px]:py-0">
+        <div className="flex items-center gap-3 px-4 py-3 md:gap-0 md:py-0">
           {/*
             Not reactive to the sidebar's collapse state — that variable is
             scoped to #nd-docs-layout's descendants, and this header is a
@@ -91,21 +73,17 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
           */}
           <Link
             href={homeUrl}
-            className="flex shrink-0 items-center gap-2 font-semibold text-nowrap text-fd-foreground md:w-[268px] min-[940px]:py-4 min-[940px]:ps-4"
+            className="flex shrink-0 items-center gap-2 font-semibold text-nowrap text-fd-foreground md:w-[268px] md:py-4 md:ps-4"
           >
             <Image src={markSrc} alt="" width={24} height={24} />
             {wordmark}
           </Link>
-          {/* >= 940px: nav links + full search bar share the rest of the row. */}
-          <div className="hidden min-w-0 flex-1 items-center justify-between gap-4 overflow-x-auto py-3 pe-4 min-[940px]:flex">
+          <div className="hidden min-w-0 flex-1 items-center overflow-x-auto py-3 pe-4 md:flex">
             <ProductNavBar active={product} />
-            <SearchBarButton className="w-56 shrink-0" />
           </div>
-          {/* < 940px: just the icon-only search, next to the logo. */}
-          <SearchBarButton className="ms-auto shrink-0 min-[940px]:hidden" />
         </div>
-        {/* < 940px: nav links get their own scrollable row below. */}
-        <div className="overflow-x-auto border-t px-4 py-2.5 min-[940px]:hidden">
+        {/* < md: nav links get their own scrollable row below the logo. */}
+        <div className="overflow-x-auto border-t px-4 py-2.5 md:hidden">
           <ProductNavBar active={product} />
         </div>
       </header>
@@ -139,8 +117,6 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
           // overwrites it, so each product gets its own cache entry.
           tree={{ name: 'docs', children: tree, $id: product }}
           links={linkItems}
-          nav={{ component: <MobileSidebarTrigger /> }}
-          searchToggle={{ enabled: false }}
           sidebar={{ collapsible: false }}
         >
           {children}
