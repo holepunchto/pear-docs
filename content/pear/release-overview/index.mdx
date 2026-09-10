@@ -1,0 +1,191 @@
+---
+title: "Release Overview"
+description: "Curated overview of releases across Pear and its pear-* modules—breaking changes, removals, and additions, with migration guidance for each."
+docType: page
+product: pear
+schemaType: WebPage
+---
+
+A curated record of changes across Pear and its modules, newest first. Entries are grouped by module, and every **Breaking** item links to migration guidance. For the raw upstream record, see each module's GitHub releases; this page is the docs-team view of what the changes mean for your application. To publish release notes for *your own* app instead, ship a `CHANGELOG.md`—see [Publish a changelog for your app](/pear/how-to/operate-an-app/publish-a-changelog).
+
+{/* changelog:insert — automation inserts draft entries below this marker; keep it directly above the newest entry. */}
+
+## 2026-09-09 — Pear 3.4.0
+
+Pear 3.4.0 is a feature release on top of Pear 3.3.0. Nothing in it is breaking, but one change affects existing project layouts: `pear stage` no longer searches parent directories for a `package.json`, so a project staged from a subdirectory of its real root now needs `--skip-package-json` or `<dir>` pointed at the root. Otherwise the release adds blind peers and blind relays as native CLI commands, gives `pear seed` and `pear cores` more informative output, and moves next-step hints to stderr.
+
+### pear (CLI) — v3.4.0
+
+- Added: [`pear blind-peer`](/pear/reference/pear/cli#pear-blind-peer)—`start [--trusted-peer <peer>]` runs a blind peer server natively, `identity` prints this machine's key for an operator to authorize, and `request <key> --peer <peer>` asks a blind peer to seed something on demand. See [Availability and blind peering](/pear/explanation/availability-and-blind-peering).
+- Added: [`pear blind-relay start`](/pear/reference/pear/cli#pear-blind-relay) and the global [`--relay <key>`](/pear/reference/pear/cli#relay-flag) flag—run a relay for peers that cannot hole-punch directly, and route a command's connections through one. See [Peer-to-peer, demystified](/p2p/explanation/peer-to-peer-demystified#hole-punching-and-nat-traversal).
+- Added: [`pear seed --blind-peer <key>`](/pear/reference/pear/cli#pear-seed) registers the drive being seeded with a blind peer in one flag, without wiring the `blind-peering` client directly.
+- Added: [`pear stage --skip-package-json`](/pear/reference/pear/cli#pear-stage) stages a folder without a `package.json`.
+- Changed: [`pear stage`](/pear/reference/pear/cli#pear-stage) no longer searches parent directories for a `package.json`—only `<dir>` itself is checked. Interactively it now prompts for typed `STAGE` confirmation when none is found; under `--json` or a non-interactive shell it fails immediately with `ERR_INVALID_PROJECT_DIR` instead.
+- Changed: [`pear cores`](/pear/reference/pear/cli#pear-cores) prints a header row and a `Size` column with a total-size summary; the type column drops its `[...]` brackets.
+- Changed: [`pear seed`](/pear/reference/pear/cli#pear-seed)'s stats replace the standalone `Semantic Version:` row with `App: <name>@<version>` and add a `Blobs Size:` row.
+- Changed: [next-step hints](/pear/reference/pear/cli#next-step-hints) write to stderr instead of stdout—`LINK=$(pear touch)` no longer risks capturing one.
+
+### blind-peer, blind-peering, blind-relay — new to Pear's dependency tree
+
+New bundled packages backing the commands above: [`blind-peer`](https://github.com/holepunchto/blind-peer) v3.12.6 (server), [`blind-peering`](https://github.com/holepunchto/blind-peering) v2.6.3 (client), [`blind-relay`](https://github.com/holepunchto/blind-relay) v1.6.1 (relay protocol). None carry a dedicated reference page—see [Availability and blind peering](/pear/explanation/availability-and-blind-peering) and the `pear blind-peer`/`pear blind-relay` CLI reference instead.
+
+### pear-build — v1.3.0
+
+- Added: each [`--<platform-arch>-app`](/pear/reference/pear/cli#pear-build) flag accepts multiple values, so a standalone binary can ship alongside a desktop app under one architecture. Each artifact must be named after `productName`/`name`, or after a `bin` name when `bin` is an object.
+
+### pear-install — v1.3.0
+
+- Changed: [`pear install`](/pear/reference/pear/cli#pear-install) places applications in `~/Applications` (macOS, and Linux where it or `~/AppImages` exists), and binaries in `%LOCALAPPDATA%\Programs\<app>\` on Windows or `~/.local/bin` elsewhere—all user-level, no `sudo`.
+- Added: installing a binary on non-Windows appends `~/.local/bin` to `PATH` by editing your shell config (`export PATH=…`, or `fish_add_path` for fish), skipping it when already present.
+- Fixed: `--timeout <seconds>` works, and an unset `SHELL` no longer breaks shell-config detection.
+
+### Internal — deps bump
+
+`hyperdht` v6.33.2 (now a direct pin), `pear-ipc` v6.15.0. No documented surface changes.
+
+## 2026-08-24 — Pear 3.3.0
+
+Pear 3.3.0 is a feature release on top of Pear 3.2.0. Nothing in it is breaking, but one change affects scripts: `pear gc cores` now stops for typed confirmation before clearing a writable core. Otherwise the release is about making the CLI easier to follow—deployment commands suggest the next step, `pear cores` prints a readable table, and help text and per-field hints were rewritten across every command.
+
+### pear (CLI) — v3.3.0
+
+- Added: [`pear gc cores <name>`](/pear/reference/pear/cli#gc-cores-by-name) clears cores by application name as well as by link, matching the `name` field of each staged application's `package.json`.
+- Added: [`pear gc cores --force|-f`](/pear/reference/pear/cli#gc-cores-confirmation) clears writable cores without the confirmation prompt.
+- Added: [Next-step hints](/pear/reference/pear/cli#next-step-hints)—[`pear touch`](/pear/reference/pear/cli#pear-touch), [`pear stage`](/pear/reference/pear/cli#pear-stage), [`pear provision`](/pear/reference/pear/cli#pear-provision), and the [`pear multisig`](/pear/reference/pear/cli#pear-multisig) subcommands `keys get`, `link`, `request`, `sign`, `verify`, and `commit` print the command that usually comes next. Suppressed under `--json`. `keys paths`, `keys add`, `keys remove`, and `keys list` print no hint.
+- Changed: [`pear gc cores`](/pear/reference/pear/cli#gc-cores-confirmation) requires typed `CLEAR` confirmation before clearing any writable core. On 3.2.0 and earlier writable cores were silently skipped and the command never blocked. The prompt re-asks on any other input, so a piped stdin loops forever rather than failing—**`--force` is mandatory for automation that clears cores it owns**.
+- Changed: [`pear cores`](/pear/reference/pear/cli#pear-cores) prints a sorted table with the application name and a `[core]`/`[blobs]` type column; `name` and `blobs` also appear in `--json`.
+- Changed: [`pear provision`](/pear/reference/pear/cli#pear-provision)'s `Provisioned:` block and `pear multisig link`'s output no longer end with a `pear seed` line—it moved into the hint block.
+- Changed: command summaries, descriptions, argument and flag help text clarified across every command, and per-field hints added covering constraints, interactions, and failure modes. [`pear --menu`](/pear/reference/pear/cli#interactive-menu) displays those hints.
+- Changed: `--sidecar` is hidden from help and marked internal.
+- Fixed: [`pear stage`](/pear/reference/pear/cli#pear-stage) prints the `ERR_INVALID_PROJECT_DIR` message instead of a stack trace.
+
+### pear-build — v1.2.0, v1.1.2
+
+- Added (v1.2.0): [`pear build --config [path]`](/pear/reference/pear/cli#pear-build) points at the project's `pear.json`—mandatory for mobile targets.
+- Added (v1.2.0): each `--<platform-arch>-app` source is checked for existence up front.
+- Changed (v1.1.2): expected errors are rethrown through `pear-errors`.
+
+### pear-runtime-updater — v3.4.0
+
+- Added: a [`skipUpdate`](/pear/reference/pear/runtime#options) option—an async predicate that, when it returns truthy, skips that update check.
+
+### Hypercore — v11.35.2, v11.35.1, v11.35.0
+
+- Added (v11.35.0): [`core.getManifest([options])`](/p2p/reference/building-blocks/hypercore#coregetmanifestoptions) returns the manifest, optionally in its encoded wire form via `options.raw`.
+- Added (v11.35.0): [`Hypercore.parseManifest(manifest, [key])`](/p2p/reference/building-blocks/hypercore#hypercoreparsemanifestmanifest-key) decodes and validates a manifest, optionally checking it hashes to a given key.
+- Changed (v11.35.0): the [`manifest`](/p2p/reference/building-blocks/hypercore#new-hypercorestorage-key-options) option accepts an encoded manifest Buffer—a Buffer is read as a public key only when it is exactly 32 bytes.
+- Fixed (v11.35.1): the idle range completion scan.
+- Fixed (v11.35.2): the replicator bails out when the core is closing, instead of continuing work against a closing session.
+
+### HyperDHT — v6.33.2, v6.33.1
+
+- Fixed (v6.33.1): a node was pushed twice during HyperDHT initialization.
+- Fixed (v6.33.1): the clearing timeout is unreferenced, so it no longer holds the process open.
+- Fixed (v6.33.2): handshakes received while suspended are cleaned up, and clearing is reordered to match. Pear 3.3.0 bundles v6.33.1; v6.33.2 is the current release.
+
+### Compact-encoding — v3.3.2, v3.3.1
+
+- Added (v3.3.2): TypeScript typings.
+- Added (v3.3.1): validation on the signed integer codecs, so out-of-range values are rejected rather than silently encoded.
+
+### bare-inspect — v3.1.5
+
+- Changed: [`inspect()`](/bare/reference/bare/modules/bare-inspect#inspectvalue-unknown-opts-inspectoptions-string) includes an object's symbol-keyed properties in its output alongside the string keys.
+
+### bare-http1 — v4.5.8
+
+- Fixed: an agent socket leak when sockets half-close.
+
+### Internal — deps bump
+
+`bare-buffer` v3.7.0, `bare-url` v2.5.2, `hypercore-storage` v3.2.1, `paparam` v1.13.0, `pear-ipc` v6.13.0, `rocksdb-native` v3.17.4, and `udx-native` v1.21.1. No documented surface changes.
+
+
+## 2026-08-12 — Pear 3.2.0
+
+Pear 3.2.0 is a feature release on top of Pear 3.1.0. Nothing in it is breaking: it adds an interactive command menu, lets `pear seed` exit once peers are synced, and tightens up `pear gc` and `pear provision`.
+
+### pear (CLI) — v3.2.0
+
+- Added: [`pear --menu`](/pear/reference/pear/cli#interactive-menu) launches an interactive, terminal-driven menu for browsing commands.
+- Added: [`pear seed --until-sync <key>`](/pear/reference/pear/cli#pear-seed) exits once every specified peer has fully synced; repeat the flag to wait for more than one.
+- Changed: [`pear cores`](/pear/reference/pear/cli#pear-cores) skips cores with zero contiguous length by default and reports each core's length; pass `--all-cores` to include the skipped ones.
+- Changed: [`pear gc cores`](/pear/reference/pear/cli#pear-gc)'s `link` argument is now required—it previously cleared every core in the store when omitted.
+- Changed: [`pear dump`](/pear/reference/pear/cli#pear-dump)'s `dir` argument is now optional—handy with `--list`, which already sets it to `-` for you.
+- Changed: [`pear seed`](/pear/reference/pear/cli#pear-seed)'s stats gain a `semver` field alongside `driveLength`.
+- Changed: `--json` error objects gain a `code` field alongside `success` and `message`.
+- Removed: `pear gc sidecars`, with no direct replacement.
+- Fixed: `--json` output now emits command errors as valid JSON instead of malformed output.
+- Fixed: [`pear seed --json`](/pear/reference/pear/cli#pear-seed)'s `driveKey`, `discoveryKey`, `contentKey`, and `whoami` are normalized to z32—previously raw hex.
+- Fixed: [`pear provision`](/pear/reference/pear/cli#pear-provision) error messages.
+- Fixed: [`pear provision --dry-run`](/pear/reference/pear/cli#pear-provision) no longer writes to the real `<target-link>`—it syncs into a throwaway local store instead.
+- Fixed: [`pear gc cores`](/pear/reference/pear/cli#pear-gc) resolves content cores before clearing, and no longer reports skipped cores (writable, or already gone) as cleared.
+- Fixed: [`pear build`](/pear/reference/pear/cli#pear-build) shows help when `--package` is missing, instead of failing partway through.
+
+## 2026-07-30 — Pear 3.1.0 and module updates
+
+Pear 3.1.0 is the first feature release on top of Pear v3 (below). Nothing in it is breaking: it adds core inspection, speeds up vanity key generation, and fills in reporting gaps left by the v3 restructure.
+
+### pear (CLI) — v3.1.0
+
+- Added: [`pear cores`](/pear/reference/pear/cli#pear-cores) lists an application's cores—one `pear://` link per core, suffixed `(writable)` when this device holds the key pair—followed by a totals summary.
+- Added: [`pear touch --vanity`](/pear/reference/pear/cli#pear-touch) generates vanity keys across multiple threads instead of one.
+- Changed: [`pear info`](/pear/reference/pear/cli#pear-info) now reports `productName`, `version`, `upgrade`, and `verlink`.
+- Changed: [`pear multisig`](/pear/reference/pear/cli#pear-multisig) asks you to confirm the password before it is used.
+- Fixed: [`pear info`](/pear/reference/pear/cli#pear-info) and [`pear changelog`](/pear/reference/pear/cli#pear-changelog) output corrections, and password prompts no longer ignore backspace.
+- Sidecar errors are now persisted rather than lost with the process—see [Sidecar logs](/pear/reference/pear/cli#sidecar-logs).
+
+### pear (CLI) — v3.0.1
+
+- Fixed: [`pear build`](/pear/reference/pear/cli#pear-build) resolves package-relative paths correctly.
+- Fixed: Linux runs check for `libatomic` up front instead of failing later.
+- Fixed: [`pear install`](/pear/reference/pear/cli#pear-install) guards against an unset `SHELL`.
+
+### pear-runtime-updater — v3.3.0
+
+- Added: a network monitor, so the updater reacts to connectivity changes.
+- Fixed: errors raised when closing during an update, or immediately before one started.
+
+### pear-build — v1.1.1
+
+- Fixed: `package.json` is read and parsed directly instead of via `require`, which fixes package-relative resolution during [`pear build`](/pear/reference/pear/cli#pear-build).
+- Added: test coverage for `win32-arm64`.
+
+### pear-install — v1.2.2, v1.2.1
+
+- Fixed (v1.2.2): [`pear install`](/pear/reference/pear/cli#pear-install) guards against an unset `SHELL` when detecting your shell config.
+- Added (v1.2.1): Node 20 and 21 support, and `--timeout <seconds>` now works as documented.
+
+<Callout type="info">
+Hypercore, Hyperdrive, HyperDHT, and Corestore also shipped updates around this time—see [Bare's release overview](/bare/release-overview) for those building-block/helper-module changes.
+</Callout>
+
+## 2026-07 — Pear v3
+
+Pear v3 completes the split announced in [Pear Evolution](https://pears.com/news/pear-evolution/): the runtime moves out of the CLI and into the embeddable **[Pear OTA](/pear/reference/pear/runtime)** (`pear-runtime`) library, and the CLI focuses on deployment and installation.
+
+### pear (CLI) — v3
+
+- **Breaking:** `pear run` removed. Launch applications by embedding [Pear OTA](/pear/reference/pear/runtime) instead—see [Migrate from pear run to Pear OTA](/pear/how-to/operate-an-app/migration). Running it now exits with `pear run has been removed`.
+- **Breaking:** `pear release` removed. The single-key release pointer is replaced by quorum cosigning—use [`pear provision`](/pear/reference/pear/cli#pear-provision) + [`pear multisig`](/pear/reference/pear/cli#pear-multisig).
+- **Breaking:** `pear presets`, `pear shift`, and `pear drop` removed. For resetting an app's storage, see [Manage installed applications](/pear/how-to/manage-installed-applications).
+- **Breaking:** the ambient `global.Pear` API is gone with `pear run`. The [Pear API page](/pear/reference/pear/api) is retained for reference only.
+- **Breaking:** `--no-ask` (all commands), `pear stage --compact`, and `pear sidecar --mem`/`--key` flags removed; `pear data` slims down to `dht` and `multisig` subcommands.
+- **Breaking:** `pear://<alias>` shorthand links removed. Refer to applications by their full `pear://<key>` link.
+- Added: [`pear install <link>`](/pear/reference/pear/cli#pear-install) installs applications from peers directly into the OS application folder (provided by [`pear-install`](https://github.com/holepunchto/pear-install)).
+- Added: `pear multisig keys paths`, `pear info --multisig`, `pear sidecar shutdown|inspect`, and `pear gc cores [link]`.
+- Changed: `pear build` is now provided by the standalone [`pear-build`](https://github.com/holepunchto/pear-build) module.
+- Changed: [`pear seed`](/pear/reference/pear/cli#pear-seed) reports `whoami` and drive length, encodes all keys as z32, and cleans up its colored output.
+- Fixed: `pear stage --truncate`, first-run [`pear dump`](/pear/reference/pear/cli#pear-dump) failures, and several `pear seed` edge cases.
+
+### pear-runtime (Pear OTA) — v1.3.1
+
+- The embeddable OTA-update library is now branded **Pear OTA** in these docs; the package name stays `pear-runtime`.
+- Constructor accepts `store` + `swarm` (supply your own [Corestore](/p2p/reference/helpers/corestore)/Hyperswarm, together), `storage`, `delay`, and `bundled` options—see the [Options reference](/pear/reference/pear/runtime#options).
+- `PearRuntime.run()` workers started from a Bare process run as Bare threads; thread workers do not expose `IPC.stdin`/`stdout`/`stderr`.
+
+## See also
+
+- [Pear CLI reference](/pear/reference/pear/cli)—current command set with removed commands badged.
+- [Migrate from pear run to Pear OTA](/pear/how-to/operate-an-app/migration)—the v3 migration path.
+- [Bare's release overview](/bare/release-overview)—Hypercore, Hyperdrive, HyperDHT, Corestore, and the rest of the building-block/helper-module changes.

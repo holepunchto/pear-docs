@@ -8,6 +8,6 @@ description: Use when working with Hypercore, the append-only log underlying Pea
 Hypercore is a secure, append-only log. It's the storage primitive that
 Hyperbee, Hyperdrive, and Autobase are all built on.
 
-Reference: https://docs.pears.com/reference/building-blocks/hypercore/
+Reference: https://docs.pears.com/p2p/reference/building-blocks/hypercore/
 How-to (replicate and persist a core):
-https://docs.pears.com/how-to/store-and-replicate/replicate-and-persist-with-hypercore/
+https://docs.pears.com/p2p/how-to/store-and-replicate/replicate-and-persist-with-hypercore/

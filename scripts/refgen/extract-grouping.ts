@@ -18,7 +18,9 @@ import type { ApiModel } from './model';
 import { memberKey } from './identity';
 import { primaryName, eventName } from './extract-readme';
 
-const CONTENT_ROOT = 'content/reference';
+// content/reference/ moved to content/bare/reference/ in the Phase 6 physical
+// reorg (docs/plans/PEAR-BARE-SPLIT-PITCH.md).
+const CONTENT_ROOT = 'content/bare/reference';
 const REFS = 'generated/refs';
 
 function findPage(slug: string, dir = CONTENT_ROOT): string | null {

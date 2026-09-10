@@ -5,6 +5,7 @@ import type { ImgHTMLAttributes } from 'react';
 import { ImageGrid } from '@/components/ImageGrid';
 import { Image } from '@/components/Image';
 import { Mermaid } from '@/components/mermaid';
+import { ProductRelationship } from '@/components/product-relationship';
 import { Status } from '@/components/Status';
 import { Since, Until } from '@/components/version';
 import { VersionGate } from '@/components/version/gate';
@@ -46,6 +47,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ImageGrid,
     Image,
     Mermaid,
+    ProductRelationship,
     Status,
     // Platform version annotations — see src/components/version/index.tsx
     Since,

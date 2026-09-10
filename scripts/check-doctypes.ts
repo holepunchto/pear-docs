@@ -9,6 +9,12 @@
 // landing in /how-to/, a faq sneaking back in. Once a directory is created
 // the validator picks it up automatically — no schema list to maintain.
 //
+// Also enforces a second, unrelated invariant: every page must declare a
+// valid `product` (pear/bare/shared) — see docs/plans/PEAR-BARE-SPLIT-PITCH.md.
+// Unlike docType, product isn't directory-derived (a page's nav-tree home
+// isn't its content/ path), so this just validates the value against the
+// schema's enum rather than mapping it from the path.
+//
 // Run as `npm run check:doctypes`. Exit 0 on pass, 1 on any mismatch.
 import { readFile } from 'fs/promises';
 import { CONTENT_DIR, getFiles } from './helpers';
@@ -18,6 +24,9 @@ interface Mismatch {
   expected: string | string[];
   actual: string | null;
 }
+
+/** Keep in sync with `productSchema` in source.config.ts. */
+const VALID_PRODUCTS = new Set(['pear', 'bare', 'p2p', 'shared']);
 
 /**
  * Top-level directory under content/ -> required docType for every .mdx
@@ -64,22 +73,29 @@ const TEMPORARY_EXEMPTIONS: ReadonlySet<string> = new Set();
  */
 const DOCTYPE_RE = /^docType:\s*["']?([\w-]+)["']?\s*$/m;
 
+/** Same tolerant matching as DOCTYPE_RE, for the `product:` frontmatter field. */
+const PRODUCT_RE = /^product:\s*["']?([\w-]+)["']?\s*$/m;
+
 function expectedDocType(file: string): string | null {
   const norm = file.replace(/\\/g, '/');
 
   if (norm === ROOT_INDEX) return ROOT_INDEX_DOCTYPE;
 
-  // Strip the content/ prefix and pick the first path segment as the
-  // quadrant. content/how-to/connect-to-peers/foo.mdx -> "how-to".
+  // Strip the content/ prefix, then a leading product segment if present
+  // (content/pear/**, content/bare/**, content/p2p/** since the physical
+  // reorgs — see docs/plans/PEAR-BARE-SPLIT-PITCH.md). What's left is the
+  // Diátaxis quadrant. content/pear/how-to/connect-to-peers/foo.mdx -> "how-to".
   const rel = norm.replace(/^content\//, '');
-  const quadrant = rel.split('/')[0];
+  const segments = rel.split('/');
+  if (segments[0] === 'pear' || segments[0] === 'bare' || segments[0] === 'p2p') segments.shift();
+  const quadrant = segments[0];
 
   return QUADRANT_DOCTYPE[quadrant] ?? null;
 }
 
-async function readDocType(file: string): Promise<string | null> {
+async function readFrontmatterField(file: string, re: RegExp): Promise<string | null> {
   const body = await readFile(file, 'utf-8');
-  const match = body.match(DOCTYPE_RE);
+  const match = body.match(re);
   return match ? match[1] : null;
 }
 
@@ -88,6 +104,7 @@ async function main(): Promise<void> {
 
   const files = await getFiles(CONTENT_DIR);
   const mismatches: Mismatch[] = [];
+  const productIssues: Mismatch[] = [];
   let exempted = 0;
   let unscoped = 0;
 
@@ -96,6 +113,11 @@ async function main(): Promise<void> {
     if (TEMPORARY_EXEMPTIONS.has(norm)) {
       exempted++;
       continue;
+    }
+
+    const product = await readFrontmatterField(file, PRODUCT_RE);
+    if (product === null || !VALID_PRODUCTS.has(product)) {
+      productIssues.push({ file: norm, expected: [...VALID_PRODUCTS], actual: product });
     }
 
     const expected = expectedDocType(norm);
@@ -107,7 +129,7 @@ async function main(): Promise<void> {
       continue;
     }
 
-    const actual = await readDocType(file);
+    const actual = await readFrontmatterField(file, DOCTYPE_RE);
     if (actual !== expected) {
       mismatches.push({ file: norm, expected, actual });
     }
@@ -128,10 +150,26 @@ async function main(): Promise<void> {
       'Fix by either editing the page\'s frontmatter or moving the file ' +
         'to the matching quadrant. See decisions/0001-adopt-diataxis-ia.md §8.',
     );
+  }
+
+  if (productIssues.length > 0) {
+    console.log('❌ Missing or invalid `product` frontmatter:\n');
+    for (const { file, expected, actual } of productIssues) {
+      console.log(`   ${file}`);
+      console.log(`     expected one of: ${(expected as string[]).join(' | ')}`);
+      console.log(`     actual:          ${actual ?? '(missing)'}\n`);
+    }
+    console.log(
+      'Fix by adding `product: pear | bare | shared` to the page\'s frontmatter. ' +
+        'See docs/plans/PEAR-BARE-SPLIT-PITCH.md.',
+    );
+  }
+
+  if (mismatches.length > 0 || productIssues.length > 0) {
     process.exit(1);
   }
 
-  console.log('✅ All pages declare the right docType for their directory.');
+  console.log('✅ All pages declare the right docType for their directory, and a valid product.');
 }
 
 main().catch((err) => {

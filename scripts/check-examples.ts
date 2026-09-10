@@ -42,7 +42,18 @@ import { join, dirname, resolve, delimiter } from 'node:path';
 import { spawn, ChildProcess, spawnSync } from 'node:child_process';
 import { CONTENT_DIR, getFiles } from './helpers';
 
-const HOW_TO_DIR = join(CONTENT_DIR, 'how-to');
+// How-to pages split across content/{pear,bare,p2p}/how-to/** since the
+// Phase 6 physical reorg (docs/plans/PEAR-BARE-SPLIT-PITCH.md) and the
+// follow-up 3-product split. HOW_TO_DIR stays for messaging only;
+// getHowToFiles() merges all three trees.
+const HOW_TO_DIR = `${CONTENT_DIR}/{pear,bare,p2p}/how-to`;
+async function getHowToFiles(): Promise<string[]> {
+  return [
+    ...(await getFiles(join(CONTENT_DIR, 'pear', 'how-to'))),
+    ...(await getFiles(join(CONTENT_DIR, 'bare', 'how-to'))),
+    ...(await getFiles(join(CONTENT_DIR, 'p2p', 'how-to'))),
+  ];
+}
 const TMP_DIR = '.examples-tmp';
 const DEFAULT_TIMEOUT_MS = 30_000;
 const SYSTEM_BASH = '/bin/bash';
@@ -165,7 +176,7 @@ interface Classified {
 }
 
 async function classify(): Promise<Classified> {
-  const files = await getFiles(HOW_TO_DIR);
+  const files = await getHowToFiles();
   const scenarios = new Map<string, Scenario>();
   const skipped: SkippedFence[] = [];
   const errors: string[] = [];
@@ -744,7 +755,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `[check-examples] ${scenarios.size} scenarios, ${skipped.length} skipped fences across ${(await getFiles(HOW_TO_DIR)).length} how-to files`
+    `[check-examples] ${scenarios.size} scenarios, ${skipped.length} skipped fences across ${(await getHowToFiles()).length} how-to files`
   );
 
   if (args.noExecute) {

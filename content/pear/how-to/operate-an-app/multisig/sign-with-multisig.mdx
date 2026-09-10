@@ -1,0 +1,91 @@
+---
+title: "Sign with multisig"
+description: "The repeatable multisig release flow: prepare a signing request, collect a quorum of signatures, verify, and commit the production drive."
+docType: how-to
+product: pear
+schemaType: TechArticle
+---
+
+Once [multisig is set up](/pear/how-to/operate-an-app/multisig/set-up-multisig), every production release runs the same four steps:
+
+1. [Prepare the request](#prepare-the-request)
+2. [Sign](#sign) it with a quorum of signers
+3. [Verify](#verify) the responses
+4. [Commit](#commit) the production drive
+
+The request and responses are portable—the commit does not have to run on the machine that prepared the request.
+
+<Callout type="info">
+This assumes the multisig drive already exists. If you have not generated signing keys, configured `pear.json`, and pointed `upgrade` at the multisig link yet, do [Set up multisig](/pear/how-to/operate-an-app/multisig/set-up-multisig) first.
+</Callout>
+
+<include>../../../../_snippets/_install-pear-cli-callout.mdx</include>
+
+## Prepare the request
+
+```sh skip="release-flow"
+pear multisig request <versioned-provision-link>
+```
+
+`<versioned-provision-link>` is the seeded provision link in `pear://<fork>.<length>.<key>` form—the link from your most recent `pear provision`. For example:
+
+```sh skip="release-flow"
+pear multisig request pear://0.856.q9sopzoqgas9usoiq7uzkkwngm5pzj4zo3n4esjwwbmw6offis8o
+```
+
+`pear multisig request` runs safety checks before issuing the request. One of them ensures the source drive is healthily seeded; if it is not, the request is refused—see [Troubleshoot multisig](/pear/how-to/operate-an-app/multisig/troubleshoot-multisig#request-refused-source-not-healthily-seeded). It returns a signing request.
+
+## Sign
+
+Each signer confirms the build is the one they intend to release, then signs the request:
+
+```sh skip="release-flow"
+pear multisig sign <signing request>
+```
+
+and shares the response. `pear multisig` guards against formal mistakes, but it is up to each signer to verify they are signing the correct build. Once a [quorum](/pear/how-to/operate-an-app/multisig/set-up-multisig#create-the-multisig-config) of responses exists, the build is ready to verify.
+
+## Verify
+
+Check for formal mistakes before committing. Run `verify` first on the request alone, then again with the collected responses appended:
+
+```sh skip="release-flow"
+pear multisig verify <source-link> <signing request> [...responses]
+```
+
+`<source-link>` is the provisioned link (a staged link also works). **Never** sign or commit a request that fails `verify`.
+
+## Commit
+
+Only commit after verifying the request and all responses:
+
+```sh skip="release-flow"
+pear multisig commit <source-link> <signing request> [...responses]
+```
+
+As with `verify`, `<source-link>` is the provisioned (or staged) link. The committer does not have to be a signer—the request and responses are enough to generate the build, which is why `pear multisig` insists the source drive is well seeded, and why the commit can run on a different machine than the one that prepared the request.
+
+The commit is not safely finished until the new multisig drive's key is seeded by peers. Make sure it is seeding:
+
+```sh skip="release-flow"
+pear seed <multisig-link>
+```
+
+`pear seed` shows replication activity rather than a completion signal: peer events (`o-o peer join`) and the upload totals in the `Network` row confirm other peers are pulling the drive. The commit itself prints `Waiting for remote seeders to pick up the changes...` and continues on its own once the drive is seeded. Keep seeding until peers have replicated, then stop it with `Ctrl+C`.
+
+<Callout type="warning">
+**Do not abort a running commit.** An interrupted commit leaves the production build in an intermediate state. See [Recover from an interrupted commit](/pear/how-to/operate-an-app/multisig/troubleshoot-multisig#interrupted-or-aborted-commit) before retrying.
+</Callout>
+
+To inspect which signing keys and quorum a multisig link enforces:
+
+```sh skip="release-flow"
+pear info --multisig <multisig-link>
+```
+
+## See also
+
+- [Set up multisig](/pear/how-to/operate-an-app/multisig/set-up-multisig)—the one-time setup this flow depends on.
+- [Troubleshoot multisig](/pear/how-to/operate-an-app/multisig/troubleshoot-multisig)—request refused, interrupted commits, and `INCOMPATIBLE_SOURCE_AND_TARGET`.
+- [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment)—the full eight-step release flow.
+- [Release pipeline](/pear/explanation/deployment-releasing-apps-p2p)—conceptual diagrams for stage, provision, and multisig.

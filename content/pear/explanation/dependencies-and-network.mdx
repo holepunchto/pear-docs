@@ -1,0 +1,51 @@
+---
+title: "Dependencies"
+description: "Why Pear ships with npm as the install path, and what your dependencies actually do at stage and runtime."
+docType: explanation
+product: pear
+schemaType: WebPage
+---
+
+A question that comes up enough during onboarding: [why does Pear use npm at all when applications run on Bare, not Node?](#why-npm-for-dependencies) The answer is a deliberate trade-off between developer ergonomics and the platform's clean-room ideals.
+
+<Callout type="info">
+Looking for what your IP address discloses when you join a swarm? That's covered in [Peer-to-peer, demystified](/p2p/explanation/peer-to-peer-demystified#what-peers-learn-from-your-ip).
+</Callout>
+
+## Why npm for dependencies
+
+npm is a great package manager for JavaScript, and most JavaScript developers already know how to use it. All of Holepunch's modules—[Hypercore](/p2p/reference/building-blocks/hypercore), [Hyperdrive](/p2p/reference/building-blocks/hyperdrive), [Hyperbee](/p2p/reference/building-blocks/hyperbee), the lot—are published there. Reinventing a peer-to-peer package manager would have meant reinventing every developer's habits at the same time, for very little upside.
+
+The bootstrap relationship is what's interesting: npm and Node.js are required to **install** Pear initially (`npm install -g pear`), but once the platform is set up neither is needed at runtime. The `pear` command after install is using Bare, not Node, to run your application; npm was just the delivery mechanism.
+
+What dependencies your application declares stays meaningful, though. When you `pear stage`, every dependency in your `package.json` is bundled into the application's hyperdrive and replicated to peers along with your code. A few practical implications follow:
+
+- **Audit before you ship.** Run `pear stage --dry-run` to review the file list before announcing a release; this is where you'd catch a dependency that ballooned in size or pulled in something unexpected.
+- **Updates ship fully replicated.** If you update a dependency, you're not merely changing a `package-lock.json`—you're shipping the actual new code to every running peer. Ordinary semver discipline applies, but the consequence is more direct than on a server-rendered web app.
+
+### Dependency layout for Pear apps
+
+Bare loads modules from `node_modules` the same way Node does during development, and Pear replicates those trees into the application hyperdrive at stage time. A few layout rules keep staging predictable:
+
+1. **Use `node_modules` for dependencies**—Pear picks them up during development and includes them when you stage.
+2. **Use `package.json`**—Pear reads it for application metadata and dependency lists.
+3. **Do not bundle dependencies into a single file**—bundlers that inline `node_modules` fight Pear's model of replicating discrete packages. Ship source and dependencies as separate files instead.
+
+TypeScript is supported. Not every Holepunch module ships its own typings yet; the community [holepunch-types](https://github.com/Drache93/holepunch-types) project aggregates coverage. An IDE with TypeScript language service helps even for plain JavaScript projects.
+
+If you compile TypeScript locally, keep dependencies external. With Bun:
+
+```bash
+bun build index.ts --packages=external --outdir=.
+```
+
+The `--packages=external` flag compiles your application code without inlining `node_modules`. Avoid bundling dependencies into the output artifact you stage.
+
+<Callout type="warn">
+**Never load JavaScript over HTTP(S).** Loading code from an external source is dangerous—if that source is compromised or malicious, your app can be exploited, and the risk is worse for apps with native API access. Pear blocks HTTP and HTTPS code loading by default to prevent this supply-chain risk. Ship dependencies with the app (as above) instead of fetching them at runtime.
+</Callout>
+
+## See also
+
+- [Peer-to-peer, demystified](/p2p/explanation/peer-to-peer-demystified)—conceptual overview of HyperDHT and Hyperswarm, including what your IP discloses on a swarm.
+- [Storage and distribution](/pear/explanation/storage-and-distribution)—what actually crosses the wire when peers replicate.
