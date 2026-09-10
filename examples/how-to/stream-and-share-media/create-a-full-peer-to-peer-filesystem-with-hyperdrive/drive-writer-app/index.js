@@ -10,7 +10,7 @@ import b4a from 'b4a'
 // create a Corestore instance 
 const store = new Corestore('./drive-writer-storage')
 const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0), () => process.exit(0)))
 
 // replication of the corestore instance on connection with other peers
 swarm.on('connection', conn => store.replicate(conn))

@@ -25,4 +25,4 @@ server.listen(keyPair).then(() => {
 
 // Unannounce the public key before exiting the process
 // (Not strictly required, but it helps avoid DHT pollution.)
-process.once('SIGINT', () => server.close().then(() => process.exit(0)))
+process.once('SIGINT', () => server.close().then(() => process.exit(0), () => process.exit(0)))
