@@ -1,0 +1,59 @@
+---
+title: "Runtime and languages"
+description: "Pear runs JavaScript on the Bare runtime; here's why, what other languages can plug in via native addons, and how to structure code so one app runs everywhere."
+docType: explanation
+schemaType: WebPage
+---
+
+Pear applications are JavaScript programs. The runtime under them is **[Bare](/explanation/bare-runtime)**, a small embeddable JavaScript runtime that strips the assumptions Node.js carries about being a server. This page explains why the language story looks the way it does, how non-JavaScript code joins in, and what the recommended app shape is when you want one codebase to run on desktop, mobile, and terminal. 
+
+<Callout type="info">
+For where Bare sits relative to Pear, see [How Pear and Bare fit together](/explanation/pear-and-bare).
+</Callout>
+
+## Why JavaScript
+
+Two pragmatic reasons:
+
+1. **Web heritage.** The peer-to-peer libraries Pear is built on ([Hypercore](/reference/building-blocks/hypercore), [Hyperdrive](/reference/building-blocks/hyperdrive), [Hyperswarm](/reference/building-blocks/hyperswarm)) are mature JavaScript modules with millions of downloads. Reusing them on the desktop and on mobile through a single language eliminates a translation layer.
+
+2. **Bare keeps it small.** Bare ships without Node's standard library opinions—no `fs.read` on a URL, no built-in `http` module, no Worker baggage. That makes it cheap to embed in mobile apps, desktop shells, and constrained terminal environments alike. The Pear runtime adds the bits applications actually need on top.
+
+If you're coming from Node.js, the surface looks similar but isn't identical—see [Bare modules](/reference/modules/bare-modules) for the exact set of standard libraries available, and the [Node.js compatibility](/reference/modules/bare-modules#nodejs-compatibility) section for a builtin-by-builtin mapping to the corresponding `bare-*` modules. The [`bare-node`](https://github.com/holepunchto/bare-node) shim maps many Node.js builtins onto their Bare equivalents, easing the port.
+
+## Other languages: native addons
+
+For code that JavaScript can't naturally express—tight cryptography loops, codec work, hardware access—Bare loads native addons. The [`bare-addon`](https://github.com/holepunchto/bare-addon) template is the starting point: write the addon in C, C++, Rust, or any language with a C-compatible ABI, expose it through Bare's addon API, and call it from JavaScript like any module.
+
+For languages that compile to JavaScript (TypeScript being the obvious one) the path is unchanged: compile to JS, then point the application's [`main` field or HTML `<script>` entrypoint](/reference/pear/configuration#packagejson) at the compiled output.
+
+To build native addons for every platform you ship to, the [Bare native-addon prebuild actions](/reference/ci-and-release/github-actions#bare-native-addon-prebuilds) (`compile-prebuilds`, `merge-prebuilds`, and friends) run `bare-make` across a CI matrix and collect the prebuilt binaries.
+
+## One codebase, many platforms: the Pear-end pattern
+
+The recommendation for cross-platform Pear apps is to split the code into two halves:
+
+- **Pear-end**—the peer-to-peer logic, business rules, and storage. Runs in a Bare worker.
+- **UI**—the platform-specific presentation. Talks to the Pear-end over an inter-process communication (IPC) stream.
+
+Because the Pear-end never imports DOM APIs and never assumes a particular UI framework, it's portable across desktop (Electron), mobile (React Native via Bare iOS / Bare Android), and terminal. Only the UI half changes per platform—it gets a fresh implementation each time, but it's also the cheap half: layout, not logic. On mobile the worklet and the typed seam between the two halves are what carry this split—see [One core, many platforms](/explanation/bare-on-native).
+
+This split is what powers Keet's identical experience across phones, laptops, and terminals: one Pear-end, three UIs.
+
+**[Pear OTA](/reference/pear/runtime)** (the `pear-runtime` library) is what wires the two halves together: the UI host embeds it to spawn the Pear-end as a Bare worker, manage peer-to-peer storage, and apply over-the-air updates. It targets desktop; on mobile the same role is filled by [`pear-mobile`](https://www.npmjs.com/package/pear-mobile), the embeddable Pear runtime for mobile applications. If you have an app on the removed global `pear run` API, see [Migrate from pear run to Pear OTA](/how-to/operate-an-app/migration).
+
+## Workers carry the Pear-end
+
+In a desktop Pear app the Pear-end runs as a [Bare](/reference/modules/bare-modules) worker spawned by the Electron main process. The worker owns the swarm identity, the [Corestore](/reference/helpers/corestore), and every peer-to-peer protocol the app implements; the renderer reaches it through a single IPC duplex stream. The same shape applies on mobile and terminal—only the host that spawns the worker changes.
+
+See [Workers](/explanation/workers) for the pattern in full—what crosses the IPC boundary, why native addons live on the worker side, and how `Bare.argv` lines up with `process.argv`.
+
+## See also
+
+- [How Pear and Bare fit together](/explanation/pear-and-bare)—the full layering, from native C foundations up to apps.
+- [Inside Bare](/explanation/bare-runtime)—what the runtime adds, its lifecycle, and why it's minimal.
+- [One core, many platforms](/explanation/bare-on-native)—running the Pear-end in a worklet behind a typed RPC seam.
+- [Workers](/explanation/workers)—the host-and-worker split this page calls the "Pear-end."
+- [`pear-runtime` reference](/reference/pear/runtime)—the JavaScript API exposed inside a running Pear app.
+- [Bare modules](/reference/modules/bare-modules)—the standard library available to both halves of a Pear app.
+- [Storage and distribution](/explanation/storage-and-distribution)—what's running underneath both halves.

@@ -1,0 +1,80 @@
+---
+title: "Troubleshoot multisig"
+description: "Fix multisig release problems: requests refused for unhealthy seeding, interrupted commits, INCOMPATIBLE_SOURCE_AND_TARGET, and recovering lost write access."
+docType: how-to
+schemaType: TechArticle
+---
+
+Use this guide when the [multisig signing flow](/how-to/operate-an-app/multisig/sign-with-multisig) fails or a production drive ends up in a bad state. For general desktop OTA and staging problems, see [Troubleshoot desktop releases](/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases).
+
+<include>../../../_snippets/_install-pear-cli-callout.mdx</include>
+
+## Request refused: source not healthily seeded
+
+`pear multisig request` refuses to issue a signing request if the source provision drive is not healthily seeded. Reseed the provision drive on more peers, then retry:
+
+```sh skip="release-flow"
+pear seed <provision-link>
+```
+
+Keep always-on seeders for the provision link so requests do not depend on a single network path.
+
+## Interrupted or aborted commit
+
+**Never abort a commit while it is running.** If a commit gets interrupted (crash, power loss, premature `Ctrl+C`), the production build is stuck in an intermediate state.
+
+The request and responses are enough to finish the commit, and the commit does not have to run on the same machine that prepared the request. Run the commit again as soon as possible:
+
+```sh skip="release-flow"
+pear multisig commit <source-link> <signing request> [...responses]
+```
+
+From the second commit onwards, a misuse can corrupt the production build. If `pear multisig commit` errors with `INCOMPATIBLE_SOURCE_AND_TARGET`, do not work around it—see below.
+
+## `INCOMPATIBLE_SOURCE_AND_TARGET`
+
+From the second commit onwards it is technically possible to corrupt the production build—for example after an accidental interruption. If `pear multisig commit` errors with `INCOMPATIBLE_SOURCE_AND_TARGET`, **never try to work around it.** The only safe way to proceed is to create a fresh source link with `pear provision` and commit against that.
+
+Mint a new target key, provision a clean source onto it from the original source, then recommit:
+
+```sh skip="release-flow"
+pear touch
+```
+
+```sh skip="release-flow"
+pear provision <source-verlink> <touched-link> <production-multisig-link>
+```
+
+`<source-verlink>` is the versioned link originally used as the source of the provisioned drive. Then commit against the new link:
+
+```sh skip="release-flow"
+pear multisig commit <touched-link> <signing request> [...responses]
+```
+
+## Recovering lost write access
+
+- **Staged** and **provisioned** drives are **machine-bound** in normal setups—if you lose the data that holds write capability to those keys, you cannot "undelete" the same keys from thin air.
+- **Multisig** production drives are **not** machine-bound. Write access is determined by signing capability, so a quorum of signers can keep producing releases even if every other key is lost.
+
+**If a stage link is lost**, just create a new stage link, stage to it, and update the stage builds.
+
+**If a provision key is lost** and you already have a multisig production drive, you can rebuild a clean provision drive from production. Mint a fresh target key with `pear touch`, then run two `pear provision` commands in order:
+
+```sh skip="release-flow"
+# 1. Seed the new target with the production drive's current contents
+pear provision <versioned-production-key> <target-key> <versioned-production-key>
+
+# 2. Sync from the most recent stage onto the new target, anchored on production
+pear provision <versioned-stage-key> <target-key> <versioned-production-key>
+```
+
+The multisig config does not reference the provision link, so there is nothing to update in `pear.json`. Instead, pass the new provision link as the `<source-link>` to `pear multisig verify` and `pear multisig commit` on the next release.
+
+To automate this in CI, the [`pear-provision-recover`](/reference/ci-and-release/github-actions#pear-app-cicd) action rebuilds a writable provision drive from a remote key—pass the lost drive's `key`, target `length`/`blobs-length`, and a fresh `primary-key` and `name`.
+
+## See also
+
+- [Set up multisig](/how-to/operate-an-app/multisig/set-up-multisig)—generate keys, configure `pear.json`, and point `upgrade` at the multisig link.
+- [Sign with multisig](/how-to/operate-an-app/multisig/sign-with-multisig)—the prepare → sign → verify → commit flow.
+- [Troubleshoot desktop releases](/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases)—OTA, seeding, and staging problems.
+- [Release pipeline](/explanation/deployment-releasing-apps-p2p)—conceptual diagrams for stage, provision, and multisig.

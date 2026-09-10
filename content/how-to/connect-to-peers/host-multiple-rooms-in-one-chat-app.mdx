@@ -1,0 +1,129 @@
+---
+title: "Host multiple rooms in one chat app"
+description: >-
+  Extend the pear-chat scaffold from a single room to an account that owns and
+  joins many rooms, each with its own Autobase.
+docType: how-to
+schemaType: TechArticle
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+This guide shows you how to **extend [`pear-chat`](https://github.com/holepunchto/pear-docs/tree/preview/examples/getting-started/pear-chat) from a single room to an account model that owns and joins many rooms**. The reference implementation is [`pear-chat-multi-rooms`](https://github.com/holepunchto/pear-docs/tree/preview/examples/how-to/connect-to-peers/multi-rooms).
+
+<include>../../_snippets/_pear-end-portability-callout.mdx</include>
+
+This is a **delta-only** how-to. The shared scaffold is explained in the [Reshape into a production app](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app) tutorial—read it first.
+
+## Before you begin
+
+- A working clone of `pear-chat` (or your own app built from the getting-started path).
+- Familiarity with [Autobase](/reference/building-blocks/autobase)—each room is one Autobase.
+
+## What changes
+
+| Layer | Change |
+| --- | --- |
+| Worker | Introduce a `ChatAccount` that holds a map of `ChatRoom`s keyed by a generated room id. |
+| Schema | Add a `room` collection persisting the rooms a user has joined (`{ id, name, invite, info }`). |
+| Transport | Add `add-room` and `join-room` message types, push a `rooms` event, and make the `messages` event and `add-message` command carry a `roomId`. |
+| Renderer | Add a left-rail room list with a "new room" button and an invite-paste input. |
+
+The Electron shell, the build/forge configuration, and the per-room ChatRoom code stay identical to the getting-started chat app.
+
+## Steps
+
+<Steps>
+
+<Step>
+
+### Replace `room` with a `ChatAccount` on `WorkerTask`
+
+In `workers/worker-task.js`, swap the single `ChatRoom` for a `ChatAccount` (L6). The worker keeps the same [Corestore](/reference/helpers/corestore) + [Hyperswarm](/reference/building-blocks/hyperswarm) setup (L17–L19), but delegates all room management to the account (L21) and forwards its `messages` event over the worker pipe as JSON tagged with the `roomId` (L24–L26).
+
+`_open` opens the account (L30–L31), then handles `add-room`, `join-room`, and `add-message` on the pipe (L44–L50). `_close` tears down account → swarm → store (L55–L59):
+
+```js file=<rootDir>/examples/how-to/connect-to-peers/multi-rooms/workers/worker-task.js title="workers/worker-task.js" lineNumbers {6,17-19,21-26,30-31,44-50,55-59} skip="example-import"
+```
+
+</Step>
+
+<Step>
+
+### Build `ChatAccount`
+
+Create `workers/chat-account.js` modelled on `chat-room.js`. The account is itself an [Autobase](/reference/building-blocks/autobase)-backed HyperDB that stores the user's room list:
+* each entry is `{ id, name, invite, info }`, where `id` is a generated handle and `invite` is the room's pairing code.
+* On `_open`, the account opens its base, then `openRooms()` materialises one `ChatRoom` per stored entry, each in its own Corestore namespace (`this.store.namespace(id)`) (L156–L168).
+* `addRoom` (L170–L184) and `joinRoom` (L186–L206) spin up a new `ChatRoom`, then append the room metadata to the account base so it survives restarts:
+
+```js file=<rootDir>/examples/how-to/connect-to-peers/multi-rooms/workers/chat-account.js#L156-L206 title="workers/chat-account.js" lineNumbers {156-168,170-184,186-206} skip="example-import"
+```
+
+The key change: each room is an independent Autobase in its own namespace, so the account never co-mingles room data. The account base only stores room metadata (id, name, invite, info), encrypted by the account's own Autobase. See [Storage and distribution](/explanation/storage-and-distribution) for the underlying mental model.
+
+</Step>
+
+<Step>
+
+### Extend the schema
+
+This step touches all three builders in `schema.js`, so it is easiest to follow the full [`pear-chat-multi-rooms` `schema.js`](https://github.com/holepunchto/pear-docs/blob/preview/examples/how-to/connect-to-peers/multi-rooms/schema.js). The changes are:
+
+1. **Rename the namespace** from `pear-chat` to `pear-chat-multi-rooms` in all three `.namespace(...)` calls (schema, db, dispatch). The type references below (`@pear-chat-multi-rooms/...`) resolve against this name—if you leave the namespace as `pear-chat`, `node schema.js` throws `TypeError: Cannot read properties of undefined (reading 'frameable')` because the referenced type does not exist.
+2. **Register** a `room` schema (`{ id, name, invite, info }`), plus a `rooms` HyperDB collection and an `add-room` HyperDispatch entry.
+
+The roomId that the renderer uses to address a specific room is carried on the plain-JSON messages exchanged over the worker pipe, so the schema only needs to persist the room metadata. The new `room` registration looks like this (L26–L34):
+
+```js file=<rootDir>/examples/how-to/connect-to-peers/multi-rooms/schema.js#L26-L34 title="schema.js" lineNumbers {26-34} skip="example-import"
+```
+
+Regenerate `spec/` from a **clean** directory:
+
+```bash skip="desktop-gui"
+rm -rf spec && npm run build:db
+```
+
+<Callout type="warning">
+Delete `spec/` before regenerating. The schema generators (`hyperschema`, `hyperdispatch`, `hyperdb`) **merge** into the existing manifests rather than overwriting them, so regenerating on top of the old `pear-chat` spec leaves stale registrations next to the new `pear-chat-multi-rooms` ones—the generated `spec/` then carries duplicate definitions.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Update the renderer
+
+In [`renderer/index.html`](https://github.com/holepunchto/pear-docs/blob/preview/examples/how-to/connect-to-peers/multi-rooms/renderer/index.html) and [`renderer/app.js`](https://github.com/holepunchto/pear-docs/blob/preview/examples/how-to/connect-to-peers/multi-rooms/renderer/app.js), split the layout into a left rail (the room list) and a right pane (the active room). 
+The renderer:
+1. sends `{ type: 'add-room', name }` and `{ type: 'join-room', invite }` over the worker pipe,
+2. renders the left rail from the `{ type: 'rooms', rooms }` events the worker pushes,
+3. the existing message send becomes `{ type: 'add-message', text, roomId }`, and
+4. incoming `{ type: 'messages', roomId, messages }` events are filed under their `roomId`, so the renderer just shows the selected room's messages.
+
+</Step>
+
+</Steps>
+
+## Run it
+
+```bash skip="desktop-gui"
+npm run build
+npm start -- --storage /tmp/multi-user1 --name user1
+```
+
+Type a room name and click **Create**. Select the room in the left rail, then click **Copy invite** in the room header to copy the **room invite** (not the `Account Invite` line in the terminal—that pairs a whole account, not a single room). In a second terminal:
+
+```bash skip="desktop-gui"
+npm start -- --storage /tmp/multi-user2 --name user2 --invite <room-invite>
+```
+
+Or start without `--invite` and paste the room invite into the join field in the UI.
+
+user2's app shows the joined room in its left rail. Both peers can now create or join additional rooms—each one is an independent [Autobase](/reference/building-blocks/autobase) with its own pairing flow.
+
+## Where to go next
+
+- [Add blind peering to a chat app](/how-to/blind-peering/add-blind-peering-to-a-chat-app)—keep individual rooms reachable when their writers are offline.
+- [Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—the pattern that makes hosting many rooms in one app cheap.
+- [Storage and distribution](/explanation/storage-and-distribution)—why each room can be its own [Autobase](/reference/building-blocks/autobase) without paying per-room infrastructure costs.

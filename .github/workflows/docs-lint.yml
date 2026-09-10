@@ -1,0 +1,205 @@
+name: Docs lint
+
+# Gates docs changes on every PR (and on push to main):
+#   - internal-links: the in-repo link/anchor/asset checker.
+#   - code-imports:   `file=...#L…` ranges resolve, are in bounds, and render
+#                     balanced code (a wrong range fails silently otherwise).
+#   - vale:           Google-style prose linting of content/.
+# External links are network-flaky, so they run on a schedule instead
+# (see .github/workflows/external-links.yml).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'content/**'
+      - 'scripts/check-internal-links.ts'
+      - 'scripts/check-code-imports.ts'
+      # Editing a vendored example shifts line numbers and can silently
+      # invalidate a `file=...#L…` range, so example changes run this too.
+      - 'examples/**'
+      - 'scripts/check-docs-versions.ts'
+      - 'src/lib/docs-versions.ts'
+      - 'scripts/helpers.ts'
+      - 'scripts/gen-curated.ts'
+      - 'scripts/refgen/**'
+      - 'generated/refs/**'
+      - '.vale.ini'
+      - '.github/styles/**'
+      - '.github/workflows/docs-lint.yml'
+      - 'public/.well-known/**'
+      - 'public/_headers'
+      - 'scripts/check-agent-ready-metadata.ts'
+      - 'scripts/generate-agent-skills-index.ts'
+      - 'scripts/inject-content-signals.ts'
+      - 'scripts/agent-skills-shared.ts'
+      - 'scripts/schemas/**'
+  pull_request:
+    paths:
+      - 'content/**'
+      - 'scripts/check-internal-links.ts'
+      - 'scripts/check-code-imports.ts'
+      # Editing a vendored example shifts line numbers and can silently
+      # invalidate a `file=...#L…` range, so example changes run this too.
+      - 'examples/**'
+      - 'scripts/check-docs-versions.ts'
+      - 'src/lib/docs-versions.ts'
+      - 'scripts/helpers.ts'
+      - 'scripts/gen-curated.ts'
+      - 'scripts/refgen/**'
+      - 'generated/refs/**'
+      - '.vale.ini'
+      - '.github/styles/**'
+      - '.github/workflows/docs-lint.yml'
+      - 'public/.well-known/**'
+      - 'public/_headers'
+      - 'scripts/check-agent-ready-metadata.ts'
+      - 'scripts/generate-agent-skills-index.ts'
+      - 'scripts/inject-content-signals.ts'
+      - 'scripts/agent-skills-shared.ts'
+      - 'scripts/schemas/**'
+  workflow_dispatch:
+
+jobs:
+  internal-links:
+    name: internal links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # The checker only needs tsx + github-slugger, both public on npm. We
+      # can't run a normal `npm install` here because package.json pulls
+      # token-gated @tetherto/* packages from GitHub Packages (this repo lives
+      # in holepunchto/, the packages in tetherto/, so the repo token can't
+      # read them). github-slugger is imported as an ESM bare specifier, and
+      # ESM resolution ignores NODE_PATH — so a global install isn't found.
+      # Install just the checker deps into a throwaway prefix and copy them
+      # into ./node_modules, where ESM resolution can find them.
+      - name: Install link-checker deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+      - name: Check internal links
+        run: ./node_modules/.bin/tsx scripts/check-internal-links.ts
+
+  code-imports:
+    name: code imports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Same throwaway-prefix trick as the internal-links job above: a full
+      # `npm install` can't run here (token-gated @tetherto/* packages), and
+      # scripts/helpers.ts imports github-slugger as an ESM bare specifier.
+      - name: Install checker deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+      - name: Check code-import ranges
+        run: ./node_modules/.bin/tsx scripts/check-code-imports.ts
+
+  agent-ready:
+    name: agent-ready metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Reads only public/ (committed source), no build needed — see the
+      # docstring in check-agent-ready-metadata.ts. tsx + js-yaml + ajv are
+      # all public on npm; same throwaway-prefix install as internal-links,
+      # for the same @tetherto/* token-gating reason.
+      - name: Install checker deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx js-yaml ajv
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+      - name: Check agent-ready metadata
+        run: ./node_modules/.bin/tsx scripts/check-agent-ready-metadata.ts
+
+  version-gates:
+    name: version gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # tsx + github-slugger: check-docs-versions.ts imports scripts/helpers.ts
+      # for fileToSlug, which needs github-slugger. Same throwaway-prefix dance
+      # as internal-links, because a plain `npm install` here would need the
+      # token-gated @tetherto/* packages. See that job for the full explanation.
+      - name: Install tsx
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+      # Catches a gate whose version is well-formed but not a real doc-state —
+      # `since="3.10"` for `3.1.0` compiles fine and then never matches any
+      # selection, leaving the section visible in every version with no error.
+      - name: Check version gates
+        run: ./node_modules/.bin/tsx scripts/check-docs-versions.ts
+
+  vale:
+    name: vale prose lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # Install Vale directly rather than via errata-ai/vale-action: the action
+      # resolves StylesPath differently from `vale sync`'s package location on
+      # Linux runners, so lint fails with "style 'Google' does not exist on
+      # StylesPath". Running the pinned binary ourselves keeps sync and lint on
+      # the same StylesPath and matches local runs exactly. The version is
+      # pinned to match the Google package pinned in .vale.ini — bump both
+      # together (and re-run `vale sync && vale content` locally first).
+      - name: Install Vale
+        run: |
+          curl -sSL https://github.com/errata-ai/vale/releases/download/v3.15.1/vale_3.15.1_Linux_64-bit.tar.gz \
+            | sudo tar -xz -C /usr/local/bin vale
+          vale --version
+      # Fetch the pinned Google package into Vale's data dir.
+      - name: Sync Vale styles
+        run: vale sync
+      # Fail the job on error-level alerts (per MinAlertLevel in .vale.ini).
+      - name: Lint content
+        run: vale --minAlertLevel=error content
+
+  curated-gate:
+    name: curated manifest gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Runs entirely off the committed models (generated/refs/*/api-model.json)
+      # and manifests (scripts/refgen/layouts/*.ts) — no upstream clone. The gate
+      # only needs tsx plus mdast-util-from-markdown (pulled in transitively via
+      # scripts/refgen/identity.ts → extract-readme.ts). Same isolated-install
+      # pattern as internal-links: the root `npm install` can't run here because
+      # package.json pulls token-gated @tetherto/* packages.
+      - name: Install gate deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/gate" tsx mdast-util-from-markdown
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/gate/node_modules/." node_modules/
+      # Fails if any manifest references a member upstream no longer exports
+      # (stale key) or leaves a newly documented model member ungrouped. Catches
+      # manifest/model drift on the PR that introduces it, not just in the weekly
+      # regenerate run.
+      - name: Check curated manifests
+        run: ./node_modules/.bin/tsx scripts/gen-curated.ts --check
+
+      # Print the JSDoc-completeness dashboard for visibility on every docs PR
+      # (report-only, no writes). Add `--gate <n>` here to enforce a floor once
+      # source repos are enriched.
+      - name: JSDoc completeness report
+        run: ./node_modules/.bin/tsx scripts/refgen/report-all.ts --summary

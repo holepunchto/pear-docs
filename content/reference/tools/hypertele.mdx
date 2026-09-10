@@ -1,0 +1,182 @@
+---
+title: "Hypertele"
+description: "Reference for the Hypertele CLI: expose a local TCP or Unix service over HyperDHT and consume it from a local listener."
+seoTitle: "Hypertele: Expose TCP Services over HyperDHT"
+docType: reference
+schemaType: APIReference
+---
+
+Hypertele is a [HyperDHT](/reference/building-blocks/hyperdht)-based proxy tool. This page documents the public binaries installed by [`hypertele`](https://github.com/bitfinexcom/hypertele): `hypertele` and `hypertele-server`.
+
+## System support
+
+Desktop only: macOS, Linux, and Windows are supported. Hypertele is not available on Android or iOS.
+
+## Install
+
+```sh
+npm i -g hypertele
+```
+
+## Prerequisites
+
+The Hypertele workflows below need a server seed, and the identity-backed flows also need a client `identity.json`. Hypertele itself does not generate either; the upstream README pairs Hypertele with [`hyper-cmd-utils`](https://github.com/holepunchto/hyper-cmd-utils), which provides `hyper-cmd-util-keygen`:
+
+```sh
+npm i -g hyper-cmd-utils
+
+# Generate a server seed (printed once; keep it secret)
+hyper-cmd-util-keygen --gen_seed
+
+# Optional: generate a client identity file
+hyper-cmd-util-keygen --gen_keypair identity.json
+```
+
+Use the printed seed as `--seed` on the server, and use the server's public key (also printed at server start) as `-s` on the client.
+
+## `hypertele`
+
+[Command source on GitHub](https://github.com/bitfinexcom/hypertele/blob/0432686b43623706b0345f34b434d324b8b7f587/client.js)
+
+Start a local TCP listener or Unix socket and forward incoming traffic to a remote Hypertele server.
+
+```sh
+hypertele (-s <server-peer-key> | -c <conf.json>) (-p <port> | -u <unix-socket>) [options]
+```
+
+Flags:
+
+- `-s <server-peer-key>`: remote Hypertele server key.
+  Default: required unless supplied by `-c <conf.json>`
+- `-p <port>`: local TCP port to listen on.
+  Default: required unless `-u` is used
+- `-u <unix-socket>`: local Unix socket path to listen on.
+  Default: required unless `-p` is used
+- `--address <host>`: local bind address.
+  Default: `127.0.0.1`
+- `-c <conf.json>`: load client settings from a JSON config file.
+  Default: off
+- `-i <identity.json>`: use a specific identity file for the client.
+  Default: off
+- `--private`: connect to a private server using its seed instead of its public key.
+  Default: off
+- `--compress`: enable stream compression.
+  Default: off
+- `--help`: show help.
+
+Notes:
+
+- Exactly one of `-p` or `-u` must be supplied.
+- In normal mode, `-s` is the server public key.
+- In `--private` mode, `-s` is the server seed and cannot be combined with `-i`.
+
+Example:
+
+```sh
+hypertele -s <server-public-key> -p 8080
+```
+
+## `hypertele-server`
+
+[Command source on GitHub](https://github.com/bitfinexcom/hypertele/blob/0432686b43623706b0345f34b434d324b8b7f587/server.js)
+
+Expose a local TCP service or Unix socket to Hypertele clients over [HyperDHT](/reference/building-blocks/hyperdht).
+
+```sh
+hypertele-server (--seed <seed> | -c <conf.json>) (-l <service-port> | -u <unix-socket>) [options]
+```
+
+Flags:
+
+- `-l <service-port>`: local TCP service port to expose.
+  Default: required unless `-u` is used
+- `-u <unix-socket>`: local Unix socket path to expose.
+  Default: required unless `-l` is used
+- `--address <host>`: upstream service host.
+  Default: `127.0.0.1`
+- `-c <conf.json>`: load server settings from a JSON config file.
+  Default: off
+- `--seed <seed>`: server seed.
+  Default: required unless supplied by config
+- `--cert-skip`: disable TLS certificate verification for the proxied upstream connection.
+  Default: off
+- `--compress`: enable stream compression.
+  Default: off
+- `--private`: make the server private.
+  Default: off
+- `--help`: show help.
+
+Notes:
+
+- Exactly one of `-l` or `-u` must be supplied.
+- In public mode, the server can use an allowlist from its config file.
+- In private mode, clients connect with the seed rather than the public key.
+
+Example:
+
+```sh
+hypertele-server --seed <server-seed> -l 3000
+```
+
+## Common workflows
+
+### Expose a local TCP service to a client-side local port
+
+Start the server next to the service you want to expose:
+
+```sh
+hypertele-server --seed <server-seed> -l 3000
+```
+
+Copy the public key from the server output, then consume it on another machine:
+
+```sh
+hypertele -s <server-public-key> -p 8080
+```
+
+Clients can now connect to `127.0.0.1:8080`, and Hypertele forwards that traffic to the server's local port `3000`.
+
+### Run in private mode
+
+Use the same seed on both sides:
+
+```sh
+hypertele-server --seed <server-seed> -l 3000 --private
+hypertele -s <server-seed> -p 8080 --private
+```
+
+Private mode avoids publishing a reusable public endpoint.
+
+### Drive the proxy from config files
+
+Server config:
+
+```json
+{
+  "seed": "<server-seed>",
+  "allow": ["<client-public-key>"]
+}
+```
+
+Client config:
+
+```json
+{
+  "peer": "<server-public-key>"
+}
+```
+
+Then run the two commands with `-c`:
+
+```sh
+hypertele-server -c server.json -l 3000
+hypertele -c client.json -p 8080
+```
+
+## See also
+
+- [HyperDHT](/reference/building-blocks/hyperdht)
+- [Hyperssh—SSH into a peer](/reference/tools/hyperssh#ssh-into-a-peer-by-key-or-alias)
+- [Hypershell—local port forwarding with `-L`](/reference/tools/hypershell#hypershell)
+- [Hyperbeam—temporary one-to-one pipe](/reference/tools/hyperbeam#hyperbeam)
+- [Pear CLI](/reference/pear/cli)

@@ -1,0 +1,92 @@
+---
+title: "Add typed RPC to a Pear app"
+description: "Replace hand-checked message types on a Pear app's worker IPC stream with generated, typed request/response methods using HRPC."
+docType: how-to
+schemaType: TechArticle
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+If your host and worker are exchanging plain strings or a hand-rolled `{ type: '...' }` object over [`Bare.IPC`](/reference/pear/runtime#running-workers), this guide replaces that with [HRPC](/reference/helpers/hrpc): a schema defines each method once, and both sides get generated methods to call instead of parsing messages by hand. See [Structured RPC over IPC](/explanation/workers#structured-rpc-over-ipc) for why this is the recommended default once you have more than a message or two.
+
+The worked example below adds one request/response method (`getStatus`, host asks the worker for its peer count) and one send-only event (`log`, worker to host, no reply expected)—between them, the two shapes cover most of what a Pear app's worker needs to expose.
+
+<Steps>
+
+<Step>
+
+### Install
+
+```sh skip="install-instruction"
+npm i hrpc hyperschema
+```
+
+</Step>
+
+<Step>
+
+### Define a schema
+
+Register the request/response shapes on a [hyperschema](https://github.com/holepunchto/hyperschema) namespace and write it to disk. Schemas are append-only and versioned—add fields later, never renumber or remove one:
+
+```js file=<rootDir>/examples/how-to/add-typed-rpc-to-a-pear-app/build-spec.js#L1-L21 title="build-spec.js" skip="example-import"
+```
+
+`getStatus` carries no meaningful argument, so it needs no custom request *shape*—only `status-response`. It still needs *a* request type when the method is registered below: every HRPC method has a request, and a primitive stands in when there is nothing to send. The `log` event needs a request type (`log-event`) and no response, since it never expects a reply.
+
+</Step>
+
+<Step>
+
+### Register RPC methods and generate
+
+Point `HRPCBuilder` at the same schema directory and register each method. `getStatus` is a plain request/response call—it takes no meaningful argument, so it uses the primitive `string` as its request type rather than a registered shape. `log` sets `send: true` on its request and omits `response` entirely, marking it fire-and-forget:
+
+```js file=<rootDir>/examples/how-to/add-typed-rpc-to-a-pear-app/build-spec.js#L23-L39 title="build-spec.js (continued)" skip="example-import"
+```
+
+Run the build script (`node build-spec.js`) to write `spec/hyperschema/` and `spec/hrpc/` to disk. Re-run it whenever the schema changes—commit the generated `spec/` directory, don't gitignore it, so both sides of the IPC stream always compile from the same generated code.
+
+</Step>
+
+<Step>
+
+### Handle requests in the worker
+
+Construct `HRPC` over `Bare.IPC` and register a handler for `getStatus`. Call `rpc.log(...)` whenever there's something to report—it returns immediately, no response awaited:
+
+```js file=<rootDir>/examples/how-to/add-typed-rpc-to-a-pear-app/workers/rpc-worker.js title="workers/rpc-worker.js" skip="example-import"
+```
+
+(`swarm` here is whatever [Hyperswarm](/reference/building-blocks/hyperswarm) instance the worker already holds—this guide only adds the RPC layer on top of it.)
+
+</Step>
+
+<Step>
+
+### Call it from the host
+
+The host side constructs `HRPC` over the same `IPC` stream returned by [`pear.run`](/reference/pear/runtime#running-workers), calls `getStatus()` like any async function, and listens for `log` events:
+
+```js file=<rootDir>/examples/how-to/add-typed-rpc-to-a-pear-app/host.js title="host.js" skip="example-import"
+```
+
+A generated unary method takes its request value as the first argument, so `getStatus`—registered against the primitive `string`—is called with an empty string. Method names and encodings can't drift out of sync between the two files, because both compile from the one schema in `spec/`.
+
+</Step>
+
+</Steps>
+
+## Alternatives
+
+If a schema and a build step are more than a given protocol needs, two lighter options cover the same duplex stream without codegen:
+
+- [tiny-buffer-rpc](https://www.npmjs.com/package/tiny-buffer-rpc)
+- [bare-rpc](/reference/modules/bare-modules)
+
+## See also
+
+- [HRPC reference](/reference/helpers/hrpc)—the full API, plus the duplex-streaming pattern this guide doesn't cover.
+- [Structured RPC over IPC](/explanation/workers#structured-rpc-over-ipc)—when to reach for HRPC versus a lighter option.
+- [Running workers in the runtime reference](/reference/pear/runtime#running-workers)—`pear.run` and the `IPC` stream this rides on.
+- [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge)—the `bare-rpc` primitives underneath, for a shell in a language HRPC has no generator for yet.
