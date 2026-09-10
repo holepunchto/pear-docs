@@ -33,6 +33,7 @@ export interface RepoConfig {
 export const REPOS: Record<string, RepoConfig> = {
   // building-blocks
   autobase: { org: 'holepunchto', repo: 'autobase' },
+  autobee: { org: 'holepunchto', repo: 'autobee' },
   hyperbee: { org: 'holepunchto', repo: 'hyperbee' },
   hypercore: { org: 'holepunchto', repo: 'hypercore' },
   hyperdht: { org: 'holepunchto', repo: 'hyperdht' },

@@ -225,6 +225,16 @@ export const customTree: Node[] = [
             name: 'Share append-only databases with Hyperbee',
             url: '/how-to/store-and-replicate/share-append-only-databases-with-hyperbee',
           },         
+          {
+            type: 'page',
+            name: 'Build a multiwriter app with Autobase',
+            url: '/how-to/store-and-replicate/build-a-multiwriter-app-with-autobase',
+          },
+          {
+            type: 'page',
+            name: 'Build a multiwriter database with Autobee',
+            url: '/how-to/store-and-replicate/build-a-multiwriter-database-with-autobee',
+          },
         ],
       },
       {
@@ -626,6 +636,11 @@ export const customTree: Node[] = [
             type: 'page',
             name: 'Autobase',
             url: '/reference/building-blocks/autobase',
+          },
+          {
+            type: 'page',
+            name: 'Autobee',
+            url: '/reference/building-blocks/autobee',
           },
           {
             type: 'page',
