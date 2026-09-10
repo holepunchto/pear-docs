@@ -1,0 +1,271 @@
+---
+title: "Integrate Pear OTA into an existing Electron app"
+description: "Add over-the-air updates to an app you already have: install pear-runtime, mint an upgrade link, add a dedicated updater worker, and wire the main-process apply/relaunch flow."
+docType: how-to
+schemaType: TechArticle
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+<Callout type="info">
+
+This guide is for an app you **already have**—an existing Electron (or plain Node/Bare) codebase you want to keep, just wired for peer-to-peer over-the-air updates. Starting a brand-new app instead? See [Start from a template](/getting-started/from-a-template). Still calling the removed global `Pear` API (`pear run`)? That's a different migration—see [Migrate from pear run to Pear OTA](/how-to/operate-an-app/migration). Building a React Native or Expo app? See [Integrate Pear OTA into an existing mobile app](/how-to/operate-an-app/integrate-pear-ota/mobile) instead.
+
+</Callout>
+
+"Integrating for updates" does not mean adopting a new project shape. It means keeping your app's own structure exactly as it is, adding [`pear-runtime`](/reference/pear/runtime) (**Pear OTA**) as a dependency, pointing it at a `pear://` link, and wiring a handful of call sites so that `pear.updater`'s `updating`/`updated` events reach your UI and `pear.updater.applyUpdate()` actually swaps the app drive and restarts the process. Nothing about your renderer, your build tooling, or your existing peer-to-peer code (if you have any yet) needs to change.
+
+<include>../../../_snippets/_install-pear-cli-callout.mdx</include>
+
+## What this guide does NOT cover
+
+<Callout type="warn">
+
+- **Removing a legacy `global.Pear` integration.** If your app still calls the removed `pear run` runtime or the ambient `Pear` global, that's a different starting point—follow [Migrate from pear run to Pear OTA](/how-to/operate-an-app/migration) instead.
+- **The stage → provision → multisig release cascade.** This guide mints and uses a throwaway development link so you can run the app locally. The production release flow—stage, provision, and multisig sign-off—is [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment)'s job.
+- **Mobile apps.** For React Native or Expo, see [Integrate Pear OTA into an existing mobile app](/how-to/operate-an-app/integrate-pear-ota/mobile).
+
+</Callout>
+
+## Before you begin
+
+- An existing Electron (or plain Node/Bare) app you want to add updates to.
+- To follow every step exactly, clone this guide's example app and start from its "before" state; to wire your own app instead, apply the same steps against your project. The reference implementation is [`integrate-pear-ota-into-an-existing-app`](https://github.com/holepunchto/pear-docs/tree/preview/examples/how-to/operate-an-app/integrate-pear-ota-into-an-existing-app)—a plain Electron app with no `pear-runtime` dependency, no updater worker, and no `upgrade` link yet.
+- Node v22.17+ and npm v10.9+.
+- The `pear` CLI installed (see the callout above).
+
+## What you're adding
+
+| Layer | What you add |
+| --- | --- |
+| Dependencies | [`pear-runtime`](https://github.com/holepunchto/pear-runtime) plus the modules the updater worker requires |
+| Config | `version` and `upgrade` fields in `package.json` |
+| Updater worker | A dedicated Bare worker that owns the `PearRuntime` instance |
+| Main-process wiring | Spawn the worker, relay its events, expose apply/relaunch over IPC |
+| UI affordance (optional) | A button or banner driven by the `updating`/`updated` events |
+
+## Steps
+
+<Steps>
+
+<Step>
+
+### Install the dependencies
+
+[`pear-runtime`](https://github.com/holepunchto/pear-runtime) is the embeddable [Pear OTA](/reference/pear/runtime) library. The updater worker added two steps from now is a copy of upstream's [`hello-pear-worker`](https://github.com/holepunchto/hello-pear-worker), so its own dependencies have to resolve from your project too—and your main process needs `framed-stream` (to frame the worker pipe) and `which-runtime` (to branch the relaunch by platform):
+
+```sh skip="install-instruction"
+npm install pear-runtime hyperswarm corestore framed-stream graceful-goodbye bare-path bare-storage which-runtime
+```
+
+<Callout type="info">
+Prefer not to vendor the worker? `npm install hello-pear-worker` pulls the same worker as a package, with all of the above as its own transitive dependencies, and your `workers/main.js` becomes a one-line `require('hello-pear-worker')`. This guide vendors the file instead so every line is visible and editable.
+</Callout>
+
+Nothing else changes yet—your app has no `upgrade` link and no `PearRuntime` instance until the later steps wire them up.
+
+</Step>
+
+<Step>
+
+### First-time `package.json` setup
+
+Mint a link to develop against. `pear touch` creates a fresh `pear://` link backed by its own [Hypercore](/reference/building-blocks/hypercore):
+
+```sh skip="release-flow"
+pear touch
+# pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o
+```
+
+Add `version` and `upgrade` to `package.json`. [`pear-runtime`](/reference/pear/runtime) only swaps in an update when a build's `version` is higher than the one currently installed, and `upgrade` is the link it polls:
+
+```json skip="release-flow"
+{
+  "version": "1.0.0",
+  "upgrade": "pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o",
+  ...
+}
+```
+
+Both fields are required before anything in the following steps can run: the main process reads them straight out of `package.json` and hands them to the worker as positional arguments, and `upgrade` is a required [`PearRuntime` option](/reference/pear/runtime#options).
+
+<Callout type="warn">
+
+This is a **development link**, minted for you alone—nothing is seeding it yet, so no peer will ever see an update pushed to it. Production link selection (a stage, provision, or multisig link) is [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment#1-set-the-upgrade-link)'s job, not this guide's.
+
+</Callout>
+
+Before wiring the runtime up for real, it's worth confirming the two fields resolve the way `pear-runtime` expects them to. Starting from the example app's own `package.json` (already at `1.0.0`, with no `upgrade` field yet):
+
+{/* @harness example=integrate-pear-ota-config step=copy from=examples/how-to/operate-an-app/integrate-pear-ota-into-an-existing-app/package.json to=package.json */}
+
+```sh example=integrate-pear-ota-config step=setup
+npm pkg set version=1.0.0 upgrade=pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o
+```
+
+Then a small script that reads them back exactly the way the updater worker's `argv()` will—via `require('./package.json')`:
+
+```js file=<rootDir>/examples/how-to/operate-an-app/integrate-pear-ota-into-an-existing-app/check-config.js title="check-config.js" skip="example-import"
+```
+
+{/* @harness example=integrate-pear-ota-config step=copy from=examples/how-to/operate-an-app/integrate-pear-ota-into-an-existing-app/check-config.js to=check-config.js */}
+
+Run it with Node:
+
+```sh example=integrate-pear-ota-config step=run process=config expect="version: 1.0.0"
+node check-config.js
+```
+
+{/* @harness example=integrate-pear-ota-config step=expect process=config contains="upgrade: pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o" */}
+
+It prints both fields back:
+
+```text skip="sample-output"
+version: 1.0.0
+upgrade: pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o
+```
+
+That's the entire contract the updater worker depends on—no `PearRuntime` instance, no network, just the two fields it reads out of `package.json`.
+
+</Step>
+
+<Step>
+
+### Add a dedicated updater worker
+
+Run the updater in its **own** [Bare worker](/explanation/workers), separate from whatever worker (if any) already carries your app's peer-to-peer logic. [Reshape into a production app](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app) uses the same split for exactly this reason: it "embeds the `pear-runtime` OTA updater in its **own** Bare worker, so update traffic never blocks the chat." The update poll, the Corestore replication it drives, and the swarm connection it maintains all happen off to the side—your main worker and your renderer never wait on any of it.
+
+Every `hello-pear-*` template ships the same `workers/main.js`. The file below is the canonical body, shared verbatim across all of them:
+
+```js file=<rootDir>/examples/getting-started/hello-pear-electron/workers/main.js title="workers/main.js" skip="example-import"
+```
+
+Reading it top to bottom: `argv()` reads the positional arguments the host process passes it (with an index offset for Bare Kit / mobile, where `argv[0]` and `argv[1]` aren't the executable and worker paths the way they are under plain Bare). Those six arguments become the `PearRuntime` options—`updates`, `version`, `upgrade`, `name`, `dir`, and `app`. The worker builds its own `Corestore` and `Hyperswarm`, hands them to `PearRuntime` via the `store`/`swarm` options, and—unless `updates` is `false`—joins the update drive's discovery key so it can replicate. It relays `updating`, `updated`, and `minver-required` over the IPC pipe as plain strings. The one message it acts on coming back is `'pear:applyUpdate'`—on receipt it awaits `pear.updater.applyUpdate()` and replies `'pear:updateApplied'`; anything else it just logs.
+
+Copy this file into your project as `workers/main.js` (or wherever your build already spawns workers from), unchanged. It takes its entire configuration from `Bare.argv`, so the only thing you customize is what the host process passes it—that's the next step.
+
+<Callout type="info">
+
+**Non-Electron apps.** If you're wiring a plain Node or Bare app rather than Electron, skip the *Wire the main process* and *Expose `applyUpdate` and `appAfterUpdate` on the preload bridge* steps below—there's no separate main process or preload bridge to wire. Instantiate `PearRuntime` directly in your single entrypoint, attach the `pear.updater` `updating`/`updated` listeners there, call `pear.updater.applyUpdate()` when you're ready to swap, and restart your own process yourself. There's no `app.relaunch()` equivalent outside Electron—re-exec with `process.execPath` and `process.argv`, or hand the restart to your process manager.
+
+</Callout>
+
+</Step>
+
+<Step>
+
+### Wire the main process
+
+Two responsibilities live in the main process: spawning the updater worker with the right configuration, and relaying the worker's events to the renderer over IPC.
+
+The configuration comes from two places. `version`, `upgrade`, `name`, and `productName` are read straight out of `package.json` (the fields set two steps ago); `updates` is a runtime flag, so the main process parses it off its own argv. [`pear-chat`](https://github.com/holepunchto/pear-docs/tree/preview/examples/getting-started/pear-chat) does it in a `parseArgs` helper, but the whole contract is one boolean—default `true`, flipped by a `--no-updates` flag:
+
+```js skip="snippet-illustration"
+const { name, productName, version, upgrade } = require('../package.json')
+
+// `--no-updates` is what the "Run it locally" step below passes to boot the
+// app with the updater constructed but never swarming.
+const updates = !process.argv.includes('--no-updates')
+```
+
+With those in hand, `pear-chat`'s `electron/main.js` spawns the worker and relays its events:
+
+```js file=<rootDir>/examples/getting-started/pear-chat/electron/main.js#L140-L179 title="electron/main.js" skip="example-import"
+```
+
+[`PearRuntime.run()`](/reference/pear/runtime#running-workers) is a **static** method, so the main process calls it directly without needing its own `PearRuntime` instance—it only needs the worker's entrypoint and the positional arguments the worker's `argv()` expects, in order: `updates`, `version`, `upgrade`, `name` (here `productName` plus a per-platform extension, since `applyUpdate()` uses it to find the bundled app on disk), `dir`, and `app`. The returned duplex is wrapped in the same `FramedStream` framing the worker uses on its side, and its `'updating'`/`'updated'` strings are relayed to every window as `pear:event:updating`/`pear:event:updated`.
+
+Two `ipcMain.handle` calls give the renderer an awaitable bridge into that worker. The first asks the worker to apply the staged update and waits for its acknowledgement before resolving:
+
+```js file=<rootDir>/examples/getting-started/pear-chat/electron/main.js#L215-L229 title="electron/main.js" skip="example-import"
+```
+
+The renderer never calls `pear.updater.applyUpdate()` itself—it can't; the `PearRuntime` instance lives in the worker, not the renderer or even the main process. Instead, `pear:applyUpdate` writes `'pear:applyUpdate'` down the pipe and only resolves its promise once the worker's `'pear:updateApplied'` reply comes back, so the renderer gets a genuine "the swap finished" signal to act on.
+
+The second handler is what actually restarts the app once the swap is done:
+
+```js file=<rootDir>/examples/getting-started/pear-chat/electron/main.js#L234-L247 title="electron/main.js" lineNumbers {235-242} skip="example-import"
+```
+
+Relaunching a packaged `.AppImage` on Linux needs `execPath` pointed at the `APPIMAGE` environment variable and the `--appimage-extract-and-run` flag—plain `app.relaunch()` on its own restarts the temporary FUSE-mounted copy, not the file that was just updated on disk. Lines 235–242 handle that case. Everywhere else, `app.relaunch()` is enough, except on Windows: this code quits without an explicit relaunch call there, leaving the MSIX-installed binary's own restart path to bring the app back. Either way, `app.quit()` runs unconditionally last.
+
+</Step>
+
+<Step>
+
+### Expose `applyUpdate` and `appAfterUpdate` on the preload bridge
+
+The renderer runs with `contextIsolation: true`, so it never touches `ipcRenderer` directly—the preload script is the only bridge across. `pear-chat`'s `electron/preload.js` exposes the two handlers from the previous step, plus a subscribe/unsubscribe helper for the relayed events (the excerpt is the middle of one `contextBridge.exposeInMainWorld('bridge', { ... })` call):
+
+```js file=<rootDir>/examples/getting-started/pear-chat/electron/preload.js#L9-L15 title="electron/preload.js" skip="example-import"
+```
+
+`bridge.applyUpdate()` and `bridge.appAfterUpdate()` are thin `ipcRenderer.invoke()` wrappers around the two handlers from the previous step. `bridge.onPearEvent(name, listener)` subscribes to `pear:event:<name>`—call it with `'updating'` and `'updated'`—and returns an unsubscribe function, so a component can clean up its listener when it unmounts.
+
+</Step>
+
+<Step>
+
+### Wire a UI affordance (optional)
+
+Nothing requires a visible update indicator—updates apply whenever you call `bridge.applyUpdate()`, on whatever schedule fits your app. Most apps show something anyway. A minimal version, in a renderer script (the example app ships an empty `<div id="update-banner" hidden>` for it to drive), built on the bridge from the previous step:
+
+```js skip="snippet-illustration"
+const banner = document.getElementById('update-banner')
+
+bridge.onPearEvent('updating', () => {
+  banner.textContent = 'Downloading update…'
+  banner.hidden = false
+})
+
+bridge.onPearEvent('updated', () => {
+  banner.textContent = 'Update ready'
+  banner.hidden = false
+  banner.onclick = async () => {
+    await bridge.applyUpdate()
+    await bridge.appAfterUpdate()
+  }
+})
+```
+
+`updating` fires as soon as a newer version starts downloading; `updated` fires once it has finished staging and is safe to apply. Waiting for a click—rather than applying the moment `updated` fires—avoids swapping the app out from under a user mid-task. Apply whenever suits your app, including immediately.
+
+</Step>
+
+<Step>
+
+### Run it locally
+
+Start the app with updates disabled, to confirm everything constructs cleanly before any network activity happens:
+
+```sh skip="desktop-gui"
+npm start -- --no-updates
+```
+
+That flag is the one the main process parses in the *Wire the main process* step. The updater worker still runs `new PearRuntime({ ...updaterConfig, swarm, store })`—it just never joins the swarm, because `updates: argv(0) !== 'false'` evaluates to `false`. If the worker logs `Application storage: <path>` and the app window opens with no unhandled error, the wiring is in place. Nothing here has talked to a peer yet.
+
+</Step>
+
+</Steps>
+
+## Verify the wiring (local smoke test)
+
+At this point you've confirmed the wiring compiles and boots—not that an update actually flows end to end. Checklist:
+
+- The app boots with `--no-updates` and the updater worker's `new PearRuntime(...)` call doesn't throw (watch for the `Application storage:` log line from the worker).
+- The `pear.updater.on('updating', ...)` and `pear.updater.on('updated', ...)` listeners attach without an unhandled rejection.
+- The apply/relaunch control—your button, or a manual `bridge.applyUpdate()` call from devtools—reaches `ipcMain.handle('pear:applyUpdate', ...)` and `ipcMain.handle('app:afterUpdate', ...)` without an IPC "no handler registered" error.
+
+For the real end-to-end proof—two running versions, an actual staged update, and the `updated` event firing over the network—run through [Confirm stage updates](/how-to/operate-an-app/manual-deployment/deployment#confirm-stage-updates) in the deployment guide. This guide stops at "the wiring is in place and inert"; it does not repeat that live two-version walkthrough.
+
+## See also
+
+- [`pear-runtime` reference](/reference/pear/runtime)—the full options list (`dir`, `upgrade`, `name`, `version`, `app`, `updates`, `storage`, `store`, `swarm`, `bundled`, `delay`, `skipUpdate`) and the `updater` events.
+- [Configuration](/reference/pear/configuration#packagejson)—the `package.json` `version` and `upgrade` fields.
+- [Migrate from pear run to Pear OTA](/how-to/operate-an-app/migration)—for apps still calling the removed global `Pear` API.
+- [Deploy your application](/how-to/operate-an-app/manual-deployment/deployment)—the stage → provision → multisig production release flow this guide's development link stands in for.
+- [Reshape into a production app](/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app)—builds the same updater-worker split from scratch, alongside a chat worker.
+- [Start from the hello-pear-electron template](/getting-started/from-a-template/start-from-hello-pear-electron)—if you'd rather start from the finished template than integrate into an existing app.
+- [Pear desktop application architecture](/explanation/pear-desktop-architecture)—the conceptual picture behind splitting updates, storage, and workers.
+- [Troubleshoot desktop releases](/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#tune-pearruntime-delay-for-live-ota-visibility)—tuning `delay` so updates aren't invisible during testing.
+- [Integrate Pear OTA into an existing mobile app](/how-to/operate-an-app/integrate-pear-ota/mobile)—the React Native/Expo counterpart to this guide.

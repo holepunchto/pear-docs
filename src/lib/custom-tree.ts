@@ -419,6 +419,22 @@ export const customTree: Node[] = [
             url: '/how-to/operate-an-app/publish-a-changelog',
           },
           {
+            type: 'folder',
+            name: 'Integrate Pear OTA into an existing app',
+            children: [
+              {
+                type: 'page',
+                name: 'Electron',
+                url: '/how-to/operate-an-app/integrate-pear-ota/electron',
+              },
+              {
+                type: 'page',
+                name: 'Mobile',
+                url: '/how-to/operate-an-app/integrate-pear-ota/mobile',
+              },
+            ],
+          },
+          {
             type: 'page',
             name: 'Migrate from pear run to Pear OTA',
             url: '/how-to/operate-an-app/migration',
