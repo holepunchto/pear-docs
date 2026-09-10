@@ -14,7 +14,7 @@ The Command Line Interface is the primary interface for Pear Development.
 <include>../../_snippets/_interactive-menu-callout.mdx</include>
 
 <Callout type="info">
-This page tracks **Pear 3.3.0**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
+This page tracks **Pear 3.4.0**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
 
 Anything a release adds or removes carries an inline badge—<Since v="3.1.0" /> or <Until v="3.1.0" />—so you can tell whether your build has it. Run `pear versions` to check what you are on, and see the [Release Overview](/release-overview) for the full history.
 </Callout>
@@ -73,6 +73,8 @@ Run `npx pear` to move onto the v3 platform. From v3 on, the CLI is a standalone
 
 Hints are advisory terminal output, not results. They are written after the command's own output, and they are **suppressed under [`--json`](#json-output)**, so nothing about them affects a script that parses JSON.
 
+<Since v="3.4.0" /> Hints write to **stderr**. On 3.3.0 they wrote to stdout instead, which is what let one leak into command substitution—see the callout under [`pear touch`](#pear-touch).
+
 Two commands moved existing output into a hint rather than adding one, which does change their default human-readable output:
 
 - [`pear provision`](#pear-provision)'s `Provisioned:` block no longer ends with a `Seed with:` heading and a `pear seed <link>` line.
@@ -98,7 +100,9 @@ For commands that take a subcommand, **where you put `--json` matters—and it i
 | Command | Position | Works | Rejected |
 | --- | --- | --- | --- |
 | [`pear data`](#pear-data), [`pear gc`](#pear-gc) | **before** the subcommand | `pear data --json dht` | `pear data dht --json` |
+| [`pear blind-peer`](#pear-blind-peer) <Since v="3.4.0" /> | **before** the subcommand | `pear blind-peer --json identity` | `pear blind-peer identity --json` |
 | [`pear multisig`](#pear-multisig) | **after** the subcommand | `pear multisig keys list --json` | `pear multisig --json keys list` |
+| [`pear blind-relay`](#pear-blind-relay) <Since v="3.4.0" /> | **after** the subcommand | `pear blind-relay start --json` | `pear blind-relay --json start` |
 
 The wrong position is rejected with `✖ Unrecognized Flag: --json`, so a script that guesses will fail loudly rather than silently emit human-readable text.
 
@@ -135,7 +139,13 @@ pear://<key>
     $ pear stage --dry-run pear://<key> <dir>
 ```
 
-The hint goes to **stdout**, not stderr, so `LINK=$(pear touch)` captures the whole block rather than the link alone. Scripts should use [`--json`](#json-output) and read `.data.link`, which omits the hint entirely, or keep only the first line.
+The hint goes to **stdout**, not stderr, so `LINK=$(pear touch)` captures the whole block rather than the link alone. <Until v="3.4.0" label="Fixed in 3.4.0" /> Scripts should use [`--json`](#json-output) and read `.data.link`, which omits the hint entirely, or keep only the first line.
+</VersionGate>
+
+<VersionGate since="3.4.0">
+<Callout type="info">
+<Since v="3.4.0" /> The hint moved to **stderr**, so `LINK=$(pear touch)` is safe again—command substitution only sees the link. Its indentation changed with it: the title is flush left and its items indent two spaces, where 3.3.0 indented them by two and four.
+</Callout>
 </VersionGate>
 
 ```
@@ -168,6 +178,10 @@ As of Pear v3, `pear build` is provided by the standalone [`pear-build`](https:/
 
 <Callout type="info">
 <Since v="3.3.0" /> `--config [path]` points `pear build` at the project's `pear.json`. It is **mandatory for mobile targets** (`--ios-*`, `--android-arm64`). Added by [`pear-build`](https://github.com/holepunchto/pear-build) v1.2.0, which ships with Pear 3.3.0; the same release also checks up front that each `--<platform-arch>-app` source actually exists.
+</Callout>
+
+<Callout type="info">
+<Since v="3.4.0" /> Each `--<platform-arch>-app` flag can be passed **more than once**, placing several artifacts under the same architecture—which is how a standalone binary ships alongside a desktop app. Every artifact has to be named after `productName` (falling back to `name`), or after one of the `bin` names when `bin` is an object. Added by [`pear-build`](https://github.com/holepunchto/pear-build) v1.3.0, which ships with Pear 3.4.0.
 </Callout>
 
 ```
@@ -205,13 +219,14 @@ Outputs diff information and project link.
 Each time new changes are staged, the length will increase. This change can be replicated to any peer who know the link and is connected. If they run `pear info <link>`, they will see the `length` update even if the application is not being seeded. Connections can potentially linger after seeding an application but will eventually close.
 
 ```
-  --dry-run|-d       Execute a stage without writing
-  --ignore <paths>   Don't stage these comma-separated paths
-  --purge            Also delete already-staged files that now match the ignore list
-  --only <paths>     Only stage these comma-separated paths
-  --truncate <n>     Advanced. Truncate the project to this version length. Destructive — later versions are dropped
-  --json             Newline delimited JSON output
-  --help|-h          Show help
+  --dry-run|-d          Execute a stage without writing
+  --ignore <paths>      Don't stage these comma-separated paths
+  --purge               Also delete already-staged files that now match the ignore list
+  --only <paths>        Only stage these comma-separated paths
+  --truncate <n>        Advanced. Truncate the project to this version length. Destructive — later versions are dropped
+  --skip-package-json   Stage a folder without package.json   [!version since=3.4.0]
+  --json                Newline delimited JSON output
+  --help|-h             Show help
 ```
 
 <VersionGate since="3.3.0">
@@ -222,11 +237,31 @@ Each time new changes are staged, the length will increase. This change can be r
 
 `--ignore` supports glob patterns (`*`, `**`) and a leading `!` to un-ignore. `--only` does not—it matches by exact path or directory prefix. Both **add to** rather than replace the corresponding list in [`pear.json`](/reference/pear/configuration), and `--purge` also switches on automatically when `pear.json` sets `stage.purge`.
 
-`<dir>` defaults to the directory you run the command from. If that directory has no `package.json`, Pear searches upward through its parents for one. Passing a versioned verlink as `<link>` is accepted, but only its key is used—staging always targets the current head and ignores the version segment. `--truncate`'s `n` is the length segment of a verlink (`pear://<fork>.<length>.<key>`).
+`<dir>` defaults to the directory you run the command from. <Until v="3.4.0" label="Changed in 3.4.0" /> On 3.3.0 and earlier, if that directory had no `package.json`, Pear searched upward through its parents for one. Passing a versioned verlink as `<link>` is accepted, but only its key is used—staging always targets the current head and ignores the version segment. `--truncate`'s `n` is the length segment of a verlink (`pear://<fork>.<length>.<key>`).
 
 <Callout type="info">
 <Since v="3.3.0" /> An invalid project directory reports `ERR_INVALID_PROJECT_DIR` as a plain error message. On 3.2.0 and earlier it printed a full stack trace.
 </Callout>
+
+<VersionGate since="3.4.0">
+<Callout type="warn">
+<Since v="3.4.0" /> **`pear stage` no longer searches parent directories for a `package.json`—it looks only in `<dir>` itself.** A project that relied on being staged from a subdirectory of its real root now needs `<dir>` pointed at the root, or `--skip-package-json`.
+
+When `<dir>` has no `package.json` and `--skip-package-json` is not passed:
+
+- Under `--json` or a non-interactive shell, staging fails immediately with `ERR_INVALID_PROJECT_DIR`: `package.json not found in <dir>. Pass --skip-package-json to stage without one`.
+- In an interactive terminal, it prompts instead of failing:
+
+  ```
+  ⚠️  The folder does not contain a valid package.json file. To confirm type "STAGE"
+  Stage folder without package.json? STAGE
+  ```
+
+  Only the literal uppercase `STAGE` is accepted; anything else prints `✖ uppercase STAGE to confirm` and asks again.
+
+A `package.json` that exists but isn't valid JSON, or isn't a JSON object, fails with the new `ERR_INVALID_MANIFEST` rather than being silently ignored.
+</Callout>
+</VersionGate>
 
 <VersionGate since="3.3.0">
 A stage that wrote ends with a [next-step hint](#next-step-hints) suggesting `pear seed` for the staged version, and `pear touch` plus `pear provision --dry-run` for a preview build. A `--dry-run` stage instead suggests re-running without the flag.
@@ -333,6 +368,7 @@ Seeding will sparsely replicate the application. This means the entire history o
 ```
   --no-tty                          Print plain log lines instead of the live terminal UI
   --until-sync <key>                Exit once this peer has synced. Pass multiple flags to wait for more peers   [!version since=3.2.0]
+  --blind-peer <key>                Add the drive being seeded to this blind peer key   [!version since=3.4.0]
   --stats-interval <milliseconds>   Stats refresh interval in milliseconds
   --json                            Newline delimited JSON output
   --help|-h                         Show help
@@ -342,8 +378,20 @@ Seeding will sparsely replicate the application. This means the entire history o
 
 <Since v="3.2.0" /> `--until-sync <key>` takes a peer's public key (z32) and exits automatically once every specified peer has fully synced—pass the flag multiple times to wait for more than one peer. Useful for scripting a seed session that should end on its own instead of running indefinitely. The live view lists Seeding, Drive Key, Drive Length, Discovery Key, Content Key, Firewalled, NAT Type, Whoami and Network above an unlabelled log; the key to pass here is the one printed after each peer join or peer sync line.
 
+<Since v="3.4.0" /> `--blind-peer <key>` takes a [blind peer](/explanation/availability-and-blind-peering)'s public key (z32) and registers the drive being seeded with it, so it stays available after this session ends. The live log shows `adding core`, `confirming add core`, and `added core` lines as the request progresses. Registering does not end the session: the blind peer's key is added to the `--until-sync` set, so `pear seed` then waits for that peer to fully sync the drive's cores before exiting—on a large drive that is a long wait, not a quick handshake. Reaching the blind peer at all has its own 30-second budget, after which the command fails with `ERR_OPERATION_FAILED`, `Timed out connecting to blind peer <key>`. Passing both flags is fine; the blind peer is simply one more key to wait for. This is a one-flag alternative to wiring the [`blind-peering`](https://github.com/holepunchto/blind-peering) client library directly for the common case of registering one drive—see [Keep data available with blind peering](/how-to/blind-peering/keep-data-available-with-blind-peering) for when you'd still reach for the library instead (multiple cores, Autobases, or finer control).
+
+<VersionGate since="3.4.0">
+<Callout type="warn">
+The request asks the blind peer to **announce** the drive, but that only sticks if the blind peer trusts you—its operator has to have started it with `--trusted-peer <your-key>`, where your key is what [`pear blind-peer identity`](#pear-blind-peer) prints on this machine. Against a blind peer that does not trust you the drive is still stored and served, but never announced, so peers will not discover it through that blind peer. Nothing in the command's output distinguishes the two cases; check the blind peer's own logs for a downgraded announce.
+</Callout>
+</VersionGate>
+
 <Callout type="info">
 <Since v="3.2.0" /> The seed session's stats (terminal display and [`--json`](#json-output) `stats` tag) gained a `semver` field alongside `driveLength`. Also fixed: `driveKey`, `discoveryKey`, `contentKey`, and `whoami` in `--json` output are now z32-encoded strings, matching every other Pear key—on 3.1.0 and earlier they were raw hex.
+</Callout>
+
+<Callout type="info">
+<Since v="3.4.0" /> The terminal stats table replaces the standalone `Semantic Version:` row with `App:` (`<name>@<version>`, falling back to `-` when the manifest has neither) and adds a `Blobs Size:` row. The underlying [`--json`](#json-output) `stats` data gains matching `name` and `blobsByteLength` fields—`semver` was already present. On 3.3.0 and earlier the table carries `Semantic Version:` and no blobs size, and `stats` has no `name`.
 </Callout>
 
 ### `pear install <link>`
@@ -351,7 +399,17 @@ Seeding will sparsely replicate the application. This means the entire history o
 
 Install a Pear application—or the Pear platform itself—from a `pear://` link.
 
-`pear install pear://<key>` installs any application built with [`pear build`](#pear-build), pulling it from the swarm and wiring it up locally so it can be launched and kept up to date over the air. It works for both applications and binaries. Installs go directly into the OS application folder.
+`pear install pear://<key>` installs any application built with [`pear build`](#pear-build), pulling it from the swarm and wiring it up locally so it can be launched and kept up to date over the air. It works for both applications and binaries.
+
+<Callout type="info">
+<Since v="3.4.0" /> Where an install lands, and the fact that it can edit your shell config, both changed with [`pear-install`](https://www.npmjs.com/package/pear-install) v1.3.0, which ships with Pear 3.4.0:
+
+- **Applications** go to `~/Applications` on macOS. On Linux Pear uses `~/Applications` or `~/AppImages` if one exists, and falls back to `~/.local/bin`.
+- **Binaries** go to `%LOCALAPPDATA%\Programs\<app>\` on Windows and `~/.local/bin` elsewhere. On non-Windows, installing a binary also **appends `~/.local/bin` to your `PATH` by editing your shell config**—`export PATH=…` for POSIX shells, `fish_add_path` for fish. It checks first, so it will not add a duplicate entry.
+- `--to <dir>` overrides all of the above.
+
+These are user-level locations, not system ones—no `sudo`, and nothing is written to `/Applications`.
+</Callout>
 
 ```
   --only <paths>          Advanced. Filter by app filenames
@@ -386,6 +444,88 @@ Use the pear-runtime module instead: https://www.npmjs.com/package/pear-runtime
 ```
 
 Applications are now launched by embedding the **[Pear OTA](/reference/pear/runtime)** (`pear-runtime`) library, which provides over-the-air peer-to-peer updates, application storage, and Bare workers. See [Migrate from `pear run` to Pear OTA](/how-to/operate-an-app/migration) for the move.
+
+## Blind peers and relays
+<VersionSection since="3.4.0" />
+
+<Since v="3.4.0" /> Two commands bring peer-to-peer availability and connectivity services natively into the platform CLI: **blind peers**, which replicate cores on your behalf without reading them (see [Availability and blind peering](/explanation/availability-and-blind-peering)), and **blind relays**, which forward connections between peers that cannot hole-punch directly (see [Peer-to-peer, demystified](/explanation/peer-to-peer-demystified#hole-punching-and-nat-traversal)). Both existed as separate packages before 3.4.0; these commands run the same functionality through `pear` directly.
+
+### `pear blind-peer [command]`
+
+<a name="pear-blind-peer"></a>
+
+Manage blind peers.
+
+| Command | Description |
+| --- | --- |
+| `start` | Start a blind peer |
+| `identity` | Show peer identity key |
+| `request <key>` | Request a blind peer to seed |
+
+```
+  --trusted-peer <peer>   Trusted peer key to allow requests from (start; repeatable)
+  --peer <peer>           Peer key to request from (request)
+  --core-only             Request only the db core instead of also the content core (request)
+  --json                  Newline delimited JSON output
+  --help|-h               Show help
+```
+
+`--json` is declared on `pear blind-peer` itself, so it goes **before** the subcommand—`pear blind-peer --json identity`, not `pear blind-peer identity --json` (see [`--json` position](#json-output)). Note that [`pear blind-relay`](#pear-blind-relay) takes it the other way round.
+
+**Two different keys are in play, and mixing them up is the easy mistake:**
+
+| Key | Where it comes from | What it's for |
+| --- | --- | --- |
+| The blind peer's own key | `start` prints `Blind peer started listening using public key: <publicKey>` | The **target**: what others pass to [`pear seed --blind-peer <key>`](#pear-seed) or `pear blind-peer request --peer <key>` |
+| A client's identity key | `pear blind-peer identity`, run **on the client machine** | The **authorization**: what the blind peer's operator passes to `start --trusted-peer <peer>` |
+
+`pear blind-peer start` runs the server. `--trusted-peer` may be passed more than once; each value must be a valid public key or the command rejects with `A valid trusted peer key must be specified`. Trust is what decides whether a request is honored in full. A trusted peer's cores are **announced**, so the blind peer advertises itself as a source for them; an untrusted peer's request has `announce` forced to `false`—the cores are still stored and served, but the blind peer never announces them, so peers looking for a source will not find it through the blind peer. Untrusted requests are also capped to a lower retention priority, and deleting a core is refused outright (`Only trusted peers can delete cores`). Only one blind peer runs per sidecar: starting a second fails with `ERR_OPERATION_FAILED`—`Blind peer is already running, cannot start another`. Its storage is a `blind-peer` directory in the Pear platform directory, beside the platform database and [`pear.log`](#sidecar-logs).
+
+`pear blind-peer identity` prints **this machine's** sidecar public key—the identity a blind peer operator authorizes with `--trusted-peer`. It reports that key whether or not a blind peer is running here, and follows it with a hint showing the `start --trusted-peer=<key>` invocation that would authorize it.
+
+`pear blind-peer request <key> --peer <peer>` asks the blind peer at `--peer` to seed `<key>`—a `pear://` link (a drive, or with `--core-only`, a bare core) or a raw public key. Both `--peer` and `<key>` are required and validated; an invalid or missing value fails with `ERR_INVALID_INPUT` before any request is sent.
+
+Without `--core-only` this registers **two** cores—the drive's metadata core and its blobs core—and to do that it first resolves the blobs core over the swarm, so the drive has to be reachable at the time you run it. The request itself gives the blind peer 30 seconds to answer, failing with `ERR_OPERATION_FAILED`, `Timed out connecting to blind peer <key>`. Like [`pear seed --blind-peer`](#pear-seed), the request always asks for the core to be announced—there is no flag to turn that off—so the trust rules above decide whether the announce actually sticks.
+
+This is the platform-native equivalent of running the standalone [`blind-peer-cli`](https://github.com/holepunchto/blind-peer-cli) package—see [Availability and blind peering](/explanation/availability-and-blind-peering#running-a-blind-peer-server) for the operational picture. Note that the disk budget described there is a `blind-peer-cli` flag (`-m <size>`); `pear blind-peer start` exposes no equivalent and uses the library default.
+
+### `pear blind-relay [command]`
+
+<a name="pear-blind-relay"></a>
+
+Run a blind relay for peers that cannot hole-punch directly with each other—similar to TURN for UDX/Protomux streams. A relay pairs two peers by a pre-exchanged token, allocates a stream for each, and forwards messages between them without otherwise participating in the connection.
+
+| Command | Description |
+| --- | --- |
+| `start` | Start the blind relay |
+
+```
+  --no-tty                          Print plain log lines instead of the live terminal UI
+  --stats-interval <milliseconds>   Stats refresh interval in milliseconds
+  --json                            Newline delimited JSON output
+  --help|-h                         Show help
+```
+
+Unlike [`pear blind-peer`](#pear-blind-peer), `--json` here belongs to the `start` subcommand, so it goes **after** it—`pear blind-relay start --json` (see [`--json` position](#json-output)).
+
+`--stats-interval` defaults to 500 milliseconds with the live UI on, or 3000 milliseconds under `--no-tty`—same convention as [`pear seed`](#pear-seed). The live view (and each `--json`/`--no-tty` line) reports `Public Key`; `Sessions` (`Accepted`, `Opened`, `Closed`, `Active`); `Pairings` (`Requested`, `Matched`, `Cancelled`, `Pending`, `Active`); and `Streams` (`Opened`, `Closed`, `Errors`, `Active`). The counters are cumulative for the process's lifetime; `Active` and `Pending` reflect current state.
+
+Like [`pear blind-peer`](#pear-blind-peer), only one relay runs per sidecar—starting a second fails with `ERR_OPERATION_FAILED`, `Blind relay is already running, cannot start another`. The relay's key pair is derived from the platform corestore, so a given machine keeps the same relay key across restarts.
+
+A peer connects through a running relay with the global `--relay <key>` flag below.
+
+### Global `--relay <key>` flag
+
+<a name="relay-flag"></a>
+
+Any command accepts `--relay <key>`, where `<key>` is a running [`pear blind-relay`](#pear-blind-relay)'s public key. An invalid key fails fast, before the command itself runs: `--relay <key> must supply a valid public key`.
+
+Two things about it are easy to get wrong:
+
+- **It registers the relay with the sidecar, not with the command.** The flag sets the relay on the shared, long-running sidecar process, so it stays in effect for everything that sidecar does afterwards—not just the command you passed it to. You only need to pass it once. There is no flag that unsets it; [`pear sidecar shutdown`](#pear-sidecar) clears it by restarting the process.
+- **It is a fallback, not a tunnel.** Registering a relay does not push your traffic through it. The swarm consults it only when a connection actually needs relaying, or when this machine's DHT node is randomized—the unpredictable-NAT case where hole punching cannot work. Otherwise connections stay direct.
+
+Reach for this when direct hole-punching isn't working—see [Relay connections through a blind relay](/how-to/connect-to-peers/relay-connections-through-a-blind-relay) for the end-to-end setup, and [Hole punching and NAT traversal](/explanation/peer-to-peer-demystified#hole-punching-and-nat-traversal) for why it fails.
 
 ## Inspecting apps and links
 
@@ -488,13 +628,13 @@ List platform corestore cores.
 <Since v="3.1.0" /> On 3.0.1 and earlier, `pear cores` fails with `✖ Unrecognized Argument at index 0 with value cores`.
 </Callout>
 
-Lists the cores in the platform corestore, followed by a `Total cores: <n> | Writable: <n>` summary, or `No cores` when the store is empty.
+Lists the cores in the platform corestore, followed by a summary line.
 
 <Callout type="info">
 <Since v="3.3.0" /> Output is a sorted, column-aligned table: application name, a `[core]`/`[blobs]` type column, the `pear://` link, and the length/writable suffix. Rows are ordered named-first, then by name, then by drive, with a drive's `[core]` row ahead of its `[blobs]` row; a core with no application name renders `-`. On 3.2.0 and earlier the output is one plain line per core with no name and no type column.
 </Callout>
 
-<VersionGate since="3.3.0">
+<VersionGate since="3.3.0" until="3.4.0">
 ```
 myapp [core]  pear://<key> (length: 42, writable)
 myapp [blobs] pear://<key> (length: 118, writable)
@@ -503,6 +643,25 @@ Total cores: 3 | Writable: 2
 ```
 
 The name column is padded to the widest name present and the type column to the width of `[blobs]`; every other gap is a single space.
+</VersionGate>
+
+<Callout type="info">
+<Since v="3.4.0" /> The table gains a header row and `Size` column, and the type column drops its brackets. On 3.3.0 it has no header row, no size, and bracketed `[core]`/`[blobs]` types:
+</Callout>
+
+<VersionGate since="3.4.0">
+```
+ Name   Type   Link          Length  Writable  Size
+──────────────────────────────────────────────────────
+ myapp  core   pear://<key>  42      ✔         1.2 MB
+ myapp  blobs  pear://<key>  118     ✔         14.8 MB
+ -      core   pear://<key>  7                 0 B
+──────────────────────────────────────────────────────
+Total cores: 3 (writable: 2)
+Total size:  16 MB
+```
+
+A separator rule also appears between cores belonging to different drives when more than one application is listed. `blobs` rows render dimmed. The empty-store message is now `[ No cores ]`, replacing the bare `No cores` used through 3.3.0. This sample is derived from source (`cmd/cores.js`), not a captured run—re-verify exact spacing against a real 3.4.0 build.
 </VersionGate>
 
 <Callout type="info">
@@ -515,7 +674,7 @@ The name column is padded to the widest name present and the type column to the 
   --help|-h     Show help
 ```
 
-With [`--json`](#json-output), each core is emitted as a `"tag": "core"` object carrying `{ link, writable }` (plus `length` <Since v="3.2.0" />, and `name`, `blobs`, and `drive` <Since v="3.3.0" />—`drive` is the metadata link a blobs core belongs to, and the core's own link otherwise), and the closing `"tag": "final"` object carries `{ count, writable }`. Under `--json` the rows are emitted unsorted, as they are produced—the table ordering above is a terminal-output concern only.
+With [`--json`](#json-output), each core is emitted as a `"tag": "core"` object carrying `{ link, writable }` (plus `length` <Since v="3.2.0" />, `name`, `blobs`, and `drive` <Since v="3.3.0" />—`drive` is the metadata link a blobs core belongs to, and the core's own link otherwise, and `byteLength` <Since v="3.4.0" />), and the closing `"tag": "final"` object carries `{ count, writable }` (plus `byteLength`, the total, <Since v="3.4.0" />). Under `--json` the rows are emitted unsorted, as they are produced—the table ordering above is a terminal-output concern only.
 
 Distinct from [`pear gc cores`](#pear-gc), which *clears* corestore cores rather than listing them.
 
@@ -729,3 +888,5 @@ To scaffold a project, clone the official template instead—[`holepunchto/hello
 - [Manage installed applications](/how-to/manage-installed-applications)—resetting and inspecting installed apps.
 - [Distribute as a binary](/how-to/operate-an-app/build-and-package/distribute-as-binary)—packaging a release built from these commands.
 - [Pear OTA reference](/reference/pear/runtime)—the `pear-runtime` library that replaces `pear run`.
+- [Availability and blind peering](/explanation/availability-and-blind-peering)—the concept behind `pear blind-peer` and `pear seed --blind-peer`.
+- [Peer-to-peer, demystified](/explanation/peer-to-peer-demystified)—hole punching and the relay paths `pear blind-relay` and `--relay` provide as a fallback.
