@@ -19,7 +19,21 @@ changed:
 This axis is independent of `bare-cli` and `bare-kit` — each Bare page tracks its own
 surface, not one shared "Bare version."
 
-As of 2026-08-06, across the tracked window (1.23.5 -> 1.31.0):
+As of 2026-09-10, across the tracked window (1.26.0 -> 1.32.0 — the window is a
+rolling 5 doc-states, so it dropped 1.23.5 as 1.32.0 entered):
+
+`Addon.seal()`/`Addon.sealed` (added in 1.32.0 by holepunchto/bare#170) are real,
+shipped API — see the package README and `docs/threat-model.md` — but are absent
+from `npm/index.d.ts` as of 1.32.0, so they do not appear in the printed delta
+above and `scripts/bare-model-surface.ts` cannot fingerprint them. They are
+documented below from the README/threat-model instead, marked `<Since v="1.32.0" />`
+by the release that shipped them. Re-run `npm run gen:bare-docs-states` on future
+Bare releases to check whether the `.d.ts` catches up; if it does, this note can go.
+
+1.32.0's delta is otherwise narrow: `Thread`'s constructor and `Thread.create()`
+gained overloads so `source` can be passed positionally
+(`new Thread(filename, source[, options])`) or as a bare callback, and
+`ThreadOptions.source` is newly `@deprecated` in favor of that positional form.
 
 `Bare.Addon`/`Bare.Thread` becoming top-level siblings in 1.31.0 (same release as the
 delta below) is a .d.ts authoring change only — both remain reachable as
@@ -169,6 +183,8 @@ This is an advanced API most users never touch directly; native addons are norma
 
 - `new Addon(url)` <Since v="1.31.0" /> — load a static or dynamic addon from a `url` whose protocol is `builtin:`, `linked:`, or `file:`. Throws for any other protocol, or if loading fails. Returns an `addon` with `addon.url` and `addon.exports`.
 - `Addon.host`— the target triplet identifying the current addon host.
+- `Addon.seal()` <Since v="1.32.0" /> — freeze addon loading. Once sealed, no dynamic addon can be loaded by the current thread or any other thread of the process, now or in the future; loading one throws. Statically linked addons are unaffected. This is one-way for the lifetime of the process, and applies to this process alone—intended for embedders that load a fixed set of trusted addons up front and then want to block any further native code, e.g. when building a sandbox. See the [threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md) for what sealing does and doesn't guarantee.
+- `Addon.sealed` <Since v="1.32.0" /> — whether `Addon.seal()` has been called.
 - <Until v="1.31.0" label="Deprecated in 1.31.0" /> `Addon.cache`, `Addon.load(url)`, `Addon.resolve(specifier, parentURL[, options])`— superseded by `new Addon(url)`. Still work, but new code should use the constructor.
 
 ## `Bare.Thread`
@@ -177,7 +193,8 @@ Lightweight threads with synchronous joins—similar to Node.js workers but with
 
 - `Thread.isMainThread`— `true` on the main thread.
 - `Thread.self`— the current thread as a `ThreadProxy`, or `null` on the main thread. `Thread.self.data` is the data passed on creation.
-- `new Thread([filename][, options][, callback])`— start a thread running `filename`. If `callback` is given, its body runs on the new thread with `Thread.self.data` as its argument. Options: `data`, `transfer`, `source`, `encoding`, `stackSize`.
+- `new Thread([filename][, options][, callback])`— start a thread running `filename`. If `callback` is given, its body runs on the new thread with `Thread.self.data` as its argument. Options: `data`, `transfer`, `encoding`, `stackSize`, and <Until v="1.32.0" label="Deprecated in 1.32.0" /> `source`.
+- `new Thread(callback)`, `new Thread(filename, source[, options])` <Since v="1.32.0" /> — a plain callback can be passed with no `filename`, and `source` (a string or Buffer) can be passed positionally right after `filename` instead of via `options.source`.
 - <Until v="1.31.0" label="Deprecated in 1.31.0" /> `Thread.create(...)`— equivalent to `new Thread(...)`. Still works, but new code should use the constructor.
 - `thread.joined`— whether the thread has been joined.
 - `thread.join()`— block until the thread exits.
