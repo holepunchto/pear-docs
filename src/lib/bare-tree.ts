@@ -230,7 +230,7 @@ export const bareTree: Node[] = [
       },
       {
         type: 'page',
-        name: 'Building blocks, helpers & tools →',
+        name: 'Primitives, helpers & tools →',
         url: '/p2p/reference',
         external: true,
       },

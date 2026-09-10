@@ -75,7 +75,7 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
             href={homeUrl}
             className="flex shrink-0 items-center gap-2 font-semibold text-nowrap text-fd-foreground md:w-[268px] md:py-4 md:ps-4"
           >
-            <Image src={markSrc} alt="" width={24} height={24} />
+            <Image src={markSrc} alt="" width={24} height={24} className="h-6 w-6 shrink-0" />
             {wordmark}
           </Link>
           <div className="hidden min-w-0 flex-1 items-center overflow-x-auto py-3 pe-4 md:flex">

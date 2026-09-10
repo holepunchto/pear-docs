@@ -286,7 +286,7 @@ export const pearTree: Node[] = [
           },
           {
             type: 'page',
-            name: 'Building blocks & helpers →',
+            name: 'Primitives & helpers →',
             url: '/p2p/reference',
           },
           {
