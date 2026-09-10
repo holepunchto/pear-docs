@@ -236,6 +236,12 @@ export const pearTree: Node[] = [
             url: '/pear/reference/pear/cli',
           },
           { type: 'page', name: 'Pear OTA', url: '/pear/reference/pear/runtime' },
+          { type: 'page', name: 'Pear Mobile OTA', url: '/pear/reference/pear/mobile' },
+          {
+            type: 'page',
+            name: 'Mobile OTA Boot Control',
+            url: '/pear/reference/pear/mobile-boot-control',
+          },
           {
             type: 'page',
             name: 'Configuration',

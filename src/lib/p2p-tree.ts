@@ -58,6 +58,11 @@ export const p2pTree: Node[] = [
             name: 'Start from the hello-pear-bare template',
             url: '/p2p/getting-started/from-a-template/start-from-hello-pear-bare',
           },
+          {
+            type: 'page',
+            name: 'Start from the hello-pear-react-native template',
+            url: '/p2p/getting-started/from-a-template/start-from-hello-pear-react-native',
+          },
         ],
       },
     ],
@@ -114,6 +119,11 @@ export const p2pTree: Node[] = [
             name: 'Host multiple rooms in one chat app',
             url: '/p2p/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app',
           },
+          {
+            type: 'page',
+            name: 'Relay connections through a blind relay',
+            url: '/p2p/how-to/connect-to-peers/relay-connections-through-a-blind-relay',
+          },
         ],
       },
       {
@@ -135,6 +145,16 @@ export const p2pTree: Node[] = [
             type: 'page',
             name: 'Share append-only databases with Hyperbee',
             url: '/p2p/how-to/store-and-replicate/share-append-only-databases-with-hyperbee',
+          },
+          {
+            type: 'page',
+            name: 'Build a multiwriter app with Autobase',
+            url: '/p2p/how-to/store-and-replicate/build-a-multiwriter-app-with-autobase',
+          },
+          {
+            type: 'page',
+            name: 'Build a multiwriter database with Autobee',
+            url: '/p2p/how-to/store-and-replicate/build-a-multiwriter-database-with-autobee',
           },
         ],
       },
@@ -249,6 +269,11 @@ export const p2pTree: Node[] = [
             type: 'page',
             name: 'Autobase',
             url: '/p2p/reference/building-blocks/autobase',
+          },
+          {
+            type: 'page',
+            name: 'Autobee',
+            url: '/p2p/reference/building-blocks/autobee',
           },
           {
             type: 'page',

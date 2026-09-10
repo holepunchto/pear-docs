@@ -330,6 +330,122 @@ const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    // Autobase multiwriter: the bootstrap peer creates the base and grants
+    // write access to the second peer by appending an `addWriter` node. The
+    // grant travels through the shared history, so the peer's own `apply`
+    // reaches the same conclusion and it becomes writable without a side
+    // channel. Asserts convergence in both directions: the peer sees the
+    // writer's startup message, and the writer sees the peer's reply.
+    id: 'autobase-multiwriter',
+    dir: `${STORE}/build-a-multiwriter-app-with-autobase`,
+    installs: ['base-writer-app', 'base-peer-app'],
+    artifacts: [
+      'base-writer-app/base-writer-storage',
+      'base-peer-app/base-peer-storage',
+    ],
+    steps: [
+      {
+        kind: 'run',
+        process: 'writer',
+        app: 'base-writer-app',
+        cmd: 'bare index.js',
+        expect: 'base key:',
+        capture: { key: 'base key: ([0-9a-f]+)' },
+        timeoutMs: 45_000,
+      },
+      {
+        kind: 'run',
+        process: 'peer',
+        app: 'base-peer-app',
+        cmd: 'bare index.js ${key}',
+        expect: 'writer key:',
+        capture: { writer: 'writer key: ([0-9a-f]+)' },
+        timeoutMs: 45_000,
+      },
+      {
+        kind: 'expect',
+        process: 'peer',
+        contains: 'read-only, waiting to be added as a writer',
+        timeoutMs: 45_000,
+      },
+      {
+        kind: 'send',
+        process: 'writer',
+        data: 'add ${writer}\n',
+        delayMs: 3_000,
+      },
+      {
+        kind: 'expect',
+        process: 'peer',
+        contains: 'now writable',
+        timeoutMs: 60_000,
+      },
+      {
+        kind: 'expect',
+        process: 'writer',
+        contains: 'hello from the second writer',
+        timeoutMs: 60_000,
+      },
+    ],
+  },
+  {
+    // Autobee multiwriter: same grant-through-the-log flow as the Autobase
+    // scenario, but the view is a Hyperbee. The peer waits on the `writable`
+    // event (same as Autobase) rather than polling. Asserts convergence both
+    // ways across the B-tree view.
+    id: 'autobee-multiwriter',
+    dir: `${STORE}/build-a-multiwriter-database-with-autobee`,
+    installs: ['bee-base-writer-app', 'bee-base-peer-app'],
+    artifacts: [
+      'bee-base-writer-app/bee-writer-storage',
+      'bee-base-peer-app/bee-peer-storage',
+    ],
+    steps: [
+      {
+        kind: 'run',
+        process: 'writer',
+        app: 'bee-base-writer-app',
+        cmd: 'bare index.js',
+        expect: 'db key:',
+        capture: { key: 'db key: ([a-z0-9]+)' },
+        timeoutMs: 45_000,
+      },
+      {
+        kind: 'run',
+        process: 'peer',
+        app: 'bee-base-peer-app',
+        cmd: 'bare index.js ${key}',
+        expect: 'writer id:',
+        capture: { writer: 'writer id: ([a-z0-9]+)' },
+        timeoutMs: 45_000,
+      },
+      {
+        kind: 'expect',
+        process: 'peer',
+        contains: 'read-only, waiting to be added as a writer',
+        timeoutMs: 45_000,
+      },
+      {
+        kind: 'send',
+        process: 'writer',
+        data: 'add ${writer}\n',
+        delayMs: 3_000,
+      },
+      {
+        kind: 'expect',
+        process: 'peer',
+        contains: 'now writable',
+        timeoutMs: 60_000,
+      },
+      {
+        kind: 'expect',
+        process: 'writer',
+        contains: 'hello from the second writer',
+        timeoutMs: 60_000,
+      },
+    ],
+  },
+  {
     id: 'hyperdrive-fs',
     dir: `${STREAM}/create-a-full-peer-to-peer-filesystem-with-hyperdrive`,
     installs: ['drive-writer-app', 'drive-reader-app', 'drive-bee-reader-app'],
