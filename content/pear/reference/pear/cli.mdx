@@ -528,6 +528,88 @@ Two things about it are easy to get wrong:
 
 Reach for this when direct hole-punching isn't working—see [Relay connections through a blind relay](/p2p/how-to/connect-to-peers/relay-connections-through-a-blind-relay) for the end-to-end setup, and [Hole punching and NAT traversal](/p2p/explanation/peer-to-peer-demystified#hole-punching-and-nat-traversal) for why it fails.
 
+## Blind peers and relays
+<VersionSection since="3.4.0" />
+
+<Since v="3.4.0" /> Two commands bring peer-to-peer availability and connectivity services natively into the platform CLI: **blind peers**, which replicate cores on your behalf without reading them (see [Blind peering](/p2p/explanation/blind-peering)), and **blind relays**, which forward connections between peers that cannot hole-punch directly (see [Peer-to-peer, demystified](/p2p/explanation/peer-to-peer-demystified#hole-punching-and-nat-traversal)). Both existed as separate packages before 3.4.0; these commands run the same functionality through `pear` directly.
+
+### `pear blind-peer [command]`
+
+<a name="pear-blind-peer"></a>
+
+Manage blind peers.
+
+| Command | Description |
+| --- | --- |
+| `start` | Start a blind peer |
+| `identity` | Show peer identity key |
+| `request <key>` | Request a blind peer to seed |
+
+```
+  --trusted-peer <peer>   Trusted peer key to allow requests from (start; repeatable)
+  --peer <peer>           Peer key to request from (request)
+  --core-only             Request only the db core instead of also the content core (request)
+  --json                  Newline delimited JSON output
+  --help|-h               Show help
+```
+
+`--json` is declared on `pear blind-peer` itself, so it goes **before** the subcommand—`pear blind-peer --json identity`, not `pear blind-peer identity --json` (see [`--json` position](#json-output)). Note that [`pear blind-relay`](#pear-blind-relay) takes it the other way round.
+
+**Two different keys are in play, and mixing them up is the easy mistake:**
+
+| Key | Where it comes from | What it's for |
+| --- | --- | --- |
+| The blind peer's own key | `start` prints `Blind peer started listening using public key: <publicKey>` | The **target**: what others pass to [`pear seed --blind-peer <key>`](#pear-seed) or `pear blind-peer request --peer <key>` |
+| A client's identity key | `pear blind-peer identity`, run **on the client machine** | The **authorization**: what the blind peer's operator passes to `start --trusted-peer <peer>` |
+
+`pear blind-peer start` runs the server. `--trusted-peer` may be passed more than once; each value must be a valid public key or the command rejects with `A valid trusted peer key must be specified`. Trust is what decides whether a request is honored in full. A trusted peer's cores are **announced**, so the blind peer advertises itself as a source for them; an untrusted peer's request has `announce` forced to `false`—the cores are still stored and served, but the blind peer never announces them, so peers looking for a source will not find it through the blind peer. Untrusted requests are also capped to a lower retention priority, and deleting a core is refused outright (`Only trusted peers can delete cores`). Only one blind peer runs per sidecar: starting a second fails with `ERR_OPERATION_FAILED`—`Blind peer is already running, cannot start another`. Its storage is a `blind-peer` directory in the Pear platform directory, beside the platform database and [`pear.log`](#sidecar-logs).
+
+`pear blind-peer identity` prints **this machine's** sidecar public key—the identity a blind peer operator authorizes with `--trusted-peer`. It reports that key whether or not a blind peer is running here, and follows it with a hint showing the `start --trusted-peer=<key>` invocation that would authorize it.
+
+`pear blind-peer request <key> --peer <peer>` asks the blind peer at `--peer` to seed `<key>`—a `pear://` link (a drive, or with `--core-only`, a bare core) or a raw public key. Both `--peer` and `<key>` are required and validated; an invalid or missing value fails with `ERR_INVALID_INPUT` before any request is sent.
+
+Without `--core-only` this registers **two** cores—the drive's metadata core and its blobs core—and to do that it first resolves the blobs core over the swarm, so the drive has to be reachable at the time you run it. The request itself gives the blind peer 30 seconds to answer, failing with `ERR_OPERATION_FAILED`, `Timed out connecting to blind peer <key>`. Like [`pear seed --blind-peer`](#pear-seed), the request always asks for the core to be announced—there is no flag to turn that off—so the trust rules above decide whether the announce actually sticks.
+
+This is the platform-native equivalent of running the standalone [`blind-peer-cli`](https://github.com/holepunchto/blind-peer-cli) package—see [Blind peering](/p2p/explanation/blind-peering#running-a-blind-peer-server) for the operational picture. Note that the disk budget described there is a `blind-peer-cli` flag (`-m <size>`); `pear blind-peer start` exposes no equivalent and uses the library default.
+
+### `pear blind-relay [command]`
+
+<a name="pear-blind-relay"></a>
+
+Run a blind relay for peers that cannot hole-punch directly with each other—similar to TURN for UDX/Protomux streams. A relay pairs two peers by a pre-exchanged token, allocates a stream for each, and forwards messages between them without otherwise participating in the connection.
+
+| Command | Description |
+| --- | --- |
+| `start` | Start the blind relay |
+
+```
+  --no-tty                          Print plain log lines instead of the live terminal UI
+  --stats-interval <milliseconds>   Stats refresh interval in milliseconds
+  --json                            Newline delimited JSON output
+  --help|-h                         Show help
+```
+
+Unlike [`pear blind-peer`](#pear-blind-peer), `--json` here belongs to the `start` subcommand, so it goes **after** it—`pear blind-relay start --json` (see [`--json` position](#json-output)).
+
+`--stats-interval` defaults to 500 milliseconds with the live UI on, or 3000 milliseconds under `--no-tty`—same convention as [`pear seed`](#pear-seed). The live view (and each `--json`/`--no-tty` line) reports `Public Key`; `Sessions` (`Accepted`, `Opened`, `Closed`, `Active`); `Pairings` (`Requested`, `Matched`, `Cancelled`, `Pending`, `Active`); and `Streams` (`Opened`, `Closed`, `Errors`, `Active`). The counters are cumulative for the process's lifetime; `Active` and `Pending` reflect current state.
+
+Like [`pear blind-peer`](#pear-blind-peer), only one relay runs per sidecar—starting a second fails with `ERR_OPERATION_FAILED`, `Blind relay is already running, cannot start another`. The relay's key pair is derived from the platform corestore, so a given machine keeps the same relay key across restarts.
+
+A peer connects through a running relay with the global `--relay <key>` flag below.
+
+### Global `--relay <key>` flag
+
+<a name="relay-flag"></a>
+
+Any command accepts `--relay <key>`, where `<key>` is a running [`pear blind-relay`](#pear-blind-relay)'s public key. An invalid key fails fast, before the command itself runs: `--relay <key> must supply a valid public key`.
+
+Two things about it are easy to get wrong:
+
+- **It registers the relay with the sidecar, not with the command.** The flag sets the relay on the shared, long-running sidecar process, so it stays in effect for everything that sidecar does afterwards—not just the command you passed it to. You only need to pass it once. There is no flag that unsets it; [`pear sidecar shutdown`](#pear-sidecar) clears it by restarting the process.
+- **It is a fallback, not a tunnel.** Registering a relay does not push your traffic through it. The swarm consults it only when a connection actually needs relaying, or when this machine's DHT node is randomized—the unpredictable-NAT case where hole punching cannot work. Otherwise connections stay direct.
+
+Reach for this when direct hole-punching isn't working—see [Relay connections through a blind relay](/p2p/how-to/connect-to-peers/relay-connections-through-a-blind-relay) for the end-to-end setup, and [Hole punching and NAT traversal](/p2p/explanation/peer-to-peer-demystified#hole-punching-and-nat-traversal) for why it fails.
+
 ## Inspecting apps and links
 
 Read-only lookups against a project, an installed app, or the local platform state—none of these write anything.
