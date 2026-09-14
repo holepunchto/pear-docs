@@ -6,7 +6,7 @@ import process from 'bare-process'
 
 const swarm = new Hyperswarm()
 const name = b4a.toString(swarm.keyPair.publicKey, 'hex')
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0), () => process.exit(0)))
 
 // Keep track of all connections and console.log incoming data
 const conns = []

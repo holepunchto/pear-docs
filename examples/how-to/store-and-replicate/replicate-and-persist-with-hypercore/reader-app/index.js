@@ -5,7 +5,7 @@ import Hyperswarm from 'hyperswarm'
 import Hypercore from 'hypercore'
 
 const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0), () => process.exit(0)))
 
 const core = new Hypercore(path.join('./storage', 'reader-storage'), Bare.argv[2])
 await core.ready()

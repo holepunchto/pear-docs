@@ -6,7 +6,7 @@ import Hypercore from 'hypercore'
 import b4a from 'b4a'
 
 const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0), () => process.exit(0)))
 
 const core = new Hypercore(path.join('./storage', 'writer-storage'))
 

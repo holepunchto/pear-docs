@@ -12,7 +12,7 @@ if (!key) throw new Error('provide a key')
 const store = new Corestore('./drive-bee-reader-storage')
 
 const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0), () => process.exit(0)))
 
 swarm.on('connection', conn => store.replicate(conn))
 

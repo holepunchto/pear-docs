@@ -8,7 +8,7 @@ import b4a from 'b4a'
 const store = new Corestore('./bee-writer-storage')
 
 const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0), () => process.exit(0)))
 
 // replication of corestore instance
 swarm.on('connection', conn => store.replicate(conn))

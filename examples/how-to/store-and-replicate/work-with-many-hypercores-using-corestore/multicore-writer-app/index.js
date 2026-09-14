@@ -6,7 +6,7 @@ import process from 'bare-process'
 
 const store = new Corestore('./multicore-writer-storage')
 const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0), () => process.exit(0)))
 
 // A name is a purely-local, and maps to a key pair. It's not visible to readers.
 // Since a name always corresponds to a key pair, these are all writable

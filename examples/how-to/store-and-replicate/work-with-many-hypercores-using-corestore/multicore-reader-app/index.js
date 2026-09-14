@@ -11,7 +11,7 @@ const store = new Corestore('./multicore-reader-storage')
 await store.ready()
 
 const swarm = new Hyperswarm()
-process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0)))
+process.once('SIGINT', () => swarm.destroy().then(() => process.exit(0), () => process.exit(0)))
 
 // replication of corestore instance on every connection
 swarm.on('connection', (conn) => store.replicate(conn))
