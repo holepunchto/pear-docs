@@ -248,6 +248,9 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // Gitbook-era /guide/ paths. No operate-an-app index exists, so release/sharing
   // guides fall back to the how-to index.
   out.push({ from: '/guide/getting-started/', to: '/pear/getting-started/' });
+  // Plural variant still linked live from holepunchto/filesharing-react-app-example's
+  // README — currently 404s without this.
+  out.push({ from: '/guides/getting-started/', to: '/pear/getting-started/' });
   out.push({
     from: '/guide/starting-a-pear-desktop-project/',
     to: '/p2p/getting-started/from-a-template/start-from-hello-pear-electron/',
@@ -264,6 +267,8 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   });
   out.push({ from: '/guide/releasing-a-pear-app/', to: '/pear/how-to/' });
   out.push({ from: '/guide/sharing-a-pear-app/', to: '/pear/how-to/' });
+  // Plural variant, same README as above — also currently 404s.
+  out.push({ from: '/guides/sharing-a-pear-app/', to: '/pear/how-to/' });
   out.push({ from: '/guide/debugging-a-pear-terminal-app/', to: '/pear/how-to/troubleshooting/' });
   out.push({ from: '/guide/creating-a-pear-init-template/', to: '/pear/reference/pear/cli/' });
 

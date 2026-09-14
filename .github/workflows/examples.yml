@@ -3,7 +3,8 @@ name: Examples
 # Smoke-tests most examples under examples/:
 #   - desktop-build:    the 9 Electron/Pear desktop apps (npm install + build).
 #   - terminal-examples: the 16 terminal Bare apps, grouped into 9 scenarios,
-#                        run on the latest Bare runtime with output assertions.
+#                        run against a pinned Bare runtime version (see the
+#                        install step below) with output assertions.
 #
 # Both matrices are hardcoded, so a new example app or a new scenario in
 # scripts/test-examples.ts is NOT picked up automatically — add it below too, or
@@ -108,7 +109,14 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Install the latest Bare runtime and tsx
-        run: npm i -g bare-runtime tsx
+      # Pinned, not latest: bare-runtime 1.33.0 switched its internal module
+      # resolver to bare-module v7, which bare-worker@4.4.0 (latest on npm)
+      # doesn't support yet — every worker-based scenario fails with
+      # "defaultProtocol.postresolve is not a function". Verified locally:
+      # 1.32.0 runs clean, 1.33.0 doesn't; no bare-worker release fixes it
+      # yet (holepunchto/bare-worker has nothing past 4.4.0). Bump this back
+      # to latest once bare-worker ships a compatible release.
+      - name: Install Bare runtime and tsx
+        run: npm i -g bare-runtime@1.32.0 tsx
       - name: Run scenario
         run: tsx scripts/test-examples.ts --filter=${{ matrix.scenario }}
