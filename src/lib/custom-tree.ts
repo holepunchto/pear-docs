@@ -198,6 +198,11 @@ export const customTree: Node[] = [
             name: 'Host multiple rooms in one chat app',
             url: '/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app',
           },
+          {
+            type: 'page',
+            name: 'Relay connections through a blind relay',
+            url: '/how-to/connect-to-peers/relay-connections-through-a-blind-relay',
+          },
         ],
       },
       {
