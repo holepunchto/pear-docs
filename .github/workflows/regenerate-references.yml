@@ -1,0 +1,159 @@
+name: Regenerate references
+
+# Regenerates the API reference artifacts under generated/refs/ from upstream
+# source. The generator is cache-gated (scripts/refgen/.cache.json): each repo is
+# only rebuilt when its latest stable release tag has moved, so most runs are a
+# cheap no-op. When something changed, the run opens (or updates) a single PR with
+# the diff for review — generated output is committed, so it must land in git to
+# exist on a clean checkout.
+#
+# Schedule sweeps for new upstream releases weekly; workflow_dispatch runs it on
+# demand (tick "force" to rebuild every repo, e.g. after changing the extractor).
+
+on:
+  # ⚠️ Automatic regeneration is intentionally DISABLED until the upstream JSDoc PRs
+  # (chore/add-js-doc on the holepunchto repos) are merged AND shipped in releases.
+  # Until then the committed models are richer than any real release — they were
+  # built from locally-authored JSDoc that is not yet upstream — so regenerating
+  # would rebuild sparse, JSDoc-less models: a regression. Some repos have already
+  # released past the cached versions and would regress on the very first run.
+  #
+  # To re-enable once the JSDoc is upstream-released, uncomment the two triggers
+  # below (daily poll + dispatch hook) and bump scripts/refgen/.cache.json as needed:
+  #
+  # schedule:
+  #   # Poll daily at 07:00 UTC for moved upstream release tags (cache-gated, so a
+  #   # run with no upstream change is a cheap no-op).
+  #   - cron: '0 7 * * *'
+  # repository_dispatch:
+  #   # Low-latency trigger: POST event_type "upstream-updated" from a release relay
+  #   # (e.g. `gh api repos/<owner>/<repo>/dispatches`). Actions cannot subscribe to
+  #   # push/release events on repos this one does not own, so polling is the fallback.
+  #   types: [upstream-updated]
+  #
+  # Manual runs stay available (and are deliberate, so a regression can't sneak in
+  # unattended). Tick "force" to rebuild every repo.
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Regenerate every repo even if upstream is unchanged
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Never let a scheduled and a manual run race the shared PR branch.
+concurrency:
+  group: regenerate-references
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    name: regenerate from upstream
+    runs-on: ubuntu-latest
+    steps:
+      # Regenerate against — and open the PR into — the published docs branch, so
+      # the diff is computed relative to what is actually live.
+      - uses: actions/checkout@v6
+        with:
+          ref: published
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # package.json pulls token-gated @tetherto/* packages the repo token can't
+      # read (see docs-lint.yml), so the root install can't run here. The
+      # generator only needs these public packages — install them in isolation
+      # and copy into ./node_modules where tsx/ESM resolution finds them.
+      - name: Install generator deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/refgen" \
+            tsx acorn ajv mdast-util-from-markdown
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/refgen/node_modules/." node_modules/
+
+      # Cache-gated: without --force, only repos whose latest stable tag moved
+      # are cloned and rebuilt.
+      - name: Regenerate references
+        run: |
+          ./node_modules/.bin/tsx scripts/generate-refs.ts --all \
+            ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+
+      # Re-render manifest-driven curated PREVIEWS (generated/refs/<slug>/
+      # curated-preview.mdx) from the refreshed models — NOT the live content
+      # pages. The content/reference pages are hand-curated and authoritative;
+      # the generator is non-destructive. Previews are committed as a review aid
+      # and feed the drift gate below. (generate-refs above already refreshes the
+      # pinned GitHub source links on the live pages — that's the only content
+      # edit the automation makes.)
+      - name: Render curated previews
+        run: ./node_modules/.bin/tsx scripts/gen-curated.ts
+
+      # Refresh the JSDoc gap reports (generated/refs/<slug>/jsdoc-gaps.md) from
+      # the new models, and print the completeness dashboard into the run log.
+      # Report-only — no gate — so a low-JSDoc module never blocks the release PR.
+      - name: Refresh JSDoc gap reports
+        run: ./node_modules/.bin/tsx scripts/refgen/report-all.ts
+
+      - name: Detect changes
+        id: diff
+        run: |
+          # content/reference is included because the sync step refreshes the
+          # pinned GitHub source links on the curated pages when a release moves.
+          if [ -z "$(git status --porcelain generated/refs scripts/refgen/.cache.json content/reference)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No upstream changes — nothing to regenerate."
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          # Slugs whose artifacts changed, for the PR body. --untracked-files=all
+          # lists files inside a brand-new slug dir individually (git otherwise
+          # collapses an untracked dir to a single entry with no slug to extract).
+          git status --porcelain --untracked-files=all generated/refs \
+            | sed -E 's#.*generated/refs/([^/]+)/.*#\1#' \
+            | sort -u > changed-slugs.txt
+          echo "Changed: $(tr '\n' ' ' < changed-slugs.txt)"
+
+      - name: Open or update PR
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch=chore/regenerate-references
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout -B "$branch"
+          git add generated/refs scripts/refgen/.cache.json content/reference
+          git commit -m "docs: regenerate API references from upstream"
+          git push --force origin "$branch"
+
+          {
+            echo "Automated regeneration of \`generated/refs/\` from upstream source."
+            echo
+            echo "Repos updated (latest stable release moved):"
+            echo
+            sed 's/^/- /' changed-slugs.txt
+            echo
+            echo "Each repo's \`api-model.json\`, \`improvement-plan.md\`, curated preview, and \`scripts/refgen/.cache.json\` are updated together. The hand-curated \`content/reference/\` pages are authoritative and are NOT overwritten — the only edit the automation makes to them is refreshing the pinned GitHub source links to the new release (prose and structure untouched). Check the improvement plans for newly documented or removed upstream members to fold in by hand. Review the diff and merge."
+            echo
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > pr-body.md
+
+          if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')" ]; then
+            gh pr create --head "$branch" --base published \
+              --title "docs: regenerate API references from upstream" \
+              --body-file pr-body.md
+          else
+            echo "PR already open for $branch — force-push updated it."
+          fi
+
+      # Gate (runs last so the PR above is still opened): fail the job if a
+      # manifest references an unknown member (upstream renamed/removed it) or
+      # leaves a newly documented upstream member ungrouped. A red run signals a
+      # human needs to file the member into a manifest group or fix a stale key.
+      - name: Curated manifest gate
+        run: ./node_modules/.bin/tsx scripts/gen-curated.ts --check

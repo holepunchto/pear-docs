@@ -1,0 +1,380 @@
+---
+title: "bare-module-resolve"
+description: "Low-level module resolution algorithm for Bare"
+docType: reference
+schemaType: APIReference
+upstreamVersion: "1.12.4"
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-module-resolve`](https://github.com/holepunchto/bare-module-resolve) — Low-level module resolution algorithm for Bare.
+
+```sh
+npm i bare-module-resolve
+```
+
+## Usage
+
+For synchronous resolution:
+
+```js
+const resolve = require('bare-module-resolve')
+
+function readPackage(url) {
+  // Read and parse `url` if it exists, otherwise `null`
+}
+
+for (const resolution of resolve('./file.js', new URL('file:///directory/'), readPackage)) {
+  console.log(resolution)
+}
+```
+
+For asynchronous resolution:
+
+```js
+const resolve = require('bare-module-resolve')
+
+async function readPackage(url) {
+  // Read and parse `url` if it exists, otherwise `null`
+}
+
+for await (const resolution of resolve('./file.js', new URL('file:///directory/'), readPackage)) {
+  console.log(resolution)
+}
+```
+
+## API
+
+### Functions
+
+#### `resolve`
+
+```ts
+resolve(specifier: string, parentURL: URL, readPackage?: (url: URL) => JSON | null): Iterable<URL>
+```
+
+Resolve `specifier` relative to `parentURL`, which must be a WHATWG `URL` instance. `readPackage` is called with a `URL` instance for every package manifest to be read and must either return the parsed JSON package manifest, if it exists, or `null`. If `readPackage` returns a promise, synchronous iteration is not supported.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier to resolve, relative to `parentURL`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` that `specifier` is resolved against. |
+| `readPackage?` | `(url: URL) => JSON \| null` | — | Called with the `URL` of each package manifest to read; must return the parsed JSON manifest if it exists, or `null`. Returning a promise disables synchronous iteration. |
+
+**Returns** `Iterable<URL>` — Yields each candidate resolution `URL` in the order the algorithm tries them, for the caller to test (for example check it exists); if none resolve, iteration simply ends without yielding further values — it does not throw or return `null` for an unresolved specifier.
+
+**Throws**
+
+- `INVALID_MODULE_SPECIFIER` — the specifier (or a `node:`-protocol target) is not a valid module or package specifier: empty, a scoped package name missing the `/`, invalid characters, a relative-style `node:` specifier, an unmatched internal `#import` specifier, or a `file:` path containing an encoded `/` or `\`.
+- `INVALID_PACKAGE_TARGET` — a string target in a package's `"exports"` (or non-internal `"imports"`) map does not start with `./`.
+- `PACKAGE_PATH_NOT_EXPORTED` — the requested subpath is not defined by the package's `"exports"` map.
+- `PACKAGE_IMPORT_NOT_DEFINED` — an internal `#specifier` is not defined by the package's `"imports"` map.
+- `UNSUPPORTED_ENGINE` — the package's `"engines"` requirement is not satisfied by the corresponding `opts.engines` entry.
+
+#### `resolve.builtinTarget`
+
+```ts
+resolve.builtinTarget(packageSpecifier: string, packageVersion: string, target: ConditionalSpecifier, opts?: ResolveOptions): Resolver
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `packageSpecifier` | `string` | — | — |
+| `packageVersion` | `string` | — | — |
+| `target` | `ConditionalSpecifier` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+#### `resolve.directory(dirname: string, parentURL: URL, opts?: ResolveOptions): Resolver`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `dirname` | `string` | — | — |
+| `parentURL` | `URL` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+#### `resolve.file`
+
+```ts
+resolve.file(filename: string, parentURL: URL, isIndex: boolean, opts?: ResolveOptions): Resolver
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `filename` | `string` | — | — |
+| `parentURL` | `URL` | — | — |
+| `isIndex` | `boolean` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+#### `resolve.module(specifier: string, parentURL: URL, opts?: ResolveOptions): Resolver`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | — |
+| `parentURL` | `URL` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+#### `resolve.package(packageSpecifier: string, parentURL: URL, opts?: ResolveOptions): Resolver`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `packageSpecifier` | `string` | — | — |
+| `parentURL` | `URL` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+#### `resolve.packageExports`
+
+```ts
+resolve.packageExports(packageURL: URL, subpath: string, packageExports: ExportsMap, opts?: ResolveOptions): Resolver
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `packageURL` | `URL` | — | — |
+| `subpath` | `string` | — | — |
+| `packageExports` | `ExportsMap` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+#### `resolve.packageImports(specifier: string, parentURL: URL, opts?: ResolveOptions): Resolver`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | — |
+| `parentURL` | `URL` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+#### `resolve.packageImportsExports`
+
+```ts
+resolve.packageImportsExports(matchKey: string, matchObject: ImportsMap | ExportsMap, packageURL: URL, isImports: boolean, opts?: ResolveOptions): Resolver
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `matchKey` | `string` | — | — |
+| `matchObject` | `ImportsMap` \| `ExportsMap` | — | — |
+| `packageURL` | `URL` | — | — |
+| `isImports` | `boolean` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+#### `resolve.packageSelf`
+
+```ts
+resolve.packageSelf(packageName: string, packageSubpath: string, parentURL: URL, opts?: ResolveOptions): Resolver
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `packageName` | `string` | — | — |
+| `packageSubpath` | `string` | — | — |
+| `parentURL` | `URL` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+#### `resolve.packageTarget`
+
+```ts
+resolve.packageTarget(packageURL: URL, target: ConditionalSpecifier, patternMatch: string, isImports: boolean, opts?: ResolveOptions): Resolver
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `packageURL` | `URL` | — | — |
+| `target` | `ConditionalSpecifier` | — | — |
+| `patternMatch` | `string` | — | — |
+| `isImports` | `boolean` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+#### `resolve.preresolved`
+
+```ts
+resolve.preresolved(specifier: string, resolutions: ResolutionsMap, parentURL: URL, opts?: ResolveOptions): Resolver
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | — |
+| `resolutions` | `ResolutionsMap` | — | — |
+| `parentURL` | `URL` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+#### `resolve.url(url: string, parentURL: URL, opts?: ResolveOptions): Resolver`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `string` | — | — |
+| `parentURL` | `URL` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
+
+### Constants and variables
+
+#### `resolve.constants`
+
+```ts
+resolve.constants: {
+    UNRESOLVED: number
+    YIELDED: number
+    RESOLVED: number
+  }
+```
+
+### Types
+
+#### `resolve.Builtins`
+
+```ts
+type Builtins = ConditionalSpecifier[]
+```
+
+#### `resolve.ConditionalSpecifier`
+
+```ts
+type ConditionalSpecifier = string | ConditionalSpecifier[] | { [condition: string]: ConditionalSpecifier }
+```
+
+#### `resolve.Conditions`
+
+```ts
+type Conditions = string[] | Conditions[]
+```
+
+#### `resolve.Engines`
+
+```ts
+type Engines = { [name: string]: string }
+```
+
+#### `resolve.ExportsMap`
+
+```ts
+type ExportsMap = ImportsMap
+```
+
+#### `resolve.ImportsMap`
+
+```ts
+type ImportsMap = { [specifier: string]: ConditionalSpecifier }
+```
+
+#### `resolve.ResolutionsMap`
+
+```ts
+type ResolutionsMap = { [href: string]: ImportsMap }
+```
+
+#### `resolve.Resolver`
+
+```ts
+type Resolver = Generator<
+    { package: URL } | { resolution: URL },
+    number,
+    void | boolean | JSON | null
+  >
+```
+
+#### `ResolveOptions`
+
+```ts
+interface ResolveOptions {
+  builtinProtocol?: string
+  builtins?: Builtins
+  conditions?: Conditions
+  defer?: string[]
+  deferredProtocol?: string
+  engines?: Engines
+  extensions?: string[]
+  imports?: ImportsMap
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
+}
+```
+
+## `bare-module-resolve/errors`
+
+### ModuleResolveError
+
+#### `code: string`
+
+#### `ModuleResolveError.INVALID_MODULE_SPECIFIER(msg: string): ModuleResolveError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `ModuleResolveError` — A new `ModuleResolveError` with code `INVALID_MODULE_SPECIFIER`.
+
+#### `ModuleResolveError.INVALID_PACKAGE_TARGET(msg: string): ModuleResolveError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `ModuleResolveError` — A new `ModuleResolveError` with code `INVALID_PACKAGE_TARGET`.
+
+#### `ModuleResolveError.PACKAGE_IMPORT_NOT_DEFINED(msg: string): ModuleResolveError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `ModuleResolveError` — A new `ModuleResolveError` with code `PACKAGE_IMPORT_NOT_DEFINED`.
+
+#### `ModuleResolveError.PACKAGE_PATH_NOT_EXPORTED(msg: string): ModuleResolveError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `ModuleResolveError` — A new `ModuleResolveError` with code `PACKAGE_PATH_NOT_EXPORTED`.
+
+#### `ModuleResolveError.UNSUPPORTED_ENGINE(msg: string): ModuleResolveError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | The error message. |
+
+**Returns** `ModuleResolveError` — A new `ModuleResolveError` with code `UNSUPPORTED_ENGINE`.
+
+## See also
+
+- Builds on `bare-semver`.
+- The algorithm's steps are exposed on `resolve` for fine-grained use (`resolve.module`, `resolve.url`, `resolve.preresolved`, `resolve.deferred`, `resolve.package`, `resolve.packageSelf`, `resolve.packageExports`, `resolve.packageImports`, `resolve.packageImportsExports`, `resolve.packageTarget`, `resolve.builtinTarget`, `resolve.file`, and `resolve.directory`); they're subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.2.3`) when declaring the module dependency. See the [repository README](https://github.com/holepunchto/bare-module-resolve) for each step's signature and options.
+- A low-level building block. Most applications resolve modules implicitly through the [runtime](/reference/bare/runtime) or bundle with [`bare-pack`](/reference/modules/bare-modules); reach for this directly only when implementing tooling.
+- Paired with [`bare-addon-resolve`](/reference/bare/modules/bare-addon-resolve) — the matching algorithm for native addons — and used by [`bare-module-traverse`](/reference/bare/modules/bare-module-traverse) to walk a whole module graph.
+- [Bare modules](/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/reference/bare/runtime) — the runtime these modules extend.
