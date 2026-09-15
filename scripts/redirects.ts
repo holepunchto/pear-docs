@@ -169,6 +169,8 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // Stale Google-indexed paths from pre-reorganisation structure.
   // /pear-runtime/* was the old top-level section for runtime docs.
   out.push({ from: '/pear-runtime/api/', to: '/pear/reference/pear/api/' });
+  // Still linked live from holepunchto/pear-stage-distill's README — 404s without this.
+  out.push({ from: '/pear-runtime/cli/', to: '/pear/reference/pear/cli/' });
   out.push({ from: '/pear-runtime/troubleshooting/', to: '/pear/how-to/troubleshooting/' });
   // FAQ content was explanation-shaped; consistent with /reference/faq/ -> /pear/explanation/.
   out.push({ from: '/pear-runtime/faq/', to: '/pear/explanation/' });
@@ -315,7 +317,12 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/getting-started/from-a-template'), to: withSlash('/p2p/getting-started/from-a-template') });
   out.push({ from: withSlash('/getting-started/from-a-template/start-from-hello-pear-bare'), to: withSlash('/p2p/getting-started/from-a-template/start-from-hello-pear-bare') });
   out.push({ from: withSlash('/getting-started/from-a-template/start-from-hello-pear-electron'), to: withSlash('/p2p/getting-started/from-a-template/start-from-hello-pear-electron') });
+  // Added to published after this Phase 6 snapshot was taken; landed here via
+  // the published merge rather than the original reorg pass.
+  out.push({ from: withSlash('/getting-started/from-a-template/start-from-hello-pear-react-native'), to: withSlash('/p2p/getting-started/from-a-template/start-from-hello-pear-react-native') });
   out.push({ from: withSlash('/how-to'), to: withSlash('/pear/how-to') });
+  // Added to published after this Phase 6 snapshot was taken.
+  out.push({ from: withSlash('/how-to/add-typed-rpc-to-a-pear-app'), to: withSlash('/p2p/how-to/add-typed-rpc-to-a-pear-app') });
   out.push({ from: withSlash('/how-to/browse-commands-with-the-interactive-menu'), to: withSlash('/pear/how-to/browse-commands-with-the-interactive-menu') });
   out.push({ from: withSlash('/how-to/blind-peering'), to: withSlash('/pear/how-to/blind-peering') });
   out.push({ from: withSlash('/how-to/blind-peering/add-blind-peering-to-a-chat-app'), to: withSlash('/pear/how-to/blind-peering/add-blind-peering-to-a-chat-app') });
@@ -324,6 +331,8 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm'), to: withSlash('/p2p/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm') });
   out.push({ from: withSlash('/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht'), to: withSlash('/p2p/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht') });
   out.push({ from: withSlash('/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app'), to: withSlash('/pear/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app') });
+  // Added to published after this Phase 6 snapshot was taken.
+  out.push({ from: withSlash('/how-to/connect-to-peers/relay-connections-through-a-blind-relay'), to: withSlash('/p2p/how-to/connect-to-peers/relay-connections-through-a-blind-relay') });
   out.push({ from: withSlash('/how-to/manage-identity'), to: withSlash('/pear/how-to/manage-identity') });
   out.push({ from: withSlash('/how-to/manage-identity/add-keet-identity-to-a-chat-app'), to: withSlash('/pear/how-to/manage-identity/add-keet-identity-to-a-chat-app') });
   out.push({ from: withSlash('/how-to/manage-identity/create-a-portable-identity-with-keet-identity-key'), to: withSlash('/p2p/how-to/manage-identity/create-a-portable-identity-with-keet-identity-key') });
@@ -352,6 +361,9 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/how-to/run-on-native/handle-app-suspension'), to: withSlash('/bare/how-to/run-on-native/handle-app-suspension') });
   out.push({ from: withSlash('/how-to/run-on-native/type-a-native-rpc-bridge'), to: withSlash('/bare/how-to/run-on-native/type-a-native-rpc-bridge') });
   out.push({ from: withSlash('/how-to/store-and-replicate'), to: withSlash('/p2p/how-to/store-and-replicate') });
+  // Added to published after this Phase 6 snapshot was taken.
+  out.push({ from: withSlash('/how-to/store-and-replicate/build-a-multiwriter-app-with-autobase'), to: withSlash('/p2p/how-to/store-and-replicate/build-a-multiwriter-app-with-autobase') });
+  out.push({ from: withSlash('/how-to/store-and-replicate/build-a-multiwriter-database-with-autobee'), to: withSlash('/p2p/how-to/store-and-replicate/build-a-multiwriter-database-with-autobee') });
   out.push({ from: withSlash('/how-to/store-and-replicate/replicate-and-persist-with-hypercore'), to: withSlash('/p2p/how-to/store-and-replicate/replicate-and-persist-with-hypercore') });
   out.push({ from: withSlash('/how-to/store-and-replicate/share-append-only-databases-with-hyperbee'), to: withSlash('/p2p/how-to/store-and-replicate/share-append-only-databases-with-hyperbee') });
   out.push({ from: withSlash('/how-to/store-and-replicate/work-with-many-hypercores-using-corestore'), to: withSlash('/p2p/how-to/store-and-replicate/work-with-many-hypercores-using-corestore') });
@@ -383,6 +395,8 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/reference/bare/modules/bare-collabora'), to: withSlash('/bare/reference/bare/modules/bare-collabora') });
   out.push({ from: withSlash('/reference/bare/modules/bare-console'), to: withSlash('/bare/reference/bare/modules/bare-console') });
   out.push({ from: withSlash('/reference/bare/modules/bare-crypto'), to: withSlash('/bare/reference/bare/modules/bare-crypto') });
+  // Added to published after this Phase 6 snapshot was taken.
+  out.push({ from: withSlash('/reference/bare/modules/bare-dgram'), to: withSlash('/bare/reference/bare/modules/bare-dgram') });
   out.push({ from: withSlash('/reference/bare/modules/bare-dns'), to: withSlash('/bare/reference/bare/modules/bare-dns') });
   out.push({ from: withSlash('/reference/bare/modules/bare-encoding'), to: withSlash('/bare/reference/bare/modules/bare-encoding') });
   out.push({ from: withSlash('/reference/bare/modules/bare-env'), to: withSlash('/bare/reference/bare/modules/bare-env') });
@@ -444,6 +458,8 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/reference/bare/modules/bare-zlib'), to: withSlash('/bare/reference/bare/modules/bare-zlib') });
   out.push({ from: withSlash('/reference/bare/runtime'), to: withSlash('/bare/reference/bare/runtime') });
   out.push({ from: withSlash('/reference/building-blocks/autobase'), to: withSlash('/p2p/reference/building-blocks/autobase') });
+  // Added to published after this Phase 6 snapshot was taken.
+  out.push({ from: withSlash('/reference/building-blocks/autobee'), to: withSlash('/p2p/reference/building-blocks/autobee') });
   out.push({ from: withSlash('/reference/building-blocks/hyperbee'), to: withSlash('/p2p/reference/building-blocks/hyperbee') });
   out.push({ from: withSlash('/reference/building-blocks/hypercore'), to: withSlash('/p2p/reference/building-blocks/hypercore') });
   out.push({ from: withSlash('/reference/building-blocks/hyperdht'), to: withSlash('/p2p/reference/building-blocks/hyperdht') });
@@ -454,6 +470,8 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/reference/ci-and-release/pear-ci-action'), to: withSlash('/pear/reference/ci-and-release/pear-ci-action') });
   out.push({ from: withSlash('/reference/helpers/compact-encoding'), to: withSlash('/p2p/reference/helpers/compact-encoding') });
   out.push({ from: withSlash('/reference/helpers/corestore'), to: withSlash('/p2p/reference/helpers/corestore') });
+  // Added to published after this Phase 6 snapshot was taken.
+  out.push({ from: withSlash('/reference/helpers/hrpc'), to: withSlash('/p2p/reference/helpers/hrpc') });
   out.push({ from: withSlash('/reference/helpers/localdrive'), to: withSlash('/p2p/reference/helpers/localdrive') });
   out.push({ from: withSlash('/reference/helpers/mirrordrive'), to: withSlash('/p2p/reference/helpers/mirrordrive') });
   out.push({ from: withSlash('/reference/helpers/protomux'), to: withSlash('/p2p/reference/helpers/protomux') });
@@ -463,6 +481,9 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/reference/pear/api'), to: withSlash('/pear/reference/pear/api') });
   out.push({ from: withSlash('/reference/pear/cli'), to: withSlash('/pear/reference/pear/cli') });
   out.push({ from: withSlash('/reference/pear/configuration'), to: withSlash('/pear/reference/pear/configuration') });
+  // Added to published after this Phase 6 snapshot was taken.
+  out.push({ from: withSlash('/reference/pear/mobile'), to: withSlash('/pear/reference/pear/mobile') });
+  out.push({ from: withSlash('/reference/pear/mobile-boot-control'), to: withSlash('/pear/reference/pear/mobile-boot-control') });
   out.push({ from: withSlash('/reference/pear/runtime'), to: withSlash('/pear/reference/pear/runtime') });
   out.push({ from: withSlash('/reference/tools/drives'), to: withSlash('/p2p/reference/tools/drives') });
   out.push({ from: withSlash('/reference/tools/hyperbeam'), to: withSlash('/p2p/reference/tools/hyperbeam') });
