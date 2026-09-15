@@ -14,9 +14,36 @@
 
 /* Narrow the docs sidebar so it does not pull out too far when expanded.
    Fumadocs defaults to 268px (md:layout breakpoint); 240px keeps the tree
-   readable while reclaiming horizontal space for content. */
-[data-sidebar-placeholder] {
-  --fd-sidebar-width: 240px !important;
+   readable while reclaiming horizontal space for content.
+   Must target `#nd-docs-layout` (the grid container that actually reads
+   this var in its `grid-template-columns` calc, see below) rather than
+   `[data-sidebar-placeholder]` — that's a grid ITEM inside it, and a custom
+   property set on a descendant never flows back up to an ancestor, so that
+   selector never took effect. Scoped to `md` and up to mirror Fumadocs' own
+   `md:layout:[--fd-sidebar-width:268px]` gate — set unconditionally, it
+   reserved a real 240px grid column below `md` too even though the sidebar
+   itself is `max-md:hidden` there, shoving mobile's main content 240px
+   to the right. */
+@media (min-width: 768px) {
+  #nd-docs-layout {
+    --fd-sidebar-width: 240px !important;
+  }
+}
+
+/* Fumadocs' docs grid sizes its `sidebar`/`toc` columns as
+   `minmax(<width>, 1fr)`, and `main` as a fixed `calc(--fd-layout-width -
+   sidebar - toc)` (default `--fd-layout-width` is 97rem/1552px) — so past a
+   ~1552px-wide viewport, the "1fr" max on the sidebar/toc tracks lets them
+   balloon to soak up the extra space instead of `main`, e.g. to ~765px each
+   on a 2560px screen, while `main` stays pinned at its fixed width. Content
+   ends up unevenly spread with a lopsided gap instead of the tree/TOC
+   staying the fixed, readable width they have at 1440px. Swapping which
+   track carries the `1fr` — fixed sidebar/toc, fluid main — keeps
+   sidebar/TOC exactly as wide as they are at 1440px on any wider screen and
+   lets the extra space go to the content column instead, where it's
+   actually useful. */
+#nd-docs-layout {
+  grid-template-columns: var(--fd-sidebar-col) minmax(0, 1fr) var(--fd-toc-width) !important;
 }
 
 /* Below `md`, our own wordmark + product-nav bar (rendered as a plain sibling
