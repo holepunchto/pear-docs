@@ -24,7 +24,7 @@ Integrating for updates means five things land in your app: the [`pear-mobile`](
 
 <Callout type="warn">
 
-This page wires the runtime and the updater UI only. It does **not** cover the full mobile release ceremony—staging a payload, provisioning it, and multisig-gating production. That reuses [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment)'s stage/provision/multisig model with a different build step, documented for mobile in the upstream [`hello-pear-react-native` README](https://github.com/holepunchto/hello-pear-react-native#deployments). Read [Version management](https://github.com/holepunchto/hello-pear-react-native#version-management) in that same README before you ship a real release—it carries the mobile-specific sequencing rules for how native and OTA version numbers must interleave.
+This page wires the runtime and the updater UI only. It does **not** cover the full mobile release ceremony—staging a payload, provisioning it, and multisig-gating production. See [Deploy your mobile application](/pear/how-to/operate-an-app/manual-deployment/mobile) for the mobile "Build the OTA payload" step and how it plugs into [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment)'s shared stage/provision/multisig model. Read [Version management](https://github.com/holepunchto/hello-pear-react-native#version-management) in the upstream [`hello-pear-react-native` README](https://github.com/holepunchto/hello-pear-react-native) before you ship a real release—it carries the mobile-specific sequencing rules for how native and OTA version numbers must interleave.
 
 It also does not cover the raw [`bare-kit`](/bare/reference/bare/bare-kit) primitive on its own—a bare `Worklet` and an `IPC` channel with no updater, storage, or boot control attached. See [Embed Bare in a React Native app](/bare/how-to/run-on-native/embed-bare-in-react-native) for that lower layer.
 
@@ -32,11 +32,12 @@ It also does not cover the raw [`bare-kit`](/bare/reference/bare/bare-kit) primi
 
 ## Before you begin
 
-- An existing React Native or Expo app, with its own screens and navigation already in place.
+- An existing React Native or Expo app, with its own screens and navigation already in place, built on Expo SDK ≥ 55.
+- Node.js ≥ 20.19.4, Xcode ≥ 26.2 (iOS ≥ 15.1), and Android ≥ API 29—see [Deploy your mobile application](/pear/how-to/operate-an-app/manual-deployment/mobile#before-you-begin) for where these floors come from.
 - [`bare-pack`](https://github.com/holepunchto/bare-pack) and [`react-native-bare-kit`](/bare/reference/bare/bare-kit) available—`pear-mobile` runs your worklet through the latter, and you'll bundle for it with the former.
 - The [Pear CLI](/pear/reference/pear/cli) installed, to mint an `upgrade` link with `pear touch`.
 
-<include>../../../_snippets/_install-pear-cli-callout.mdx</include>
+<include>../../../../_snippets/_install-pear-cli-callout.mdx</include>
 
 ## What you're adding
 
@@ -77,7 +78,7 @@ npm install hyperswarm corestore graceful-goodbye bare-path bare-storage which-r
 
 This is the same `workers/main.js` every `hello-pear-*` template ships, and the same one the [Electron guide](/pear/how-to/operate-an-app/integrate-pear-ota/electron) uses—one file that owns the `PearRuntime` instance and nothing else. Keep it dedicated to the updater: if your app has (or grows) its own peer-to-peer logic, put that in a second worker so update traffic never blocks it.
 
-<include>../../../_snippets/_hello-pear-worker-source-callout.mdx</include>
+<include>../../../../_snippets/_hello-pear-worker-source-callout.mdx</include>
 
 Nothing in that worker needs to change for mobile. Two places outside the excerpt above—`workers/main.js` line 1, and lines 8–13 in [the canonical copy](https://github.com/holepunchto/pear-docs/blob/preview/examples/getting-started/hello-pear-electron/workers/main.js#L1)—do the platform-specific part for you. Line 1's `require('pear-runtime')` resolves to `pear-mobile` instead of the desktop package through `hello-pear-worker`'s own conditional `imports` map—see [Two entry points, one package](/pear/reference/pear/mobile#two-entry-points-one-package). And lines 8–13 branch on `isBareKit` from [`which-runtime`](https://www.npmjs.com/package/which-runtime) to pick the right offset into `Bare.argv`—mobile's worklet argv has no executable-path or entry-path slot the way a spawned desktop process does, so the same file produces a correct config object on both sides without edits.
 
