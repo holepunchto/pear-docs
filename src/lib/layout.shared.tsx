@@ -1,5 +1,4 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import Image from 'next/image';
 
 export const gitConfig = {
   user: 'holepunchto',
@@ -7,20 +6,17 @@ export const gitConfig = {
   branch: 'published',
 };
 
-export function baseOptions(): BaseLayoutProps {
+export function baseOptions(product: 'pear' | 'bare' | 'p2p' = 'pear'): BaseLayoutProps {
+  const isBare = product === 'bare';
+  const isP2p = product === 'p2p';
   return {
     nav: {
-      title: (
-        <>
-          <Image
-            src="/pear-1.svg"
-            alt="Logo"
-            width={24}
-            height={24}
-          />
-          Pear Docs
-        </>
-      ),
+      // No title/logo here — [[...slug]]/layout.tsx renders the wordmark
+      // once, in its own persistent top bar. This `nav` object still feeds
+      // DocsLayout's sidebar-top title row and its mobile-only subnav
+      // header; leaving `title` unset empties both rather than duplicating
+      // the same logo a second (and third) time.
+      url: isBare ? '/bare' : isP2p ? '/p2p' : '/',
     },
     githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
   };

@@ -1,0 +1,379 @@
+---
+title: "bare-rpc"
+description: "librpc ABI compatible RPC for Bare"
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "1.3.8"
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-rpc`](https://github.com/holepunchto/bare-rpc) — librpc ABI compatible RPC for Bare.
+
+```sh
+npm i bare-rpc
+```
+
+## Usage
+
+```js
+import RPC from 'bare-rpc'
+
+// On one end
+const rpc = new RPC(stream, (req) => {
+  if (req.command === 42) {
+    console.log(req.data.toString()) // ping
+    req.reply('pong')
+  }
+})
+
+// On the other end
+const req = rpc.request(42)
+req.send('ping')
+
+const replyBuffer = await req.reply()
+console.log(replyBuffer.toString()) // pong
+```
+
+## API
+
+### RPC
+
+#### `new RPC(stream: Duplex, onrequest: (req: RPCIncomingRequest) => void | Promise<void>)`
+
+Create an RPC instance using a duplex `stream`. `onrequest` is an optional callback run when a remote request is received. This is where processing and responding to an RPC request happens. `onrequest` receives a `RPCIncomingRequest` as an argument.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `stream` | `Duplex` | — | The duplex stream to frame RPC messages over, identifying each method by a unique command number — an IPC pipe, a TCP socket, or a [Bare Kit](/bare/reference/bare/bare-kit) worklet channel. |
+| `onrequest` | `(req: RPCIncomingRequest) => void \| Promise<void>` | — | Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to. Defaults to a no-op. |
+
+#### `event(command: number): RPCOutgoingEvent`
+
+Create an outgoing event for `command`. Events are one-way: unlike `request()` they carry no id and expect no reply, so the remote end receives them as an `RPCIncomingEvent`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `command` | `number` | — | A unique number identifying the event; the remote end differentiates events by it. |
+
+**Returns** `RPCOutgoingEvent` — an `RPCOutgoingEvent`; call `send()` on it to dispatch the one-way event.
+
+#### `idle: boolean`
+
+Whether there are no requests or responses currently in flight. Useful for determining when it is safe to tear down the underlying stream.
+
+#### `request(command: number): RPCOutgoingRequest`
+
+Create a request for `command`. `command` is a unique number that should be used to differentiate different requests on the remote end.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `command` | `number` | — | A unique number identifying the request; the remote end differentiates requests by it. |
+
+**Returns** `RPCOutgoingRequest` — an `RPCOutgoingRequest`; call `send()` on it to dispatch the request and `await reply()` for the response.
+
+### RPCIncomingEvent
+
+#### `new RPCIncomingEvent(rpc: RPC, command: number, data: Buffer)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the event arrived on. |
+| `command` | `number` | — | The command number the event was sent with. |
+| `data` | `Buffer` | — | The payload buffer sent with the event. |
+
+#### `RPCIncomingEvent.command: number`
+
+The command that the request was created with. A command is a unique number.
+
+#### `RPCIncomingEvent.data: Buffer | null`
+
+The data buffer sent with the request.
+
+#### `RPCIncomingEvent.rpc: RPC`
+
+### RPCOutgoingEvent
+
+#### `new RPCOutgoingEvent(rpc: RPC, command: number)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance to send the event on. |
+| `command` | `number` | — | The command number to send. |
+
+#### `RPCOutgoingEvent.command: number`
+
+The command that the request was created with. A command is a unique number.
+
+#### `RPCOutgoingEvent.rpc: RPC`
+
+#### `RPCOutgoingEvent.send(data?: Buffer | string | null, encoding?: BufferEncoding): void`
+
+Send the request with the provided `data`. `data` can be a buffer or a string which will be encoded using `encoding`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data?` | `Buffer` \| `string` \| `null` | — | The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. |
+| `encoding?` | `BufferEncoding` | — | The encoding used when `data` is a string (defaults to `utf8`). |
+
+**Throws**
+
+- `ALREADY_SENT` — the event has already been sent.
+
+#### `RPCOutgoingEvent.sent: boolean`
+
+A boolean for whether the request has been sent.
+
+### RPCIncomingRequest
+
+#### `new RPCIncomingRequest(rpc: RPC, id: number, command: number, data: Buffer)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the request arrived on. |
+| `id` | `number` | — | The request id, used to correlate the reply with the request. |
+| `command` | `number` | — | The command number the request was sent with. |
+| `data` | `Buffer` | — | The payload buffer sent with the request. |
+
+#### `RPCIncomingRequest.command: number`
+
+The command that the request was created with. A command is a unique number.
+
+#### `createRequestStream(opts?: ReadableOptions): RPCIncomingStream`
+
+Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for receiving the request's streamed data.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `ReadableOptions` | — | Options for the returned [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_RECEIVED` — the request has already been received.
+
+#### `createResponseStream(opts?: WritableOptions): RPCOutgoingStream`
+
+Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending the streamed reply to the request.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `WritableOptions` | — | Options for the returned [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_SENT` — a response has already been sent for this request.
+
+#### `RPCIncomingRequest.data: Buffer | null`
+
+The data buffer sent with the request.
+
+#### `RPCIncomingRequest.id: number`
+
+#### `RPCIncomingRequest.received: boolean`
+
+A boolean for whether the request has received a reply.
+
+#### `reply(data?: Buffer | string | null, encoding?: BufferEncoding): void`
+
+Send a reply to the request. `data` may be a buffer or a string encoded using `encoding`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data?` | `Buffer` \| `string` \| `null` | — | The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. |
+| `encoding?` | `BufferEncoding` | — | The encoding used when `data` is a string (defaults to `utf8`). |
+
+**Throws**
+
+- `ALREADY_SENT` — a response has already been sent for this request.
+
+#### `RPCIncomingRequest.rpc: RPC`
+
+#### `RPCIncomingRequest.sent: boolean`
+
+A boolean for whether the request has been sent.
+
+### RPCOutgoingRequest
+
+#### `new RPCOutgoingRequest(rpc: RPC, id: number, command: number)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance to send the request on. |
+| `id` | `number` | — | The request id, used to correlate the reply with the request. |
+| `command` | `number` | — | The command number to send. |
+
+#### `RPCOutgoingRequest.command: number`
+
+The command that the request was created with. A command is a unique number.
+
+#### `createRequestStream(opts?: WritableOptions): RPCOutgoingStream`
+
+Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending data with the request.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `WritableOptions` | — | Options for the returned [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_SENT` — the request has already been sent.
+
+#### `createResponseStream(opts?: ReadableOptions): RPCIncomingStream`
+
+Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for receiving data in reply to the request.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `ReadableOptions` | — | Options for the returned [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_RECEIVED` — the response has already been received.
+
+#### `RPCOutgoingRequest.id: number`
+
+#### `RPCOutgoingRequest.received: boolean`
+
+A boolean for whether the request has received a reply.
+
+#### `reply(encoding?: BufferEncoding): Promise<Buffer | string | null>`
+
+Await the reply from the remote end to the request. `encoding` can be defined for decoding the response `data` buffer back into a string.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `encoding?` | `BufferEncoding` | — | If given, decodes the reply payload to a string using this encoding; omit to receive the raw `Buffer`. |
+
+**Returns** `Promise<Buffer | string | null>` — a promise that resolves with the remote end's reply payload, or rejects with the channel's teardown error if it closes before a reply arrives.
+
+**Throws**
+
+- `ALREADY_RECEIVED` — a reply is already being received for this request.
+
+#### `RPCOutgoingRequest.rpc: RPC`
+
+#### `RPCOutgoingRequest.send(data?: Buffer | string | null, encoding?: BufferEncoding): void`
+
+Send the request with the provided `data`. `data` can be a buffer or a string which will be encoded using `encoding`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data?` | `Buffer` \| `string` \| `null` | — | The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. |
+| `encoding?` | `BufferEncoding` | — | The encoding used when `data` is a string (defaults to `utf8`). |
+
+**Throws**
+
+- `ALREADY_SENT` — the request has already been sent.
+
+#### `RPCOutgoingRequest.sent: boolean`
+
+A boolean for whether the request has been sent.
+
+### RPCIncomingStream
+
+#### `RPCIncomingStream`
+
+```ts
+new RPCIncomingStream(rpc: RPC, request: RPCIncomingRequest | RPCOutgoingRequest, type: typeof constants.type.REQUEST | typeof constants.type.RESPONSE, opts?: ReadableOptions)
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the stream belongs to. |
+| `request` | `RPCIncomingRequest` \| `RPCOutgoingRequest` | — | The request the stream carries data for. |
+| `type` | `typeof constants.type.REQUEST` \| `typeof constants.type.RESPONSE` | — | Whether the stream carries the request body (`constants.type.REQUEST`) or the response body (`constants.type.RESPONSE`). |
+| `opts?` | `ReadableOptions` | — | Options for the underlying [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream. |
+
+### RPCOutgoingStream
+
+#### `RPCOutgoingStream`
+
+```ts
+new RPCOutgoingStream(rpc: RPC, request: RPCIncomingRequest | RPCOutgoingRequest, type: typeof constants.type.REQUEST | typeof constants.type.RESPONSE, opts?: WritableOptions)
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the stream belongs to. |
+| `request` | `RPCIncomingRequest` \| `RPCOutgoingRequest` | — | The request the stream carries data for. |
+| `type` | `typeof constants.type.REQUEST` \| `typeof constants.type.RESPONSE` | — | Whether the stream carries the request body (`constants.type.REQUEST`) or the response body (`constants.type.RESPONSE`). |
+| `opts?` | `WritableOptions` | — | Options for the underlying [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream. |
+
+## `bare-rpc/errors`
+
+### RPCError
+
+#### `RPCError.ALREADY_RECEIVED(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.ALREADY_SENT(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.CHANNEL_CLOSED(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.UNKNOWN_MESSAGE(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+## See also
+
+- Builds on `bare-stream`.
+- Pairs with [`hyperschema`](https://github.com/holepunchto/hyperschema) and [`compact-encoding`](/p2p/reference/helpers/compact-encoding) to generate typed message codecs.
+- It's pure JavaScript. For the end-to-end pattern with generated types, see [Type a native RPC bridge](/bare/how-to/run-on-native/type-a-native-rpc-bridge).
+- [Bare modules](/bare/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

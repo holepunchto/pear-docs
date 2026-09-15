@@ -13,6 +13,6 @@ server-oriented assumptions and its bundled standard library. The
 equivalents to ease porting; packages with native addons need to target
 Bare's addon API instead of Node's N-API.
 
-Reference: https://docs.pears.com/reference/bare/runtime/
+Reference: https://docs.pears.com/bare/reference/bare/runtime/
 Explanation of why Bare exists and when to use it standalone:
-https://docs.pears.com/explanation/bare-runtime/
+https://docs.pears.com/bare/explanation/bare-runtime/

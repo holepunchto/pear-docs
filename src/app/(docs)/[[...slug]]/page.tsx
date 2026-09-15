@@ -37,7 +37,15 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
   const jsonLd = buildJsonLdGraph(page, seoState, seoConfig);
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full} tableOfContent={{style: 'clerk'}}>
+    <DocsPage
+      toc={page.data.toc}
+      full={page.data.full}
+      tableOfContent={{ style: 'clerk' }}
+      // The default xl:pt-14 (56px) assumes no separate header sits above the
+      // grid; our own top bar (layout.tsx) already gives the page visual
+      // separation via its border, so the built-in top padding is excess.
+      className="pt-4 md:pt-6 xl:pt-6"
+    >
       {jsonLd ? <DocsJsonLd data={jsonLd} /> : null}
       {/*
         The platform version dropdown sits beside the <h1> rather than in the

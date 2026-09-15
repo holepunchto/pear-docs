@@ -20,7 +20,7 @@ const execFile = promisify(execFileCb);
 const ORG = 'holepunchto';
 const OUT_JSON = 'docs/bare-modules-research.json';
 const OUT_MD = 'docs/bare-modules-research.md';
-const CATALOG = 'content/reference/modules/bare-modules.mdx';
+const CATALOG = 'content/bare/reference/modules/bare-modules.mdx';
 
 // Scope: every holepunch repo whose name matches `bare-*` and is a library or
 // build-tool module. EXCLUDE drops the native-integration kits and their

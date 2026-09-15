@@ -10,4 +10,4 @@ append causal nodes to local cores; Autobase linearizes that graph into an
 eventually consistent order, and an `apply` handler materializes a
 deterministic view — often into a Hyperbee.
 
-Reference: https://docs.pears.com/reference/building-blocks/autobase/
+Reference: https://docs.pears.com/p2p/reference/building-blocks/autobase/

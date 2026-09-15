@@ -33,7 +33,12 @@ import { renderCuratedPage } from './refgen/render-curated';
 
 const LAYOUTS_DIR = 'scripts/refgen/layouts';
 const REFS_DIR = 'generated/refs';
-const CONTENT_ROOT = 'content/reference';
+// Since the Phase 6 physical reorg (docs/plans/PEAR-BARE-SPLIT-PITCH.md),
+// reference pages live under content/{pear,bare}/reference/ instead of a
+// single content/reference/. Every manifest today targets a building-block/
+// helper (all `product: p2p`), but search all three roots so this doesn't
+// silently stop finding a page if that ever changes.
+const CONTENT_ROOTS = ['content/p2p/reference', 'content/bare/reference', 'content/pear/reference'];
 
 /** Slugs that have a layout manifest. */
 function manifestSlugs(): string[] {
@@ -43,12 +48,20 @@ function manifestSlugs(): string[] {
     .sort();
 }
 
-/** Locate <slug>.mdx under content/reference (for --write). */
-function findContentPage(slug: string, dir = CONTENT_ROOT): string | null {
+/** Locate <slug>.mdx under content/{pear,bare}/reference (for --write). */
+function findContentPage(slug: string): string | null {
+  for (const root of CONTENT_ROOTS) {
+    const hit = findContentPageInDir(slug, root);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function findContentPageInDir(slug: string, dir: string): string | null {
   for (const e of readdirSync(dir)) {
     const p = join(dir, e);
     if (statSync(p).isDirectory()) {
-      const hit = findContentPage(slug, p);
+      const hit = findContentPageInDir(slug, p);
       if (hit) return hit;
     } else if (e === `${slug}.mdx`) {
       return p;
