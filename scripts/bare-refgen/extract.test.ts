@@ -227,3 +227,29 @@ test('a thin class shape block also renders a layout describe override (was sile
   const { mdx } = renderPage(model, { describe: { Err: 'Thrown when something goes wrong.' } });
   assert.match(mdx, /```ts\nclass Err \{[\s\S]*?\}\n```\n\nThrown when something goes wrong\./, 'description follows the shape block');
 });
+
+test('a static member already self-qualified with its class does not get double-qualified when a subpath re-export collides with it', () => {
+  // Mirrors bare-timers 3.2.3: `TimerError.INVALID_CALLBACK` is a static
+  // method (extract.ts already qualifies its name/signature with `TimerError.`)
+  // and `TimerError` is also re-exported whole from a `bare-timers/errors`
+  // subpath, so the same already-qualified heading is generated twice.
+  const invalidCallback: BareExport = {
+    key: 'TimerError.INVALID_CALLBACK', name: 'TimerError.INVALID_CALLBACK', kind: 'method', static: true,
+    signatures: ['TimerError.INVALID_CALLBACK(msg?: string): TimerError'],
+    description: null, deprecated: null, params: [], returns: null, throws: [], members: [],
+  };
+  const timerError: BareExport = {
+    key: 'TimerError', name: 'TimerError', kind: 'class', static: false,
+    signatures: ['TimerError'], description: null, deprecated: null,
+    params: [], returns: null, throws: [], members: [invalidCallback],
+  };
+  const model: BareModel = {
+    name: 'thing', version: '1.0.0', description: null, repoUrl: null,
+    npmUrl: '', minBare: null, native: false, dependencies: [], usage: null, extraSections: [],
+    exports: [timerError], subpaths: [{ name: 'thing/errors', exports: [timerError] }], generatedAt: null,
+  };
+  const { mdx } = renderPage(model, null);
+  assert.doesNotMatch(mdx, /TimerError\.TimerError\.INVALID_CALLBACK/, 'must not re-prepend the class name onto an already-qualified static member');
+  assert.match(mdx, /^#### `TimerError\.INVALID_CALLBACK\(msg\?: string\): TimerError`$/m, 'main module keeps the single-qualified heading');
+  assert.match(mdx, /^#### `errors\.TimerError\.INVALID_CALLBACK\(msg\?: string\): TimerError`$/m, 'subpath copy is disambiguated by the subpath scope, distinct from the main copy');
+});
