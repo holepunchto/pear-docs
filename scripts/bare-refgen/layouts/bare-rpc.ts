@@ -36,7 +36,7 @@ const layout: Layout = {
   // it's a genuine upstream `.d.ts` gap, not fixable here.
   seeAlso: [
     'Pairs with [`hyperschema`](https://github.com/holepunchto/hyperschema) and [`compact-encoding`](/p2p/reference/helpers/compact-encoding) to generate typed message codecs.',
-    "It's pure JavaScript. For the end-to-end pattern with generated types, see [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge).",
+    "It's pure JavaScript. For the end-to-end pattern with generated types, see [Type a native RPC bridge](/bare/how-to/run-on-native/type-a-native-rpc-bridge).",
   ],
   params: {
     'RPC.constructor': {

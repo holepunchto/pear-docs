@@ -18,7 +18,7 @@ const layout: Layout = {
     'It supports sparse replication, verified reads, optional block encryption, and session-based workflows ' +
     'for building higher-level local-first and peer-to-peer data structures.\n\n' +
     '<Callout type="info">\n' +
-    'For how Hypercore relates to Hyperblobs and Hyperdrive, see [From append-only logs to files](/explanation/from-logs-to-files).\n' +
+    'For how Hypercore relates to Hyperblobs and Hyperdrive, see [From append-only logs to files](/p2p/explanation/from-logs-to-files).\n' +
     '</Callout>',
 
   quickstart:
@@ -148,8 +148,8 @@ const layout: Layout = {
   },
 
   seeAlso: [
-    '[Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore)—pair a single core with peer discovery and replication.',
-    '[Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended pattern when one process manages multiple cores.',
+    '[Replicate and persist with Hypercore](/p2p/how-to/store-and-replicate/replicate-and-persist-with-hypercore)—pair a single core with peer discovery and replication.',
+    '[Work with many Hypercores using Corestore](/p2p/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended pattern when one process manages multiple cores.',
     '[Corestore](/p2p/reference/helpers/corestore)—helper reference for creating, naming, and co-replicating groups of Hypercores.',
     '[Hyperbee](/p2p/reference/building-blocks/hyperbee)—sorted key/value B-tree built directly on top of a Hypercore.',
     '[Hyperdrive](/p2p/reference/building-blocks/hyperdrive)—filesystem abstraction whose metadata and blob stores are Hypercore-backed.',

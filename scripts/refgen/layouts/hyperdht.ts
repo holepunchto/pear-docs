@@ -74,8 +74,8 @@ const layout: Layout = {
   },
 
   seeAlso: [
-    '[Connect two peers by key with HyperDHT](/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht)—step-by-step direct peer connection flow.',
-    '[Connect to many peers by topic with Hyperswarm](/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm)—higher-level topic discovery and connection management.',
+    '[Connect two peers by key with HyperDHT](/p2p/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht)—step-by-step direct peer connection flow.',
+    '[Connect to many peers by topic with Hyperswarm](/p2p/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm)—higher-level topic discovery and connection management.',
     '[Hyperswarm](/p2p/reference/building-blocks/hyperswarm)—higher-level swarm abstraction built on HyperDHT.',
     '[Secretstream](/p2p/reference/helpers/secretstream)—the Noise-encrypted stream layer that wraps all HyperDHT connections.',
     '[Hyperbeam](/p2p/reference/tools/hyperbeam)—one-to-one encrypted pipe CLI built on HyperDHT.',

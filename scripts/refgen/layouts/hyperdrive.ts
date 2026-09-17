@@ -17,7 +17,7 @@ const layout: Layout = {
     'typically backed by one [Corestore](/p2p/reference/helpers/corestore). Use this page for the instance surface; use the linked how-to ' +
     'guides for end-to-end replication flows.\n\n' +
     '<Callout type="info">\n' +
-    'For when to choose Hyperdrive over Hyperblobs or raw Hypercore, see [From append-only logs to files](/explanation/from-logs-to-files).\n' +
+    'For when to choose Hyperdrive over Hyperblobs or raw Hypercore, see [From append-only logs to files](/p2p/explanation/from-logs-to-files).\n' +
     '</Callout>',
 
   quickstart:
@@ -109,8 +109,8 @@ const layout: Layout = {
   },
 
   seeAlso: [
-    '[Create a full peer-to-peer filesystem with Hyperdrive](/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—end-to-end filesystem replication walkthrough.',
-    '[Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended pattern when one app manages multiple drives or related cores.',
+    '[Create a full peer-to-peer filesystem with Hyperdrive](/p2p/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—end-to-end filesystem replication walkthrough.',
+    '[Work with many Hypercores using Corestore](/p2p/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended pattern when one app manages multiple drives or related cores.',
     '[Localdrive](/p2p/reference/helpers/localdrive)—map a Hyperdrive-like API onto the local filesystem.',
     '[Mirrordrive](/p2p/reference/helpers/mirrordrive)—sync between Hyperdrive and other drive-like destinations.',
     '[Corestore](/p2p/reference/helpers/corestore)—shared storage and replication manager for drive metadata and content.',

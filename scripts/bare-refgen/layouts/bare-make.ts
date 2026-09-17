@@ -21,7 +21,7 @@ const layout: Layout = {
   seeAlso: [
     'It drives CMake with Ninja and Clang for a consistent toolchain across platforms, while staying plain CMake underneath so you can eject.',
     'The CLI is installed globally via `npm i -g bare-make`.',
-    '[Bundle a Bare app](/how-to/run-on-native/bundle-a-bare-app) — where addon compilation fits in packaging.',
+    '[Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app) — where addon compilation fits in packaging.',
     '[`bare-pack`](/bare/reference/modules/bare-modules) — bundles the compiled addons.',
   ],
   params: {

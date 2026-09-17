@@ -129,7 +129,7 @@ const layout: Layout = {
   },
 
   seeAlso: [
-    '[Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—manage the groups of cores that Autobase coordinates.',
+    '[Work with many Hypercores using Corestore](/p2p/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—manage the groups of cores that Autobase coordinates.',
     '[Corestore](/p2p/reference/helpers/corestore)—storage and replication manager typically used for Autobase system, writer, and view cores.',
     '[Hypercore](/p2p/reference/building-blocks/hypercore)—append-only log primitive that Autobase writers build on.',
     '[Hyperbee](/p2p/reference/building-blocks/hyperbee)—common materialized-view target for deterministic indexed state.',

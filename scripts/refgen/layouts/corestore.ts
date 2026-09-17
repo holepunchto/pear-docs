@@ -76,7 +76,7 @@ const layout: Layout = {
   },
 
   seeAlso: [
-    '[Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—the task-oriented guide that shows how to share one store across your app.',
+    '[Work with many Hypercores using Corestore](/p2p/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—the task-oriented guide that shows how to share one store across your app.',
     '[Hypercore](/p2p/reference/building-blocks/hypercore)—the append-only log type Corestore opens and co-replicates.',
     '[Hyperbee](/p2p/reference/building-blocks/hyperbee)—commonly layered on top of named Hypercores from one store.',
     '[Hyperdrive](/p2p/reference/building-blocks/hyperdrive)—usually keeps filesystem metadata and content stores inside one shared Corestore.',

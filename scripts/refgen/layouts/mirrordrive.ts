@@ -133,7 +133,7 @@ const layout: Layout = {
   },
 
   seeAlso: [
-    '[Create a full peer-to-peer filesystem with Hyperdrive](/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—end-to-end workflow that mirrors between Localdrive and Hyperdrive.',
+    '[Create a full peer-to-peer filesystem with Hyperdrive](/p2p/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—end-to-end workflow that mirrors between Localdrive and Hyperdrive.',
     '[Hyperdrive](/p2p/reference/building-blocks/hyperdrive)—exposes `drive.mirror(...)` and is the canonical distributed destination/source for Mirrordrive.',
     '[Localdrive](/p2p/reference/helpers/localdrive)—the local filesystem companion API most often paired with Mirrordrive.',
     '[Drives](/p2p/reference/tools/drives)—CLI tool whose `drives mirror` command is powered by the same sync logic.',
