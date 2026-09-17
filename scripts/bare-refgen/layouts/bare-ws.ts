@@ -21,9 +21,9 @@ import type { Layout } from '../layout';
 const layout: Layout = {
   groups: [],
   seeAlso: [
-    "It's pure JavaScript. Sockets are [`bare-stream`](/reference/bare/modules/bare-stream) duplex streams that perform the WebSocket handshake over an HTTP or HTTPS request.",
-    '[`bare-tcp`](/reference/bare/modules/bare-tcp) — the socket layer WebSocket connections run over.',
-    '[`bare-fetch`](/reference/bare/modules/bare-fetch) — a request/response HTTP client for the non-persistent case.',
+    "It's pure JavaScript. Sockets are [`bare-stream`](/bare/reference/bare/modules/bare-stream) duplex streams that perform the WebSocket handshake over an HTTP or HTTPS request.",
+    '[`bare-tcp`](/bare/reference/bare/modules/bare-tcp) — the socket layer WebSocket connections run over.',
+    '[`bare-fetch`](/bare/reference/bare/modules/bare-fetch) — a request/response HTTP client for the non-persistent case.',
   ],
   params: {
     'Socket.constructor': {

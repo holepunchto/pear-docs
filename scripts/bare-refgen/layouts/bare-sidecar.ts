@@ -14,7 +14,7 @@ const layout: Layout = {
   seeAlso: [
     "The instance extends a duplex stream: writing to it sends data to the sidecar over its IPC channel, data received from the sidecar is emitted as `'data'` events, and destroying the stream kills the sidecar process.",
     "The `'close'` event is emitted after the sidecar process has exited and its underlying stream has been destroyed.",
-    '[`bare-subprocess`](/reference/bare/modules/bare-subprocess) — the lower-level process API.',
+    '[`bare-subprocess`](/bare/reference/bare/modules/bare-subprocess) — the lower-level process API.',
     '[One core, many platforms](/explanation/bare-on-native) — running a Bare core beside a host.',
   ],
   params: {

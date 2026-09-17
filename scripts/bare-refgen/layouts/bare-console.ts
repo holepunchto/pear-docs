@@ -11,7 +11,7 @@ const labelDefault = { label: 'The label identifying the timer or counter (defau
 const layout: Layout = {
   seeAlso: [
     "It's pure JavaScript.",
-    '[`bare-inspector`](/reference/bare/modules/bare-inspector) — deeper debugging via the V8 inspector.',
+    '[`bare-inspector`](/bare/reference/bare/modules/bare-inspector) — deeper debugging via the V8 inspector.',
   ],
   params: {
     'Console.constructor': {

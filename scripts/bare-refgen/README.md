@@ -22,7 +22,7 @@ Selection is `TOP_N` most-downloaded ∪ `ALLOWLIST`, or everything above
 prints which modules bumped (the regenerate workflow uses this to regenerate only what changed).
 
 Pages are written to `generated/bare-refs/<name>.mdx` (a **preview** dir — the
-live `content/reference/bare/modules/*.mdx` pages are never touched). The
+live `content/bare/reference/bare/modules/*.mdx` pages are never touched). The
 deterministic intermediate is `generated/bare-refs/<name>/api-model.json`.
 
 ## How it works
@@ -107,7 +107,7 @@ page falls back to deterministic by-kind grouping (Functions, Classes, Types, �
 **Loop A — regenerate docs on release** (`.github/workflows/regenerate-bare-refs.yml`).
 Daily poll + manual dispatch. The poll (`poll.ts` vs `versions.json`) regenerates
 only modules whose npm `latest` moved and skips entirely when nothing changed;
-`gen:bare-refs --write` writes into `content/reference/bare/modules/` and
+`gen:bare-refs --write` writes into `content/bare/reference/bare/modules/` and
 non-destructively syncs each module's catalog row (reference link + stability
 badge). If the pages changed it opens a review PR into `published`. The generator always pulls the latest published tarball, so a
 new release shows up as a diff (new signatures, bumped source-link version tags).

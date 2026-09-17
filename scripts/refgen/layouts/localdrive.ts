@@ -13,8 +13,8 @@ const layout: Layout = {
 
   intro:
     '`Localdrive` exposes a local directory through an API that closely matches ' +
-    '[Hyperdrive](/reference/building-blocks/hyperdrive). It is the simplest way to mirror between ' +
-    'on-disk files and distributed drives with [Mirrordrive](/reference/helpers/mirrordrive). ' +
+    '[Hyperdrive](/p2p/reference/building-blocks/hyperdrive). It is the simplest way to mirror between ' +
+    'on-disk files and distributed drives with [Mirrordrive](/p2p/reference/helpers/mirrordrive). ' +
     'For upstream implementation details, see the ' +
     '[Localdrive repository](https://github.com/holepunchto/localdrive).',
 
@@ -74,9 +74,9 @@ const layout: Layout = {
 
   seeAlso: [
     '[Create a full peer-to-peer filesystem with Hyperdrive](/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—shows Localdrive mirroring in a full writer/reader flow.',
-    '[Hyperdrive](/reference/building-blocks/hyperdrive)—the distributed filesystem API Localdrive is designed to interoperate with.',
-    '[Mirrordrive](/reference/helpers/mirrordrive)—the sync engine that copies between Localdrive and Hyperdrive.',
-    '[Drives](/reference/tools/drives)—CLI tool that mirrors between local directories and Hyperdrives using the same drive-like interface.',
+    '[Hyperdrive](/p2p/reference/building-blocks/hyperdrive)—the distributed filesystem API Localdrive is designed to interoperate with.',
+    '[Mirrordrive](/p2p/reference/helpers/mirrordrive)—the sync engine that copies between Localdrive and Hyperdrive.',
+    '[Drives](/p2p/reference/tools/drives)—CLI tool that mirrors between local directories and Hyperdrives using the same drive-like interface.',
     '[Upstream Localdrive repository](https://github.com/holepunchto/localdrive)—source, releases, and implementation details.',
   ],
 };

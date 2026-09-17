@@ -8,7 +8,7 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   seeAlso: [
-    '[`bare-channel`](/reference/bare/modules/bare-channel) and [`bare-broadcast-channel`](/reference/bare/modules/bare-broadcast-channel)—higher-level message passing between threads.',
+    '[`bare-channel`](/bare/reference/bare/modules/bare-channel) and [`bare-broadcast-channel`](/bare/reference/bare/modules/bare-broadcast-channel)—higher-level message passing between threads.',
   ],
   params: {
     'Mutex.constructor': {

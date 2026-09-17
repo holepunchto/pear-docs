@@ -150,10 +150,10 @@ const layout: Layout = {
   seeAlso: [
     '[Replicate and persist with Hypercore](/how-to/store-and-replicate/replicate-and-persist-with-hypercore)—pair a single core with peer discovery and replication.',
     '[Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended pattern when one process manages multiple cores.',
-    '[Corestore](/reference/helpers/corestore)—helper reference for creating, naming, and co-replicating groups of Hypercores.',
-    '[Hyperbee](/reference/building-blocks/hyperbee)—sorted key/value B-tree built directly on top of a Hypercore.',
-    '[Hyperdrive](/reference/building-blocks/hyperdrive)—filesystem abstraction whose metadata and blob stores are Hypercore-backed.',
-    '[Compact encoding](/reference/helpers/compact-encoding)—binary encoding toolkit used to structure Hypercore block payloads.',
+    '[Corestore](/p2p/reference/helpers/corestore)—helper reference for creating, naming, and co-replicating groups of Hypercores.',
+    '[Hyperbee](/p2p/reference/building-blocks/hyperbee)—sorted key/value B-tree built directly on top of a Hypercore.',
+    '[Hyperdrive](/p2p/reference/building-blocks/hyperdrive)—filesystem abstraction whose metadata and blob stores are Hypercore-backed.',
+    '[Compact encoding](/p2p/reference/helpers/compact-encoding)—binary encoding toolkit used to structure Hypercore block payloads.',
   ],
 };
 

@@ -13,8 +13,8 @@ const layout: Layout = {
   status: 'stable',
 
   intro:
-    '`Hyperdrive` stores filesystem metadata in a [Hyperbee](/reference/building-blocks/hyperbee) and file contents in a blob store, ' +
-    'typically backed by one [Corestore](/reference/helpers/corestore). Use this page for the instance surface; use the linked how-to ' +
+    '`Hyperdrive` stores filesystem metadata in a [Hyperbee](/p2p/reference/building-blocks/hyperbee) and file contents in a blob store, ' +
+    'typically backed by one [Corestore](/p2p/reference/helpers/corestore). Use this page for the instance surface; use the linked how-to ' +
     'guides for end-to-end replication flows.\n\n' +
     '<Callout type="info">\n' +
     'For when to choose Hyperdrive over Hyperblobs or raw Hypercore, see [From append-only logs to files](/explanation/from-logs-to-files).\n' +
@@ -111,11 +111,11 @@ const layout: Layout = {
   seeAlso: [
     '[Create a full peer-to-peer filesystem with Hyperdrive](/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—end-to-end filesystem replication walkthrough.',
     '[Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended pattern when one app manages multiple drives or related cores.',
-    '[Localdrive](/reference/helpers/localdrive)—map a Hyperdrive-like API onto the local filesystem.',
-    '[Mirrordrive](/reference/helpers/mirrordrive)—sync between Hyperdrive and other drive-like destinations.',
-    '[Corestore](/reference/helpers/corestore)—shared storage and replication manager for drive metadata and content.',
-    '[Hyperbee](/reference/building-blocks/hyperbee)—Hyperdrive uses a Hyperbee internally for metadata indexing.',
-    '[Drives](/reference/tools/drives)—CLI tool for creating, mirroring, and seeding Hyperdrives.',
+    '[Localdrive](/p2p/reference/helpers/localdrive)—map a Hyperdrive-like API onto the local filesystem.',
+    '[Mirrordrive](/p2p/reference/helpers/mirrordrive)—sync between Hyperdrive and other drive-like destinations.',
+    '[Corestore](/p2p/reference/helpers/corestore)—shared storage and replication manager for drive metadata and content.',
+    '[Hyperbee](/p2p/reference/building-blocks/hyperbee)—Hyperdrive uses a Hyperbee internally for metadata indexing.',
+    '[Drives](/p2p/reference/tools/drives)—CLI tool for creating, mirroring, and seeding Hyperdrives.',
   ],
 };
 

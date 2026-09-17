@@ -14,8 +14,8 @@ const layout: Layout = {
 
   intro:
     '`compact-encoding` packages small binary codecs behind a shared encoder interface. ' +
-    'It is commonly paired with [Protomux](/reference/helpers/protomux) message schemas and shows up in ' +
-    '[Hypercore](/reference/building-blocks/hypercore) and other Holepunch protocol surfaces whenever structured ' +
+    'It is commonly paired with [Protomux](/p2p/reference/helpers/protomux) message schemas and shows up in ' +
+    '[Hypercore](/p2p/reference/building-blocks/hypercore) and other Holepunch protocol surfaces whenever structured ' +
     'binary payloads matter. For the upstream package and implementation details, see the ' +
     '[compact-encoding repository](https://github.com/holepunchto/compact-encoding).',
 
@@ -130,8 +130,8 @@ const layout: Layout = {
   ],
 
   seeAlso: [
-    '[Protomux](/reference/helpers/protomux)—the most common higher-level protocol surface built directly on compact-encoding schemas.',
-    '[Hypercore](/reference/building-blocks/hypercore)—accepts compact encodings for structured values and message payloads.',
+    '[Protomux](/p2p/reference/helpers/protomux)—the most common higher-level protocol surface built directly on compact-encoding schemas.',
+    '[Hypercore](/p2p/reference/building-blocks/hypercore)—accepts compact encodings for structured values and message payloads.',
     '[Upstream compact-encoding repository](https://github.com/holepunchto/compact-encoding)—source, releases, and implementation details.',
   ],
 };

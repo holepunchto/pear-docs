@@ -14,7 +14,7 @@ const layout: Layout = {
   status: 'stable',
 
   intro:
-    'HyperDHT is the lower-level keyed connection layer underneath [Hyperswarm](/reference/building-blocks/hyperswarm). ' +
+    'HyperDHT is the lower-level keyed connection layer underneath [Hyperswarm](/p2p/reference/building-blocks/hyperswarm). ' +
     'Use it when you want to dial a known public key directly or work with raw DHT discovery and record APIs.',
 
   quickstart:
@@ -76,12 +76,12 @@ const layout: Layout = {
   seeAlso: [
     '[Connect two peers by key with HyperDHT](/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht)—step-by-step direct peer connection flow.',
     '[Connect to many peers by topic with Hyperswarm](/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm)—higher-level topic discovery and connection management.',
-    '[Hyperswarm](/reference/building-blocks/hyperswarm)—higher-level swarm abstraction built on HyperDHT.',
-    '[Secretstream](/reference/helpers/secretstream)—the Noise-encrypted stream layer that wraps all HyperDHT connections.',
-    '[Hyperbeam](/reference/tools/hyperbeam)—one-to-one encrypted pipe CLI built on HyperDHT.',
-    '[Hypershell](/reference/tools/hypershell)—encrypted remote shell and file-copy tools built on HyperDHT.',
-    '[Hypertele](/reference/tools/hypertele)—TCP proxy CLI built on HyperDHT.',
-    '[Hyperssh](/reference/tools/hyperssh)—SSH and SSHFS access routed through HyperDHT.',
+    '[Hyperswarm](/p2p/reference/building-blocks/hyperswarm)—higher-level swarm abstraction built on HyperDHT.',
+    '[Secretstream](/p2p/reference/helpers/secretstream)—the Noise-encrypted stream layer that wraps all HyperDHT connections.',
+    '[Hyperbeam](/p2p/reference/tools/hyperbeam)—one-to-one encrypted pipe CLI built on HyperDHT.',
+    '[Hypershell](/p2p/reference/tools/hypershell)—encrypted remote shell and file-copy tools built on HyperDHT.',
+    '[Hypertele](/p2p/reference/tools/hypertele)—TCP proxy CLI built on HyperDHT.',
+    '[Hyperssh](/p2p/reference/tools/hyperssh)—SSH and SSHFS access routed through HyperDHT.',
   ],
 };
 

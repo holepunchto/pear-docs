@@ -439,6 +439,7 @@ function frontmatter(model: BareModel): string {
     `title: "${model.name}"`,
     `description: "${desc}"`,
     'docType: reference',
+    `product: ${FAMILY}`,
     'schemaType: APIReference',
     // `model.version` is already `pkg.version` resolved by fetchPackage() during
     // this run (see scripts/bare-refgen/index.ts) — bare SemVer, no leading

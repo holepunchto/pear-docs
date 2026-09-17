@@ -13,7 +13,7 @@ const layout: Layout = {
 
   intro:
     '`Secretstream` wraps a transport stream in a Noise handshake plus libsodium `secretstream` encryption. ' +
-    'It is the encrypted stream layer used underneath [Hyperswarm](/reference/building-blocks/hyperswarm) and ' +
+    'It is the encrypted stream layer used underneath [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) and ' +
     'related peer transports. For the upstream package, source, and release notes, see the ' +
     '[@hyperswarm/secret-stream repository](https://github.com/holepunchto/hyperswarm-secret-stream).',
 
@@ -78,9 +78,9 @@ const layout: Layout = {
   },
 
   seeAlso: [
-    '[Hyperswarm](/reference/building-blocks/hyperswarm)—the peer-discovery and connection layer that typically hands sockets to Secretstream.',
-    '[HyperDHT](/reference/building-blocks/hyperdht)—lower-level DHT whose direct keyed connections are also wrapped in Secretstream.',
-    '[Protomux](/reference/helpers/protomux)—multiplex higher-level protocols across one framed encrypted stream.',
+    '[Hyperswarm](/p2p/reference/building-blocks/hyperswarm)—the peer-discovery and connection layer that typically hands sockets to Secretstream.',
+    '[HyperDHT](/p2p/reference/building-blocks/hyperdht)—lower-level DHT whose direct keyed connections are also wrapped in Secretstream.',
+    '[Protomux](/p2p/reference/helpers/protomux)—multiplex higher-level protocols across one framed encrypted stream.',
     '[Upstream @hyperswarm/secret-stream repository](https://github.com/holepunchto/hyperswarm-secret-stream)—source, releases, and implementation details.',
   ],
 };

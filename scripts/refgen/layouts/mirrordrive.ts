@@ -14,8 +14,8 @@ const layout: Layout = {
 
   intro:
     '`Mirrordrive` computes diffs between two drive-like APIs and applies them efficiently. ' +
-    'It is the helper that powers sync flows between [Hyperdrive](/reference/building-blocks/hyperdrive) ' +
-    'and [Localdrive](/reference/helpers/localdrive), including the `drive.mirror(...)` shortcut on Hyperdrive. ' +
+    'It is the helper that powers sync flows between [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) ' +
+    'and [Localdrive](/p2p/reference/helpers/localdrive), including the `drive.mirror(...)` shortcut on Hyperdrive. ' +
     'A `MirrorDrive` instance is itself an async iterator, so iterating it with `for await (const diff of mirror)` ' +
     'drives the diff/copy pass and yields one diff object per entry. ' +
     'For source and release notes, see the [mirror-drive repository](https://github.com/holepunchto/mirror-drive).',
@@ -134,9 +134,9 @@ const layout: Layout = {
 
   seeAlso: [
     '[Create a full peer-to-peer filesystem with Hyperdrive](/how-to/stream-and-share-media/create-a-full-peer-to-peer-filesystem-with-hyperdrive)—end-to-end workflow that mirrors between Localdrive and Hyperdrive.',
-    '[Hyperdrive](/reference/building-blocks/hyperdrive)—exposes `drive.mirror(...)` and is the canonical distributed destination/source for Mirrordrive.',
-    '[Localdrive](/reference/helpers/localdrive)—the local filesystem companion API most often paired with Mirrordrive.',
-    '[Drives](/reference/tools/drives)—CLI tool whose `drives mirror` command is powered by the same sync logic.',
+    '[Hyperdrive](/p2p/reference/building-blocks/hyperdrive)—exposes `drive.mirror(...)` and is the canonical distributed destination/source for Mirrordrive.',
+    '[Localdrive](/p2p/reference/helpers/localdrive)—the local filesystem companion API most often paired with Mirrordrive.',
+    '[Drives](/p2p/reference/tools/drives)—CLI tool whose `drives mirror` command is powered by the same sync logic.',
     '[Upstream mirror-drive repository](https://github.com/holepunchto/mirror-drive)—source, releases, and implementation details.',
   ],
 };
