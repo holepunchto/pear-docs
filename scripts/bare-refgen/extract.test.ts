@@ -111,6 +111,25 @@ test('interface signatures flatten members inherited via `extends`, including ac
   assert.doesNotMatch(sig, /import\(/, 'inherited members render by name, not a resolved import(...) path');
 });
 
+test('collectMembers flattens members inherited via `extends` from a non-exported base interface', () => {
+  const ex = extract('interface-heritage.d.ts');
+
+  const timeout = byName(ex, 'Timeout')!;
+  const timeoutMembers = timeout.members.map((m) => m.name);
+  assert.equal(timeoutMembers.length, new Set(timeoutMembers).size, 'no member listed twice');
+  assert.ok(timeoutMembers.includes('refresh'), 'own member');
+  assert.ok(timeoutMembers.includes('ref'), 'inherited from non-exported base Task');
+  assert.ok(timeoutMembers.includes('unref'), 'inherited from non-exported base Task');
+  assert.ok(timeoutMembers.includes('hasRef'), 'inherited from non-exported base Task');
+
+  const immediate = byName(ex, 'Immediate')!;
+  assert.deepEqual(
+    immediate.members.map((m) => m.name).sort(),
+    ['hasRef', 'ref', 'unref'],
+    'Immediate declares no members of its own, only inherited ones',
+  );
+});
+
 test('@throws {TYPE} condition splits the type from the typeExpression, not the comment', () => {
   const ex = extract('throws.d.ts');
   const risky = byName(ex, 'risky')!;
