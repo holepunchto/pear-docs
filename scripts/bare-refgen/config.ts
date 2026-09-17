@@ -119,6 +119,9 @@ export const STABILITY_COLORS: Record<Stability, string> = {
  */
 export const STABILITY: Record<string, Stability> = {
   'pear-gunk': 'unstable',
+  // README (main, 2026-09-17) opens with "Experimental — Claude generated
+  // prototype"; not yet reflected in either catalog table.
+  'bare-mdns-discovery': 'experimental',
 };
 
 export function stabilityOf(name: string): Stability {

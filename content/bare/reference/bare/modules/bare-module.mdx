@@ -234,6 +234,8 @@ The WHATWG `URL` identifier of the module.
 
 Centralizes the configuration a graph of modules loads under — `cache`, `protocol`, `conditions`, `builtins`, `resolutions`, and a new `concurrency` limit — instead of it being threaded through every `Module.load()`/`.resolve()` call individually. `.import()` and `.link()` (plus their `Sync` forms) are its primary entry points.
 
+Exposed as `Module.Loader` on the module's default export, or importable directly from the `bare-module/loader` subpath.
+
 #### `new ModuleLoader(opts?: Options)`
 
 **Parameters**
@@ -325,6 +327,8 @@ The `ModuleProtocol` modules are resolved and read through, shared with every mo
 A map of preresolved imports with keys being serialized parent URLs and values being `"imports"` maps.
 
 ### ModuleProtocol
+
+Exposed as `Module.Protocol` on the module's default export, or importable directly from the `bare-module/protocol` subpath.
 
 #### `new ModuleProtocol(methods?: Partial<ModuleProtocol>, context?: ModuleProtocol)`
 
@@ -535,6 +539,17 @@ interface CreateRequireOptions {
 
 Options for `Module.createRequire()`.
 
+A module reaches as far as its `protocol` and its `builtins`, and a `referrer` hands on both. Narrowing one does not narrow the other, so code that should not reach what the referrer reaches must be given both:
+
+```js
+// The module reads only through `protocol`, but still reaches every builtin the
+// referrer was given.
+Module.createRequire(parentURL, { referrer, protocol })
+
+// The module reaches no further than what is passed here.
+Module.createRequire(parentURL, { referrer, protocol, builtins })
+```
+
 #### `LinkOptions`
 
 ```ts
@@ -576,7 +591,7 @@ interface RequireAddon {
 }
 ```
 
-The `require.addon` function: imports addon modules, with `host` and `resolve` attached.
+The `require.addon` function: imports addon modules, with `host` and `resolve` attached. `host` is the platform and architecture used when resolving addons, following the pattern `<platform>-<arch>[-<environment>]` — the same value as `Bare.Addon.host`.
 
 #### `Require`
 
@@ -591,6 +606,110 @@ interface Require {
 ```
 
 The function returned by `Module.createRequire()`: resolves and loads modules relative to its parent URL, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.
+
+## CommonJS modules
+
+### `require(specifier[, options])`
+
+Used to import JavaScript or JSON modules and local files. Relative paths such as `./`, `./foo`, `./bar/baz`, and `../foo` are resolved against the directory named by `__dirname`. POSIX-style paths are resolved in an OS-independent fashion, so the same relative paths work on Windows as they do on POSIX systems.
+
+Returns the exported module contents.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier to resolve and load. |
+| `options?` | [`RequireOptions`](#requireoptions) | — | Options for the call; `with.type` selects how the file should be loaded — one of `'script'`, `'module'`, `'json'`, `'bundle'`, `'addon'`, `'binary'`, or `'text'` (see [`Module.constants`](#moduleconstants)). A `type` that is not one of these is turned down rather than passed over, as is a `type` that is not a string. |
+
+### `require.main`
+
+The module representing the entry script where the program was launched.
+
+### `require.cache`
+
+The registry of loaded modules for this module's graph, keyed by URL `href`.
+
+### `require.resolve(specifier[, parentURL])`
+
+Uses the internal machinery of `require()` to resolve `specifier` relative to the URL `parentURL` and returns the path string.
+
+### `require.addon([specifier][, parentURL])`
+
+Also used to import modules, but loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
+
+Returns the exported module contents.
+
+A common pattern for writing an addon module is to use `require.addon()` as the JavaScript module's exports:
+
+```js
+module.exports = require.addon()
+```
+
+### `require.addon.host`
+
+The platform and architecture used when resolving addons, following the pattern `<platform>-<arch>[-<environment>]`. The same value as `Bare.Addon.host`.
+
+### `require.addon.resolve([specifier][, parentURL])`
+
+Resolves `specifier` relative to `parentURL` as an addon and returns the path string, using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
+
+### `require.asset(specifier[, parentURL])`
+
+Resolves `specifier` relative to `parentURL` and returns the path of the asset as a string. Can be used to load assets, for example to load `./foo.txt` from the local file system:
+
+```js
+const fs = require('bare-fs')
+const contents = fs.readFileSync(require.asset('./foo.txt'))
+```
+
+## ECMAScript modules
+
+### `import defaultExport, * as name, { export1, export2 as alias2 } from 'specifier' with { type: 'json' }`
+
+The static `import` declaration imports read-only live bindings that are exported by another module. The imported bindings are called _live_ bindings because they are updated by the module that exported the binding, but cannot be re-assigned by the importing module. For more on `import` syntax, see [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import).
+
+### `import.meta.url`
+
+The string representation of the URL for the current module.
+
+### `import.meta.main`
+
+A boolean representing whether the current module is the entry script where the program was launched.
+
+### `import.meta.cache`
+
+The registry of loaded modules for this module's graph, keyed by URL `href`. The same value as `require.cache` for a CommonJS module of the same graph.
+
+### `import.meta.dirname`
+
+The directory name of the current module.
+
+### `import.meta.filename`
+
+The file name of the current module.
+
+### `import.meta.resolve(specifier[, parentURL])`
+
+A module-relative resolution function that returns the URL string for the module. `specifier` is a string resolved relative to `parentURL`, a WHATWG `URL`.
+
+### `import.meta.addon([specifier][, parentURL])`
+
+Also used to import modules, but loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
+
+Returns the exported module contents.
+
+### `import.meta.addon.host`
+
+The platform and architecture used when resolving addons, following the pattern `<platform>-<arch>[-<environment>]`. The same value as `Bare.Addon.host`.
+
+### `import.meta.addon.resolve([specifier][, parentURL])`
+
+Resolves `specifier` relative to `parentURL` as an addon and returns the URL string, using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
+
+### `import.meta.asset(specifier[, parentURL])`
+
+Resolves `specifier` relative to `parentURL` and returns the URL of the asset as a string.
 
 ## Packages
 

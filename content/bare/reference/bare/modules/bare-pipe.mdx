@@ -557,8 +557,12 @@ interface CreateConnectionOptions {
 
 ```ts
 interface IPCAcceptable {
+  readonly [ipcHandle]: unknown
+  [ipcAccept]?(): void
 }
 ```
+
+The protocol an object must implement to be passed to `pipe.accept(target)` or received via `pipe.write(chunk, handle, ...)`; see [`IPCAcceptable` protocol](#ipcacceptable-protocol).
 
 #### `PipeConnectOptions`
 
@@ -689,6 +693,8 @@ Object containing internal state constants and handle type constants.
 
 Pipes created with `ipc: true` can transfer libuv handles (named pipes, TCP sockets, UDP sockets) to a peer alongside the byte stream. The peer receives a `'handle'` event for each transferred handle, in arrival order, before the corresponding `'data'` event.
 
+Handle passing needs a bidirectional socket on both ends, so the descriptors must come from a socket pair, such as `bare-tcp`'s `socketpair()`. The descriptors from `Pipe.pipe()` are a unidirectional pipe and cannot carry handles.
+
 Sender:
 
 ```js
@@ -736,7 +742,7 @@ class MyTarget {
 - `Symbol.for('bare.ipc.handle')` (required): A getter returning the underlying libuv handle (typically an `ArrayBuffer` whose first bytes are a `uv_stream_t` / `uv_udp_t`).
 - `Symbol.for('bare.ipc.accept')` (optional): A method invoked synchronously after the handle has been transferred. Use it to initialize per-handle state (for example address lookup).
 
-`Pipe`, `bare-tcp`'s `Socket`, and any compatible package implement this protocol natively, so a `bare-tcp` socket can be passed and received via `bare-pipe` IPC without any glue code.
+`Pipe`, `bare-tcp`'s `Socket`, `bare-dgram`'s `Socket`, and any compatible package implement this protocol natively, so a `bare-tcp` socket can be passed and received via `bare-pipe` IPC without any glue code.
 
 TypeScript users can import the `IPCAcceptable` interface from `bare-pipe` to type the protocol.
 
