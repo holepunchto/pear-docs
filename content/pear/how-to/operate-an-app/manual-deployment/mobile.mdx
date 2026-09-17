@@ -1,0 +1,158 @@
+---
+title: "Deploy your mobile application"
+description: "Operator how-to for the mobile release flow: build the OTA payload, mobile release lines, and store submissions—the steps that differ from the desktop Foundational Steps."
+docType: how-to
+product: pear
+schemaType: TechArticle
+---
+
+This is the mobile counterpart to [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment). It covers only what's different for a React Native or Expo app built on [`pear-mobile`](/pear/reference/pear/mobile).
+
+<Callout type="info">
+Steps 0, 1, 2, 5, 6, and 7 of the Foundational Steps—touch and seed, the upgrade link, version, stage, provision, and multisig—are unchanged from desktop. Follow those in [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment); this page covers only what's different: **step 3–4, Build the OTA payload**, plus mobile-only release-line and store-submission notes.
+</Callout>
+
+## Before you begin
+
+- An app already wired with [`pear-mobile`](/pear/reference/pear/mobile) via [Integrate Pear OTA into an existing mobile app](/pear/how-to/operate-an-app/integrate-pear-ota/mobile), or cloned from [`hello-pear-react-native`](/p2p/getting-started/from-a-template/start-from-hello-pear-react-native).
+- Node.js ≥ 20.19.4, Xcode ≥ 26.2 (iOS ≥ 15.1), Android ≥ API 29, and **Expo SDK ≥ 55**—see [Start from the hello-pear-react-native template](/p2p/getting-started/from-a-template/start-from-hello-pear-react-native#clone-and-run) for where the Node/Xcode/iOS/Android floors come from.
+
+<include>../../../../_snippets/_install-pear-cli-callout.mdx</include>
+
+## Build the OTA payload (steps 3–4)
+
+The `package.json`/`pear.json` checklist before a release:
+
+- `version` bumped and `pear.json` `updates.minver` set for this release
+- `upgrade` set to the release line's link
+- `author`, `license`, `description`, `name`, and `productName` set per brand
+- `app.json` icons, `ios.bundleIdentifier`, and `android.package` set per brand
+
+### Two bundles, not one
+
+A mobile release packs two separate bundles that are easy to conflate:
+
+- The **Bare worker bundle**—your peer-to-peer and updater logic—packed with [`bare-pack`](https://github.com/holepunchto/bare-pack) into `src/worker.bundle.js`. This is the same bundling step covered in [Integrate Pear OTA into an existing mobile app](/pear/how-to/operate-an-app/integrate-pear-ota/mobile#bundle-the-worker).
+- The **Metro bundle**—your React Native view code—produced by `react-native bundle`. This is the actual **OTA payload**: the file the updater downloads and the one native boot control swaps in.
+
+Only the Metro bundle ships as the OTA payload. The worker bundle is loaded locally by the worklet at every launch; it never travels over the wire as part of an update.
+
+Pack the worker for every host you ship (four here—one per `pear build` flag below):
+
+```sh skip="native-build"
+bare-pack --host ios-arm64 --host ios-arm64-simulator --host ios-x64-simulator --host android-arm64 --linked --out ./src/worker.bundle.js ./workers/main.js
+```
+
+Produce the Metro bundle per platform. React Native bundles are architecture-agnostic within a platform, so the same iOS output feeds all three `--ios-*` flags below:
+
+```sh skip="native-build"
+npx react-native bundle --platform ios --dev false --entry-file index.ts --bundle-output out/ios/HelloPear/app.bundle --assets-dest out/ios/HelloPear
+npx react-native bundle --platform android --dev false --entry-file index.ts --bundle-output out/android/HelloPear/app.bundle --assets-dest out/android/HelloPear
+```
+
+<Callout type="warn">
+The `HelloPear` leaf above is `package.json` `productName`, and it must match in three places: the `out/<platform>/HelloPear` paths here, the directory basename passed to each `pear build --<host>` flag below, and the name the app passes into the worker (see [`pear-mobile`'s `name` option](/pear/reference/pear/mobile#options)). `pear-build` validates the app basename against the package identity, but the worker's name must still match by hand—the updater looks for exactly `/by-arch/<host>/app/<productName>`.
+</Callout>
+
+Assemble the deployment directory with `pear build`. `--config` is mandatory for mobile targets—see [`pear build`](/pear/reference/pear/cli#pear-build):
+
+```sh skip="native-build"
+pear build \
+  --ios-arm64 ./out/ios/HelloPear \
+  --ios-arm64-simulator ./out/ios/HelloPear \
+  --ios-x64-simulator ./out/ios/HelloPear \
+  --android-arm64 ./out/android/HelloPear \
+  --package ./package.json \
+  --config ./pear.json \
+  --target dist
+```
+
+`--config` copies `pear.json` verbatim to `dist/pear.json` alongside `package.json`. That's how `updates.minver` (and any multisig config) travels with the payload; editing the `multisig` block derives a different production key, editing `minver` does not.
+
+The resulting deployment directory:
+
+```text skip="layout-illustration"
+dist/
+  package.json
+  pear.json
+  by-arch/
+    ios-arm64/app/HelloPear/app.bundle
+    ios-arm64-simulator/app/HelloPear/app.bundle
+    ios-x64-simulator/app/HelloPear/app.bundle
+    android-arm64/app/HelloPear/app.bundle
+```
+
+<Callout type="info">
+[`hello-pear-react-native`](https://github.com/holepunchto/hello-pear-react-native) wraps the three commands above behind one `npm run update` script (`bundle:bare` + `bundle:react-native` + `build` in sequence). Use that if you started from the template; the raw commands above are what it runs.
+</Callout>
+
+`dist/` is now a Deployment Directory in the standard `package.json` + `by-arch/<host>/app` shape—stage it exactly as on desktop, dry-run first:
+
+```sh skip="release-flow"
+pear stage --dry-run pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o dist
+```
+
+```sh skip="release-flow"
+pear stage pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o dist
+```
+
+## Release lines on mobile
+
+[Release lines](/pear/explanation/deployment-releasing-apps-p2p#release-lines) work as on desktop, except that `upgrade` is compiled into the native build: a line is pinned to the build its users have installed, and no OTA can move them to another line.
+
+| Release line | Native build its users run | OTA source |
+| --- | --- | --- |
+| development | locally-built release variant | stage link |
+| staging | internally distributed build | stage link |
+| rc | TestFlight / internal testing | multisig |
+| prerelease | TestFlight / internal testing | provision |
+| production | App Store / Play Store release | multisig |
+
+As on desktop, the `rc` line's `upgrade` points directly at the production multisig link, so `rc` builds receive no OTAs—each iteration is a new build. `prerelease` still updates over the air, from its provision link. A line's `minver` must never exceed the native version its users run, or every payload on that line is skipped.
+
+## Store submissions
+
+Beyond peer-to-peer distribution, native builds still need to reach the App Store and Play Store. This template carries no store configuration beyond `app.json` (`ios.bundleIdentifier`, `android.package`, icons); signing, provisioning profiles, and store metadata are project-specific, and there's no bundled EAS or CI release workflow—build from the generated `ios/` and `android/` projects with the usual platform tooling. See [Submit to app stores](/pear/how-to/operate-an-app/build-and-package/submit-to-app-stores#ios) for the iOS and Android walkthrough.
+
+Store review can take days, and a payload staged during that window must not require the unreleased native build—see [Native release](https://github.com/holepunchto/hello-pear-react-native#native-release) in the upstream README.
+
+## Troubleshooting
+
+### The app shows its version and nothing else
+
+The worklet died at boot. Check the system log—nothing surfaces in the Metro console. The usual cause is an invalid `upgrade` link in a build made outside `npm run ios` / `npm run android`, which skips the validation check.
+
+### The app did not update
+
+- Was `package.json` `version` bumped? An equal version is never selected.
+- Is the `upgrade` link correct, and is the drive seeded?
+- Was the worker bundle re-run after the worker changed—see [Two bundles, not one](#two-bundles-not-one)?
+- Is this a debug build? Debug always loads from Metro.
+- Was the app opened before the seeder came online? Peer lookups repeat roughly every 15 minutes—see [Seeder came online after the client](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#seeder-came-online-after-the-client).
+- On Android, was the app fully relaunched rather than reloaded? iOS re-reads the bundle URL on every reload; Android captures it when its `ReactHost` is first created—see [Runtime activation](/pear/reference/pear/mobile-boot-control#runtime-activation).
+
+### The app says "Update available on the App Store / Play Store"
+
+The payload's `minver` is higher than the running native version, so it was skipped by design—see [The `minver` gate](/pear/reference/pear/mobile#the-minver-gate).
+
+### An update downloaded but the app still runs the old bundle
+
+Native boot selection rejected it. Both `app.bundle` and `package.json` must be present under `pear-runtime/ota/`, and `ios/` and `android/` must have been regenerated with the current [boot-control plugin](/pear/reference/pear/mobile-boot-control) version.
+
+### The updater never sees a peer
+
+`pear seed <link> --json` prints `firewalled` and `natType`; `natType: "Random"` is symmetric NAT, which defeats holepunching. Seed from a host with a public address or cone NAT.
+
+## See also
+
+- [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment)—the shared Foundational Steps this page only diverges from at steps 3–4.
+- [Integrate Pear OTA into an existing mobile app](/pear/how-to/operate-an-app/integrate-pear-ota/mobile)—wire `pear-mobile` into an app before deploying it.
+- [Pear Mobile OTA](/pear/reference/pear/mobile)—the `pear-mobile` API and the `minver` gate.
+- [Mobile OTA Boot Control](/pear/reference/pear/mobile-boot-control)—boot-selection mechanics and version synchronization.
+- [Pear mobile application architecture](/pear/explanation/pear-mobile-architecture)—why mobile's release payload is shaped the way it is.
+- [Start from the hello-pear-react-native template](/p2p/getting-started/from-a-template/start-from-hello-pear-react-native)—a hands-on tour of this flow in the official boilerplate.
+- [`pear build`](/pear/reference/pear/cli#pear-build)—the mobile flags reference.
+- [Set up multisig](/pear/how-to/operate-an-app/multisig/set-up-multisig) and [Sign with multisig](/pear/how-to/operate-an-app/multisig/sign-with-multisig)—the production gate, identical on mobile.
+- [Release pipeline](/pear/explanation/deployment-releasing-apps-p2p)—the conceptual stage → provision → multisig picture this page's steps 0/1/2/5/6/7 reuse.
+- [Submit to app stores](/pear/how-to/operate-an-app/build-and-package/submit-to-app-stores)—the App Store and Google Play submission flows.
+- [Version management](https://github.com/holepunchto/hello-pear-react-native#version-management)—the full native/OTA sequencing rules, in the upstream `hello-pear-react-native` README.
