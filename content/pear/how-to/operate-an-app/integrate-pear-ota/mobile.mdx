@@ -36,7 +36,7 @@ It also does not cover the raw [`bare-kit`](/bare/reference/bare/bare-kit) primi
 - [`bare-pack`](https://github.com/holepunchto/bare-pack) and [`react-native-bare-kit`](/bare/reference/bare/bare-kit) available—`pear-mobile` runs your worklet through the latter, and you'll bundle for it with the former.
 - The [Pear CLI](/pear/reference/pear/cli) installed, to mint an `upgrade` link with `pear touch`.
 
-<include>../../../_snippets/_install-pear-cli-callout.mdx</include>
+<include>../../../../_snippets/_install-pear-cli-callout.mdx</include>
 
 ## What you're adding
 
@@ -61,7 +61,7 @@ npm install pear-mobile react-native-bare-kit framed-stream b4a
 
 `pear-mobile` is the runtime, `react-native-bare-kit` the worklet host it runs on, and `framed-stream`/`b4a` are what the JS thread uses to frame and decode the worklet's IPC duplex.
 
-The worker added in the next step brings its own requires, which have to resolve from this same `package.json`—[`bare-pack`](https://github.com/holepunchto/bare-pack) resolves them at pack time, from `node_modules`, not at runtime on the device:
+The worker added two steps from now brings its own requires, which have to resolve from this same `package.json`—[`bare-pack`](https://github.com/holepunchto/bare-pack) resolves them at pack time, from `node_modules`, not at runtime on the device:
 
 ```sh skip="install-instruction"
 npm install hyperswarm corestore graceful-goodbye bare-path bare-storage which-runtime
@@ -73,11 +73,44 @@ npm install hyperswarm corestore graceful-goodbye bare-path bare-storage which-r
 
 <Step>
 
+### First-time `package.json` and `pear.json` setup
+
+Mint a real `upgrade` link and set the app's starting version:
+
+```sh skip="release-flow"
+pear touch
+```
+
+```json skip="release-flow"
+{
+  "version": "1.0.0",
+  "upgrade": "pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o"
+}
+```
+
+Mobile has one more field, in a separate top-level `pear.json` next to `package.json`: `updates.minver`, the compatibility floor (see [The `minver` gate](/pear/reference/pear/mobile#the-minver-gate)). Give it a real value now—your current native version—rather than leaving it unset, so the gate has something meaningful to compare against from the first release:
+
+```json skip="release-flow"
+{
+  "updates": {
+    "minver": "1.0.0"
+  }
+}
+```
+
+The gate is not read locally: `pear-mobile` reads `/pear.json` out of the **incoming** update drive and compares that payload's `updates.minver` against the **running native** version. So this file is the floor you are declaring for the payload you are about to publish, not a check on the build you are running—and it travels inside the payload, which means it can't be retrofitted onto one that's already staged.
+
+Bump `updates.minver` whenever a *later* release changes the native/OTA contract—an OTA payload that assumes native code, ABI, or config a given binary doesn't have must be gated off from that binary; set it to that release's own version. Leaving it at its previous value is correct for any release that doesn't change that contract.
+
+</Step>
+
+<Step>
+
 ### Add the updater worker
 
 This is the same `workers/main.js` every `hello-pear-*` template ships, and the same one the [Electron guide](/pear/how-to/operate-an-app/integrate-pear-ota/electron) uses—one file that owns the `PearRuntime` instance and nothing else. Keep it dedicated to the updater: if your app has (or grows) its own peer-to-peer logic, put that in a second worker so update traffic never blocks it.
 
-<include>../../../_snippets/_hello-pear-worker-source-callout.mdx</include>
+<include>../../../../_snippets/_hello-pear-worker-source-callout.mdx</include>
 
 Nothing in that worker needs to change for mobile. Two places outside the excerpt above—`workers/main.js` line 1, and lines 8–13 in [the canonical copy](https://github.com/holepunchto/pear-docs/blob/preview/examples/getting-started/hello-pear-electron/workers/main.js#L1)—do the platform-specific part for you. Line 1's `require('pear-runtime')` resolves to `pear-mobile` instead of the desktop package through `hello-pear-worker`'s own conditional `imports` map—see [Two entry points, one package](/pear/reference/pear/mobile#two-entry-points-one-package). And lines 8–13 branch on `isBareKit` from [`which-runtime`](https://www.npmjs.com/package/which-runtime) to pick the right offset into `Bare.argv`—mobile's worklet argv has no executable-path or entry-path slot the way a spawned desktop process does, so the same file produces a correct config object on both sides without edits.
 
@@ -151,39 +184,6 @@ A release build has to decide, on every launch, whether to boot the JS bundle sh
 If your app isn't on Expo, there's no config-plugin path—the same `bundleURL()` / `getJSBundleFile()` override has to be applied by hand once, in your native project. [Plain React Native](/pear/reference/pear/mobile-boot-control#plain-react-native) has the condition both platforms check (a newer `version` in the downloaded OTA's `package.json` than the installed app version) and links the exact Swift and Kotlin the plugin generates, for reference.
 
 Skip this step and updates still download and stage correctly—they just never boot, because nothing on the native side ever looks for them.
-
-</Step>
-
-<Step>
-
-### First-time `package.json` and `pear.json` setup
-
-Mint a real `upgrade` link and set the app's starting version:
-
-```sh skip="release-flow"
-pear touch
-```
-
-```json skip="release-flow"
-{
-  "version": "1.0.0",
-  "upgrade": "pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o"
-}
-```
-
-Mobile has one more field, in a separate top-level `pear.json` next to `package.json`: `updates.minver`, the compatibility floor (see [The `minver` gate](/pear/reference/pear/mobile#the-minver-gate)). Give it a real value now—your current native version—rather than leaving it unset, so the gate has something meaningful to compare against from the first release:
-
-```json skip="release-flow"
-{
-  "updates": {
-    "minver": "1.0.0"
-  }
-}
-```
-
-The gate is not read locally: `pear-mobile` reads `/pear.json` out of the **incoming** update drive and compares that payload's `updates.minver` against the **running native** version. So this file is the floor you are declaring for the payload you are about to publish, not a check on the build you are running—and it travels inside the payload, which means it can't be retrofitted onto one that's already staged.
-
-Bump `updates.minver` whenever a *later* release changes the native/OTA contract—an OTA payload that assumes native code, ABI, or config a given binary doesn't have must be gated off from that binary; set it to that release's own version. Leaving it at its previous value is correct for any release that doesn't change that contract.
 
 </Step>
 
