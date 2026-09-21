@@ -200,6 +200,11 @@ export const pearTree: Node[] = [
           {
             type: 'folder',
             name: 'Integrate Pear OTA into an existing app',
+            index: {
+              type: 'page',
+              name: 'Integrate Pear OTA into an existing app',
+              url: '/pear/how-to/operate-an-app/integrate-pear-ota',
+            },
             children: [
               {
                 type: 'page',

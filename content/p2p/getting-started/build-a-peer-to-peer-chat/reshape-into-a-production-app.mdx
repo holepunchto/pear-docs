@@ -161,9 +161,9 @@ The chat worker (`workers/index.js`) owns the Corestore, swarm, and `ChatRoom`. 
 
 ### Updater worker
 
-The updater worker (`workers/main.js`) runs the [`pear-runtime`](/pear/reference/pear/runtime) OTA updater with its **own** swarm and Corestore, downloads new application drives from peers, and emits `updating`/`updated`. When the main process asks it to apply a downloaded release, it calls `pear.updater.applyUpdate()` and replies `pear:updateApplied`. Upstream ships this **exact** worker as the [`hello-pear-worker`](https://github.com/holepunchto/hello-pear-worker) package—here it's inlined so you can read what it does:
+The updater worker (`workers/main.js`) runs the [`pear-runtime`](/pear/reference/pear/runtime) OTA updater with its **own** swarm and Corestore, downloads new application drives from peers, and emits `updating`/`updated`. When the main process asks it to apply a downloaded release, it calls `pear.updater.applyUpdate()` and replies `pear:updateApplied` (or `pear:updateFailed <message>` if the apply throws). Upstream ships the same worker as the [`hello-pear-worker`](https://github.com/holepunchto/hello-pear-worker) package—here it's inlined so you can read what it does:
 
-```js file=<rootDir>/examples/getting-started/pear-chat/workers/main.js title="workers/main.js — updater worker" lineNumbers {10-13,15-22,24-27,30-36,40-41,49-56}
+```js file=<rootDir>/examples/getting-started/pear-chat/workers/main.js title="workers/main.js — updater worker" lineNumbers {10-13,15-22,24-27,30-36,40-41,49-60}
 ```
 
 Things to notice:
@@ -173,7 +173,7 @@ Things to notice:
 - **Lines 24–27:** the worker opens its **own** `FramedStream` pipe, [Corestore](/p2p/reference/helpers/corestore), and [Hyperswarm](/p2p/reference/building-blocks/hyperswarm), then constructs the `pear-runtime` updater over them—independent of the chat worker's swarm and store.
 - **Lines 30–36:** with updates enabled, it replicates the store on every connection and joins the update drive's discovery key as a client to pull new releases from seeding peers.
 - **Lines 40–41:** the updater's `updating` and `updated` events are forwarded to the main process as pipe messages.
-- **Lines 49–56:** on `pear:applyUpdate` from the main process, it awaits `pear.ready()`, applies the release, and replies `pear:updateApplied`.
+- **Lines 49–60:** on `pear:applyUpdate` from the main process, it awaits `pear.ready()`, applies the release, and replies `pear:updateApplied`—or, if `applyUpdate()` throws, replies `pear:updateFailed <message>` instead of leaving the caller waiting forever.
 
 The main process does **not** embed `new PearRuntime({ ... })`; like the template, it keeps the updater in its own Bare worker so update traffic never blocks the chat. It only spawns the worker, wraps it in a `FramedStream`, and relays `pear:event:updating` / `pear:event:updated`:
 
@@ -182,14 +182,14 @@ The main process does **not** embed `new PearRuntime({ ... })`; like the templat
 
 `applyUpdate` swaps the app on disk; `app:afterUpdate` relaunches the process. The renderer wires both into a button:
 
-```js file=<rootDir>/examples/getting-started/pear-chat/electron/main.js#L215-L247 title="electron/main.js — apply + relaunch"
+```js file=<rootDir>/examples/getting-started/pear-chat/electron/main.js#L215-L262 title="electron/main.js — apply + relaunch"
 ```
 
 ### Single-instance lock + deep links
 
 `requestSingleInstanceLock` makes a `pear-chat://` deep link from the OS go to the running instance instead of spawning a second one. `setAsDefaultProtocolClient(protocol)` registers the scheme:
 
-```js file=<rootDir>/examples/getting-started/pear-chat/electron/main.js#L253-L292 title="electron/main.js — single instance"
+```js file=<rootDir>/examples/getting-started/pear-chat/electron/main.js#L268-L307 title="electron/main.js — single instance"
 ```
 
 </Step>

@@ -67,6 +67,12 @@ The worker added two steps from now brings its own requires, which have to resol
 npm install hyperswarm corestore graceful-goodbye bare-path bare-storage which-runtime
 ```
 
+[`bare-pack`](https://github.com/holepunchto/bare-pack), which packs that worker into a bundle three steps from now, isn't one of the worker's own dependencies—install it separately as a dev dependency:
+
+```sh skip="install-instruction"
+npm install --save-dev bare-pack
+```
+
 `pear-mobile` resolves to a different export depending on which side of the worklet boundary requires it: a static `PearRuntime.run(filename, bundle, argv)` launcher from the React Native/Expo JS thread, and the same `PearRuntime` class shape as desktop's `pear-runtime` from inside the worklet. See [Two entry points, one package](/pear/reference/pear/mobile#two-entry-points-one-package) for the mechanics.
 
 </Step>
@@ -98,9 +104,15 @@ Mobile has one more field, in a separate top-level `pear.json` next to `package.
 }
 ```
 
-The gate is not read locally: `pear-mobile` reads `/pear.json` out of the **incoming** update drive and compares that payload's `updates.minver` against the **running native** version. So this file is the floor you are declaring for the payload you are about to publish, not a check on the build you are running—and it travels inside the payload, which means it can't be retrofitted onto one that's already staged.
+The gate is not read locally: `pear-mobile` reads `/pear.json` out of the **incoming** update drive and compares that payload's `updates.minver` against the `version` argv the JS thread passed when it started the worklet—see [Start the worklet from the JS thread](#start-the-worklet-from-the-js-thread) three steps from now. So this file is the floor you are declaring for the payload you are about to publish, not a check on the build you are running—and it travels inside the payload, which means it can't be retrofitted onto one that's already staged.
 
 Bump `updates.minver` whenever a *later* release changes the native/OTA contract—an OTA payload that assumes native code, ABI, or config a given binary doesn't have must be gated off from that binary; set it to that release's own version. Leaving it at its previous value is correct for any release that doesn't change that contract.
+
+<Callout type="warn">
+
+**"Native version" only holds until the first OTA activates.** `version` is read from `../package.json` inside the JS bundle that's *currently executing*—on a fresh native install that's the native build's own version, but once an OTA has activated, the running bundle is the OTA's bundle, and its baked-in `version` is the OTA's version, not the original binary's. The `minver` floor is really compared against whichever JS version last booted, not literally "the native binary" once your app has taken at least one OTA. Keep this in mind when reasoning about what a given `minver` bump actually gates.
+
+</Callout>
 
 </Step>
 
@@ -110,13 +122,36 @@ Bump `updates.minver` whenever a *later* release changes the native/OTA contract
 
 This is the same `workers/main.js` every `hello-pear-*` template ships, and the same one the [Electron guide](/pear/how-to/operate-an-app/integrate-pear-ota/electron) uses—one file that owns the `PearRuntime` instance and nothing else. Keep it dedicated to the updater: if your app has (or grows) its own peer-to-peer logic, put that in a second worker so update traffic never blocks it.
 
+Unlike on desktop, **how** you bring this file in matters here, because the specifier that picks `pear-mobile` over `pear-runtime` lives in a package's `imports` map, not in Node's normal resolution:
+
+```sh skip="install-instruction"
+npm install hello-pear-worker
+```
+
+`workers/main.js` becomes a one-line `require('hello-pear-worker')`. That package's own `imports` map is what redirects its internal `require('pear-runtime')` to `pear-mobile` on iOS/Android/simulator—see [Two entry points, one package](/pear/reference/pear/mobile#two-entry-points-one-package). This is the path to reach for first on mobile: skip it and `bare-pack` fails at pack time with `MODULE_NOT_FOUND: Cannot find module 'pear-runtime'`, because nothing in a bare app resolves `pear-runtime` to anything on iOS or Android.
+
+Prefer to see (and edit) every line instead? Vendor the file—but you take over the `imports` map yourself, in **your own** `package.json`, before it will pack:
+
+```json skip="release-flow"
+{
+  "imports": {
+    "pear-runtime": {
+      "ios": "pear-mobile",
+      "android": "pear-mobile",
+      "simulator": "pear-mobile",
+      "default": "pear-runtime"
+    }
+  }
+}
+```
+
+Either way—package or vendored copy—here's what's actually running:
+
 <include>../../../../_snippets/_hello-pear-worker-source-callout.mdx</include>
 
-Nothing in that worker needs to change for mobile. Two places outside the excerpt above—`workers/main.js` line 1, and lines 8–13 in [the canonical copy](https://github.com/holepunchto/pear-docs/blob/preview/examples/getting-started/hello-pear-electron/workers/main.js#L1)—do the platform-specific part for you. Line 1's `require('pear-runtime')` resolves to `pear-mobile` instead of the desktop package through `hello-pear-worker`'s own conditional `imports` map—see [Two entry points, one package](/pear/reference/pear/mobile#two-entry-points-one-package). And lines 8–13 branch on `isBareKit` from [`which-runtime`](https://www.npmjs.com/package/which-runtime) to pick the right offset into `Bare.argv`—mobile's worklet argv has no executable-path or entry-path slot the way a spawned desktop process does, so the same file produces a correct config object on both sides without edits.
+For this guide, don't add your own peer-to-peer logic to this file the way the callout above suggests for a from-scratch app—keep it dedicated to updates, as the intro to this step said, and start a second worker for anything else.
 
-<Callout type="info">
-If you vendor the file rather than `require('hello-pear-worker')`, the specifier `pear-runtime` no longer goes through that package's `imports` map—it resolves against **your** `package.json` instead. Add the same conditional mapping there, or require `pear-mobile` directly in the vendored copy.
-</Callout>
+Nothing in the worker's own code needs to change for mobile beyond the `imports` map above. One more place does the rest of the platform-specific work for you: lines 8–13 in [the canonical copy](https://github.com/holepunchto/pear-docs/blob/published/examples/getting-started/hello-pear-electron/workers/main.js#L8) branch on `isBareKit` from [`which-runtime`](https://www.npmjs.com/package/which-runtime) to pick the right offset into `Bare.argv`—mobile's worklet argv has no executable-path or entry-path slot the way a spawned desktop process does, so the same file produces a correct config object on both sides without edits.
 
 </Step>
 
@@ -127,7 +162,7 @@ If you vendor the file rather than `require('hello-pear-worker')`, the specifier
 There's no filesystem for a mobile worklet to load a file from at runtime, so the worker has to be packed into a bundle and imported as a JS module. [`bare-pack`](https://github.com/holepunchto/bare-pack) does the packing; target every platform you ship to in one combined bundle:
 
 ```console skip="native-build"
-bare-pack --linked --host ios --host android --out src/worker.bundle.js workers/main.js
+npx bare-pack --linked --host ios --host android --out src/worker.bundle.js workers/main.js
 ```
 
 `--linked` is required here—iOS and Android link native addons ahead of time rather than loading them from disk, so a bundle built without it fails on device. See [Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app#embeddable-bundle-with-bare-pack) for the rest of the flags. Wire this behind an npm script (the `hello-pear-react-native` template calls its version `bundle:bare`) so it's easy to remember.
@@ -151,12 +186,16 @@ In the component that owns your app's lifetime, start the worklet with the bundl
 
 `updatesEnabled`, `version`, `upgrade`, and the product name are passed as `argv`—the same four positional values `workers/main.js`'s `argv()` helper reads back out on the other side. There is no instance on this side of the boundary; `PearRuntime.run` is static. See [Starting the worklet (React Native side)](/pear/reference/pear/mobile#starting-the-worklet-react-native-side) for the full signature.
 
-The template keeps the framed pipe in a ref so the rest of the component can write to it—that ref is the only way to trigger an apply:
+This repo's copy of the example keeps the framed pipe in a ref so the rest of the component can write to it—that ref is the only way to trigger an apply:
 
 ```js file=<rootDir>/examples/getting-started/hello-pear-react-native/src/App.tsx#L23-L25 title="src/App.tsx" skip="example-import"
 ```
 
 Call that from whatever affordance you show when an update is ready. The worker turns `'pear:applyUpdate'` into `pear.updater.applyUpdate()` and answers on the same pipe.
+
+<Callout type="info">
+Upstream's [`hello-pear-react-native`](https://github.com/holepunchto/hello-pear-react-native/blob/main/src/App.tsx) holds that same write in `useState` rather than a ref, so a fresh clone of the template looks slightly different here. This repo's copy moved it to a ref to clear a `react-hooks` set-state-in-effect lint error; the behaviour is identical either way.
+</Callout>
 
 </Step>
 
@@ -193,12 +232,10 @@ Skip this step and updates still download and stage correctly—they just never 
 
 `applyUpdate()` stages the new bundle on disk, but activation isn't immediate—[Runtime activation](/pear/reference/pear/mobile-boot-control#runtime-activation) documents that the two platforms differ on when the staged bundle actually takes effect. iOS re-reads `bundleURL()` on reload, so a plain JS-level reload picks up a freshly staged OTA. Android caches `jsBundleFilePath` when the React host is created, so the same JS-only reload generally reuses the old path—there, the update takes effect on the next full process launch.
 
-The template does the JS-level reload, with no `Platform.OS` branch, on `pear:updateApplied`—an Expo [`reloadAppAsync()`](https://docs.expo.dev/versions/latest/sdk/expo/#reloadappasyncreason) call (lines 62–69 of the excerpt in *Wire the update and minver events*). That is the right shape to copy: one call, both platforms, no branching.
+The template does the JS-level reload, with no `Platform.OS` branch, on `pear:updateApplied`—an Expo [`reloadAppAsync()`](https://docs.expo.dev/versions/latest/sdk/expo/#reloadappasyncreason) call (the `reloadAppAsync` branch in the excerpt in *Wire the update and minver events*). One call, both platforms, no branching—but [Runtime activation](/pear/reference/pear/mobile-boot-control#runtime-activation) says to **treat a full restart as the requirement on both platforms**, not just Android. Be honest with yourself about what a JS-level reload actually buys on each side:
 
-Be honest with yourself about what it buys on each side, though. React Native has no built-in API that kills and respawns the process, so `reloadAppAsync()` is a JS reload, not a restart:
-
-- **iOS** — the update is live immediately after the reload.
-- **Android** — the reload is cosmetic for OTA purposes; the new bundle boots the next time the process starts cold. Either accept next-launch activation and tell the user the update applies on next open, or add a native restart module to force a cold start.
+- **iOS** re-reads `bundleURL()` on reload, so this JS reload picks up the freshly applied OTA in practice—but a JS reload isn't a guaranteed cold start, so don't design around it as a contract.
+- **Android** caches `jsBundleFilePath` when the React host is created, so the same JS-only reload generally reuses the old path—there, the new bundle boots on the next cold start, not this reload. Either accept next-launch activation and tell the user the update applies on next open, or add a native restart module to force a cold start on both platforms.
 
 Either way, don't branch the *call* per platform—branch only the message you show the user, if you show one.
 
@@ -208,10 +245,10 @@ Either way, don't branch the *call* per platform—branch only the message you s
 
 ## Verify the wiring
 
-- The worklet starts with no `error` event—`pear.on('error', console.error)` on the worker side stays silent, and your liveness message (or the template's `Hello from worker`) arrives on the JS thread. `console.log` inside the worklet goes to the system log, not the Metro console: use `xcrun simctl spawn booted log stream` on iOS or `adb logcat` on Android.
+- The worklet starts with no `error` event—`pear.updater.on('error', console.error)` on the worker side stays silent. Neither the worker nor the template's `App.tsx` logs the worker's `'Hello from worker'` liveness message, so temporarily add a `console.log` in the pipe's `'data'` handler if you want to confirm it arrives. `console.log` inside the worklet goes to the system log, not the Metro console: use `xcrun simctl spawn booted log stream` on iOS or `adb logcat` on Android.
 - The bundle is freshly rebuilt after **any** change to the worker or something it imports—rerun `bare-pack` and confirm the timestamp on `worker.bundle.js` moved, since a stale bundle gives no error and just runs old code.
 - `updating` → `updated` fire in a release build (not a dev/Metro build—those always load from Metro, so the update path isn't exercised) when a newer version is staged.
-- Raising a payload's `pear.json` `updates.minver` above the running native version actually produces the `minver-required` path—a store-update prompt in the UI—rather than a silent download.
+- Raising a payload's `pear.json` `updates.minver` above the currently-running JS bundle's own `version` (see the callout in *First-time `package.json` and `pear.json` setup*) actually produces the `minver-required` path—a store-update prompt in the UI—rather than a silent download.
 - The boot-control patch is present after `expo prebuild` (or your hand-applied equivalent): look for the `pear-runtime-react-native OTA v3` marker comment in `AppDelegate.swift` and `MainApplication.kt`.
 - A full restart after `applyUpdate()` actually boots the new bundle on both a release iOS build and a release Android build—not just one of them.
 
