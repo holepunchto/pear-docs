@@ -378,13 +378,34 @@ interface MemberRef {
   isStatic: boolean;
 }
 
-/** Instance members (`sym.members`) + static/namespace members (`sym.exports`). */
+/**
+ * Instance members (`sym.members`) + static/namespace members (`sym.exports`)
+ * + interface members inherited via `extends` from a base that has no export
+ * of its own.
+ *
+ * `sym.members`/`sym.exports` are the binder's SYNTACTIC tables — populated
+ * only from a declaration's own body, never a heritage clause — so a pattern
+ * like bare-timers' `interface Task {...}` (not exported) extended by
+ * `export interface Timeout extends Task {...}` silently drops `Task`'s
+ * members entirely: not surfaced standalone (nothing exports `Task`) and not
+ * flattened into `Timeout` either. `checker.getPropertiesOfType` resolves
+ * the full flattened type instead, so it sees inherited members regardless
+ * of the base's export status — same technique `interfaceShapeText` already
+ * uses for an interface's shape-block text; this applies it to the
+ * per-member list `collectMembers` produces for container types.
+ */
 function collectMembers(
   checker: ts.TypeChecker,
   sym: ts.Symbol,
   exclude: Set<ts.Symbol>,
 ): MemberRef[] {
   const out: MemberRef[] = [];
+  // Named, not by symbol identity: `checker.getPropertiesOfType` below can
+  // hand back a property symbol that isn't reference-equal to the matching
+  // entry in `sym.members` even for a member declared directly on `sym`
+  // (observed for `this`-returning methods) — a reference-keyed set would
+  // let those slip through as spurious duplicates.
+  const seen = new Set<string>();
   const push = (table: ts.SymbolTable | undefined, isStatic: boolean) => {
     table?.forEach((m, key) => {
       if (String(key).startsWith('__') && key !== CONSTRUCTOR_NAME) return; // internals
@@ -392,11 +413,25 @@ function collectMembers(
       const resolved = resolveAlias(checker, m);
       if (resolved === sym) return; // self-reference (`export { X }` inside X)
       if (exclude.has(resolved)) return; // promoted to a top-level sibling
+      seen.add(resolved.getName());
       out.push({ sym: resolved, isStatic });
     });
   };
   push(sym.members, false);
   push(sym.exports, true);
+
+  if (sym.declarations?.some(ts.isInterfaceDeclaration)) {
+    const type = checker.getDeclaredTypeOfSymbol(sym);
+    for (const prop of checker.getPropertiesOfType(type)) {
+      const name = prop.getName();
+      if (name.startsWith('__') || seen.has(name)) continue; // well-known symbol, or already collected above
+      const resolved = resolveAlias(checker, prop);
+      if (resolved === sym || exclude.has(resolved)) continue;
+      seen.add(name);
+      out.push({ sym: resolved, isStatic: false });
+    }
+  }
+
   return out;
 }
 

@@ -1,56 +1,9 @@
 # Reference generation improvement plan — compact-encoding
-Generated from `holepunchto/compact-encoding` at **v3.3.0** (`191fe35870`) on 2026-08-11T14:22:51.402Z.
+Generated from `holepunchto/compact-encoding` at **v3.5.0** (`e9d5ef9345`) on 2026-09-17T14:16:00.154Z.
 **Doc-completeness: 100%** — 1 of 1 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
-**100%** of the hand-authored page is reproduced — 29 of 29 documented symbols (`content/reference/helpers/compact-encoding.mdx`).
-### Extra in generated model (45)
-_Found in source but absent from the curated page — candidate additions (or internal symbols to filter)._
-- `ascii`
-- `base64`
-- `bigint64`
-- `bigint64array`
-- `biguint`
-- `biguint64`
-- `biguint64array`
-- `buffer`
-- `fixed32`
-- `float32`
-- `float32array`
-- `hex`
-- `int`
-- `int16`
-- `int16array`
-- `int24`
-- `int32`
-- `int32array`
-- `int40`
-- `int48`
-- `int56`
-- `int8`
-- `int8array`
-- `ipv4`
-- `ipv4Address`
-- `ipv6`
-- `ipv6Address`
-- `json`
-- `optionalBuffer`
-- `string`
-- `uint`
-- `uint16`
-- `uint16array`
-- `uint24`
-- `uint32`
-- `uint32array`
-- `uint32be`
-- `uint40`
-- `uint48`
-- `uint56`
-- `uint64be`
-- `uint8`
-- `uint8array`
-- `utf16le`
-- `utf8`
+_No existing MDX page found for this slug._
 ## Completeness gaps
 ## Enhancements
 ### No example (1)
@@ -60,7 +13,7 @@ _Cause: no code fence under the README entry — add a usage snippet._
 - `cenc.state(start = 0, end = 0, buffer = null)`
 
 ## Drift
-### Undocumented in README (in source) (70)
+### Undocumented in README (in source) (74)
 
 _Cause: public method in source with no README entry — add upstream docs, or confirm it is internal._
 
@@ -96,6 +49,7 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `cenc.optionalBuffer`
 - `cenc.binary`
 - `cenc.arraybuffer`
+- `cenc.bitarray`
 - `cenc.uint8array`
 - `cenc.uint16array`
 - `cenc.uint32array`
@@ -115,6 +69,9 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `cenc.utf16le`
 - `cenc.bool`
 - `cenc.fixed(n)`
+- `cenc.fixed8`
+- `cenc.fixed16`
+- `cenc.fixed24`
 - `cenc.fixed32`
 - `cenc.fixed64`
 - `cenc.array(enc)`

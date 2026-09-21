@@ -70,19 +70,29 @@ Connect a new `Port` to the channel. A channel supports exactly two connected po
 
 #### `await port.write(value[, options])` · `port.writeSync(value[, options])`
 
-Send a structured-cloneable value; returns whether the write flushed.
+Send a structured-cloneable value. `write()` resolves to `true` once the value has been accepted into the channel, or `false` if the remote side has ended; `writeSync()` blocks the calling thread until the value can be enqueued, returning `false` immediately if the remote side has ended.
+
+`options` include:
+
+```js
+options = {
+  transfer: []
+}
+```
+
+`transfer` is an array of transferable values that should be transferred to the receiving side rather than cloned, following the structured clone algorithm.
 
 #### `const data = await port.read()` · `port.readSync()`
 
-Read the next value. A port is also iterable (`for await (const data of port)`).
+Read the next value, resolving (or, for `readSync()`, blocking the calling thread) until one is available. Once the remote side has ended and the read queue is drained, both resolve/return `null`. A port is iterable both synchronously (`for (const data of port)`, equivalent to repeated `readSync()` calls) and asynchronously (`for await (const data of port)`, equivalent to repeated `read()` calls).
 
 #### `port.createReadStream([options])` · `port.createWriteStream([options])` · `port.createStream([options])`
 
-Stream interfaces over the port.
+Stream interfaces over the port; `options` are forwarded to [`bare-stream`](/bare/reference/bare/modules/bare-stream). The write and duplex streams close the port when the stream is finalized; the read stream does not.
 
 #### `port.ref()` · `port.unref()` · `await port.close()`
 
-Event-loop references and teardown. Ports emit `end` and `close`.
+`ref()` keeps the event loop alive while the port is open; `unref()` allows the event loop to exit even if the port is still open, and the port is then closed automatically once no other handles are keeping the loop alive. `close()` flushes any pending writes before completing; after closing, further writes resolve to `false` and reads resolve to `null` once the queue is drained. Ports emit `end` (the remote side has ended) and `close` (the port has finished closing).
 
 ## Related modules
 

@@ -13,8 +13,8 @@ const layout: Layout = {
   // seeAlso is the only free-text slot left for this kind of framing note.
   seeAlso: [
     "It's pure JavaScript.",
-    'For the host↔worklet channel in native apps, see [`bare-kit`](/reference/bare/bare-kit) instead.',
-    '[`bare-channel`](/reference/bare/modules/bare-channel) — inter-*thread* messaging (same idea, within a process).',
+    'For the host↔worklet channel in native apps, see [`bare-kit`](/bare/reference/bare/bare-kit) instead.',
+    '[`bare-channel`](/bare/reference/bare/modules/bare-channel) — inter-*thread* messaging (same idea, within a process).',
     "A common pattern is to call `ipc.ref()` on resume and `ipc.unref()` on suspend, e.g. `Bare.on('suspend', () => ipc.unref()).on('resume', () => ipc.ref())`.",
     "Errors emitted by the underlying incoming or outgoing pipes are propagated to the stream as `error` events, after which the stream is destroyed.",
   ],

@@ -10,8 +10,8 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   seeAlso: [
-    'Runs on Apple platforms (iOS and macOS) — on Android use [`bare-bluetooth-android`](/reference/bare/modules/bare-bluetooth-android).',
-    '[One core, many platforms](/explanation/bare-on-native) — using platform bindings from a native shell.',
+    'Runs on Apple platforms (iOS and macOS) — on Android use [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android).',
+    '[One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.',
   ],
   params: {
     'Service.constructor': {

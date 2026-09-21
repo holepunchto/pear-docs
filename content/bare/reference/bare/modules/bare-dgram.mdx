@@ -44,35 +44,63 @@ server.bind(() => client.connect(server.address().port))
 new DgramSocket(opts?: DgramSocketOptions | DgramSocketType | null, onmessage?: (message: Buffer, remote: DgramRemoteInfo) => void)
 ```
 
+Create a new UDP socket. `DgramSocket` extends `bare-events`. As a shorthand, `opts` may be given as just the socket type, for example `new DgramSocket('udp4')`.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`DgramSocketOptions`](#dgramsocketoptions) \| [`DgramSocketType`](#dgramsockettype) \| `null` | — | — |
-| `onmessage?` | `(message: Buffer, remote: DgramRemoteInfo) => void` | — | — |
+| `opts?` | [`DgramSocketOptions`](#dgramsocketoptions) \| [`DgramSocketType`](#dgramsockettype) \| `null` | — | Options, or a shorthand for `opts.type`. |
+| `onmessage?` | `(message: Buffer, remote: DgramRemoteInfo) => void` | — | Added as a listener for the `'message'` event, if provided. |
+
+#### `addListener<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
 
 #### `addMembership(group: string, iface?: string | null): void`
 
+Join the multicast `group` on `iface`, or on all applicable interfaces if `iface` is omitted or `null`. An empty `iface` is treated as an address rather than a default and is rejected, unlike the empty address accepted by `bind()` and `connect()`.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `group` | `string` | — | — |
-| `iface?` | `string` \| `null` | — | — |
+| `group` | `string` | — | The multicast group address to join. |
+| `iface?` | `string` \| `null` | — | The interface to join on; joins on all applicable interfaces when omitted or `null`. |
+
+#### `addOnceListener<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
 
 #### `address(): DgramSocketAddress | null`
 
+Returns the address information for the local end of the socket, or `null` if the socket is not bound. A link-local IPv6 address is reported with its zone identifier, for example `fe80::1%en0`, so the value can always be passed back to the socket.
+
 #### `addSourceSpecificMembership(source: string, group: string, iface?: string | null): void`
+
+Join the source-specific multicast `group`, receiving datagrams only from `source`.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `source` | `string` | — | — |
-| `group` | `string` | — | — |
-| `iface?` | `string` \| `null` | — | — |
+| `source` | `string` | — | The source address to accept datagrams from. |
+| `group` | `string` | — | The multicast group address to join. |
+| `iface?` | `string` \| `null` | — | The interface to join on; joins on all applicable interfaces when omitted or `null`. |
 
 #### `bind(port?: number, address?: string, onlistening?: () => void): this`
+
+Bind the socket to `port` and `address` and start receiving datagrams. If `port` is omitted or `0`, an available port is chosen automatically. If `address` is omitted or empty, the socket binds to all interfaces; otherwise a non-IP `address` is resolved using the socket's `lookup` option. Addresses may carry a zone identifier such as `fe80::1%en0`, and must be at most `constants.address.MAX_LENGTH` bytes. Binding errors are reported through the `'error'` event rather than thrown. Returns `this`.
 
 Overloads:
 
@@ -87,25 +115,35 @@ bind(onlistening: () => void): this
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `port?` | `number` | — | — |
-| `address?` | `string` | — | — |
-| `onlistening?` | `() => void` | — | — |
+| `port?` | `number` | `0` | The local port to bind to; `0` picks an available port automatically. |
+| `address?` | `string` | — | The local address to bind to; binds to all interfaces when omitted or empty. |
+| `onlistening?` | `() => void` | — | Added as a one-time listener for the `'listening'` event, if provided. |
 
 #### `bound: boolean`
 
+Whether the socket is bound.
+
 #### `close(onclose?: () => void): this`
+
+Close the socket, releasing its underlying resources. Pending sends are settled before the socket closes. A no-op if the socket is already closing or closed, rather than throwing. Returns `this`.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `onclose?` | `() => void` | — | — |
+| `onclose?` | `() => void` | — | Added as a one-time listener for the `'close'` event, if provided. |
 
 #### `closed: boolean`
 
+Whether the socket has closed.
+
 #### `closing: boolean`
 
+Whether the socket is closing.
+
 #### `connect(port: number, address?: string, onconnect?: () => void): this`
+
+Connect the socket to a remote `port` and `address`, binding it first if it is not already bound. A connected socket sends to its peer by default and only receives datagrams from it. If `address` is omitted or empty, the loopback address is used. Unlike `bind()`, `port` must be between `1` and `65535`. Returns `this`.
 
 Overloads:
 
@@ -119,48 +157,171 @@ connect(opts: DgramSocketConnectOptions, onconnect?: () => void): this
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `port` | `number` | — | — |
-| `address?` | `string` | — | — |
-| `onconnect?` | `() => void` | — | — |
+| `port` | `number` | — | The remote port to connect to; must be between `1` and `65535`. |
+| `address?` | `string` | — | The remote address to connect to; uses the loopback address when omitted or empty. |
+| `onconnect?` | `() => void` | — | Added as a one-time listener for the `'connect'` event, if provided. |
 
 #### `connected: boolean`
 
+Whether the socket is connected to a peer.
+
 #### `disconnect(): this`
+
+Disconnect a connected socket, allowing it to send to and receive from any peer again. Throws if the socket is not connected. Returns `this`.
 
 #### `dropMembership(group: string, iface?: string | null): void`
 
+Leave the multicast `group` on `iface`, or on all applicable interfaces if `iface` is omitted or `null`.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `group` | `string` | — | — |
-| `iface?` | `string` \| `null` | — | — |
+| `group` | `string` | — | The multicast group address to leave. |
+| `iface?` | `string` \| `null` | — | The interface to leave on; leaves on all applicable interfaces when omitted or `null`. |
 
 #### `dropSourceSpecificMembership(source: string, group: string, iface?: string | null): void`
 
+Leave the source-specific multicast `group` previously joined for `source`.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `source` | `string` | — | — |
-| `group` | `string` | — | — |
-| `iface?` | `string` \| `null` | — | — |
+| `source` | `string` | — | The source address that was passed to `addSourceSpecificMembership()`. |
+| `group` | `string` | — | The multicast group address to leave. |
+| `iface?` | `string` \| `null` | — | The interface to leave on; leaves on all applicable interfaces when omitted or `null`. |
+
+#### `emit<E extends keyof M>(name: E, ...args: M[E]): boolean`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `args` | `M[E]` | — | — |
+
+#### `eventNames(): (keyof M)[]`
+
+#### `getMaxListeners(): number`
 
 #### `getRecvBufferSize(): number`
 
+Get the size of the operating system receive buffer in bytes. Requires a bound, non-closed socket; throws otherwise.
+
 #### `getSendBufferSize(): number`
+
+Get the size of the operating system send buffer in bytes. Requires a bound, non-closed socket; throws otherwise.
 
 #### `getSendQueueCount(): number`
 
+The number of send requests currently queued for sending. Tracked by the socket itself, so unlike the operating-system-backed getters above it does not require the socket to be bound.
+
 #### `getSendQueueSize(): number`
+
+The number of bytes currently queued for sending. Tracked by the socket itself, so unlike the operating-system-backed getters above it does not require the socket to be bound.
+
+#### `listenerCount<E extends keyof M>(name: E): number`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+
+#### `listeners<E extends keyof M>(name: E): EventHandler<M[E]>[]`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+
+#### `off<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
+
+#### `on<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
+
+#### `once<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
 
 #### `pause(): this`
 
+Stop receiving datagrams. Datagrams the operating system has already buffered are delivered once the socket resumes, so pausing applies backpressure rather than discarding them. A no-op if the socket is already closing or closed. Returns `this`.
+
+#### `prependListener<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
+
+#### `prependOnceListener<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
+
+#### `rawListeners<E extends keyof M>(name: E): EventHandler<M[E]>[]`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+
 #### `ref(): this`
+
+Ref the socket, preventing the process from exiting while it is open. A no-op if the socket is already closing or closed. Returns `this`.
 
 #### `remoteAddress(): DgramSocketAddress | null`
 
+Returns the address information for the peer, or `null` if the socket is not connected. The returned object has the same shape as `address()`, including the zone identifier on a link-local IPv6 address.
+
+#### `removeAllListeners<E extends keyof M>(name?: E): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name?` | `E` | — | — |
+
+#### `removeListener<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
+
 #### `resume(): this`
+
+Start receiving datagrams again after `pause()`. A no-op if the socket is already closing or closed. Returns `this`.
 
 #### `send`
 
@@ -168,76 +329,104 @@ connect(opts: DgramSocketConnectOptions, onconnect?: () => void): this
 send(msg: DgramMessage, offset: number, length: number, port?: number, address?: string, cb?: (err: Error | null, bytes: number) => void): void
 ```
 
+Send `msg` to `port` and `address`, binding the socket first if it is not already bound. `offset` and `length` restrict the send to a subrange of `msg` and may only be given when `msg` is not an array. If the socket is connected, `port` and `address` must be omitted and the datagram is sent to the peer; otherwise `port` must be between `1` and `65535`, and a non-IP `address` is resolved using the socket's `lookup` option. `cb` is called as `cb(err, bytes)` once the datagram has been handed off to the operating system; without a `cb`, send errors are emitted as `'error'` events instead.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `msg` | [`DgramMessage`](#dgrammessage) | — | — |
-| `offset` | `number` | — | — |
-| `length` | `number` | — | — |
-| `port?` | `number` | — | — |
-| `address?` | `string` | — | — |
-| `cb?` | `(err: Error \| null, bytes: number) => void` | — | — |
+| `msg` | [`DgramMessage`](#dgrammessage) | — | The data to send — a string, `Buffer`, typed array, `DataView`, or an array of these sent as a single datagram. |
+| `offset` | `number` | — | Byte offset into `msg` to start sending from; only valid when `msg` is not an array. |
+| `length` | `number` | — | Number of bytes of `msg` to send; only valid when `msg` is not an array. |
+| `port?` | `number` | — | The remote port; omit when the socket is connected. |
+| `address?` | `string` | — | The remote address; omit when the socket is connected. |
+| `cb?` | `(err: Error \| null, bytes: number) => void` | — | Called once the datagram has been handed off to the operating system. |
 
 #### `setBroadcast(flag: boolean): void`
 
+Enable or disable sending to the broadcast address. Requires a bound, non-closed socket; throws otherwise.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `flag` | `boolean` | — | — |
+| `flag` | `boolean` | — | Whether broadcast sends are enabled. |
+
+#### `setMaxListeners(n: number): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `n` | `number` | — | — |
 
 #### `setMulticastInterface(iface: string): void`
 
+Set the interface used for outgoing multicast datagrams. Requires a bound, non-closed socket; throws otherwise.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `iface` | `string` | — | — |
+| `iface` | `string` | — | The address of the interface to use for outgoing multicast datagrams. |
 
 #### `setMulticastLoopback(flag: boolean): boolean`
 
+Enable or disable delivery of outgoing multicast datagrams back to the local interface. Requires a bound, non-closed socket; throws otherwise. Returns `flag`.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `flag` | `boolean` | — | — |
+| `flag` | `boolean` | — | Whether multicast loopback is enabled. |
 
 #### `setMulticastTTL(ttl: number): number`
 
+Set the IP time-to-live of outgoing multicast datagrams. Requires a bound, non-closed socket; throws otherwise. Returns `ttl`.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `ttl` | `number` | — | — |
+| `ttl` | `number` | — | The multicast time-to-live, from `0` to `255`. |
 
 #### `setRecvBufferSize(size: number): void`
 
+Set the size of the operating system receive buffer in bytes. Requires a bound, non-closed socket; throws otherwise. The operating system may round `size` up to a minimum of its own.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `size` | `number` | — | — |
+| `size` | `number` | — | The buffer size in bytes; must be at least `1`. |
 
 #### `setSendBufferSize(size: number): void`
 
+Set the size of the operating system send buffer in bytes. Requires a bound, non-closed socket; throws otherwise. The operating system may round `size` up to a minimum of its own.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `size` | `number` | — | — |
+| `size` | `number` | — | The buffer size in bytes; must be at least `1`. |
 
 #### `setTTL(ttl: number): number`
 
+Set the IP time-to-live of outgoing datagrams. Requires a bound, non-closed socket; throws otherwise. Returns `ttl`.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `ttl` | `number` | — | — |
+| `ttl` | `number` | — | The time-to-live, from `0` to `255`. |
 
 #### `type: DgramSocketType | null`
 
+The address family the socket was created with, or `null` if left unspecified (as is required to later adopt an existing file descriptor via `bind({ fd })`).
+
 #### `unref(): this`
+
+Unref the socket, allowing the process to exit even if the socket is still open. A no-op if the socket is already closing or closed. Returns `this`.
 
 ### Functions
 
@@ -247,36 +436,44 @@ send(msg: DgramMessage, offset: number, length: number, port?: number, address?:
 createSocket(opts?: DgramSocketOptions | DgramSocketType | null, onmessage?: (message: Buffer, remote: DgramRemoteInfo) => void): DgramSocket
 ```
 
+Convenience function equivalent to `new DgramSocket(opts, onmessage)`.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`DgramSocketOptions`](#dgramsocketoptions) \| [`DgramSocketType`](#dgramsockettype) \| `null` | — | — |
-| `onmessage?` | `(message: Buffer, remote: DgramRemoteInfo) => void` | — | — |
+| `opts?` | [`DgramSocketOptions`](#dgramsocketoptions) \| [`DgramSocketType`](#dgramsockettype) \| `null` | — | Options, or a shorthand for `opts.type`. |
+| `onmessage?` | `(message: Buffer, remote: DgramRemoteInfo) => void` | — | Added as a listener for the `'message'` event, if provided. |
 
 #### `isIP(host: string): IPFamily | 0`
 
+Returns `4` if `host` is an IPv4 address, `6` if it is an IPv6 address, or `0` otherwise.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `host` | `string` | — | — |
+| `host` | `string` | — | The string to test. |
 
 #### `isIPv4(host: string): boolean`
 
+Returns `true` if `host` is an IPv4 address.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `host` | `string` | — | — |
+| `host` | `string` | — | The string to test. |
 
 #### `isIPv6(host: string): boolean`
 
+Returns `true` if `host` is an IPv6 address.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `host` | `string` | — | — |
+| `host` | `string` | — | The string to test. |
 
 ### Constants and variables
 
@@ -305,6 +502,8 @@ constants: {
 }
 ```
 
+Internal state and bind-flag constants, plus `address.MAX_LENGTH`, the maximum length in bytes of an IP address accepted by `bind()`, `connect()`, and `send()`.
+
 ### Types
 
 #### `IPFamily`
@@ -313,11 +512,15 @@ constants: {
 type IPFamily = 4 | 6
 ```
 
+The IP address family: `4` for IPv4 or `6` for IPv6.
+
 #### `DgramMessage`
 
 ```ts
 type DgramMessage = string | Buffer | ArrayBufferView | (string | Buffer | ArrayBufferView)[]
 ```
+
+The data accepted by `send()` — a string, `Buffer`, any typed array or `DataView`, or an array of these sent as a single datagram.
 
 #### `DgramRemoteInfo`
 
@@ -330,6 +533,8 @@ interface DgramRemoteInfo {
 }
 ```
 
+Describes the sender of a received datagram, passed to `'message'` listeners alongside the message itself.
+
 #### `DgramSocketAddress`
 
 ```ts
@@ -339,6 +544,8 @@ interface DgramSocketAddress {
   port: number
 }
 ```
+
+Returned by `address()` and `remoteAddress()`. A link-local IPv6 `address` includes its zone identifier, for example `fe80::1%en0`.
 
 #### `DgramSocketBindOptions`
 
@@ -350,6 +557,8 @@ interface DgramSocketBindOptions {
 }
 ```
 
+Options for `bind()`. `fd` adopts an existing file descriptor instead of creating and binding a new socket, and requires a socket created with `type: null`.
+
 #### `DgramSocketConnectOptions`
 
 ```ts
@@ -358,6 +567,8 @@ interface DgramSocketConnectOptions {
   port: number
 }
 ```
+
+Options for `connect()`. `port` must be between `1` and `65535`.
 
 #### `DgramSocketEvents`
 
@@ -370,6 +581,8 @@ interface DgramSocketEvents {
   message: [message: Buffer, remote: DgramRemoteInfo]
 }
 ```
+
+`'listening'` fires once the socket is bound and ready to receive; `'connect'` once it is connected to its peer; `'message'` for each received datagram; `'close'` once the socket has closed; and `'error'` when binding, receiving, or an uncallbacked send fails. As with any `bare-events` emitter, an `'error'` emitted with no listener attached surfaces as an uncaught exception.
 
 #### `DgramSocketOptions`
 
@@ -385,6 +598,8 @@ interface DgramSocketOptions {
   type?: DgramSocketType | null
 }
 ```
+
+`type` is the socket's address family, `'udp4'` or `'udp6'`; pass `null` to leave it unspecified, which is required to later adopt an existing file descriptor. `ipv6Only` (default `false`) binds to IPv6 addresses only rather than dual stack. `reuseAddr` and `reusePort` (both default `false`) allow several sockets to bind the same address and port, with `reusePort` additionally distributing incoming datagrams between them. `readBufferSize` (default `65536`) sizes the buffer datagrams are read into; it defaults larger than the largest possible datagram, so a smaller value can truncate one, which surfaces as an `'error'` event carrying `EMSGSIZE` rather than silently losing data — the socket keeps receiving afterwards. `recvBufferSize` and `sendBufferSize` (both default `0`, meaning the operating system default) size the underlying OS receive and send buffers, applied when the socket is bound. `lookup` (default the `lookup` export of `bare-dns`) resolves hostnames as `lookup(hostname, { family }, cb)` with `cb(err, address, family)`; the resolved `family` is always derived from the returned address rather than what the resolver reports, so a result that isn't an IP address string is treated as a failed lookup.
 
 #### `DgramSocketType`
 
@@ -402,11 +617,13 @@ class DgramError {
 }
 ```
 
+Datagram-specific errors, thrown or emitted by the methods above, each with a `code` identifying the failure. `DgramError` exposes a static factory method per error code (for example `DgramError.SOCKET_IS_CLOSED(msg)`) that constructs the corresponding error.
+
 ## `bare-dgram/constants`
 
 ### Constants and variables
 
-#### `constants.constants`
+#### `constants`
 
 ```ts
 constants: {
@@ -431,11 +648,19 @@ constants: {
 }
 ```
 
+Internal state and bind-flag constants, plus `address.MAX_LENGTH`, the maximum length in bytes of an IP address accepted by `bind()`, `connect()`, and `send()`.
+
 ## `bare-dgram/errors`
 
 ### Classes
 
 #### `errors.DgramError`
+
+Datagram-specific errors, thrown or emitted by the methods above, each with a `code` identifying the failure. `DgramError` exposes a static factory method per error code (for example `DgramError.SOCKET_IS_CLOSED(msg)`) that constructs the corresponding error.
+
+## IPC handle passing
+
+`DgramSocket` implements the `IPCAcceptable` protocol, so a bound socket can be passed to a peer over a [`bare-pipe`](/bare/reference/bare/modules/bare-pipe) created with `ipc: true`, and a received socket can be adopted on the other side with `pipe.accept(socket)`.
 
 ## See also
 

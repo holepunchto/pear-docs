@@ -13,7 +13,7 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   seeAlso: [
-    '[`bare-path`](/reference/bare/modules/bare-path) — provides the platform-specific path handling used by `fileURLToPath`/`pathToFileURL`.',
+    '[`bare-path`](/bare/reference/bare/modules/bare-path) — provides the platform-specific path handling used by `fileURLToPath`/`pathToFileURL`.',
   ],
   groups: [
     {

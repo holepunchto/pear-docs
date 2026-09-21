@@ -10,7 +10,7 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   seeAlso: [
-    '[`bare-os`](/reference/bare/modules/bare-os) — portable OS utilities, including `userInfo` / `groupInfo`.',
+    '[`bare-os`](/bare/reference/bare/modules/bare-os) — portable OS utilities, including `userInfo` / `groupInfo`.',
   ],
   params: {
     setgid: {

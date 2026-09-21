@@ -1,34 +1,9 @@
 # Reference generation improvement plan — corestore
-Generated from `holepunchto/corestore` at **v7.12.0** (`afc087f35a`) on 2026-08-11T14:23:33.205Z.
+Generated from `holepunchto/corestore` at **v7.12.5** (`5f4e199def`) on 2026-09-17T14:16:01.805Z.
 **Doc-completeness: 50%** — 7 of 14 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
-**100%** of the hand-authored page is reproduced — 28 of 28 documented symbols (`content/reference/helpers/corestore.mdx`).
-### Extra in generated model (23)
-_Found in source but absent from the curated page — candidate additions (or internal symbols to filter)._
-- `add`
-- `cores`
-- `corestores`
-- `count`
-- `dec`
-- `destroyed`
-- `emit`
-- `globalCache`
-- `inc`
-- `index`
-- `ns`
-- `off`
-- `on`
-- `once`
-- `opened`
-- `pending`
-- `root`
-- `sessions`
-- `shouldSuspend`
-- `streamTracker`
-- `updates`
-- `watchIndex`
-- `watchers`
+_No existing MDX page found for this slug._
 ## Completeness gaps
 ### Undocumented parameters (7)
 

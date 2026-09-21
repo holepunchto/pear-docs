@@ -40,7 +40,7 @@ const layout: Layout = {
   seeAlso: [
     'Beyond comparison operators, `Range.parse()` also supports caret ranges (`^1.2.3`), tilde ranges (`~1.2.3` or `~>1.2.3`), X-ranges and wildcards (`1.2.x`, `1.*`, `*`), and hyphen ranges (`1.2.3 - 2.3.4`).',
     "It's pure JavaScript and underpins Bare's module/addon resolution.",
-    '[`bare-module-resolve`](/reference/bare/modules/bare-module-resolve) — uses semver ranges during resolution.',
+    '[`bare-module-resolve`](/bare/reference/bare/modules/bare-module-resolve) — uses semver ranges during resolution.',
   ],
   params: {
     'errors.INVALID_RANGE': {

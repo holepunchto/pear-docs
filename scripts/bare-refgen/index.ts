@@ -38,6 +38,9 @@ import { loadLayout } from './layout';
 import { renderPage } from './render';
 import type { BareModel } from './model';
 
+/** Docs route for an individual module page, derived from CONTENT_DIR so it can't drift from where `--write` actually lands. */
+const MODULE_ROUTE = CONTENT_DIR.replace(/^content/, '');
+
 /** README `## Usage` body, captured verbatim by the family's research dossier. */
 async function usageFromResearch(name: string): Promise<string | null> {
   if (!RESEARCH_JSON) return null; // family has no dossier (pear) — omit Usage
@@ -129,7 +132,7 @@ async function syncCatalog(names: string[], descriptions: Record<string, string 
     const name = names.find((n) => cells[1].includes(`[${n}]`));
     if (!name) continue;
     matched.add(name);
-    const refLink = `/reference/bare/modules/${name}`;
+    const refLink = `${MODULE_ROUTE}/${name}`;
     if (!cells[2].includes(refLink)) {
       cells[2] = `${cells[2].trimEnd()} — [reference](${refLink}) `;
       changed = true;
@@ -169,7 +172,7 @@ async function syncCatalog(names: string[], descriptions: Record<string, string 
       }
       for (const name of missing) {
         const desc = descriptions[name]?.trim() || '(no package.json description)';
-        const row = `| [${name}](https://github.com/${ORG}/${name}) | ${desc} — [reference](/reference/bare/modules/${name}) |`;
+        const row = `| [${name}](https://github.com/${ORG}/${name}) | ${desc} — [reference](${MODULE_ROUTE}/${name}) |`;
         lines.splice(insertAt, 0, row);
         insertAt++;
         added.push(name);

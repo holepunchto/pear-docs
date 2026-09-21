@@ -30,7 +30,7 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   seeAlso: [
-    '[`bare-channel`](/reference/bare/modules/bare-channel) and [`bare-broadcast-channel`](/reference/bare/modules/bare-broadcast-channel) — inter-thread messaging built on this.',
+    '[`bare-channel`](/bare/reference/bare/modules/bare-channel) and [`bare-broadcast-channel`](/bare/reference/bare/modules/bare-broadcast-channel) — inter-thread messaging built on this.',
   ],
   params: {
     structuredClone: {

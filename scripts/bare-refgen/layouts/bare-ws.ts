@@ -21,9 +21,9 @@ import type { Layout } from '../layout';
 const layout: Layout = {
   groups: [],
   seeAlso: [
-    "It's pure JavaScript. Sockets are [`bare-stream`](/reference/bare/modules/bare-stream) duplex streams that perform the WebSocket handshake over an HTTP or HTTPS request.",
-    '[`bare-tcp`](/reference/bare/modules/bare-tcp) — the socket layer WebSocket connections run over.',
-    '[`bare-fetch`](/reference/bare/modules/bare-fetch) — a request/response HTTP client for the non-persistent case.',
+    "It's pure JavaScript. Sockets are [`bare-stream`](/bare/reference/bare/modules/bare-stream) duplex streams that perform the WebSocket handshake over an HTTP or HTTPS request.",
+    '[`bare-tcp`](/bare/reference/bare/modules/bare-tcp) — the socket layer WebSocket connections run over.',
+    '[`bare-fetch`](/bare/reference/bare/modules/bare-fetch) — a request/response HTTP client for the non-persistent case.',
   ],
   params: {
     'Socket.constructor': {
@@ -75,10 +75,6 @@ const layout: Layout = {
     'WebSocketError.INVALID_ACCEPT_HEADER': { msg: 'The error message.' },
     'WebSocketError.INVALID_OPCODE': { msg: 'The error message.' },
     'WebSocketError.INVALID_PAYLOAD_LENGTH': { msg: 'The error message.' },
-    'WebSocketError.INCOMPLETE_FRAME': {
-      msg: 'The error message.',
-      length: 'The total byte length the frame needs before it can be decoded, stored as the error `status` (default `-1`).',
-    },
   },
   returns: {
     'WebSocketError.NETWORK_ERROR': "A `WebSocketError` with `code` set to `'NETWORK_ERROR'`, for the caller to throw.",
@@ -97,7 +93,6 @@ const layout: Layout = {
     'WebSocketError.INVALID_ACCEPT_HEADER': "A `WebSocketError` with `code` set to `'INVALID_ACCEPT_HEADER'`, for the caller to throw.",
     'WebSocketError.INVALID_OPCODE': "A `WebSocketError` with `code` set to `'INVALID_OPCODE'`, for the caller to throw.",
     'WebSocketError.INVALID_PAYLOAD_LENGTH': "A `WebSocketError` with `code` set to `'INVALID_PAYLOAD_LENGTH'`, for the caller to throw.",
-    'WebSocketError.INCOMPLETE_FRAME': "A `WebSocketError` with `code` set to `'INCOMPLETE_FRAME'` and `status` set to `length`, for the caller to throw.",
   },
   throws: {
     'Socket.ping': ['`NOT_CONNECTED` — the socket has not finished connecting.'],

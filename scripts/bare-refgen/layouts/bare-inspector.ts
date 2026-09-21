@@ -18,8 +18,8 @@ const layout: Layout = {
   // Cross-references transcribed verbatim (reworded minimally) from the old
   // hand-written page's intro and "See also" section.
   seeAlso: [
-    "It's the in-process counterpart to the [`bare`](/reference/bare/cli) `--inspect` flag, and what `pear-inspect` exposes remotely over [Hyperswarm](/reference/building-blocks/hyperswarm).",
-    '[`bare-console`](/reference/bare/modules/bare-console) — everyday logging and timing.',
+    "It's the in-process counterpart to the [`bare`](/bare/reference/bare/cli) `--inspect` flag, and what `pear-inspect` exposes remotely over [Hyperswarm](/p2p/reference/building-blocks/hyperswarm).",
+    '[`bare-console`](/bare/reference/bare/modules/bare-console) — everyday logging and timing.',
   ],
   // `HeapSnapshot`/`InspectorHeapSnapshot` (the main-export and duplicated
   // bare-inspector/heap-snapshot submodule names for the same class) have no
