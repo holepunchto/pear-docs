@@ -6,8 +6,10 @@
 // names it actually declares. `delay` is clamped to a minimum of 1ms
 // (`_timeout`). Returns are intentionally omitted for the schedulers: the
 // shared key can't carry different prose for the callback form (returns a
-// handle) and the promises form (returns a promise/async generator). Task/
-// Timeout handle semantics stay in the describe.json (interface members).
+// handle) and the promises form (returns a promise/async generator). Timeout/
+// Immediate handle semantics stay in the describe.json (interface members) —
+// their shared base `Task` is not exported, so its members flatten straight
+// into `Timeout`/`Immediate` and never render under the bare key `Task`.
 
 import type { Layout } from '../layout';
 

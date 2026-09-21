@@ -49,7 +49,7 @@ const layout: Layout = {
     },
     {
       title: 'Extensions and replication',
-      members: ['registerExtension', 'send', 'broadcast', 'destroy', 'replicate', 'findingPeers'],
+      members: ['registerExtension', 'send', 'broadcast', 'destroy', 'replicate', 'findingPeers', 'setAlwaysLatestBlock'],
     },
     {
       title: 'Storage inspection and mark-and-sweep',
