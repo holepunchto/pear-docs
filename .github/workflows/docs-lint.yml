@@ -2,6 +2,8 @@ name: Docs lint
 
 # Gates docs changes on every PR (and on push to main):
 #   - internal-links: the in-repo link/anchor/asset checker.
+#   - includes:       `<include>` directive targets resolve (internal-links
+#                     doesn't check these — see that job's comment).
 #   - code-imports:   `file=...#L…` ranges resolve, are in bounds, and render
 #                     balanced code (a wrong range fails silently otherwise).
 #   - vale:           Google-style prose linting of content/.
@@ -15,6 +17,7 @@ on:
     paths:
       - 'content/**'
       - 'scripts/check-internal-links.ts'
+      - 'scripts/check-includes.ts'
       - 'scripts/check-code-imports.ts'
       # Editing a vendored example shifts line numbers and can silently
       # invalidate a `file=...#L…` range, so example changes run this too.
@@ -41,6 +44,7 @@ on:
     paths:
       - 'content/**'
       - 'scripts/check-internal-links.ts'
+      - 'scripts/check-includes.ts'
       - 'scripts/check-code-imports.ts'
       # Editing a vendored example shifts line numbers and can silently
       # invalidate a `file=...#L…` range, so example changes run this too.
@@ -89,6 +93,28 @@ jobs:
           cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
       - name: Check internal links
         run: ./node_modules/.bin/tsx scripts/check-internal-links.ts
+
+  includes:
+    name: include directives
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # check-includes.ts has no repo dependencies beyond Node builtins, so a
+      # plain tsx install is enough — same throwaway-prefix pattern as the
+      # other jobs here, for the same @tetherto/* token-gating reason.
+      - name: Install tsx
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+      # <include> resolution isn't validated by internal-links (see that job) —
+      # a wrong relative `../` depth ships a page with a missing snippet and no
+      # build error otherwise.
+      - name: Check include directives
+        run: ./node_modules/.bin/tsx scripts/check-includes.ts
 
   doctypes:
     name: doctype & product invariants
