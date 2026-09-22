@@ -198,6 +198,27 @@ export const pearTree: Node[] = [
             url: '/pear/how-to/operate-an-app/publish-a-changelog',
           },
           {
+            type: 'folder',
+            name: 'Integrate Pear OTA into an existing app',
+            index: {
+              type: 'page',
+              name: 'Integrate Pear OTA into an existing app',
+              url: '/pear/how-to/operate-an-app/integrate-pear-ota',
+            },
+            children: [
+              {
+                type: 'page',
+                name: 'Electron',
+                url: '/pear/how-to/operate-an-app/integrate-pear-ota/electron',
+              },
+              {
+                type: 'page',
+                name: 'Mobile',
+                url: '/pear/how-to/operate-an-app/integrate-pear-ota/mobile',
+              },
+            ],
+          },
+          {
             type: 'page',
             name: 'Migrate from pear run to Pear OTA',
             url: '/pear/how-to/operate-an-app/migration',
