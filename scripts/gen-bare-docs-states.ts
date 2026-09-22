@@ -352,7 +352,7 @@ async function main(): Promise<void> {
         console.error(
           `  ❌ ${path.relative(root, axis.outPath)} is stale — ${axis.label} surface has changed.\n` +
             `     Run \`npm run gen:bare-docs-states\` and review the diff: a new doc-state means\n` +
-            `     content/reference/bare/*.mdx needs <VersionSection>/<Since>/<Until> markers for the delta above.`,
+            `     content/bare/reference/bare/*.mdx needs <VersionSection>/<Since>/<Until> markers for the delta above.`,
         );
         continue;
       }

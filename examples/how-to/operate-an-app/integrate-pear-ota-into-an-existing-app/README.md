@@ -1,12 +1,12 @@
 # integrate-pear-ota-example
 
-- The **"before" state** for [Integrate Pear OTA into an existing Electron app](https://docs.pears.com/how-to/operate-an-app/integrate-pear-ota/electron): a plain Electron app with no `pear-runtime` dependency, no updater worker, and no `upgrade` link.
+- The **"before" state** for [Integrate Pear OTA into an existing Electron app](https://docs.pears.com/pear/how-to/operate-an-app/integrate-pear-ota/electron): a plain Electron app with no `pear-runtime` dependency, no updater worker, and no `upgrade` link.
 
 - Stack: electron
 
 ## Documentation
 
-Walkthrough: [Integrate Pear OTA into an existing Electron app](https://docs.pears.com/how-to/operate-an-app/integrate-pear-ota/electron).
+Walkthrough: [Integrate Pear OTA into an existing Electron app](https://docs.pears.com/pear/how-to/operate-an-app/integrate-pear-ota/electron).
 
 The guide's steps turn this into an app that receives peer-to-peer over-the-air
 updates. Start here, follow the guide, and compare against
@@ -39,8 +39,9 @@ guide only needs `upgrade` added beside it.
 ## Verify the config contract
 
 `check-config.js` reads `version` and `upgrade` back out of `package.json` the
-same way the updater worker's `argv()` helper will. It is what the guide's
-executable example runs:
+same way the main process will, right before handing them to the updater
+worker as positional arguments. It is what the guide's executable example
+runs:
 
 ```shell
 npm pkg set upgrade=pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o

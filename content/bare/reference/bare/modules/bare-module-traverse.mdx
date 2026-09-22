@@ -4,7 +4,7 @@ description: "Low-level module graph traversal for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "2.4.4"
+upstreamVersion: "2.5.6"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -67,7 +67,12 @@ for await (const dependency of traverse(
 traverse(entry: URL, readModule: (url: URL) => Buffer | string | null, listPrefix?: (url: URL) => Iterable<URL>, probeModule?: (url: URL) => boolean | undefined, resolveModule?: (url: URL) => URL): Iterable<Dependency>
 ```
 
-Traverse the module graph rooted at `entry`, which must be a WHATWG `URL` instance. `readModule` is called with a `URL` instance for every module to be read and must either return the module source, if it exists, or `null`. `listPrefix` is called with a `URL` instance of every prefix to be listed and must yield `URL` instances that have the specified `URL` as a prefix. If not provided, prefixes won't be traversed. If `readModule` returns a promise or `listPrefix` returns a promise generator, synchronous iteration is not supported.
+Traverse the module graph rooted at `entry`, which must be a WHATWG `URL` instance. `readModule`
+is called with a `URL` instance for every module to be read and must either return the module
+source, if it exists, or `null`. `listPrefix` is called with a `URL` instance of every prefix to
+be listed and must yield `URL` instances that have the specified `URL` as a prefix. If not
+provided, prefixes won't be traversed. If `readModule` returns a promise or `listPrefix` returns
+a promise generator, synchronous iteration is not supported.
 
 **Parameters**
 
@@ -79,7 +84,8 @@ Traverse the module graph rooted at `entry`, which must be a WHATWG `URL` instan
 | `probeModule?` | `(url: URL) => boolean \| undefined` | — | Called with the `URL` of each module to probe for existence; returns a boolean, or `undefined` to fall back to `readModule`. |
 | `resolveModule?` | `(url: URL) => URL` | — | Called with each resolution `URL` to transform; returns the `URL` to use in its place. Defaults to the identity function. |
 
-**Returns** `Iterable<Dependency>` — An iterable of resolved `Dependency` records for the module graph; asynchronous when any callback returns a promise.
+**Returns** `Iterable<Dependency>` — An iterable of resolved `Dependency` records for the module graph; asynchronous when any
+callback returns a promise.
 
 #### `traverse.addons`
 
@@ -236,13 +242,33 @@ type Traversal = Generator<
   >
 ```
 
+Each yielded value tells the driver what to resolve next; drive the generator by calling `.next()`
+with the corresponding response, repeating until `next.done` is `true`:
+
+| Yield | Description | Respond with |
+| --- | --- | --- |
+| `{ module, artifact }` | A module to read. When `artifact` is `true`, it's an addon or asset whose contents are loaded lazily; a driver that only needs to locate it, such as a module loader, may return `null` without reading once existence is established by probing. | Its source, or `null` if it doesn't exist. |
+| `{ probe }` | A module whose existence is to be tested without reading its full source. | `true` or `false`, or `undefined` to fall back to determining existence by reading the module instead. |
+| `{ resolution }` | A resolved, existing module URL to transform, for example canonicalizing symlinks with `realpath`. | The URL to use in its place, or the URL unchanged. |
+| `{ prefix }` | A prefix to list. | The URLs that have it as a prefix (the list may be empty). |
+| `{ links }` | A set of independent imports to resolve, each itself a `Traversal`. Every generator in `links` must be driven to completion (one at a time, or concurrently since they're independent) before the parent is resumed. | Nothing — call `.next()` once every generator in `links` is done. |
+| `{ children, deferred }` | A child dependency subgraph to traverse by driving its generator the same way as the parent. When `deferred` is `true`, traverse it only after every non-deferred subgraph has been traversed. | Nothing — call `.next()` after queuing or traversing `children`. |
+| `{ dependency }` | A fully resolved node of the module graph — the traversal's output, and what the iterable forms of `traverse()` yield to the caller. | Nothing — this is a terminal yield for that branch. |
+
+`traverse()` drives this loop automatically from `readModule`, `listPrefix`, `probeModule`, and
+`resolveModule`; drive a step function's `Traversal` manually only when using it directly instead
+of `traverse()`.
+
 #### `TraverseOptions`
 
 ```ts
 interface TraverseOptions {
   defaultType?: number
+  importType?: number
+  artifacts?: boolean
   aliases?: Record<string, AliasableExtension>
   resolve?: (entry: Import, parentURL: URL, opts?: ResolveOptions) => Resolver
+  deferUnresolved?: boolean
   builtinProtocol?: string
   builtins?: Builtins
   conditions?: Conditions
@@ -272,6 +298,7 @@ interface Dependency {
   url: URL
   source: string | Buffer
   type: number
+  naturalType: number
   imports: ImportsMap
   lexer: {
     imports: Import[]
@@ -279,6 +306,12 @@ interface Dependency {
   }
 }
 ```
+
+A fully resolved node of the module graph, and what the iterable forms of `traverse()` yield to
+the caller. `type` is the module's effective type, one of the `traverse.constants` flags (for
+example `SCRIPT` or `MODULE`); `naturalType` is the type the module has on its own, ignoring
+import attributes, or `0` if it has no type of its own. `lexer` holds the raw `imports` and
+`exports` `bare-module-lexer` detected in `source`.
 
 ## `bare-module-traverse/resolve`
 

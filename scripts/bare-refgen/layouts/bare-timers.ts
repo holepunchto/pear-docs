@@ -6,8 +6,10 @@
 // names it actually declares. `delay` is clamped to a minimum of 1ms
 // (`_timeout`). Returns are intentionally omitted for the schedulers: the
 // shared key can't carry different prose for the callback form (returns a
-// handle) and the promises form (returns a promise/async generator). Task/
-// Timeout handle semantics stay in the describe.json (interface members).
+// handle) and the promises form (returns a promise/async generator). Timeout/
+// Immediate handle semantics stay in the describe.json (interface members) —
+// their shared base `Task` is not exported, so its members flatten straight
+// into `Timeout`/`Immediate` and never render under the bare key `Task`.
 
 import type { Layout } from '../layout';
 
@@ -24,8 +26,8 @@ const layout: Layout = {
     "`delay` is floored to an integer. A `delay` that is less than `1`, `NaN`, non-numeric, or greater than `Number.MAX_SAFE_INTEGER` is clamped to `1` ms. (Node caps the maximum at `2147483647`; Bare's ceiling is `Number.MAX_SAFE_INTEGER`.)",
     "Passing `null`, `undefined`, or a non-object to `clearTimeout`/`clearInterval`/`clearImmediate` is a no-op, as is clearing a handle that has already fired or been cleared. All three delegate to the same routine, so any one can cancel any handle—but use the matching name for clarity.",
     "Every handle also implements `[Symbol.dispose]()`, so a `using timer = setTimeout(…)` declaration cancels the timer when the scope exits.",
-    "The usual suspension pattern is to clear timers outright on `suspend`; `unref()` is the alternative for a timer that must keep running across the cycle—the same pattern [`bare-ipc`](/reference/bare/modules/bare-ipc#unref-this) uses for its channel.",
-    "Hooks into the [Bare runtime](/reference/bare/runtime)'s lifecycle events (`idle`, `resume`, `wakeup`) to pause and restart the underlying native timer. The promise-based API integrates with `bare-abort-controller`—an optional peer dependency—for `signal`-based cancellation.",
+    "The usual suspension pattern is to clear timers outright on `suspend`; `unref()` is the alternative for a timer that must keep running across the cycle—the same pattern [`bare-ipc`](/bare/reference/bare/modules/bare-ipc#unref-this) uses for its channel.",
+    "Hooks into the [Bare runtime](/bare/reference/bare/runtime)'s lifecycle events (`idle`, `resume`, `wakeup`) to pause and restart the underlying native timer. The promise-based API integrates with `bare-abort-controller`—an optional peer dependency—for `signal`-based cancellation.",
     "`require('bare-timers').promises` is also reachable as the standalone `require('bare-timers/promises')`.",
   ],
   params: {

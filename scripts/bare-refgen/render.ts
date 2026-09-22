@@ -215,7 +215,16 @@ function headingText(e: BareExport, prefix: string): string {
   const sig = e.signatures[0] ?? e.name;
   const isType = e.kind === 'interface' || e.kind === 'typeAlias';
   const longOrMultiline = sig.length > HEADING_MAX || sig.includes('\n');
-  return prefix + (isType || longOrMultiline ? e.name : sig);
+  const text = isType || longOrMultiline ? e.name : sig;
+  // A static/namespace-merged member's name/signature is already qualified
+  // with its container (extract.ts's `displayName`), so a collision-scope
+  // component that's just that same container (e.g. re-disambiguating a
+  // subpath re-export of the same class) would double it. Drop only the
+  // redundant component, keeping any outer scope — a subpath name — that
+  // isn't already baked into the qualified text.
+  const parts = prefix.split('.').filter(Boolean);
+  const keep = parts.filter((p) => !text.startsWith(`${p}.`));
+  return keep.length ? `${keep.join('.')}.${text}` : text;
 }
 
 // ---- rendering one exported symbol --------------------------------------
@@ -227,11 +236,12 @@ function renderSymbol(e: BareExport, ctx: Ctx, syncSibling: BareExport | null, p
   const isType = e.kind === 'interface' || e.kind === 'typeAlias';
 
   const longOrMultiline = sig.length > HEADING_MAX || sig.includes('\n');
+  const heading = headingText(e, prefix);
   if (isType || longOrMultiline) {
-    lines.push(`#### ${code(prefix + e.name)}`, '');
+    lines.push(`#### ${code(heading)}`, '');
     lines.push('```ts', sig, '```', '');
   } else {
-    lines.push(`#### ${code(prefix + sig)}`, '');
+    lines.push(`#### ${code(heading)}`, '');
   }
 
   if (e.deprecated !== null) lines.push(`**Deprecated.** ${e.deprecated}`.trim(), '');
@@ -306,12 +316,18 @@ function buildEntries(exportsList: BareExport[], ctx: Ctx, defaultScope = ''): E
   const add = (e: BareExport, group: string, sync: BareExport | null = null, scope = defaultScope) =>
     entries.push({ key: e.key, name: e.name, group, scope, sync, ex: e, heading: headingText(e, ''), mdx: renderSymbol(e, ctx, sync) });
 
+  // Members scope to their container so `Stats.isFile` ≠ `Dirent.isFile`;
+  // folded into `defaultScope` too, so a class re-exported under a subpath
+  // (e.g. bare-timers' `TimerError` also from `bare-timers/errors`) gets a
+  // scope distinct from its main-module copy instead of an identical one
+  // that can't actually disambiguate the two on a collision.
+  const scopeIn = (containerName: string) => (defaultScope ? `${defaultScope}.${containerName}` : containerName);
+
   for (const e of exportsList) {
     switch (e.kind) {
       case 'class':
         if (shouldExpandClass(e)) {
-          // Members scope to the class so `Stats.isFile` ≠ `Dirent.isFile`.
-          for (const m of e.members) add(m, e.name, null, e.name);
+          for (const m of e.members) add(m, e.name, null, scopeIn(e.name));
         } else {
           entries.push({ key: e.key, name: e.name, group: 'Classes', scope: defaultScope, sync: null, ex: e, heading: e.name, mdx: renderClassShape(e, ctx) });
         }
@@ -329,7 +345,7 @@ function buildEntries(exportsList: BareExport[], ctx: Ctx, defaultScope = ''): E
         // own kind would pick at the top level, scoped to the parent name so
         // `structuredClone.serialize` reads distinctly from a same-named
         // top-level export.
-        for (const m of e.members) add(m, groupForKind(m.kind), null, e.name);
+        for (const m of e.members) add(m, groupForKind(m.kind), null, scopeIn(e.name));
         break;
       }
       case 'interface':
@@ -439,6 +455,7 @@ function frontmatter(model: BareModel): string {
     `title: "${model.name}"`,
     `description: "${desc}"`,
     'docType: reference',
+    `product: ${FAMILY}`,
     'schemaType: APIReference',
     // `model.version` is already `pkg.version` resolved by fetchPackage() during
     // this run (see scripts/bare-refgen/index.ts) — bare SemVer, no leading

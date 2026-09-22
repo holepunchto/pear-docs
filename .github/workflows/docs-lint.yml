@@ -2,8 +2,8 @@ name: Docs lint
 
 # Gates docs changes on every PR (and on push to main):
 #   - internal-links: the in-repo link/anchor/asset checker.
-#   - includes:       `<include>` directive targets resolve (internal-links
-#                     doesn't check these — see that job's comment).
+#   - includes:       `<include>` directives resolve (a wrong relative `../`
+#                     depth ships a page with a missing snippet, silently).
 #   - code-imports:   `file=...#L…` ranges resolve, are in bounds, and render
 #                     balanced code (a wrong range fails silently otherwise).
 #   - vale:           Google-style prose linting of content/.
@@ -102,19 +102,12 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      # check-includes.ts has no repo dependencies beyond Node builtins, so a
-      # plain tsx install is enough — same throwaway-prefix pattern as the
-      # other jobs here, for the same @tetherto/* token-gating reason.
+      # check-includes.ts only imports Node builtins (fs, path) — no
+      # third-party deps, so no isolated-install dance needed here.
       - name: Install tsx
-        run: |
-          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx
-          mkdir -p node_modules
-          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
-      # <include> resolution isn't validated by internal-links (see that job) —
-      # a wrong relative `../` depth ships a page with a missing snippet and no
-      # build error otherwise.
-      - name: Check include directives
-        run: ./node_modules/.bin/tsx scripts/check-includes.ts
+        run: npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx
+      - name: Check include directives resolve
+        run: "$RUNNER_TEMP/checker/node_modules/.bin/tsx scripts/check-includes.ts"
 
   doctypes:
     name: doctype & product invariants

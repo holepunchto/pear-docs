@@ -14,8 +14,8 @@ const layout: Layout = {
 
   intro:
     '`Protomux` multiplexes multiple message-oriented subprotocols over one framed stream. ' +
-    'It is typically layered on top of [Secretstream](/reference/helpers/secretstream) and uses ' +
-    '[Compact encoding](/reference/helpers/compact-encoding) for message schemas. ' +
+    'It is typically layered on top of [Secretstream](/p2p/reference/helpers/secretstream) and uses ' +
+    '[Compact encoding](/p2p/reference/helpers/compact-encoding) for message schemas. ' +
     'For source and releases, see the [Protomux repository](https://github.com/holepunchto/protomux).',
 
   quickstart:
@@ -78,9 +78,9 @@ const layout: Layout = {
   },
 
   seeAlso: [
-    '[Secretstream](/reference/helpers/secretstream)—the encrypted framed stream most commonly used underneath Protomux.',
-    '[Compact encoding](/reference/helpers/compact-encoding)—the schema toolkit Protomux uses for handshakes and message payloads.',
-    '[Hyperswarm](/reference/building-blocks/hyperswarm)—common peer-transport entry point before you layer on Secretstream and Protomux.',
+    '[Secretstream](/p2p/reference/helpers/secretstream)—the encrypted framed stream most commonly used underneath Protomux.',
+    '[Compact encoding](/p2p/reference/helpers/compact-encoding)—the schema toolkit Protomux uses for handshakes and message payloads.',
+    '[Hyperswarm](/p2p/reference/building-blocks/hyperswarm)—common peer-transport entry point before you layer on Secretstream and Protomux.',
     '[Upstream Protomux repository](https://github.com/holepunchto/protomux)—source, releases, and implementation details.',
   ],
 };

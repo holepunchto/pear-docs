@@ -13,9 +13,9 @@ const layout: Layout = {
   status: 'stable',
 
   intro:
-    '`Corestore` manages many related [Hypercores](/reference/building-blocks/hypercore) behind one storage root and ' +
-    'one replication surface. It is the helper you usually share across [Hyperbee](/reference/building-blocks/hyperbee), ' +
-    '[Hyperdrive](/reference/building-blocks/hyperdrive), and [Autobase](/reference/building-blocks/autobase) instances. ' +
+    '`Corestore` manages many related [Hypercores](/p2p/reference/building-blocks/hypercore) behind one storage root and ' +
+    'one replication surface. It is the helper you usually share across [Hyperbee](/p2p/reference/building-blocks/hyperbee), ' +
+    '[Hyperdrive](/p2p/reference/building-blocks/hyperdrive), and [Autobase](/p2p/reference/building-blocks/autobase) instances. ' +
     'For upstream source and changelog context, see the [Corestore repository](https://github.com/holepunchto/corestore).',
 
   quickstart:
@@ -76,12 +76,12 @@ const layout: Layout = {
   },
 
   seeAlso: [
-    '[Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—the task-oriented guide that shows how to share one store across your app.',
-    '[Hypercore](/reference/building-blocks/hypercore)—the append-only log type Corestore opens and co-replicates.',
-    '[Hyperbee](/reference/building-blocks/hyperbee)—commonly layered on top of named Hypercores from one store.',
-    '[Hyperdrive](/reference/building-blocks/hyperdrive)—usually keeps filesystem metadata and content stores inside one shared Corestore.',
-    '[Autobase](/reference/building-blocks/autobase)—multi-writer views often coordinate their input cores through one Corestore.',
-    '[Hyperswarm](/reference/building-blocks/hyperswarm)—pass swarm connections to `store.replicate()` to co-replicate all managed cores over one stream.',
+    '[Work with many Hypercores using Corestore](/p2p/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—the task-oriented guide that shows how to share one store across your app.',
+    '[Hypercore](/p2p/reference/building-blocks/hypercore)—the append-only log type Corestore opens and co-replicates.',
+    '[Hyperbee](/p2p/reference/building-blocks/hyperbee)—commonly layered on top of named Hypercores from one store.',
+    '[Hyperdrive](/p2p/reference/building-blocks/hyperdrive)—usually keeps filesystem metadata and content stores inside one shared Corestore.',
+    '[Autobase](/p2p/reference/building-blocks/autobase)—multi-writer views often coordinate their input cores through one Corestore.',
+    '[Hyperswarm](/p2p/reference/building-blocks/hyperswarm)—pass swarm connections to `store.replicate()` to co-replicate all managed cores over one stream.',
     '[Upstream Corestore repository](https://github.com/holepunchto/corestore)—source, releases, and implementation details.',
   ],
 };

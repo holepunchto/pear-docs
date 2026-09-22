@@ -11,7 +11,7 @@ const layout: Layout = {
   params: {
     pack: {
       entry: 'The root of the module graph to bundle; must be a WHATWG `URL` instance (typically a `file:` URL).',
-      opts: 'Packing options, extending [`TraverseOptions`](/reference/bare/modules/bare-module-traverse) from `bare-module-traverse`. Adds `concurrency`, `base` (the URL that offloaded file paths are made relative to), and `offload` (whether to write addons and/or assets to disk instead of embedding them).',
+      opts: 'Packing options, extending [`TraverseOptions`](/bare/reference/bare/modules/bare-module-traverse) from `bare-module-traverse`. Adds `concurrency`, `base` (the URL that offloaded file paths are made relative to), and `offload` (whether to write addons and/or assets to disk instead of embedding them).',
       readModule:
         'Called with a `URL` for every module in the graph; returns the module source as a `Buffer` or string, or `null` if it does not exist.',
       listPrefix:
