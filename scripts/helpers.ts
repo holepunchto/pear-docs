@@ -396,7 +396,7 @@ export async function buildAnchorMap(
  * `<…>` patterns: in our reference pages they're type-signature notation
  * (`<Object>`, `<link|dir>`) that github-slugger reduces to bare words.
  */
-function stripInlineMarkdown(input: string): string {
+export function stripInlineMarkdown(input: string): string {
   return input
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // [text](url)
     .replace(/[*_`~]+/g, '')                  // emphasis / code spans
