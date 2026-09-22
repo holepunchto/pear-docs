@@ -10,8 +10,13 @@ import { KeetIcon } from '@/components/keet-icon';
 import KeetRoomModalMount from '@/components/keet-modal';
 import { DocsVersionProvider } from '@/components/version';
 import { ProductNavBar } from '@/components/product-nav-bar';
+import { McpInstallButton } from '@/components/mcp-install';
 
 export const dynamic = 'force-static';
+
+// Read once at module scope: `NEXT_PUBLIC_*` is inlined at build time, so this
+// is a literal by the time it reaches the client bundle.
+const mcpUrl = process.env.NEXT_PUBLIC_MCP_URL;
 
 export default async function Layout({ children, params }: LayoutProps<'/[[...slug]]'>) {
   const { slug } = await params;
@@ -117,7 +122,15 @@ export default async function Layout({ children, params }: LayoutProps<'/[[...sl
           // overwrites it, so each product gets its own cache entry.
           tree={{ name: 'docs', children: tree, $id: product }}
           links={linkItems}
-          sidebar={{ collapsible: false }}
+          sidebar={{
+            collapsible: false,
+            // Fumadocs renders `banner` immediately after the sidebar's
+            // LargeSearchToggle (see fumadocs-ui/dist/layouts/docs/index.js),
+            // which is exactly where this belongs — search first, then "take
+            // these docs with you". Unset env var means no button at all
+            // rather than one that installs a dead endpoint.
+            banner: mcpUrl ? <McpInstallButton url={mcpUrl} /> : undefined,
+          }}
         >
           {children}
         </DocsLayout>
