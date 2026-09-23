@@ -399,7 +399,7 @@ export async function buildAnchorMap(
 function stripInlineMarkdown(input: string): string {
   return input
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // [text](url)
-    .replace(/[*_`~]+/g, '')                  // emphasis / code spans
+    .replace(/`([^`]*)`|[*_~]+/g, (_, code) => code ?? '') // keep code-span text verbatim; drop emphasis
     .trim();
 }
 
