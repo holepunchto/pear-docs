@@ -211,6 +211,11 @@ export const pearTree: Node[] = [
       },
       {
         type: 'page',
+        name: "Look up this machine's network keys",
+        url: '/pear/how-to/look-up-network-keys',
+      },
+      {
+        type: 'page',
         name: 'Manage installed applications',
         url: '/pear/how-to/manage-installed-applications',
       },

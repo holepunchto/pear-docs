@@ -15,7 +15,7 @@ The Command Line Interface is the primary interface for Pear Development.
 <include>../../../_snippets/_interactive-menu-callout.mdx</include>
 
 <Callout type="info">
-This page tracks **Pear 3.4.0**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/pear/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
+This page tracks **Pear 3.5.0**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/pear/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
 
 Anything a release adds or removes carries an inline badge—<Since v="3.1.0" /> or <Until v="3.1.0" />—so you can tell whether your build has it. Run `pear versions` to check what you are on, and see the [Release Overview](/pear/release-overview) for the full history.
 </Callout>
@@ -101,7 +101,8 @@ For commands that take a subcommand, **where you put `--json` matters—and it i
 | Command | Position | Works | Rejected |
 | --- | --- | --- | --- |
 | [`pear data`](#pear-data), [`pear gc`](#pear-gc) | **before** the subcommand | `pear data --json dht` | `pear data dht --json` |
-| [`pear blind-peer`](#pear-blind-peer) <Since v="3.4.0" /> | **before** the subcommand | `pear blind-peer --json identity` | `pear blind-peer identity --json` |
+| [`pear blind-peer`](#pear-blind-peer) <Since v="3.4.0" /> | **before** the subcommand | `pear blind-peer --json request <key> --peer <peer>` | `pear blind-peer request <key> --peer <peer> --json` |
+| [`pear identity`](#pear-identity) <Since v="3.5.0" /> | **before** the subcommand | `pear identity --json seed` | `pear identity seed --json` |
 | [`pear multisig`](#pear-multisig) | **after** the subcommand | `pear multisig keys list --json` | `pear multisig --json keys list` |
 | [`pear blind-relay`](#pear-blind-relay) <Since v="3.4.0" /> | **after** the subcommand | `pear blind-relay start --json` | `pear blind-relay --json start` |
 
@@ -377,13 +378,36 @@ Seeding will sparsely replicate the application. This means the entire history o
 
 `<link>` accepts a versioned verlink, but only its key is used—`pear seed` always replicates the full, latest history and is never pinned to that version. `--stats-interval` defaults to 500 milliseconds with the live UI on, or 3000 milliseconds under `--no-tty`.
 
-<Since v="3.2.0" /> `--until-sync <key>` takes a peer's public key (z32) and exits automatically once every specified peer has fully synced—pass the flag multiple times to wait for more than one peer. Useful for scripting a seed session that should end on its own instead of running indefinitely. The live view lists Seeding, Drive Key, Drive Length, Discovery Key, Content Key, Firewalled, NAT Type, Whoami and Network above an unlabelled log; the key to pass here is the one printed after each peer join or peer sync line.
+<Since v="3.2.0" /> `--until-sync <key>` takes a peer's public key (z32) and exits automatically once every specified peer has fully synced—pass the flag multiple times to wait for more than one peer. Useful for scripting a seed session that should end on its own instead of running indefinitely. The key to pass is the one printed after each peer join or peer sync line in the log below the stats table—or, for the machine you are on, what [`pear identity seed`](#pear-identity) prints <Since v="3.5.0" />.
 
-<Since v="3.4.0" /> `--blind-peer <key>` takes a [blind peer](/p2p/explanation/blind-peering)'s public key (z32) and registers the drive being seeded with it, so it stays available after this session ends. The live log shows `adding core`, `confirming add core`, and `added core` lines as the request progresses. Registering does not end the session: the blind peer's key is added to the `--until-sync` set, so `pear seed` then waits for that peer to fully sync the drive's cores before exiting—on a large drive that is a long wait, not a quick handshake. Reaching the blind peer at all has its own 30-second budget, after which the command fails with `ERR_OPERATION_FAILED`, `Timed out connecting to blind peer <key>`. Passing both flags is fine; the blind peer is simply one more key to wait for. This is a one-flag alternative to wiring the [`blind-peering`](https://github.com/holepunchto/blind-peering) client library directly for the common case of registering one drive—see [Keep data available with blind peering](/p2p/how-to/blind-peering/keep-data-available-with-blind-peering) for when you'd still reach for the library instead (multiple cores, Autobases, or finer control).
+The live view is a stats table above a log of peer and announce lines:
+
+<VersionGate since="3.5.0">
+```
+Seeding:       pear://q9bhn175f34ahxnriujd68ykiww3syzmdf9w4humxoxqeshjhy6o
+Verlink:       pear://0.3.q9bhn175f34ahxnriujd68ykiww3syzmdf9w4humxoxqeshjhy6o
+App:           seedcheck@1.2.3
+Drive Length:  3 [100%]
+Blobs Length:  4 [100%]
+Blobs Size:    131B
+Discovery Key: m5xisy4tfmd7wgnoxpjygdnynbweti7pb5d5tc8zb3zxaafzoz3y
+Content Key:   7qbpsi5hygtbppejymfnzitiygpysndgbrbm54og11d1gcqsdupo
+Firewalled:    true
+NAT Type:      consistent
+Whoami:        4ibhiwr1pstsw8h4gt3gti88m3de4zqb76bzsjjyomc9woipdbto
+Network:       [ Peers 0 ]  [ ⬆ 0B - 0B/s ]  [ ⬇ 0B - 0B/s ]
+──────────────────────────────────────────────────────
+^_^ announced
+```
+
+The gap between labels and values is computed from the terminal width, so it will not match this sample exactly. Under `--no-tty` the same fields print as one `... <field> <value>` line each, re-emitted on every stats tick instead of redrawn in place.
+</VersionGate>
+
+<Since v="3.4.0" /> `--blind-peer <key>` takes a [blind peer](/p2p/explanation/blind-peering)'s public key (z32)—read off the blind peer's machine with [`pear identity blind-peer`](#pear-identity) <Since v="3.5.0" />—and registers the drive being seeded with it, so it stays available after this session ends. The live log shows `adding core`, `confirming add core`, and `added core` lines as the request progresses. Registering does not end the session: the blind peer's key is added to the `--until-sync` set, so `pear seed` then waits for that peer to fully sync the drive's cores before exiting—on a large drive that is a long wait, not a quick handshake. Reaching the blind peer at all has its own 30-second budget, after which the command fails with `ERR_OPERATION_FAILED`, `Timed out connecting to blind peer <key>`. Passing both flags is fine; the blind peer is simply one more key to wait for. This is a one-flag alternative to wiring the [`blind-peering`](https://github.com/holepunchto/blind-peering) client library directly for the common case of registering one drive—see [Keep data available with blind peering](/p2p/how-to/blind-peering/keep-data-available-with-blind-peering) for when you'd still reach for the library instead (multiple cores, Autobases, or finer control).
 
 <VersionGate since="3.4.0">
 <Callout type="warn">
-The request asks the blind peer to **announce** the drive, but that only sticks if the blind peer trusts you—its operator has to have started it with `--trusted-peer <your-key>`, where your key is what [`pear blind-peer identity`](#pear-blind-peer) prints on this machine. Against a blind peer that does not trust you the drive is still stored and served, but never announced, so peers will not discover it through that blind peer. Nothing in the command's output distinguishes the two cases; check the blind peer's own logs for a downgraded announce.
+The request asks the blind peer to **announce** the drive, but that only sticks if the blind peer trusts you—its operator has to have started it with `--trusted-peer <your-key>`, where your key is what [`pear identity blind-peer-client`](#pear-identity) prints on this machine (`pear blind-peer identity` <Until v="3.5.0" /> before that). Against a blind peer that does not trust you the drive is still stored and served, but never announced, so peers will not discover it through that blind peer. Nothing in the command's output distinguishes the two cases; check the blind peer's own logs for a downgraded announce.
 </Callout>
 </VersionGate>
 
@@ -393,6 +417,14 @@ The request asks the blind peer to **announce** the drive, but that only sticks 
 
 <Callout type="info">
 <Since v="3.4.0" /> The terminal stats table replaces the standalone `Semantic Version:` row with `App:` (`<name>@<version>`, falling back to `-` when the manifest has neither) and adds a `Blobs Size:` row. The underlying [`--json`](#json-output) `stats` data gains matching `name` and `blobsByteLength` fields—`semver` was already present. On 3.3.0 and earlier the table carries `Semantic Version:` and no blobs size, and `stats` has no `name`.
+</Callout>
+
+<Callout type="info">
+<Since v="3.5.0" /> The terminal stats table replaces the `Drive Key:` row with `Verlink:`, which prints the full versioned link (`pear://<fork>.<length>.<key>`) rather than the bare key. The key is still there—it is the last segment—and [`--json`](#json-output) still reports `driveKey` unchanged, so scripts reading that field are unaffected. On 3.4.0 and earlier the table carries `Drive Key:` and no verlink.
+</Callout>
+
+<Callout type="info">
+<Since v="3.5.0" /> `Drive Length:` reports sync progress rather than a bare block count, and a `Blobs Length:` row is added alongside it. Each shows `<synced>/<total>` and a percentage while syncing, collapsing to just `<total>` once complete—so `12/40 [ 30%]` means 12 of 40 blocks are local, and `3 [100%]` means all 3 are. In-progress rows are highlighted, completed ones dimmed. The percentage is right-aligned to three digits in the live view (`[100%]`, `[ 30%]`) and spaced as `[ 30% ]` under `--no-tty`. The `--json` `stats` data gains `driveSynced`, `blobsSynced`, `blobsLength` and `driveFork` alongside the existing `driveLength`. On 3.4.0 and earlier `Drive Length:` is a plain number and there is no blobs block count.
 </Callout>
 
 ### `pear install <link>`
@@ -460,7 +492,7 @@ Manage blind peers.
 | Command | Description |
 | --- | --- |
 | `start` | Start a blind peer |
-| `identity` | Show peer identity key |
+| `identity` <Until v="3.5.0" /> | Show peer identity key—replaced by [`pear identity blind-peer-client`](#pear-identity) |
 | `request <key>` | Request a blind peer to seed |
 
 ```
@@ -471,18 +503,18 @@ Manage blind peers.
   --help|-h               Show help
 ```
 
-`--json` is declared on `pear blind-peer` itself, so it goes **before** the subcommand—`pear blind-peer --json identity`, not `pear blind-peer identity --json` (see [`--json` position](#json-output)). Note that [`pear blind-relay`](#pear-blind-relay) takes it the other way round.
+`--json` is declared on `pear blind-peer` itself, so it goes **before** the subcommand—`pear blind-peer --json start`, not `pear blind-peer start --json` (see [`--json` position](#json-output)). Note that [`pear blind-relay`](#pear-blind-relay) takes it the other way round.
 
 **Two different keys are in play, and mixing them up is the easy mistake:**
 
 | Key | Where it comes from | What it's for |
 | --- | --- | --- |
 | The blind peer's own key | `start` prints `Blind peer started listening using public key: <publicKey>` | The **target**: what others pass to [`pear seed --blind-peer <key>`](#pear-seed) or `pear blind-peer request --peer <key>` |
-| A client's identity key | `pear blind-peer identity`, run **on the client machine** | The **authorization**: what the blind peer's operator passes to `start --trusted-peer <peer>` |
+| A client's identity key | [`pear identity blind-peer-client`](#pear-identity) <Since v="3.5.0" /> (`pear blind-peer identity` <Until v="3.5.0" /> before that), run **on the client machine** | The **authorization**: what the blind peer's operator passes to `start --trusted-peer <peer>` |
 
 `pear blind-peer start` runs the server. `--trusted-peer` may be passed more than once; each value must be a valid public key or the command rejects with `A valid trusted peer key must be specified`. Trust is what decides whether a request is honored in full. A trusted peer's cores are **announced**, so the blind peer advertises itself as a source for them; an untrusted peer's request has `announce` forced to `false`—the cores are still stored and served, but the blind peer never announces them, so peers looking for a source will not find it through the blind peer. Untrusted requests are also capped to a lower retention priority, and deleting a core is refused outright (`Only trusted peers can delete cores`). Only one blind peer runs per sidecar: starting a second fails with `ERR_OPERATION_FAILED`—`Blind peer is already running, cannot start another`. Its storage is a `blind-peer` directory in the Pear platform directory, beside the platform database and [`pear.log`](#sidecar-logs).
 
-`pear blind-peer identity` prints **this machine's** sidecar public key—the identity a blind peer operator authorizes with `--trusted-peer`. It reports that key whether or not a blind peer is running here, and follows it with a hint showing the `start --trusted-peer=<key>` invocation that would authorize it.
+<Until v="3.5.0" label="Removed in 3.5.0" /> `pear blind-peer identity` printed **this machine's** sidecar public key—the identity a blind peer operator authorizes with `--trusted-peer`. From 3.5.0 it is [`pear identity blind-peer-client`](#pear-identity), which prints the same key; the old form fails with `✖ Unrecognized Argument at index 0 with value identity`.
 
 `pear blind-peer request <key> --peer <peer>` asks the blind peer at `--peer` to seed `<key>`—a `pear://` link (a drive, or with `--core-only`, a bare core) or a raw public key. Both `--peer` and `<key>` are required and validated; an invalid or missing value fails with `ERR_INVALID_INPUT` before any request is sent.
 
@@ -511,7 +543,7 @@ Unlike [`pear blind-peer`](#pear-blind-peer), `--json` here belongs to the `star
 
 `--stats-interval` defaults to 500 milliseconds with the live UI on, or 3000 milliseconds under `--no-tty`—same convention as [`pear seed`](#pear-seed). The live view (and each `--json`/`--no-tty` line) reports `Public Key`; `Sessions` (`Accepted`, `Opened`, `Closed`, `Active`); `Pairings` (`Requested`, `Matched`, `Cancelled`, `Pending`, `Active`); and `Streams` (`Opened`, `Closed`, `Errors`, `Active`). The counters are cumulative for the process's lifetime; `Active` and `Pending` reflect current state.
 
-Like [`pear blind-peer`](#pear-blind-peer), only one relay runs per sidecar—starting a second fails with `ERR_OPERATION_FAILED`, `Blind relay is already running, cannot start another`. The relay's key pair is derived from the platform corestore, so a given machine keeps the same relay key across restarts.
+Like [`pear blind-peer`](#pear-blind-peer), only one relay runs per sidecar—starting a second fails with `ERR_OPERATION_FAILED`, `Blind relay is already running, cannot start another`. The relay's key pair is derived from the platform corestore, so a given machine keeps the same relay key across restarts—[`pear identity blind-relay`](#pear-identity) <Since v="3.5.0" /> prints it without having to scrape `start`'s output.
 
 A peer connects through a running relay with the global `--relay <key>` flag below.
 
@@ -519,89 +551,7 @@ A peer connects through a running relay with the global `--relay <key>` flag bel
 
 <a name="relay-flag"></a>
 
-Any command accepts `--relay <key>`, where `<key>` is a running [`pear blind-relay`](#pear-blind-relay)'s public key. An invalid key fails fast, before the command itself runs: `--relay <key> must supply a valid public key`.
-
-Two things about it are easy to get wrong:
-
-- **It registers the relay with the sidecar, not with the command.** The flag sets the relay on the shared, long-running sidecar process, so it stays in effect for everything that sidecar does afterwards—not just the command you passed it to. You only need to pass it once. There is no flag that unsets it; [`pear sidecar shutdown`](#pear-sidecar) clears it by restarting the process.
-- **It is a fallback, not a tunnel.** Registering a relay does not push your traffic through it. The swarm consults it only when a connection actually needs relaying, or when this machine's DHT node is randomized—the unpredictable-NAT case where hole punching cannot work. Otherwise connections stay direct.
-
-Reach for this when direct hole-punching isn't working—see [Relay connections through a blind relay](/p2p/how-to/connect-to-peers/relay-connections-through-a-blind-relay) for the end-to-end setup, and [Hole punching and NAT traversal](/p2p/explanation/peer-to-peer-demystified#hole-punching-and-nat-traversal) for why it fails.
-
-## Blind peers and relays
-<VersionSection since="3.4.0" />
-
-<Since v="3.4.0" /> Two commands bring peer-to-peer availability and connectivity services natively into the platform CLI: **blind peers**, which replicate cores on your behalf without reading them (see [Blind peering](/p2p/explanation/blind-peering)), and **blind relays**, which forward connections between peers that cannot hole-punch directly (see [Peer-to-peer, demystified](/p2p/explanation/peer-to-peer-demystified#hole-punching-and-nat-traversal)). Both existed as separate packages before 3.4.0; these commands run the same functionality through `pear` directly.
-
-### `pear blind-peer [command]`
-
-<a name="pear-blind-peer"></a>
-
-Manage blind peers.
-
-| Command | Description |
-| --- | --- |
-| `start` | Start a blind peer |
-| `identity` | Show peer identity key |
-| `request <key>` | Request a blind peer to seed |
-
-```
-  --trusted-peer <peer>   Trusted peer key to allow requests from (start; repeatable)
-  --peer <peer>           Peer key to request from (request)
-  --core-only             Request only the db core instead of also the content core (request)
-  --json                  Newline delimited JSON output
-  --help|-h               Show help
-```
-
-`--json` is declared on `pear blind-peer` itself, so it goes **before** the subcommand—`pear blind-peer --json identity`, not `pear blind-peer identity --json` (see [`--json` position](#json-output)). Note that [`pear blind-relay`](#pear-blind-relay) takes it the other way round.
-
-**Two different keys are in play, and mixing them up is the easy mistake:**
-
-| Key | Where it comes from | What it's for |
-| --- | --- | --- |
-| The blind peer's own key | `start` prints `Blind peer started listening using public key: <publicKey>` | The **target**: what others pass to [`pear seed --blind-peer <key>`](#pear-seed) or `pear blind-peer request --peer <key>` |
-| A client's identity key | `pear blind-peer identity`, run **on the client machine** | The **authorization**: what the blind peer's operator passes to `start --trusted-peer <peer>` |
-
-`pear blind-peer start` runs the server. `--trusted-peer` may be passed more than once; each value must be a valid public key or the command rejects with `A valid trusted peer key must be specified`. Trust is what decides whether a request is honored in full. A trusted peer's cores are **announced**, so the blind peer advertises itself as a source for them; an untrusted peer's request has `announce` forced to `false`—the cores are still stored and served, but the blind peer never announces them, so peers looking for a source will not find it through the blind peer. Untrusted requests are also capped to a lower retention priority, and deleting a core is refused outright (`Only trusted peers can delete cores`). Only one blind peer runs per sidecar: starting a second fails with `ERR_OPERATION_FAILED`—`Blind peer is already running, cannot start another`. Its storage is a `blind-peer` directory in the Pear platform directory, beside the platform database and [`pear.log`](#sidecar-logs).
-
-`pear blind-peer identity` prints **this machine's** sidecar public key—the identity a blind peer operator authorizes with `--trusted-peer`. It reports that key whether or not a blind peer is running here, and follows it with a hint showing the `start --trusted-peer=<key>` invocation that would authorize it.
-
-`pear blind-peer request <key> --peer <peer>` asks the blind peer at `--peer` to seed `<key>`—a `pear://` link (a drive, or with `--core-only`, a bare core) or a raw public key. Both `--peer` and `<key>` are required and validated; an invalid or missing value fails with `ERR_INVALID_INPUT` before any request is sent.
-
-Without `--core-only` this registers **two** cores—the drive's metadata core and its blobs core—and to do that it first resolves the blobs core over the swarm, so the drive has to be reachable at the time you run it. The request itself gives the blind peer 30 seconds to answer, failing with `ERR_OPERATION_FAILED`, `Timed out connecting to blind peer <key>`. Like [`pear seed --blind-peer`](#pear-seed), the request always asks for the core to be announced—there is no flag to turn that off—so the trust rules above decide whether the announce actually sticks.
-
-This is the platform-native equivalent of running the standalone [`blind-peer-cli`](https://github.com/holepunchto/blind-peer-cli) package—see [Blind peering](/p2p/explanation/blind-peering#running-a-blind-peer-server) for the operational picture. Note that the disk budget described there is a `blind-peer-cli` flag (`-m <size>`); `pear blind-peer start` exposes no equivalent and uses the library default.
-
-### `pear blind-relay [command]`
-
-<a name="pear-blind-relay"></a>
-
-Run a blind relay for peers that cannot hole-punch directly with each other—similar to TURN for UDX/Protomux streams. A relay pairs two peers by a pre-exchanged token, allocates a stream for each, and forwards messages between them without otherwise participating in the connection.
-
-| Command | Description |
-| --- | --- |
-| `start` | Start the blind relay |
-
-```
-  --no-tty                          Print plain log lines instead of the live terminal UI
-  --stats-interval <milliseconds>   Stats refresh interval in milliseconds
-  --json                            Newline delimited JSON output
-  --help|-h                         Show help
-```
-
-Unlike [`pear blind-peer`](#pear-blind-peer), `--json` here belongs to the `start` subcommand, so it goes **after** it—`pear blind-relay start --json` (see [`--json` position](#json-output)).
-
-`--stats-interval` defaults to 500 milliseconds with the live UI on, or 3000 milliseconds under `--no-tty`—same convention as [`pear seed`](#pear-seed). The live view (and each `--json`/`--no-tty` line) reports `Public Key`; `Sessions` (`Accepted`, `Opened`, `Closed`, `Active`); `Pairings` (`Requested`, `Matched`, `Cancelled`, `Pending`, `Active`); and `Streams` (`Opened`, `Closed`, `Errors`, `Active`). The counters are cumulative for the process's lifetime; `Active` and `Pending` reflect current state.
-
-Like [`pear blind-peer`](#pear-blind-peer), only one relay runs per sidecar—starting a second fails with `ERR_OPERATION_FAILED`, `Blind relay is already running, cannot start another`. The relay's key pair is derived from the platform corestore, so a given machine keeps the same relay key across restarts.
-
-A peer connects through a running relay with the global `--relay <key>` flag below.
-
-### Global `--relay <key>` flag
-
-<a name="relay-flag"></a>
-
-Any command accepts `--relay <key>`, where `<key>` is a running [`pear blind-relay`](#pear-blind-relay)'s public key. An invalid key fails fast, before the command itself runs: `--relay <key> must supply a valid public key`.
+Any command accepts `--relay <key>`, where `<key>` is a running [`pear blind-relay`](#pear-blind-relay)'s public key—read off the relay machine with [`pear identity blind-relay`](#pear-identity) <Since v="3.5.0" />. An invalid key fails fast, before the command itself runs: `--relay <key> must supply a valid public key`.
 
 Two things about it are easy to get wrong:
 
@@ -734,18 +684,21 @@ The name column is padded to the widest name present and the type column to the 
 
 <VersionGate since="3.4.0">
 ```
- Name   Type   Link          Length  Writable  Size
-──────────────────────────────────────────────────────
- myapp  core   pear://<key>  42      ✔         1.2 MB
- myapp  blobs  pear://<key>  118     ✔         14.8 MB
- -      core   pear://<key>  7                 0 B
-──────────────────────────────────────────────────────
-Total cores: 3 (writable: 2)
-Total size:  16 MB
+ Name       Type   Link                                                         Length  Writable  Size
+───────────────────────────────────────────────────────────────────────────────────────────────────────
+ seedcheck  core   pear://q9bhn175f34ahxnriujd68ykiww3syzmdf9w4humxoxqeshjhy6o  3       ✔         347B
+ seedcheck  blobs  pear://7qbpsi5hygtbppejymfnzitiygpysndgbrbm54og11d1gcqsdupo  4       ✔         131B
+───────────────────────────────────────────────────────────────────────────────────────────────────────
+Total cores: 2 (writable: 2)
+Total size:  478B
 ```
 
-A separator rule also appears between cores belonging to different drives when more than one application is listed. `blobs` rows render dimmed. The empty-store message is now `[ No cores ]`, replacing the bare `No cores` used through 3.3.0. This sample is derived from source (`cmd/cores.js`), not a captured run—re-verify exact spacing against a real 3.4.0 build.
+Each column is padded to its widest value, so the rules and the column positions shift with the content. A separator rule also appears between cores belonging to different drives when more than one application is listed. `blobs` rows render dimmed. The empty-store message is now `[ No cores ]`, replacing the bare `No cores` used through 3.3.0.
 </VersionGate>
+
+<Callout type="info">
+<Since v="3.5.0" label="Fixed in 3.5.0" /> The table is written straight to stdout instead of through `console.log`, which mangled its non-ASCII characters on Windows—the header and footer rules and the `✔` marks came out as mojibake. Other platforms were unaffected, and the table's content and layout are unchanged.
+</Callout>
 
 <Callout type="info">
 <Since v="3.2.0" /> Cores with zero contiguous length are skipped by default and each row also reports the core's length—`(length: <n>, writable)` or `(length: <n>)`. Pass `--all-cores` to include the skipped empty cores. "Empty" here means a contiguous length of zero—usually a core that was allocated and never written to, but also one holding only non-contiguous blocks. On 3.1.0, every core is listed regardless of length and the line only ever shows `(writable)`.
@@ -781,7 +734,7 @@ The database contains metadata stored on this device used by the Pear runtime.
 
 ## Platform maintenance and diagnostics
 
-Manage the background sidecar process, reclaim disk space, and check what's installed.
+Manage the background sidecar process, read this machine's network keys, reclaim disk space, and check what's installed.
 
 ### `pear sidecar [command]`
 
@@ -827,6 +780,48 @@ Running `pear sidecar` shuts down any existing sidecar and takes over as the new
   The terminal prints the same entry with the **timestamp first** (`2026-07-28T18:29:43.869Z INF [ sidecar ] …`), so parse the file rather than captured console output.
 
 Entries above the active `--log-level` are dropped from both the file and the terminal, so raise the level before reproducing a fault you want captured.
+
+### `pear identity [command]`
+<VersionSection since="3.5.0" />
+
+<a name="pear-identity"></a>
+
+<Since v="3.5.0" /> Show local network public keys. For the workflows these keys feed into, see [Look up this machine's network keys](/pear/how-to/look-up-network-keys).
+
+| Command | Description |
+| --- | --- |
+| `seed` | Show seed key |
+| `blind-relay` | Show blind relay key |
+| `blind-peer` | Show blind peer key |
+| `blind-peer-client` | Show blind peer client key |
+
+```
+  --json      Newline delimited JSON output
+  --help|-h   Show help
+```
+
+Each subcommand prints one z32 key and nothing else. Run without a subcommand, `pear identity` prints its own help rather than defaulting to a key.
+
+| Subcommand | The key | Pass it to |
+| --- | --- | --- |
+| `seed` | This machine's sidecar key pair—the same value [`pear seed`](#pear-seed) reports as `Whoami:` | [`pear seed --until-sync <key>`](#pear-seed), run by whoever is waiting on this machine to sync |
+| `blind-relay` | This machine's relay key pair, derived from the platform corestore and stable across restarts | [`--relay <key>`](#relay-flag) on another machine, once [`pear blind-relay start`](#pear-blind-relay) is running here |
+| `blind-peer` | The blind peer server's own key on this machine—the same value [`pear blind-peer start`](#pear-blind-peer) prints as `Blind peer started listening using public key:` | [`pear seed --blind-peer <key>`](#pear-seed) or `pear blind-peer request --peer <key>` |
+| `blind-peer-client` | This machine's DHT key pair, the identity it presents *to* a blind peer | `pear blind-peer start --trusted-peer <peer>`, run by the blind peer's operator |
+
+The four keys are distinct and not interchangeable—see the [two-keys table](#pear-blind-peer) for the pairing that trips people up most, `blind-peer` (the target) against `blind-peer-client` (the authorization).
+
+The key is written to **stdout** and the [next-step hint](#next-step-hints) to **stderr**, so `KEY=$(pear identity seed)` captures the key alone. Each subcommand prints a different hint: `seed` suggests `pear seed --until-sync=<key> <link>`, `blind-relay` suggests `pear --relay <key> seed <link>`, `blind-peer` suggests `pear seed --blind-peer=<key> <link>`, and `blind-peer-client` suggests `pear blind-peer start --trusted-peer=<key>`.
+
+`--json` is declared on `pear identity` itself, so it goes **before** the subcommand—`pear identity --json seed`, not `pear identity seed --json` (see [`--json` position](#json-output)). Output is a single `final` object:
+
+```json
+{"cmd":"identity","tag":"final","data":{"success":true,"publicKey":"4ibhiwr1pstsw8h4gt3gti88m3de4zqb76bzsjjyomc9woipdbto"}}
+```
+
+<Callout type="info">
+`seed`, `blind-relay` and `blind-peer-client` read key pairs the sidecar already holds, so they are pure lookups. `blind-peer` is not: if no blind peer is running, it opens one against the platform `blind-peer` storage directory to read its key, creating that directory on first use. The key is stable, so repeated calls return the same value.
+</Callout>
 
 ### `pear gc [flags] [command]`
 
