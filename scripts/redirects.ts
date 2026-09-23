@@ -192,7 +192,7 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: '/reference/runtime/', to: '/pear/reference/pear/runtime/' });
 
   // Other /reference/ structural moves from content/ renames.
-  out.push({ from: '/reference/bare-modules/', to: '/bare/reference/modules/bare-modules/' });
+  out.push({ from: '/reference/bare-modules/', to: '/bare/reference/bare/modules/' });
   // /reference/modules/ was a single pear-modules page before the modules/ subdir was created.
   out.push({ from: '/reference/modules/', to: '/pear/reference/modules/pear-modules/' });
   out.push({
@@ -476,7 +476,7 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/reference/helpers/mirrordrive'), to: withSlash('/p2p/reference/helpers/mirrordrive') });
   out.push({ from: withSlash('/reference/helpers/protomux'), to: withSlash('/p2p/reference/helpers/protomux') });
   out.push({ from: withSlash('/reference/helpers/secretstream'), to: withSlash('/p2p/reference/helpers/secretstream') });
-  out.push({ from: withSlash('/reference/modules/bare-modules'), to: withSlash('/bare/reference/modules/bare-modules') });
+  out.push({ from: withSlash('/reference/modules/bare-modules'), to: withSlash('/bare/reference/bare/modules') });
   out.push({ from: withSlash('/reference/modules/pear-modules'), to: withSlash('/pear/reference/modules/pear-modules') });
   out.push({ from: withSlash('/reference/pear/api'), to: withSlash('/pear/reference/pear/api') });
   out.push({ from: withSlash('/reference/pear/cli'), to: withSlash('/pear/reference/pear/cli') });
@@ -508,6 +508,11 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: withSlash('/pear/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app'), to: withSlash('/p2p/how-to/stream-and-share-media/share-files-in-a-peer-to-peer-app') });
   out.push({ from: withSlash('/pear/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app'), to: withSlash('/p2p/how-to/stream-and-share-media/stream-a-live-camera-in-a-peer-to-peer-app') });
   out.push({ from: withSlash('/pear/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app'), to: withSlash('/p2p/how-to/stream-and-share-media/stream-stored-video-in-a-peer-to-peer-app') });
+
+  // --- Bare module catalog merge: the catalog lived alone in
+  // content/bare/reference/modules/ while the 77 module pages it indexes sat
+  // in content/bare/reference/bare/modules/. It is now that folder's index.
+  out.push({ from: withSlash('/bare/reference/modules/bare-modules'), to: withSlash('/bare/reference/bare/modules') });
 
   out.sort((a, b) => a.from.localeCompare(b.from));
   return out;

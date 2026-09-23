@@ -135,6 +135,7 @@ export const bareTree: Node[] = [
           {
             type: 'folder',
             name: 'Modules',
+            index: { type: 'page', name: 'Bare modules', url: '/bare/reference/bare/modules' },
             children: [
               { type: 'page', name: 'bare-fs', url: '/bare/reference/bare/modules/bare-fs' },
               { type: 'page', name: 'bare-os', url: '/bare/reference/bare/modules/bare-os' },
@@ -214,17 +215,6 @@ export const bareTree: Node[] = [
               { type: 'page', name: 'bare-vm', url: '/bare/reference/bare/modules/bare-vm' },
               { type: 'page', name: 'bare-zlib', url: '/bare/reference/bare/modules/bare-zlib' },
             ],
-          },
-        ],
-      },
-      {
-        type: 'folder',
-        name: 'Modules',
-        children: [
-          {
-            type: 'page',
-            name: 'Bare modules',
-            url: '/bare/reference/modules/bare-modules',
           },
         ],
       },

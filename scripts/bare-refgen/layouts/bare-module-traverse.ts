@@ -26,7 +26,7 @@ const resolverParams = {
 
 const layout: Layout = {
   seeAlso: [
-    "It's the engine behind [`bare-pack`](/bare/reference/modules/bare-modules) — a low-level building block; use `bare-pack` to produce a bundle, and reach for this directly only when building tooling on top of the graph.",
+    "It's the engine behind [`bare-pack`](/bare/reference/bare/modules) — a low-level building block; use `bare-pack` to produce a bundle, and reach for this directly only when building tooling on top of the graph.",
     'The step generators exposed on `traverse` (`traverse.module`, `traverse.package`, `traverse.preresolved`, `traverse.imports`, `traverse.addons`, and `traverse.assets`) are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.2.3`) when declaring the dependency. See the [repository README](https://github.com/holepunchto/bare-module-traverse) for each step generator.',
   ],
   params: {

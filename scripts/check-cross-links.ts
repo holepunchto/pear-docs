@@ -91,7 +91,7 @@ const CURATED_CANONICALS: Canonical[] = [
   { slug: '/pear/reference/pear/configuration', term: 'Pear configuration' },
   { slug: '/pear/reference/pear/api', term: 'Pear API' },
   { slug: '/pear/reference/modules/pear-modules', term: 'Pear modules' },
-  { slug: '/bare/reference/modules/bare-modules', term: 'Bare modules' },
+  { slug: '/bare/reference/bare/modules', term: 'Bare modules' },
   { slug: '/pear/explanation/runtime-and-languages', term: 'Runtime and languages' },
   { slug: '/pear/explanation/storage-and-distribution', term: 'Storage and distribution' },
   { slug: '/pear/explanation/dependencies-and-network', term: 'Dependencies and network' },

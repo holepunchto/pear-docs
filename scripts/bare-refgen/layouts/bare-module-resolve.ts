@@ -20,7 +20,7 @@ const layout: Layout = {
   groups: [],
   seeAlso: [
     "The algorithm's steps are exposed on `resolve` for fine-grained use (`resolve.module`, `resolve.url`, `resolve.preresolved`, `resolve.deferred`, `resolve.package`, `resolve.packageSelf`, `resolve.packageExports`, `resolve.packageImports`, `resolve.packageImportsExports`, `resolve.packageTarget`, `resolve.builtinTarget`, `resolve.file`, and `resolve.directory`); they're subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.2.3`) when declaring the module dependency. See the [repository README](https://github.com/holepunchto/bare-module-resolve) for each step's signature and options.",
-    'A low-level building block. Most applications resolve modules implicitly through the [runtime](/bare/reference/bare/runtime) or bundle with [`bare-pack`](/bare/reference/modules/bare-modules); reach for this directly only when implementing tooling.',
+    'A low-level building block. Most applications resolve modules implicitly through the [runtime](/bare/reference/bare/runtime) or bundle with [`bare-pack`](/bare/reference/bare/modules); reach for this directly only when implementing tooling.',
     'Paired with [`bare-addon-resolve`](/bare/reference/bare/modules/bare-addon-resolve) — the matching algorithm for native addons — and used by [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse) to walk a whole module graph.',
   ],
   // Grounded in the existing `resolve` TSDoc (bare-module-resolve.describe.json)
