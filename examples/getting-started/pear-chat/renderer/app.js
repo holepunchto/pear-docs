@@ -81,7 +81,7 @@ copyEl.addEventListener('click', () => {
 updateEl.addEventListener('click', async () => {
   updateEl.disabled = true
   updateEl.textContent = 'restarting…'
-  await bridge.applyUpdate()
+  await bridge.applyUpdate().catch((err) => { updateEl.disabled = false; updateEl.textContent = 'update failed'; throw err })
   await bridge.appAfterUpdate()
 })
 bridge.onPearEvent('updating', () => { versionEl.textContent = 'updating…' })

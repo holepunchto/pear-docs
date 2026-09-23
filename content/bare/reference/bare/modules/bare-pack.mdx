@@ -4,7 +4,7 @@ description: "Bundle packing for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "2.2.1"
+upstreamVersion: "2.2.2"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -41,7 +41,14 @@ const bundle = await pack(new URL('file:///directory/file.js'), readModule, list
 pack(entry: URL, opts: PackOptions, readModule: ReadModuleCallback, listPrefix: ListPrefixCallback | null, writeFile: WriteFileCallback): Promise<Bundle>
 ```
 
-Bundle the module graph rooted at `url`, which must be a WHATWG `URL` instance. `readModule` is called with a `URL` instance for every module to be read and must either return the module source, if it exists, or `null`. `listPrefix` is called with a `URL` instance of every prefix to be listed and must yield `URL` instances that have the specified `URL` as a prefix. If not provided, prefixes won't be bundled. `writeFile` is called for every addon or asset that should be offloaded rather than embedded; see the [Offloading section of the README](https://github.com/holepunchto/bare-pack#offloading). When `writeFile` is provided, `listPrefix` must be passed positionally (or as `null`).
+Bundle the module graph rooted at `url`, which must be a WHATWG `URL` instance. `readModule` is
+called with a `URL` instance for every module to be read and must either return the module
+source, if it exists, or `null`. `listPrefix` is called with a `URL` instance of every prefix to
+be listed and must yield `URL` instances that have the specified `URL` as a prefix. If not
+provided, prefixes won't be bundled. `writeFile` is called for every addon or asset that should
+be offloaded rather than embedded; see the [Offloading section of the
+README](https://github.com/holepunchto/bare-pack#offloading). When `writeFile` is provided,
+`listPrefix` must be passed positionally (or as `null`).
 
 **Parameters**
 
@@ -53,7 +60,9 @@ Bundle the module graph rooted at `url`, which must be a WHATWG `URL` instance. 
 | `listPrefix` | [`ListPrefixCallback`](#listprefixcallback) \| `null` | — | Called with a `URL` for every prefix to list; yields the `URL`s that have it as a prefix. Pass `null` (or omit) to skip prefix bundling. |
 | `writeFile` | [`WriteFileCallback`](#writefilecallback) | — | Called for each addon or asset to offload rather than embed, receiving the file `URL` and its source. See the [Offloading section of the README](https://github.com/holepunchto/bare-pack#offloading). |
 
-**Returns** `Promise<Bundle>` — a promise that resolves to the packed [`bare-bundle`](https://github.com/holepunchto/bare-bundle) `Bundle`, with all statically resolvable imports preresolved.
+**Returns** `Promise<Bundle>` — a promise that resolves to the packed
+[`bare-bundle`](https://github.com/holepunchto/bare-bundle) `Bundle`, with all statically
+resolvable imports preresolved.
 
 ### Types
 
@@ -65,8 +74,11 @@ interface PackOptions {
   base?: URL | string
   offload?: boolean | { addons?: boolean; assets?: boolean }
   defaultType?: number
+  importType?: number
+  artifacts?: boolean
   aliases?: Record<string, AliasableExtension>
   resolve?: (entry: Import, parentURL: URL, opts?: ResolveOptions) => Resolver
+  deferUnresolved?: boolean
   builtinProtocol?: string
   builtins?: Builtins
   conditions?: Conditions
@@ -84,22 +96,71 @@ interface PackOptions {
 
 ```ts
 interface ReadModuleCallback {
+  (url: URL): Buffer | string | null
 }
 ```
+
+Called with a `URL` for every module in the graph; returns the module source as a `Buffer` or string, or `null` if it does not exist.
 
 #### `ListPrefixCallback`
 
 ```ts
 interface ListPrefixCallback {
+  (url: URL): Iterable<URL>
 }
 ```
+
+Called with a `URL` for every prefix to list; yields the `URL`s that have it as a prefix.
 
 #### `WriteFileCallback`
 
 ```ts
 interface WriteFileCallback {
+  (url: URL, source: Buffer | string): string | null | void
 }
 ```
+
+Called for each addon or asset to offload rather than embed, receiving the file `URL` and its source. If it returns a string, that string replaces the file's resolution in the bundle's imports map; otherwise, when `base` is set, the resolution defaults to `'/../' + <path-relative-to-base>`, which resolves to a sibling of the bundle. See [Offloading](#offloading).
+
+## Aliases
+
+To bundle source files with extensions that aren't natively recognized, use the `aliases` option (from [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse)) to map them to a supported extension. The aliased extension is used for module type detection, so `readModule` must return source compatible with that type. Aliased modules are stored in the bundle with the aliased extension, and resolutions to them are rewritten to match, so the example below stores `file:///foo.js` and `file:///bar.js`.
+
+```js
+function readModule(url) {
+  if (url.href === 'file:///foo.ts') {
+    return "const bar = require('./bar.ts')"
+  }
+
+  if (url.href === 'file:///bar.ts') {
+    return 'module.exports = 42'
+  }
+
+  return null
+}
+
+const bundle = await pack(new URL('file:///foo.ts'), { aliases: { '.ts': '.js' } }, readModule)
+```
+
+## Offloading
+
+To keep addons and assets out of the bundle, set `offload` to `true` (or `{ addons: true }` / `{ assets: true }` for a single kind) and provide a `writeFile` callback. Each offloaded file is passed to `writeFile` instead of being embedded and is omitted from `bundle.addons` and `bundle.assets`.
+
+```js
+function writeFile(url, source) {
+  // Persist `source` for `url`, e.g. to disk next to the bundle.
+}
+
+const bundle = await pack(
+  new URL('file:///app/foo.js'),
+  { offload: true, base: new URL('file:///app/') },
+  readModule,
+  null,
+  writeFile
+)
+```
+
+URLs with the `builtin:`, `linked:`, or `deferred:` protocol are never offloaded.
 
 ## CLI
 

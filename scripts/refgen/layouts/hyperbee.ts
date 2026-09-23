@@ -14,7 +14,7 @@ const layout: Layout = {
 
   intro:
     '`Hyperbee` stores sorted key/value entries in an append-only B-tree backed by ' +
-    '[`Hypercore`](/reference/building-blocks/hypercore). Use it when you need ordered lookups, ' +
+    '[`Hypercore`](/p2p/reference/building-blocks/hypercore). Use it when you need ordered lookups, ' +
     'range scans, atomic batches, namespaces, and point-in-time snapshots over one replicated log.',
 
   quickstart:
@@ -101,15 +101,15 @@ const layout: Layout = {
     sub:
       'Sub-bees are useful when one Hyperbee needs multiple logical keyspaces without creating extra cores.',
     replicate:
-      'In larger apps, replication is often handled through a shared [`Corestore`](/reference/helpers/corestore) rather than per-bee streams.',
+      'In larger apps, replication is often handled through a shared [`Corestore`](/p2p/reference/helpers/corestore) rather than per-bee streams.',
   },
 
   seeAlso: [
-    '[Share append-only databases with Hyperbee](/how-to/store-and-replicate/share-append-only-databases-with-hyperbee)—replication walkthrough with reader and writer peers.',
-    '[Work with many Hypercores using Corestore](/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended multi-core replication pattern.',
-    '[Corestore](/reference/helpers/corestore)—manage many Hypercores and Hyperbees from one store.',
-    '[Hypercore](/reference/building-blocks/hypercore)—append-only log that stores Hyperbee nodes.',
-    '[Hyperdrive](/reference/building-blocks/hyperdrive)—filesystem abstraction that builds on Hyperbee-style metadata indexing.',
+    '[Share append-only databases with Hyperbee](/p2p/how-to/store-and-replicate/share-append-only-databases-with-hyperbee)—replication walkthrough with reader and writer peers.',
+    '[Work with many Hypercores using Corestore](/p2p/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—recommended multi-core replication pattern.',
+    '[Corestore](/p2p/reference/helpers/corestore)—manage many Hypercores and Hyperbees from one store.',
+    '[Hypercore](/p2p/reference/building-blocks/hypercore)—append-only log that stores Hyperbee nodes.',
+    '[Hyperdrive](/p2p/reference/building-blocks/hyperdrive)—filesystem abstraction that builds on Hyperbee-style metadata indexing.',
   ],
 };
 

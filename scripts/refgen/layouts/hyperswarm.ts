@@ -87,12 +87,12 @@ const layout: Layout = {
   },
 
   seeAlso: [
-    '[Connect to many peers by topic with Hyperswarm](/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm)—broader topic-based discovery walkthrough.',
-    '[Connect two peers by key with HyperDHT](/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht)—direct one-to-one connections without topic discovery.',
-    '[HyperDHT](/reference/building-blocks/hyperdht)—lower-level DHT and hole-punching layer beneath Hyperswarm.',
-    '[Secretstream](/reference/helpers/secretstream)—the encrypted stream type that Hyperswarm connections expose.',
-    '[Protomux](/reference/helpers/protomux)—multiplex multiple protocols across one Hyperswarm connection.',
-    '[Corestore](/reference/helpers/corestore)—pass swarm connections directly to `store.replicate()` to co-replicate all managed cores.',
+    '[Connect to many peers by topic with Hyperswarm](/p2p/how-to/connect-to-peers/connect-to-many-peers-by-topic-with-hyperswarm)—broader topic-based discovery walkthrough.',
+    '[Connect two peers by key with HyperDHT](/p2p/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht)—direct one-to-one connections without topic discovery.',
+    '[HyperDHT](/p2p/reference/building-blocks/hyperdht)—lower-level DHT and hole-punching layer beneath Hyperswarm.',
+    '[Secretstream](/p2p/reference/helpers/secretstream)—the encrypted stream type that Hyperswarm connections expose.',
+    '[Protomux](/p2p/reference/helpers/protomux)—multiplex multiple protocols across one Hyperswarm connection.',
+    '[Corestore](/p2p/reference/helpers/corestore)—pass swarm connections directly to `store.replicate()` to co-replicate all managed cores.',
   ],
 };
 

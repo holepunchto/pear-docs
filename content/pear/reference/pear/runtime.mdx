@@ -73,7 +73,7 @@ pear.on('error', console.error) // network errors etc.
 
 An update occurs when a seeded application drive is written to - see [Deployment](/pear/how-to/operate-an-app/manual-deployment/deployment).
 
-Update events are emitted by the instance's `updater`. When an update occurs it emits `updating`, then `updated` once the new version is staged. Apply the staged update with `pear.updater.applyUpdate()`.
+Update events are emitted by the instance's `updater`, a [`pear-runtime-updater`](https://github.com/holepunchto/pear-runtime-updater) instance constructed from the same options passed to `PearRuntime`. The full sequence: `update-scheduled` fires first, carrying the randomized delay (see [`delay`](#options) above), once a new drive length is detected; `updating` fires when mirroring of the new version actually starts; `updated` fires once the new version is fully staged. Apply the staged update with `pear.updater.applyUpdate()`.
 
 ```js
 pear.updater.on('updating', () => {
@@ -87,6 +87,16 @@ pear.updater.on('updated', () => {
   pear.updater.applyUpdate()
 })
 ```
+
+While mirroring, `updating-delta` fires with each raw mirror delta and `updating-progress` fires with monitor stats shaped `{ peers, download: { bytes, blocks, speed, progress }, upload: { bytes, blocks, speed } }`—use `stats.download.progress` for a progress bar:
+
+```js
+pear.updater.on('updating-progress', ({ download }) => {
+  // e.g. update a progress bar with Math.round(download.progress * 100)
+})
+```
+
+After `updated`, `pear.updater.next` holds the filesystem path to the staged update—the same payload `applyUpdate()` swaps into place.
 
 ### Disabling Updates
 
@@ -136,13 +146,18 @@ goodbye(() => pear.close()) // e.g. via graceful-goodbye
 
 ## Running Workers
 
-To run a Bare worker, [`PearRuntime.run`](https://github.com/holepunchto/pear-runtime/blob/v1.3.1/index.js#L9) takes its entrypoint with any args. It is a **static** method (so it can be called directly, for example from an Electron main process); the instance exposes [`pear.run`](https://github.com/holepunchto/pear-runtime/blob/v1.3.1/index.js#L50) as an alias for it:
+To run a Bare worker, [`PearRuntime.run`](https://github.com/holepunchto/pear-runtime/blob/v1.3.1/index.js#L9) takes its entrypoint with any args, plus an optional third `opts` object passed straight through to the underlying worker constructor (see below). It is a **static** method (so it can be called directly, for example from an Electron main process); the instance exposes [`pear.run`](https://github.com/holepunchto/pear-runtime/blob/v1.3.1/index.js#L50) as an alias for it:
 
 ```js
 const IPC = PearRuntime.run('./path/to/js/file.js', ['some', 'args'])
 ```
 
 `IPC` is a duplex stream for Inter-Process Communication. Use this to communicate with the worker.
+
+`run()` resolves to one of two implementations depending on where it's called from, which changes what `IPC` exposes:
+
+- From a Node.js or Electron process, the worker runs as a full child process via [`bare-sidecar`](https://github.com/holepunchto/bare-sidecar), and `opts` is passed to its constructor. Worker stdio is available at `IPC.stdin`, `IPC.stdout`, and `IPC.stderr`.
+- From inside a Bare process (for example, calling `run()` from within another worker), it instead starts a [`bare-worker`](https://github.com/holepunchto/bare-worker) **thread**, with `opts` merged in as that worker's options. Bare threads don't expose process-level stdio, so `IPC.stdin`, `IPC.stdout`, and `IPC.stderr` are `undefined` in that environment.
 
 The idea is to put all application peer-to-peer code into a main worker that then acts as a local backend for the application view layer.
 
@@ -179,6 +194,7 @@ const corestore = new Corestore(storage)
 ## See also
 
 - [Pear CLI](/pear/reference/pear/cli)—the command-line counterpart to embedding `pear-runtime` in an app.
+- [Integrate Pear OTA into an existing Electron app](/pear/how-to/operate-an-app/integrate-pear-ota/electron)—wiring this module into an app you already have, step by step.
 - [Configuration](/pear/reference/pear/configuration)—the `package.json` fields that govern stage, seed, and update behaviour.
 - [Bare modules](/bare/reference/modules/bare-modules)—the runtime workers above are Bare workers.
 - [HRPC](/p2p/reference/helpers/hrpc)—typed request/response over the `IPC` stream, instead of raw bytes.

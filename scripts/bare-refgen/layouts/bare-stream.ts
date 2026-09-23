@@ -30,7 +30,7 @@ const layout: Layout = {
   // `index.d.ts` entirely (checked via `npm pack bare-stream`), alongside the
   // other `isStream`/`isEnded`/etc. helpers that IS documented here.
   seeAlso: [
-    "It's pure JavaScript and underpins much of the `bare-*` ecosystem—[`bare-fs`](/reference/bare/modules/bare-fs), [`bare-tcp`](/reference/bare/modules/bare-tcp), and others return its streams.",
+    "It's pure JavaScript and underpins much of the `bare-*` ecosystem—[`bare-fs`](/bare/reference/bare/modules/bare-fs), [`bare-tcp`](/bare/reference/bare/modules/bare-tcp), and others return its streams.",
   ],
   groups: [
     {

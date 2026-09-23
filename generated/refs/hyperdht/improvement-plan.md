@@ -1,25 +1,9 @@
 # Reference generation improvement plan — hyperdht
-Generated from `holepunchto/hyperdht` at **v6.33.0** (`06e70e3cc8`) on 2026-08-11T14:23:34.800Z.
+Generated from `holepunchto/hyperdht` at **v6.34.0** (`2174285add`) on 2026-09-17T14:15:56.219Z.
 **Doc-completeness: 9%** — 1 of 11 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
-**100%** of the hand-authored page is reproduced — 27 of 27 documented symbols (`content/reference/building-blocks/hyperdht.mdx`).
-### Extra in generated model (14)
-_Found in source but absent from the curated page — candidate additions (or internal symbols to filter)._
-- `DEFAULTS`
-- `connectRawStream`
-- `connectionKeepAlive`
-- `createRawStream`
-- `hash`
-- `listening`
-- `lookupAndUnannounce`
-- `onrequest`
-- `plugins`
-- `pool`
-- `rawStreams`
-- `register`
-- `stats`
-- `validateLocalAddresses`
+_No existing MDX page found for this slug._
 ## Completeness gaps
 ### Undocumented parameters (10)
 
@@ -79,9 +63,9 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `node.defaultKeyPair`
 - `node.listening`
 - `node.connectionKeepAlive`
-- `node.stats`
 - `node.rawStreams`
 - `node.plugins`
+- `node.stats`
 
 ### Stale README (not found in source) (8)
 

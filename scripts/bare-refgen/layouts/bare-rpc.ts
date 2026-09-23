@@ -35,13 +35,13 @@ const layout: Layout = {
   // command-routing API) does not exist anywhere in the extracted model —
   // it's a genuine upstream `.d.ts` gap, not fixable here.
   seeAlso: [
-    'Pairs with [`hyperschema`](https://github.com/holepunchto/hyperschema) and [`compact-encoding`](/reference/helpers/compact-encoding) to generate typed message codecs.',
-    "It's pure JavaScript. For the end-to-end pattern with generated types, see [Type a native RPC bridge](/how-to/run-on-native/type-a-native-rpc-bridge).",
+    'Pairs with [`hyperschema`](https://github.com/holepunchto/hyperschema) and [`compact-encoding`](/p2p/reference/helpers/compact-encoding) to generate typed message codecs.',
+    "It's pure JavaScript. For the end-to-end pattern with generated types, see [Type a native RPC bridge](/bare/how-to/run-on-native/type-a-native-rpc-bridge).",
   ],
   params: {
     'RPC.constructor': {
       stream:
-        'The duplex stream to frame RPC messages over, identifying each method by a unique command number — an IPC pipe, a TCP socket, or a [Bare Kit](/reference/bare/bare-kit) worklet channel.',
+        'The duplex stream to frame RPC messages over, identifying each method by a unique command number — an IPC pipe, a TCP socket, or a [Bare Kit](/bare/reference/bare/bare-kit) worklet channel.',
       onrequest:
         'Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to. Defaults to a no-op.',
     },

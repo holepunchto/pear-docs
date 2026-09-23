@@ -8,7 +8,7 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   seeAlso: [
-    '[`bare-subprocess`](/reference/bare/modules/bare-subprocess) — uses pipes for child-process stdio.',
+    '[`bare-subprocess`](/bare/reference/bare/modules/bare-subprocess) — uses pipes for child-process stdio.',
   ],
   params: {
     Pipe: {

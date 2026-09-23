@@ -4,7 +4,7 @@ description: "WHATWG Fetch implementation for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "3.2.0"
+upstreamVersion: "3.4.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -52,7 +52,8 @@ Append a value to the header `name`. If the header already exists, the value is 
 
 **Throws**
 
-- `INVALID_HEADER_NAME` — `name` is empty or contains characters that are not valid in a header name.
+- `INVALID_HEADER_NAME` — `name` is empty or contains characters that are not valid in a
+header name.
 - `INVALID_HEADER_VALUE` — `value` contains a NUL, CR, or LF character.
 
 #### `Headers.delete(name: string): void`
@@ -90,6 +91,11 @@ Get the value of the header `name` as a comma-separated string, or `null` if it 
 | --- | --- | --- | --- |
 | `name` | `string` | — | The header name. |
 
+#### `Headers.getSetCookie(): string[]`
+
+Return each `Set-Cookie` header value separately. Unlike `get('set-cookie')`, this does not
+combine the values with commas.
+
 #### `Headers.has(name: string): boolean`
 
 Return whether the header `name` exists.
@@ -104,7 +110,7 @@ Return whether the header `name` exists.
 
 Return an iterator over header names.
 
-#### `Headers.set(name: string, value: string): void`
+#### `Headers.set(name: string, value: string | string[]): void`
 
 Set the header `name` to `value`, replacing any existing values.
 
@@ -113,11 +119,12 @@ Set the header `name` to `value`, replacing any existing values.
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `name` | `string` | — | The header name. |
-| `value` | `string` | — | The value to set, replacing any existing values. |
+| `value` | `string` \| `string[]` | — | The value to set, replacing any existing values. |
 
 **Throws**
 
-- `INVALID_HEADER_NAME` — `name` is empty or contains characters that are not valid in a header name.
+- `INVALID_HEADER_NAME` — `name` is empty or contains characters that are not valid in a
+header name.
 - `INVALID_HEADER_VALUE` — `value` contains a NUL, CR, or LF character.
 
 #### `Headers.values(): IterableIterator<string>`
@@ -140,15 +147,85 @@ Construct a new `Request` from `input`, which may be a URL string, a `URL`, or a
 **Throws**
 
 - `INVALID_URL` — `input` is not a valid URL.
-- `BODY_UNUSABLE` — `init.body` is a `ReadableStream` that is locked or has already been consumed.
+- `BODY_UNUSABLE` — `init.body` is a `ReadableStream` that is locked or has already been
+consumed.
+- `INVALID_REDIRECT` — `init.redirect` is not `'follow'`, `'error'`, or `'manual'`.
+- `INVALID_CREDENTIALS` — `init.credentials` is not `'omit'`, `'same-origin'`, or
+`'include'`.
+
+#### `Request.arrayBuffer(): Promise<ArrayBuffer>`
+
+Consume the body and return an `ArrayBuffer`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Request.body: ReadableStream`
+
+The body as a `ReadableStream`, or `null`.
+
+#### `Request.bodyUsed: boolean`
+
+Whether the body stream has already been consumed.
+
+#### `Request.buffer(): Promise<Buffer>`
+
+Consume the body and return a `Buffer`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Request.bytes(): Promise<Buffer>`
+
+Consume the body and return a `Uint8Array`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Request.credentials: RequestCredentials`
+
+Credential mode metadata. The module has no cookie jar and does not add or remove cookies
+based on this value.
+
+#### `Request.formData(): Promise<FormData>`
+
+Consume the body and return a `FormData` object. Supports `multipart/form-data` and `application/x-www-form-urlencoded` content types.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+- `INVALID_FORM_DATA` — the content type is not form data, or the multipart boundary
+parameter is missing.
 
 #### `Request.headers: Headers`
 
 The request headers as a `Headers` object.
 
+#### `Request.json(): Promise<JSON>`
+
+Consume the body and return a parsed JSON value.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
 #### `Request.method: HTTPMethod`
 
-The request method. Standard methods (`GET`, `POST`, `PUT`, `DELETE`, `HEAD`, `OPTIONS`) are uppercased automatically.
+The request method. Standard methods (`GET`, `POST`, `PUT`, `DELETE`, `HEAD`, `OPTIONS`) are
+uppercased automatically.
+
+#### `Request.redirect: RequestRedirect`
+
+How fetch handles redirects for this request.
+
+#### `Request.RequestCredentials`
+
+```ts
+type RequestCredentials = 'omit' | 'same-origin' | 'include'
+```
 
 #### `Request.RequestInit`
 
@@ -158,13 +235,29 @@ interface RequestInit {
   method?: HTTPMethod
   headers?: Headers
   signal?: AbortSignal
+  redirect?: RequestRedirect
+  credentials?: RequestCredentials
   agent?: HTTPAgent
 }
+```
+
+#### `Request.RequestRedirect`
+
+```ts
+type RequestRedirect = 'error' | 'follow' | 'manual'
 ```
 
 #### `Request.signal: AbortSignal | null`
 
 The abort signal associated with the request, or `null`.
+
+#### `Request.text(): Promise<string>`
+
+Consume the body and return a UTF-8 string.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
 
 #### `Request.url: string`
 
@@ -185,7 +278,50 @@ Construct a new `Response` wrapping `body`.
 
 **Throws**
 
-- `BODY_UNUSABLE` — `body` is a `ReadableStream` that is locked or has already been consumed.
+- `BODY_UNUSABLE` — `body` is a `ReadableStream` that is locked or has already been
+consumed.
+
+#### `Response.arrayBuffer(): Promise<ArrayBuffer>`
+
+Consume the body and return an `ArrayBuffer`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Response.body: ReadableStream`
+
+The body as a `ReadableStream`, or `null`.
+
+#### `Response.bodyUsed: boolean`
+
+Whether the body stream has already been consumed.
+
+#### `Response.buffer(): Promise<Buffer>`
+
+Consume the body and return a `Buffer`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Response.bytes(): Promise<Buffer>`
+
+Consume the body and return a `Uint8Array`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Response.formData(): Promise<FormData>`
+
+Consume the body and return a `FormData` object. Supports `multipart/form-data` and `application/x-www-form-urlencoded` content types.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+- `INVALID_FORM_DATA` — the content type is not form data, or the multipart boundary
+parameter is missing.
 
 #### `Response.headers: Headers`
 
@@ -199,9 +335,9 @@ Whether the status code is in the range 200-299.
 
 Whether the request was redirected to a different URL.
 
-#### `Response.Response.error(): Response`
+#### `Response.error(): Response`
 
-#### `Response.Response.json(data: unknown, init?: ResponseInit): Response`
+#### `Response.json(data: unknown, init?: ResponseInit): Response`
 
 Consume the body and return a parsed JSON value.
 
@@ -216,7 +352,7 @@ Consume the body and return a parsed JSON value.
 
 - `BODY_UNUSABLE` — the body has already been consumed.
 
-#### `Response.Response.redirect(url: string | URL, status?: HTTPStatusCode): Response`
+#### `Response.redirect(url: string | URL, status?: HTTPStatusCode): Response`
 
 **Parameters**
 
@@ -233,6 +369,14 @@ The HTTP status code of the response.
 
 The HTTP status message of the response.
 
+#### `Response.text(): Promise<string>`
+
+Consume the body and return a UTF-8 string.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
 #### `Response.type: ResponseType`
 
 #### `Response.url: string | null`
@@ -243,7 +387,8 @@ The final response URL as a string, or `null` if no request has been made.
 
 #### `fetch(input: string | URL | Request, init?: RequestInit): Promise<Response>`
 
-Perform an HTTP or HTTPS request. `input` may be a URL string, a `URL` object, or a `Request` object. `init` is an optional options object.
+Perform an HTTP or HTTPS request. `input` may be a URL string, a `URL` object, or a `Request`
+object. `init` is an optional options object.
 
 **Parameters**
 
@@ -281,7 +426,11 @@ The type of the `fetch` function, used to type the global `fetch`.
 
 ```ts
 class FetchError {
+  cause: unknown
   code: string
+  message: string
+  name: string
+  stack: string
 }
 ```
 
@@ -291,7 +440,7 @@ An error produced by this module, carrying a `code` identifying the failure.
 
 ### Body
 
-#### `arrayBuffer(): Promise<ArrayBuffer>`
+#### `Body.arrayBuffer(): Promise<ArrayBuffer>`
 
 Consume the body and return an `ArrayBuffer`.
 
@@ -299,15 +448,15 @@ Consume the body and return an `ArrayBuffer`.
 
 - `BODY_UNUSABLE` — the body has already been consumed.
 
-#### `body: ReadableStream`
+#### `Body.body: ReadableStream`
 
 The body as a `ReadableStream`, or `null`.
 
-#### `bodyUsed: boolean`
+#### `Body.bodyUsed: boolean`
 
 Whether the body stream has already been consumed.
 
-#### `buffer(): Promise<Buffer>`
+#### `Body.buffer(): Promise<Buffer>`
 
 Consume the body and return a `Buffer`.
 
@@ -315,7 +464,7 @@ Consume the body and return a `Buffer`.
 
 - `BODY_UNUSABLE` — the body has already been consumed.
 
-#### `bytes(): Promise<Buffer>`
+#### `Body.bytes(): Promise<Buffer>`
 
 Consume the body and return a `Uint8Array`.
 
@@ -323,16 +472,17 @@ Consume the body and return a `Uint8Array`.
 
 - `BODY_UNUSABLE` — the body has already been consumed.
 
-#### `formData(): Promise<FormData>`
+#### `Body.formData(): Promise<FormData>`
 
 Consume the body and return a `FormData` object. Supports `multipart/form-data` and `application/x-www-form-urlencoded` content types.
 
 **Throws**
 
 - `BODY_UNUSABLE` — the body has already been consumed.
-- `INVALID_FORM_DATA` — the content type is not form data, or the multipart boundary parameter is missing.
+- `INVALID_FORM_DATA` — the content type is not form data, or the multipart boundary
+parameter is missing.
 
-#### `json(): Promise<JSON>`
+#### `Body.json(): Promise<JSON>`
 
 Consume the body and return a parsed JSON value.
 
@@ -340,7 +490,7 @@ Consume the body and return a parsed JSON value.
 
 - `BODY_UNUSABLE` — the body has already been consumed.
 
-#### `text(): Promise<string>`
+#### `Body.text(): Promise<string>`
 
 Consume the body and return a UTF-8 string.
 
@@ -366,19 +516,103 @@ Construct a new `Request` from `input`, which may be a URL string, a `URL`, or a
 **Throws**
 
 - `INVALID_URL` — `input` is not a valid URL.
-- `BODY_UNUSABLE` — `init.body` is a `ReadableStream` that is locked or has already been consumed.
+- `BODY_UNUSABLE` — `init.body` is a `ReadableStream` that is locked or has already been
+consumed.
+- `INVALID_REDIRECT` — `init.redirect` is not `'follow'`, `'error'`, or `'manual'`.
+- `INVALID_CREDENTIALS` — `init.credentials` is not `'omit'`, `'same-origin'`, or
+`'include'`.
+
+#### `Request.arrayBuffer(): Promise<ArrayBuffer>`
+
+Consume the body and return an `ArrayBuffer`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Request.body: ReadableStream`
+
+The body as a `ReadableStream`, or `null`.
+
+#### `Request.bodyUsed: boolean`
+
+Whether the body stream has already been consumed.
+
+#### `Request.buffer(): Promise<Buffer>`
+
+Consume the body and return a `Buffer`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Request.bytes(): Promise<Buffer>`
+
+Consume the body and return a `Uint8Array`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Request.credentials: RequestCredentials`
+
+Credential mode metadata. The module has no cookie jar and does not add or remove cookies
+based on this value.
+
+#### `Request.formData(): Promise<FormData>`
+
+Consume the body and return a `FormData` object. Supports `multipart/form-data` and `application/x-www-form-urlencoded` content types.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+- `INVALID_FORM_DATA` — the content type is not form data, or the multipart boundary
+parameter is missing.
 
 #### `Request.headers: Headers`
 
 The request headers as a `Headers` object.
 
+#### `Request.json(): Promise<JSON>`
+
+Consume the body and return a parsed JSON value.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
 #### `Request.method: HTTPMethod`
 
-The request method. Standard methods (`GET`, `POST`, `PUT`, `DELETE`, `HEAD`, `OPTIONS`) are uppercased automatically.
+The request method. Standard methods (`GET`, `POST`, `PUT`, `DELETE`, `HEAD`, `OPTIONS`) are
+uppercased automatically.
+
+#### `Request.redirect: RequestRedirect`
+
+How fetch handles redirects for this request.
+
+#### `Request.RequestCredentials`
+
+```ts
+type RequestCredentials = 'omit' | 'same-origin' | 'include'
+```
+
+#### `Request.RequestRedirect`
+
+```ts
+type RequestRedirect = 'error' | 'follow' | 'manual'
+```
 
 #### `Request.signal: AbortSignal | null`
 
 The abort signal associated with the request, or `null`.
+
+#### `Request.text(): Promise<string>`
+
+Consume the body and return a UTF-8 string.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
 
 #### `Request.url: string`
 
@@ -394,6 +628,8 @@ interface RequestInit {
   method?: HTTPMethod
   headers?: Headers
   signal?: AbortSignal
+  redirect?: RequestRedirect
+  credentials?: RequestCredentials
   agent?: HTTPAgent
 }
 ```
@@ -415,7 +651,50 @@ Construct a new `Response` wrapping `body`.
 
 **Throws**
 
-- `BODY_UNUSABLE` — `body` is a `ReadableStream` that is locked or has already been consumed.
+- `BODY_UNUSABLE` — `body` is a `ReadableStream` that is locked or has already been
+consumed.
+
+#### `Response.arrayBuffer(): Promise<ArrayBuffer>`
+
+Consume the body and return an `ArrayBuffer`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Response.body: ReadableStream`
+
+The body as a `ReadableStream`, or `null`.
+
+#### `Response.bodyUsed: boolean`
+
+Whether the body stream has already been consumed.
+
+#### `Response.buffer(): Promise<Buffer>`
+
+Consume the body and return a `Buffer`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Response.bytes(): Promise<Buffer>`
+
+Consume the body and return a `Uint8Array`.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+
+#### `Response.formData(): Promise<FormData>`
+
+Consume the body and return a `FormData` object. Supports `multipart/form-data` and `application/x-www-form-urlencoded` content types.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
+- `INVALID_FORM_DATA` — the content type is not form data, or the multipart boundary
+parameter is missing.
 
 #### `Response.headers: Headers`
 
@@ -429,9 +708,9 @@ Whether the status code is in the range 200-299.
 
 Whether the request was redirected to a different URL.
 
-#### `Response.Response.error(): Response`
+#### `Response.error(): Response`
 
-#### `Response.Response.json(data: unknown, init?: ResponseInit): Response`
+#### `Response.json(data: unknown, init?: ResponseInit): Response`
 
 Consume the body and return a parsed JSON value.
 
@@ -446,7 +725,7 @@ Consume the body and return a parsed JSON value.
 
 - `BODY_UNUSABLE` — the body has already been consumed.
 
-#### `Response.Response.redirect(url: string | URL, status?: HTTPStatusCode): Response`
+#### `Response.redirect(url: string | URL, status?: HTTPStatusCode): Response`
 
 **Parameters**
 
@@ -462,6 +741,14 @@ The HTTP status code of the response.
 #### `Response.statusText: HTTPStatusMessage`
 
 The HTTP status message of the response.
+
+#### `Response.text(): Promise<string>`
+
+Consume the body and return a UTF-8 string.
+
+**Throws**
+
+- `BODY_UNUSABLE` — the body has already been consumed.
 
 #### `Response.type: ResponseType`
 
@@ -508,7 +795,8 @@ Append a value to the header `name`. If the header already exists, the value is 
 
 **Throws**
 
-- `INVALID_HEADER_NAME` — `name` is empty or contains characters that are not valid in a header name.
+- `INVALID_HEADER_NAME` — `name` is empty or contains characters that are not valid in a
+header name.
 - `INVALID_HEADER_VALUE` — `value` contains a NUL, CR, or LF character.
 
 #### `Headers.delete(name: string): void`
@@ -546,6 +834,11 @@ Get the value of the header `name` as a comma-separated string, or `null` if it 
 | --- | --- | --- | --- |
 | `name` | `string` | — | The header name. |
 
+#### `Headers.getSetCookie(): string[]`
+
+Return each `Set-Cookie` header value separately. Unlike `get('set-cookie')`, this does not
+combine the values with commas.
+
 #### `Headers.has(name: string): boolean`
 
 Return whether the header `name` exists.
@@ -560,7 +853,7 @@ Return whether the header `name` exists.
 
 Return an iterator over header names.
 
-#### `Headers.set(name: string, value: string): void`
+#### `Headers.set(name: string, value: string | string[]): void`
 
 Set the header `name` to `value`, replacing any existing values.
 
@@ -569,11 +862,12 @@ Set the header `name` to `value`, replacing any existing values.
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `name` | `string` | — | The header name. |
-| `value` | `string` | — | The value to set, replacing any existing values. |
+| `value` | `string` \| `string[]` | — | The value to set, replacing any existing values. |
 
 **Throws**
 
-- `INVALID_HEADER_NAME` — `name` is empty or contains characters that are not valid in a header name.
+- `INVALID_HEADER_NAME` — `name` is empty or contains characters that are not valid in a
+header name.
 - `INVALID_HEADER_VALUE` — `value` contains a NUL, CR, or LF character.
 
 #### `Headers.values(): IterableIterator<string>`

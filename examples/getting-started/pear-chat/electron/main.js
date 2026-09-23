@@ -215,15 +215,30 @@ async function createWindow () {
 ipcMain.handle('pear:applyUpdate', () => {
   const pipe = getUpdaterPipe()
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    function done (err) {
+      pipe.removeListener('data', onData)
+      pipe.removeListener('close', onClose)
+      if (err) reject(err)
+      else resolve()
+    }
+
     function onData (data) {
-      if (data.toString() === 'pear:updateApplied') {
-        pipe.removeListener('data', onData)
-        resolve()
+      const message = data.toString()
+      if (message === 'pear:updateApplied') done(null)
+      else if (message.startsWith('pear:updateFailed')) {
+        done(new Error(message.slice('pear:updateFailed '.length) || 'Update failed'))
       }
     }
 
+    // A worker that dies mid-apply never replies; without this the promise
+    // would stay pending forever.
+    function onClose () {
+      done(new Error('updater worker exited before replying'))
+    }
+
     pipe.on('data', onData)
+    pipe.once('close', onClose)
     pipe.write('pear:applyUpdate')
   })
 })
