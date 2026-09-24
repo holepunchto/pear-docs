@@ -121,6 +121,11 @@ export const bareTree: Node[] = [
             name: 'Bare runtime API',
             url: '/bare/reference/bare/runtime',
           },
+          {
+            type: 'page',
+            name: 'Embedder context API',
+            url: '/bare/reference/bare/embedder-context',
+          },
           { type: 'page', name: 'Bare CLI', url: '/bare/reference/bare/cli' },
           {
             type: 'page',
