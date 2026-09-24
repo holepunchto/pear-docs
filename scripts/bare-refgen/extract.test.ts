@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { extractModule } from './extract';
-import { renderPage } from './render';
+import { renderPage, collapseType } from './render';
 import type { BareExport, BareModel } from './model';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__');
@@ -252,4 +252,20 @@ test('a static member already self-qualified with its class does not get double-
   assert.doesNotMatch(mdx, /TimerError\.TimerError\.INVALID_CALLBACK/, 'must not re-prepend the class name onto an already-qualified static member');
   assert.match(mdx, /^#### `TimerError\.INVALID_CALLBACK\(msg\?: string\): TimerError`$/m, 'main module keeps the single-qualified heading');
   assert.match(mdx, /^#### `errors\.TimerError\.INVALID_CALLBACK\(msg\?: string\): TimerError`$/m, 'subpath copy is disambiguated by the subpath scope, distinct from the main copy');
+});
+
+test('collapseType: keeps newline-separated type-literal members apart (bare-assert AssertionError)', () => {
+  const multi = `{
+      message?: string
+      actual?: any
+      expected?: any
+      operator?: string
+    }`;
+  assert.equal(collapseType(multi), '{ message?: string; actual?: any; expected?: any; operator?: string }');
+});
+
+test('collapseType: leaves explicit separators, unions and single-line types alone', () => {
+  assert.equal(collapseType('{ a: string; b: number }'), '{ a: string; b: number }');
+  assert.equal(collapseType('string\n  | number'), 'string | number');
+  assert.equal(collapseType('(\n  a: string,\n  b: number\n) => void'), '( a: string, b: number ) => void');
 });

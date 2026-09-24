@@ -161,6 +161,18 @@ function linkAtom(atom: string, ctx: Ctx): string {
   return anchor ? `[${code(trimmed)}](#${anchor})` : code(trimmed);
 }
 
+/** Collapse a multi-line type to one line, keeping newline-separated members apart with `;`. */
+export function collapseType(type: string): string {
+  const lines = type.trim().split(/\n/).map((l) => l.trim()).filter(Boolean);
+  let out = lines[0] ?? '';
+  for (let i = 1; i < lines.length; i++) {
+    const open = /(?:[{;,([|&<:]|=>)$/.test(out);
+    const close = /^[})\]|&>]/.test(lines[i]);
+    out += open || close ? ' ' + lines[i] : '; ' + lines[i];
+  }
+  return out.replace(/\s+/g, ' ');
+}
+
 /**
  * A type reference. Links documented types to their on-page anchors — including
  * each member of a simple union (`Flag | number` → the `Flag` links). Complex
@@ -169,7 +181,7 @@ function linkAtom(atom: string, ctx: Ctx): string {
  * doesn't break the inline code span it's wrapped in.
  */
 function linkType(type: string, ctx: Ctx): string {
-  const base = type.trim().replace(/\s+/g, ' ');
+  const base = collapseType(type);
   if (ctx.target === 'readme') return code(base);
   // Only split simple unions of atoms; leave anything with structure intact.
   if (/[{}()<>]/.test(base) || !base.includes('|')) return linkAtom(base, ctx);
