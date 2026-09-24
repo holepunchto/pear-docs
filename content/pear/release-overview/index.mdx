@@ -12,48 +12,85 @@ A curated record of changes across Pear and its modules, newest first. Entries a
 
 ## 2026-09-22 — Pear 3.5.0
 
-Pear 3.5.0 is a feature release on top of Pear 3.4.0. One command is renamed: `pear blind-peer identity` is gone, replaced by the new `pear identity` command, which prints all four of this machine's network keys instead of just the one. The rest is `pear seed` reporting—a `Verlink` row in place of `Drive Key`, and block-level sync progress for both the drive and its blobs.
+Pear 3.5.0 is a feature release on top of Pear 3.4.0. One command is renamed: `pear blind-peer identity` is gone, replaced by the new `pear identity` command, which prints all four of this machine's network keys instead of just the one. The rest is `pear seed` reporting—a `Verlink` row in place of `Drive Key`, and block-level sync progress for both the drive and its blobs. Among the bundled modules, Hyperschema 1.23.0 changes how bool arrays are encoded, which matters to any app that regenerates its schemas.
 
 ### pear (CLI) — v3.5.0
 
 - Added: [`pear identity`](/pear/reference/pear/cli#pear-identity)—`seed`, `blind-relay`, `blind-peer`, and `blind-peer-client` each print one of this machine's local network public keys. The key goes to stdout and the [next-step hint](/pear/reference/pear/cli#next-step-hints) to stderr, so `KEY=$(pear identity seed)` captures the key alone. See [Look up this machine's network keys](/pear/how-to/look-up-network-keys).
 - Added: [`pear seed`](/pear/reference/pear/cli#pear-seed)'s stats gain a `Verlink:` row—the full versioned `pear://<fork>.<length>.<key>` form of the drive being seeded.
 - Added: [`pear seed`](/pear/reference/pear/cli#pear-seed)'s stats gain a `Blobs Length:` row, and both it and `Drive Length:` now report synced blocks and a percentage (`12/40 [ 30%]`) rather than a bare total. `--json` `stats` gains `driveSynced`, `blobsSynced`, `blobsLength`, and `driveFork`.
-- Changed: `pear blind-peer identity` removed—use [`pear identity blind-peer-client`](/pear/reference/pear/cli#pear-identity), which prints the same key. The old form now fails with `✖ Unrecognized Argument at index 0 with value identity`. `pear blind-peer` keeps `start` and `request`.
+- **Breaking:** `pear blind-peer identity` removed—use [`pear identity blind-peer-client`](/pear/how-to/look-up-network-keys#authorize-this-machine-with-a-blind-peer), which prints the same key. Scripts calling the old form now fail with `✖ Unrecognized Argument at index 0 with value identity`. `pear blind-peer` keeps `start` and `request`.
 - Changed: [`pear seed`](/pear/reference/pear/cli#pear-seed)'s stats drop the `Drive Key:` row in favour of `Verlink:`. The key is the verlink's last segment, and `--json` still reports `driveKey` unchanged.
+- Changed: under `--no-tty`, `pear seed` prints `... verlink <verlink>` where it printed `... drive key <key>`, and `... drive length` gains the sync suffix (`3 [ 100% ]`). A script reading those lines should switch to `--json`, whose `stats` fields are unchanged apart from the additions above.
 - Fixed: [`pear cores`](/pear/reference/pear/cli#pear-cores) writes its table straight to stdout instead of through `console.log`, which mangled the rules and `✔` marks into mojibake on Windows.
 
-### Hypercore — v11.36.1, v11.36.0
+The sections below cover modules the Pear CLI bundles, at the versions 3.5.0 ships. An application pins its own copies in its `package.json`, so upgrading Pear does not change them in your app—upgrade those dependencies directly to pick these changes up.
+
+### Hypercore — v11.36.1, v11.36.0, v11.35.4
 
 - Added (v11.36.0): [`await core.setAlwaysLatestBlock(enabled)`](/p2p/reference/building-blocks/hypercore#await-coresetalwayslatestblockenabled).
+- Changed (v11.35.4): a session opened with a [`group`](/p2p/reference/building-blocks/hypercore#new-hypercorestorage-key-options) option assigns that group to a core that has none, so a core first opened without a group can join one later. Previously the option only took effect when the core was created.
 
 ### HyperDHT — v6.34.0
 
 - Changed: [`node.stats`](/p2p/reference/building-blocks/hyperdht#nodestats) reports more counters—`punches.tryLater` and `punches.tryLaterRelayedHandshakesAtLeastOnce` for rate-limited hole-punch attempts, and a `socketPool` group for socket pool lifecycle. The existing `punches` and `relaying` counters are unchanged.
 
+### Hyperswarm — v4.17.1
+
+- Changed: a client connection that fails with `CANNOT_HOLEPUNCH` is now retried through [`relayThrough`](/p2p/reference/building-blocks/hyperswarm#new-hyperswarmopts--), joining `HOLEPUNCH_ABORTED`, `HOLEPUNCH_DOUBLE_RANDOMIZED_NATS` and `REMOTE_NOT_HOLEPUNCHABLE`. For Pear this means a relay registered with [`--relay`](/pear/reference/pear/cli#relay-flag) is also used when the DHT reports that a hole punch cannot succeed.
+
 ### Compact-encoding — v3.5.0, v3.4.0
 
+- Added (v3.5.0): [`cenc.fixed8`, `cenc.fixed16` and `cenc.fixed24`](/p2p/reference/helpers/compact-encoding#cencfixed64), alongside the existing `fixed32` and `fixed64`.
 - Added (v3.4.0): [`cenc.bitarray`](/p2p/reference/helpers/compact-encoding#cencbitarray).
 
-### Corestore — v7.12.5
+### Corestore — v7.12.5, v7.12.3
 
-- Changed: [`store.get()`](/p2p/reference/helpers/corestore#storegetkey---name-a-name-hypercoreopts) forwards `allowLatestBlock` to the Hypercore it returns, so the option can be set per session through the store rather than only on a directly constructed core.
+- Changed (v7.12.5): [`store.get()`](/p2p/reference/helpers/corestore#storegetkey---name-a-name-hypercoreopts) forwards `allowLatestBlock` to the Hypercore it returns, so the option can be set per session through the store rather than only on a directly constructed core.
+- Fixed (v7.12.3): `store.get({ group })` on a core that is already open without a group now assigns it, so the core reaches [`store.notifyGroup(topic)`](/p2p/reference/helpers/corestore#storenotifygrouptopic). The assignment moved into Hypercore (v11.35.4, above).
 
 ### Protomux — v3.12.0
 
-- Changed: a channel handler (`onmessage`, `onopen`, `onclose`, `ondrain`, `ondestroy`) that throws **after its channel has closed** now makes the underlying stream emit a [`warning`](/p2p/reference/helpers/protomux#channelondrain) event carrying the error, instead of destroying the stream. A handler that throws while the channel is still open still destroys the stream. Listen for `warning` if you were relying on the old behaviour to surface post-close errors.
+- Changed: an async channel handler (`onmessage`, `onopen`, `onclose`, `ondrain`, `ondestroy`) whose returned promise rejects **after its channel has closed** now makes the underlying stream emit a [`warning`](/p2p/reference/helpers/protomux#channelondrain) event carrying the error, instead of destroying the stream. A rejection while the channel is still open still destroys the stream, and a synchronous throw is unaffected. Listen for `warning` if you relied on the old behaviour to surface post-close errors.
 
 ### Secretstream — v6.9.2
 
 - Added: a [`filterZeroByteMessages`](/p2p/reference/helpers/secretstream#secretstreamoptions) option, which drops zero-byte messages before they reach the message handler. It is on implicitly whenever `keepAlive` is set—so keep-alive users already had this behaviour—and can now be enabled on its own.
 
+### Hyperschema — v1.24.0, v1.23.0
+
+- **Breaking (wire format, v1.23.0):** a field with `array: true` and type `bool` is packed into a bitfield—a `uint` length followed by `ceil(length / 8)` bytes—instead of one byte per value. A spec regenerated with 1.23.0 or later cannot decode bool arrays written by a spec generated with 1.22.x or earlier, and the reverse. Check any schema with a bool array before regenerating, and migrate data already written in the old layout.
+- Changed (v1.23.0): the bitwise types `uint1`–`uint7` used as an array now fail at build time with `cannot be used as an array`; they only exist inside a struct's flags byte.
+- Added (v1.24.0): `fixed8`, `fixed16` and `fixed24` types, backed by the new compact-encoding codecs.
+
+See [RPC and schemas](/bare/explanation/rpc-and-schemas) for where Hyperschema fits.
+
+### blind-peering — v2.9.0, v2.8.0
+
+- Changed (v2.8.0): `sendNotification()` is rate-limited by default—10 per second, each waiting up to 10 seconds for a slot. Tune it with the new `notificationRateLimit` constructor option (`{ capacity, interval, timeout }`), or pass `null` to disable it.
+- Changed (v2.9.0): `addAutobase()` finds every view and writer core through the Autobase itself, so its `additionalViews` option is ignored. Register cores that are not part of the Autobase with `addCore()` instead.
+- Added (v2.9.0): `addAutobase()` accepts an Autobee.
+
+### blind-peer — v3.15.0, v3.14.0
+
+- Added: constructor options `perReferrerRateLimitParams` (v3.15.0), a per-referrer rate limit on notification requests, and `notificationErrorSnapshotDelay` (v3.14.0).
+- Changed (v3.15.0): the default `notificationTimeout` rises from 10 to 30 seconds.
+
+None of the blind-peer or blind-peering changes reach [`pear blind-peer`](/pear/reference/pear/cli#pear-blind-peer) or [`pear seed --blind-peer`](/pear/reference/pear/cli#pear-seed): the CLI sets none of these options, and trust handling—announce downgrades, priority caps, refusing deletes from untrusted peers—is unchanged.
+
 ### Bare — v1.32.0
 
-- Changed: `Thread`'s constructor and `Thread.create()` gained overloads so `source` can be passed positionally (`new Thread(filename, source[, options])`) or as a bare callback, and [`ThreadOptions.source`](/bare/reference/bare/runtime#barethread) is deprecated in favour of the positional form.
+- Added: `new Thread(callback)` runs a function body on the new thread, and `new Thread(filename, source[, options])` takes the source positionally. See [`Bare.Thread`](/bare/reference/bare/runtime#barethread).
+- Deprecated: `ThreadOptions.source`, in favour of the positional form. `Thread.create()` stays deprecated, as it has been since v1.31.0—use `new Thread()`.
+- Added: [`Addon.seal()` and `Addon.sealed`](/bare/reference/bare/runtime#bareaddon)—freeze dynamic addon loading for the rest of the process.
+
+### bare-type — v1.1.1
+
+- **Removed:** `type.createTag()`, `type.addTag()` and `type.checkTag()`, with no replacement, in a patch release. See [bare-type](/bare/reference/bare/modules/bare-type).
 
 ### Internal — deps bump
 
-`blind-peer` v3.15.0, `blind-peering` v2.9.0, `hyperbee2` v2.14.1, `hyperswarm` v4.17.1, `autobase` v7.28.2, `hyperschema` v1.24.0, and `pear-ipc` v6.16.0. No documented surface changes in these.
+`hyperbee2` v2.14.1, `autobase` v7.28.2, `pear-ipc` v6.16.0, `bare-http-parser` v2.1.4 (a major bump, but transitive under `bare-http1` with no reference page of its own), and patch or minor bumps across the rest of the `bare-*` modules. No documented surface changes in these.
 
 ## 2026-09-10 — Pear 3.4.0
 
