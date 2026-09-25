@@ -40,6 +40,7 @@ on:
       - 'scripts/inject-content-signals.ts'
       - 'scripts/agent-skills-shared.ts'
       - 'scripts/schemas/**'
+      - 'scripts/generate-mcp-corpus.ts'
   pull_request:
     paths:
       - 'content/**'
@@ -67,6 +68,7 @@ on:
       - 'scripts/inject-content-signals.ts'
       - 'scripts/agent-skills-shared.ts'
       - 'scripts/schemas/**'
+      - 'scripts/generate-mcp-corpus.ts'
   workflow_dispatch:
 
 jobs:
@@ -108,6 +110,29 @@ jobs:
         run: npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx
       - name: Check include directives resolve
         run: "$RUNNER_TEMP/checker/node_modules/.bin/tsx scripts/check-includes.ts"
+
+  mcp-corpus:
+    name: MCP corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Same isolated-install pattern as internal-links: the generator imports
+      # scripts/helpers.ts, which imports github-slugger. See that job for why
+      # a plain `npm install` doesn't work here.
+      - name: Install generator deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+      # The postbuild step that publishes out/mcp/ for the docs MCP server runs
+      # only on a real deploy, where a failure takes the whole site build with
+      # it. Running the same generator here surfaces its hard errors — notably
+      # two content files slugging to one URL — on the PR that introduces them.
+      - name: Generate the MCP corpus
+        run: ./node_modules/.bin/tsx scripts/generate-mcp-corpus.ts
 
   doctypes:
     name: doctype & product invariants

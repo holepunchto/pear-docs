@@ -1,0 +1,187 @@
+name: Build MCP search index
+
+# Embeds the docs corpus and publishes the finished vector index as release
+# assets, so the docs search service never has to embed anything itself. That
+# host times out building its own index — ~4k chunks is 10-40 minutes of CPU.
+#
+# This job lives here, in the docs repo, rather than in the search service, for
+# two reasons that both come down to credentials:
+#
+#   - This repo is public, so the release assets it publishes download without
+#     authentication. The service needs no token at all. Publishing into the
+#     service's own (private) repo would have meant a read PAT on every box.
+#   - Publishing to this repo from elsewhere would have needed a cross-repo
+#     write PAT. Running here, GITHUB_TOKEN covers it — no secret exists.
+#
+# Run it by hand after a content change lands: Actions → Build MCP search index
+# → Run workflow. The corpus is regenerated from the checked-out content, so
+# this does NOT need to wait for a site deploy — it indexes whatever this branch
+# says, which is the same thing the deploy will publish.
+#
+# Hash-gated: it compares the corpus hash against the one recorded in the
+# currently published index and stops in seconds when nothing changed. Tick
+# `force` to rebuild anyway (e.g. after changing chunking or the model).
+#
+# Deliberately manual rather than on push. Embedding is expensive, docs move
+# every few days, and a stale search index for an hour is not a problem worth
+# spending an embed pass per merge to avoid.
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Rebuild even when the corpus hash is unchanged'
+        type: boolean
+        default: false
+      ref:
+        description: 'Branch or tag to index (defaults to published)'
+        type: string
+        default: published
+
+concurrency:
+  # Never two at once — they would race on the same release assets and could
+  # publish a half-written index. Queued, not cancelled, so a nearly-finished
+  # run is not thrown away by an impatient second click.
+  group: build-mcp-index
+  cancel-in-progress: false
+
+env:
+  # Rolling tag whose assets are always the current index. The search service
+  # polls this release, so the tag must stay stable.
+  RELEASE_TAG: mcp-index-latest
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write # create/update the rolling release
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # Same isolated-install pattern as the docs-lint jobs: package.json pulls
+      # token-gated @tetherto/* packages from GitHub Packages that this repo's
+      # token cannot read, so a plain `npm ci` fails. Install exactly what the
+      # corpus generator (tsx, github-slugger) and the embedder (@qvac/sdk)
+      # need. This is also why @qvac/sdk is not a declared dependency — it would
+      # cost every docs developer a 176-package native install for a script they
+      # never run.
+      - name: Install index-build deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/idx" tsx github-slugger @qvac/sdk
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/idx/node_modules/." node_modules/
+
+      - name: Generate the corpus
+        id: corpus
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/tsx scripts/generate-mcp-corpus.ts
+          echo "hash=$(jq -r .corpusHash out/mcp/manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "chunks=$(jq -r .chunkCount out/mcp/manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Read the currently published index
+        id: published
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # No release yet (first ever run) is not an error — there is simply
+          # nothing to compare against, so the build must proceed.
+          if gh release download "$RELEASE_TAG" --pattern index-manifest.json --output published.json 2>/dev/null; then
+            echo "hash=$(jq -r .corpusHash published.json)" >> "$GITHUB_OUTPUT"
+          else
+            echo "hash=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decide whether to rebuild
+        id: gate
+        env:
+          CORPUS_HASH: ${{ steps.corpus.outputs.hash }}
+          PUBLISHED_HASH: ${{ steps.published.outputs.hash }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          set -euo pipefail
+          if [ "$FORCE" = "true" ]; then
+            echo "▸ Forced rebuild requested"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          elif [ "$CORPUS_HASH" = "$PUBLISHED_HASH" ]; then
+            echo "▸ Corpus unchanged ($CORPUS_HASH) — nothing to do"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "▸ Corpus changed: ${PUBLISHED_HASH:-none} → $CORPUS_HASH"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ~670MB of GGUF weights. Keyed on the filename, which encodes the model
+      # revision — a model bump changes the key and re-downloads.
+      - name: Cache the embedding model
+        if: steps.gate.outputs.build == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.qvac/models
+          key: qvac-models-gte-large-fp16-v1
+
+      - name: Build the index
+        if: steps.gate.outputs.build == 'true'
+        env:
+          # No GPU on a standard runner; asking for one wastes a load attempt.
+          QVAC_DEVICE: cpu
+        run: |
+          set -euo pipefail
+          bash scripts/fetch-embed-model.sh
+          ./node_modules/.bin/tsx scripts/build-mcp-index.ts
+
+      - name: Package the assets
+        if: steps.gate.outputs.build == 'true'
+        env:
+          CORPUS_HASH: ${{ steps.corpus.outputs.hash }}
+        run: |
+          set -euo pipefail
+          gzip -9 -c out/mcp-index/index.json > index.json.gz
+          gzip -9 -c out/mcp-index/pages.json > pages.json.gz
+          jq -n \
+            --arg corpusHash "$CORPUS_HASH" \
+            --arg builtAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg model "$(jq -r .model out/mcp-index/index.json)" \
+            --argjson dim "$(jq -r .dim out/mcp-index/index.json)" \
+            --argjson chunkCount "$(jq -r '.chunks | length' out/mcp-index/index.json)" \
+            --arg indexSha "$(sha256sum index.json.gz | cut -d' ' -f1)" \
+            --argjson indexBytes "$(stat -c%s index.json.gz)" \
+            --arg pagesSha "$(sha256sum pages.json.gz | cut -d' ' -f1)" \
+            --argjson pagesBytes "$(stat -c%s pages.json.gz)" \
+            '{version: 1, corpusHash: $corpusHash, builtAt: $builtAt, model: $model, dim: $dim,
+              chunkCount: $chunkCount,
+              assets: {
+                index: {path: "index.json.gz", bytes: $indexBytes, sha256: $indexSha},
+                pages: {path: "pages.json.gz", bytes: $pagesBytes, sha256: $pagesSha}
+              }}' > index-manifest.json
+          cat index-manifest.json
+
+      - name: Publish the release assets
+        if: steps.gate.outputs.build == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CORPUS_HASH: ${{ steps.corpus.outputs.hash }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" \
+              --title "MCP search index (rolling)" \
+              --notes "Rolling vector index for the docs search service, built by .github/workflows/build-mcp-index.yml. Assets are replaced in place; the tag never moves. Not a docs release." \
+              --latest=false \
+              --prerelease
+          fi
+          # Payloads before the manifest: the service treats the manifest as the
+          # signal that a complete index is available, so publishing it first
+          # would advertise assets that are not there yet.
+          gh release upload "$RELEASE_TAG" index.json.gz pages.json.gz --clobber
+          gh release upload "$RELEASE_TAG" index-manifest.json --clobber
+          echo "✓ Published index for corpus $CORPUS_HASH"
