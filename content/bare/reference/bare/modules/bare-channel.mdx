@@ -1,0 +1,105 @@
+---
+title: "bare-channel"
+description: "Reference for bare-channel: point-to-point inter-thread messaging for Bare, with transferable handles and stream interfaces."
+docType: reference
+product: bare
+schemaType: APIReference
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-channel`](https://github.com/holepunchto/bare-channel) provides point-to-point messaging between [Bare threads](/bare/reference/bare/runtime#barethread). A channel exposes a transferable `handle`; pass it to another thread, reconstruct with `Channel.from(handle)`, and exchange structured-cloned values over a port. It's a native addon and requires Bare `>=1.7.0`. For one-to-many fan-out, see [`bare-broadcast-channel`](/bare/reference/bare/modules/bare-broadcast-channel).
+
+```sh
+npm i bare-channel
+```
+
+## Usage
+
+```js
+const Channel = require('bare-channel')
+const { Thread } = Bare
+
+const channel = new Channel()
+
+new Thread(__filename, { data: channel.handle }, async (handle) => {
+  const Channel = require('bare-channel')
+  const port = Channel.from(handle).connect()
+  console.log(await port.read())
+  await port.close()
+})
+
+const port = channel.connect()
+await port.write('hello')
+```
+
+## API
+
+### Channel
+
+#### `const channel = new Channel([options])` · `Channel.from(handle[, options])`
+
+Create a channel, or reconstruct one from a transferred `channel.handle`. `channel.interfaces` lists its interfaces; `channel.connect()` returns a `Port`.
+
+`options` include:
+
+```js
+options = {
+  handle,
+  interfaces: []
+}
+```
+
+`handle` is an existing `SharedArrayBuffer` returned by `channel.handle` on another thread. When provided, the new channel is wired up to the same underlying channel. If omitted, a fresh channel is created.
+
+`interfaces` is an array of constructors with `bare-structured-clone` serialize and/or transfer symbols. Instances of these types may be passed to `port.write()` and will be reconstructed on the receiving side.
+
+#### `channel.handle`
+
+The underlying `SharedArrayBuffer` for the channel. Pass this across thread boundaries (for example, via `Bare.Thread`'s `data` option) and reconstruct the channel on the other side with `Channel.from(handle)`.
+
+#### `channel.interfaces`
+
+The array of constructors passed to the constructor.
+
+#### `const port = channel.connect()`
+
+Connect a new `Port` to the channel. A channel supports exactly two connected ports; messages written on one port appear in the read queue of the other.
+
+### Port
+
+#### `await port.write(value[, options])` · `port.writeSync(value[, options])`
+
+Send a structured-cloneable value. `write()` resolves to `true` once the value has been accepted into the channel, or `false` if the remote side has ended; `writeSync()` blocks the calling thread until the value can be enqueued, returning `false` immediately if the remote side has ended.
+
+`options` include:
+
+```js
+options = {
+  transfer: []
+}
+```
+
+`transfer` is an array of transferable values that should be transferred to the receiving side rather than cloned, following the structured clone algorithm.
+
+#### `const data = await port.read()` · `port.readSync()`
+
+Read the next value, resolving (or, for `readSync()`, blocking the calling thread) until one is available. Once the remote side has ended and the read queue is drained, both resolve/return `null`. A port is iterable both synchronously (`for (const data of port)`, equivalent to repeated `readSync()` calls) and asynchronously (`for await (const data of port)`, equivalent to repeated `read()` calls).
+
+#### `port.createReadStream([options])` · `port.createWriteStream([options])` · `port.createStream([options])`
+
+Stream interfaces over the port; `options` are forwarded to [`bare-stream`](/bare/reference/bare/modules/bare-stream). The write and duplex streams close the port when the stream is finalized; the read stream does not.
+
+#### `port.ref()` · `port.unref()` · `await port.close()`
+
+`ref()` keeps the event loop alive while the port is open; `unref()` allows the event loop to exit even if the port is still open, and the port is then closed automatically once no other handles are keeping the loop alive. `close()` flushes any pending writes before completing; after closing, further writes resolve to `false` and reads resolve to `null` once the queue is drained. Ports emit `end` (the remote side has ended) and `close` (the port has finished closing).
+
+## Related modules
+
+Builds on `bare-events`, [`bare-stream`](/bare/reference/bare/modules/bare-stream), and `bare-structured-clone` (see [Bare modules](/bare/reference/modules/bare-modules)).
+
+## See also
+
+- [`bare-broadcast-channel`](/bare/reference/bare/modules/bare-broadcast-channel)—multi-producer, multi-consumer messaging.
+- [`bare-atomics`](/bare/reference/bare/modules/bare-atomics)—low-level thread synchronization.
+- [Bare runtime API](/bare/reference/bare/runtime#barethread)—`Bare.Thread`.

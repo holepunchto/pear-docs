@@ -1,0 +1,540 @@
+---
+title: "bare-make"
+description: "Opinionated build system generator based on CMake"
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "1.8.0"
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-make`](https://github.com/holepunchto/bare-make) — Opinionated build system generator based on CMake.
+
+```sh
+npm i bare-make
+```
+
+## Usage
+
+Like CMake, builds happen in three steps: You first generate a build system, then run the build system, and finally install the built artefacts. To perform the steps programmatically from JavaScript, do:
+
+```js
+const make = require('bare-make')
+
+await make.generate()
+await make.build()
+await make.install()
+```
+
+The steps can also be performed interactively from the command line using the included CLI:
+
+```console
+bare-make generate
+bare-make build
+bare-make install
+```
+
+### Testing
+
+To run tests for projects that use [`enable_testing()`](https://cmake.org/cmake/help/latest/command/enable_testing.html#command:enable_testing) and [`add_test()`](https://cmake.org/cmake/help/latest/command/add_test.html#command:add_test), do:
+
+```js
+await make.test()
+```
+
+Tests can also be run from the command line:
+
+```console
+bare-make test
+```
+
+## API
+
+### errors
+
+#### `new errors(msg: string, code: string, fn?: MakeError)`
+
+Construct a `MakeError` with the given message and `code`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+| `code` | `string` | — | The error code, assigned to `err.code`. |
+| `fn?` | `MakeError` | — | The function to omit from the captured stack trace (default the `MakeError` constructor). |
+
+#### `errors.BUILD_FAILED(msg: string): MakeError`
+
+Create a `MakeError` with code `'BUILD_FAILED'`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `errors.GENERATE_FAILED(msg: string): MakeError`
+
+Create a `MakeError` with code `'GENERATE_FAILED'`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `errors.INSTALL_FAILED(msg: string): MakeError`
+
+Create a `MakeError` with code `'INSTALL_FAILED'`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `errors.TEST_FAILED(msg: string): MakeError`
+
+Create a `MakeError` with code `'TEST_FAILED'`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `errors.UNKNOWN_TOOLCHAIN(msg: string): MakeError`
+
+Create a `MakeError` with code `'UNKNOWN_TOOLCHAIN'`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+### Functions
+
+#### `build(opts?: BuildOptions): Promise<void>`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `BuildOptions` | — | Options; `build` defaults to `'build'` (unset when `preset` is set), `parallel` to `0`, and `clean` and `verbose` to `false`. |
+
+**Throws**
+
+- `BUILD_FAILED` — the build exits with a non-zero status.
+
+#### `generate(opts?: GenerateOptions): Promise<void>`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `GenerateOptions` | — | Options; `source` defaults to `'.'`, `build` to `'build'`, `platform` and `arch` to the host, `cache` to `true`, and the build-type flags (`debug`, `fuzz`, `withDebugSymbols`, `withMinimalSize`, `verbose`) to `false`. |
+
+**Throws**
+
+- `UNKNOWN_TOOLCHAIN` — no toolchain is available for the resolved `platform`-`arch` target.
+- `GENERATE_FAILED` — build system generation exits with a non-zero status.
+
+#### `install(opts?: InstallOptions): Promise<void>`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `InstallOptions` | — | Options; `build` defaults to `'build'`, `prefix` to `'prebuilds'`, and `link`, `strip`, and `verbose` to `false`. |
+
+**Throws**
+
+- `INSTALL_FAILED` — the install exits with a non-zero status.
+
+#### `test(opts?: TestOptions): Promise<void>`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `TestOptions` | — | Options; `build` defaults to `'build'`, `timeout` to `30` seconds, `parallel` to `-1`, and `verbose` to `false`. |
+
+**Throws**
+
+- `TEST_FAILED` — one or more tests fail.
+
+### Types
+
+#### `build.BuildOptions`
+
+```ts
+interface BuildOptions {
+  build?: string
+  clean?: boolean
+  cwd?: string
+  parallel?: number
+  preset?: string
+  stdio?: Pipe
+  target?: string
+  verbose?: boolean
+}
+```
+
+Options for `build()`.
+
+#### `generate.GenerateOptions`
+
+```ts
+interface GenerateOptions {
+  arch?: string
+  build?: string
+  cache?: boolean
+  cwd?: string
+  debug?: boolean
+  define?: string[]
+  environment?: string
+  fuzz?: boolean
+  platform?: string
+  preset?: string
+  sanitize?: string
+  simulator?: boolean
+  source?: string
+  stdio?: Pipe
+  verbose?: boolean
+  withDebugSymbols?: boolean
+  withMinimalSize?: boolean
+}
+```
+
+Options for `generate()`.
+
+#### `install.InstallOptions`
+
+```ts
+interface InstallOptions {
+  build?: string
+  component?: string
+  cwd?: string
+  link?: boolean
+  parallel?: boolean
+  prefix?: string
+  stdio?: Pipe
+  strip?: boolean
+  verbose?: boolean
+}
+```
+
+Options for `install()`.
+
+#### `test.TestOptions`
+
+```ts
+interface TestOptions {
+  build?: string
+  cwd?: string
+  parallel?: number
+  preset?: string
+  stdio?: Pipe
+  timeout?: number
+  verbose?: boolean
+}
+```
+
+Options for `test()`.
+
+## `bare-make/errors`
+
+### MakeError
+
+#### `new MakeError(msg: string, code: string, fn?: MakeError)`
+
+Construct a `MakeError` with the given message and `code`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+| `code` | `string` | — | The error code, assigned to `err.code`. |
+| `fn?` | `MakeError` | — | The function to omit from the captured stack trace (default the `MakeError` constructor). |
+
+#### `MakeError.BUILD_FAILED(msg: string): MakeError`
+
+Create a `MakeError` with code `'BUILD_FAILED'`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `MakeError.GENERATE_FAILED(msg: string): MakeError`
+
+Create a `MakeError` with code `'GENERATE_FAILED'`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `MakeError.INSTALL_FAILED(msg: string): MakeError`
+
+Create a `MakeError` with code `'INSTALL_FAILED'`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `MakeError.TEST_FAILED(msg: string): MakeError`
+
+Create a `MakeError` with code `'TEST_FAILED'`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `MakeError.UNKNOWN_TOOLCHAIN(msg: string): MakeError`
+
+Create a `MakeError` with code `'UNKNOWN_TOOLCHAIN'`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+## `bare-make/build`
+
+### Functions
+
+#### `build.build(opts?: BuildOptions): Promise<void>`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `BuildOptions` | — | Options; `build` defaults to `'build'` (unset when `preset` is set), `parallel` to `0`, and `clean` and `verbose` to `false`. |
+
+**Throws**
+
+- `BUILD_FAILED` — the build exits with a non-zero status.
+
+### Types
+
+#### `BuildOptions`
+
+```ts
+interface BuildOptions {
+  build?: string
+  clean?: boolean
+  cwd?: string
+  parallel?: number
+  preset?: string
+  stdio?: Pipe
+  target?: string
+  verbose?: boolean
+}
+```
+
+Options for `build()`.
+
+## `bare-make/generate`
+
+### Functions
+
+#### `generate.generate(opts?: GenerateOptions): Promise<void>`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `GenerateOptions` | — | Options; `source` defaults to `'.'`, `build` to `'build'`, `platform` and `arch` to the host, `cache` to `true`, and the build-type flags (`debug`, `fuzz`, `withDebugSymbols`, `withMinimalSize`, `verbose`) to `false`. |
+
+**Throws**
+
+- `UNKNOWN_TOOLCHAIN` — no toolchain is available for the resolved `platform`-`arch` target.
+- `GENERATE_FAILED` — build system generation exits with a non-zero status.
+
+### Types
+
+#### `GenerateOptions`
+
+```ts
+interface GenerateOptions {
+  arch?: string
+  build?: string
+  cache?: boolean
+  cwd?: string
+  debug?: boolean
+  define?: string[]
+  environment?: string
+  fuzz?: boolean
+  platform?: string
+  preset?: string
+  sanitize?: string
+  simulator?: boolean
+  source?: string
+  stdio?: Pipe
+  verbose?: boolean
+  withDebugSymbols?: boolean
+  withMinimalSize?: boolean
+}
+```
+
+Options for `generate()`.
+
+## `bare-make/install`
+
+### Functions
+
+#### `install.install(opts?: InstallOptions): Promise<void>`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `InstallOptions` | — | Options; `build` defaults to `'build'`, `prefix` to `'prebuilds'`, and `link`, `strip`, and `verbose` to `false`. |
+
+**Throws**
+
+- `INSTALL_FAILED` — the install exits with a non-zero status.
+
+### Types
+
+#### `InstallOptions`
+
+```ts
+interface InstallOptions {
+  build?: string
+  component?: string
+  cwd?: string
+  link?: boolean
+  parallel?: boolean
+  prefix?: string
+  stdio?: Pipe
+  strip?: boolean
+  verbose?: boolean
+}
+```
+
+Options for `install()`.
+
+## `bare-make/test`
+
+### Functions
+
+#### `test.test(opts?: TestOptions): Promise<void>`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `TestOptions` | — | Options; `build` defaults to `'build'`, `timeout` to `30` seconds, `parallel` to `-1`, and `verbose` to `false`. |
+
+**Throws**
+
+- `TEST_FAILED` — one or more tests fail.
+
+### Types
+
+#### `TestOptions`
+
+```ts
+interface TestOptions {
+  build?: string
+  cwd?: string
+  parallel?: number
+  preset?: string
+  stdio?: Pipe
+  timeout?: number
+  verbose?: boolean
+}
+```
+
+Options for `test()`.
+
+## CLI
+
+#### `bare-make generate [flags]`
+
+Flags include:
+
+```console
+--source|-s <path>                   The path to the source tree
+--build|-b <path>                    The path to the build tree
+--platform|-p <name>                 The operating system platform to build for
+--arch|-a <name>                     The operating system architecture to build for
+--simulator                          Build for a simulator
+--environment|-e <name>              The environment to build for
+--no-cache                           Disregard the build variable cache
+--preset <name>                      The preset to use
+--debug|-d                           Configure a debug build
+--with-debug-symbols                 Configure a release build with debug symbols
+--with-minimal-size                  Configure a release build with minimal size
+--sanitize <name>                    Enable a sanitizer
+--fuzz                               Configure for fuzzing
+--define|-D <var>[:<type>]=<value>   Create or update a build variable cache entry
+--no-color                           Disable colored output
+--verbose                            Enable verbose output
+--help|-h                            Show help
+```
+
+#### `bare-make build [flags]`
+
+Flags include:
+
+```console
+--build|-b <path>        The path to the build tree
+--target|-t <name>       The target to build
+--clean|-c               Clean before building
+--parallel|-j <number>   Build in parallel using the given number of jobs
+--preset <name>          The preset to use
+--verbose                Enable verbose output
+--help|-h                Show help
+```
+
+#### `bare-make install [flags]`
+
+Flags include:
+
+```console
+--build|-b <path>        The path to the build tree
+--prefix|-p <path>       The prefix to install to
+--component|-c <name>    The component to install
+--link|-l                Link rather than copy the files
+--strip|-s               Strip before installing
+--parallel|-j <number>   Install in parallel using the given number of jobs
+--verbose                Enable verbose output
+--help|-h                Show help
+```
+
+#### `bare-make test [flags]`
+
+Flags include:
+
+```console
+--build|-b <path>        The path to the build tree
+--timeout <seconds>      The default test timeout
+--parallel|-j <number>   Run tests in parallel using the given number of jobs
+--preset <name>          The preset to use
+--verbose                Enable verbose output
+--help|-h                Show help
+```
+
+## See also
+
+- Builds on `bare-env`, `bare-fs`, `bare-os`, `bare-path`, and `bare-process`.
+- It drives CMake with Ninja and Clang for a consistent toolchain across platforms, while staying plain CMake underneath so you can eject.
+- The CLI is installed globally via `npm i -g bare-make`.
+- [Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app) — where addon compilation fits in packaging.
+- [`bare-pack`](/bare/reference/modules/bare-modules) — bundles the compiled addons.
+- [Bare modules](/bare/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.
