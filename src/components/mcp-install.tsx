@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Check, Copy, ExternalLinkIcon, Plug } from 'lucide-react';
+import { Check, Copy, ExternalLinkIcon, Plug, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
 import {
@@ -95,7 +95,8 @@ function claudeCodeCommand(url: string) {
  * been pointed at an endpoint yet ships no dead button.
  */
 export function McpInstallButton({ url }: { url: string }) {
-  const [copied, setCopied] = useState<string | null>(null);
+  // `${key}:ok` or `${key}:fail` for the option last clicked, else null.
+  const [copyState, setCopyState] = useState<string | null>(null);
   const resetTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -105,16 +106,19 @@ export function McpInstallButton({ url }: { url: string }) {
   }, []);
 
   async function copy(key: string, text: string) {
+    let ok = true;
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(key);
     } catch {
-      setCopied(null);
-      return;
+      // Rejects in a non-secure context or when the permission is denied.
+      // Silence here would dismiss the popover with an empty clipboard and no
+      // hint that the one thing the button exists to do did not happen.
+      ok = false;
     }
+    setCopyState(`${key}:${ok ? 'ok' : 'fail'}`);
     if (resetTimeoutRef.current) window.clearTimeout(resetTimeoutRef.current);
     resetTimeoutRef.current = window.setTimeout(() => {
-      setCopied(null);
+      setCopyState(null);
       resetTimeoutRef.current = null;
     }, COPY_RESET_MS);
   }
@@ -123,9 +127,18 @@ export function McpInstallButton({ url }: { url: string }) {
     window.open(href, '_blank', 'noopener,noreferrer');
   }
 
-  /** Copy options swap their icon to a tick for COPY_RESET_MS after a successful write. */
+  /** Copy options swap their icon to a tick, or a cross, for COPY_RESET_MS. */
   function icon(key: string, fallback: React.ReactNode) {
-    return copied === key ? <Check className="text-fd-muted-foreground" /> : fallback;
+    if (copyState === `${key}:ok`) return <Check className="text-fd-muted-foreground" />;
+    if (copyState === `${key}:fail`) return <X className="text-fd-muted-foreground" />;
+    return fallback;
+  }
+
+  /** Replaces an option's trailing hint while its result is showing. */
+  function hint(key: string, idle: string) {
+    if (copyState === `${key}:ok`) return 'copied';
+    if (copyState === `${key}:fail`) return 'copy failed';
+    return idle;
   }
 
   return (
@@ -149,30 +162,27 @@ export function McpInstallButton({ url }: { url: string }) {
           Give your agent semantic search over these docs.
         </p>
 
-        <PopoverClose asChild>
-          <button
-            type="button"
-            onClick={() => copy('claude-code', claudeCodeCommand(url))}
-            className={cn(optionClassName)}
-          >
-            {icon('claude-code', <ClaudeIcon className="text-fd-muted-foreground" />)}
-            Claude Code
-            <span className="ms-auto text-xs text-fd-muted-foreground">copy command</span>
-          </button>
-        </PopoverClose>
+        <button
+          type="button"
+          onClick={() => copy('claude-code', claudeCodeCommand(url))}
+          className={cn(optionClassName)}
+        >
+          {icon('claude-code', <ClaudeIcon className="text-fd-muted-foreground" />)}
+          Claude Code
+          <span className="ms-auto text-xs text-fd-muted-foreground">{hint('claude-code', 'copy command')}</span>
+        </button>
 
-        <PopoverClose asChild>
-          <button
-            type="button"
-            onClick={() => copy('claude-desktop', configJson(url))}
-            className={cn(optionClassName)}
-          >
-            {icon('claude-desktop', <ClaudeIcon className="text-fd-muted-foreground" />)}
-            Claude Desktop
-            <span className="ms-auto text-xs text-fd-muted-foreground">copy config</span>
-          </button>
-        </PopoverClose>
+        <button
+          type="button"
+          onClick={() => copy('claude-desktop', configJson(url))}
+          className={cn(optionClassName)}
+        >
+          {icon('claude-desktop', <ClaudeIcon className="text-fd-muted-foreground" />)}
+          Claude Desktop
+          <span className="ms-auto text-xs text-fd-muted-foreground">{hint('claude-desktop', 'copy config')}</span>
+        </button>
 
+        {/* Deeplinks still close the popover — they hand off to another app. */}
         <PopoverClose asChild>
           <button
             type="button"
@@ -199,27 +209,25 @@ export function McpInstallButton({ url }: { url: string }) {
 
         <div className="my-1 border-t" />
 
-        <PopoverClose asChild>
-          <button
-            type="button"
-            onClick={() => copy('url', url)}
-            className={cn(optionClassName)}
-          >
-            {icon('url', <Copy className="text-fd-muted-foreground" />)}
-            Copy server URL
-          </button>
-        </PopoverClose>
+        <button
+          type="button"
+          onClick={() => copy('url', url)}
+          className={cn(optionClassName)}
+        >
+          {icon('url', <Copy className="text-fd-muted-foreground" />)}
+          Copy server URL
+          <span className="ms-auto text-xs text-fd-muted-foreground">{hint('url', '')}</span>
+        </button>
 
-        <PopoverClose asChild>
-          <button
-            type="button"
-            onClick={() => copy('json', configJson(url))}
-            className={cn(optionClassName)}
-          >
-            {icon('json', <Copy className="text-fd-muted-foreground" />)}
-            Copy JSON config
-          </button>
-        </PopoverClose>
+        <button
+          type="button"
+          onClick={() => copy('json', configJson(url))}
+          className={cn(optionClassName)}
+        >
+          {icon('json', <Copy className="text-fd-muted-foreground" />)}
+          Copy JSON config
+          <span className="ms-auto text-xs text-fd-muted-foreground">{hint('json', '')}</span>
+        </button>
       </PopoverContent>
     </Popover>
   );
