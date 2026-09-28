@@ -46,9 +46,14 @@ Everything else (`bin.mjs`, `app.js`, `lib/inference.js`, `workers/qvac.js`, `ui
 Unlike every other terminal-app scenario, this one runs `bare test/index.js` (upstream's own
 headless, fake-inference test suite) instead of booting `bin.mjs` live — a live boot needs a ~1GB
 model download and, for a real answer, a GPU. But even that lighter check isn't in
-`.github/workflows/examples.yml`'s automated matrix. The `ciSkipReason` on the `hello-pear-qvac-tui`
-entry in `scripts/test-examples.ts` is the canonical record of why; run it locally with the command
-above whenever you touch this snapshot.
+`.github/workflows/examples.yml`'s automated matrix: upstream's own CI already runs this exact,
+unmodified test file on every push to `hello-pear-qvac-tui`'s `main`, across five platforms, so
+running it again here would duplicate that coverage without catching anything upstream doesn't
+already. It also wouldn't catch a mistake in *our* one deviation — `workers/main.js` is outside
+this test's require graph (`ui/app.js` and `ui/transcript.js` only) — that's what
+`scripts/check-workers-in-sync.ts` and `.github/workflows/watch-boilerplates.yml` are for instead.
+The `ciSkipReason` on the `hello-pear-qvac-tui` entry in `scripts/test-examples.ts` is the
+canonical record of this; run it locally with the command above whenever you touch this snapshot.
 
 ## Refreshing
 

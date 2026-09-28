@@ -87,14 +87,14 @@ interface Scenario {
   artifacts: string[];
   steps: Step[];
   /**
-   * False when this scenario is deliberately excluded from
-   * `.github/workflows/examples.yml`'s matrix — the canonical record of
-   * that decision, so it reads as "excluded on purpose" rather than the
-   * silent gap the workflow's own header warns a forgotten scenario leaves.
-   * Requires `ciSkipReason`. Defaults to true (run in CI).
+   * Set when this scenario is deliberately excluded from
+   * `.github/workflows/examples.yml`'s matrix — the canonical record of why,
+   * so the exclusion reads as "on purpose" rather than the silent gap the
+   * workflow's own header warns a forgotten scenario leaves. The matrix
+   * itself is still hand-maintained (see that header), so this only
+   * guarantees an absence is *intentional* where it's set — it doesn't
+   * guarantee every scenario without it is actually in the matrix.
    */
-  ci?: false;
-  /** Why `ci` is false. Required together with it. */
   ciSkipReason?: string;
 }
 
@@ -202,7 +202,6 @@ const SCENARIOS: Scenario[] = [
     dir: `${AI}/hello-pear-qvac-tui`,
     installs: ['.'],
     artifacts: [],
-    ci: false,
     ciSkipReason:
       "upstream's own CI already runs this exact, unmodified test file on " +
       'every push to hello-pear-qvac-tui\'s main, across five platforms — ' +
@@ -550,18 +549,6 @@ const SCENARIOS: Scenario[] = [
     ],
   },
 ];
-
-// `ci` and `ciSkipReason` are a pair: a scenario kept out of
-// examples.yml's matrix must say why, and a reason with nothing to attach
-// it to is dead text. Catch either half going stale on its own.
-for (const s of SCENARIOS) {
-  if (s.ci === false && !s.ciSkipReason) {
-    throw new Error(`scenario '${s.id}' has ci: false but no ciSkipReason`);
-  }
-  if (s.ci !== false && s.ciSkipReason) {
-    throw new Error(`scenario '${s.id}' has ciSkipReason but ci is not false`);
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Execution engine (ported from scripts/check-examples.ts)
