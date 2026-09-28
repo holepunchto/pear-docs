@@ -37,7 +37,14 @@ if [ -z "${QVAC_EMBED_GGUF:-}" ] && [ ! -f "$EMBED_GGUF_DEFAULT" ]; then
   echo "No embedding model cached — fetching GTE-large (~670MB)..."
   mkdir -p "$(dirname "$EMBED_GGUF_DEFAULT")"
   tmp_gguf="${EMBED_GGUF_DEFAULT}.partial"
-  curl -fL -o "$tmp_gguf" "$EMBED_GGUF_URL"
+  # --retry-all-errors, not just --retry: a plain --retry only retries curl's
+  # own idea of a transient failure, which excludes a connection reset
+  # mid-transfer — exactly the failure a stalled 670MB download is likeliest
+  # to hit. --max-time bounds the whole attempt so a hung connection can't
+  # wedge the job past its cache-miss budget.
+  curl -fL --retry 3 --retry-all-errors --retry-delay 5 \
+    --connect-timeout 20 --max-time 900 --no-progress-meter \
+    -o "$tmp_gguf" "$EMBED_GGUF_URL"
   actual_sha256="$(sha256_of "$tmp_gguf")"
   if [ "$actual_sha256" != "$EMBED_GGUF_SHA256" ]; then
     rm -f "$tmp_gguf"

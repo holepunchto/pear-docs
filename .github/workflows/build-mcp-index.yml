@@ -85,23 +85,30 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: scripts/mcp-index/package-lock.json
 
-      # scripts/mcp-index is its own package with a lockfile, isolated from the
-      # root package.json: that one pulls token-gated @tetherto/* packages this
-      # repo's token cannot read, so a plain `npm ci` fails at the root. The
-      # lockfile pins @qvac/sdk and its embedder to what the search service
-      # locks — a different llama.cpp build on the two ends skews index and
-      # query vectors against each other without any error. Install scripts
-      # are off: none of the tree needs them (esbuild and the native addons
-      # ship prebuilt binaries), and this is the step that would run them.
-      - name: Install index-build deps
+      # Only tsx + github-slugger — the corpus generator's sole deps — read
+      # from scripts/mcp-index/package.json so there is one source of truth,
+      # and installed into a throwaway prefix (same pattern docs-lint's
+      # mcp-corpus job uses). A couple of seconds either way.
+      #
+      # The @qvac/sdk install is the expensive part: every @qvac/* plugin
+      # ships prebuilt native addons for every platform, ~5.6GB unpacked for
+      # one platform's worth of actual use. It used to run here, before the
+      # gate below had a chance to say "nothing changed" — so a push that
+      # touched no docs still paid for the whole tree. It now runs in its own
+      # step, after the gate, only when the gate says to build. `cache: npm`
+      # is deliberately not used above: it would restore/save that same tree
+      # on every run, including the ones that skip the install entirely, and
+      # it competes with the model cache below for the repo's shared 10GB
+      # Actions cache quota.
+      - name: Install corpus-generator deps
         run: |
           set -euo pipefail
-          npm ci --ignore-scripts --prefix scripts/mcp-index
+          tsx_version=$(jq -r .dependencies.tsx scripts/mcp-index/package.json)
+          slugger_version=$(jq -r '.dependencies["github-slugger"]' scripts/mcp-index/package.json)
+          npm install --no-save --prefix "$RUNNER_TEMP/gate" "tsx@$tsx_version" "github-slugger@$slugger_version"
           mkdir -p node_modules
-          cp -R scripts/mcp-index/node_modules/. node_modules/
+          cp -R "$RUNNER_TEMP/gate/node_modules/." node_modules/
 
       - name: Generate the corpus
         id: corpus
@@ -168,6 +175,27 @@ jobs:
             echo "build=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # scripts/mcp-index is its own package with a lockfile, isolated from the
+      # root package.json: that one pulls token-gated @tetherto/* packages this
+      # repo's token cannot read, so a plain `npm ci` fails at the root. The
+      # lockfile pins @qvac/sdk and its embedder to what the search service
+      # locks — a different llama.cpp build on the two ends skews index and
+      # query vectors against each other without any error. Install scripts
+      # are off: none of the tree needs them (esbuild and the native addons
+      # ship prebuilt binaries), and this is the step that would run them.
+      #
+      # `mv`, not `cp -R`: scripts/build-mcp-index.ts and scripts/mcp-embedder.ts
+      # resolve `@qvac/sdk` from scripts/node_modules same as any other nested
+      # node_modules, so nothing needs a second copy at the repo root. Only
+      # this step and "Package the assets" (for sdkVersion/embedderVersion)
+      # know this path.
+      - name: Install index-build deps
+        if: steps.gate.outputs.build == 'true'
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --prefix scripts/mcp-index
+          mv scripts/mcp-index/node_modules scripts/node_modules
+
       # ~670MB of GGUF weights. The key follows fetch-embed-model.sh, which
       # holds the URL and checksum, so a model bump misses the cache. The
       # script also re-verifies the checksum of whatever is restored: the key
@@ -222,8 +250,8 @@ jobs:
             --arg builtAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg sourceSha "$SOURCE_SHA" \
             --arg runUrl "$RUN_URL" \
-            --arg sdkVersion "$(jq -r .version node_modules/@qvac/sdk/package.json)" \
-            --arg embedderVersion "$(jq -r .version node_modules/@qvac/embed-llamacpp/package.json)" \
+            --arg sdkVersion "$(jq -r .version scripts/node_modules/@qvac/sdk/package.json)" \
+            --arg embedderVersion "$(jq -r .version scripts/node_modules/@qvac/embed-llamacpp/package.json)" \
             --arg model "$(jq -r .model .mcp-build/index.json)" \
             --argjson format "$(jq -r .format .mcp-build/index.json)" \
             --argjson dim "$(jq -r .dim .mcp-build/index.json)" \

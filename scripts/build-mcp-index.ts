@@ -28,8 +28,12 @@
  * must come from the same llama.cpp build. To run it locally:
  *
  *     npm ci --ignore-scripts --prefix scripts/mcp-index
- *     mkdir -p node_modules && cp -R scripts/mcp-index/node_modules/. node_modules/
+ *     mv scripts/mcp-index/node_modules scripts/node_modules
  *     npm run mcp:corpus && npm run mcp:index
+ *
+ * The `mv`, not a copy into the repo-root `node_modules`: this file and
+ * `mcp-embedder.ts` both live under `scripts/`, so Node's own module
+ * resolution finds `@qvac/sdk` in `scripts/node_modules` without any help.
  *
  * ⚠️ The shape written here is a contract with the service's `DocStore.load()`.
  * Changing a field name, the quantization, or the vector layout requires a
