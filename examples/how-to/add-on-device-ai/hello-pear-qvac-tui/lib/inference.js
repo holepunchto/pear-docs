@@ -19,12 +19,13 @@ const PearRuntime = require('pear-runtime')
 const ReadyResource = require('ready-resource')
 
 module.exports = class Inference extends ReadyResource {
-  constructor({ model, ctxSize, gracePeriod } = {}) {
+  constructor({ model, ctxSize, gracePeriod, verbose } = {}) {
     super()
 
     this.model = model || 'LLAMA_3_2_1B_INST_Q4_0'
     this.ctxSize = ctxSize || 8192
     this.gracePeriod = gracePeriod ?? 5000
+    this.verbose = verbose === true
     this.loaded = false
     this.percentage = 0
 
@@ -44,7 +45,8 @@ module.exports = class Inference extends ReadyResource {
   _open() {
     this.IPC = PearRuntime.run(require.resolve('../workers/qvac.js'), [
       this.model,
-      String(this.ctxSize)
+      String(this.ctxSize),
+      this.verbose ? '1' : '0'
     ])
     this.pipe = new FramedStream(this.IPC)
 
@@ -66,7 +68,17 @@ module.exports = class Inference extends ReadyResource {
 
     if (pipe !== null) {
       this._send({ t: 'close' })
-      await Promise.race([this._closed, timeout(this.gracePeriod)])
+
+      // Disarm the grace period once the worker answers. A pending timer keeps
+      // Bare's loop alive all on its own, so leaving it armed holds the whole
+      // process open for the full gracePeriod after an exit that was already
+      // done — which you feel most on the restart an applied update asks for.
+      const grace = timeout(this.gracePeriod)
+      try {
+        await Promise.race([this._closed, grace.promise])
+      } finally {
+        grace.clear()
+      }
     }
 
     this.pipe = null
@@ -131,6 +143,12 @@ module.exports = class Inference extends ReadyResource {
   }
 }
 
+// A delay that can be called off. Returns the promise plus the clear, rather
+// than a bare promise, because the caller has to be able to cancel the timer.
 function timeout(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  let timer = null
+  const promise = new Promise((resolve) => {
+    timer = setTimeout(resolve, ms)
+  })
+  return { promise, clear: () => clearTimeout(timer) }
 }

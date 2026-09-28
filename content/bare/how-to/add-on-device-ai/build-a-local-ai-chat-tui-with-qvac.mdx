@@ -101,7 +101,7 @@ Loading a GGUF model blocks the thread it runs on for seconds—in-process, the 
 
 The inference client, same shape:
 
-```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/lib/inference.js#L21-L58 title="lib/inference.js" skip="example-import"
+```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/lib/inference.js#L21-L60 title="lib/inference.js" skip="example-import"
 ```
 
 A resident model holds native handles that keep the process alive, so `_close()` sends `{ t: 'close' }` and waits (with a grace period) for the worker to confirm it unloaded before destroying the pipe—skip that handshake and the app hangs on exit instead of quitting.
@@ -140,7 +140,7 @@ One JSON object per frame, `t` is the tag:
 
 `workers/qvac.js`'s `ask()` produces the outgoing half of that table:
 
-```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/workers/qvac.js#L72-L104 title="workers/qvac.js" skip="example-import"
+```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/workers/qvac.js#L254-L286 title="workers/qvac.js" skip="example-import"
 ```
 
 Two things worth keeping if you touch this loop: `run.events` ends **normally** even when a completion failed or ran out of context—the reason only surfaces on `run.final`, which is why `ask()` awaits it and forwards `stopReason` rather than declaring victory once the loop exits. And **`ui/app.js` never imports the QVAC SDK**—inference reaches it only as the `qvac.*` messages in the table above, which is why the UI's own tests run in well under a second with no model and no GPU.
@@ -149,19 +149,19 @@ Two things worth keeping if you touch this loop: `run.events` ends **normally** 
 
 Both are CLI flags, parsed in `bin.mjs` alongside `--storage` and `--no-updates`:
 
-```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/bin.mjs#L17-L25 title="bin.mjs" skip="example-import"
+```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/bin.mjs#L17-L26 title="bin.mjs" skip="example-import"
 ```
 
 and resolved, falling back to `package.json`'s `qvac` field:
 
-```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/bin.mjs#L37-L38 title="bin.mjs" skip="example-import"
+```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/bin.mjs#L38-L39 title="bin.mjs" skip="example-import"
 ```
 
 **`--model`**—any model constant [`@qvac/inference`](https://www.npmjs.com/package/@qvac/inference) exports. Nothing else in the template changes.
 
 **`--ctx`**—everything the model holds at once shares this budget: the conversation so far, its reasoning, and the answer it's writing. The addon's own default is small enough that a couple of turns leave no room to reply and answers stop mid-sentence, which is why this template overrides it:
 
-```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/workers/qvac.js#L32-L37 title="workers/qvac.js" skip="example-import"
+```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/workers/qvac.js#L36-L41 title="workers/qvac.js" skip="example-import"
 ```
 
 If an answer does hit the ceiling, `workers/qvac.js` reports that in `stopReason` rather than pretending the model finished (see [How one question flows](#how-one-question-flows) above)—that's what makes the UI able to say so instead of silently truncating.
