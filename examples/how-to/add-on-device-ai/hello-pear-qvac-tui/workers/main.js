@@ -50,9 +50,13 @@ goodbye(async () => {
 pipe.on('data', async (data) => {
   const message = data.toString()
   if (message === 'pear:applyUpdate') {
-    await pear.ready()
-    await pear.updater.applyUpdate()
-    pipe.write('pear:updateApplied')
+    try {
+      await pear.ready()
+      await pear.updater.applyUpdate()
+      pipe.write('pear:updateApplied')
+    } catch (err) {
+      pipe.write('pear:updateFailed ' + (err.message || 'unknown error'))
+    }
   } else console.log(message)
 })
 
