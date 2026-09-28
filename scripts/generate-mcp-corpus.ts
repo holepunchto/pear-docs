@@ -1,27 +1,31 @@
 /**
- * Post-build: generates the retrieval corpus the docs MCP server consumes.
+ * Extracts the retrieval corpus that the docs search index is built from.
  *
- * Writes two files into `out/mcp/`, which ship with the ordinary static deploy
- * of `published`:
+ * Writes two files into `.mcp-build/` — a scratch directory, NOT the published
+ * `out/`:
  *
  *   - `corpus.json`   : every page's markdown plus heading-anchored chunks.
- *   - `manifest.json` : counts, timestamps and `corpusHash` — a few hundred
- *                       bytes, so the search service can poll it cheaply and
- *                       only pull the multi-megabyte corpus when it changed.
+ *   - `manifest.json` : counts, timestamps and `corpusHash`.
  *
- * This replaces the old arrangement where the search service kept its own
- * vendored copy of the extraction logic, cloned this repo to run it, and
- * committed the ~12MB result into its own git history. The docs repo is the
- * only place that knows how a content file becomes a URL, so it is the right
- * place to emit the corpus; the service now only embeds it.
+ * NOT part of the site build. It has exactly two callers, both of which run it
+ * explicitly:
+ *
+ *   - `build-mcp-index.ts`, via the manual "Build MCP search index" workflow,
+ *     which embeds what this produces.
+ *   - the `mcp-corpus` docs-lint job, which runs it purely to fail a PR where
+ *     two content files slug to the same URL.
+ *
+ * It used to run in `postbuild` and publish to `out/mcp/`, back when the search
+ * service lived in another repo and polled `docs.pears.com/mcp/manifest.json`
+ * over HTTP to decide whether to re-embed. Once the embed job moved into this
+ * repo it started regenerating the corpus from the checkout instead, which left
+ * the published copy — 6.7MB on every deploy — with no reader at all.
  *
  * Deliberately produces NO vectors. Embedding needs the QVAC native addon and
- * runs 10-40 minutes on CPU — far too heavy for a site build. `corpusHash` is
- * what lets the service skip that work: it re-embeds only when the hash moves,
- * and the hash is computed exactly the way the service's own index builder
- * computes it (sha256 over `[id, content]` pairs, in chunk order).
+ * runs 10-40 minutes on CPU; `corpusHash` is what keeps that rare, by telling
+ * the workflow whether anything actually changed.
  *
- * Run after `next build`: tsx scripts/generate-mcp-corpus.ts
+ * Run directly: tsx scripts/generate-mcp-corpus.ts
  */
 import { createHash } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -32,7 +36,7 @@ import { getFiles, fileToSlug, stripInlineMarkdown, CONTENT_DIR } from './helper
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_PATH = path.join(ROOT, CONTENT_DIR);
-const OUT_DIR = path.join(ROOT, 'out', 'mcp');
+const OUT_DIR = path.join(ROOT, '.mcp-build');
 
 /**
  * Bumped when the shape of `corpus.json` changes incompatibly. The service
@@ -357,7 +361,7 @@ async function main(): Promise<void> {
   );
 
   console.log(
-    `✓ Wrote out/mcp/corpus.json (${pages.length} pages, ${chunks.length} chunks, ` +
+    `✓ Wrote .mcp-build/corpus.json (${pages.length} pages, ${chunks.length} chunks, ` +
       `${(Buffer.byteLength(body) / 1e6).toFixed(1)}MB) in ${((Date.now() - t0) / 1000).toFixed(1)}s`,
   );
   console.log(`  corpusHash ${corpusHash.slice(0, 12)}…`);

@@ -1,11 +1,14 @@
 /**
  * Embeds the MCP corpus into the vector index the docs search service serves.
  *
- * Reads `out/mcp/corpus.json` (written by `generate-mcp-corpus.ts` during
- * postbuild) and writes two files the service loads verbatim:
+ * Reads `.mcp-build/corpus.json` (written by `generate-mcp-corpus.ts`) and
+ * writes two files the service loads verbatim:
  *
- *   - `out/mcp-index/index.json` : chunk metadata + int8-quantized, L2-normalized vectors
- *   - `out/mcp-index/pages.json` : per-page markdown, backing the MCP `fetch_doc` tool
+ *   - `.mcp-build/index.json` : chunk metadata + int8-quantized, L2-normalized vectors
+ *   - `.mcp-build/pages.json` : per-page markdown, backing the MCP `fetch_doc` tool
+ *
+ * `.mcp-build/` is scratch, not the published `out/` — these are uploaded as
+ * release assets by the workflow, never served from the docs site.
  *
  * This lives here rather than in the search service because the service runs on
  * a host that times out building its own index — embedding ~4k chunks is 10-40
@@ -38,8 +41,9 @@ import { fileURLToPath } from 'node:url';
 import { createEmbedder } from './mcp-embedder';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const CORPUS_PATH = process.env.MCP_CORPUS_FILE || path.join(ROOT, 'out', 'mcp', 'corpus.json');
-const OUT_DIR = path.join(ROOT, 'out', 'mcp-index');
+const BUILD_DIR = path.join(ROOT, '.mcp-build');
+const CORPUS_PATH = process.env.MCP_CORPUS_FILE || path.join(BUILD_DIR, 'corpus.json');
+const OUT_DIR = BUILD_DIR;
 
 /** Highest `corpus.json` version this builder understands. */
 const SUPPORTED_CORPUS_VERSION = 1;
@@ -159,7 +163,7 @@ async function main(): Promise<void> {
   await writeFile(path.join(OUT_DIR, 'pages.json'), JSON.stringify(pages));
 
   console.log(
-    `✓ Wrote out/mcp-index/{index,pages}.json — ${index.chunks.length} chunks, dim ${index.dim}, ` +
+    `✓ Wrote .mcp-build/{index,pages}.json — ${index.chunks.length} chunks, dim ${index.dim}, ` +
       `in ${((Date.now() - t0) / 1000).toFixed(1)}s`,
   );
 }
