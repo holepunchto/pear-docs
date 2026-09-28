@@ -17,16 +17,18 @@
  * service needs no credentials at all, and no cross-repo PAT is involved.
  *
  * NOT part of the site build. `next build` never invokes this, and nothing here
- * is imported by the app — it runs in the manual "Build MCP search index"
- * workflow, or locally via `npm run mcp:index`.
+ * is imported by the app — it runs in the "Build MCP search index" workflow, or
+ * locally via `npm run mcp:index`.
  *
- * `@qvac/sdk` is deliberately NOT a declared dependency. It pulls ~176 packages
- * including native binaries, and this repo's CI cannot `npm ci` anyway (the
- * `@tetherto/*` packages are token-gated), so every job already installs what it
- * needs into a throwaway prefix. Declaring it here would slow every docs
- * developer's install for a script none of them run. To run it locally:
+ * `@qvac/sdk` is deliberately NOT a dependency of the root package. It pulls
+ * ~176 packages including native binaries, and this repo's CI cannot `npm ci`
+ * at the root anyway (the `@tetherto/*` packages are token-gated). It lives in
+ * `scripts/mcp-index/`, a separate package with its own lockfile, pinned to the
+ * SDK and embedder versions the search service locks — index and query vectors
+ * must come from the same llama.cpp build. To run it locally:
  *
- *     npm install --no-save @qvac/sdk
+ *     npm ci --ignore-scripts --prefix scripts/mcp-index
+ *     mkdir -p node_modules && cp -R scripts/mcp-index/node_modules/. node_modules/
  *     npm run mcp:corpus && npm run mcp:index
  *
  * ⚠️ The shape written here is a contract with the service's `DocStore.load()`.
@@ -47,6 +49,13 @@ const OUT_DIR = BUILD_DIR;
 
 /** Highest `corpus.json` version this builder understands. */
 const SUPPORTED_CORPUS_VERSION = 1;
+
+/**
+ * Layout of `index.json`: field names, quantization and vector encoding. The
+ * workflow copies it into the manifest and the service refuses a format it does
+ * not know, so bump it together with `DocStore.load()`.
+ */
+const INDEX_FORMAT = 1;
 
 interface DocChunk {
   id: string;
@@ -138,8 +147,22 @@ async function main(): Promise<void> {
   if (vectors.length !== chunks.length) {
     throw new Error(`embedder returned ${vectors.length} vectors for ${chunks.length} chunks`);
   }
+  // A NaN or all-zero vector quantizes to zeros and would pass every other
+  // check, then rank arbitrarily forever. `embedder.embed` L2-normalizes, so a
+  // healthy vector has unit length.
+  for (let i = 0; i < vectors.length; i++) {
+    let sumSq = 0;
+    for (const x of vectors[i]) sumSq += x * x;
+    if (vectors[i].length !== embedder.dim || !Number.isFinite(sumSq) || Math.abs(sumSq - 1) > 1e-3) {
+      throw new Error(
+        `embedder returned a broken vector for chunk ${chunks[i].id} ` +
+          `(length ${vectors[i].length}, squared norm ${sumSq}) — refusing to publish an index built from it`,
+      );
+    }
+  }
 
   const index = {
+    format: INDEX_FORMAT,
     dim: embedder.dim,
     model: embedder.model,
     builtAt: new Date().toISOString(),

@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # Ensures the GTE-large embedding GGUF is cached locally, for
-# scripts/build-mcp-index.ts. No-op once cached.
+# scripts/build-mcp-index.ts. A cached copy is re-verified against the checksum
+# below every run (a couple of seconds), so a corrupt or swapped file is never
+# trusted just because it is already on disk.
 #
 # Fetched by direct URL rather than through QVAC's own registry, whose P2P
 # download does not reliably traverse CI networking — the same reason
 # mcp-embedder.ts loads the model by file path.
 #
-# Nothing in the site build needs this. Only the manual "Build MCP search
-# index" workflow and `npm run mcp:index` do.
+# Nothing in the site build needs this. Only the "Build MCP search index"
+# workflow and `npm run mcp:index` do.
 set -euo pipefail
 
 # Same source + checksum QVAC's own registry uses for GTE_LARGE_FP16 (see
@@ -24,6 +26,12 @@ sha256_of() {
     shasum -a 256 "$1" | cut -d' ' -f1
   fi
 }
+
+if [ -z "${QVAC_EMBED_GGUF:-}" ] && [ -f "$EMBED_GGUF_DEFAULT" ] \
+  && [ "$(sha256_of "$EMBED_GGUF_DEFAULT")" != "$EMBED_GGUF_SHA256" ]; then
+  echo "Cached embedding model fails its checksum — discarding it."
+  rm -f "$EMBED_GGUF_DEFAULT"
+fi
 
 if [ -z "${QVAC_EMBED_GGUF:-}" ] && [ ! -f "$EMBED_GGUF_DEFAULT" ]; then
   echo "No embedding model cached — fetching GTE-large (~670MB)..."

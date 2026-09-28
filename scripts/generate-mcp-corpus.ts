@@ -5,13 +5,13 @@
  * `out/`:
  *
  *   - `corpus.json`   : every page's markdown plus heading-anchored chunks.
- *   - `manifest.json` : counts, timestamps and `corpusHash`.
+ *   - `manifest.json` : counts, timestamps, `corpusHash` and `contentHash`.
  *
  * NOT part of the site build. It has exactly two callers, both of which run it
  * explicitly:
  *
- *   - `build-mcp-index.ts`, via the manual "Build MCP search index" workflow,
- *     which embeds what this produces.
+ *   - `build-mcp-index.ts`, via the "Build MCP search index" workflow, which
+ *     embeds what this produces.
  *   - the `mcp-corpus` docs-lint job, which runs it purely to fail a PR where
  *     two content files slug to the same URL.
  *
@@ -22,7 +22,7 @@
  * the published copy — 6.7MB on every deploy — with no reader at all.
  *
  * Deliberately produces NO vectors. Embedding needs the QVAC native addon and
- * runs 10-40 minutes on CPU; `corpusHash` is what keeps that rare, by telling
+ * runs 10-40 minutes on CPU; `contentHash` is what keeps that rare, by telling
  * the workflow whether anything actually changed.
  *
  * Run directly: tsx scripts/generate-mcp-corpus.ts
@@ -256,6 +256,27 @@ function hashCorpus(chunks: DocChunk[]): string {
   return h.digest('hex');
 }
 
+/**
+ * Hash of everything a reader can receive: every field of every chunk and every
+ * page.
+ *
+ * `corpusHash` covers only the embedded prose, which is the right test for
+ * "do the vectors still match the text" and the wrong one for "does the
+ * published index still match the docs": a code sample, an anchor, a page
+ * description or a fixed `file=` import changes what readers see and leaves
+ * `corpusHash` untouched. The workflow gates on this one.
+ *
+ * Sorted, because `getFiles` returns directory order, which is not stable
+ * across filesystems.
+ */
+function hashContent(pages: DocPage[], chunks: DocChunk[]): string {
+  const byUrl = (a: DocPage, b: DocPage) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0);
+  const byId = (a: DocChunk, b: DocChunk) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  return createHash('sha256')
+    .update(JSON.stringify({ pages: [...pages].sort(byUrl), chunks: [...chunks].sort(byId) }))
+    .digest('hex');
+}
+
 /** Build the full corpus: per-page records + flattened retrieval chunks. */
 export async function buildCorpus(): Promise<{ pages: DocPage[]; chunks: DocChunk[] }> {
   const files = await getFiles(CONTENT_PATH);
@@ -347,6 +368,7 @@ async function main(): Promise<void> {
         version: CORPUS_VERSION,
         builtAt,
         corpusHash,
+        contentHash: hashContent(pages, chunks),
         pageCount: pages.length,
         chunkCount: chunks.length,
         corpus: {

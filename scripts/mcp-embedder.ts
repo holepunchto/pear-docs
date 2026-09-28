@@ -7,8 +7,8 @@
  * QVAC process, so registry-based loads fail with "File descriptor could not be
  * locked". Filesystem loads sidestep that and reuse already-cached weights.
  *
- * Nothing in the site build imports this. It runs in the manual
- * "Build MCP search index" workflow, and locally via `npm run mcp:index`.
+ * Nothing in the site build imports this. It runs in the "Build MCP search
+ * index" workflow, and locally via `npm run mcp:index`.
  */
 import os from 'node:os';
 import path from 'node:path';

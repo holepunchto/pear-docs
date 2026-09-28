@@ -2,9 +2,9 @@
  * Minimal ambient types for `@qvac/sdk`, covering only what
  * `scripts/mcp-embedder.ts` calls.
  *
- * The package is deliberately not a declared dependency of this repo — it pulls
- * ~176 packages including native binaries, for one script that only the manual
- * "Build MCP search index" workflow runs. Without this file `npm run
+ * The package is deliberately not a dependency of the root package — it pulls
+ * ~176 packages including native binaries, for one script that only the
+ * "Build MCP search index" workflow runs (it lives in scripts/mcp-index/). Without this file `npm run
  * types:check` would fail with TS2307 for every contributor, which is a worse
  * trade than a hand-written surface for three functions.
  *

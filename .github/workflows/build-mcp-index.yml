@@ -8,76 +8,100 @@ name: Build MCP search index
 # two reasons that both come down to credentials:
 #
 #   - This repo is public, so the release assets it publishes download without
-#     authentication. The service needs no token at all. Publishing into the
-#     service's own (private) repo would have meant a read PAT on every box.
-#   - Publishing to this repo from elsewhere would have needed a cross-repo
-#     write PAT. Running here, GITHUB_TOKEN covers it — no secret exists.
+#     authentication. The service needs no token at all.
+#   - Running here, GITHUB_TOKEN covers the publish. No cross-repo PAT exists.
 #
-# Run it by hand after a content change lands: Actions → Build MCP search index
-# → Run workflow. The corpus is regenerated from the checked-out content, so
-# this does NOT need to wait for a site deploy — it indexes whatever this branch
-# says, which is the same thing the deploy will publish.
+# Triggers:
+#   - push to `published`: keeps the index fresh without anyone remembering to
+#     click. Actions minutes are free on a public repo, and the gate below makes
+#     a push that changed no docs cost seconds, not a 20-minute embed.
+#   - workflow_dispatch: for `force`, and to re-run after a failure. Only does
+#     anything when run against `published`. A workflow_dispatch-only file is
+#     also invisible on a non-default branch, which is why the push trigger is
+#     here at all.
 #
-# Hash-gated: it compares the corpus hash against the one recorded in the
-# currently published index and stops in seconds when nothing changed. Tick
-# `force` to rebuild anyway (e.g. after changing chunking or the model).
+# Gate: the build key covers the docs content (every chunk field and every
+# page, not just the embedded prose) plus the embedder toolchain (SDK lockfile,
+# model checksum, builder scripts). Any of them changing rebuilds; nothing
+# changing stops in seconds. Tick `force` to rebuild anyway.
 #
-# Deliberately manual rather than on push. Embedding is expensive, docs move
-# every few days, and a stale search index for an hour is not a problem worth
-# spending an embed pass per merge to avoid.
+# Two jobs, split on purpose. `build` runs third-party code (the npm tree and
+# native addons) and holds a read-only token. `publish` holds the write token
+# and runs nothing but `gh`, `jq` and coreutils against the build's output, so
+# a compromised dependency cannot push to this repo or replace the index.
+#
+# Rollback: every build's assets carry its id in their names, and the previous
+# build is kept. The service reads asset paths from `index-manifest.json`, so
+# rolling back is re-uploading `index-manifest-<id>.json` as
+# `index-manifest.json`:
+#
+#   gh release download mcp-index-latest -p 'index-manifest-<id>.json' -O index-manifest.json
+#   gh release upload mcp-index-latest index-manifest.json --clobber
 
 on:
+  push:
+    branches:
+      - published
   workflow_dispatch:
     inputs:
       force:
-        description: 'Rebuild even when the corpus hash is unchanged'
+        description: 'Rebuild even when nothing that feeds the index changed'
         type: boolean
         default: false
-      ref:
-        description: 'Branch or tag to index (defaults to published)'
-        type: string
-        default: published
 
 concurrency:
-  # Never two at once — they would race on the same release assets and could
-  # publish a half-written index. Queued, not cancelled, so a nearly-finished
-  # run is not thrown away by an impatient second click.
+  # One run at a time: two would race on the same release. A run that is
+  # already going is never cancelled, but only ONE run can wait behind it —
+  # a newer push replaces an older pending one, which is what we want because
+  # the newest `published` is the only one worth indexing.
   group: build-mcp-index
   cancel-in-progress: false
+
+permissions: {}
 
 env:
   # Rolling tag whose assets are always the current index. The search service
   # polls this release, so the tag must stay stable.
   RELEASE_TAG: mcp-index-latest
+  GH_REPO: ${{ github.repository }}
 
 jobs:
   build:
+    # A manual run from any other branch would otherwise publish that branch's
+    # docs and scripts to the one production release.
+    if: github.ref == 'refs/heads/published'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
-      contents: write # create/update the rolling release
+      contents: read
+    outputs:
+      build: ${{ steps.gate.outputs.build }}
 
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.ref }}
+          persist-credentials: false
 
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: scripts/mcp-index/package-lock.json
 
-      # Same isolated-install pattern as the docs-lint jobs: package.json pulls
-      # token-gated @tetherto/* packages from GitHub Packages that this repo's
-      # token cannot read, so a plain `npm ci` fails. Install exactly what the
-      # corpus generator (tsx, github-slugger) and the embedder (@qvac/sdk)
-      # need. This is also why @qvac/sdk is not a declared dependency — it would
-      # cost every docs developer a 176-package native install for a script they
-      # never run.
+      # scripts/mcp-index is its own package with a lockfile, isolated from the
+      # root package.json: that one pulls token-gated @tetherto/* packages this
+      # repo's token cannot read, so a plain `npm ci` fails at the root. The
+      # lockfile pins @qvac/sdk and its embedder to what the search service
+      # locks — a different llama.cpp build on the two ends skews index and
+      # query vectors against each other without any error. Install scripts
+      # are off: none of the tree needs them (esbuild and the native addons
+      # ship prebuilt binaries), and this is the step that would run them.
       - name: Install index-build deps
         run: |
-          npm install --no-save --prefix "$RUNNER_TEMP/idx" tsx github-slugger @qvac/sdk
+          set -euo pipefail
+          npm ci --ignore-scripts --prefix scripts/mcp-index
           mkdir -p node_modules
-          cp -R "$RUNNER_TEMP/idx/node_modules/." node_modules/
+          cp -R scripts/mcp-index/node_modules/. node_modules/
 
       - name: Generate the corpus
         id: corpus
@@ -85,7 +109,25 @@ jobs:
           set -euo pipefail
           ./node_modules/.bin/tsx scripts/generate-mcp-corpus.ts
           echo "hash=$(jq -r .corpusHash .mcp-build/manifest.json)" >> "$GITHUB_OUTPUT"
-          echo "chunks=$(jq -r .chunkCount .mcp-build/manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "content=$(jq -r .contentHash .mcp-build/manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Compute the build key
+        id: key
+        env:
+          CONTENT_HASH: ${{ steps.corpus.outputs.content }}
+        run: |
+          set -euo pipefail
+          # Content plus everything that decides what the vectors are: the
+          # builder scripts, the model checksum (in fetch-embed-model.sh) and
+          # the SDK lockfile.
+          key=$(
+            {
+              echo "$CONTENT_HASH"
+              sha256sum scripts/build-mcp-index.ts scripts/mcp-embedder.ts \
+                scripts/fetch-embed-model.sh scripts/mcp-index/package-lock.json
+            } | sha256sum | cut -d' ' -f1
+          )
+          echo "key=$key" >> "$GITHUB_OUTPUT"
 
       - name: Read the currently published index
         id: published
@@ -93,41 +135,49 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # No release yet (first ever run) is not an error — there is simply
-          # nothing to compare against, so the build must proceed.
-          if gh release download "$RELEASE_TAG" --pattern index-manifest.json --output published.json 2>/dev/null; then
-            echo "hash=$(jq -r .corpusHash published.json)" >> "$GITHUB_OUTPUT"
+          # No release, or a release without a manifest, means there is nothing
+          # to compare against and the build must proceed. Any OTHER failure
+          # (rate limit, outage, auth) must not be mistaken for that — it would
+          # burn a 20-minute embed and then fail at publish.
+          if err=$(gh release download "$RELEASE_TAG" --pattern index-manifest.json --output published.json --clobber 2>&1); then
+            echo "key=$(jq -r '.buildKey // ""' published.json)" >> "$GITHUB_OUTPUT"
+          elif grep -qE 'release not found|no assets match' <<<"$err"; then
+            echo "▸ No published index yet"
+            echo "key=" >> "$GITHUB_OUTPUT"
           else
-            echo "hash=" >> "$GITHUB_OUTPUT"
+            echo "$err" >&2
+            exit 1
           fi
 
       - name: Decide whether to rebuild
         id: gate
         env:
-          CORPUS_HASH: ${{ steps.corpus.outputs.hash }}
-          PUBLISHED_HASH: ${{ steps.published.outputs.hash }}
+          KEY: ${{ steps.key.outputs.key }}
+          PUBLISHED_KEY: ${{ steps.published.outputs.key }}
           FORCE: ${{ inputs.force }}
         run: |
           set -euo pipefail
           if [ "$FORCE" = "true" ]; then
             echo "▸ Forced rebuild requested"
             echo "build=true" >> "$GITHUB_OUTPUT"
-          elif [ "$CORPUS_HASH" = "$PUBLISHED_HASH" ]; then
-            echo "▸ Corpus unchanged ($CORPUS_HASH) — nothing to do"
+          elif [ "$KEY" = "$PUBLISHED_KEY" ]; then
+            echo "▸ Nothing changed (build key ${KEY:0:12}) — nothing to do"
             echo "build=false" >> "$GITHUB_OUTPUT"
           else
-            echo "▸ Corpus changed: ${PUBLISHED_HASH:-none} → $CORPUS_HASH"
+            echo "▸ Build key changed: ${PUBLISHED_KEY:0:12}${PUBLISHED_KEY:+…} → ${KEY:0:12}"
             echo "build=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # ~670MB of GGUF weights. Keyed on the filename, which encodes the model
-      # revision — a model bump changes the key and re-downloads.
+      # ~670MB of GGUF weights. The key follows fetch-embed-model.sh, which
+      # holds the URL and checksum, so a model bump misses the cache. The
+      # script also re-verifies the checksum of whatever is restored: the key
+      # alone cannot vouch for the bytes.
       - name: Cache the embedding model
         if: steps.gate.outputs.build == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.qvac/models
-          key: qvac-models-gte-large-fp16-v1
+          key: qvac-models-${{ hashFiles('scripts/fetch-embed-model.sh') }}
 
       - name: Build the index
         if: steps.gate.outputs.build == 'true'
@@ -143,45 +193,161 @@ jobs:
         if: steps.gate.outputs.build == 'true'
         env:
           CORPUS_HASH: ${{ steps.corpus.outputs.hash }}
+          CONTENT_HASH: ${{ steps.corpus.outputs.content }}
+          BUILD_KEY: ${{ steps.key.outputs.key }}
+          SOURCE_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          gzip -9 -c .mcp-build/index.json > index.json.gz
-          gzip -9 -c .mcp-build/pages.json > pages.json.gz
+          mkdir dist
+          # -n: no name/mtime in the gzip header, so the same input gzips to the
+          # same bytes.
+          gzip -9 -n -c .mcp-build/index.json > dist/index.json.gz
+          gzip -9 -n -c .mcp-build/pages.json > dist/pages.json.gz
+
+          index_sha=$(sha256sum dist/index.json.gz | cut -d' ' -f1)
+          pages_sha=$(sha256sum dist/pages.json.gz | cut -d' ' -f1)
+          # The build id names this build's assets. It is derived from the
+          # index bytes, so it changes whenever the index does — including a
+          # forced rebuild of identical docs, which is exactly what has to
+          # reach the boxes.
+          id=${index_sha:0:12}
+          mv dist/index.json.gz "dist/index-$id.json.gz"
+          mv dist/pages.json.gz "dist/pages-$id.json.gz"
+
           jq -n \
             --arg corpusHash "$CORPUS_HASH" \
+            --arg contentHash "$CONTENT_HASH" \
+            --arg buildKey "$BUILD_KEY" \
             --arg builtAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg sourceSha "$SOURCE_SHA" \
+            --arg runUrl "$RUN_URL" \
+            --arg sdkVersion "$(jq -r .version node_modules/@qvac/sdk/package.json)" \
+            --arg embedderVersion "$(jq -r .version node_modules/@qvac/embed-llamacpp/package.json)" \
             --arg model "$(jq -r .model .mcp-build/index.json)" \
+            --argjson format "$(jq -r .format .mcp-build/index.json)" \
             --argjson dim "$(jq -r .dim .mcp-build/index.json)" \
             --argjson chunkCount "$(jq -r '.chunks | length' .mcp-build/index.json)" \
-            --arg indexSha "$(sha256sum index.json.gz | cut -d' ' -f1)" \
-            --argjson indexBytes "$(stat -c%s index.json.gz)" \
-            --arg pagesSha "$(sha256sum pages.json.gz | cut -d' ' -f1)" \
-            --argjson pagesBytes "$(stat -c%s pages.json.gz)" \
-            '{version: 1, corpusHash: $corpusHash, builtAt: $builtAt, model: $model, dim: $dim,
-              chunkCount: $chunkCount,
+            --arg indexPath "index-$id.json.gz" \
+            --arg indexSha "$index_sha" \
+            --argjson indexBytes "$(stat -c%s "dist/index-$id.json.gz")" \
+            --arg pagesPath "pages-$id.json.gz" \
+            --arg pagesSha "$pages_sha" \
+            --argjson pagesBytes "$(stat -c%s "dist/pages-$id.json.gz")" \
+            '{version: 1, format: $format,
+              corpusHash: $corpusHash, contentHash: $contentHash, buildKey: $buildKey,
+              builtAt: $builtAt, sourceSha: $sourceSha, runUrl: $runUrl,
+              sdkVersion: $sdkVersion, embedderVersion: $embedderVersion,
+              model: $model, dim: $dim, chunkCount: $chunkCount,
               assets: {
-                index: {path: "index.json.gz", bytes: $indexBytes, sha256: $indexSha},
-                pages: {path: "pages.json.gz", bytes: $pagesBytes, sha256: $pagesSha}
-              }}' > index-manifest.json
-          cat index-manifest.json
+                index: {path: $indexPath, bytes: $indexBytes, sha256: $indexSha},
+                pages: {path: $pagesPath, bytes: $pagesBytes, sha256: $pagesSha}
+              }}' > dist/index-manifest.json
+          cp dist/index-manifest.json "dist/index-manifest-$id.json"
+          cat dist/index-manifest.json
 
-      - name: Publish the release assets
+      - name: Upload the build output
         if: steps.gate.outputs.build == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          CORPUS_HASH: ${{ steps.corpus.outputs.hash }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: mcp-index
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    if: needs.build.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # create/update the rolling release
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: mcp-index
+          path: dist
+
+      # The build job ran third-party code; do not take its word for what it
+      # produced. Re-derive the digests and the id from the bytes themselves.
+      - name: Verify the build output
+        id: verify
+        working-directory: dist
         run: |
           set -euo pipefail
-          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+          index_path=$(jq -er .assets.index.path index-manifest.json)
+          pages_path=$(jq -er .assets.pages.path index-manifest.json)
+          index_sha=$(sha256sum "$index_path" | cut -d' ' -f1)
+          pages_sha=$(sha256sum "$pages_path" | cut -d' ' -f1)
+          [ "$index_sha" = "$(jq -er .assets.index.sha256 index-manifest.json)" ] || { echo "index digest mismatch" >&2; exit 1; }
+          [ "$pages_sha" = "$(jq -er .assets.pages.sha256 index-manifest.json)" ] || { echo "pages digest mismatch" >&2; exit 1; }
+          id=${index_sha:0:12}
+          [ "$index_path" = "index-$id.json.gz" ] && [ "$pages_path" = "pages-$id.json.gz" ] || { echo "asset names do not match the build id" >&2; exit 1; }
+          cmp index-manifest.json "index-manifest-$id.json"
+          jq -e '.version == 1 and .format == 1 and .chunkCount > 0 and .dim > 0 and (.buildKey | test("^[0-9a-f]{64}$"))' index-manifest.json >/dev/null
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - name: Read the currently published build
+        id: previous
+        run: |
+          set -euo pipefail
+          if err=$(gh release download "$RELEASE_TAG" --pattern index-manifest.json --output previous.json --clobber 2>&1); then
+            echo "id=$(jq -r '.assets.index.sha256[:12] // ""' previous.json)" >> "$GITHUB_OUTPUT"
+          elif grep -qE 'release not found|no assets match' <<<"$err"; then
+            echo "id=" >> "$GITHUB_OUTPUT"
+          else
+            echo "$err" >&2
+            exit 1
+          fi
+
+      - name: Publish the release assets
+        env:
+          ID: ${{ steps.verify.outputs.id }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if err=$(gh release view "$RELEASE_TAG" 2>&1 >/dev/null); then
+            :
+          elif grep -q 'release not found' <<<"$err"; then
             gh release create "$RELEASE_TAG" \
+              --target "$SOURCE_SHA" \
               --title "MCP search index (rolling)" \
-              --notes "Rolling vector index for the docs search service, built by .github/workflows/build-mcp-index.yml. Assets are replaced in place; the tag never moves. Not a docs release." \
+              --notes "Rolling vector index for the docs search service, built by .github/workflows/build-mcp-index.yml. index-manifest.json names the current build's assets; the previous build is kept for rollback. The tag never moves. Not a docs release." \
               --latest=false \
               --prerelease
+          else
+            echo "$err" >&2
+            exit 1
           fi
-          # Payloads before the manifest: the service treats the manifest as the
-          # signal that a complete index is available, so publishing it first
-          # would advertise assets that are not there yet.
-          gh release upload "$RELEASE_TAG" index.json.gz pages.json.gz --clobber
-          gh release upload "$RELEASE_TAG" index-manifest.json --clobber
-          echo "✓ Published index for corpus $CORPUS_HASH"
+          # Payloads first, under names no reader is looking at yet, so nothing
+          # a live box depends on is touched. The manifest goes last: the
+          # service treats it as the signal that a complete index is available.
+          # Its own upload is the only moment an asset is briefly absent, and a
+          # box that misses the manifest just keeps serving what it has.
+          gh release upload "$RELEASE_TAG" \
+            "dist/index-$ID.json.gz" "dist/pages-$ID.json.gz" "dist/index-manifest-$ID.json" \
+            --clobber
+          gh release upload "$RELEASE_TAG" dist/index-manifest.json --clobber
+          echo "✓ Published build $ID (source $SOURCE_SHA)"
+
+      # Keep this build and the one before it; everything older goes. Runs after
+      # the manifest flip, so a failure here leaves clutter, never a broken
+      # release.
+      - name: Prune old builds
+        env:
+          ID: ${{ steps.verify.outputs.id }}
+          PREV_ID: ${{ steps.previous.outputs.id }}
+        run: |
+          set -euo pipefail
+          keep="$ID"
+          [ -z "$PREV_ID" ] || keep="$ID|$PREV_ID"
+          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' \
+            | { grep -E '^(index|pages)-[0-9a-f]{12}\.json\.gz$|^index-manifest-[0-9a-f]{12}\.json$' || true; } \
+            | { grep -Ev -- "-($keep)\." || true; } \
+            | while read -r name; do
+                echo "▸ Removing $name"
+                gh release delete-asset "$RELEASE_TAG" "$name" --yes
+              done
