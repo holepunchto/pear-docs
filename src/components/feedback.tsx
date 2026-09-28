@@ -2,14 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
+import { sendGTMEvent } from '@next/third-parties/google';
 import { cn } from '@/lib/cn';
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
-
-declare global {
-  interface Window {
-    dataLayer?: Record<string, unknown>[];
-  }
-}
 
 type Vote = 'yes' | 'no';
 
@@ -54,8 +49,7 @@ export function PageFeedback({ pageUrl }: { pageUrl: string }) {
     } catch {
       // Non-fatal — the vote still fires below, it just may be re-askable.
     }
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({
+    sendGTMEvent({
       event: 'doc_feedback',
       doc_feedback_value: value,
       doc_feedback_page: pageUrl,
