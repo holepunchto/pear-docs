@@ -59,7 +59,7 @@ function serverConfig(url: string) {
   return { type: 'http' as const, url };
 }
 
-/** What a user pastes into `claude_desktop_config.json` or any mcpServers map. */
+/** What a user pastes into any client that takes an `mcpServers` map. */
 function configJson(url: string) {
   return JSON.stringify({ mcpServers: { [SERVER_NAME]: serverConfig(url) } }, null, 2);
 }
@@ -135,8 +135,8 @@ export function McpInstallButton({ url }: { url: string }) {
   }
 
   /** Replaces an option's trailing hint while its result is showing. */
-  function hint(key: string, idle: string) {
-    if (copyState === `${key}:ok`) return 'copied';
+  function hint(key: string, idle: string, done = 'copied') {
+    if (copyState === `${key}:ok`) return done;
     if (copyState === `${key}:fail`) return 'copy failed';
     return idle;
   }
@@ -172,14 +172,22 @@ export function McpInstallButton({ url }: { url: string }) {
           <span className="ms-auto text-xs text-fd-muted-foreground">{hint('claude-code', 'copy command')}</span>
         </button>
 
+        {/*
+          Not a config file: claude_desktop_config.json holds local (command/args)
+          servers only. A remote server is added under Settings → Connectors →
+          Add custom connector, which takes a name and a URL.
+        */}
         <button
           type="button"
-          onClick={() => copy('claude-desktop', configJson(url))}
+          onClick={() => copy('claude-desktop', url)}
+          title="Copies the server URL. In Claude Desktop, open Settings → Connectors → Add custom connector and paste it."
           className={cn(optionClassName)}
         >
           {icon('claude-desktop', <ClaudeIcon className="text-fd-muted-foreground" />)}
           Claude Desktop
-          <span className="ms-auto text-xs text-fd-muted-foreground">{hint('claude-desktop', 'copy config')}</span>
+          <span className="ms-auto text-xs text-fd-muted-foreground">
+            {hint('claude-desktop', 'copy URL', 'add in Connectors')}
+          </span>
         </button>
 
         {/* Deeplinks still close the popover — they hand off to another app. */}
