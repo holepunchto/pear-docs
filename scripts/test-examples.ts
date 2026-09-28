@@ -86,6 +86,16 @@ interface Scenario {
   /** Generated dirs (relative to scenario `dir`) removed after the run. */
   artifacts: string[];
   steps: Step[];
+  /**
+   * False when this scenario is deliberately excluded from
+   * `.github/workflows/examples.yml`'s matrix — the canonical record of
+   * that decision, so it reads as "excluded on purpose" rather than the
+   * silent gap the workflow's own header warns a forgotten scenario leaves.
+   * Requires `ciSkipReason`. Defaults to true (run in CI).
+   */
+  ci?: false;
+  /** Why `ci` is false. Required together with it. */
+  ciSkipReason?: string;
 }
 
 const CONNECT = 'how-to/connect-to-peers';
@@ -185,20 +195,22 @@ const SCENARIOS: Scenario[] = [
     // directly instead of a live boot, and asserts brittle's TAP pass summary
     // rather than an app startup log.
     //
-    // Available for local/manual use (`npm run test:examples --
-    // filter=hello-pear-qvac-tui`), but deliberately absent from
-    // `.github/workflows/examples.yml`'s matrix: upstream's own CI already
-    // runs this exact, unmodified test file on every push to
-    // hello-pear-qvac-tui's main, across five platforms — running it again
-    // here would duplicate that coverage. It also wouldn't catch anything
-    // our own vendoring could break: the one file we deviate on,
-    // workers/main.js, is outside this test's require graph (`ui/app.js` and
-    // `ui/transcript.js` only). check-workers-in-sync.ts and
-    // watch-boilerplates.yml already guard the vendored snapshot itself.
+    // Available for local/manual use:
+    //   npm run test:examples -- --filter=hello-pear-qvac-tui
+    // See `ciSkipReason` below for why it stays out of CI.
     id: 'hello-pear-qvac-tui',
     dir: `${AI}/hello-pear-qvac-tui`,
     installs: ['.'],
     artifacts: [],
+    ci: false,
+    ciSkipReason:
+      "upstream's own CI already runs this exact, unmodified test file on " +
+      'every push to hello-pear-qvac-tui\'s main, across five platforms — ' +
+      'running it again here would duplicate that coverage. It also ' +
+      "wouldn't catch anything our own vendoring could break: the one file " +
+      'we deviate on, workers/main.js, is outside this test\'s require ' +
+      "graph (ui/app.js and ui/transcript.js only). check-workers-in-sync.ts " +
+      'and watch-boilerplates.yml already guard the vendored snapshot itself.',
     steps: [
       {
         kind: 'run',
@@ -538,6 +550,18 @@ const SCENARIOS: Scenario[] = [
     ],
   },
 ];
+
+// `ci` and `ciSkipReason` are a pair: a scenario kept out of
+// examples.yml's matrix must say why, and a reason with nothing to attach
+// it to is dead text. Catch either half going stale on its own.
+for (const s of SCENARIOS) {
+  if (s.ci === false && !s.ciSkipReason) {
+    throw new Error(`scenario '${s.id}' has ci: false but no ciSkipReason`);
+  }
+  if (s.ci !== false && s.ciSkipReason) {
+    throw new Error(`scenario '${s.id}' has ciSkipReason but ci is not false`);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Execution engine (ported from scripts/check-examples.ts)
