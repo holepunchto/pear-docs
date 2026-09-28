@@ -21,10 +21,10 @@ Preserve these when refreshing; they are intentional, not drift:
   [holepunchto/hello-pear-worker](https://github.com/holepunchto/hello-pear-worker) — do **not**
   overwrite it from this repo's `main`.
 
-  This copy is the **canonical** one: `scripts/check-workers-in-sync.ts` asserts that all ten
+  This copy is the **canonical** one: `scripts/check-workers-in-sync.ts` asserts that all eleven
   `examples/**/workers/main.js` files are byte-identical to it, because the worker's positional
-  `argv` parsing is a contract with every host that spawns it. Changing it means re-syncing all ten
-  copies and re-checking each host's `PearRuntime.run` spawn array.
+  `argv` parsing is a contract with every host that spawns it. Changing it means re-syncing all
+  eleven copies and re-checking each host's `PearRuntime.run` spawn array.
 
 `renderer/app.js` matches upstream byte-for-byte.
 

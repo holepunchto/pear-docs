@@ -34,7 +34,7 @@ Preserve these when refreshing; they are intentional, not drift:
   [holepunchto/hello-pear-worker](https://github.com/holepunchto/hello-pear-worker) — do **not**
   overwrite it from this repo's `main`. `scripts/check-workers-in-sync.ts` enforces that every
   `examples/**/workers/main.js` stays byte-identical to the canonical copy in
-  `../hello-pear-electron/workers/main.js`, so this file can only change in lockstep with all ten.
+  `../hello-pear-electron/workers/main.js`, so this file can only change in lockstep with all eleven.
 - **`test/index.js` is a docs-authored test** asserting the `App` constructor's config handling.
   Upstream ships a `test('REMOVE ME')` placeholder; this replaces it with something meaningful.
 
