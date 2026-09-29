@@ -246,9 +246,11 @@ function splitSections(md: string): { heading: string; body: string }[] {
  *
  * `JSON.stringify` per pair rather than a hand-picked delimiter, so an id or
  * body that happens to contain the delimiter cannot produce the same hash for
- * a genuinely different corpus. The search service computes this identically —
- * if the two ever drift, it will re-embed on every poll (wasteful) or, worse,
- * keep stale vectors against new text. Change one side only with the other.
+ * a genuinely different corpus. `build-mcp-index.ts` and the search service's
+ * local builder each recompute this from the chunks and refuse a corpus.json
+ * whose declared value differs, so if the copies ever drift, every build that
+ * reads this file fails. Change all three together. It gates nothing: the
+ * workflow's build key is built on `contentHash`, below.
  */
 function hashCorpus(chunks: DocChunk[]): string {
   const h = createHash('sha256');
@@ -358,9 +360,11 @@ async function main(): Promise<void> {
 
   await mkdir(OUT_DIR, { recursive: true });
   await writeFile(path.join(OUT_DIR, 'corpus.json'), body);
-  // The manifest is what the service polls. It carries a digest over the exact
-  // bytes written above, so a truncated or half-deployed corpus is detectable
-  // rather than silently indexed.
+  // The workflow reads the two hashes from here rather than parsing the corpus.
+  // The digest over the exact bytes written above dates from when the service
+  // fetched this file over HTTP; the workflow takes its own sha256 of
+  // corpus.json, but the digest still lets anyone holding a copy check it is
+  // whole.
   await writeFile(
     path.join(OUT_DIR, 'manifest.json'),
     `${JSON.stringify(

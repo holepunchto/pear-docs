@@ -90,10 +90,12 @@ interface Corpus {
  * Hash of the retrieval-relevant corpus — chunk ids paired with the text that
  * gets embedded, in order.
  *
- * Must stay byte-identical to `generate-mcp-corpus.ts`'s copy: the published
- * manifest's `corpusHash` is what tells the workflow whether anything changed,
- * and a drift here would either rebuild forever or, worse, pair stale vectors
- * with new text. Recomputed rather than trusted for exactly that reason.
+ * Must stay byte-identical to `generate-mcp-corpus.ts`'s copy. Nothing gates on
+ * it (the workflow's build key is built on `contentHash`); it is recomputed
+ * rather than trusted so that a corpus.json whose chunks do not hash to what it
+ * declares, truncated or written by a mismatched generator, fails here instead
+ * of being embedded. A drift between the two copies fails every build the same
+ * way.
  */
 function hashCorpus(chunks: DocChunk[]): string {
   const h = createHash('sha256');
@@ -170,8 +172,9 @@ async function main(): Promise<void> {
     dim: embedder.dim,
     model: embedder.model,
     builtAt: new Date().toISOString(),
-    // Lets the service answer "is my index current?" against the published
-    // manifest with a string compare, without downloading the corpus.
+    // Provenance: which prose these vectors embed. Publish checks it against
+    // the corpus job's value before anything ships; the service tells builds
+    // apart by their payload digests, not by this.
     corpusHash,
     chunks: chunks.map((c, i) => ({
       id: c.id,
