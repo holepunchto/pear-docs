@@ -22,7 +22,7 @@
  * the published copy — 6.7MB on every deploy — with no reader at all.
  *
  * Deliberately produces NO vectors. Embedding needs the QVAC native addon and
- * runs 10-40 minutes on CPU; `contentHash` is what keeps that rare, by telling
+ * took 53 minutes for ~4k chunks on a standard runner; `contentHash` is what keeps that rare, by telling
  * the workflow whether anything actually changed.
  *
  * Run directly: tsx scripts/generate-mcp-corpus.ts

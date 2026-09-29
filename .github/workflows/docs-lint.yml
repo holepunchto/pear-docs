@@ -41,6 +41,7 @@ on:
       - 'scripts/agent-skills-shared.ts'
       - 'scripts/schemas/**'
       - 'scripts/generate-mcp-corpus.ts'
+      - 'scripts/mcp-index/package.json'
   pull_request:
     paths:
       - 'content/**'
@@ -69,6 +70,7 @@ on:
       - 'scripts/agent-skills-shared.ts'
       - 'scripts/schemas/**'
       - 'scripts/generate-mcp-corpus.ts'
+      - 'scripts/mcp-index/package.json'
   workflow_dispatch:
 
 jobs:
@@ -121,10 +123,15 @@ jobs:
           node-version: 22
       # Same isolated-install pattern as internal-links: the generator imports
       # scripts/helpers.ts, which imports github-slugger. See that job for why
-      # a plain `npm install` doesn't work here.
+      # a plain `npm install` doesn't work here. Pinned to the versions
+      # scripts/mcp-index/package.json gives the index workflow: a different
+      # github-slugger could slug a heading differently here than there.
       - name: Install generator deps
         run: |
-          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
+          set -euo pipefail
+          tsx_version=$(jq -er .dependencies.tsx scripts/mcp-index/package.json)
+          slugger_version=$(jq -er '.dependencies["github-slugger"]' scripts/mcp-index/package.json)
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" "tsx@$tsx_version" "github-slugger@$slugger_version"
           mkdir -p node_modules
           cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
       # The "Build MCP search index" workflow runs this same generator, but

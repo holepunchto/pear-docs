@@ -11,8 +11,8 @@
  * release assets by the workflow, never served from the docs site.
  *
  * This lives here rather than in the search service because the service runs on
- * a host that times out building its own index — embedding ~4k chunks is 10-40
- * minutes of CPU. The work happens on a GitHub runner instead, and because this
+ * a host that times out building its own index — embedding ~4k chunks took 53
+ * minutes on a standard GitHub runner's CPU. The work happens on a GitHub runner instead, and because this
  * repo is public, the resulting release assets download without a token: the
  * service needs no credentials at all, and no cross-repo PAT is involved.
  *
