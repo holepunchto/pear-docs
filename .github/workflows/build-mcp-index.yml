@@ -16,15 +16,24 @@ name: Build MCP search index
 #   - push to `published`: keeps the index fresh without anyone remembering to
 #     click. Actions minutes are free on a public repo, and the gate below makes
 #     a push that changed no docs cost seconds, not an hour-long embed.
-#   - workflow_dispatch: for `force`, and to re-run after a failure. Only does
-#     anything when run against `published`. A workflow_dispatch-only file is
-#     also invisible on a non-default branch, which is why the push trigger is
-#     here at all.
+#   - workflow_dispatch: for `force`, or a run by hand. Only does anything when
+#     run against `published`. A workflow_dispatch-only file is also invisible
+#     on a non-default branch, which is why the push trigger is here at all.
+#
+# Manual runs: the default branch is `main`, which carries no workflows, so the
+# Actions UI shows no "Run workflow" button for this one. Dispatch it from the
+# CLI instead, the second form to rebuild regardless of the gate:
+#
+#   gh workflow run build-mcp-index.yml -R holepunchto/pear-docs --ref published
+#   gh workflow run build-mcp-index.yml -R holepunchto/pear-docs --ref published -f force=true
+#
+# A run that failed is retried with "Re-run jobs" on that run, not a dispatch.
 #
 # Gate: the build key covers the docs content (every chunk field and every
 # page, not just the embedded prose) plus the embedder toolchain (SDK lockfile,
 # model checksum, builder scripts) and this workflow file. Any of them changing
-# rebuilds; nothing changing stops in seconds. Tick `force` to rebuild anyway.
+# rebuilds; nothing changing stops in seconds. Dispatch with `-f force=true` to
+# rebuild anyway.
 #
 # Three jobs, split by what each one trusts:
 #
@@ -49,6 +58,17 @@ name: Build MCP search index
 #
 #   gh release download mcp-index-latest -p 'index-manifest-<id>.json' -O index-manifest.json
 #   gh release upload mcp-index-latest index-manifest.json --clobber
+#
+# That holds only until the next push to `published`: the next run compares
+# against whichever manifest is live, finds a different build key, and
+# publishes over it. To hold a rollback, pause the workflow before re-uploading,
+# and enable it again once the fix is on `published` (enabling runs nothing by
+# itself; the next push or a dispatch does):
+#
+#   gh workflow disable build-mcp-index.yml -R holepunchto/pear-docs
+#   gh workflow enable build-mcp-index.yml -R holepunchto/pear-docs
+#
+# After the very first publish there is no previous build to roll back to.
 #
 # Actions are pinned to commit SHAs, not tags: `publish` holds `contents: write`,
 # and a moved tag would run someone else's code with it.
@@ -170,13 +190,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # No release, or a release without a manifest, means there is nothing
-          # to compare against and the build must proceed. Any OTHER failure
-          # (rate limit, outage, auth) must not be mistaken for that — it would
-          # burn an hour-long embed and then fail at publish.
+          # No release, a release without a manifest, or a release with no
+          # assets at all means there is nothing to compare against and the
+          # build must proceed. The last is what a first publish leaves when it
+          # fails after creating the release, and gh words it differently
+          # ("no assets to download"). Any OTHER failure (rate limit, outage,
+          # auth) must not be mistaken for these — it would burn an hour-long
+          # embed and then fail at publish.
           if err=$(gh release download "$RELEASE_TAG" --pattern index-manifest.json --output published.json --clobber 2>&1); then
             echo "key=$(jq -r '.buildKey // ""' published.json)" >> "$GITHUB_OUTPUT"
-          elif grep -qE 'release not found|no assets match' <<<"$err"; then
+          elif grep -qE 'release not found|no assets match|no assets to download' <<<"$err"; then
             echo "▸ No published index yet"
             echo "key=" >> "$GITHUB_OUTPUT"
           else
@@ -459,9 +482,13 @@ jobs:
         id: previous
         run: |
           set -euo pipefail
+          # The same three cases as the corpus job's check mean there is no
+          # build to keep, and this publishes as a first one: an existing but
+          # empty release is reused, not recreated, and prune keeps only this
+          # build. Anything else fails before the release is touched.
           if err=$(gh release download "$RELEASE_TAG" --pattern index-manifest.json --output previous.json --clobber 2>&1); then
             echo "id=$(jq -r '.assets.index.sha256[:12] // ""' previous.json)" >> "$GITHUB_OUTPUT"
-          elif grep -qE 'release not found|no assets match' <<<"$err"; then
+          elif grep -qE 'release not found|no assets match|no assets to download' <<<"$err"; then
             echo "id=" >> "$GITHUB_OUTPUT"
           else
             echo "$err" >&2
