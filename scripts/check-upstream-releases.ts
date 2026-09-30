@@ -33,7 +33,14 @@ const CONFIG_PATH = path.join(root, 'scripts/upstream-releases.json');
 const STATE_PATH = path.join(root, 'scripts/upstream-releases-state.json');
 const SECTIONS = ['pear', 'bare', 'p2p'] as const;
 const MARKER = '{/* changelog:insert';
-const MAX_RELEASES_PER_REPO = 10;
+// How far back to look for the recorded baseline. GitHub's per-page maximum;
+// a busy repo (Bare ships several patches a week) can release more than a
+// handful of times between curated PRs, and a baseline that falls off the
+// fetched page would otherwise drop the releases just after it silently.
+const FETCH_PER_REPO = 100;
+// Draft cap for the rare case where a full page of releases does not contain
+// the baseline (deleted tag, renamed release): draft the newest few and say so.
+const MAX_DRAFTS_WHEN_BASELINE_MISSING = 10;
 const MAX_BODY_LINES = 12;
 
 type Section = (typeof SECTIONS)[number];
@@ -92,12 +99,12 @@ async function api<T>(pathname: string): Promise<T | null> {
  */
 async function fetchReleases(repo: string): Promise<Release[]> {
   const releases =
-    (await api<Release[]>(`/repos/${repo}/releases?per_page=${MAX_RELEASES_PER_REPO}`)) ?? [];
+    (await api<Release[]>(`/repos/${repo}/releases?per_page=${FETCH_PER_REPO}`)) ?? [];
   const published = releases.filter((r) => !r.draft);
   if (published.length > 0) return published;
 
   const tags =
-    (await api<{ name: string }[]>(`/repos/${repo}/tags?per_page=${MAX_RELEASES_PER_REPO}`)) ?? [];
+    (await api<{ name: string }[]>(`/repos/${repo}/tags?per_page=${FETCH_PER_REPO}`)) ?? [];
   return tags
     .filter((t) => /^v?\d/.test(t.name)) // version tags only
     .map((t) => ({
@@ -199,7 +206,22 @@ async function main() {
     }
 
     const seenIx = releases.findIndex((r) => r.tag_name === lastSeen);
-    const fresh = seenIx === -1 ? releases : releases.slice(0, seenIx);
+    // A short page is the repo's whole release history, so a missing baseline
+    // just predates it (e.g. a tag-only version from before the repo started
+    // cutting GitHub releases): everything listed is new. Only a full page can
+    // hide releases between the baseline and the oldest one fetched.
+    const truncated = seenIx === -1 && releases.length >= FETCH_PER_REPO;
+    if (truncated) {
+      console.warn(
+        `⚠ ${watched.repo}: baseline ${lastSeen} not in the latest ${releases.length} releases; drafting the newest ${MAX_DRAFTS_WHEN_BASELINE_MISSING} only — check for gaps`,
+      );
+    }
+    const fresh =
+      seenIx !== -1
+        ? releases.slice(0, seenIx)
+        : truncated
+          ? releases.slice(0, MAX_DRAFTS_WHEN_BASELINE_MISSING)
+          : releases;
     if (fresh.length === 0) {
       console.log(`· ${watched.repo}: up to date (${lastSeen})`);
       continue;
