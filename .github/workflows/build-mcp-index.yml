@@ -190,21 +190,33 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # No release, a release without a manifest, or a release with no
-          # assets at all means there is nothing to compare against and the
-          # build must proceed. The last is what a first publish leaves when it
-          # fails after creating the release, and gh words it differently
-          # ("no assets to download"). Any OTHER failure (rate limit, outage,
-          # auth) must not be mistaken for these — it would burn an hour-long
-          # embed and then fail at publish.
-          if err=$(gh release download "$RELEASE_TAG" --pattern index-manifest.json --output published.json --clobber 2>&1); then
+          # No release, or a release without a manifest (including one with no
+          # assets at all, which is what a first publish leaves when it fails
+          # after creating the release), means there is nothing to compare
+          # against and the build must proceed. Any OTHER failure (rate limit,
+          # outage, auth) must not be mistaken for these — it would burn an
+          # hour-long embed and then fail at publish.
+          #
+          # So the release is looked up with the REST API, and only its 404
+          # counts as "no release". gh release's own error text cannot be
+          # trusted for that: since gh 2.96 it also looks the tag up as a
+          # draft, which always misses here, and reports "release not found"
+          # whenever that miss comes with ANY failure of the real lookup.
+          err=$(mktemp)
+          if assets=$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" --jq '.assets[].name' 2>"$err"); then
+            :
+          elif grep -q 'HTTP 404' "$err"; then
+            assets=
+          else
+            cat "$err" >&2
+            exit 1
+          fi
+          if grep -qx 'index-manifest.json' <<<"$assets"; then
+            gh release download "$RELEASE_TAG" --pattern index-manifest.json --output published.json --clobber
             echo "key=$(jq -r '.buildKey // ""' published.json)" >> "$GITHUB_OUTPUT"
-          elif grep -qE 'release not found|no assets match|no assets to download' <<<"$err"; then
+          else
             echo "▸ No published index yet"
             echo "key=" >> "$GITHUB_OUTPUT"
-          else
-            echo "$err" >&2
-            exit 1
           fi
 
       - name: Decide whether to rebuild
@@ -482,37 +494,46 @@ jobs:
         id: previous
         run: |
           set -euo pipefail
-          # The same three cases as the corpus job's check mean there is no
+          # The same cases as the corpus job's check, told apart the same way
+          # (only the REST lookup's 404 means "no release"), mean there is no
           # build to keep, and this publishes as a first one: an existing but
           # empty release is reused, not recreated, and prune keeps only this
-          # build. Anything else fails before the release is touched.
-          if err=$(gh release download "$RELEASE_TAG" --pattern index-manifest.json --output previous.json --clobber 2>&1); then
-            echo "id=$(jq -r '.assets.index.sha256[:12] // ""' previous.json)" >> "$GITHUB_OUTPUT"
-          elif grep -qE 'release not found|no assets match|no assets to download' <<<"$err"; then
-            echo "id=" >> "$GITHUB_OUTPUT"
+          # build. Anything else fails before the release is touched. Taking a
+          # failed lookup for "no release" here would make prune delete the
+          # previous build, which is the rollback target.
+          err=$(mktemp)
+          if assets=$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" --jq '.assets[].name' 2>"$err"); then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif grep -q 'HTTP 404' "$err"; then
+            assets=
+            echo "exists=false" >> "$GITHUB_OUTPUT"
           else
-            echo "$err" >&2
+            cat "$err" >&2
             exit 1
+          fi
+          if grep -qx 'index-manifest.json' <<<"$assets"; then
+            gh release download "$RELEASE_TAG" --pattern index-manifest.json --output previous.json --clobber
+            echo "id=$(jq -r '.assets.index.sha256[:12] // ""' previous.json)" >> "$GITHUB_OUTPUT"
+          else
+            echo "id=" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Publish the release assets
         env:
           ID: ${{ steps.verify.outputs.id }}
           SOURCE_SHA: ${{ github.sha }}
+          RELEASE_EXISTS: ${{ steps.previous.outputs.exists }}
         run: |
           set -euo pipefail
-          if err=$(gh release view "$RELEASE_TAG" 2>&1 >/dev/null); then
-            :
-          elif grep -q 'release not found' <<<"$err"; then
+          # From the lookup above, not from `gh release view`, whose "release
+          # not found" can be a failed lookup in disguise (see the corpus job).
+          if [ "$RELEASE_EXISTS" = false ]; then
             gh release create "$RELEASE_TAG" \
               --target "$SOURCE_SHA" \
               --title "MCP search index (rolling)" \
               --notes "Rolling vector index for the docs search service, built by .github/workflows/build-mcp-index.yml. index-manifest.json names the current build's assets; the previous build is kept for rollback. The tag never moves. Not a docs release." \
               --latest=false \
               --prerelease
-          else
-            echo "$err" >&2
-            exit 1
           fi
           # Payloads first, under names no reader is looking at yet, so nothing
           # a live box depends on is touched. The manifest goes last: the
