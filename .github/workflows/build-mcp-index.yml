@@ -117,6 +117,7 @@ jobs:
       corpus-sha: ${{ steps.corpus.outputs.sha }}
       sdk-version: ${{ steps.pins.outputs.sdk }}
       embedder-version: ${{ steps.pins.outputs.embedder }}
+      fabric-version: ${{ steps.pins.outputs.fabric }}
       artifact-id: ${{ steps.upload.outputs.artifact-id }}
 
     steps:
@@ -157,13 +158,15 @@ jobs:
 
       # Read from the lockfile here, where no SDK code has run, so publish can
       # check the versions the build job reports against what it was meant to
-      # install.
+      # install. @qvac/fabric is llama.cpp itself: the embedder's addon links
+      # against it rather than carrying its own copy.
       - name: Read the pinned SDK versions
         id: pins
         run: |
           set -euo pipefail
           echo "sdk=$(jq -er '.packages["node_modules/@qvac/sdk"].version' scripts/mcp-index/package-lock.json)" >> "$GITHUB_OUTPUT"
           echo "embedder=$(jq -er '.packages["node_modules/@qvac/embed-llamacpp"].version' scripts/mcp-index/package-lock.json)" >> "$GITHUB_OUTPUT"
+          echo "fabric=$(jq -er '.packages["node_modules/@qvac/fabric"].version' scripts/mcp-index/package-lock.json)" >> "$GITHUB_OUTPUT"
 
       - name: Compute the build key
         id: key
@@ -291,11 +294,12 @@ jobs:
       # scripts/mcp-index is its own package with a lockfile, isolated from the
       # root package.json: that one pulls token-gated @tetherto/* packages this
       # repo's token cannot read, so a plain `npm ci` fails at the root. The
-      # lockfile pins @qvac/sdk and its embedder to what the search service
-      # locks — a different llama.cpp build on the two ends skews index and
-      # query vectors against each other without any error. Install scripts
-      # are off: none of the tree needs them (esbuild and the native addons
-      # ship prebuilt binaries), and this is the step that would run them.
+      # lockfile pins @qvac/sdk, its embedder and @qvac/fabric (llama.cpp) to
+      # what the search service locks — a different llama.cpp build on the
+      # two ends skews index and query vectors against each other without any
+      # error. Install scripts are off: none of the tree needs them (esbuild
+      # and the native addons ship prebuilt binaries), and this is the step
+      # that would run them.
       #
       # `mv` into scripts/node_modules: build-mcp-index.ts and mcp-embedder.ts
       # live under scripts/, so Node resolves `@qvac/sdk` (and tsx) from there
@@ -359,6 +363,7 @@ jobs:
             --arg runUrl "$RUN_URL" \
             --arg sdkVersion "$(jq -r .version scripts/node_modules/@qvac/sdk/package.json)" \
             --arg embedderVersion "$(jq -r .version scripts/node_modules/@qvac/embed-llamacpp/package.json)" \
+            --arg fabricVersion "$(jq -r .version scripts/node_modules/@qvac/fabric/package.json)" \
             --arg model "$(jq -r .model .mcp-build/index.json)" \
             --argjson format "$(jq -r .format .mcp-build/index.json)" \
             --argjson dim "$(jq -r .dim .mcp-build/index.json)" \
@@ -372,7 +377,7 @@ jobs:
             '{version: 1, format: $format,
               corpusHash: $corpusHash, contentHash: $contentHash, buildKey: $buildKey,
               builtAt: $builtAt, sourceSha: $sourceSha, runUrl: $runUrl,
-              sdkVersion: $sdkVersion, embedderVersion: $embedderVersion,
+              sdkVersion: $sdkVersion, embedderVersion: $embedderVersion, fabricVersion: $fabricVersion,
               model: $model, dim: $dim, chunkCount: $chunkCount,
               assets: {
                 index: {path: $indexPath, bytes: $indexBytes, sha256: $indexSha},
@@ -444,6 +449,7 @@ jobs:
           BUILD_KEY: ${{ needs.corpus.outputs.key }}
           SDK_VERSION: ${{ needs.corpus.outputs.sdk-version }}
           EMBEDDER_VERSION: ${{ needs.corpus.outputs.embedder-version }}
+          FABRIC_VERSION: ${{ needs.corpus.outputs.fabric-version }}
           SOURCE_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           INDEX_PATH: ${{ steps.verify.outputs.index }}
@@ -476,14 +482,17 @@ jobs:
             --arg corpusHash "$CORPUS_HASH" --arg contentHash "$CONTENT_HASH" \
             --arg buildKey "$BUILD_KEY" --arg sourceSha "$SOURCE_SHA" --arg runUrl "$RUN_URL" \
             --arg sdkVersion "$SDK_VERSION" --arg embedderVersion "$EMBEDDER_VERSION" \
+            --arg fabricVersion "$FABRIC_VERSION" \
             --slurpfile index index.json '
             $index[0] as $i
             | (keys == ["assets","buildKey","builtAt","chunkCount","contentHash","corpusHash","dim",
-                        "embedderVersion","format","model","runUrl","sdkVersion","sourceSha","version"])
+                        "embedderVersion","fabricVersion","format","model","runUrl","sdkVersion","sourceSha",
+                        "version"])
               and .version == 1 and .format == $i.format
               and .corpusHash == $corpusHash and .contentHash == $contentHash
               and .buildKey == $buildKey and .sourceSha == $sourceSha and .runUrl == $runUrl
               and .sdkVersion == $sdkVersion and .embedderVersion == $embedderVersion
+              and .fabricVersion == $fabricVersion
               and .model == $i.model and .dim == $i.dim and .chunkCount == ($i.chunks | length)
               and (.builtAt | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"))
               and (.assets | keys == ["index","pages"])
