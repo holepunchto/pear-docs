@@ -4,8 +4,10 @@
  * Reads the watch list from scripts/upstream-releases.json and the last-seen
  * release tag per repo from scripts/upstream-releases-state.json. For every
  * release published since the recorded tag, a draft entry block is inserted
- * under the `{/* changelog:insert *\/}` marker in content/release-overview/index.mdx
- * and the state file is advanced.
+ * under the `{/* changelog:insert *\/}` marker in the watched repo's product
+ * changelog — content/<section>/release-overview/index.mdx, where `section`
+ * (pear, bare, or p2p) comes from the watch list — and the state file is
+ * advanced.
  *
  * The generated blocks are DRAFTS: upstream release notes are terse and not
  * migration-oriented, so a human curates the wording, flags Breaking items,
@@ -29,14 +31,27 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const CONFIG_PATH = path.join(root, 'scripts/upstream-releases.json');
 const STATE_PATH = path.join(root, 'scripts/upstream-releases-state.json');
-const CHANGELOG_PATH = path.join(root, 'content/release-overview/index.mdx');
+const SECTIONS = ['pear', 'bare', 'p2p'] as const;
 const MARKER = '{/* changelog:insert';
 const MAX_RELEASES_PER_REPO = 10;
 const MAX_BODY_LINES = 12;
 
+type Section = (typeof SECTIONS)[number];
+
 interface Watched {
   repo: string;
   name: string;
+  section: Section;
+}
+
+function changelogPath(section: Section): string {
+  return path.join(root, 'content', section, 'release-overview/index.mdx');
+}
+
+/** Index just past the marker line, or -1 when the page has no marker. */
+function markerEnd(changelog: string): number {
+  const markerIx = changelog.indexOf(MARKER);
+  return markerIx === -1 ? -1 : changelog.indexOf('\n', markerIx) + 1;
 }
 
 interface Release {
@@ -146,7 +161,26 @@ async function main() {
     ? JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'))
     : {};
 
-  const drafts: string[] = [];
+  // Fail before touching the network or any file: a bad `section` or a
+  // changelog missing its marker would otherwise surface only after state
+  // had been advanced for the repos processed so far.
+  for (const watched of config.watched) {
+    if (!SECTIONS.includes(watched.section)) {
+      console.error(
+        `✖ ${watched.repo}: section must be one of ${SECTIONS.join(', ')} (got ${JSON.stringify(watched.section)})`,
+      );
+      process.exit(1);
+    }
+  }
+  for (const section of new Set(config.watched.map((w) => w.section))) {
+    const file = changelogPath(section);
+    if (!fs.existsSync(file) || markerEnd(fs.readFileSync(file, 'utf8')) === -1) {
+      console.error(`✖ insertion marker "${MARKER}" not found in ${path.relative(root, file)}`);
+      process.exit(1);
+    }
+  }
+
+  const drafts = new Map<Section, string[]>();
   const detected: string[] = [];
 
   for (const watched of config.watched) {
@@ -171,26 +205,22 @@ async function main() {
       continue;
     }
 
-    drafts.push(renderDraftBlock(watched, fresh));
+    drafts.set(watched.section, [
+      ...(drafts.get(watched.section) ?? []),
+      renderDraftBlock(watched, fresh),
+    ]);
     detected.push(...fresh.map((r) => `${watched.repo}@${r.tag_name}`));
     state[watched.repo] = releases[0].tag_name;
     console.log(`✚ ${watched.repo}: ${fresh.map((r) => r.tag_name).join(', ')}`);
   }
 
-  if (drafts.length > 0) {
-    const changelog = fs.readFileSync(CHANGELOG_PATH, 'utf8');
-    const markerIx = changelog.indexOf(MARKER);
-    if (markerIx === -1) {
-      console.error(`✖ insertion marker "${MARKER}" not found in ${CHANGELOG_PATH}`);
-      process.exit(1);
-    }
-    const markerEnd = changelog.indexOf('\n', markerIx) + 1;
-    const today = new Date().toISOString().slice(0, 10);
-    const block = `\n## ${today} — Upstream releases (draft)\n\n${drafts.join('\n\n')}\n`;
-    fs.writeFileSync(
-      CHANGELOG_PATH,
-      changelog.slice(0, markerEnd) + block + changelog.slice(markerEnd),
-    );
+  const today = new Date().toISOString().slice(0, 10);
+  for (const [section, blocks] of drafts) {
+    const file = changelogPath(section);
+    const changelog = fs.readFileSync(file, 'utf8');
+    const end = markerEnd(changelog);
+    const block = `\n## ${today} — Upstream releases (draft)\n\n${blocks.join('\n\n')}\n`;
+    fs.writeFileSync(file, changelog.slice(0, end) + block + changelog.slice(end));
   }
 
   // Persist baselines even when no drafts were generated.
