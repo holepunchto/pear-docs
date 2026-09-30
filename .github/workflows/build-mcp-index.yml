@@ -27,7 +27,12 @@ name: Build MCP search index
 #   gh workflow run build-mcp-index.yml -R holepunchto/pear-docs --ref published
 #   gh workflow run build-mcp-index.yml -R holepunchto/pear-docs --ref published -f force=true
 #
-# A run that failed is retried with "Re-run jobs" on that run, not a dispatch.
+# Retry a failed run with "Re-run jobs" only while its commit is still the tip
+# of `published`, e.g. "Re-run failed jobs" after only publish failed, which
+# reuses the finished embed (its artifacts are kept 7 days). A re-run builds
+# the commit the run started on, not the current one, so once `published` has
+# moved on it would put older docs over a newer index; publish refuses that,
+# and a dispatch as above builds the current tip instead.
 #
 # Gate: the build key covers the docs content (every chunk field and every
 # page, not just the embedded prose) plus the embedder toolchain (SDK lockfile,
@@ -405,6 +410,24 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
+      # A first attempt needs no check: runs start in push order, so whatever
+      # `published` has moved to is built by a run that starts after this one.
+      # A re-run breaks that order — it rebuilds its original commit, and
+      # "Re-run failed jobs" skips the corpus gate altogether — so it may only
+      # publish while that commit is still the tip. Runs before anything is
+      # downloaded or touched.
+      - name: Check a re-run is still the newest `published`
+        if: github.run_attempt != '1'
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          tip=$(gh api "repos/$GH_REPO/git/ref/heads/published" --jq .object.sha)
+          if [ "$tip" != "$SOURCE_SHA" ]; then
+            echo "published has moved to $tip since this run's $SOURCE_SHA; re-running it would publish older docs. Dispatch a run against published instead." >&2
+            exit 1
+          fi
+
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           artifact-ids: ${{ needs.corpus.outputs.artifact-id }}
