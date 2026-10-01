@@ -1,0 +1,204 @@
+/**
+ * Embeds the MCP corpus into the vector index the docs search service serves.
+ *
+ * Reads `.mcp-build/corpus.json` (written by `generate-mcp-corpus.ts`) and
+ * writes two files the service loads verbatim:
+ *
+ *   - `.mcp-build/index.json` : chunk metadata + int8-quantized, L2-normalized vectors
+ *   - `.mcp-build/pages.json` : per-page markdown, backing the MCP `fetch_doc` tool
+ *
+ * `.mcp-build/` is scratch, not the published `out/` — these are uploaded as
+ * release assets by the workflow, never served from the docs site.
+ *
+ * This lives here rather than in the search service because the service runs on
+ * a host that times out building its own index — embedding ~4k chunks took 53
+ * minutes on a standard GitHub runner's CPU. The work happens on a GitHub runner instead, and because this
+ * repo is public, the resulting release assets download without a token: the
+ * service needs no credentials at all, and no cross-repo PAT is involved.
+ *
+ * NOT part of the site build. `next build` never invokes this, and nothing here
+ * is imported by the app — it runs in the "Build MCP search index" workflow, or
+ * locally via `npm run mcp:index`.
+ *
+ * `@qvac/sdk` is deliberately NOT a dependency of the root package. It pulls
+ * ~176 packages including native binaries, and this repo's CI cannot `npm ci`
+ * at the root anyway (the `@tetherto/*` packages are token-gated). It lives in
+ * `scripts/mcp-index/`, a separate package with its own lockfile, pinned to the
+ * SDK and embedder versions the search service locks — index and query vectors
+ * must come from the same llama.cpp build. To run it locally:
+ *
+ *     npm ci --ignore-scripts --prefix scripts/mcp-index
+ *     mv scripts/mcp-index/node_modules scripts/node_modules
+ *     npm run mcp:corpus && npm run mcp:index
+ *
+ * The `mv`, not a copy into the repo-root `node_modules`: this file and
+ * `mcp-embedder.ts` both live under `scripts/`, so Node's own module
+ * resolution finds `@qvac/sdk` in `scripts/node_modules` without any help.
+ *
+ * ⚠️ The shape written here is a contract with the service's `DocStore.load()`.
+ * Changing a field name, the quantization, or the vector layout requires a
+ * matching change there. `dim` and `model` are recorded so the service can
+ * refuse an index its query embedder cannot serve.
+ */
+import { createHash } from 'node:crypto';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createEmbedder } from './mcp-embedder';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const BUILD_DIR = path.join(ROOT, '.mcp-build');
+const CORPUS_PATH = process.env.MCP_CORPUS_FILE || path.join(BUILD_DIR, 'corpus.json');
+const OUT_DIR = BUILD_DIR;
+
+/** Highest `corpus.json` version this builder understands. */
+const SUPPORTED_CORPUS_VERSION = 1;
+
+/**
+ * Layout of `index.json`: field names, quantization and vector encoding. The
+ * workflow copies it into the manifest and the service refuses a format it does
+ * not know, so bump it together with `DocStore.load()`.
+ */
+const INDEX_FORMAT = 1;
+
+interface DocChunk {
+  id: string;
+  url: string;
+  anchor: string;
+  title: string;
+  heading: string;
+  content: string;
+  raw: string;
+}
+
+interface DocPage {
+  url: string;
+  title: string;
+  description: string;
+  markdown: string;
+}
+
+interface Corpus {
+  version: number;
+  builtAt: string;
+  corpusHash: string;
+  pages: Record<string, DocPage>;
+  chunks: DocChunk[];
+}
+
+/**
+ * Hash of the retrieval-relevant corpus — chunk ids paired with the text that
+ * gets embedded, in order.
+ *
+ * Must stay byte-identical to `generate-mcp-corpus.ts`'s copy. Nothing gates on
+ * it (the workflow's build key is built on `contentHash`); it is recomputed
+ * rather than trusted so that a corpus.json whose chunks do not hash to what it
+ * declares, truncated or written by a mismatched generator, fails here instead
+ * of being embedded. A drift between the two copies fails every build the same
+ * way.
+ */
+function hashCorpus(chunks: DocChunk[]): string {
+  const h = createHash('sha256');
+  for (const c of chunks) h.update(JSON.stringify([c.id, c.content]));
+  return h.digest('hex');
+}
+
+/**
+ * Quantize a normalized vector to int8 and base64-encode it.
+ *
+ * Clamped to ±127 rather than ±128: the service dequantizes with `s / 127`, so
+ * the two ends have to agree or every vector is subtly skewed.
+ */
+function quantize(v: Float32Array): string {
+  const q = Buffer.allocUnsafe(v.length);
+  for (let i = 0; i < v.length; i++) {
+    const s = Math.round(v[i] * 127);
+    q[i] = (s < -127 ? -127 : s > 127 ? 127 : s) & 0xff;
+  }
+  return q.toString('base64');
+}
+
+async function main(): Promise<void> {
+  const t0 = Date.now();
+
+  const corpus: Corpus = JSON.parse(await readFile(CORPUS_PATH, 'utf-8'));
+  if (corpus.version > SUPPORTED_CORPUS_VERSION) {
+    throw new Error(
+      `corpus.json is version ${corpus.version}, this builder understands up to ` +
+        `${SUPPORTED_CORPUS_VERSION}.`,
+    );
+  }
+  const chunks = corpus.chunks;
+  const pages = corpus.pages;
+  if (!Array.isArray(chunks) || !chunks.length || !pages) {
+    throw new Error(`${CORPUS_PATH} has no chunks/pages — refusing to build an empty index`);
+  }
+
+  const corpusHash = hashCorpus(chunks);
+  if (corpus.corpusHash !== corpusHash) {
+    throw new Error(
+      `corpus.json declares corpusHash ${corpus.corpusHash} but its chunks hash to ` +
+        `${corpusHash}. The file is truncated or was written by a mismatched generator.`,
+    );
+  }
+  console.log(`▸ ${Object.keys(pages).length} pages, ${chunks.length} chunks (${corpusHash.slice(0, 12)}…)`);
+
+  console.log('▸ Loading embedding model…');
+  const embedder = await createEmbedder();
+  console.log(`  model loaded, dim=${embedder.dim}`);
+
+  console.log(`▸ Embedding ${chunks.length} chunk(s)…`);
+  const vectors = await embedder.embed(chunks.map((c) => c.content));
+  await embedder.close();
+  if (vectors.length !== chunks.length) {
+    throw new Error(`embedder returned ${vectors.length} vectors for ${chunks.length} chunks`);
+  }
+  // A NaN or all-zero vector quantizes to zeros and would pass every other
+  // check, then rank arbitrarily forever. `embedder.embed` L2-normalizes, so a
+  // healthy vector has unit length.
+  for (let i = 0; i < vectors.length; i++) {
+    let sumSq = 0;
+    for (const x of vectors[i]) sumSq += x * x;
+    if (vectors[i].length !== embedder.dim || !Number.isFinite(sumSq) || Math.abs(sumSq - 1) > 1e-3) {
+      throw new Error(
+        `embedder returned a broken vector for chunk ${chunks[i].id} ` +
+          `(length ${vectors[i].length}, squared norm ${sumSq}) — refusing to publish an index built from it`,
+      );
+    }
+  }
+
+  const index = {
+    format: INDEX_FORMAT,
+    dim: embedder.dim,
+    model: embedder.model,
+    builtAt: new Date().toISOString(),
+    // Provenance: which prose these vectors embed. Publish checks it against
+    // the corpus job's value before anything ships; the service tells builds
+    // apart by their payload digests, not by this.
+    corpusHash,
+    chunks: chunks.map((c, i) => ({
+      id: c.id,
+      url: c.url,
+      anchor: c.anchor,
+      title: c.title,
+      heading: c.heading,
+      content: c.content,
+      raw: c.raw,
+      q: quantize(vectors[i]),
+    })),
+  };
+
+  await mkdir(OUT_DIR, { recursive: true });
+  await writeFile(path.join(OUT_DIR, 'index.json'), JSON.stringify(index));
+  await writeFile(path.join(OUT_DIR, 'pages.json'), JSON.stringify(pages));
+
+  console.log(
+    `✓ Wrote .mcp-build/{index,pages}.json — ${index.chunks.length} chunks, dim ${index.dim}, ` +
+      `in ${((Date.now() - t0) / 1000).toFixed(1)}s`,
+  );
+}
+
+main().catch((e) => {
+  console.error('✖ MCP index build failed:', e);
+  process.exit(1);
+});

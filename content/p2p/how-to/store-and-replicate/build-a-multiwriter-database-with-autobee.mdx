@@ -1,0 +1,183 @@
+---
+title: "Build a multiwriter database with Autobee"
+description: "Give a Hyperbee many writers and query the shared key/value view from every peer."
+docType: how-to
+product: p2p
+schemaType: TechArticle
+---
+
+A [Hyperbee](/p2p/reference/building-blocks/hyperbee) is a key/value B-tree with one writer. [Autobee](/p2p/reference/building-blocks/autobee) gives it many. Each peer appends to its own local core, Autobee linearizes those cores, and an `apply` handler replays the result into a shared B-tree that every peer derives identically—so readers can `get` and range-scan instead of replaying a log.
+
+This guide uses [Corestore](/p2p/reference/helpers/corestore) to hold the cores and [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) to find peers; see [Work with many Hypercores using Corestore](/p2p/how-to/store-and-replicate/work-with-many-hypercores-using-corestore) if those concepts are unfamiliar.
+
+<Callout type="warn">
+Autobee is **experimental and under heavy development, with breaking changes expected**. This guide was verified against **v2.2.2**—pin that version, and re-check the code against your installed release before upgrading.
+</Callout>
+
+<include>../../../_snippets/_from-a-template-callout.mdx</include>
+
+This guide consists of two applications:
+* [`bee-base-writer-app`](#create-the-bee-base-writer-app) - creates the database, writes records, and grants write access to other peers.
+* [`bee-base-peer-app`](#create-the-bee-base-peer-app) - joins by key, reads the view, and writes once it has been made a writer.
+
+## How Autobee differs from Autobase
+
+If you have read [Build a multiwriter app with Autobase](/p2p/how-to/store-and-replicate/build-a-multiwriter-app-with-autobase), the shape is familiar—but four things change:
+
+* **The view is always a Hyperbee.** There is no `open` handler to write in this guide; `apply` receives a writable B-tree and writes to it with `view.write()` batches.
+* **Values are raw bytes.** Autobee has no `valueEncoding`, so both apps encode records as JSON buffers and decode them in `apply`.
+* **The raw `'update'` event has different semantics.** Autobase's `update` event fires after every apply cycle that changed the view. Autobee's does not: it fires only after an interrupt, or when [`db.writable`](/p2p/reference/building-blocks/autobee#dbwritable) flips—not on an ordinary view change. Use the `update(view, changes)` *handler option* (not `db.on('update', ...)`) to react to view changes, and [`db.on('writable', ...)`](/p2p/reference/building-blocks/autobee#dbonwritable-----)—same as Autobase—to react to becoming a writer.
+* **Replicate through the database.** `db.replicate(connection)` also registers the wakeup stream, which `store.replicate(connection)` would skip.
+
+## Create the bee base writer app
+
+The `bee-base-writer-app` creates a new Autobee, announces it on Hyperswarm, and writes key/value records. It also accepts an `add <writer-id>` command that grants another peer write access.
+
+### Create the `bee-base-writer-app` directory and add dependencies
+
+Start the `bee-base-writer-app` project with the following commands:
+
+```sh example=autobee-multiwriter step=setup
+mkdir bee-base-writer-app
+cd bee-base-writer-app
+npm init -y
+npm pkg set type="module"
+npm install autobee@2.2.2 corestore hyperswarm b4a bare-pipe bare-process
+```
+
+This will install the following dependencies:
+
+- [`autobee`](/p2p/reference/building-blocks/autobee): A module for building multiwriter Hyperbee views.
+- [`bare-pipe`](https://www.npmjs.com/package/bare-pipe): A module for working with pipes, used here to read stdin.
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`hyperswarm`](/p2p/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`corestore`](/p2p/reference/helpers/corestore): A module for working with Corestore.
+- [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
+
+### Add the `bee-base-writer-app` logic
+
+Create the `bee-base-writer-app/index.js` file with the following content:
+
+The whole body of `apply` runs inside a `try`/`catch` (L19,L30–L32): `apply` replays this node on every peer forever, including on restart, so a malformed one—bad JSON, a typo, or a node from a hostile peer—must be skipped, never thrown. Inside that, `apply` decodes each node's bytes back into an operation (L20), routes an `addWriter` operation to [`host.addWriter`](/p2p/reference/building-blocks/autobee#hostaddwriterkey-options) (L22–L25), and writes everything else into the B-tree through a `view.write()` batch (L27–L29). The `update` handler is Autobee's post-apply hook, used here to print the whole view (L38–L44). Passing `null` as the key creates a new database rather than joining one (L47). Connections are replicated through `db.replicate` so the wakeup stream is registered too (L51), and the id is printed only once the topic has been announced to the DHT (L55–L58)—advertising it earlier races a peer that looks the topic up immediately. Reading stdin (L65–L76) splits input two ways: `add <writer-id>` appends an `addWriter` operation (L68–L72), and `key=value` writes a record (L73–L75).
+
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/build-a-multiwriter-database-with-autobee/bee-base-writer-app/index.js title="bee-base-writer-app/index.js" lineNumbers {19,20,22-25,27-29,30-32,38-44,47,51,55-58,65-76} skip="example-import"
+```
+
+<Callout type="info">
+`host.addWriter(key)` adds the peer as an **indexer** by default (`isIndexer: true`), which means it also signs checkpoints. Pass `{ isIndexer: false }` for a plain writer, and promote to indexer only once you trust the peer to stay online.
+</Callout>
+
+{/* @harness example=autobee-multiwriter step=copy from=examples/how-to/store-and-replicate/build-a-multiwriter-database-with-autobee/bee-base-writer-app/index.js to=bee-base-writer-app/index.js */}
+
+### Run the `bee-base-writer-app`
+
+In one terminal, run `bee-base-writer-app` with `bare`.
+
+```sh example=autobee-multiwriter step=run process=writer expect="db key:" capture-key="db key: ([a-z0-9]+)" timeout=45000
+bare bee-base-writer-app
+```
+
+It prints the database id, then the view—which starts with the one record the app writes on startup:
+
+```text skip="illustrative-output"
+db key: 9fa71efyo1am3xzaarpkx9n46nqahgutygmdhokaegfpinjadd7y
+view (1 entries):
+  greeting: hello from the first writer
+```
+
+## Create the bee base peer app
+
+The `bee-base-peer-app` takes the database id as a command-line argument and joins the same Autobee. It has no write access at first, so it replicates the view and waits.
+
+### Create the `bee-base-peer-app` directory and add dependencies
+
+Create the `bee-base-peer-app` project with the following commands:
+
+```sh example=autobee-multiwriter step=setup
+mkdir bee-base-peer-app
+cd bee-base-peer-app
+npm init -y
+npm pkg set type="module"
+npm install autobee@2.2.2 corestore hyperswarm b4a bare-process
+```
+
+This will install the following dependencies:
+
+- [`autobee`](/p2p/reference/building-blocks/autobee): A module for building multiwriter Hyperbee views.
+- [`bare-process`](https://www.npmjs.com/package/bare-process): A module for working with processes.
+- [`hyperswarm`](/p2p/reference/building-blocks/hyperswarm): A module for working with Hyperswarm.
+- [`corestore`](/p2p/reference/helpers/corestore): A module for working with Corestore.
+- [`b4a`](https://www.npmjs.com/package/b4a): A module for working with buffers.
+
+### Add the `bee-base-peer-app` logic
+
+Create the `bee-base-peer-app/index.js` file with the following content:
+
+`apply` is copied unchanged from the writer app (L18–L35)—both peers must derive the same view from the same nodes, and skip the same malformed ones rather than crashing on them. The database id arrives as a command-line argument (L7–L9) and is passed as the key, which joins the existing database instead of creating one (L48). `db.local` is this peer's own writer core; its id is what the writer app has to add (L52). After joining the swarm (L54–L55), the peer waits for the topic lookup to settle before drawing any conclusion from an empty swarm (L58) and runs a cycle with [`db.update()`](/p2p/reference/building-blocks/autobee#await-dbupdate) (L59). It then waits on the [`writable`](/p2p/reference/building-blocks/autobee#dbonwritable-----) event if the grant hasn't already landed (L61–L64).
+
+```javascript file=<rootDir>/examples/how-to/store-and-replicate/build-a-multiwriter-database-with-autobee/bee-base-peer-app/index.js title="bee-base-peer-app/index.js" lineNumbers {7-9,18-35,48,52,54-55,58,59,61-64} skip="example-import"
+```
+
+{/* @harness example=autobee-multiwriter step=copy from=examples/how-to/store-and-replicate/build-a-multiwriter-database-with-autobee/bee-base-peer-app/index.js to=bee-base-peer-app/index.js */}
+
+### Run the `bee-base-peer-app`
+
+In another terminal, run the `bee-base-peer-app` with `bare` and pass it the database id from the [`bee-base-writer-app`](#run-the-bee-base-writer-app).
+
+```sh example=autobee-multiwriter step=run process=peer cmd="bare bee-base-peer-app ${key}" expect="writer id:" capture-writer="writer id: ([a-z0-9]+)" timeout=45000
+bare bee-base-peer-app <SUPPLY THE DATABASE ID HERE>
+```
+
+It prints its own writer id, replicates the view read-only, and waits:
+
+```text skip="illustrative-output"
+writer id: enwnbx883kxpngwhhyo3fmwds7qi4g17bmfi558xbr7apjexc4so
+read-only, waiting to be added as a writer
+```
+
+<Callout type="info">
+A peer that has not been added is still a full reader: it replicates the database and rebuilds the B-tree locally, so `db.view.get()` works before it can write. Only appending is gated.
+</Callout>
+
+## Grant write access
+
+Copy the peer's writer id and, in the `bee-base-writer-app` terminal, type:
+
+```sh skip="manual-walkthrough"
+add <SUPPLY THE WRITER ID HERE>
+```
+
+{/* @harness example=autobee-multiwriter step=expect process=peer contains="read-only, waiting to be added as a writer" timeout=45000 */}
+{/* @harness example=autobee-multiwriter step=send process=writer data="add ${writer}\n" delay=3000 */}
+
+The writer app appends an `addWriter` operation. It replicates to the peer, whose own `apply` runs the same `host.addWriter` call and reaches the same conclusion—the grant is part of the shared, replayable history, not a side channel. The peer's `writable` event fires, and it writes its record:
+
+```text skip="illustrative-output"
+now writable
+view (2 entries):
+  greeting: hello from the first writer
+  reply: hello from the second writer
+```
+
+{/* @harness example=autobee-multiwriter step=expect process=peer contains="now writable" timeout=60000 */}
+
+Within a moment the same two records appear in the `bee-base-writer-app` terminal. Both peers have converged on one B-tree built from two writers.
+
+{/* @harness example=autobee-multiwriter step=expect process=writer contains="hello from the second writer" timeout=60000 */}
+
+Type `colour=green` into the `bee-base-writer-app` terminal and watch the record show up in both views, sorted by key alongside the others. Only the writer app reads interactive input—the peer app writes its one scripted record and otherwise just replicates.
+
+<Callout type="tip">
+Entries settle into an order both peers agree on. If the two peers write while disconnected, the causal graph forks and Autobee merges it once they reconnect—which can undo and reapply view writes that had already been displayed. That is why `apply` has to be deterministic.
+</Callout>
+
+## Where to go next
+
+Both apps print the whole view on every cycle, which is fine for two records and wrong for a real database. The `update` handler's second argument is a `changes` object describing what moved—`changes.get('view')` returns the head `from` and `to`—so a real app diffs that range instead of rescanning. Key exchange is the other production gap: this guide passes ids through the terminal, whereas apps that pair over an invite use [`blind-pairing`](/p2p/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app) to hand the database id and the writer id over automatically.
+
+## See also
+
+- [Autobee reference](/p2p/reference/building-blocks/autobee)—full API, including optimistic appends, anchors, and fast-forward.
+- [Build a multiwriter app with Autobase](/p2p/how-to/store-and-replicate/build-a-multiwriter-app-with-autobase)—the same pattern when the view is not a Hyperbee.
+- [Share append-only databases with Hyperbee](/p2p/how-to/store-and-replicate/share-append-only-databases-with-hyperbee)—the single-writer B-tree this guide gives many writers.
+- [Work with many Hypercores using Corestore](/p2p/how-to/store-and-replicate/work-with-many-hypercores-using-corestore)—the Corestore patterns this guide builds on.

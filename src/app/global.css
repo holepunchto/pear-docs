@@ -1,0 +1,154 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/* Light Mode */
+:root {
+  --color-fd-primary: #759300;
+}
+
+/* Dark Mode */
+.dark {
+  --color-fd-primary: #bbde5c;
+}
+
+/* Narrow the docs sidebar so it does not pull out too far when expanded.
+   Fumadocs defaults to 268px (md:layout breakpoint); 240px keeps the tree
+   readable while reclaiming horizontal space for content.
+   Must target `#nd-docs-layout` (the grid container that actually reads
+   this var in its `grid-template-columns` calc, see below) rather than
+   `[data-sidebar-placeholder]` — that's a grid ITEM inside it, and a custom
+   property set on a descendant never flows back up to an ancestor, so that
+   selector never took effect. Scoped to `md` and up to mirror Fumadocs' own
+   `md:layout:[--fd-sidebar-width:268px]` gate — set unconditionally, it
+   reserved a real 240px grid column below `md` too even though the sidebar
+   itself is `max-md:hidden` there, shoving mobile's main content 240px
+   to the right. */
+@media (min-width: 768px) {
+  #nd-docs-layout {
+    --fd-sidebar-width: 240px !important;
+  }
+}
+
+/* Fumadocs' docs grid sizes its `sidebar`/`toc` columns as
+   `minmax(<width>, 1fr)`, and `main` as a fixed `calc(--fd-layout-width -
+   sidebar - toc)` (default `--fd-layout-width` is 97rem/1552px) — so past a
+   ~1552px-wide viewport, the "1fr" max on the sidebar/toc tracks lets them
+   balloon to soak up the extra space instead of `main`, e.g. to ~765px each
+   on a 2560px screen, while `main` stays pinned at its fixed width. Content
+   ends up unevenly spread with a lopsided gap instead of the tree/TOC
+   staying the fixed, readable width they have at 1440px. Swapping which
+   track carries the `1fr` — fixed sidebar/toc, fluid main — keeps
+   sidebar/TOC exactly as wide as they are at 1440px on any wider screen and
+   lets the extra space go to the content column instead, where it's
+   actually useful. */
+#nd-docs-layout {
+  grid-template-columns: var(--fd-sidebar-col) minmax(0, 1fr) var(--fd-toc-width) !important;
+}
+
+/* Below `md`, our own wordmark + product-nav bar (rendered as a plain sibling
+   above DocsLayout's grid in `[[...slug]]/layout.tsx`, see the comment there)
+   isn't visible to Fumadocs, which assumes nothing sits above its grid and
+   pins its own mobile subnav row (search + sidebar toggle) at the literal
+   viewport top. Once the page scrolled past our header's height, that subnav
+   row re-stuck at y:0 underneath our higher-z-index header instead of below
+   it — hiding the sidebar toggle entirely. `--fd-banner-height` is Fumadocs'
+   own extension point for this exact case (normally set by its `<Banner>`
+   component); feeding it our header's real height (measured: 48px logo row +
+   41px product-nav row) makes the subnav row stick below our header instead
+   of under it. `md:hidden` already drops our second row and Fumadocs' own
+   subnav at that breakpoint, so this is scoped to match.
+
+   The mobile sidebar drawer (`#nd-sidebar-mobile`) is a separate fixed panel
+   with a hardcoded `inset-y-0` that `--fd-banner-height` doesn't reach, so it
+   still opened flush with the viewport top, covering our header with its own
+   unrelated icon row. Pinning its top to the same header height keeps our
+   nav bar visible and the drawer visually anchored below it, same as the
+   desktop sidebar sitting under the header rather than over it. */
+@media (max-width: 767px) {
+  :root {
+    --fd-banner-height: 89px;
+  }
+
+  #nd-sidebar-mobile {
+    top: 89px;
+    height: calc(100% - 89px);
+  }
+}
+
+/* Links: colored text with thin underline */
+.prose :where(p, li, td, th) a {
+  color: var(--color-fd-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.prose :where(p, li, td, th) a:hover {
+  opacity: 0.8;
+}
+
+/* Inline `code` chips must fit the line box they sit in.
+   Measured at 1440px: prose runs a 20px line box, while an inline chip was 23px
+   (13px x 1.43 line-height + 3px padding-block each side). Consecutive baselines
+   are ~21px apart, so the tinted backgrounds of chips on adjacent lines collided
+   by ~2px — most visible inside a <Callout>, where the surrounding tint reveals
+   it, but present in every wrapped paragraph.
+   `line-height: 1` brings the chip to 20px, exactly the line box, WITHOUT
+   changing paragraph height (verified: 41px before and after), so the rhythm is
+   fixed at the cause rather than by padding the notice's line-height.
+   `box-decoration-break: clone` is the second half: a chip that wraps across
+   lines was sliced flat mid-background, and now each fragment keeps its own
+   padding and rounded corners.
+   `:not(pre) >` keeps fenced blocks out of it — those set their own metrics. */
+.prose :not(pre) > code {
+  line-height: 1;
+  padding-block: 0.1rem;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Platform version gating — see src/components/version/.
+   The gate wrapper must not affect layout when visible, so it is
+   `display: contents`: a `<VersionGate>` around a heading plus its body leaves
+   prose spacing exactly as it was. `data-version-hidden` is flipped by
+   <VersionFilter> after mount, so the exported HTML always ships every version's
+   content under the one canonical URL. */
+[data-version-gate] {
+  display: contents;
+}
+
+[data-version-hidden] {
+  display: none !important;
+}
+
+/* A section the selected version does not have, shown anyway because the reader
+   deep-linked into it. Needs a real box (not `display: contents`) so the ::before
+   note can render — a display:contents element generates no pseudo-elements. */
+[data-version-revealed] {
+  display: block;
+  border-left: 2px solid var(--color-fd-primary);
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+}
+
+[data-version-revealed]::before {
+  content: attr(data-version-revealed);
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--color-fd-muted-foreground);
+}
+
+/* Stepper styling */
+.fd-step::before,
+.fd-steps [data-step]::before {
+  background-color: var(--color-fd-primary) !important;
+  color: white !important;
+}
+
+.dark .fd-step::before,
+.dark .fd-steps [data-step]::before {
+  color: black !important;
+}

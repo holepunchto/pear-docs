@@ -1,0 +1,140 @@
+---
+title: "Embedder context API"
+description: "Reference for Bare's embedder context API: publish native handles with bare_context_set(), read them in addons with bare_context_get(), and the keys in use."
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "1.33.5"
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+The embedder context registry passes opaque native handles from an [embedder](/bare/reference/bare/runtime#embedding) to the native addons of a Bare process. An addon is only ever passed a JavaScript environment and its exports, so it has no route back to the embedder that started the process. The embedder publishes a handle under an agreed key with `bare_context_set()`, and addons retrieve it by key with `bare_context_get()`. Both are declared in [`include/bare.h`](https://github.com/holepunchto/bare/blob/main/include/bare.h). Requires Bare `>=1.33.0`.
+
+<Callout type="warn">
+A handle is a power. Publishing one grants it to every addon in the process, not only to the addon it was meant for: any addon that knows the key can read it. See the Bare [threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md#embedder-context) before publishing anything.
+</Callout>
+
+## `bare_context_set()`
+
+```c
+int
+bare_context_set(bare_t *bare, const char *key, void *value, bare_context_destroy_cb destroy);
+```
+
+Publishes `value` under `key` for the addons of the process to retrieve with `bare_context_get()`. It exists for handles that only the embedder can produce, such as a `JavaVM *` on Android.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `bare` | `bare_t *` | The process to publish to. |
+| `key` | `const char *` | The key to publish under. The key is copied, so it need not outlive the call. See [Keys](#keys). |
+| `value` | `void *` | The handle. The registry stores the pointer and never interprets it. |
+| `destroy` | `bare_context_destroy_cb` | Optional. Called with the key and the value when the process is torn down. Pass `NULL` for none. See `bare_context_destroy_cb` below. |
+
+Returns `0` on success, or `-1` if `key` is `NULL` or already published, if the process has been sealed, or if the entry couldn't be allocated.
+
+- **Entries are immutable.** Publishing a key that's already published fails rather than replacing it, and there is no way to withdraw an entry. An entry lasts for as long as the process, which is what makes it safe to hand the pointer to an addon: nothing can withdraw it while the addon is using it. An embedder that needs a handle to change publishes the change under a key of its own and lets the addon look it up.
+- **Publish before the first `bare_load()`.** An addon only ever sees what was published before it was loaded, and addons are loaded when the module graph first reaches them rather than at a point the embedder can predict. A handle published later is seen by some addons and threads and not others, depending on the shape of the graph, and nothing reports which.
+- **Sealing freezes the registry.** After `bare_seal()` or [`Bare.Addon.seal()`](/bare/reference/bare/runtime#bareaddon), nothing further can be published. Addon loading and the registry share one process-wide seal, so neither can be sealed without the other.
+- **For the embedder only.** Addons hold no `bare_t *` and are expected to use `bare_context_get()` only. The split is a convention rather than a boundary; sealing the process is what closes it.
+
+```c
+bare_t *bare;
+bare_setup(uv_default_loop(), platform, &env, argc, argv, options, &bare);
+
+bare_context_set(bare, "bare.android.jvm.v1", jvm, NULL);
+
+bare_load(bare, filename, source, NULL);
+```
+
+### `bare_context_destroy_cb`
+
+```c
+typedef void (*bare_context_destroy_cb)(const char *key, void *value);
+```
+
+Called with the key and the value of an entry when the process is torn down. It runs on the main thread after every thread has been joined and after the JavaScript environment has been destroyed, so it must not call into the environment or back into the registry. The `key` it's handed is only valid for the duration of the call. It's a place to release a handle, not to run anything that needs the environment.
+
+## `bare_context_get()`
+
+```c
+int
+bare_context_get(const char *key, void **result);
+```
+
+Retrieves the value published under `key` by the embedder of the process running on the calling thread. It takes no `bare_t *`, as an addon holds none. The process is instead the one whose runtime the calling thread has entered, which is well defined for as long as an addon can be called into, including while it initializes.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `key` | `const char *` | The key to look up. A `NULL` key matches nothing and is reported as a key that was never published. |
+| `result` | `void **` | Receives the value. May be `NULL` to test for a key without retrieving it. Left untouched unless `0` is returned. |
+
+| Returns | Meaning |
+| ------- | ------- |
+| `0` | The key is published, and `result` holds its value. |
+| `-1` | No entry is published under the key. This is an ordinary outcome: addons are expected to degrade rather than fail. |
+| `-2` | No process is running on the calling thread, such as a thread the addon started itself. |
+
+The two failures are reported apart so that an addon asking from a thread of its own gets `-2` rather than a missing key it would otherwise degrade over, silently and for good. If a thread of the addon's own is going to need a handle, retrieve the handle while the addon initializes and stash it.
+
+```c
+static js_value_t *
+addon_exports(js_env_t *env, js_value_t *exports) {
+  void *jvm;
+
+  if (bare_context_get("bare.android.jvm.v1", &jvm) == 0) {
+    // Use the handle, or stash it on our per-environment state.
+  }
+
+  return exports;
+}
+```
+
+Store a retrieved handle in the state the addon builds for the environment it was initialized with, not in a file-scope static. Context is published per Bare process, and several Bare processes can share one operating system process. A static is one slot for all of them, so an addon that caches a handle statically and is loaded by two of them keeps whichever handle initialized first and runs the other on a handle that was never published to it. Nothing reports this, as each lookup on its own answers correctly.
+
+<Callout type="info">
+Use Bare 1.33.2 or later. In Bare 1.33.0 and 1.33.1, `bare_context_get()` could return `-2` to an addon constructed by a later `new Addon()` call when the embedder runs the event loop itself rather than through `bare_run()`.
+</Callout>
+
+## Scope
+
+The registry is scoped to the Bare process, like addons are. Embedders running several Bare processes within the same operating system process publish to each of them separately, and an addon loaded by two of them sees what each published and nothing of the other. Sealing one process has no effect on the registry of another.
+
+## Keys
+
+Keys are compared by their contents and are namespaced by whoever owns the handle. The version is part of the key rather than the value, so an addon that needs a different contract asks for a different key. The `bare.` namespace is Bare's own, and is where the handles that Bare and its addons agree on live; anyone else should pick a namespace of their own.
+
+- **A key never changes meaning.** Once a key is in use, its type, what it points at, and who owns it are fixed. Anything that needs a different contract is a different key, which is what the version suffix is for.
+- **Nothing is required.** A missing key is an ordinary outcome, and consumers are expected to degrade rather than fail. An embedder that has no handle to publish publishes nothing.
+
+The authoritative list of keys in the `bare.` namespace, and the place a new one is registered, is [`docs/context-keys.md`](https://github.com/holepunchto/bare/blob/main/docs/context-keys.md). As of Bare 1.33.5, it lists the following keys.
+
+### `bare.android.jvm.v1`
+
+| Field | Value |
+| ----- | ----- |
+| Type | `JavaVM *` |
+| Published by | The embedder, on Android. [Bare Kit](/bare/reference/bare/bare-kit) publishes it as of bare-kit 2.5.0. |
+| Destructor | None. The JVM outlives the Bare process. |
+
+The Java virtual machine the process is running under, as returned by `JNI_OnLoad()` or by `GetJavaVM()` on a `JNIEnv *`. An addon needs it to attach its own threads and to reach anything in Java from one of them. [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android) reads this key as of 0.6.1 and requires it.
+
+### `bare.android.context.v1`
+
+| Field | Value |
+| ----- | ----- |
+| Type | `jobject`, a JNI global reference to an `android.content.Context` |
+| Published by | The embedder, on Android. |
+| Destructor | Required. Releases the global reference with `DeleteGlobalRef()`. |
+
+The application context, which `getSystemService()` and the rest of the Android platform API hang off. The `Context` is published rather than any particular service derived from it, so each addon can derive what it needs, such as a `ConnectivityManager`, at the cost of a JNI call.
+
+It must be a global reference, as the addon reading it runs on threads and at times the embedder doesn't control, and a local reference is only valid for the call it was made in. The destructor releases it, which ties its lifetime to the Bare process rather than to whichever call published it. The destructor runs after the JavaScript environment has been destroyed, so it must do nothing but release the reference. The application context is published rather than an `Activity`, which comes and goes over the life of the process.
+
+## See also
+
+- [Bare runtime API: Embedding](/bare/reference/bare/runtime#embedding)—`bare_setup()`, `bare_load()`, and the rest of the embedding C API.
+- [`Bare.Addon.seal()`](/bare/reference/bare/runtime#bareaddon)—seals addon loading and the context registry together.
+- [Bare Kit](/bare/reference/bare/bare-kit)—embeds Bare in iOS and Android apps, and publishes `bare.android.jvm.v1` on Android.
+- [Native addons](/bare/explanation/native-addons)—what native addons are and how Bare loads them.
+- [Threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md#embedder-context)—why a published handle is a grant to every addon in the process.
