@@ -16,8 +16,9 @@ export const dynamic = 'force-static';
 
 // Read once at module scope: `NEXT_PUBLIC_*` is inlined at build time, so this
 // is a literal by the time it reaches the client bundle. Trailing slashes are
-// stripped because the endpoint is exactly `/mcp` — `/mcp/` answers 404, and an
-// install that 404s looks like a broken docs site, not a typo in an env var.
+// stripped because the endpoint is exactly `/mcp`: `/mcp/` is not the MCP
+// route (behind the service's token gate it answers 401, without one 404), and
+// a client handed a 401 reads it as "sign in", not as a typo in an env var.
 const mcpUrl = process.env.NEXT_PUBLIC_MCP_URL?.trim().replace(/\/+$/, '');
 
 export default async function Layout({ children, params }: LayoutProps<'/[[...slug]]'>) {
