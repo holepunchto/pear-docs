@@ -50,8 +50,9 @@ name: Build MCP search index
 #
 # Three jobs, split by what each one trusts:
 #
-#   - `corpus` runs only the corpus generator and its two small, pinned deps
-#     (tsx, github-slugger). It decides whether to build, and its outputs — the
+#   - `corpus` runs only the corpus generator and its two small deps (tsx,
+#     github-slugger), installed from scripts/mcp-corpus's lockfile with
+#     install scripts off. It decides whether to build, and its outputs — the
 #     corpus digest, the hashes, the build key, the pinned SDK versions — are
 #     the reference the publish job checks against.
 #   - `build` runs the ~5.6GB @qvac/* tree and its native addons. It holds a
@@ -145,9 +146,18 @@ jobs:
         with:
           node-version: 22
 
-      # Only tsx + github-slugger — the corpus generator's sole deps — at the
-      # versions scripts/mcp-index/package.json pins, installed into a
-      # throwaway prefix (same pattern docs-lint's mcp-corpus job uses).
+      # Only tsx + github-slugger — the corpus generator's sole deps — from
+      # scripts/mcp-corpus's lockfile, which pins their whole tree (esbuild
+      # included). This job's output is what publish trusts, so nothing may
+      # resolve fresh from the registry here, and install scripts are off: on
+      # Linux the tree's only one is esbuild's postinstall, which checks (or,
+      # when missing, downloads) the platform binary that already arrives as
+      # a locked optional dependency.
+      # docs-lint's mcp-corpus job installs the same lockfile the same way, so
+      # the two generate the same corpus.
+      #
+      # `cp` into ./node_modules: the generator imports github-slugger as an
+      # ESM bare specifier from scripts/, and ESM resolution ignores NODE_PATH.
       #
       # The @qvac/sdk install is the expensive part (~5.6GB unpacked: every
       # @qvac/* plugin ships prebuilt addons for every platform) and the
@@ -157,11 +167,9 @@ jobs:
       - name: Install corpus-generator deps
         run: |
           set -euo pipefail
-          tsx_version=$(jq -er .dependencies.tsx scripts/mcp-index/package.json)
-          slugger_version=$(jq -er '.dependencies["github-slugger"]' scripts/mcp-index/package.json)
-          npm install --no-save --prefix "$RUNNER_TEMP/gate" "tsx@$tsx_version" "github-slugger@$slugger_version"
+          npm ci --ignore-scripts --prefix scripts/mcp-corpus
           mkdir -p node_modules
-          cp -R "$RUNNER_TEMP/gate/node_modules/." node_modules/
+          cp -R scripts/mcp-corpus/node_modules/. node_modules/
 
       - name: Generate the corpus
         id: corpus
@@ -192,7 +200,11 @@ jobs:
           set -euo pipefail
           # Content plus everything that decides what the vectors are or how
           # they are packaged: the builder scripts, the model checksum (in
-          # fetch-embed-model.sh), the SDK lockfile and this workflow.
+          # fetch-embed-model.sh), the SDK lockfile and this workflow. The
+          # corpus generator and its lockfile (scripts/mcp-corpus) are left
+          # out on purpose: everything they decide is in the corpus, which
+          # CONTENT_HASH already covers, so a change there that alters the
+          # output rebuilds and one that does not has nothing to rebuild.
           key=$(
             {
               echo "$CONTENT_HASH"
