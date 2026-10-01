@@ -482,8 +482,19 @@ jobs:
           # (each one slurps its file): `jq -e` judges only the LAST output,
           # so a file of two concatenated documents would otherwise pass
           # whenever its last one is genuine.
-          jq -e -s 'length == 1 and (.[0] | type == "object")' index-manifest.json >/dev/null \
-            || { echo "index-manifest.json is not exactly one JSON object" >&2; exit 1; }
+          #
+          # The asset entries are held to their exact shape before any of
+          # them is read: a string "123" and the number 123 both print as
+          # 123 below, and an extra key would ride along unchecked.
+          jq -e -s '
+            length == 1 and (.[0] | type == "object")
+            and (.[0].assets | type == "object" and keys == ["index","pages"]
+                 and all(.[]; type == "object" and keys == ["bytes","path","sha256"]
+                              and (.path | type == "string")
+                              and (.sha256 | type == "string" and test("\\A[0-9a-f]{64}\\z"))
+                              and (.bytes | type == "number" and . > 0 and . == floor)))
+          ' index-manifest.json >/dev/null \
+            || { echo "index-manifest.json is not exactly one manifest with well-formed assets" >&2; exit 1; }
           index_path=$(jq -er .assets.index.path index-manifest.json)
           pages_path=$(jq -er .assets.pages.path index-manifest.json)
           index_sha=$(sha256sum "$index_path" | cut -d' ' -f1)
@@ -502,7 +513,9 @@ jobs:
       # The digests above only prove the build output is self-consistent. This
       # proves it says what the docs say: everything but the vectors has to be
       # exactly what the `corpus` job produced, field for field, with no extra
-      # fields and no extra chunks or pages.
+      # fields and no extra chunks or pages. The few fields the build job
+      # writes itself are held to an exact format. Patterns are anchored with
+      # \A and \z: jq's ^ and $ also match around a newline.
       - name: Verify the content against the corpus
         env:
           CORPUS_SHA: ${{ needs.corpus.outputs.corpus-sha }}
@@ -529,11 +542,13 @@ jobs:
               and .format == 1
               and .corpusHash == $corpusHash
               and (.dim | type == "number" and . > 0 and . == floor)
-              and (.model | type == "string" and test("^[A-Za-z0-9._-]{1,200}$"))
+              and (.model | type == "string" and test("\\A[A-Za-z0-9._-]{1,200}\\z"))
+              and (.builtAt | type == "string"
+                   and test("\\A[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\\z"))
               and ([.chunks[] | del(.q)]
                    == [$c.chunks[] | {id, url, anchor, title, heading, content, raw}])
               and ((((.dim + 2) / 3 | floor) * 4) as $qlen
-                   | all(.chunks[]; .q | type == "string" and length == $qlen and test("^[A-Za-z0-9+/]*={0,2}$"))))
+                   | all(.chunks[]; .q | type == "string" and length == $qlen and test("\\A[A-Za-z0-9+/]*={0,2}\\z"))))
           ' index.json >/dev/null || { echo "index.json does not match the corpus" >&2; exit 1; }
 
           jq -e -s --slurpfile corpus corpus/corpus.json 'length == 1 and .[0] == $corpus[0].pages' pages.json >/dev/null \
@@ -558,8 +573,8 @@ jobs:
               and .sdkVersion == $sdkVersion and .embedderVersion == $embedderVersion
               and .fabricVersion == $fabricVersion
               and .model == $i.model and .dim == $i.dim and .chunkCount == ($i.chunks | length)
-              and (.builtAt | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"))
-              and (.assets | keys == ["index","pages"]))
+              and (.builtAt | type == "string"
+                   and test("\\A[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\\z")))
           ' dist/index-manifest.json >/dev/null || { echo "index-manifest.json does not match the corpus job" >&2; exit 1; }
           echo "✓ $(jq '.chunks | length' index.json) chunks and $(jq length pages.json) pages match the corpus"
 
