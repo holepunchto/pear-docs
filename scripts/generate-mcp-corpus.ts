@@ -7,11 +7,13 @@
  *   - `corpus.json`   : every page's markdown plus heading-anchored chunks.
  *   - `manifest.json` : counts, timestamps, `corpusHash` and `contentHash`.
  *
- * NOT part of the site build. It has exactly two callers, both of which run it
- * explicitly:
+ * NOT part of the site build. It has exactly two callers in CI, both of which
+ * run it explicitly, with its deps installed from `scripts/mcp-corpus`'s
+ * lockfile so both slug every heading the same way:
  *
- *   - `build-mcp-index.ts`, via the "Build MCP search index" workflow, which
- *     embeds what this produces.
+ *   - the `corpus` job of the "Build MCP search index" workflow, which hands
+ *     `corpus.json` to the embed job as a workflow artifact, checked there by
+ *     digest. `build-mcp-index.ts` only reads that file; it never runs this.
  *   - the `mcp-corpus` docs-lint job, which runs it purely to fail a PR where
  *     two content files slug to the same URL.
  *
