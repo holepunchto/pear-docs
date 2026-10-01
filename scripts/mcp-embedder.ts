@@ -41,6 +41,46 @@ function l2normalize(v: number[]): Float32Array {
   return out;
 }
 
+// GTE-large embeds at most 512 tokens. Inputs are first capped at 1000
+// characters, which keeps ordinary prose and code well under budget, but
+// characters are not tokens: 1000 CJK characters are ~1000 tokens and 1000
+// characters of base64-like text ~700. llama.cpp then refuses the whole call
+// with this message rather than truncating ("... context overflow: number of
+// tokens in sequence 1 (1002) exceeds effective context size (512)").
+const MAX_EMBED_CHARS = 1000;
+const CONTEXT_OVERFLOW = 'exceeds effective context size';
+// Below this a text that still overflows is not a length problem.
+const MIN_SHRINK_CHARS = 64;
+
+const cap = (t: string) => (t.length > MAX_EMBED_CHARS ? t.slice(0, MAX_EMBED_CHARS) : t);
+
+function isContextOverflow(err: unknown): boolean {
+  return err instanceof Error && err.message.includes(CONTEXT_OVERFLOW);
+}
+
+async function embedRows(modelId: string, texts: string[]): Promise<number[][]> {
+  const { embedding } = await embed({ modelId, text: texts });
+  return (Array.isArray(embedding[0]) ? embedding : [embedding]) as number[][];
+}
+
+/**
+ * Embeds one already-capped text, halving it until it fits the model's
+ * context. Returns the row and how many characters were embedded. Rethrows
+ * anything that is not an overflow, and an overflow at MIN_SHRINK_CHARS.
+ */
+async function embedShrinking(modelId: string, text: string): Promise<{ row: number[]; chars: number }> {
+  let t = text;
+  for (;;) {
+    try {
+      const [row] = await embedRows(modelId, [t]);
+      return { row, chars: t.length };
+    } catch (err) {
+      if (!isContextOverflow(err) || t.length <= MIN_SHRINK_CHARS) throw err;
+      t = t.slice(0, Math.max(MIN_SHRINK_CHARS, Math.floor(t.length / 2)));
+    }
+  }
+}
+
 export async function createEmbedder(opts: { ggufPath?: string; batchSize?: number } = {}): Promise<Embedder> {
   const ggufPath = opts.ggufPath || process.env.QVAC_EMBED_GGUF || DEFAULT_EMBED_GGUF;
   const batchSize = opts.batchSize ?? 32;
@@ -72,15 +112,27 @@ export async function createEmbedder(opts: { ggufPath?: string; batchSize?: numb
     model: path.basename(ggufPath),
     async embed(texts, onBatch) {
       const out: Float32Array[] = [];
-      // GTE-large embeds at most 512 tokens; hard-cap input length as a safety net.
-      // Dense/code-y text can hit ~2 chars/token, so 1000 chars stays under budget.
-      const cap = (t: string) => (t.length > 1000 ? t.slice(0, 1000) : t);
       const logStep = Math.max(250, Math.round(texts.length / 10));
       let nextLog = logStep;
       for (let i = 0; i < texts.length; i += batchSize) {
         const batch = texts.slice(i, i + batchSize).map(cap);
-        const { embedding } = await embed({ modelId, text: batch });
-        const rows = (Array.isArray(embedding[0]) ? embedding : [embedding]) as number[][];
+        let rows: number[][];
+        try {
+          rows = await embedRows(modelId, batch);
+        } catch (err) {
+          if (!isContextOverflow(err)) throw err;
+          // One text overflowed and llama.cpp refused the whole batch. Only
+          // this batch falls back to one text at a time, so every batch that
+          // fits embeds exactly as before.
+          rows = [];
+          for (let j = 0; j < batch.length; j++) {
+            const { row, chars } = await embedShrinking(modelId, batch[j]);
+            if (chars < batch[j].length) {
+              console.log(`  chunk ${i + j} overflowed the model's context; embedded its first ${chars} of ${batch[j].length} chars`);
+            }
+            rows.push(row);
+          }
+        }
         const vectors = rows.map(l2normalize);
         for (const v of vectors) out.push(v);
         if (onBatch) await onBatch(vectors, i);
