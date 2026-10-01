@@ -383,6 +383,15 @@ jobs:
           mv dist/index.json.gz "dist/index-$id.json.gz"
           mv dist/pages.json.gz "dist/pages-$id.json.gz"
 
+          # Read into variables first: a command substitution that fails
+          # inside an argument list does not trip `set -e`, so a missing
+          # package.json would otherwise write "" into the manifest. (The
+          # --argjson ones below fail loudly on their own: "" is not JSON.)
+          sdk_version=$(jq -er .version scripts/node_modules/@qvac/sdk/package.json)
+          embedder_version=$(jq -er .version scripts/node_modules/@qvac/embed-llamacpp/package.json)
+          fabric_version=$(jq -er .version scripts/node_modules/@qvac/fabric/package.json)
+          model=$(jq -er .model .mcp-build/index.json)
+
           jq -n \
             --arg corpusHash "$CORPUS_HASH" \
             --arg contentHash "$CONTENT_HASH" \
@@ -390,10 +399,10 @@ jobs:
             --arg builtAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg sourceSha "$SOURCE_SHA" \
             --arg runUrl "$RUN_URL" \
-            --arg sdkVersion "$(jq -r .version scripts/node_modules/@qvac/sdk/package.json)" \
-            --arg embedderVersion "$(jq -r .version scripts/node_modules/@qvac/embed-llamacpp/package.json)" \
-            --arg fabricVersion "$(jq -r .version scripts/node_modules/@qvac/fabric/package.json)" \
-            --arg model "$(jq -r .model .mcp-build/index.json)" \
+            --arg sdkVersion "$sdk_version" \
+            --arg embedderVersion "$embedder_version" \
+            --arg fabricVersion "$fabric_version" \
+            --arg model "$model" \
             --argjson format "$(jq -r .format .mcp-build/index.json)" \
             --argjson dim "$(jq -r .dim .mcp-build/index.json)" \
             --argjson chunkCount "$(jq -r '.chunks | length' .mcp-build/index.json)" \
