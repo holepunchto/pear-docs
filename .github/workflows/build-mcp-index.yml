@@ -34,6 +34,14 @@ name: Build MCP search index
 # moved on it would put older docs over a newer index; publish refuses that,
 # and a dispatch as above builds the current tip instead.
 #
+# Queueing: runs of `published` (pushes, dispatches and re-runs alike) share one
+# concurrency group, and only one run can wait behind the one that is going.
+# So a re-run or a dispatch started while a build is going replaces a pending
+# push run, and a later push replaces a pending re-run or dispatch; the
+# replaced run shows as cancelled. If that cancelled a push run, its commit is
+# not indexed until the next one: dispatch against `published` once the queue
+# is clear. Runs from other refs have groups of their own and replace nothing.
+#
 # Gate: the build key covers the docs content (every chunk field and every
 # page, not just the embedded prose) plus the embedder toolchain (SDK lockfile,
 # model checksum, builder scripts) and this workflow file. Any of them changing
@@ -90,11 +98,14 @@ on:
         default: false
 
 concurrency:
-  # One run at a time: two would race on the same release. A run that is
-  # already going is never cancelled, but only ONE run can wait behind it —
-  # a newer push replaces an older pending one, which is what we want because
-  # the newest `published` is the only one worth indexing.
-  group: build-mcp-index
+  # One run of `published` at a time: two would race on the same release. A
+  # run that is already going is never cancelled, but only ONE run can wait
+  # behind it — a newer push replaces an older pending one, which is what we
+  # want because the newest `published` is the only one worth indexing.
+  # Runs from any other ref do nothing (see `corpus`), so each gets a group of
+  # its own rather than replacing a pending `published` run. See "Queueing" in
+  # the header for what re-runs and dispatches of `published` still displace.
+  group: ${{ github.ref == 'refs/heads/published' && 'build-mcp-index' || format('build-mcp-index-{0}', github.run_id) }}
   cancel-in-progress: false
 
 permissions: {}
