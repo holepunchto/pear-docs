@@ -478,6 +478,12 @@ jobs:
         working-directory: dist
         run: |
           set -euo pipefail
+          # Exactly one document, here and in every check of the next step
+          # (each one slurps its file): `jq -e` judges only the LAST output,
+          # so a file of two concatenated documents would otherwise pass
+          # whenever its last one is genuine.
+          jq -e -s 'length == 1 and (.[0] | type == "object")' index-manifest.json >/dev/null \
+            || { echo "index-manifest.json is not exactly one JSON object" >&2; exit 1; }
           index_path=$(jq -er .assets.index.path index-manifest.json)
           pages_path=$(jq -er .assets.pages.path index-manifest.json)
           index_sha=$(sha256sum "$index_path" | cut -d' ' -f1)
@@ -516,8 +522,9 @@ jobs:
           gunzip -c "dist/$INDEX_PATH" > index.json
           gunzip -c "dist/$PAGES_PATH" > pages.json
 
-          jq -e --slurpfile corpus corpus/corpus.json --arg corpusHash "$CORPUS_HASH" '
+          jq -e -s --slurpfile corpus corpus/corpus.json --arg corpusHash "$CORPUS_HASH" '
             $corpus[0] as $c
+            | length == 1 and (.[0]
             | (keys == ["builtAt","chunks","corpusHash","dim","format","model"])
               and .format == 1
               and .corpusHash == $corpusHash
@@ -526,21 +533,22 @@ jobs:
               and ([.chunks[] | del(.q)]
                    == [$c.chunks[] | {id, url, anchor, title, heading, content, raw}])
               and ((((.dim + 2) / 3 | floor) * 4) as $qlen
-                   | all(.chunks[]; .q | type == "string" and length == $qlen and test("^[A-Za-z0-9+/]*={0,2}$")))
+                   | all(.chunks[]; .q | type == "string" and length == $qlen and test("^[A-Za-z0-9+/]*={0,2}$"))))
           ' index.json >/dev/null || { echo "index.json does not match the corpus" >&2; exit 1; }
 
-          jq -e --slurpfile corpus corpus/corpus.json '. == $corpus[0].pages' pages.json >/dev/null \
+          jq -e -s --slurpfile corpus corpus/corpus.json 'length == 1 and .[0] == $corpus[0].pages' pages.json >/dev/null \
             || { echo "pages.json does not match the corpus" >&2; exit 1; }
 
           # The manifest fields the service and this workflow rely on come from
           # the trusted side; only builtAt is the build job's own.
-          jq -e \
+          jq -e -s \
             --arg corpusHash "$CORPUS_HASH" --arg contentHash "$CONTENT_HASH" \
             --arg buildKey "$BUILD_KEY" --arg sourceSha "$SOURCE_SHA" --arg runUrl "$RUN_URL" \
             --arg sdkVersion "$SDK_VERSION" --arg embedderVersion "$EMBEDDER_VERSION" \
             --arg fabricVersion "$FABRIC_VERSION" \
             --slurpfile index index.json '
             $index[0] as $i
+            | length == 1 and (.[0]
             | (keys == ["assets","buildKey","builtAt","chunkCount","contentHash","corpusHash","dim",
                         "embedderVersion","fabricVersion","format","model","runUrl","sdkVersion","sourceSha",
                         "version"])
@@ -551,7 +559,7 @@ jobs:
               and .fabricVersion == $fabricVersion
               and .model == $i.model and .dim == $i.dim and .chunkCount == ($i.chunks | length)
               and (.builtAt | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"))
-              and (.assets | keys == ["index","pages"])
+              and (.assets | keys == ["index","pages"]))
           ' dist/index-manifest.json >/dev/null || { echo "index-manifest.json does not match the corpus job" >&2; exit 1; }
           echo "✓ $(jq '.chunks | length' index.json) chunks and $(jq length pages.json) pages match the corpus"
 
