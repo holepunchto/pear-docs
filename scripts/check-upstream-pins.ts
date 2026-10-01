@@ -20,7 +20,7 @@
 //
 // A page's pin is resolved in two ways, in order:
 //   1. `upstreamVersion` frontmatter — authoritative, and the only option for
-//      pages with no line-level citations (all of content/reference/bare/*).
+//      pages with no line-level citations (all of content/bare/reference/bare/*).
 //   2. the tag in its `[src]`/definition GitHub links — a fallback so the
 //      module refs work before they are backfilled.
 // Pages that resolve neither are reported as `unpinned` rather than skipped;
