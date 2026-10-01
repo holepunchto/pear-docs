@@ -50,7 +50,8 @@ function VSCodeIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 /**
- * The config object every client ultimately stores. `type: 'http'` is the
+ * The config object most clients store (Cursor's deeplink is the exception,
+ * see `cursorHref`). `type: 'http'` is the
  * streamable-HTTP transport the docs MCP server speaks (a plain POST endpoint
  * that answers JSON-RPC over `text/event-stream`), as opposed to the `stdio`
  * shape used for locally-spawned servers.
@@ -65,12 +66,25 @@ function configJson(url: string) {
 }
 
 /**
+ * Base64 of the string's UTF-8 bytes. `btoa` alone takes a Latin-1 "binary
+ * string": it throws on anything outside Latin-1 and encodes the rest of
+ * non-ASCII as Latin-1, not UTF-8. For ASCII the output is the same.
+ */
+function base64Utf8(text: string) {
+  let binary = '';
+  for (const byte of new TextEncoder().encode(text)) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+/**
  * Cursor's install deeplink takes the *inner* server config (no `mcpServers`
- * wrapper) as base64. Encoded at click time rather than render time because
+ * wrapper), JSON-stringified and base64-encoded. Cursor's docs show a remote
+ * server as just `{ url }` (they document `type` only for stdio), so that is
+ * the shape sent. Encoded at click time rather than render time because
  * `btoa` doesn't exist during Next's server prerender of this client component.
  */
 function cursorHref(url: string) {
-  const config = btoa(JSON.stringify(serverConfig(url)));
+  const config = base64Utf8(JSON.stringify({ url }));
   return `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(
     SERVER_NAME,
   )}&config=${encodeURIComponent(config)}`;
