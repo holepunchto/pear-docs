@@ -588,7 +588,7 @@ jobs:
           # release is reused, not recreated. Anything else fails before the
           # release is touched: taking a failed lookup for "no release" would
           # try to recreate a release that exists, and lose track of which
-          # build is live. previous.json stays for the next two steps.
+          # build is live. previous.json stays for the publish step.
           err=$(mktemp)
           if assets=$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" --jq '.assets[].name' 2>"$err"); then
             echo "exists=true" >> "$GITHUB_OUTPUT"
@@ -648,36 +648,26 @@ jobs:
       # release.
       #
       # "The one before it" is the build the live manifest named before this
-      # run. Two cases read no such build: a re-run after the flip finds this
-      # build there, and a run after a flip that lost the manifest (`--clobber`
-      # deletes before it uploads) finds none. Keeping only this build would
-      # then delete the rollback target, so prune keeps the newest other
-      # complete build instead, by when its index-manifest-<id>.json was
-      # uploaded.
+      # run, the rollback target. Two cases read no such build: a re-run after
+      # the flip finds this build there, and a run after a flip that lost the
+      # manifest (`--clobber` deletes before it uploads) finds none. Nothing
+      # else records which build was live, and no guess is safe: after a
+      # rollback, the newest other build is the bad one rolled back from. So
+      # prune then deletes nothing, and the next run, whose live manifest
+      # names another build, prunes as usual.
       - name: Prune old builds
         env:
           ID: ${{ steps.verify.outputs.id }}
           PREV_ID: ${{ steps.previous.outputs.id }}
         run: |
           set -euo pipefail
-          release=$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG")
-          prev=$PREV_ID
-          if [ -z "$prev" ] || [ "$prev" = "$ID" ]; then
-            prev=$(jq -r --arg id "$ID" '
-              [.assets[].name] as $names
-              | [.assets[]
-                 | (.name | capture("\\Aindex-manifest-(?<b>[0-9a-f]{12})\\.json\\z").b) as $b
-                 | select($b != $id
-                          and ($names | any(. == "index-\($b).json.gz"))
-                          and ($names | any(. == "pages-\($b).json.gz")))
-                 | {id: $b, at: .created_at}]
-              | sort_by(.at) | last | .id // ""
-            ' <<<"$release")
-            why=${PREV_ID:+The live manifest already names this build}
-            echo "▸ ${why:-No live manifest}; keeping ${prev:-no other build} for rollback"
+          if [ -z "$PREV_ID" ] || [ "$PREV_ID" = "$ID" ]; then
+            why=${PREV_ID:+The live manifest already named this build}
+            echo "▸ ${why:-No live manifest}, so the rollback build is unknown; pruning nothing"
+            exit 0
           fi
-          keep="$ID"
-          [ -z "$prev" ] || keep="$ID|$prev"
+          keep="$ID|$PREV_ID"
+          release=$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG")
           jq -r '.assets[].name' <<<"$release" \
             | { grep -E '^(index|pages)-[0-9a-f]{12}\.json\.gz$|^index-manifest-[0-9a-f]{12}\.json$' || true; } \
             | { grep -Ev -- "-($keep)\." || true; } \
