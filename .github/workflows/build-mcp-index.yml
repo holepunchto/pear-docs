@@ -583,12 +583,12 @@ jobs:
         run: |
           set -euo pipefail
           # The same cases as the corpus job's check, told apart the same way
-          # (only the REST lookup's 404 means "no release"), mean there is no
-          # build to keep, and this publishes as a first one: an existing but
-          # empty release is reused, not recreated, and prune keeps only this
-          # build. Anything else fails before the release is touched. Taking a
-          # failed lookup for "no release" here would make prune delete the
-          # previous build, which is the rollback target.
+          # (only the REST lookup's 404 means "no release"), mean no build is
+          # live, and this publishes as a first one: an existing but empty
+          # release is reused, not recreated. Anything else fails before the
+          # release is touched: taking a failed lookup for "no release" would
+          # try to recreate a release that exists, and lose track of which
+          # build is live. previous.json stays for the next two steps.
           err=$(mktemp)
           if assets=$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" --jq '.assets[].name' 2>"$err"); then
             echo "exists=true" >> "$GITHUB_OUTPUT"
@@ -613,6 +613,13 @@ jobs:
           RELEASE_EXISTS: ${{ steps.previous.outputs.exists }}
         run: |
           set -euo pipefail
+          # A re-run after this build's manifest flip finds it already live.
+          # Uploading again would only take down, for a moment, the assets the
+          # boxes are reading (`--clobber` deletes before it uploads).
+          if [ -f previous.json ] && cmp -s previous.json dist/index-manifest.json; then
+            echo "✓ Build $ID is already live (source $SOURCE_SHA)"
+            exit 0
+          fi
           # From the lookup above, not from `gh release view`, whose "release
           # not found" can be a failed lookup in disguise (see the corpus job).
           if [ "$RELEASE_EXISTS" = false ]; then
@@ -639,15 +646,39 @@ jobs:
       # Keep this build and the one before it; everything older goes. Runs after
       # the manifest flip, so a failure here leaves clutter, never a broken
       # release.
+      #
+      # "The one before it" is the build the live manifest named before this
+      # run. Two cases read no such build: a re-run after the flip finds this
+      # build there, and a run after a flip that lost the manifest (`--clobber`
+      # deletes before it uploads) finds none. Keeping only this build would
+      # then delete the rollback target, so prune keeps the newest other
+      # complete build instead, by when its index-manifest-<id>.json was
+      # uploaded.
       - name: Prune old builds
         env:
           ID: ${{ steps.verify.outputs.id }}
           PREV_ID: ${{ steps.previous.outputs.id }}
         run: |
           set -euo pipefail
+          release=$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG")
+          prev=$PREV_ID
+          if [ -z "$prev" ] || [ "$prev" = "$ID" ]; then
+            prev=$(jq -r --arg id "$ID" '
+              [.assets[].name] as $names
+              | [.assets[]
+                 | (.name | capture("\\Aindex-manifest-(?<b>[0-9a-f]{12})\\.json\\z").b) as $b
+                 | select($b != $id
+                          and ($names | any(. == "index-\($b).json.gz"))
+                          and ($names | any(. == "pages-\($b).json.gz")))
+                 | {id: $b, at: .created_at}]
+              | sort_by(.at) | last | .id // ""
+            ' <<<"$release")
+            why=${PREV_ID:+The live manifest already names this build}
+            echo "▸ ${why:-No live manifest}; keeping ${prev:-no other build} for rollback"
+          fi
           keep="$ID"
-          [ -z "$PREV_ID" ] || keep="$ID|$PREV_ID"
-          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' \
+          [ -z "$prev" ] || keep="$ID|$prev"
+          jq -r '.assets[].name' <<<"$release" \
             | { grep -E '^(index|pages)-[0-9a-f]{12}\.json\.gz$|^index-manifest-[0-9a-f]{12}\.json$' || true; } \
             | { grep -Ev -- "-($keep)\." || true; } \
             | while read -r name; do
