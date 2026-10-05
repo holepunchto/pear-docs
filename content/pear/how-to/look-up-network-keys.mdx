@@ -1,0 +1,180 @@
+---
+title: "Look up this machine's network keys"
+description: "Use pear identity to read the seed, blind relay, blind peer, and blind peer client keys this machine presents to the network, and hand the right one to the right peer."
+docType: how-to
+product: pear
+schemaType: TechArticle
+---
+
+Several Pear workflows need a key that only exists on *another* machine: a blind peer operator needs yours before they will announce your drive, and you need theirs before you can seed to it. [`pear identity`](/pear/reference/pear/cli#pear-identity) prints those keys on the machine you run it on, one subcommand per key.
+
+The four keys are **different values** and are not interchangeable—handing over the wrong one produces a service that silently does less than you expect rather than an error.
+
+<Callout type="info">
+Requires **Pear 3.5.0 or newer**—run [`pear versions`](/pear/reference/pear/cli#pear-versions) to check what you're on. On 3.4.0 and earlier only `pear blind-peer identity` existed, which is now [`pear identity blind-peer-client`](#authorize-this-machine-with-a-blind-peer); the other three keys had no command at all.
+</Callout>
+
+<include>../../_snippets/_install-pear-cli-callout.mdx</include>
+
+## Pick the key you need
+
+Run `pear identity` with no subcommand to see the list:
+
+```console skip="live-sidecar"
+pear identity
+```
+
+```text skip="sample-output"
+  pear identity [flags] [command]
+
+  Show local network public keys
+
+  Flags:
+    --json              Newline delimited JSON output
+    --help|-h           Show help
+
+  Commands:
+    seed                Show seed key
+    blind-relay         Show blind relay key
+    blind-peer          Show blind peer key
+    blind-peer-client   Show blind peer client key
+```
+
+Which one you want depends on what the other side is going to do with it:
+
+| They want to… | Run here | They pass it to |
+| --- | --- | --- |
+| Wait until **this machine** has finished syncing a drive | `pear identity seed` | [`pear seed --until-sync <key>`](/pear/reference/pear/cli#pear-seed) |
+| Seed a drive into **a blind peer running here** | `pear identity blind-peer` | [`pear seed --blind-peer <key>`](/pear/reference/pear/cli#pear-seed) |
+| Route connections through **a relay running here** | `pear identity blind-relay` | [`--relay <key>`](/pear/reference/pear/cli#relay-flag) |
+| **Authorize this machine** against a blind peer they run | `pear identity blind-peer-client` | `pear blind-peer start --trusted-peer <peer>` |
+
+The last two rows are the ones to get right: `blind-peer` is the key of a blind peer *you host*, and `blind-peer-client` is how *you appear to* someone else's blind peer. They are different key pairs and each is useless in the other's place.
+
+## Read a key
+
+Every subcommand prints one key, z32-encoded like the key in every `pear://` link, then a hint showing the command it is usually pasted into:
+
+```console skip="live-sidecar"
+pear identity seed
+```
+
+```text skip="sample-output"
+4ibhiwr1pstsw8h4gt3gti88m3de4zqb76bzsjjyomc9woipdbto
+
+Use the key above to wait until this peer has synced
+  $ pear seed --until-sync=4ibhiwr1pstsw8h4gt3gti88m3de4zqb76bzsjjyomc9woipdbto <link>
+```
+
+The key is the same value [`pear seed`](/pear/reference/pear/cli#pear-seed) reports in its `Whoami:` row, so you no longer need a seed session running to read it.
+
+<Callout type="tip">
+The key goes to **stdout** and the hint to **stderr**, so command substitution captures the key alone:
+
+```bash skip="live-sidecar"
+KEY=$(pear identity seed)
+```
+</Callout>
+
+## Authorize this machine with a blind peer
+<a name="authorize-this-machine-with-a-blind-peer"></a>
+
+A blind peer only **announces** cores for peers its operator trusts. Untrusted requests are still stored and served, but never announced—so peers looking for a source will not discover it through that blind peer, and [nothing in your own output says so](/pear/reference/pear/cli#pear-seed). Getting authorized is what avoids that.
+
+On **your** machine, print the identity the blind peer will see:
+
+```console skip="live-sidecar"
+pear identity blind-peer-client
+```
+
+```text skip="sample-output"
+t8hosp8paf3aizmm8tdww67qbbau5eatgcpwxkqze1erwsujbwey
+
+Use the key above as a trusted peer for your blind peer
+  $ pear blind-peer start --trusted-peer=t8hosp8paf3aizmm8tdww67qbbau5eatgcpwxkqze1erwsujbwey
+```
+
+Send that key to the blind peer's operator. On **their** machine they restart the blind peer with it—`--trusted-peer` is repeatable, one per authorized client:
+
+```console skip="live-blind-peer"
+pear blind-peer start --trusted-peer=t8hosp8paf3aizmm8tdww67qbbau5eatgcpwxkqze1erwsujbwey
+```
+
+<Callout type="warn">
+Trust is read at start time. A key added to `--trusted-peer` only takes effect on the next `pear blind-peer start`, and a blind peer that is already running will keep treating you as untrusted until it restarts.
+</Callout>
+
+## Publish a blind peer's key
+
+On the machine **hosting** the blind peer, print the server's own key:
+
+```console skip="live-sidecar"
+pear identity blind-peer
+```
+
+```text skip="sample-output"
+thgsq4d6gcrrmy5m979prx5ymtssq9abriit51p3xixdwfip8y6y
+
+Use the key above as a blind peer for seeding
+  $ pear seed --blind-peer=thgsq4d6gcrrmy5m979prx5ymtssq9abriit51p3xixdwfip8y6y <link>
+```
+
+This is the same key [`pear blind-peer start`](/pear/reference/pear/cli#pear-blind-peer) prints as `Blind peer started listening using public key:`, so you can hand it out before ever starting the server—handy when you are writing down connection details for a host that is not up yet.
+
+<Callout type="info">
+Unlike the other three subcommands, this one is not a pure lookup. If no blind peer is running, it opens one against the platform `blind-peer` storage directory to read its key, creating that directory on first use. For the moment the command runs, that blind peer joins the network and resumes announcing any cores it already stores; it closes again when the command exits, and it never listens for new requests the way `pear blind-peer start` does. The key is derived from that storage, so it stays the same on every later call and on every `pear blind-peer start`.
+</Callout>
+
+## Publish a relay's key
+
+On the machine **running the relay**:
+
+```console skip="live-sidecar"
+pear identity blind-relay
+```
+
+```text skip="sample-output"
+njw8bwd3euf4jypwzfrscr7qfz9d33u3w6y3yuodg5dpwcb89t3y
+
+Use the key above as a blind relay for your swarm
+  $ pear --relay njw8bwd3euf4jypwzfrscr7qfz9d33u3w6y3yuodg5dpwcb89t3y seed <link>
+```
+
+The relay key pair is derived from the platform corestore, so it is stable across restarts—note it down once. See [Relay connections through a blind relay](/p2p/how-to/connect-to-peers/relay-connections-through-a-blind-relay) for the end-to-end setup this key slots into.
+
+## Read a key from a script
+
+`--json` is declared on `pear identity` itself, so it goes **before** the subcommand:
+
+```bash skip="live-sidecar"
+pear identity --json seed
+```
+
+```json skip="sample-output"
+{"cmd":"identity","tag":"final","data":{"success":true,"publicKey":"4ibhiwr1pstsw8h4gt3gti88m3de4zqb76bzsjjyomc9woipdbto"}}
+```
+
+Read `.data.publicKey`. `--json` also suppresses the hint entirely, so there is nothing else on either stream to filter out.
+
+Putting the flag after the subcommand is rejected rather than ignored:
+
+```text skip="sample-output"
+{"cmd":"identity","tag":"error","data":{"success":false,"code":"UNKNOWN_FLAG","message":"Unrecognized Flag: --json"}}
+```
+
+## Troubleshooting
+
+**`✖ Unrecognized Argument at index 0 with value identity`** — you ran `pear blind-peer identity`, which was removed in 3.5.0. Use `pear identity blind-peer-client`; it prints the same key.
+
+**`✖ Unrecognized Flag: --json`** — `--json` went after the subcommand. Move it in front: `pear identity --json seed`.
+
+**The blind peer accepted your request but peers still cannot find the drive** — the announce was downgraded because the blind peer does not trust you. Check that its operator started it with *your* `blind-peer-client` key, not your `seed` key, and that they restarted it after adding you.
+
+**Two machines report the same key** — they are sharing a platform directory. Each machine derives these keys from its own platform corestore, so identical keys mean the same storage is mounted in both places.
+
+## See also
+
+- [`pear identity` reference](/pear/reference/pear/cli#pear-identity)—every subcommand, the JSON shape, and each key's origin.
+- [Keep data available with blind peering](/p2p/how-to/blind-peering/keep-data-available-with-blind-peering)—what the blind peer keys are for.
+- [Relay connections through a blind relay](/p2p/how-to/connect-to-peers/relay-connections-through-a-blind-relay)—what the relay key is for.
+- [Availability and blind peering](/pear/explanation/availability-and-blind-peering)—why a blind peer distinguishes trusted from untrusted clients at all.

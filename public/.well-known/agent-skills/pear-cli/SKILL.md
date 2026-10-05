@@ -18,6 +18,8 @@ Key concepts:
 - `pear seed <link>` — seed a link so peers can fetch it.
 - `pear install pear://<key>` — install a built app from the swarm.
 - `pear info` / `pear dump` / `pear changelog` / `pear cores` — read-only inspection, no writes.
+- `pear blind-peer start|request`, `pear blind-relay start`, and the global `--relay <key>` flag — run a blind peer or relay, or route connections through one.
+- `pear identity seed|blind-relay|blind-peer|blind-peer-client` — print one of this machine's network keys, for another machine to pass to `pear seed --until-sync`, `--relay`, `pear seed --blind-peer`, or `pear blind-peer start --trusted-peer`. Replaced `pear blind-peer identity` in 3.5.0.
 - There is no `pear dev` command, and `pear run` no longer launches an app — apps now embed the `pear-runtime` (Pear OTA) library directly instead of being launched by the CLI.
 
 Full reference: https://docs.pears.com/pear/reference/pear/cli/

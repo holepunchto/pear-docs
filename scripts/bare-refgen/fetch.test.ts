@@ -45,11 +45,63 @@ test('coversBaseline: catches a dropped `export { ... }` specifier (e.g. bare-ne
   assert.equal(coversBaseline(baseline, stale), false);
 });
 
-test('coversBaseline: a superset (new symbols added) still covers the baseline', () => {
+test('coversBaseline: rejects extra runtime symbols the published package lacks', () => {
   const baseline = `export declare function foo(): void`;
   const superset = `
     export declare function foo(): void
     export declare function bar(): void
   `;
-  assert.equal(coversBaseline(baseline, superset), true);
+  assert.equal(coversBaseline(baseline, superset), false);
+});
+
+test('coversBaseline: rejects API removed upstream after the branch was cut (bare-type 1.1.1)', () => {
+  const baseline = `
+    declare function type(value: unknown): Type
+    export = type
+  `;
+  const stale = `
+    declare function type(value: unknown): Type
+    declare namespace type {
+      export function addTag(object: object, tag: Uint32Array): void
+    }
+    export = type
+  `;
+  assert.equal(coversBaseline(baseline, stale), false);
+});
+
+test('coversBaseline: rejects unreleased classes from main (bare-encoding TextEncoderStream)', () => {
+  const baseline = `export class TextEncoder {}`;
+  const ahead = `
+    export class TextEncoder {}
+    export class TextEncoderStream {}
+  `;
+  assert.equal(coversBaseline(baseline, ahead), false);
+});
+
+test('coversBaseline: allows naming a previously inline type (bare-vm RunOptions)', () => {
+  const baseline = `
+    export function runInNewContext(code: string, opts?: { filename?: string; offset?: number }): unknown
+  `;
+  const named = `
+    interface RunOptions {
+      filename?: string
+      offset?: number
+    }
+    export function runInNewContext(code: string, options?: RunOptions): unknown
+  `;
+  assert.equal(coversBaseline(baseline, named), true);
+});
+
+test('coversBaseline: allows typing API the published runtime already implements (bare-crypto subtle)', () => {
+  const baseline = `export function randomBytes(size: number): Buffer`;
+  const typed = `
+    export function randomBytes(size: number): Buffer
+    interface SubtleCrypto {
+      digest(algorithm: string, data: Buffer): Promise<ArrayBuffer>
+    }
+    export const subtle: SubtleCrypto
+  `;
+  const runtime = `exports.subtle = { digest(algorithm, data) {} }`;
+  assert.equal(coversBaseline(baseline, typed, runtime), true);
+  assert.equal(coversBaseline(baseline, typed), false);
 });

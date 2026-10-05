@@ -7,7 +7,7 @@
 
 import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
@@ -159,10 +159,12 @@ async function fetchRawFile(ownerRepo: string, branch: string, path: string): Pr
  * resolution). A coverage floor, not a full structural diff: cheap enough to
  * run on every candidate swap, and exactly what's needed to catch a PR
  * branch that's silently missing something the published `.d.ts` has.
+ * `typeNames`: interface/type-alias names only, not their members.
  */
-function declaredNames(sourceText: string): Set<string> {
+function declaredNames(sourceText: string): { names: Set<string>; typeNames: Set<string> } {
   const sf = ts.createSourceFile('coverage-check.d.ts', sourceText, ts.ScriptTarget.ESNext, true);
   const names = new Set<string>();
+  const typeNames = new Set<string>();
   const visit = (node: ts.Node): void => {
     if (
       (ts.isFunctionDeclaration(node) ||
@@ -179,6 +181,9 @@ function declaredNames(sourceText: string): Set<string> {
       node.name
     ) {
       names.add(node.name.getText());
+      if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
+        typeNames.add(node.name.getText());
+      }
     } else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
       names.add(node.name.getText());
     } else if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) {
@@ -191,20 +196,34 @@ function declaredNames(sourceText: string): Set<string> {
     ts.forEachChild(node, visit);
   };
   visit(sf);
-  return names;
-}
-
-/** Whether `candidate` declares at least every name `baseline` does. */
-export function coversBaseline(baseline: string, candidate: string): boolean {
-  const base = declaredNames(baseline);
-  const cand = declaredNames(candidate);
-  for (const name of base) if (!cand.has(name)) return false;
-  return true;
+  return { names, typeNames };
 }
 
 /**
- * Overwrite `absPath` (a file already extracted from the npm tarball, under
- * `pkgDir`) with the same relative path's content from the user's
+ * How `candidate` compares to the published `baseline`: `phantom` if it adds a
+ * name that is neither a type nor implemented by `runtime`, `missing` if it
+ * drops a published name, `ok` otherwise.
+ */
+export function coverage(baseline: string, candidate: string, runtime = ''): 'ok' | 'missing' | 'phantom' {
+  const base = declaredNames(baseline);
+  const cand = declaredNames(candidate);
+  for (const name of cand.names) {
+    if (base.names.has(name) || cand.typeNames.has(name)) continue;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (!new RegExp(`\\b${escaped}\\b`).test(runtime)) return 'phantom';
+  }
+  for (const name of base.names) if (!cand.names.has(name)) return 'missing';
+  return 'ok';
+}
+
+/** Whether `candidate` can stand in for `baseline` without adding or dropping API. */
+export function coversBaseline(baseline: string, candidate: string, runtime = ''): boolean {
+  return coverage(baseline, candidate, runtime) === 'ok';
+}
+
+/**
+ * Overwrite the entry and subpath `.d.ts` files (already extracted from the
+ * npm tarball, under `pkgDir`) with the same relative paths' content from the user's
  * `chore/ts-doc` fork branch, when that branch exists for this repo, ships
  * the file, AND doesn't drop any name the published `.d.ts` declares — a PR
  * branch can go stale relative to a package that's since shipped new API
@@ -215,15 +234,42 @@ export function coversBaseline(baseline: string, candidate: string): boolean {
  * from the emit-tsdoc run, and a stale branch must never win over a fresher
  * published one.
  */
-async function preferTsDocBranch(pkgDir: string, pkg: Pkg, absPath: string): Promise<void> {
+async function preferTsDocBranch(
+  pkgDir: string,
+  pkg: Pkg,
+  entryDts: string | null,
+  subpathDts: string[],
+): Promise<void> {
   const repo = repoNameOf(pkg);
   if (!repo) return;
-  const relPath = relative(pkgDir, absPath);
-  const content = await fetchRawFile(`${TSDOC_FORK_OWNER}/${repo}`, TSDOC_BRANCH, relPath);
-  if (content === null) return;
-  const existing = await readFile(absPath, 'utf8');
-  if (!coversBaseline(existing, content)) return;
-  await writeFile(absPath, content);
+  const runtime = await runtimeSource(pkgDir);
+  const swap = async (absPath: string): Promise<'ok' | 'missing' | 'phantom' | null> => {
+    const content = await fetchRawFile(`${TSDOC_FORK_OWNER}/${repo}`, TSDOC_BRANCH, relative(pkgDir, absPath));
+    if (content === null) return null;
+    const result = coverage(await readFile(absPath, 'utf8'), content, runtime);
+    if (result === 'ok') await writeFile(absPath, content);
+    return result;
+  };
+  // an entry carrying unpublished API means the branch is ahead of or diverged from this release
+  if (entryDts && (await swap(entryDts)) === 'phantom') return;
+  for (const dts of subpathDts) await swap(dts);
+}
+
+/** Every published `.js`/`.cjs`/`.mjs` file under `pkgDir`, concatenated. */
+async function runtimeSource(pkgDir: string): Promise<string> {
+  const out: string[] = [];
+  const walk = async (dir: string): Promise<void> => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const abs = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'node_modules') await walk(abs);
+      } else if (/\.(c|m)?js$/.test(entry.name)) {
+        out.push(await readFile(abs, 'utf8'));
+      }
+    }
+  };
+  await walk(pkgDir);
+  return out.join('\n');
 }
 
 // ---- dependency vendoring -------------------------------------------------
@@ -342,8 +388,7 @@ export async function fetchPackage(name: string): Promise<FetchedPackage> {
 
     const entryDts = resolveEntryDts(pkgDir, pkg);
     const subpaths = resolveSubpaths(pkgDir, pkg, pkg.name ?? name);
-    if (entryDts) await preferTsDocBranch(pkgDir, pkg, entryDts);
-    for (const sp of subpaths) await preferTsDocBranch(pkgDir, pkg, sp.dts);
+    await preferTsDocBranch(pkgDir, pkg, entryDts, subpaths.map((sp) => sp.dts));
 
     return {
       name: pkg.name ?? name,
