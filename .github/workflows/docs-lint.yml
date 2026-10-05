@@ -40,6 +40,9 @@ on:
       - 'scripts/inject-content-signals.ts'
       - 'scripts/agent-skills-shared.ts'
       - 'scripts/schemas/**'
+      - 'scripts/generate-mcp-corpus.ts'
+      - 'scripts/mcp-corpus/package.json'
+      - 'scripts/mcp-corpus/package-lock.json'
   pull_request:
     paths:
       - 'content/**'
@@ -67,6 +70,9 @@ on:
       - 'scripts/inject-content-signals.ts'
       - 'scripts/agent-skills-shared.ts'
       - 'scripts/schemas/**'
+      - 'scripts/generate-mcp-corpus.ts'
+      - 'scripts/mcp-corpus/package.json'
+      - 'scripts/mcp-corpus/package-lock.json'
   workflow_dispatch:
 
 jobs:
@@ -108,6 +114,33 @@ jobs:
         run: npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx
       - name: Check include directives resolve
         run: "$RUNNER_TEMP/checker/node_modules/.bin/tsx scripts/check-includes.ts"
+
+  mcp-corpus:
+    name: MCP corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Same isolated-install pattern as internal-links: the generator imports
+      # scripts/helpers.ts, which imports github-slugger. See that job for why
+      # a plain `npm install` doesn't work here. Installed from
+      # scripts/mcp-corpus's lockfile, exactly as the index workflow's corpus
+      # job does: a different github-slugger could slug a heading differently
+      # here than there.
+      - name: Install generator deps
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --prefix scripts/mcp-corpus
+          mkdir -p node_modules
+          cp -R scripts/mcp-corpus/node_modules/. node_modules/
+      # The "Build MCP search index" workflow runs this same generator, but
+      # only after a merge to `published`, where a failure means no fresh index.
+      # Running it here surfaces its hard errors — notably two content files
+      # slugging to one URL — on the PR that introduces them.
+      - name: Generate the MCP corpus
+        run: ./node_modules/.bin/tsx scripts/generate-mcp-corpus.ts
 
   doctypes:
     name: doctype & product invariants

@@ -1,11 +1,12 @@
 name: Watch upstream releases
 
-# The docs changelog (content/release-overview/index.mdx) is a hand-curated record of
-# module changes, but humans shouldn't have to notice upstream releases by
+# The docs changelogs (content/{pear,bare,p2p}/release-overview/index.mdx) are a
+# hand-curated record of module changes, but humans shouldn't have to notice upstream releases by
 # hand. This job polls the watched repos (scripts/upstream-releases.json) on a
 # schedule; when a repo has releases/tags newer than the recorded baseline
 # (scripts/upstream-releases-state.json), the checker inserts DRAFT entries
-# under the changelog's `changelog:insert` marker and this workflow opens a
+# under each changelog's `changelog:insert` marker (the watch list's `section`
+# picks which product's page a repo's drafts land in) and this workflow opens a
 # review PR. A docs human curates the wording — flags Breaking items, adds
 # migration links — before merge.
 #
@@ -113,7 +114,7 @@ jobs:
       # holepunchto/react-native-bare-kit's documented surface has moved past
       # what's committed in src/lib/bare-*-docs-states.json — it never writes
       # or opens a PR. A new doc-state needs a human to add matching
-      # <VersionSection>/<Since>/<Until> markers in content/reference/bare/*,
+      # <VersionSection>/<Since>/<Until> markers in content/bare/reference/bare/*,
       # which an unattended commit can't do, so this must never fail the job
       # (continue-on-error, no strict mode). See
       # docs/plans/DOCS-VERSIONING-DESIGN.md and scripts/gen-bare-docs-states.ts.
@@ -169,7 +170,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- content/release-overview/index.mdx scripts/upstream-releases-state.json; then
+          if git diff --quiet -- 'content/*/release-overview/index.mdx' scripts/upstream-releases-state.json; then
             echo "No new releases; nothing to PR."
             exit 0
           fi
@@ -178,7 +179,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add content/release-overview/index.mdx scripts/upstream-releases-state.json
+          git add 'content/*/release-overview/index.mdx' scripts/upstream-releases-state.json
           git commit -m "chore(changelog): draft entries for new upstream releases"
           # Lease-guarded push (DRAFTS_REMOTE_SHA set by the resume step):
           # fast-forwards a resumed open-PR branch, replaces a stale branch
@@ -188,18 +189,18 @@ jobs:
 
           # List every draft heading the branch adds over published (not just
           # this run's), so an updated PR body stays complete.
-          releases=$(git diff origin/published..HEAD -- content/release-overview/index.mdx \
+          releases=$(git diff origin/published..HEAD -- 'content/*/release-overview/index.mdx' \
             | grep '^+### ' | sed 's/^+### /- /' || true)
 
           # Tripwire: the CLI reference pins its "Command source on GitHub"
           # links to `main` until Pear v3 is tagged (see the maintainer note
-          # at the top of content/reference/pear/cli.mdx). Surface the re-pin
+          # at the top of content/pear/reference/pear/cli.mdx). Surface the re-pin
           # chore the moment a v3 tag shows up. NOTE: the literal "pear (CLI)"
           # here must match the `name` for holepunchto/pear in
           # scripts/upstream-releases.json — keep them in sync.
           repin=""
           if printf '%s\n' "${releases}" | grep -qE '^- pear \(CLI\) — v3([^0-9]|$)'; then
-            repin="⚠️ **A pear v3 tag was detected.** Re-pin the \"Command source on GitHub\" links in \`content/reference/pear/cli.mdx\` from \`main\` to the new tag (see the maintainer note at the top of that file), then remove the note."
+            repin="⚠️ **A pear v3 tag was detected.** Re-pin the \"Command source on GitHub\" links in \`content/pear/reference/pear/cli.mdx\` from \`main\` to the new tag (see the maintainer note at the top of that file), then remove the note."
           fi
 
           title="Changelog: curate draft entries for new upstream releases"
