@@ -96,6 +96,18 @@ export const bareTree: Node[] = [
         ],
       },
       {
+        type: 'folder',
+        name: 'Add on-device AI',
+        index: { type: 'page', name: 'Add on-device AI', url: '/bare/how-to/add-on-device-ai' },
+        children: [
+          {
+            type: 'page',
+            name: 'Build a local AI chat TUI with QVAC',
+            url: '/bare/how-to/add-on-device-ai/build-a-local-ai-chat-tui-with-qvac',
+          },
+        ],
+      },
+      {
         type: 'page',
         name: 'Migrate a Node.js app to Bare',
         url: '/bare/how-to/migrate-a-nodejs-app-to-bare',

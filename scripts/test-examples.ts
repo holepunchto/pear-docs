@@ -4,9 +4,16 @@
  *
  * Unlike `check-examples.ts` (which derives scenarios from doc fences), this
  * runner is driven by an explicit manifest over the example app directories.
- * It launches each terminal `bare` app exactly as the docs describe, asserts
- * the known startup output, threads captured keys/topics between apps, then
- * tears everything down.
+ * Most scenarios launch a terminal `bare` app exactly as the docs describe,
+ * assert the known startup output, thread captured keys/topics between apps,
+ * then tear everything down. One exception: `hello-pear-qvac-tui` can't boot
+ * live (needs a ~1GB model download and ideally a GPU), so it instead runs
+ * the vendored app's own headless test suite (`bare test/index.js`) and
+ * asserts that test framework's pass summary — see the comment on that
+ * scenario below. It's also the one scenario NOT wired into
+ * `.github/workflows/examples.yml`'s CI matrix — see that file's header
+ * comment for why (upstream already runs this exact suite on every push,
+ * across five platforms).
  *
  * Each app is run with its own directory as cwd (`bare index.js`), so the
  * relative paths the apps use for storage (`./storage`, `./*-storage`) and
@@ -79,12 +86,23 @@ interface Scenario {
   /** Generated dirs (relative to scenario `dir`) removed after the run. */
   artifacts: string[];
   steps: Step[];
+  /**
+   * Set when this scenario is deliberately excluded from
+   * `.github/workflows/examples.yml`'s matrix — the canonical record of why,
+   * so the exclusion reads as "on purpose" rather than the silent gap the
+   * workflow's own header warns a forgotten scenario leaves. The matrix
+   * itself is still hand-maintained (see that header), so this only
+   * guarantees an absence is *intentional* where it's set — it doesn't
+   * guarantee every scenario without it is actually in the matrix.
+   */
+  ciSkipReason?: string;
 }
 
 const CONNECT = 'how-to/connect-to-peers';
 const STORE = 'how-to/store-and-replicate';
 const STREAM = 'how-to/stream-and-share-media';
 const HOWTO = 'how-to';
+const AI = 'how-to/add-on-device-ai';
 const GETTING = 'getting-started';
 
 const SCENARIOS: Scenario[] = [
@@ -158,6 +176,47 @@ const SCENARIOS: Scenario[] = [
         app: '.',
         cmd: 'bare bin.mjs --no-updates',
         expect: 'CLI ready.',
+        timeoutMs: 45_000,
+      },
+    ],
+  },
+  {
+    // hello-pear-qvac-tui: hello-pear-bare plus a second worker
+    // (workers/qvac.js) that loads an LLM via @qvac/inference and a bare-tui
+    // UI on top. Unlike every other scenario here, this one does NOT boot
+    // `bin.mjs` live — a real boot downloads a ~1GB GGUF model and, for an
+    // actual answer, wants a GPU.
+    //
+    // Upstream already solves this for its own tests: `test/index.js` drives
+    // the real App/UI classes against a fake inference client (no worker, no
+    // model, no GPU — see that file's `fakeInference()`), which is exactly
+    // the coverage this needs: the worker protocol, IPC framing, and UI state
+    // machine, without a model load. So this scenario runs that test file
+    // directly instead of a live boot, and asserts brittle's TAP pass summary
+    // rather than an app startup log.
+    //
+    // Available for local/manual use:
+    //   npm run test:examples -- --filter=hello-pear-qvac-tui
+    // See `ciSkipReason` below for why it stays out of CI.
+    id: 'hello-pear-qvac-tui',
+    dir: `${AI}/hello-pear-qvac-tui`,
+    installs: ['.'],
+    artifacts: [],
+    ciSkipReason:
+      "upstream's own CI already runs this exact, unmodified test file on " +
+      'every push to hello-pear-qvac-tui\'s main, across five platforms — ' +
+      'running it again here would duplicate that coverage. It also ' +
+      "wouldn't catch anything our own vendoring could break: the one file " +
+      'we deviate on, workers/main.js, is outside this test\'s require ' +
+      "graph (ui/app.js and ui/transcript.js only). check-workers-in-sync.ts " +
+      'and watch-boilerplates.yml already guard the vendored snapshot itself.',
+    steps: [
+      {
+        kind: 'run',
+        process: 'app',
+        app: '.',
+        cmd: 'bare test/index.js',
+        expect: '# ok',
         timeoutMs: 45_000,
       },
     ],
@@ -587,11 +646,16 @@ function applyCaptures(
 function npmInstall(appDir: string): void {
   if (existsSync(join(appDir, 'node_modules'))) return;
   process.stdout.write(`    npm install (${appDir.replace(EXAMPLES_DIR + '/', '')}) ... `);
+  // Most scenarios install a handful of KB in well under a minute; hello-pear-qvac-tui's
+  // full dependency tree (QVAC's native prebuilds included) is the first big enough for a
+  // slow/flaky registry mirror to plausibly hang — fail fast instead of riding out the job's
+  // own multi-hour timeout.
   const r = spawnSync(RESOLVED_NPM, ['install', '--no-audit', '--no-fund'], {
     cwd: appDir,
     env: childEnv(),
     stdio: ['ignore', 'ignore', 'pipe'],
     encoding: 'utf-8',
+    timeout: 5 * 60_000,
   });
   if (r.status !== 0) {
     process.stdout.write('FAILED\n');
@@ -857,7 +921,8 @@ function printHelp(): void {
   console.log(`\nUsage: test-examples [--filter=<scenario-id>]
 
 Runs the terminal example apps under examples/ on the latest Bare runtime and
-asserts their known startup output. Scenarios:
+asserts their known startup output (one scenario, hello-pear-qvac-tui, instead
+runs its own headless test suite — see the top-of-file comment). Scenarios:
 ${SCENARIOS.map((s) => `  - ${s.id}`).join('\n')}
 
 Required on PATH: bash, npm, bare (npm i -g bare-runtime).
