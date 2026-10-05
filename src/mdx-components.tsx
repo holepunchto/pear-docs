@@ -1,5 +1,6 @@
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import { ImageZoom } from 'fumadocs-ui/components/image-zoom';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 import type { MDXComponents } from 'mdx/types';
 import type { ImgHTMLAttributes } from 'react';
 import { ImageGrid } from '@/components/ImageGrid';
@@ -49,6 +50,9 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Mermaid,
     ProductRelationship,
     Status,
+    // Collapsible sections — long reference tables and FAQ-style Q&A.
+    Accordion,
+    Accordions,
     // Platform version annotations — see src/components/version/index.tsx
     Since,
     Until,

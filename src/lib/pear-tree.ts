@@ -83,6 +83,11 @@ export const pearTree: Node[] = [
           },
           {
             type: 'page',
+            name: 'Pear mobile architecture',
+            url: '/pear/explanation/pear-mobile-architecture',
+          },
+          {
+            type: 'page',
             name: 'Workers',
             url: '/pear/explanation/workers',
           },
@@ -162,6 +167,11 @@ export const pearTree: Node[] = [
                 type: 'page',
                 name: 'Deploy your application',
                 url: '/pear/how-to/operate-an-app/manual-deployment/deployment',
+              },
+              {
+                type: 'page',
+                name: 'Deploy your mobile application',
+                url: '/pear/how-to/operate-an-app/manual-deployment/mobile',
               },
               {
                 type: 'page',

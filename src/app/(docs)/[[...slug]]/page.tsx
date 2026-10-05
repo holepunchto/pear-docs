@@ -1,10 +1,17 @@
 import { getLLMText, source } from '@/lib/source';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
+import {
+  DocsBody,
+  DocsDescription,
+  DocsPage,
+  DocsTitle,
+  PageLastUpdate,
+} from 'fumadocs-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/mdx-components';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { CopyPageButton, ViewOptions } from '@/components/ai/page-actions';
+import { PageFeedback } from '@/components/feedback';
 import { UpstreamVersion } from '@/components/UpstreamVersion';
 import { VersionFilter } from '@/components/version/filter';
 import { VersionDropdown } from '@/components/version/dropdown';
@@ -76,6 +83,20 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
           })}
         />
       </DocsBody>
+      {/*
+        `lastModified` comes from the `lastModified` fumadocs-mdx plugin
+        (source.config.ts) — a real git commit date per file, not a stub.
+        Absent only if `git log` itself failed (see gitLastModified's
+        fallbacks), so this is belt-and-braces rather than the common case.
+      */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-t pt-4 mt-2">
+        {page.data.lastModified ? (
+          <PageLastUpdate date={page.data.lastModified} className="text-sm text-fd-muted-foreground" />
+        ) : (
+          <div />
+        )}
+        <PageFeedback pageUrl={page.url} />
+      </div>
       {/*
         Applies the `?v=` selection to gated blocks, gated code-fence rows, and
         the TOC. A no-op on pages with nothing gated, which is most of them.
