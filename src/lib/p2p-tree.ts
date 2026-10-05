@@ -50,17 +50,17 @@ export const p2pTree: Node[] = [
         children: [
           {
             type: 'page',
-            name: 'Start from the hello-pear-electron template',
+            name: 'Start a desktop app from the hello-pear-electron template',
             url: '/p2p/getting-started/from-a-template/start-from-hello-pear-electron',
           },
           {
             type: 'page',
-            name: 'Start from the hello-pear-bare template',
+            name: 'Start a terminal app from the hello-pear-bare template',
             url: '/p2p/getting-started/from-a-template/start-from-hello-pear-bare',
           },
           {
             type: 'page',
-            name: 'Start from the hello-pear-react-native template',
+            name: 'Start a mobile app from the hello-pear-react-native template',
             url: '/p2p/getting-started/from-a-template/start-from-hello-pear-react-native',
           },
         ],
