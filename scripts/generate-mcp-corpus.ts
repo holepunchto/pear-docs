@@ -221,7 +221,11 @@ function toProse(rich: string): string {
     // identifiers like pear_run, snake_case and __proto__ survive intact — a
     // `[*_]{1,3}` rule splits them mid-word. Genuine _underscore emphasis_ in
     // prose just keeps its literal underscores, which is harmless to embed.
-    .replace(/\*{1,3}([^*\n]+?)\*{1,3}/g, '$1')
+    // The emphasized text must start and end on a non-space, as in CommonMark:
+    // otherwise a `* ` list bullet pairs with the bold that follows it
+    // (`* **Persistence**:` came out as `Persistence**:`), and `2 * 3 * 4` loses
+    // its asterisks.
+    .replace(/\*{1,3}(?=\S)([^*\n]*?\S)\*{1,3}/g, '$1')
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
