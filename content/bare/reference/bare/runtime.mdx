@@ -42,6 +42,15 @@ documented below from the README/threat-model instead, marked `<Since v="1.32.0"
 by the release that shipped them. Re-run `npm run gen:bare-docs-states` on future
 Bare releases to check whether the `.d.ts` catches up; if it does, this note can go.
 
+Re-ran `npm run gen:bare-docs-states` after Bare shipped 1.33.4 -> 1.34.1: the
+1.32.0 doc-state's release list grew to include them with an empty delta again
+(`npm/index.d.ts` did not change). 1.34's real news is the C embedding API
+(`bare_poll()`, `bare_attach()`, `bare_detach()` in `include/bare.h`) and the
+platform floors (macOS 13.0 and iOS 15.0 as of 1.34.1). The C API is not in the
+.d.ts, so the doc-state machinery cannot see it and there is no registered
+doc-state to badge it against: it is marked in prose ("From Bare 1.34.0"), like
+the 1.33.0 additions to the embedder context API. Do not add a Since badge for 1.34.0.
+
 1.32.0's delta is otherwise narrow: `Thread`'s constructor and `Thread.create()`
 gained overloads so `source` can be passed positionally
 (`new Thread(filename, source[, options])`) or as a bare callback, and
@@ -237,7 +246,55 @@ bare_teardown(bare, UV_RUN_DEFAULT, &exit_code);
 
 If `source` is `NULL`, the contents of `filename` are read at runtime. For platform shells that wrap this API, see [`bare-ios`](https://github.com/holepunchto/bare-ios) and [`bare-android`](https://github.com/holepunchto/bare-android), or use [`bare-kit`](/bare/reference/bare/bare-kit), which packages embedding behind a worklet API.
 
+From Bare 1.34.0, an embedder whose thread belongs to a host loop, such as the run loop of a user interface, drives Bare with `bare_poll()` instead of `bare_run()`. It runs the loop without blocking and reports how long the host may sleep before calling again:
+
+```c
+int timeout;
+bare_poll(bare, &timeout);
+```
+
+`timeout` is in milliseconds. A timeout of `-1` means the host may sleep until the loop's backend descriptor, as given by `uv_backend_fd()`, becomes readable. `bare_poll()` returns zero once the process has exited. Tear the process down at that point rather than polling it again.
+
+<Callout type="warn">
+Do not sleep on the timeout alone. Work can arrive from another thread while the host sleeps, and a host that waits only for the timeout to elapse will not notice it until then. Wait on the descriptor from `uv_backend_fd()` as well, and wake on whichever comes first.
+</Callout>
+
 To hand addons a native handle that only the embedder can produce, such as the Android `JavaVM *`, publish it with `bare_context_set()` before the first `bare_load()`. See the [embedder context API](/bare/reference/bare/embedder-context).
+
+### Attaching
+
+From Bare 1.34.0, `bare_attach()` and `bare_detach()` let embedder code call into JavaScript from a place Bare did not call. `bare_run()` attaches the process to the thread while it runs, and so does loading an addon, so native code reached through either is already attached. A call the embedder makes itself, such as `js_call_function()` from a host callback, is not, so attach the process around it and run the loop once afterwards:
+
+```c
+bare_t *previous;
+bare_attach(bare, &previous);
+
+js_call_function(env, receiver, fn, argc, argv, &result);
+
+bare_detach(bare, previous);
+
+bare_run(bare, UV_RUN_NOWAIT);
+```
+
+Attachments nest, so detach on the same thread and in the reverse order of attaching. A process that has terminated or exited cannot be attached. The [embedder context API](/bare/reference/bare/embedder-context#attaching) documents both functions in full, and why `bare_context_get()` depends on which process is attached.
+
+## Supported platforms
+
+Bare sorts the platforms it targets into two tiers. **Tier 1** targets have prebuilds, and a compilation or test failure on one fails the project's CI. **Tier 2** targets are known to work, but are not compiled or tested automatically, so a regression can slip into a release and counts as a bug. A target can move between tiers in a minor release, and that is not a breaking change.
+
+| Platform | Architectures | Minimum | Tier |
+| --- | --- | --- | --- |
+| Linux (glibc) | `arm64`, `x64` | Linux 5.15, GNU C Library 2.35 | 1 |
+| Linux (glibc) | `riscv64` | Linux 6.8, GNU C Library 2.39 | 2 |
+| Linux (musl) | `arm`, `arm64`, `ia32`, `x64`, `mips`, `mipsel` | Linux 5.10, musl 1.2 | 2 |
+| Linux (musl) | `riscv64` | Linux 6.6, musl 1.2 | 2 |
+| Android | `arm`, `arm64`, `ia32`, `x64` | Android 10 | 1 |
+| macOS | `arm64`, `x64` | macOS 13.0 | 1 |
+| iOS | `arm64`, `x64` (simulator only) | iOS 15.0 | 1 |
+| Windows | `x64` | Windows 10 | 1 |
+| Windows | `arm64` | Windows 11 | 1 |
+
+The macOS and iOS minimums rose in Bare 1.34.1, from 12.0 and 14.0. A project that ships to macOS 12 or iOS 14 stays on Bare 1.34.0 or earlier. The table follows [Bare's README](https://github.com/holepunchto/bare#platform-support), which is the authority if the two ever differ.
 
 ## See also
 
