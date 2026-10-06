@@ -46,7 +46,7 @@ A worklet runs a Bare entry script on a background thread. Create one, start it 
 - `new Worklet(id[, options])` <Since v="0.10.5" />— create a worklet under a string `id`. When a worklet with an `id` starts, any earlier worklet holding the same `id` is terminated, so at most one live worklet owns an `id`. `id` must be a string.
 
 <VersionGate since="0.9.2">
-`options` is an object with `memoryLimit` (a number, the memory limit of the worklet's JavaScript heap, where `0` takes the default) and `assets` (a string, the directory that assets bundled with the worklet are unpacked into; see [Loading a bundle](#loading-a-bundle)). Both are optional. <Since v="0.9.2" />
+`options` is an object with `memoryLimit` (a number, the memory limit of the worklet's JavaScript heap, where `0` takes the default) and `assets` (a string, the directory that assets bundled with the worklet are unpacked into, which the worklet needs both read and write access to; see [Loading a bundle](#loading-a-bundle)). Both are optional, and without `assets` a bundle that references an asset fails at runtime. <Since v="0.9.2" />
 </VersionGate>
 
 ### Actions
@@ -221,6 +221,37 @@ On iOS and Android, IPC operations are **non-blocking** regardless of which API 
 - `close()`— close the IPC connection.
 
 For typed, schema-generated messaging over this channel instead of raw bytes, layer [`bare-rpc`](/bare/reference/modules/bare-modules) on top—see [Type a native RPC bridge](/bare/how-to/run-on-native/type-a-native-rpc-bridge).
+
+## C API
+
+The iOS and Android bindings, and the Linux and Windows builds of `libbare-kit`, sit on a C API declared in [`shared/worklet.h`](https://github.com/holepunchto/bare-kit/blob/main/shared/worklet.h) and [`shared/ipc.h`](https://github.com/holepunchto/bare-kit/blob/main/shared/ipc.h). Use it to host worklets from your own C or C++ code. Functions return `0` on success and a negative value on failure, except where noted.
+
+### Worklet
+
+```c
+typedef struct bare_worklet_options_s {
+  size_t memory_limit;
+  const char *assets;
+} bare_worklet_options_t;
+```
+
+`memory_limit` is the memory limit of each JavaScript heap in bytes, applied to each thread individually. By default it is inferred from the physical memory of the device. `assets` is the directory that bundled assets are unpacked into, which the worklet needs read and write access to. By default assets cannot be referenced, and doing so is a runtime error.
+
+- `bare_worklet_optimize_for_memory(bool enabled)`— trade performance for memory. It must be configured before the first worklet starts.
+- `bare_worklet_alloc(bare_worklet_t **result)`, `bare_worklet_init(bare_worklet_t *worklet, const bare_worklet_options_t *options)`, `bare_worklet_destroy(bare_worklet_t *worklet)`— allocate, initialize and release a worklet. `options` may be `NULL`, and its `assets` string is copied. `bare_worklet_destroy()` releases what the worklet holds, including its IPC descriptors, but does not free the struct that `bare_worklet_alloc()` returned.
+- `bare_worklet_start(bare_worklet_t *worklet, const char *filename, const uv_buf_t *source, int argc, const char *argv[])`— start the worklet on a new thread, and return once it is running. `source` may be `NULL`, in which case the worklet reads `filename` itself. `filename`, `source` and `argv` are not copied, so they must stay valid for as long as the worklet runs.
+- `bare_worklet_suspend(worklet, int linger)`, `bare_worklet_resume(worklet)`, `bare_worklet_wakeup(worklet, int deadline)`, `bare_worklet_terminate(worklet)`— the lifecycle, equivalent to [`bare_suspend()`, `bare_resume()`, `bare_wakeup()` and `bare_terminate()`](/bare/reference/bare/runtime#suspension) on the worklet's process. A negative `linger` or `deadline` takes the platform default.
+- `bare_worklet_on_suspend()`, `bare_worklet_on_wakeup()`, `bare_worklet_on_idle()`, `bare_worklet_on_resume()`— `(worklet, cb, data)`, set the listener for the matching event. The listener types are [`bare_suspend_cb`, `bare_wakeup_cb`, `bare_idle_cb` and `bare_resume_cb`](/bare/reference/bare/runtime#listeners).
+- `bare_worklet_get_data(worklet)`, `bare_worklet_set_data(worklet, void *data)`— a pointer of your own to keep on the worklet.
+- `bare_worklet_push(worklet, bare_worklet_push_t *req, const uv_buf_t *payload, bare_worklet_push_cb cb)`— [push](#push) `payload` to the worklet. `req` is yours to allocate, and it and `payload` must stay valid until `cb` runs. `cb` is `void (*)(bare_worklet_push_t *req, const char *error, const uv_buf_t *reply)`, where `error` is `NULL` on success and `reply` is `NULL` when there is no reply. `bare_worklet_push_get_data()` and `bare_worklet_push_set_data()` keep a pointer of your own on `req`.
+
+### IPC
+
+- `bare_ipc_alloc(bare_ipc_t **result)`, `bare_ipc_init(bare_ipc_t *ipc, bare_worklet_t *worklet)`, `bare_ipc_destroy(bare_ipc_t *ipc)`— open an IPC channel to a started worklet, and close it. `bare_ipc_get_incoming()` and `bare_ipc_get_outgoing()` return its descriptors.
+- `bare_ipc_read(bare_ipc_t *ipc, void **data, size_t *len)`— read up to `BARE_IPC_READ_BUFFER_SIZE` (64 KiB) without blocking. On success it stores a pointer to the data in `*data` and its length in `*len`, which is `0` once the worklet has closed its end. The buffer belongs to `ipc` and is overwritten by the next read.
+- `bare_ipc_write(bare_ipc_t *ipc, const void *data, size_t len)`— write without blocking, and return the number of bytes written, which may be fewer than `len`.
+- `bare_ipc_read()` and `bare_ipc_write()` return `bare_ipc_would_block` (`-1`) when they cannot proceed yet, and `bare_ipc_error` (`-2`) on an error.
+- `bare_ipc_poll_alloc()`, `bare_ipc_poll_init(bare_ipc_poll_t *poll, bare_ipc_t *ipc)`, `bare_ipc_poll_destroy()`, `bare_ipc_poll_start(poll, int events, bare_ipc_poll_cb cb)`, `bare_ipc_poll_stop()`— call `cb(poll, events)` when the channel becomes readable or writable. `events` is `bare_ipc_readable`, `bare_ipc_writable` or both ORed. `bare_ipc_poll_get_ipc()`, `bare_ipc_poll_get_data()` and `bare_ipc_poll_set_data()` return the channel and keep a pointer of your own.
 
 ## Loading a bundle
 
