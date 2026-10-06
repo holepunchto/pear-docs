@@ -23,7 +23,7 @@ plan for versioning these three pages). */}
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
 <Callout type="info">
-This page tracks the Bare CLI surface as of Bare 1.33.3 (unchanged since 1.28.1). `--inspect-port` and `--expose-gc` are annotated below with the release that added them.
+This page tracks the Bare CLI surface as of Bare 1.34.1 (the flags are unchanged since 1.28.1). `--inspect-port` and `--expose-gc` are annotated below with the release that added them.
 </Callout>
 
 The `bare` command runs a script on the [Bare runtime](/bare/reference/bare/runtime) or starts a REPL. Install it globally with:
@@ -47,7 +47,7 @@ Evaluate a script, or start a REPL session if no script is provided.
   [...args]               Additional arguments made available to the script
 ```
 
-Arguments after `filename` are passed through to the script and are available as [`Bare.argv`](/bare/reference/bare/runtime#bareargv).
+Arguments after `filename` are passed through to the script and are available as [`Bare.argv`](/bare/reference/bare/runtime#bareargv). `filename` is resolved against the current directory, and `Bare.argv` becomes the executable, the resolved path of `filename`, and then `...args`.
 
 ### Flags
 
@@ -61,9 +61,21 @@ Arguments after `filename` are passed through to the script and are available as
   --help|-h               Show help
 ```
 
+`--print` wraps its script as `console.log(<script>)`, so it prints the value of an expression. `--version` prints [`Bare.version`](/bare/reference/bare/runtime#bareversion), which has a leading `v`. An unknown flag or argument prints `unknown flag: <name>` or `unknown argument: <value>` to `stderr`, and an invalid flag prints `invalid flag: <name>`. Each exits with status `1`.
+
+### Inspector
+
+`--inspect` starts the inspector on `--inspect-port` as the script starts. Where the platform has `SIGUSR1`, sending that signal to a running `bare` process starts the inspector too, without `--inspect`. The inspector server doesn't keep the process alive.
+
+### Environment
+
+If `BARE_CHANNEL_FD` is a file descriptor and `BARE_CHANNEL_SERIALIZATION_MODE` is `binary`, `bare` opens that descriptor as an IPC pipe and sets [`Bare.IPC`](/bare/reference/bare/runtime#bareipc) to it, so a parent process can talk to the script it spawned. Requires Bare `>=1.28.7`. With anything else, `Bare.IPC` stays `null`.
+
 ## Module loading
 
-The specified `filename` (or inline `--eval` script) is run with `Module.load()`, which resolves both CommonJS and ESM and provides interop between them. For the supported formats and resolution rules, see [`bare-module`](https://github.com/holepunchto/bare-module).
+The specified `filename` (or inline `--eval` script) is run with `Module.load()`, which resolves both CommonJS and ESM and provides interop between them. An inline script is resolved against the current directory. For the supported formats and resolution rules, see [`bare-module`](https://github.com/holepunchto/bare-module).
+
+With no `filename`, `--eval` or `--print`, `bare` starts a REPL on the global scope, with `require()` resolving against the current directory. The REPL exits when you close it, or once the inspector server has closed if one is running.
 
 ## See also
 
