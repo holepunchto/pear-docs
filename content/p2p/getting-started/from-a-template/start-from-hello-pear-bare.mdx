@@ -77,7 +77,7 @@ npm start -- --updates
 | [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/app.js) | The `App` class (a [`ready-resource`](https://github.com/holepunchto/ready-resource)). Spawns the Bare worker with [`PearRuntime.run`](/pear/reference/pear/runtime#running-workers), wraps its IPC in a [`FramedStream`](https://www.npmjs.com/package/framed-stream), and turns updater messages into events. | Sometimes—app lifecycle. |
 | [`workers/main.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/workers/main.js) | The Bare [worker](/pear/explanation/workers) that owns the peer-to-peer code and the [`pear-runtime`](/pear/reference/pear/runtime) updater. | Yes—this is your backend. |
 | [`package.json`](https://github.com/holepunchto/hello-pear-bare/blob/main/package.json) | App metadata, scripts, the `upgrade` link, and the per-platform `make:*` build targets. | Yes—branding and release link. |
-| [`scripts/make.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/scripts/make.js) | Detects the host OS and architecture and runs the matching `make:` target. | Rarely. |
+| [`scripts/make.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/scripts/make.js) | The `npm run make` builder—runs [`bare-build`](https://github.com/holepunchto/bare-build) for the host OS and architecture (or the target in `HOST`), and signs the binary when signing credentials are set. | Rarely. |
 | [`test/index.js`](https://github.com/holepunchto/hello-pear-bare/blob/main/test/index.js) | The [`brittle`](https://github.com/holepunchto/brittle) test entry, run by `npm test`. | Yes—your tests. |
 
 Like the Electron template, the peer-to-peer logic lives in a Bare [worker](/pear/explanation/workers); `bin.mjs` and `app.js` are the host that spawns it and drives updates. There's no renderer or preload bridge—your "frontend" is the terminal.
@@ -90,14 +90,14 @@ Upstream ships the worker as the [`hello-pear-worker`](https://github.com/holepu
 
 The template is three layers: `bin.mjs` (entry + CLI), `app.js` (the host that runs the worker and updater), and the Bare [worker](/pear/explanation/workers) that holds your peer-to-peer code.
 
-`bin.mjs` is the Bare entry process. It parses three flags with [`paparam`](https://github.com/holepunchto/paparam)—`--version`, `--storage`, and `--no-updates`—then constructs the `App`:
+`bin.mjs` is the Bare entry process. It parses two flags with [`paparam`](https://github.com/holepunchto/paparam)—`--storage` and `--no-updates`—then constructs the `App`:
 
-```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.mjs#L13-L19 title="bin.mjs"
+```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.mjs#L13-L18 title="bin.mjs"
 ```
 
 It resolves a storage directory, then hands the runtime configuration to a `new App(...)`. In development (launched with `bare`) storage is a temporary directory; a packaged binary uses the persistent per-app directory from [`bare-storage`](/bare/reference/modules/bare-modules), and `--storage` overrides both—see [Storage and distribution](/pear/explanation/storage-and-distribution):
 
-```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.mjs#L28-L41 title="bin.mjs"
+```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.mjs#L23-L37 title="bin.mjs"
 ```
 
 `App` (in `app.js`) is a [`ready-resource`](https://github.com/holepunchto/ready-resource). When it opens, it spawns the Bare worker with [`PearRuntime.run`](/pear/reference/pear/runtime#running-workers)—passing the runtime config as arguments—and wraps the worker's IPC pipe in a [`FramedStream`](https://www.npmjs.com/package/framed-stream):
@@ -107,7 +107,7 @@ It resolves a storage directory, then hands the runtime configuration to a `new 
 
 The worker owns the peer-to-peer code and the [`pear-runtime`](/pear/reference/pear/runtime) updater. It messages the host, and `App` turns those into `updating`, `updated`, and `update-applied` events—which `bin.mjs` logs—applying each downloaded release automatically. `SIGHUP`, `SIGINT`, `SIGQUIT`, and `SIGTERM` handlers call `app.exit()` to close cleanly. For the model behind these updates, see [Pear OTA](/pear/reference/pear/runtime#updates):
 
-```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.mjs#L43-L55 title="bin.mjs"
+```js file=<rootDir>/examples/getting-started/hello-pear-bare/bin.mjs#L39-L51 title="bin.mjs"
 ```
 
 ```mermaid
@@ -149,7 +149,7 @@ See [`app.js`](https://github.com/holepunchto/hello-pear-bare/blob/variant/singl
 
 `bin.mjs` spawns a **detached** updater and returns immediately—the foreground command never blocks on the network:
 
-```js file=<rootDir>/examples/getting-started/hello-pear-bare-daemon/bin.mjs#L50-L57 title="bin.mjs"
+```js file=<rootDir>/examples/getting-started/hello-pear-bare-daemon/bin.mjs#L46-L53 title="bin.mjs"
 ```
 
 `App.spawnUpdater` re-invokes the same executable with a hidden `--updater` flag through [`bare-daemon`](https://github.com/holepunchto/bare-daemon):
@@ -173,7 +173,25 @@ Two steps from [Clone and run](#clone-and-run) behave differently on this branch
 
 ## Build a standalone binary
 
-`npm run make` compiles `bin.mjs` and its dependencies into a single standalone executable with no peer dependencies—users don't need Node.js, Bare, or the [Pear CLI](/pear/reference/pear/cli) installed. `scripts/make.js` detects your OS and architecture and runs the matching target, writing the binary to `out/<platform>-<arch>`; the template ships a target for every supported platform (macOS, Linux, and Windows, each for `arm64`/`x64`). Build each platform's binary on a matching host.
+`npm run make` compiles `bin.mjs` and its dependencies into a single standalone executable with no peer dependencies—users don't need Node.js, Bare, or the [Pear CLI](/pear/reference/pear/cli) installed. `scripts/make.js` detects your OS and architecture and writes the binary to `out/make`, named after `productName || name` from `package.json` (`hello-pear-bare`, plus `.exe` on Windows). The template supports macOS, Linux, and Windows, each for `arm64`/`x64`. To build for a different supported target, set `HOST`:
+
+```bash
+HOST=linux-arm64 npm run make
+```
+
+`npm run make` signs the binary when signing credentials are in the environment—the same ones the [`make-pear-app`](/pear/reference/ci-and-release/github-actions#make-pear-app) GitHub Action provides. With none of them set, the binary is unsigned:
+
+| Variable | Platform | What it does |
+| --- | --- | --- |
+| `MAC_CODESIGN_IDENTITY` | macOS | Signs the executable with this identity and the hardened runtime. |
+| `KEYCHAIN_PROFILE` | macOS | Also submits the signed executable to Apple's notary service with `xcrun notarytool`, using this keychain profile, and waits for the result. Set it together with `MAC_CODESIGN_IDENTITY`. |
+| `WINDOWS_CERT_SHA1` | Windows | Signs the executable with the certificate that has this SHA-1 thumbprint, using `signtool.exe` from the Windows 10 SDK. |
+
+The per-platform `make:<platform>-<arch>` scripts in `package.json` are still there for one-off builds. Each one builds an **unsigned** binary into `out/<platform>-<arch>`, under the fixed name `hello-pear-bare`.
+
+<Callout type="info">
+The variant branches haven't picked up this builder. On [`variant/single-thread`](https://github.com/holepunchto/hello-pear-bare/tree/variant/single-thread) and [`variant/daemon`](https://github.com/holepunchto/hello-pear-bare/tree/variant/daemon), `npm run make` still just runs the matching `make:<platform>-<arch>` script, so it ignores `HOST` and the signing variables and writes an unsigned binary to `out/<platform>-<arch>`.
+</Callout>
 
 See [Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app#standalone-executable-with-bare-build) for what `npm run make` runs under the hood—[`bare-build`](https://github.com/holepunchto/bare-build), the same tool behind any standalone Bare executable, Pear app or not.
 
@@ -196,7 +214,6 @@ The boilerplate is a minimal CLI plus updater; `bin.mjs` holds the CLI and start
  const cmd = command(
    appName,
    summary(pkg.description),
-   flag('--version|-v', 'Print the current version'),
    flag('--storage <dir>', 'custom storage directory'),
 -  flag('--no-updates', 'disable OTA updates for this run')
 +  flag('--no-updates', 'disable OTA updates for this run'),
