@@ -72,7 +72,7 @@ guess their semantics from the property names alone. */}
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-The core JavaScript API of [Bare](/bare/explanation/bare-runtime) is exposed through the global `Bare` namespace. This page documents that surface. For the command-line runner, see the [`bare` CLI](/bare/reference/bare/cli); for the standard-library modules layered on top, see [Bare modules](/bare/reference/modules/bare-modules).
+The core JavaScript API of [Bare](/bare/explanation/bare-runtime) is exposed through the global `Bare` namespace. This page documents that surface. For the command-line runner, see the [`bare` CLI](/bare/reference/bare/cli); for the standard-library modules layered on top, see [Bare modules](/bare/reference/bare/modules).
 
 ## Process properties
 
@@ -212,11 +212,11 @@ Lightweight threads with synchronous joins—similar to Node.js workers but with
 - `thread.join()`— block until the thread exits.
 - `thread.suspend([linger])`, `thread.wakeup([deadline])`, `thread.resume()`, `thread.terminate()`— drive the thread's lifecycle, equivalent to calling the matching `Bare.*` method inside it.
 
-Higher-level worker threads are available in [`bare-worker`](/bare/reference/modules/bare-modules).
+Higher-level worker threads are available in [`bare-worker`](/bare/reference/bare/modules).
 
 ## `Bare.IPC`
 
-Optional streaming communication between an embedder and JavaScript. Defaults to `null`, meaning no streaming channel is set. When an embedder provides one, `Bare.IPC` is a [`bare-stream`](/bare/reference/modules/bare-modules) `Duplex`. The higher-level [`bare-kit`](/bare/reference/bare/bare-kit) IPC abstraction is built on this.
+Optional streaming communication between an embedder and JavaScript. Defaults to `null`, meaning no streaming channel is set. When an embedder provides one, `Bare.IPC` is a [`bare-stream`](/bare/reference/bare/modules) `Duplex`. The higher-level [`bare-kit`](/bare/reference/bare/bare-kit) IPC abstraction is built on this.
 
 ## Embedding
 
@@ -239,10 +239,62 @@ If `source` is `NULL`, the contents of `filename` are read at runtime. For platf
 
 To hand addons a native handle that only the embedder can produce, such as the Android `JavaVM *`, publish it with `bare_context_set()` before the first `bare_load()`. See the [embedder context API](/bare/reference/bare/embedder-context).
 
+### `bare_poll()`
+
+```c
+int
+bare_poll(bare_t *bare, int *timeout);
+```
+
+Runs the event loop without blocking, in place of `bare_run()`, for an embedder whose thread belongs to a host loop, such as the run loop of a user interface. Requires Bare >=1.34.0.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `bare` | `bare_t *` | The process to poll. |
+| `timeout` | `int *` | Receives how long the host may sleep before polling again, in milliseconds. |
+
+Returns zero once the process has exited, at which point it should be torn down rather than polled again.
+
+```c
+int timeout;
+bare_poll(bare, &timeout);
+```
+
+A `timeout` of `-1` means that the host may sleep until the backend descriptor of the loop, as given by `uv_backend_fd()`, becomes readable. A host that sleeps on the timeout alone rather than on the descriptor will miss work that arrives from another thread.
+
+### `bare_attach()` and `bare_detach()`
+
+```c
+int
+bare_attach(bare_t *bare, bare_t **previous);
+
+int
+bare_detach(bare_t *bare, bare_t *previous);
+```
+
+`bare_attach()` attaches the process to the calling thread and stores the process that was attached before in `previous`. The attached process is the one that `bare_context_get()` resolves against and that an addon loaded while attached belongs to. `bare_detach()` detaches the process and attaches `previous` in its place; a `NULL` `previous` leaves the thread attached to no process. Both return `0` on success. Requires Bare >=1.34.0.
+
+`bare_run()` attaches the process while it runs, and so does loading an addon, so native code reached through either is already attached. A call the embedder makes itself is not, so attach the process around it:
+
+```c
+bare_t *previous;
+bare_attach(bare, &previous);
+
+js_call_function(env, receiver, fn, argc, argv, &result);
+
+bare_detach(bare, previous);
+
+bare_run(bare, UV_RUN_NOWAIT);
+```
+
+Attachments nest, so detach on the same thread and in the reverse order of attaching. `bare_detach()` returns `-1` if the process is not the one the thread is attached to, which is what detaching out of order looks like, and restores nothing. `bare_attach()` returns `-1` if the process has terminated or exited.
+
+Attaching does not run the loop. The call may leave work behind that only the loop will run, which is why the example runs it once detached.
+
 ## See also
 
 - [Inside Bare](/bare/explanation/bare-runtime)—what the runtime adds and why.
 - [Embedder context API](/bare/reference/bare/embedder-context)—pass native handles from the embedder to addons.
 - [`bare` CLI](/bare/reference/bare/cli)—run scripts and start a REPL.
 - [`bare-kit` reference](/bare/reference/bare/bare-kit)—embed a Bare worklet in a native app.
-- [Bare modules](/bare/reference/modules/bare-modules)—the `bare-*` standard library.
+- [Bare modules](/bare/reference/bare/modules)—the `bare-*` standard library.
