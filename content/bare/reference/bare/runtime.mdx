@@ -270,9 +270,42 @@ Do not sleep on the timeout alone. Work can arrive from another thread while the
 
 To hand addons a native handle that only the embedder can produce, such as the Android `JavaVM *`, publish it with `bare_context_set()` before the first `bare_load()`. See the [embedder context API](/bare/reference/bare/embedder-context).
 
-### Attaching
+### `bare_poll()`
 
-From Bare 1.34.0, `bare_attach()` and `bare_detach()` let embedder code call into JavaScript from a place Bare did not call. `bare_run()` attaches the process to the thread while it runs, and so does loading an addon, so native code reached through either is already attached. A call the embedder makes itself, such as `js_call_function()` from a host callback, is not, so attach the process around it and run the loop once afterwards:
+```c
+int
+bare_poll(bare_t *bare, int *timeout);
+```
+
+Runs the event loop without blocking, in place of `bare_run()`, for an embedder whose thread belongs to a host loop, such as the run loop of a user interface. Requires Bare >=1.34.0.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `bare` | `bare_t *` | The process to poll. |
+| `timeout` | `int *` | Receives how long the host may sleep before polling again, in milliseconds. |
+
+Returns zero once the process has exited, at which point it should be torn down rather than polled again.
+
+```c
+int timeout;
+bare_poll(bare, &timeout);
+```
+
+A `timeout` of `-1` means that the host may sleep until the backend descriptor of the loop, as given by `uv_backend_fd()`, becomes readable. A host that sleeps on the timeout alone rather than on the descriptor will miss work that arrives from another thread.
+
+### `bare_attach()` and `bare_detach()`
+
+```c
+int
+bare_attach(bare_t *bare, bare_t **previous);
+
+int
+bare_detach(bare_t *bare, bare_t *previous);
+```
+
+`bare_attach()` attaches the process to the calling thread and stores the process that was attached before in `previous`. The attached process is the one that `bare_context_get()` resolves against and that an addon loaded while attached belongs to. `bare_detach()` detaches the process and attaches `previous` in its place; a `NULL` `previous` leaves the thread attached to no process. Both return `0` on success. Requires Bare >=1.34.0.
+
+`bare_run()` attaches the process while it runs, and so does loading an addon, so native code reached through either is already attached. A call the embedder makes itself is not, so attach the process around it:
 
 ```c
 bare_t *previous;
@@ -285,7 +318,9 @@ bare_detach(bare, previous);
 bare_run(bare, UV_RUN_NOWAIT);
 ```
 
-Attachments nest, so detach on the same thread and in the reverse order of attaching. A process that has terminated, is exiting, or has exited cannot be attached. The [embedder context API](/bare/reference/bare/embedder-context#attaching) documents both functions in full, and why `bare_context_get()` depends on which process is attached.
+Attachments nest, so detach on the same thread and in the reverse order of attaching. `bare_detach()` returns `-1` if the process is not the one the thread is attached to, which is what detaching out of order looks like, and restores nothing. `bare_attach()` returns `-1` if the process has terminated or exited.
+
+Attaching does not run the loop. The call may leave work behind that only the loop will run, which is why the example runs it once detached.
 
 ### C API reference
 
@@ -319,14 +354,9 @@ int
 bare_run(bare_t *bare, uv_run_mode mode);
 ```
 
-Runs the I/O event loop in `mode`, emitting `beforeExit` and `exit` as the loop runs out of work. It returns zero once the process has exited. With `UV_RUN_ONCE` or `UV_RUN_NOWAIT` it can return a non-zero value, meaning work remains and it should be called again. If the process is suspended, it does not return until another thread resumes it. To drive the loop from a host loop that owns the thread, use [`bare_poll()`](#embedding) instead.
+Runs the I/O event loop in `mode`, emitting `beforeExit` and `exit` as the loop runs out of work. It returns zero once the process has exited. With `UV_RUN_ONCE` or `UV_RUN_NOWAIT` it can return a non-zero value, meaning work remains and it should be called again. If the process is suspended, it does not return until another thread resumes it. To drive the loop from a host loop that owns the thread, use [`bare_poll()`](#bare_poll) instead.
 
-```c
-int
-bare_poll(bare_t *bare, int *timeout);
-```
-
-Runs the loop without blocking and stores in `timeout` how long the host may sleep before polling again. Returns zero once the process has exited. See [Embedding](#embedding). Requires Bare `>=1.34.0`.
+`bare_poll()`, `bare_attach()` and `bare_detach()`, which require Bare `>=1.34.0`, are documented above under [`bare_poll()`](#bare_poll) and [`bare_attach()` and `bare_detach()`](#bare_attach-and-bare_detach).
 
 ```c
 int
