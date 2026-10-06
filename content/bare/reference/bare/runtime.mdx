@@ -1,6 +1,6 @@
 ---
 title: "Bare runtime API"
-description: "Reference for the Bare global namespace and the C embedding API: process properties, lifecycle methods and events, native addons, lightweight threads, the embedder IPC channel, and every function in bare.h."
+description: "Reference for the Bare global namespace and its C embedding API: process properties, lifecycle methods and events, native addons, threads, IPC, and bare.h."
 docType: reference
 product: bare
 schemaType: APIReference
@@ -254,7 +254,7 @@ int timeout;
 bare_poll(bare, &timeout);
 ```
 
-`timeout` is in milliseconds, and may be `NULL` if the host has no use for it. A timeout of `-1` means the host may sleep until the loop's backend descriptor, as given by `uv_backend_fd()`, becomes readable. A timeout of `0` means work is already pending, so poll again without sleeping. `bare_poll()` returns zero once the process has exited, and sets `timeout` to `0` when it does, so check the return value rather than the timeout. Tear the process down at that point rather than polling it again.
+`timeout` is in milliseconds, and may be `NULL` if the host has no use for it. A timeout of `-1` means the host may sleep until the loop's backend descriptor, as given by `uv_backend_fd()`, becomes readable. With a timeout of `0`, poll again without sleeping. `bare_poll()` returns zero once the process has exited, and sets `timeout` to `0` when it does, so check the return value rather than the timeout. Tear the process down at that point rather than polling it again.
 
 <Callout type="warn">
 Do not sleep on the timeout alone. Work can arrive from another thread while the host sleeps, and a host that waits only for the timeout to elapse will not notice it until then. Wait on the descriptor from `uv_backend_fd()` as well, and wake on whichever comes first.
@@ -425,7 +425,7 @@ The listener types are `bare_before_exit_cb`, `bare_exit_cb`, `bare_suspend_cb`,
 BARE_MODULE(id, fn)
 ```
 
-Registers the addon, where `fn` is `js_value_t *fn(js_env_t *env, js_value_t *exports)` and returns the exports. Define `BARE_MODULE_NAME` before including the header to name the addon, which a statically linked addon requires. A library registers one module. By default the addon registers through exported symbols that Bare looks up once the library is loaded, which suits a dynamic addon. Define `BARE_MODULE_REGISTER_CONSTRUCTOR` to register from a library constructor instead, which suits both dynamic and statically linked addons.
+Registers the addon, where `fn` is `js_value_t *fn(js_env_t *env, js_value_t *exports)` and returns the exports. `id` is an identifier that is unique within the library, used to name the generated registration code. Define `BARE_MODULE_NAME` before including the header to name the addon, which a statically linked addon requires. A library registers one module. By default the addon registers through exported symbols that Bare looks up once the library is loaded, which suits a dynamic addon. Define `BARE_MODULE_REGISTER_CONSTRUCTOR` to register from a library constructor instead, which suits both dynamic and statically linked addons.
 
 ```c
 uv_lib_t *
