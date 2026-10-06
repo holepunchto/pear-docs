@@ -19,7 +19,7 @@ const layout: Layout = {
   seeAlso: [
     'The resolved addon is the first candidate `resolve` yields that exists as a file on the file system.',
     'The `resolve.*` step functions are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.10.0`) when declaring the module dependency.',
-    "Addons normally resolve through the [runtime](/bare/reference/bare/runtime) or are bundled by [`bare-pack`](/bare/reference/modules/bare-modules); reach for this module directly only when building tooling on the resolution algorithm itself, such as [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse).",
+    "Addons normally resolve through the [runtime](/bare/reference/bare/runtime) or are bundled by [`bare-pack`](/bare/reference/bare/modules); reach for this module directly only when building tooling on the resolution algorithm itself, such as [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse).",
   ],
   params: {
     resolve: {
