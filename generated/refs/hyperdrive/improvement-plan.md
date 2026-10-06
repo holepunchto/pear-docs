@@ -1,27 +1,9 @@
 # Reference generation improvement plan — hyperdrive
-Generated from `holepunchto/hyperdrive` at **v13.3.3** (`6b562402af`) on 2026-08-11T14:23:36.305Z.
+Generated from `holepunchto/hyperdrive` at **v13.3.4** (`17a8c39444`) on 2026-10-05T21:14:56.893Z.
 **Doc-completeness: 52%** — 23 of 44 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
-**100%** of the hand-authored page is reproduced — 48 of 48 documented symbols (`content/reference/building-blocks/hyperdrive.mdx`).
-### Extra in generated model (16)
-_Found in source but absent from the curated page — candidate additions (or internal symbols to filter)._
-- `closeMonitors`
-- `closed`
-- `emit`
-- `encryptionKey`
-- `getContentKey`
-- `getContentManifest`
-- `monitors`
-- `normalizePath`
-- `off`
-- `on`
-- `on:blobs`
-- `on:content-key`
-- `once`
-- `opened`
-- `putEntry`
-- `setActive`
+_No existing MDX page found for this slug._
 ## Completeness gaps
 ### Missing description (4)
 

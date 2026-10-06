@@ -1,14 +1,14 @@
 # JSDoc gap report — hypercore
 
-`holepunchto/hypercore` at **v11.35.1** · **0%** of published members fully documented (0/57) · 60 source member(s) not in the manifest (internal or unfiled) — not graded.
+`holepunchto/hypercore` at **v11.37.2** · **0%** of published members fully documented (0/58) · 60 source member(s) not in the manifest (internal or unfiled) — not graded.
 
-Coverage by dimension: **descriptions 89%** · **param types 0%** · **typed returns 0%** · **examples 51%**. (Prose is usually present; the gap is mostly types.)
+Coverage by dimension: **descriptions 90%** · **param types 0%** · **typed returns 0%** · **examples 50%**. (Prose is usually present; the gap is mostly types.)
 
 Work through the checklist below in the source repo. Each item adds the JSDoc needed for a top-quality generated entry (typed param table, return type, example). When a file is fully checked off, its members render complete.
 
 See the [JSDoc convention](../../../scripts/refgen/JSDOC_CONVENTION.md) for the exact format each item expects.
 
-## To do (57)
+## To do (58)
 
 ### `index.js`
 
@@ -31,44 +31,45 @@ See the [JSDoc convention](../../../scripts/refgen/JSDOC_CONVENTION.md) for the 
 - [ ] L294 `await core.setGroup(topic)` — add @param {Type} for `topic`; @returns {Type}; @example
 - [ ] L299 `core.setKeyPair(keyPair)` — add @param {Type} + description for `keyPair`; @returns {Type}; @example
 - [ ] L303 `core.setActive(active)` — add @param {Type} + description for `bool`; @returns {Type}; @example
-- [ ] L510 `await core.close([{ error }])` — add @param {Type} + description for `options`; @returns {Type}; @example
-- [ ] L570 `const { byteLength, length } = await core.commit(session, opts = {})` — add @param {Type} + description for `session`; @param {Type} for `opts`; @returns {Type}
-- [ ] L577 `const stream = core.replicate(isInitiatorOrReplicationStream, opts = {})` — add @param {Type} + description for `isInitiator`; @param {Type} for `opts`; @returns {Type}
-- [ ] L613 `core.id` — add @returns {Type}
-- [ ] L617 `core.key` — add @returns {Type}
-- [ ] L621 `core.discoveryKey` — add @returns {Type}
-- [ ] L634 `core.length` — add @returns {Type}
-- [ ] L639 `core.signedLength` — add @returns {Type}
-- [ ] L652 `core.remoteContiguousLength` — add @returns {Type}
-- [ ] L657 `core.contiguousLength` — add @returns {Type}
-- [ ] L666 `core.fork` — add @returns {Type}
-- [ ] L671 `core.padding` — add @returns {Type}
-- [ ] L679 `core.peers` — add @returns {Type}
-- [ ] L691 `await core.ready()` — add @returns {Type}; @example
-- [ ] L700 `await core.setUserData(key, value)` — add @param {Type} for `key`; @param {Type} + description for `value`; @returns {Type}; @example
-- [ ] L707 `const value = await core.getUserData(key)` — add @param {Type} for `key`; @returns {Type}; @example
-- [ ] L737 `const done = core.findingPeers()` — add @returns {Type}; @example
-- [ ] L753 `const info = await core.info([options])` — add @param {Type} for `opts`; @returns {Type}
-- [ ] L759 `const updated = await core.update([options])` — add @param {Type} for `opts`; @returns {Type}
-- [ ] L792 `const [index, relativeOffset] = await core.seek(byteOffset, [options])` — add @param {Type} + description for `bytes`; @param {Type} + description for `opts`; @returns {Type}
-- [ ] L834 `const has = await core.has(start, [end])` — add @param {Type} + description for `start`; @param {Type} + description for `end`; @returns {Type}; @example
-- [ ] L866 `const block = await core.get(index, [options])` — add @param {Type} + description for `index`; @param {Type} for `opts`; @returns {Type}
-- [ ] L897 `const cleared = await core.clear(start, [end], [options])` — add @param {Type} + description for `start`; @param {Type} + description for `end`; @param {Type} for `opts`; @returns {Type}
-- [ ] L997 `await core.markBlock(start, end = start + 1)` — add @param {Type} + description for `start`; @param {Type} for `end`; @returns {Type}; @example
-- [ ] L1011 `await core.clearMarkings()` — add @returns {Type}; @example
-- [ ] L1020 `await core.startMarking()` — add @returns {Type}
-- [ ] L1036 `await core.sweep(opts)` — add @param {Type} for `options`; @returns {Type}
-- [ ] L1066 `const stream = core.createReadStream([options])` — add @param {Type} for `opts`; @returns {Type}
-- [ ] L1070 `const stream = core.createWriteStream()` — add @returns {Type}
-- [ ] L1074 `const bs = core.createByteStream([options])` — add @param {Type} for `opts`; @returns {Type}
-- [ ] L1078 `const range = core.download([range])` — add @param {Type} + description for `range`; @returns {Type}
-- [ ] L1092 `await core.truncate(newLength, [options])` — add @param {Type} + description for `newLength`; @param {Type} for `opts`; @returns {Type}
-- [ ] L1114 `const { length, byteLength } = await core.append(block, options = {})` — add @param {Type} + description for `blocks`; @param {Type} for `opts`; @returns {Type}
-- [ ] L1152 `const buffer = await core.signable([length], [fork])` — add description; @param {Type} + description for `length`; @param {Type} + description for `fork`; @returns {Type}; @example
-- [ ] L1160 `const hash = await core.treeHash([length])` — add @param {Type} + description for `length`; @returns {Type}; @example
-- [ ] L1174 `const proof = await core.proof(opts)` — add @param {Type} for `opts`; @returns {Type}
-- [ ] L1191 `const batch = await core.verifyFullyRemote(proof)` — add @param {Type} + description for `proof`; @returns {Type}; @example
-- [ ] L1249 `const ext = core.registerExtension(name, handlers = {})` — add @param {Type} + description for `name`; @param {Type} for `handlers`; @returns {Type}
+- [ ] L311 `await core.setAlwaysLatestBlock(enabled)` — add @param {Type} + description for `bool`; @returns {Type}; @example
+- [ ] L527 `await core.close([{ error }])` — add @param {Type} + description for `options`; @returns {Type}; @example
+- [ ] L587 `const { byteLength, length } = await core.commit(session, opts = {})` — add @param {Type} + description for `session`; @param {Type} for `opts`; @returns {Type}
+- [ ] L594 `const stream = core.replicate(isInitiatorOrReplicationStream, opts = {})` — add @param {Type} + description for `isInitiator`; @param {Type} for `opts`; @returns {Type}
+- [ ] L630 `core.id` — add @returns {Type}
+- [ ] L634 `core.key` — add @returns {Type}
+- [ ] L638 `core.discoveryKey` — add @returns {Type}
+- [ ] L651 `core.length` — add @returns {Type}
+- [ ] L656 `core.signedLength` — add @returns {Type}
+- [ ] L669 `core.remoteContiguousLength` — add @returns {Type}
+- [ ] L674 `core.contiguousLength` — add @returns {Type}
+- [ ] L683 `core.fork` — add @returns {Type}
+- [ ] L688 `core.padding` — add @returns {Type}
+- [ ] L696 `core.peers` — add @returns {Type}
+- [ ] L708 `await core.ready()` — add @returns {Type}; @example
+- [ ] L717 `await core.setUserData(key, value)` — add @param {Type} for `key`; @param {Type} + description for `value`; @returns {Type}; @example
+- [ ] L724 `const value = await core.getUserData(key)` — add @param {Type} for `key`; @returns {Type}; @example
+- [ ] L754 `const done = core.findingPeers()` — add @returns {Type}; @example
+- [ ] L770 `const info = await core.info([options])` — add @param {Type} for `opts`; @returns {Type}
+- [ ] L776 `const updated = await core.update([options])` — add @param {Type} for `opts`; @returns {Type}
+- [ ] L809 `const [index, relativeOffset] = await core.seek(byteOffset, [options])` — add @param {Type} + description for `bytes`; @param {Type} + description for `opts`; @returns {Type}
+- [ ] L851 `const has = await core.has(start, [end])` — add @param {Type} + description for `start`; @param {Type} + description for `end`; @returns {Type}; @example
+- [ ] L883 `const block = await core.get(index, [options])` — add @param {Type} + description for `index`; @param {Type} for `opts`; @returns {Type}
+- [ ] L914 `const cleared = await core.clear(start, [end], [options])` — add @param {Type} + description for `start`; @param {Type} + description for `end`; @param {Type} for `opts`; @returns {Type}
+- [ ] L1014 `await core.markBlock(start, end = start + 1)` — add @param {Type} + description for `start`; @param {Type} for `end`; @returns {Type}; @example
+- [ ] L1028 `await core.clearMarkings()` — add @returns {Type}; @example
+- [ ] L1037 `await core.startMarking()` — add @returns {Type}
+- [ ] L1053 `await core.sweep(opts)` — add @param {Type} for `options`; @returns {Type}
+- [ ] L1083 `const stream = core.createReadStream([options])` — add @param {Type} for `opts`; @returns {Type}
+- [ ] L1087 `const stream = core.createWriteStream()` — add @returns {Type}
+- [ ] L1091 `const bs = core.createByteStream([options])` — add @param {Type} for `opts`; @returns {Type}
+- [ ] L1095 `const range = core.download([range])` — add @param {Type} + description for `range`; @returns {Type}
+- [ ] L1109 `await core.truncate(newLength, [options])` — add @param {Type} + description for `newLength`; @param {Type} for `opts`; @returns {Type}
+- [ ] L1131 `const { length, byteLength } = await core.append(block, options = {})` — add @param {Type} + description for `blocks`; @param {Type} for `opts`; @returns {Type}
+- [ ] L1169 `const buffer = await core.signable([length], [fork])` — add description; @param {Type} + description for `length`; @param {Type} + description for `fork`; @returns {Type}; @example
+- [ ] L1177 `const hash = await core.treeHash([length])` — add @param {Type} + description for `length`; @returns {Type}; @example
+- [ ] L1191 `const proof = await core.proof(opts)` — add @param {Type} for `opts`; @returns {Type}
+- [ ] L1208 `const batch = await core.verifyFullyRemote(proof)` — add @param {Type} + description for `proof`; @returns {Type}; @example
+- [ ] L1266 `const ext = core.registerExtension(name, handlers = {})` — add @param {Type} + description for `name`; @param {Type} for `handlers`; @returns {Type}
 
 ## Suggested `@typedef`s (22)
 
