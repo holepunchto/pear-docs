@@ -4,12 +4,12 @@ description: "Multi-producer, multi-consumer inter-thread broadcast messaging fo
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.2.0"
+upstreamVersion: "0.2.1"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-[`bare-broadcast-channel`](https://github.com/holepunchto/bare-broadcast-channel) — Multi-producer, multi-consumer inter-thread broadcast messaging for JavaScript. It is a native addon. Unlike [`bare-channel`](/bare/reference/bare/modules/bare-channel), which is single-producer / single-consumer over a fixed port pair, any number of ports (up to `BroadcastChannel.MAX_PORTS`) can connect to the same channel; each write is broadcast to every other connected port, and a port never receives the messages it wrote itself.
+[`bare-broadcast-channel`](https://github.com/holepunchto/bare-broadcast-channel) — Multi-producer, multi-consumer inter-thread broadcast messaging for JavaScript. It is a native addon.
 
 ```sh
 npm i bare-broadcast-channel
@@ -51,7 +51,8 @@ b.join()
 
 #### `new BroadcastChannel(opts?: BroadcastChannelOptions)`
 
-Create a new broadcast channel. The channel is backed by a `SharedArrayBuffer` exposed as `channel.handle` that can be passed to other threads to share the channel across them.
+Create a new broadcast channel. The channel is backed by a `SharedArrayBuffer` exposed as
+`channel.handle` that can be passed to other threads to share the channel across them.
 
 **Parameters**
 
@@ -65,7 +66,7 @@ Create a new broadcast channel. The channel is backed by a `SharedArrayBuffer` e
 BroadcastChannel.from(handle: SharedArrayBuffer, opts?: BroadcastChannelOptions): BroadcastChannel
 ```
 
-Restore a channel from its `SharedArrayBuffer` `handle`. `options` accepts the same fields as the constructor, except for `handle`.
+Restore a channel from its `SharedArrayBuffer` `handle`.
 
 **Parameters**
 
@@ -78,11 +79,15 @@ Restore a channel from its `SharedArrayBuffer` `handle`. `options` accepts the s
 
 #### `BroadcastChannel.MAX_PORTS: number`
 
-Maximum number of ports that may be concurrently connected to a single channel. A port's slot is released for reuse once the port holding it has fully torn down.
+Maximum number of ports that may be concurrently connected to a single channel. A port's slot
+is released for reuse by a later connection once the port has fully torn down.
 
 #### `connect(): Port<T>`
 
-Connect a new port to the channel. Throws if `MAX_PORTS` ports are already connected. Port slots are reused, so the cap applies to the number of concurrently connected ports, not the total number of connections over the channel's lifetime; a slot is released for a later connection once the port holding it has fully torn down.
+Connect a new port to the channel. Throws if `MAX_PORTS` ports are already connected. Port
+slots are reused, so the cap applies to the number of concurrently connected ports, not the
+total number of connections over the channel's lifetime; a slot is released for a later
+connection once the port holding it has fully torn down.
 
 **Returns** `Port<T>` — A new port connected to the channel.
 
@@ -98,13 +103,39 @@ The serializable and transferable interfaces registered on the channel.
 
 #### `new Port(channel: BroadcastChannel<T>)`
 
+Create a new port connected to `channel`, equivalent to `channel.connect()`. Throws if
+`MAX_PORTS` ports are already connected.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `channel` | `BroadcastChannel<T>` | — | — |
+| `channel` | `BroadcastChannel<T>` | — | The channel to connect the port to. |
+
+#### `addListener<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
+
+#### `addOnceListener<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
 
 #### `close(): Promise<void>`
+
+Close the port, waiting for any pending write to drain first. The port leaves the channel and
+its slot is released for reuse once it has fully torn down.
+
+**Returns** `Promise<void>` — A promise that resolves once the port has closed.
 
 #### `createReadStream(opts?: ReadableOptions<Port<T>>): Readable`
 
@@ -112,7 +143,9 @@ The serializable and transferable interfaces registered on the channel.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | `ReadableOptions<Port<T>>` | — | — |
+| `opts?` | `ReadableOptions<Port<T>>` | — | The same options as `bare-stream`'s `Readable`. |
+
+**Returns** `Readable` — A readable stream of the messages read from the port.
 
 #### `createStream(opts?: DuplexOptions<Port<T>>): Duplex`
 
@@ -120,7 +153,10 @@ The serializable and transferable interfaces registered on the channel.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | `DuplexOptions<Port<T>>` | — | — |
+| `opts?` | `DuplexOptions<Port<T>>` | — | The same options as `bare-stream`'s `Duplex`. |
+
+**Returns** `Duplex` — A duplex stream that reads the messages broadcast to the port and writes its chunks
+to the port. The port is closed when the stream ends.
 
 #### `createWriteStream(opts?: WritableOptions<Port<T>>): Writable`
 
@@ -128,21 +164,150 @@ The serializable and transferable interfaces registered on the channel.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | `WritableOptions<Port<T>>` | — | — |
+| `opts?` | `WritableOptions<Port<T>>` | — | The same options as `bare-stream`'s `Writable`. |
+
+**Returns** `Writable` — A writable stream whose chunks are written to the port. The port is closed when the
+stream ends.
+
+#### `emit<E extends keyof M>(name: E, ...args: M[E]): boolean`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `args` | `M[E]` | — | — |
+
+#### `eventNames(): (keyof M)[]`
+
+#### `getMaxListeners(): number`
+
+#### `listenerCount<E extends keyof M>(name: E): number`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+
+#### `listeners<E extends keyof M>(name: E): EventHandler<M[E]>[]`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+
+#### `off<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
+
+#### `on<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
+
+#### `once<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
 
 #### `peers: number`
 
+The number of other ports currently connected to the channel. Read-only.
+
+#### `prependListener<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
+
+#### `prependOnceListener<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
+
+#### `rawListeners<E extends keyof M>(name: E): EventHandler<M[E]>[]`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+
 #### `read(): Promise<T | null>`
+
+Read the next message broadcast to the port, waiting for one to arrive if none is queued.
+
+**Returns** `Promise<T | null>` — The next message, or `null` if the port has ended or every peer has left and the
+remaining messages have been read.
 
 #### `readSync(): T | null`
 
+Read the next message broadcast to the port, blocking the thread if none is queued.
+
+**Returns** `T` | `null` — The next message, or `null` if the port has ended or every peer has left and the
+remaining messages have been read.
+
 #### `ref(): void`
+
+Increase the reference count for the port to keep the event loop alive. Does nothing once the
+port has started closing.
+
+#### `removeAllListeners<E extends keyof M>(name?: E): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name?` | `E` | — | — |
+
+#### `removeListener<E extends keyof M>(name: E, fn: EventHandler<M[E]>): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `E` | — | — |
+| `fn` | `EventHandler<M[E]>` | — | — |
+
+#### `setMaxListeners(n: number): this`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `n` | `number` | — | — |
 
 #### `unref(): void`
 
+Decrease the reference count for the port to allow the event loop to exit. Does nothing once
+the port has started closing.
+
 #### `write(value: T): Promise<boolean>`
 
-Broadcast a structured-cloneable `value` to every other port connected to the channel. A port never receives the messages it wrote itself.
+Write `value` to every other port connected to the channel, waiting for room if any of them is
+full. A port never receives the messages it wrote itself.
 
 **Parameters**
 
@@ -150,11 +315,13 @@ Broadcast a structured-cloneable `value` to every other port connected to the ch
 | --- | --- | --- | --- |
 | `value` | `T` | — | A structured-cloneable value to broadcast to peers. |
 
-**Returns** `Promise<boolean>` — Whether the write flushed.
+**Returns** `Promise<boolean>` — `true` once the value has been broadcast, or `false` if `value` is `null` or the port
+is closing or has ended.
 
 #### `writeSync(value: T): boolean`
 
-Broadcast a structured-cloneable `value` to every other port connected to the channel. A port never receives the messages it wrote itself.
+Write `value` to every other port connected to the channel, blocking the thread if any of them
+is full. A port never receives the messages it wrote itself.
 
 **Parameters**
 
@@ -162,7 +329,8 @@ Broadcast a structured-cloneable `value` to every other port connected to the ch
 | --- | --- | --- | --- |
 | `value` | `T` | — | A structured-cloneable value to broadcast to peers. |
 
-**Returns** `boolean` — Whether the write flushed.
+**Returns** `boolean` — `true` once the value has been broadcast, or `false` if `value` is `null` or the port
+has ended.
 
 ### Types
 

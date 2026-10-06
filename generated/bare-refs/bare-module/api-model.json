@@ -1,6 +1,6 @@
 {
   "name": "bare-module",
-  "version": "7.0.3",
+  "version": "7.2.0",
   "description": "The module system that powers Bare",
   "repoUrl": "https://github.com/holepunchto/bare-module",
   "npmUrl": "https://www.npmjs.com/package/bare-module",
@@ -29,7 +29,7 @@
       "kind": "class",
       "static": false,
       "signatures": [
-        "interface Module {\n  readonly dirname: string\n  exports: unknown\n  readonly filename: string\n  readonly id: string\n  readonly path: string\n  readonly protocol: Protocol\n  readonly url: URL\n}"
+        "interface Module {\n  readonly dirname: string\n  exports: unknown\n  readonly filename: string\n  readonly id: string\n  readonly path: string\n  readonly protocol: Protocol\n  readonly resolutions: ResolutionsMap\n  readonly url: URL\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -413,6 +413,21 @@
           "members": []
         },
         {
+          "key": "Module.resolutions",
+          "name": "resolutions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "resolutions: ResolutionsMap"
+          ],
+          "description": "The resolutions map of the module graph, with keys being serialized parent URLs and values\nbeing `\"imports\"` maps.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "Module.url",
           "name": "url",
           "kind": "property",
@@ -435,7 +450,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface Attributes {\n  type: Lowercase<keyof typeof constants>\n}"
+        "interface Attributes {\n  type?: Lowercase<keyof typeof constants>\n  imports?: string\n}"
       ],
       "description": "Import attributes instructing how a module should be loaded. A `type` that is not one of the\nknown strings is turned down rather than passed over.",
       "deprecated": null,
@@ -443,6 +458,21 @@
       "returns": null,
       "throws": [],
       "members": [
+        {
+          "key": "Attributes.imports",
+          "name": "imports",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "imports: string"
+          ],
+          "description": "The specifier of an `\"imports\"` map to apply to the module and its dependencies, resolved\nrelative to the parent URL.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
         {
           "key": "Attributes.type",
           "name": "type",
@@ -481,7 +511,7 @@
       "kind": "class",
       "static": false,
       "signatures": [
-        "interface ModuleLoader {\n  readonly builtins: Builtins\n  readonly cache: Cache\n  readonly concurrency: number\n  readonly conditions: Conditions\n  readonly defaultType: number\n  readonly imports: ImportsMap\n  readonly main: Module\n  readonly protocol: Protocol\n  readonly resolutions: ResolutionsMap\n  get(url: URL): Module | null\n  link(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Promise<Module>\n  linkSync(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Module\n  import(entry: URL, opts?: ImportOptions): Promise<unknown>\n  importSync(entry: URL, opts?: ImportOptions): unknown\n}"
+        "interface ModuleLoader {\n  readonly cache: Cache\n  readonly main: Module\n  readonly protocol: Protocol\n  get(url: URL): Module | null\n  patch(bundle: Bundle): URL[]\n  evict(urls: URL | string | Iterable<URL | string>): URL[]\n  instantiate(\n    urls: URL | string | Iterable<URL | string>,\n    opts?: ModuleLoader.LinkOptions\n  ): Promise<Module[]>\n  instantiateSync(\n    urls: URL | string | Iterable<URL | string>,\n    opts?: ModuleLoader.LinkOptions\n  ): Module[]\n  link(\n    entry: URL,\n    source?: Buffer | string | null,\n    opts?: ModuleLoader.LinkOptions\n  ): Promise<Module>\n  linkSync(entry: URL, source?: Buffer | string | null, opts?: ModuleLoader.LinkOptions): Module\n  import(entry: URL, opts?: ModuleLoader.ImportOptions): Promise<unknown>\n  importSync(entry: URL, opts?: ModuleLoader.ImportOptions): unknown\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -513,21 +543,6 @@
           "members": []
         },
         {
-          "key": "ModuleLoader.builtins",
-          "name": "builtins",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "builtins: Builtins"
-          ],
-          "description": "A map of builtin module specifiers mapped to the loaded module.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
           "key": "ModuleLoader.cache",
           "name": "cache",
           "kind": "property",
@@ -543,47 +558,28 @@
           "members": []
         },
         {
-          "key": "ModuleLoader.concurrency",
-          "name": "concurrency",
-          "kind": "property",
+          "key": "ModuleLoader.evict",
+          "name": "evict",
+          "kind": "method",
           "static": false,
           "signatures": [
-            "concurrency: number"
+            "evict(urls: URL | string | Iterable<URL | string>): URL[]"
           ],
-          "description": "The maximum number of module reads to perform concurrently while linking. `0` applies no\nlimit.",
+          "description": null,
           "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "ModuleLoader.conditions",
-          "name": "conditions",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "conditions: Conditions"
+          "params": [
+            {
+              "name": "urls",
+              "type": "URL | string | Iterable<URL | string>",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
           ],
-          "description": "An array of conditions used to resolve dependencies while loading the module. See [Conditional\nexports](https://github.com/holepunchto/bare-module#conditional-exports) for possible values.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "ModuleLoader.defaultType",
-          "name": "defaultType",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "defaultType: number"
-          ],
-          "description": "The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See\n`Module.constants.types` for possible values.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
+          "returns": {
+            "type": "URL[]",
+            "description": null
+          },
           "throws": [],
           "members": []
         },
@@ -619,7 +615,7 @@
           "kind": "method",
           "static": false,
           "signatures": [
-            "import(entry: URL, opts?: ImportOptions): Promise<unknown>"
+            "import(entry: URL, opts?: ModuleLoader.ImportOptions): Promise<unknown>"
           ],
           "description": null,
           "deprecated": null,
@@ -633,7 +629,7 @@
             },
             {
               "name": "opts",
-              "type": "ImportOptions",
+              "type": "ModuleLoader.ImportOptions",
               "optional": true,
               "default": null,
               "description": null
@@ -647,27 +643,12 @@
           "members": []
         },
         {
-          "key": "ModuleLoader.imports",
-          "name": "imports",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "imports: ImportsMap"
-          ],
-          "description": "The import map when the module was loaded.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
           "key": "ModuleLoader.importSync",
           "name": "importSync",
           "kind": "method",
           "static": false,
           "signatures": [
-            "importSync(entry: URL, opts?: ImportOptions): unknown"
+            "importSync(entry: URL, opts?: ModuleLoader.ImportOptions): unknown"
           ],
           "description": null,
           "deprecated": null,
@@ -681,7 +662,7 @@
             },
             {
               "name": "opts",
-              "type": "ImportOptions",
+              "type": "ModuleLoader.ImportOptions",
               "optional": true,
               "default": null,
               "description": null
@@ -695,12 +676,78 @@
           "members": []
         },
         {
+          "key": "ModuleLoader.instantiate",
+          "name": "instantiate",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "instantiate(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Promise<Module[]>"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "urls",
+              "type": "URL | string | Iterable<URL | string>",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "ModuleLoader.LinkOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<Module[]>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ModuleLoader.instantiateSync",
+          "name": "instantiateSync",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "instantiateSync(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Module[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "urls",
+              "type": "URL | string | Iterable<URL | string>",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "ModuleLoader.LinkOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Module[]",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "ModuleLoader.link",
           "name": "link",
           "kind": "method",
           "static": false,
           "signatures": [
-            "link(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Promise<Module>"
+            "link(entry: URL, source?: Buffer | string | null, opts?: ModuleLoader.LinkOptions): Promise<Module>"
           ],
           "description": null,
           "deprecated": null,
@@ -721,7 +768,7 @@
             },
             {
               "name": "opts",
-              "type": "LinkOptions",
+              "type": "ModuleLoader.LinkOptions",
               "optional": true,
               "default": null,
               "description": null
@@ -740,7 +787,7 @@
           "kind": "method",
           "static": false,
           "signatures": [
-            "linkSync(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Module"
+            "linkSync(entry: URL, source?: Buffer | string | null, opts?: ModuleLoader.LinkOptions): Module"
           ],
           "description": null,
           "deprecated": null,
@@ -761,7 +808,7 @@
             },
             {
               "name": "opts",
-              "type": "LinkOptions",
+              "type": "ModuleLoader.LinkOptions",
               "optional": true,
               "default": null,
               "description": null
@@ -795,7 +842,7 @@
           "kind": "interface",
           "static": true,
           "signatures": [
-            "interface ImportOptions {\n  attributes?: Attributes\n  conditions?: Conditions\n}"
+            "interface ImportOptions {\n  attributes?: Attributes\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -817,21 +864,6 @@
               "returns": null,
               "throws": [],
               "members": []
-            },
-            {
-              "key": "ModuleLoader.ImportOptions.conditions",
-              "name": "conditions",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "conditions: Conditions"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
             }
           ]
         },
@@ -841,7 +873,7 @@
           "kind": "interface",
           "static": true,
           "signatures": [
-            "interface LinkOptions {\n  attributes?: Attributes\n  conditions?: Conditions\n}"
+            "interface LinkOptions {\n  attributes?: Attributes\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -863,21 +895,6 @@
               "returns": null,
               "throws": [],
               "members": []
-            },
-            {
-              "key": "ModuleLoader.LinkOptions.conditions",
-              "name": "conditions",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "conditions: Conditions"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
             }
           ]
         },
@@ -887,7 +904,7 @@
           "kind": "interface",
           "static": true,
           "signatures": [
-            "interface Options {\n  builtins?: Builtins\n  cache?: Cache | boolean\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
+            "interface Options {\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -916,7 +933,7 @@
               "kind": "property",
               "static": false,
               "signatures": [
-                "cache: Cache | boolean"
+                "cache: Cache"
               ],
               "description": null,
               "deprecated": null,
@@ -1003,6 +1020,32 @@
           ]
         },
         {
+          "key": "ModuleLoader.patch",
+          "name": "patch",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "patch(bundle: Bundle): URL[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "bundle",
+              "type": "Bundle",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "URL[]",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "ModuleLoader.protocol",
           "name": "protocol",
           "kind": "property",
@@ -1011,21 +1054,6 @@
             "protocol: Protocol"
           ],
           "description": "The `ModuleProtocol` modules are resolved and read through, shared with every module of the\nloader's graph.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "ModuleLoader.resolutions",
-          "name": "resolutions",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "resolutions: ResolutionsMap"
-          ],
-          "description": "A map of preresolved imports with keys being serialized parent URLs and values being\n`\"imports\"` maps.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -1346,7 +1374,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface LoadOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache | boolean\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n  attributes?: Attributes\n  conditions?: Conditions\n}"
+        "interface LoadOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n  attributes?: Attributes\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -1390,7 +1418,7 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "cache: Cache | boolean"
+            "cache: Cache"
           ],
           "description": null,
           "deprecated": null,
@@ -1406,21 +1434,6 @@
           "static": false,
           "signatures": [
             "concurrency: number"
-          ],
-          "description": null,
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "LoadOptions.conditions",
-          "name": "conditions",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "conditions: Conditions"
           ],
           "description": null,
           "deprecated": null,
@@ -1512,7 +1525,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface ResolveOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache | boolean\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
+        "interface ResolveOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -1541,7 +1554,7 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "cache: Cache | boolean"
+            "cache: Cache"
           ],
           "description": null,
           "deprecated": null,
@@ -1648,7 +1661,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface CreateRequireOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache | boolean\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
+        "interface CreateRequireOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -1677,7 +1690,7 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "cache: Cache | boolean"
+            "cache: Cache"
           ],
           "description": null,
           "deprecated": null,
@@ -1861,7 +1874,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface Require {\n  main: Module\n  cache: Cache\n  resolve: (specifier: string, parentURL?: URL) => string\n  addon: RequireAddon\n  asset: (specifier: string, parentURL?: URL) => string\n}"
+        "interface Require {\n  main: Module\n  cache: Cache\n  resolve: {\n      (specifier: string, opts?: RequireOptions): string\n      (specifier: string, parentURL?: string | URL, opts?: RequireOptions): string\n    }\n  addon: RequireAddon\n  asset: (specifier: string, parentURL?: URL) => string\n}"
       ],
       "description": "The function returned by `Module.createRequire()`: resolves and loads modules relative to its\nparent URL, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.",
       "deprecated": null,
@@ -1935,9 +1948,9 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "resolve: (specifier: string, parentURL?: URL) => string"
+            "resolve: {\n      (specifier: string, opts?: RequireOptions): string\n      (specifier: string, parentURL?: string | URL, opts?: RequireOptions): string\n    }"
           ],
-          "description": null,
+          "description": "Resolve `specifier` relative to `parentURL` without evaluating the matching module. If\nimport attributes are passed, the graph of the module is linked with them so that its\nresolutions are recorded.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -2268,7 +2281,7 @@
           "kind": "class",
           "static": false,
           "signatures": [
-            "interface ModuleLoader {\n  readonly builtins: Builtins\n  readonly cache: Cache\n  readonly concurrency: number\n  readonly conditions: Conditions\n  readonly defaultType: number\n  readonly imports: ImportsMap\n  readonly main: Module\n  readonly protocol: Protocol\n  readonly resolutions: ResolutionsMap\n  get(url: URL): Module | null\n  link(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Promise<Module>\n  linkSync(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Module\n  import(entry: URL, opts?: ImportOptions): Promise<unknown>\n  importSync(entry: URL, opts?: ImportOptions): unknown\n}"
+            "interface ModuleLoader {\n  readonly cache: Cache\n  readonly main: Module\n  readonly protocol: Protocol\n  get(url: URL): Module | null\n  patch(bundle: Bundle): URL[]\n  evict(urls: URL | string | Iterable<URL | string>): URL[]\n  instantiate(\n    urls: URL | string | Iterable<URL | string>,\n    opts?: ModuleLoader.LinkOptions\n  ): Promise<Module[]>\n  instantiateSync(\n    urls: URL | string | Iterable<URL | string>,\n    opts?: ModuleLoader.LinkOptions\n  ): Module[]\n  link(\n    entry: URL,\n    source?: Buffer | string | null,\n    opts?: ModuleLoader.LinkOptions\n  ): Promise<Module>\n  linkSync(entry: URL, source?: Buffer | string | null, opts?: ModuleLoader.LinkOptions): Module\n  import(entry: URL, opts?: ModuleLoader.ImportOptions): Promise<unknown>\n  importSync(entry: URL, opts?: ModuleLoader.ImportOptions): unknown\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -2300,21 +2313,6 @@
               "members": []
             },
             {
-              "key": "ModuleLoader.builtins",
-              "name": "builtins",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "builtins: Builtins"
-              ],
-              "description": "A map of builtin module specifiers mapped to the loaded module.",
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
               "key": "ModuleLoader.cache",
               "name": "cache",
               "kind": "property",
@@ -2330,47 +2328,28 @@
               "members": []
             },
             {
-              "key": "ModuleLoader.concurrency",
-              "name": "concurrency",
-              "kind": "property",
+              "key": "ModuleLoader.evict",
+              "name": "evict",
+              "kind": "method",
               "static": false,
               "signatures": [
-                "concurrency: number"
+                "evict(urls: URL | string | Iterable<URL | string>): URL[]"
               ],
-              "description": "The maximum number of module reads to perform concurrently while linking. `0` applies no\nlimit.",
+              "description": null,
               "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ModuleLoader.conditions",
-              "name": "conditions",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "conditions: Conditions"
+              "params": [
+                {
+                  "name": "urls",
+                  "type": "URL | string | Iterable<URL | string>",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                }
               ],
-              "description": "An array of conditions used to resolve dependencies while loading the module. See [Conditional\nexports](https://github.com/holepunchto/bare-module#conditional-exports) for possible values.",
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ModuleLoader.defaultType",
-              "name": "defaultType",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "defaultType: number"
-              ],
-              "description": "The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See\n`Module.constants.types` for possible values.",
-              "deprecated": null,
-              "params": [],
-              "returns": null,
+              "returns": {
+                "type": "URL[]",
+                "description": null
+              },
               "throws": [],
               "members": []
             },
@@ -2406,7 +2385,7 @@
               "kind": "method",
               "static": false,
               "signatures": [
-                "import(entry: URL, opts?: ImportOptions): Promise<unknown>"
+                "import(entry: URL, opts?: ModuleLoader.ImportOptions): Promise<unknown>"
               ],
               "description": null,
               "deprecated": null,
@@ -2420,7 +2399,7 @@
                 },
                 {
                   "name": "opts",
-                  "type": "ImportOptions",
+                  "type": "ModuleLoader.ImportOptions",
                   "optional": true,
                   "default": null,
                   "description": null
@@ -2434,27 +2413,12 @@
               "members": []
             },
             {
-              "key": "ModuleLoader.imports",
-              "name": "imports",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "imports: ImportsMap"
-              ],
-              "description": "The import map when the module was loaded.",
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
               "key": "ModuleLoader.importSync",
               "name": "importSync",
               "kind": "method",
               "static": false,
               "signatures": [
-                "importSync(entry: URL, opts?: ImportOptions): unknown"
+                "importSync(entry: URL, opts?: ModuleLoader.ImportOptions): unknown"
               ],
               "description": null,
               "deprecated": null,
@@ -2468,7 +2432,7 @@
                 },
                 {
                   "name": "opts",
-                  "type": "ImportOptions",
+                  "type": "ModuleLoader.ImportOptions",
                   "optional": true,
                   "default": null,
                   "description": null
@@ -2482,12 +2446,78 @@
               "members": []
             },
             {
+              "key": "ModuleLoader.instantiate",
+              "name": "instantiate",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "instantiate(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Promise<Module[]>"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "urls",
+                  "type": "URL | string | Iterable<URL | string>",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                },
+                {
+                  "name": "opts",
+                  "type": "ModuleLoader.LinkOptions",
+                  "optional": true,
+                  "default": null,
+                  "description": null
+                }
+              ],
+              "returns": {
+                "type": "Promise<Module[]>",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "ModuleLoader.instantiateSync",
+              "name": "instantiateSync",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "instantiateSync(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Module[]"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "urls",
+                  "type": "URL | string | Iterable<URL | string>",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                },
+                {
+                  "name": "opts",
+                  "type": "ModuleLoader.LinkOptions",
+                  "optional": true,
+                  "default": null,
+                  "description": null
+                }
+              ],
+              "returns": {
+                "type": "Module[]",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
               "key": "ModuleLoader.link",
               "name": "link",
               "kind": "method",
               "static": false,
               "signatures": [
-                "link(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Promise<Module>"
+                "link(entry: URL, source?: Buffer | string | null, opts?: ModuleLoader.LinkOptions): Promise<Module>"
               ],
               "description": null,
               "deprecated": null,
@@ -2508,7 +2538,7 @@
                 },
                 {
                   "name": "opts",
-                  "type": "LinkOptions",
+                  "type": "ModuleLoader.LinkOptions",
                   "optional": true,
                   "default": null,
                   "description": null
@@ -2527,7 +2557,7 @@
               "kind": "method",
               "static": false,
               "signatures": [
-                "linkSync(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Module"
+                "linkSync(entry: URL, source?: Buffer | string | null, opts?: ModuleLoader.LinkOptions): Module"
               ],
               "description": null,
               "deprecated": null,
@@ -2548,7 +2578,7 @@
                 },
                 {
                   "name": "opts",
-                  "type": "LinkOptions",
+                  "type": "ModuleLoader.LinkOptions",
                   "optional": true,
                   "default": null,
                   "description": null
@@ -2577,6 +2607,32 @@
               "members": []
             },
             {
+              "key": "ModuleLoader.patch",
+              "name": "patch",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "patch(bundle: Bundle): URL[]"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "bundle",
+                  "type": "Bundle",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                }
+              ],
+              "returns": {
+                "type": "URL[]",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
               "key": "ModuleLoader.protocol",
               "name": "protocol",
               "kind": "property",
@@ -2585,21 +2641,6 @@
                 "protocol: Protocol"
               ],
               "description": "The `ModuleProtocol` modules are resolved and read through, shared with every module of the\nloader's graph.",
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ModuleLoader.resolutions",
-              "name": "resolutions",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "resolutions: ResolutionsMap"
-              ],
-              "description": "A map of preresolved imports with keys being serialized parent URLs and values being\n`\"imports\"` maps.",
               "deprecated": null,
               "params": [],
               "returns": null,
@@ -2614,7 +2655,7 @@
           "kind": "interface",
           "static": false,
           "signatures": [
-            "interface Options {\n  builtins?: Builtins\n  cache?: Cache | boolean\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
+            "interface Options {\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -2643,7 +2684,7 @@
               "kind": "property",
               "static": false,
               "signatures": [
-                "cache: Cache | boolean"
+                "cache: Cache"
               ],
               "description": null,
               "deprecated": null,
@@ -2735,7 +2776,7 @@
           "kind": "interface",
           "static": false,
           "signatures": [
-            "interface LinkOptions {\n  attributes?: Attributes\n  conditions?: Conditions\n}"
+            "interface LinkOptions {\n  attributes?: Attributes\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -2757,21 +2798,6 @@
               "returns": null,
               "throws": [],
               "members": []
-            },
-            {
-              "key": "LinkOptions.conditions",
-              "name": "conditions",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "conditions: Conditions"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
             }
           ]
         },
@@ -2781,7 +2807,7 @@
           "kind": "interface",
           "static": false,
           "signatures": [
-            "interface ImportOptions {\n  attributes?: Attributes\n  conditions?: Conditions\n}"
+            "interface ImportOptions {\n  attributes?: Attributes\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -2803,26 +2829,11 @@
               "returns": null,
               "throws": [],
               "members": []
-            },
-            {
-              "key": "ImportOptions.conditions",
-              "name": "conditions",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "conditions: Conditions"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
             }
           ]
         }
       ]
     }
   ],
-  "generatedAt": "2026-09-17T13:54:22.562Z"
+  "generatedAt": "2026-09-30T14:06:25.035Z"
 }
