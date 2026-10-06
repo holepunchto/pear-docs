@@ -19,7 +19,7 @@ const layout: Layout = {
   // .d.ts has none, so it can't be extended in place).
   seeAlso: [
     'The `fetch.Request`, `fetch.Response`, and `fetch.Headers` constructors are also attached to the function.',
-    "It's pure JavaScript, built on [`bare-http1`](/bare/reference/modules/bare-modules) and `bare-https`.",
+    "It's pure JavaScript, built on [`bare-http1`](/bare/reference/bare/modules) and `bare-https`.",
   ],
   params: {
     fetch: {
