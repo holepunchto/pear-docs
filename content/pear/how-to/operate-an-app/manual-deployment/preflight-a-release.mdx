@@ -1,0 +1,104 @@
+---
+title: "Preflight a release before staging"
+description: "Check a deployment directory and your write access before you stage: confirm every architecture landed with pear build --json, check pear info's writable field, then dry-run the stage. Includes a CI version."
+docType: how-to
+product: pear
+schemaType: TechArticle
+---
+
+Run these checks between `pear build` and `pear stage`. They catch the two release problems that otherwise show up late: an architecture missing from the [deployment directory](/pear/explanation/deployment-releasing-apps-p2p#deployment-directory-and-release-lines), and a machine that cannot write to the link you are about to stage to.
+
+Both checks need **Pear 3.6.0 or later**. Before 3.6.0, `pear build` printed nothing when it succeeded, and `pear info` had no `writable` field. Run `pear versions` to see which you have.
+
+<include>../../../../_snippets/_install-pear-cli-callout.mdx</include>
+
+## Before you begin
+
+You need the per-OS makes collected on one machine, a stage link from `pear touch`, and [`jq`](https://jqlang.org) for the scripted checks. If you have not built a deployment directory before, follow [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment) through step 4 first.
+
+## 1. Build, and list what landed
+
+Run `pear build` with `--json` so every file it places is reported as its own event, and keep the output:
+
+```sh skip="release-flow"
+pear build --json \
+  --package=./pear-chat/package.json \
+  --darwin-arm64-app ./pear-chat/out/PearChat-darwin-arm64/PearChat.app \
+  --darwin-x64-app   ./pear-chat/out/PearChat-darwin-x64/PearChat.app \
+  --linux-arm64-app  ./pear-chat/out/PearChat-linux-arm64/PearChat.AppImage \
+  --linux-x64-app    ./pear-chat/out/PearChat-linux-x64/PearChat.AppImage \
+  --win32-x64-app    ./pear-chat/out/PearChat-win32-x64/PearChat.msix \
+  --target pear-chat-1.0.1 > build.ndjson
+```
+
+Without `--json`, the same run prints the app name, version, and target, then one `+ <file> (origin: <source>)` line for each file it placed, and ends with `Build complete!`. That is enough to read by eye. The `--json` form is the one to script against. It emits one object per line, tagged `building` (once, with `name`, `version`, and `target`), `executable` (once per placed file, with `file` and `origin`), and `final`:
+
+{/* TODO(3.6.0 release day): replace this source-derived sample with output captured from the shipped binary. */}
+
+```json skip="sample-output"
+{"cmd":"build","tag":"building","data":{"name":"Pear Chat","version":"1.0.1","target":"pear-chat-1.0.1"}}
+{"cmd":"build","tag":"executable","data":{"file":"/work/pear-chat-1.0.1/by-arch/darwin-arm64/app/PearChat.app","origin":"/work/pear-chat/out/PearChat-darwin-arm64/PearChat.app"}}
+{"cmd":"build","tag":"executable","data":{"file":"/work/pear-chat-1.0.1/by-arch/linux-x64/app/PearChat.AppImage","origin":"/work/pear-chat/out/PearChat-linux-x64/PearChat.AppImage"}}
+{"cmd":"build","tag":"final","data":{"success":true}}
+```
+
+An `executable` event carries no architecture field. The architecture is the folder name after `by-arch/` in `file`, so count events per architecture by reading it from the path:
+
+```sh skip="release-flow"
+jq -r 'select(.tag == "executable") | .data.file
+       | capture("by-arch[/\\\\](?<arch>[^/\\\\]+)").arch' build.ndjson | sort | uniq -c
+```
+
+Each architecture you passed should appear. The count per architecture is the number of artifacts you passed for it, which is usually `1`. If you pass a flag more than once to ship a standalone binary beside the desktop app, expect that many.
+
+## 2. Check that this machine can write
+
+`pear info` reports whether this machine holds the key pair for a drive. Run it against the stage link before you stage:
+
+```sh skip="release-flow"
+pear info --json pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o \
+  | jq -e 'select(.tag == "info") | .data.writable == true'
+```
+
+`jq -e` exits non-zero when the answer is `false`, or when no `info` object came back at all, so the command works as a gate in a script. In the human-readable output the same answer is the `writable` row.
+
+`writable: false` means this machine's corestore does not have the key pair for that link. It is the first thing to check when a stage fails with a permission error, because staged and provisioned drives are machine-bound. See [Recovering from lost write access](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#recovering-from-lost-write-access).
+
+Two limits to keep in mind:
+
+- It checks the **stage** (or provision) link, not a multisig production link. A multisig drive is written by a quorum of signers, so it is not machine-bound. See [Sign with multisig](/pear/how-to/operate-an-app/multisig/sign-with-multisig).
+- It answers "does this machine hold the key", not "will the stage succeed". It does not check that the link is seeded or reachable.
+
+## 3. Dry-run the stage
+
+With the deployment directory complete and write access confirmed, [dry-run the stage](/pear/how-to/operate-an-app/manual-deployment/deployment#5-stage) and read the file-by-file diff before running the real one:
+
+```sh skip="release-flow"
+pear stage --dry-run pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o ./pear-chat-1.0.1
+```
+
+## Run the same checks in CI
+
+Fail the job before it stages anything. This step reuses `build.ndjson` from step 1 and fails when any architecture you expect is missing:
+
+```yaml skip="ci-config"
+- name: Fail on a missing architecture
+  env:
+    EXPECTED: darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64
+  run: |
+    found=$(jq -r 'select(.tag == "executable") | .data.file
+                   | capture("by-arch[/\\\\](?<arch>[^/\\\\]+)").arch' build.ndjson | sort -u)
+    status=0
+    for arch in $EXPECTED; do
+      printf '%s\n' "$found" | grep -qx "$arch" || { echo "missing: $arch"; status=1; }
+    done
+    exit $status
+```
+
+Add the `writable` check from step 2 as a second step if the job stages. To produce the signed per-OS builds this assumes, see [Build and sign desktop apps with GitHub Actions](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci).
+
+## Where to go next
+
+- [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment)—the full flow these checks sit inside.
+- [`pear build`](/pear/reference/pear/cli#pear-build) and [`pear info`](/pear/reference/pear/cli#pear-info)—every flag and the full `--json` shape.
+- [Troubleshoot desktop releases](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases)—staging, seeding, and lost-key problems.
