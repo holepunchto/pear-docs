@@ -326,6 +326,21 @@ export const p2pTree: Node[] = [
             name: 'HRPC',
             url: '/p2p/reference/helpers/hrpc',
           },
+          {
+            type: 'page',
+            name: 'Hyperschema',
+            url: '/p2p/reference/helpers/hyperschema',
+          },
+          {
+            type: 'page',
+            name: 'blind-peering',
+            url: '/p2p/reference/helpers/blind-peering',
+          },
+          {
+            type: 'page',
+            name: 'blind-peer',
+            url: '/p2p/reference/helpers/blind-peer',
+          },
         ],
       },
       {

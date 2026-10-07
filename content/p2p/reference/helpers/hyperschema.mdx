@@ -1,0 +1,521 @@
+---
+title: "Hyperschema"
+description: "Declarative, versioned binary schemas that generate compact-encoding codecs and enforce append-only updates."
+upstreamVersion: "1.26.2"
+seoTitle: "Hyperschema: Versioned Binary Schemas for P2P Apps"
+docType: reference
+product: p2p
+schemaType: APIReference
+---
+
+<Status level="stable" />
+
+`Hyperschema` builds a registry of declarative [compact-encoding](/p2p/reference/helpers/compact-encoding) schemas and generates the encoders and decoders from it. Every change to a schema bumps its version, and the builder rejects changes that would break data written by an earlier version. That matters in peer-to-peer systems, where peers run different schema versions and old data is never rewritten. [HRPC](/p2p/reference/helpers/hrpc), [`hyperdb`](https://www.npmjs.com/package/hyperdb) and [`hyperdispatch`](https://www.npmjs.com/package/hyperdispatch) all build on it. See [RPC and schemas](/bare/explanation/rpc-and-schemas) for where it fits. For upstream source and releases, see the [Hyperschema repository](https://github.com/holepunchto/hyperschema).
+
+## Install
+
+```sh
+npm i hyperschema
+```
+
+Generated code imports `hyperschema/runtime`, so keep `hyperschema` installed wherever the generated code runs, not only where you build it.
+
+## Quickstart
+
+Register a type in a namespace and write the schema to disk:
+
+```js
+const Hyperschema = require('hyperschema')
+
+const schema = Hyperschema.from('./spec/schema')
+const example = schema.namespace('example')
+
+example.register({
+  name: 'message',
+  fields: [
+    { name: 'id', type: 'uint', required: true },
+    { name: 'text', type: 'string' }
+  ]
+})
+
+Hyperschema.toDisk(schema)
+```
+
+`toDisk()` writes `./spec/schema/schema.json`, which records the schema and its version, and `./spec/schema/index.js`, which holds the generated encodings. Load them with `getStruct()`:
+
+```js
+const c = require('compact-encoding')
+const { getStruct } = require('./spec/schema')
+
+const message = getStruct('@example/message')
+const encoded = c.encode(message, { id: 1, text: 'hi' })
+
+console.log(c.decode(message, encoded)) // { id: 1, text: 'hi' }
+```
+
+To evolve the type, add a field at the end and run the build again. Commit `schema.json`, because the next build compares against it:
+
+```js
+example.register({
+  name: 'message',
+  fields: [
+    { name: 'id', type: 'uint', required: true },
+    { name: 'text', type: 'string' },
+    { name: 'author', type: 'string' }
+  ]
+})
+```
+
+The build bumps the schema from version 1 to 2. Both versions stay readable and writable:
+
+```js
+const v1 = getStruct('@example/message', 1)
+const v2 = getStruct('@example/message', 2)
+
+const value = { id: 1, text: 'hi', author: 'ana' }
+
+c.decode(v1, c.encode(v1, value)) // { id: 1, text: 'hi', author: null }
+c.decode(v2, c.encode(v2, value)) // { id: 1, text: 'hi', author: 'ana' }
+```
+
+## API Reference
+
+### Building a schema
+
+#### `Hyperschema.from([source][, opts])`
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L788)
+
+Create a schema. With a directory it loads `schema.json` from there when the file exists, so the build continues from the last version. Without one it starts empty.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `source` | `string\|object\|null` | A directory path, or an object in the [`SchemaJSON`](#schemajson) shape. Omit it or pass `null` for an empty schema. |
+| `opts` | `object` | `{ dir, versioned }`. A directory path sets `dir` for you. |
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `dir` | `string\|null` | `null` | The directory `toDisk()` writes to when you don't pass one. |
+| `versioned` | `boolean` | `true` | With `false` the schema stays at version `1` however much it changes. |
+
+- Returns: `Hyperschema`
+
+`new Hyperschema(json, opts)` takes the same arguments but never reads a directory.
+
+#### `Hyperschema.toDisk(schema[, dir][, opts])`
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L766)
+
+Write `schema.json` and the generated `index.js` to `dir`, creating the directory if needed. If the schema changed since it was loaded, the version has already been bumped by then. `toDisk(schema, opts)` also works and writes to the schema's own `dir`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `schema` | `Hyperschema` | — | The schema to write. |
+| `dir` | `string` | `schema.dir` | The output directory. |
+| `opts` | `object` | `{}` | `{ esm }`. Generate ES module output with `true` or CommonJS with `false`. The default follows [`Hyperschema.esm`](#hyperschemaesm). |
+
+- Returns: `void`
+- Throws: a `TypeError` if neither `dir` nor `schema.dir` is set.
+
+```js
+Hyperschema.toDisk(schema, { esm: true })
+```
+
+#### `schema.namespace(name)`
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L721)
+
+Create a namespace. Types registered through it get the `@name/` prefix, so `example.register({ name: 'message' })` defines `@example/message`. Later types refer to it by that name.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | The namespace name. |
+
+- Returns: [`Namespace`](#namespace)
+- Throws: `Namespace already exists` if the name was already created in this build.
+
+#### `schema.resolve(fqn[, opts])`
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L733)
+
+Look up a type by its fully qualified name. Built-in types resolve too.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `fqn` | `string` | — | A built-in type name or a name such as `@example/message`. |
+| `opts.aliases` | `boolean` | `true` | With `false`, an alias resolves to the type it points at. |
+
+- Returns: [`ResolvedType`](#resolvedtype), or `undefined` if nothing has that name. With `aliases: false` an unknown name throws a `TypeError` instead.
+
+#### `schema.register(description)`
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L686)
+
+Register a type without going through a namespace. The description takes the same keys as [`ns.register()`](#nsregisterdescription) plus `namespace`. Prefer `ns.register()`: a description without `namespace` is named `@undefined/<name>`, and `namespace: null` registers a bare name with no prefix.
+
+- Returns: [`ResolvedType`](#resolvedtype)
+
+#### `schema.toJSON([opts])`
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L740)
+
+The object that `toDisk()` writes as `schema.json`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts.dir` | `string\|null` | `schema.dir` | The directory that external module paths are made relative to. |
+
+- Returns: [`SchemaJSON`](#schemajson)
+
+#### `schema.toCode([opts])`
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L760)
+
+The source of the generated module, as a string.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts.esm` | `boolean` | [`Hyperschema.esm`](#hyperschemaesm) | ES module output or CommonJS. |
+| `opts.filename` | `string` | — | The path you write the code to. Required when the schema has external types, so their module path can be made relative. |
+
+- Returns: `string`
+- Throws: `Must provide filename if using external types` when a schema with external types gets no `filename`.
+
+#### `Hyperschema.esm`
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L668)
+
+The default output format. It's `false` for `require('hyperschema')` and `true` for `import Hyperschema from 'hyperschema'`, so the entry point you load decides whether the generated code uses `import` or `require`. The `esm` option of `toDisk()` and `toCode()` overrides it. ES module output still goes to `index.js`, so Node needs `"type": "module"` in the nearest `package.json` to load it without a warning.
+
+- Returns: `boolean`
+
+#### `schema.version` / `schema.versioned` / `schema.dir`
+
+The current schema version, whether versioning is on, and the output directory. A new schema starts at version `0` and reaches `1` with its first type. After that it goes up by one for each build that changes something.
+
+- Returns: `number` / `boolean` / `string|null`
+
+#### `schema.linkAll()` / `schema.maybeBumpVersion()`
+
+Resolve type references, and bump the version once if this build has changed anything. `toJSON()`, `toCode()` and `toDisk()` call the first, and registering a change calls the second. You don't need to call either.
+
+### Namespaces
+
+#### `ns.register(description)`
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L626)
+
+Register a type in the namespace. Registering a name that already exists in `schema.json` updates it, and the builder checks the update against the earlier definition. See [type definitions](#type-definitions) for the keys and [schema updates](#schema-updates) for what is allowed.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `description` | [`TypeDescription`](#type-definitions) | The type to register. |
+
+- Returns: [`ResolvedType`](#resolvedtype)
+
+#### `ns.require(filename)`
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L622)
+
+Set the module that provides this namespace's [external types](#external-type) and the `map` functions of its [versioned types](#versioned-type). The generated code requires it by a path relative to the generated file, and `schema.json` records that path.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `filename` | `string` | The path to the module. |
+
+```js
+example.require('./lib/encodings.js')
+```
+
+### The generated module
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/lib/codegen.js#L147)
+
+`toDisk()` writes a module that exports the functions below. It works with any registered type, not only structs.
+
+#### `getStruct(name[, version])`
+
+An encoding for the type, in the shape [compact-encoding](/p2p/reference/helpers/compact-encoding) uses (`preencode`, `encode` and `decode`), so you can pass it to `c.encode()` and `c.decode()` or embed it in another encoding. `resolveStruct` is the same function under its older name.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The fully qualified name, such as `@example/message`. |
+| `version` | `number` | The latest schema version | Read and write the layout of that schema version. Fields added in a later version are skipped. |
+
+- Returns: `object`
+- Throws: `Encoder not found <name>` if no type has that name.
+
+`version` is a schema version. It isn't the `version` of a [versioned type](#versioned-type).
+
+#### `encode(name, value[, version])` / `decode(name, buffer[, version])`
+
+Shortcuts for `c.encode(getStruct(name, version), value)` and `c.decode(getStruct(name, version), buffer)`.
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer) / the decoded value
+
+#### `getEncoding(name)`
+
+The raw encoding for the type. It uses whichever schema version was set last, by `setVersion()` or by an `encode()`, `decode()` or `getStruct()` encoding that ran. Prefer `getStruct()`.
+
+- Returns: `object`
+- Throws: `Encoder not found <name>`
+
+#### `getEnum(name)`
+
+The value map of an [enum](#enum). A numeric enum maps each key to its number, such as `{ red: 1, green: 2 }`. An enum with `strings: true` maps each key to itself.
+
+- Returns: `object`
+- Throws: `Enum not found <name>`
+
+#### `setVersion(version)`
+
+Set the schema version that `getEncoding()` uses.
+
+#### `version`
+
+The schema version the module was generated at. In CommonJS output it's that fixed number. In ES module output it's a live binding, so `setVersion()` and the `version` argument of the other functions change it.
+
+### Entry points
+
+| Import | What it is |
+| --- | --- |
+| `hyperschema` | The builder. It has CommonJS and ES module entries and ships `builder.d.ts` types. |
+| `hyperschema/runtime` | Exports `{ c }`, the compact-encoding module, which generated code imports. |
+| `hyperschema/primitives` | A `Set` of the [built-in type](#built-in-types) names. In 1.26.2 the ES module entry fails to load with `require is not defined`, so load it with `require()`. |
+
+## Type definitions
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L686)
+
+`register()` takes one description object, and its keys decide the kind of type. The builder checks them in this order: `alias`, `enum`, `array`, `record`, `external`, `versions`. With none of them the description is a struct. Every kind needs a `name`.
+
+### Struct
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L431)
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The struct's name. |
+| `fields` | `Array<FieldDescription>` | — | The fields, in order. |
+| `compact` | `boolean` | `false` | A compact struct can't get new fields later, and when embedded in another struct it isn't length-prefixed. Other structs are, so older decoders can skip fields added later. |
+| `flagsPosition` | `number` | Before the first optional field | The index in `fields` at which the flags bitfield is written. It can't come after the first optional field. |
+
+Optional fields share a flags bitfield, one bit each, and a field is encoded only when it has a value. A `required` `bool` or `uint1`–`uint7` field lives in the flags too, so the builder treats it as optional.
+
+#### Fields
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L182)
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The field name. Use camelCase. |
+| `type` | `string` | — | A [built-in type](#built-in-types), or a fully qualified name such as `@example/message`. |
+| `required` | `boolean` | `false` | Always encode the field. An optional field costs a flag bit and is encoded only when it has a value. |
+| `array` | `boolean` | `false` | The field is an array of `type`. An array of `bool` is packed into a bitfield: a `uint` length, then `ceil(length / 8)` bytes, least significant bit first. |
+| `useDefault` | `boolean` | `true` | When an absent optional field decodes, use the type's default: `0` for numbers and big integers, `false` for `bool`, `null` for everything else and for arrays. A big integer's default is the number `0`, not a BigInt. With `false` the field decodes as `undefined`. |
+| `inline` | `boolean` | `false` | Fold the field's struct into this struct's flags bitfield, which can make the encoding smaller. The field's type must be a `compact` struct. It can't be an array. |
+| `constant` | `boolean\|number\|string\|null` | — | A literal the decoder always returns for the field. A constant is never encoded, takes no flag bit and doesn't bump the schema version. It can't be `required`, `array` or `inline`, and a number must be an integer. Added in 1.26.0. |
+
+A field can't be a record. Register the record as its own type and use that type.
+
+```js
+example.register({
+  name: 'profile',
+  fields: [
+    { name: 'name', type: 'string', required: true },
+    { name: 'tags', type: 'string', array: true },
+    { name: 'kind', type: 'string', constant: 'profile' }
+  ]
+})
+```
+
+### Alias
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L70)
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `alias` | `string` | The type this name stands for: a built-in type or a fully qualified name. |
+
+```js
+example.register({ name: 'room-id', alias: 'fixed32' })
+```
+
+### Enum
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L131)
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enum` | `Array<string\|{ key }>` | — | The values, in order. You can append values later, never remove or rename one. |
+| `offset` | `number` | `1` | The number of the first value. |
+| `strings` | `boolean` | `false` | Use the key strings as the values instead of numbers. |
+
+A numeric enum takes and returns numbers. Encoding a number past the last value throws `Unknown enum`. With `strings: true` the field takes and returns the key string, and decoding an unknown value returns `null`.
+
+```js
+example.register({ name: 'role', enum: ['member', 'admin'] })
+```
+
+### Array type
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L278)
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `array` | `true` | Marks the type as an array. |
+| `type` | `string` | The element type. `uint1`–`uint7` can't be an element type. |
+
+A field with `array: true` is usually enough. Register an array type when you want to name it.
+
+### Record type
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L321)
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `record` | `true` | Marks the type as a record. |
+| `key` | `string` | The key type. |
+| `value` | `string` | The value type. |
+
+A record is an object. Pass a plain object when you encode, and expect one without a prototype back. A `Map` encodes as an empty record.
+
+```js
+example.register({ name: 'scores', record: true, key: 'string', value: 'uint' })
+```
+
+### Versioned type
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L364)
+
+A type that wraps several struct layouts under version numbers you choose. Encoding writes `value.version` (the latest if it's missing) and then the struct for that version. Decoding reads the version, decodes that struct, sets `version` on the result and applies the `map` function if the entry has one. An unknown version throws `Unsupported version`.
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `versions` | `Array<{ version, type, map }>` | — | One entry per layout. `type` names the struct. `map` is optional, and names an export of the module set with [`ns.require()`](#nsrequirefilename) that converts the decoded value, for example to the newest shape. |
+| `framed` | `boolean` | `true` for a new type | When the type is embedded in another struct, length-prefix each version's struct unless it's compact, so a decoder from an earlier schema can skip fields that a later one appended. A type already in your `schema.json` keeps its unframed layout, and the next build records `framed: false`. Setting `framed: true` on it changes the bytes it writes. Added in 1.25.0. |
+
+Keep the previous `schema.json` when you regenerate. Without it every versioned type is framed, which differs from a spec generated with 1.24.0 or earlier.
+
+```js
+example.register({
+  name: 'item',
+  versions: [
+    { version: 0, type: '@example/item-v0', map: 'upgradeV0' },
+    { version: 1, type: '@example/item-v1' }
+  ]
+})
+```
+
+### External type
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L108)
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `external` | `string` | The name of an export of the module set with [`ns.require()`](#nsrequirefilename). It must provide `preencode`, `encode` and `decode`, as a compact-encoding encoding does. |
+
+```js
+example.require('./lib/encodings.js')
+example.register({ name: 'point', external: 'point' })
+```
+
+## Built-in types
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/lib/types.js#L41)
+
+A field's `type` is a built-in type or a type you registered. Each built-in type is the [compact-encoding](/p2p/reference/helpers/compact-encoding) encoder of the same name, except `uint1`–`uint7`.
+
+| Group | Types |
+| --- | --- |
+| Unsigned integers | `uint` (variable width), `uint8`, `uint16`, `uint24`, `uint32`, `uint40`, `uint48`, `uint56`, `uint64` |
+| Bit-sized unsigned integers | `uint1` to `uint7`. They live in the flags bitfield, and can't be arrays. |
+| Signed integers | `int` (variable width), `int8`, `int16`, `int24`, `int32`, `int40`, `int48`, `int56`, `int64` |
+| Floating point | `float32`, `float64` |
+| Big integers | `bigint`, `biguint64`, `bigint64` |
+| Text | `string`, `utf8`, `ascii`, `hex` |
+| Binary | `buffer`, `optionalBuffer`, `fixed8`, `fixed16`, `fixed24`, `fixed32`, `fixed64` (a buffer of exactly 8, 16, 24, 32 or 64 bytes), `raw` (no length prefix, so only at the end of a buffer) |
+| Network | `ip`, `ipv4`, `ipv6`, `ipAddress`, `ipv4Address`, `ipv6Address` |
+| Other | `bool`, `date`, `json`, `none`, `port`, `lexint` |
+
+## Schema updates
+
+[src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L431)
+
+`schema.json` is the schema's memory. It records each type, in order, and the schema version at which each field and enum value was added. `Hyperschema.from(dir)` reads it, and the builder compares every registration against it. Updates are append-only, so data written under any earlier version still decodes.
+
+| Change | Result |
+| --- | --- |
+| Add a struct, an alias or an enum value | Accepted. The schema version goes up. |
+| Add an array, record, external or versioned type | Accepted. The version doesn't change by itself. |
+| Add a field at the end of a struct | Accepted. The schema version goes up. Add it as optional, so decoders of earlier versions can read newer data. |
+| Add a `constant` field at the end of a struct | Accepted, and the version doesn't change. |
+| Remove a field | `A field was removed: <type>` |
+| Change a field's type, or reorder fields | `Field was modified: <type>/<field>` |
+| Change whether a field is `required` | `A required field must always stay required: <type>/<field>` |
+| Turn an optional field into a constant | `A field was removed: <type>` |
+| Turn a constant into an optional field | `A constant field must always stay constant: <type>/<field>` |
+| Add a field to a `compact` struct | `A compact struct was expanded: <type>` |
+| Remove an enum value | `An enum value was removed` |
+| Rename an enum value | `Enum <index> in <type> changed. Was …` |
+| Point an alias at another type | `Remapping an alias: <type>` |
+| Change an array's element type | `Array was modified: <type>` |
+| Change a record's key or value type | `Record was modified: <type>` |
+
+These mistakes fail at registration or when you build:
+
+| Message | Cause |
+| --- | --- |
+| `Cannot resolve field type <type> in <field>` | A field names a type that isn't registered. Register it first. |
+| `Cannot resolve alias target <type> in <name>` | An alias names a type that isn't registered. |
+| `Record not supported as field. Use @example/my-record` | A field set `record: true`. Register a record type instead. |
+| `Struct <type>: <uintN> cannot be used as an array (<field>)` | A bit-sized unsigned integer field set `array: true`. |
+| `Struct <type>: flagsPosition (<n>) must be before optional fields (max <m>)` | `flagsPosition` is after the first optional field. |
+| `Constant cannot be required, array, inline or record: <type>/<field>` | A constant field combined with an option it doesn't allow. |
+| `Constant must be a bool, integer, string or null: <type>/<field>` | A constant that is a float, an object or something else. |
+| `Namespace already exists` | `schema.namespace()` was called twice with the same name in one build. |
+
+## Types
+
+### Namespace
+
+What `schema.namespace()` returns.
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | The namespace name. |
+| `external` | `string\|null` | The module set with `require()`. |
+| `register(description)` | `function` | See [`ns.register()`](#nsregisterdescription). |
+| `require(filename)` | `function` | See [`ns.require()`](#nsrequirefilename). |
+
+### ResolvedType
+
+What `register()` and `resolve()` return.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | The type's name without its namespace. |
+| `namespace` | `string` | The namespace name. |
+| `fqn` | `string` | The fully qualified name, such as `@example/message`. |
+| `version` | `number` | The schema version at which a struct or an alias was added. `-1` for the other kinds. |
+| `isPrimitive`, `isEnum`, `isStruct`, `isArray`, `isRecord`, `isAlias`, `isExternal`, `isVersioned` | `boolean` | Which kind of type it is. |
+| `toJSON()` | `function` | The type's entry in `schema.json`. |
+
+### SchemaJSON
+
+The content of `schema.json`.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `version` | `number` | The schema version. |
+| `schema` | `Array<object>` | The registered types, in registration order. |
+| `namespaces` | `Array<{ name, external }>` | The namespaces that have an external module, with its path relative to the schema directory. Present only when there is one. |
+
+## See also
+
+- [RPC and schemas](/bare/explanation/rpc-and-schemas)—why Pear apps generate their wire format from one schema.
+- [HRPC](/p2p/reference/helpers/hrpc)—typed RPC stubs generated from a Hyperschema.
+- [Add typed RPC to a Pear app](/p2p/how-to/add-typed-rpc-to-a-pear-app)—the worked how-to, from schema to generated client.
+- [compact-encoding](/p2p/reference/helpers/compact-encoding)—the encodings that generated code is built from.
+- [A production Autobase-backed chat room](/p2p/explanation/autobase-backed-chat-room)—a worked example with a generated `spec/` directory.
+- [Upstream Hyperschema repository](https://github.com/holepunchto/hyperschema)—source, releases and implementation details.
