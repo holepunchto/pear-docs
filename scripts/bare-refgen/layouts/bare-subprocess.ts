@@ -4,16 +4,18 @@ const layout: Layout = {
   groups: [],
   seeAlso: [
     "It's a native addon and requires Bare `>=1.7.0`; it's available on desktop (Windows, macOS, Linux).",
+    "From v6.2.0 it depends on [`bare-structured-clone`](/bare/reference/bare/modules/bare-structured-clone) v2, which frames `serialization: 'advanced'` messages. v6.2.0 has no API change.",
+    "v6.2.1 fixes `spawn()` when the child fails to launch, such as a missing executable. Before it, tearing down the failed subprocess could signal the process group of the parent. There is no API change.",
   ],
   describe: {
     'SpawnOptions.shell':
-      "A shell path, or `true` to use the platform default (`/bin/sh`, `/system/bin/sh` on Android, or `cmd.exe` on Windows).",
+      "A shell path, or `true` to use the platform default: `/bin/sh`, `/system/bin/sh` on Android, or the `COMSPEC` environment variable on Windows, falling back to `cmd.exe`. The command is `file` and `args` joined with spaces and passed to the shell with `-c`, or `/d /s /c` for `cmd.exe`.",
     'SpawnOptions.stdio':
       "Per-stream stdio configuration. `'pipe'` creates a pipe; `'overlapped'` is like `'pipe'` but opens the pipe in Windows overlapped mode; `'ignore'`/`'inherit'`/`'ipc'` behave as their names suggest. At most one slot may be `'ipc'`.",
     'SpawnOptions.serialization':
       "The IPC message serialization mode. `'json'` sends `JSON.stringify`-encoded, newline-delimited messages. `'advanced'` is length-prefixed structured clone via `bare-structured-clone`, supporting `Date`, `Map`, `Buffer`, etc. `'binary'` is an unframed raw pipe — no message boundaries.",
     'SpawnSyncOptions.input': "Written to the child's `stdin` before it starts.",
-    'SpawnSyncOptions.maxBuffer': "The size of the buffer allocated to capture each `'pipe'` stdio slot.",
+    'SpawnSyncOptions.maxBuffer': "The size in bytes of the buffer allocated to capture each `'pipe'` stdio slot. Defaults to 1 MiB.",
   },
   params: {
     spawn: {

@@ -1,5 +1,5 @@
 # Reference generation improvement plan — hyperdht
-Generated from `holepunchto/hyperdht` at **v6.34.0** (`2174285add`) on 2026-09-17T14:15:56.219Z.
+Generated from `holepunchto/hyperdht` at **v6.34.1** (`9f25e42688`) on 2026-10-05T21:14:55.439Z.
 **Doc-completeness: 9%** — 1 of 11 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page

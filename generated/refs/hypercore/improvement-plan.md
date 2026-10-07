@@ -1,5 +1,5 @@
 # Reference generation improvement plan — hypercore
-Generated from `holepunchto/hypercore` at **v11.36.1** (`5f14c3a059`) on 2026-09-17T14:15:54.471Z.
+Generated from `holepunchto/hypercore` at **v11.37.2** (`373fc43684`) on 2026-10-05T21:14:53.914Z.
 **Doc-completeness: 75%** — 45 of 60 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page

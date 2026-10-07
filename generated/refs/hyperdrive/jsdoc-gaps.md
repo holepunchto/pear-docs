@@ -1,6 +1,6 @@
 # JSDoc gap report — hyperdrive
 
-`holepunchto/hyperdrive` at **v13.3.3** · **0%** of published members fully documented (0/42) · 11 source member(s) not in the manifest (internal or unfiled) — not graded.
+`holepunchto/hyperdrive` at **v13.3.4** · **0%** of published members fully documented (0/42) · 11 source member(s) not in the manifest (internal or unfiled) — not graded.
 
 Coverage by dimension: **descriptions 90%** · **param types 0%** · **typed returns 0%** · **examples 52%**. (Prose is usually present; the gap is mostly types.)
 
@@ -45,15 +45,15 @@ See the [JSDoc convention](../../../scripts/refgen/JSDOC_CONVENTION.md) for the 
 - [ ] L419 `const watcher = drive.watch([folder])` — add @param {Type} + description for `folder`; @returns {Type}
 - [ ] L428 `const stream = drive.diff(version, folder, [options])` — add @param {Type} + description for `length`; @param {Type} + description for `folder`; @param {Type} + description for `opts`; @returns {Type}
 - [ ] L439 `await drive.downloadDiff(version, folder, [options])` — add @param {Type} + description for `length`; @param {Type} + description for `folder`; @param {Type} + description for `opts`; @returns {Type}
-- [ ] L453 `await drive.downloadRange(dbRanges, blobRanges)` — add @param {Type} + description for `dbRanges`; @param {Type} + description for `blobRanges`; @returns {Type}
-- [ ] L471 `const stream = await drive.entries([range], [options])` — add @param {Type} + description for `range`; @param {Type} for `opts`; @returns {Type}; @example
-- [ ] L477 `const download = drive.download(folder, [options])` — add @param {Type} + description for `folder`; @param {Type} for `opts`; @returns {Type}
-- [ ] L483 `await drive.has(path)` — add @param {Type} + description for `path`; @returns {Type}; @example
-- [ ] L503 `const stream = drive.list(folder, [options])` — add @param {Type} + description for `folder`; @param {Type} for `opts`; @returns {Type}
-- [ ] L516 `const stream = drive.readdir(folder, [options])` — add @param {Type} + description for `folder`; @param {Type} for `opts`; @returns {Type}
-- [ ] L521 `const mirror = drive.mirror(out, [options])` — add @param {Type} + description for `out`; @param {Type} + description for `opts`; @returns {Type}; @example
-- [ ] L525 `const rs = drive.createReadStream(path, [options])` — add @param {Type} + description for `name`; @param {Type} for `opts`; @returns {Type}
-- [ ] L579 `const ws = drive.createWriteStream(path, [options])` — add @param {Type} + description for `name`; @param {Type} for `options`; @returns {Type}
+- [ ] L447 `await drive.downloadRange(dbRanges, blobRanges)` — add @param {Type} + description for `dbRanges`; @param {Type} + description for `blobRanges`; @returns {Type}
+- [ ] L465 `const stream = await drive.entries([range], [options])` — add @param {Type} + description for `range`; @param {Type} for `opts`; @returns {Type}; @example
+- [ ] L471 `const download = drive.download(folder, [options])` — add @param {Type} + description for `folder`; @param {Type} for `opts`; @returns {Type}
+- [ ] L477 `await drive.has(path)` — add @param {Type} + description for `path`; @returns {Type}; @example
+- [ ] L497 `const stream = drive.list(folder, [options])` — add @param {Type} + description for `folder`; @param {Type} for `opts`; @returns {Type}
+- [ ] L510 `const stream = drive.readdir(folder, [options])` — add @param {Type} + description for `folder`; @param {Type} for `opts`; @returns {Type}
+- [ ] L515 `const mirror = drive.mirror(out, [options])` — add @param {Type} + description for `out`; @param {Type} + description for `opts`; @returns {Type}; @example
+- [ ] L519 `const rs = drive.createReadStream(path, [options])` — add @param {Type} + description for `name`; @param {Type} for `opts`; @returns {Type}
+- [ ] L573 `const ws = drive.createWriteStream(path, [options])` — add @param {Type} + description for `name`; @param {Type} for `options`; @returns {Type}
 
 ## Suggested `@typedef`s (19)
 

@@ -1,6 +1,6 @@
 # JSDoc gap report — hyperdht
 
-`holepunchto/hyperdht` at **v6.33.0** · **0%** of published members fully documented (0/11) · 19 source member(s) not in the manifest (internal or unfiled) — not graded.
+`holepunchto/hyperdht` at **v6.34.1** · **0%** of published members fully documented (0/11) · 19 source member(s) not in the manifest (internal or unfiled) — not graded.
 
 Coverage by dimension: **descriptions 100%** · **param types 0%** · **typed returns 0%** · **examples 36%**. (Prose is usually present; the gap is mostly types.)
 
@@ -13,16 +13,16 @@ See the [JSDoc convention](../../../scripts/refgen/JSDOC_CONVENTION.md) for the 
 ### `index.js`
 
 - [ ] L26 `const node = new DHT([options])` — add @param {Type} for `opts`
-- [ ] L81 `const socket = node.connect(remotePublicKey, [options])` — add @param {Type} + description for `remotePublicKey`; @param {Type} for `opts`; @returns {Type}
-- [ ] L85 `const server = node.createServer([options], [onconnection])` — add @param {Type} for `opts`; @param {Type} + description for `onconnection`; @returns {Type}
-- [ ] L123 `await node.destroy([options])` — add @param {Type} + description for `options`; @returns {Type}; @example
-- [ ] L194 `const stream = node.lookup(topic, [options])` — add @param {Type} for `target`; @param {Type} + description for `opts`; @returns {Type}
-- [ ] L242 `await node.unannounce(topic, keyPair, [options])` — add @param {Type} + description for `target`; @param {Type} + description for `keyPair`; @param {Type} + description for `opts`; @returns {Type}; @example
-- [ ] L246 `const stream = node.announce(topic, keyPair, [relayAddresses], [options])` — add @param {Type} + description for `target`; @param {Type} + description for `keyPair`; @param {Type} + description for `relayAddresses`; @param {Type} + description for `opts`; @returns {Type}; @example
-- [ ] L268 `const { value, from } = await node.immutableGet(hash, [options])` — add @param {Type} + description for `target`; @param {Type} + description for `opts`; @returns {Type}; @example
-- [ ] L283 `const { hash, closestNodes } = await node.immutablePut(value, [options])` — add @param {Type} + description for `value`; @param {Type} + description for `opts`; @returns {Type}; @example
-- [ ] L304 `const { value, from, seq, signature } = await node.mutableGet(publicKey, [options])` — add @param {Type} + description for `publicKey`; @param {Type} + description for `opts`; @returns {Type}; @example
-- [ ] L357 `const { publicKey, closestNodes, seq, signature } = await node.mutablePut(keyPair, value, [options])` — add @param {Type} + description for `keyPair`; @param {Type} + description for `value`; @param {Type} + description for `opts`; @returns {Type}; @example
+- [ ] L89 `const socket = node.connect(remotePublicKey, [options])` — add @param {Type} + description for `remotePublicKey`; @param {Type} for `opts`; @returns {Type}
+- [ ] L93 `const server = node.createServer([options], [onconnection])` — add @param {Type} for `opts`; @param {Type} + description for `onconnection`; @returns {Type}
+- [ ] L131 `await node.destroy([options])` — add @param {Type} + description for `options`; @returns {Type}; @example
+- [ ] L202 `const stream = node.lookup(topic, [options])` — add @param {Type} for `target`; @param {Type} + description for `opts`; @returns {Type}
+- [ ] L250 `await node.unannounce(topic, keyPair, [options])` — add @param {Type} + description for `target`; @param {Type} + description for `keyPair`; @param {Type} + description for `opts`; @returns {Type}; @example
+- [ ] L254 `const stream = node.announce(topic, keyPair, [relayAddresses], [options])` — add @param {Type} + description for `target`; @param {Type} + description for `keyPair`; @param {Type} + description for `relayAddresses`; @param {Type} + description for `opts`; @returns {Type}; @example
+- [ ] L276 `const { value, from } = await node.immutableGet(hash, [options])` — add @param {Type} + description for `target`; @param {Type} + description for `opts`; @returns {Type}; @example
+- [ ] L291 `const { hash, closestNodes } = await node.immutablePut(value, [options])` — add @param {Type} + description for `value`; @param {Type} + description for `opts`; @returns {Type}; @example
+- [ ] L312 `const { value, from, seq, signature } = await node.mutableGet(publicKey, [options])` — add @param {Type} + description for `publicKey`; @param {Type} + description for `opts`; @returns {Type}; @example
+- [ ] L365 `const { publicKey, closestNodes, seq, signature } = await node.mutablePut(keyPair, value, [options])` — add @param {Type} + description for `keyPair`; @param {Type} + description for `value`; @param {Type} + description for `opts`; @returns {Type}; @example
 
 ## Suggested `@typedef`s (11)
 
