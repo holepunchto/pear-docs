@@ -1,5 +1,5 @@
 # Reference generation improvement plan — autobee
-Generated from `holepunchto/autobee` at **v2.9.5** (`1e29b82a6d`) on 2026-09-17T14:15:51.703Z.
+Generated from `holepunchto/autobee` at **v2.12.1** (`d9071a0542`) on 2026-10-05T21:14:51.526Z.
 **Doc-completeness: 61%** — 14 of 23 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
@@ -52,10 +52,11 @@ _Cause: no code fence under the README entry — add a usage snippet._
 - `db.local`
 
 ## Drift
-### Undocumented in README (in source) (54)
+### Undocumented in README (in source) (58)
 
 _Cause: public method in source with no README entry — add upstream docs, or confirm it is internal._
 
+- `db.appending`
 - `db.activeWriters`
 - `db.flushes`
 - `db.busy`
@@ -70,6 +71,7 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `db.openCore(key)`
 - `db.bumpSoon()`
 - `db.getLastError()`
+- `await db.compactMaybe()`
 - `await db.readOplog(core, length, options = {})`
 - `await db.prepareBatch(batch)`
 - `db.replay()`
@@ -110,6 +112,8 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `db.on('rotate-local-writer', listener)`
 - `db.on('anchor', anchor)`
 - `db.on('move-to', to, from)`
+- `writerEncryption.compatKeys(ctx)`
+- `writerEncryption.blockKey(entropy, ctx)`
 
 ### Stale README (not found in source) (11)
 

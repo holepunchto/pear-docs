@@ -1,5 +1,5 @@
 # Reference generation improvement plan — compact-encoding
-Generated from `holepunchto/compact-encoding` at **v3.5.0** (`e9d5ef9345`) on 2026-09-17T14:16:00.154Z.
+Generated from `holepunchto/compact-encoding` at **v3.5.2** (`682a3935b0`) on 2026-10-05T21:14:59.753Z.
 **Doc-completeness: 100%** — 1 of 1 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page

@@ -4,7 +4,7 @@ description: "The module system that powers Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "7.0.3"
+upstreamVersion: "7.2.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -241,6 +241,11 @@ Module.resolveSync(specifier: string, parentURL: URL, condition: Condition, opts
 The `ModuleProtocol` class for resolving, reading and loading modules. See
 [Protocols](https://github.com/holepunchto/bare-module#protocols) for usage.
 
+#### `resolutions: ResolutionsMap`
+
+The resolutions map of the module graph, with keys being serialized parent URLs and values
+being `"imports"` maps.
+
 #### `url: URL`
 
 The WHATWG `URL` identifier of the module.
@@ -255,29 +260,18 @@ The WHATWG `URL` identifier of the module.
 | --- | --- | --- | --- |
 | `opts?` | `ModuleLoader.Options` | — | — |
 
-#### `ModuleLoader.builtins: Builtins`
-
-A map of builtin module specifiers mapped to the loaded module.
-
 #### `ModuleLoader.cache: Cache`
 
 The cache of loaded modules that the loader was created with, shared with every module of its
 graph.
 
-#### `ModuleLoader.concurrency: number`
+#### `ModuleLoader.evict(urls: URL | string | Iterable<URL | string>): URL[]`
 
-The maximum number of module reads to perform concurrently while linking. `0` applies no
-limit.
+**Parameters**
 
-#### `ModuleLoader.conditions: Conditions`
-
-An array of conditions used to resolve dependencies while loading the module. See [Conditional
-exports](https://github.com/holepunchto/bare-module#conditional-exports) for possible values.
-
-#### `ModuleLoader.defaultType: number`
-
-The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See
-`Module.constants.types` for possible values.
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `urls` | `URL \| string \| Iterable<URL \| string>` | — | — |
 
 #### `ModuleLoader.get(url: URL): Module | null`
 
@@ -287,29 +281,55 @@ The assumed type of a module without a `type` using an ambiguous extension, such
 | --- | --- | --- | --- |
 | `url` | `URL` | — | — |
 
-#### `ModuleLoader.import(entry: URL, opts?: ImportOptions): Promise<unknown>`
+#### `ModuleLoader.import(entry: URL, opts?: ModuleLoader.ImportOptions): Promise<unknown>`
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `entry` | `URL` | — | — |
-| `opts?` | `ImportOptions` | — | — |
+| `opts?` | `ModuleLoader.ImportOptions` | — | — |
 
-#### `ModuleLoader.imports: ImportsMap`
-
-The import map when the module was loaded.
-
-#### `ModuleLoader.importSync(entry: URL, opts?: ImportOptions): unknown`
+#### `ModuleLoader.importSync(entry: URL, opts?: ModuleLoader.ImportOptions): unknown`
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `entry` | `URL` | — | — |
-| `opts?` | `ImportOptions` | — | — |
+| `opts?` | `ModuleLoader.ImportOptions` | — | — |
 
-#### `ModuleLoader.link(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Promise<Module>`
+#### `ModuleLoader.instantiate`
+
+```ts
+instantiate(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Promise<Module[]>
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `urls` | `URL \| string \| Iterable<URL \| string>` | — | — |
+| `opts?` | `ModuleLoader.LinkOptions` | — | — |
+
+#### `ModuleLoader.instantiateSync`
+
+```ts
+instantiateSync(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Module[]
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `urls` | `URL \| string \| Iterable<URL \| string>` | — | — |
+| `opts?` | `ModuleLoader.LinkOptions` | — | — |
+
+#### `ModuleLoader.link`
+
+```ts
+link(entry: URL, source?: Buffer | string | null, opts?: ModuleLoader.LinkOptions): Promise<Module>
+```
 
 **Parameters**
 
@@ -317,9 +337,9 @@ The import map when the module was loaded.
 | --- | --- | --- | --- |
 | `entry` | `URL` | — | — |
 | `source?` | `Buffer` \| `string` \| `null` | — | — |
-| `opts?` | `LinkOptions` | — | — |
+| `opts?` | `ModuleLoader.LinkOptions` | — | — |
 
-#### `ModuleLoader.linkSync(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Module`
+#### `ModuleLoader.linkSync(entry: URL, source?: Buffer | string | null, opts?: ModuleLoader.LinkOptions): Module`
 
 **Parameters**
 
@@ -327,7 +347,7 @@ The import map when the module was loaded.
 | --- | --- | --- | --- |
 | `entry` | `URL` | — | — |
 | `source?` | `Buffer` \| `string` \| `null` | — | — |
-| `opts?` | `LinkOptions` | — | — |
+| `opts?` | `ModuleLoader.LinkOptions` | — | — |
 
 #### `ModuleLoader.main: Module`
 
@@ -338,7 +358,6 @@ The module representing the entry script where the program was launched.
 ```ts
 interface ImportOptions {
   attributes?: Attributes
-  conditions?: Conditions
 }
 ```
 
@@ -347,7 +366,6 @@ interface ImportOptions {
 ```ts
 interface LinkOptions {
   attributes?: Attributes
-  conditions?: Conditions
 }
 ```
 
@@ -356,7 +374,7 @@ interface LinkOptions {
 ```ts
 interface Options {
   builtins?: Builtins
-  cache?: Cache | boolean
+  cache?: Cache
   concurrency?: number
   defaultType?: number
   imports?: ImportsMap
@@ -365,15 +383,18 @@ interface Options {
 }
 ```
 
+#### `ModuleLoader.patch(bundle: Bundle): URL[]`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bundle` | `Bundle` | — | — |
+
 #### `ModuleLoader.protocol: Protocol`
 
 The `ModuleProtocol` modules are resolved and read through, shared with every module of the
 loader's graph.
-
-#### `ModuleLoader.resolutions: ResolutionsMap`
-
-A map of preresolved imports with keys being serialized parent URLs and values being
-`"imports"` maps.
 
 ### ModuleProtocol
 
@@ -497,7 +518,8 @@ Resolve a module `URL` to the `URL` that should be linked. The default implement
 
 ```ts
 interface Attributes {
-  type: Lowercase<keyof typeof constants>
+  type?: Lowercase<keyof typeof constants>
+  imports?: string
 }
 ```
 
@@ -519,14 +541,13 @@ A map of module URL `href`s to loaded modules.
 interface LoadOptions {
   referrer?: Module
   builtins?: Builtins
-  cache?: Cache | boolean
+  cache?: Cache
   concurrency?: number
   defaultType?: number
   imports?: ImportsMap
   protocol?: Protocol
   resolutions?: ResolutionsMap
   attributes?: Attributes
-  conditions?: Conditions
 }
 ```
 
@@ -536,7 +557,7 @@ interface LoadOptions {
 interface ResolveOptions {
   referrer?: Module
   builtins?: Builtins
-  cache?: Cache | boolean
+  cache?: Cache
   concurrency?: number
   defaultType?: number
   imports?: ImportsMap
@@ -551,7 +572,7 @@ interface ResolveOptions {
 interface CreateRequireOptions {
   referrer?: Module
   builtins?: Builtins
-  cache?: Cache | boolean
+  cache?: Cache
   concurrency?: number
   defaultType?: number
   imports?: ImportsMap
@@ -587,7 +608,10 @@ The `require.addon` function: imports addon modules, with `host` and `resolve` a
 interface Require {
   main: Module
   cache: Cache
-  resolve: (specifier: string, parentURL?: URL) => string
+  resolve: {
+      (specifier: string, opts?: RequireOptions): string
+      (specifier: string, parentURL?: string | URL, opts?: RequireOptions): string
+    }
   addon: RequireAddon
   asset: (specifier: string, parentURL?: URL) => string
 }
@@ -726,29 +750,18 @@ Resolve a module `URL` to the `URL` that should be linked. The default implement
 | --- | --- | --- | --- |
 | `opts?` | `ModuleLoader.Options` | — | — |
 
-#### `loader.ModuleLoader.builtins: Builtins`
-
-A map of builtin module specifiers mapped to the loaded module.
-
 #### `loader.ModuleLoader.cache: Cache`
 
 The cache of loaded modules that the loader was created with, shared with every module of its
 graph.
 
-#### `loader.ModuleLoader.concurrency: number`
+#### `loader.ModuleLoader.evict(urls: URL | string | Iterable<URL | string>): URL[]`
 
-The maximum number of module reads to perform concurrently while linking. `0` applies no
-limit.
+**Parameters**
 
-#### `loader.ModuleLoader.conditions: Conditions`
-
-An array of conditions used to resolve dependencies while loading the module. See [Conditional
-exports](https://github.com/holepunchto/bare-module#conditional-exports) for possible values.
-
-#### `loader.ModuleLoader.defaultType: number`
-
-The assumed type of a module without a `type` using an ambiguous extension, such as `.js`. See
-`Module.constants.types` for possible values.
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `urls` | `URL \| string \| Iterable<URL \| string>` | — | — |
 
 #### `loader.ModuleLoader.get(url: URL): Module | null`
 
@@ -758,29 +771,55 @@ The assumed type of a module without a `type` using an ambiguous extension, such
 | --- | --- | --- | --- |
 | `url` | `URL` | — | — |
 
-#### `loader.ModuleLoader.import(entry: URL, opts?: ImportOptions): Promise<unknown>`
+#### `loader.ModuleLoader.import(entry: URL, opts?: ModuleLoader.ImportOptions): Promise<unknown>`
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `entry` | `URL` | — | — |
-| `opts?` | `ImportOptions` | — | — |
+| `opts?` | `ModuleLoader.ImportOptions` | — | — |
 
-#### `loader.ModuleLoader.imports: ImportsMap`
-
-The import map when the module was loaded.
-
-#### `loader.ModuleLoader.importSync(entry: URL, opts?: ImportOptions): unknown`
+#### `loader.ModuleLoader.importSync(entry: URL, opts?: ModuleLoader.ImportOptions): unknown`
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `entry` | `URL` | — | — |
-| `opts?` | `ImportOptions` | — | — |
+| `opts?` | `ModuleLoader.ImportOptions` | — | — |
 
-#### `loader.ModuleLoader.link(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Promise<Module>`
+#### `loader.ModuleLoader.instantiate`
+
+```ts
+instantiate(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Promise<Module[]>
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `urls` | `URL \| string \| Iterable<URL \| string>` | — | — |
+| `opts?` | `ModuleLoader.LinkOptions` | — | — |
+
+#### `loader.ModuleLoader.instantiateSync`
+
+```ts
+instantiateSync(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Module[]
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `urls` | `URL \| string \| Iterable<URL \| string>` | — | — |
+| `opts?` | `ModuleLoader.LinkOptions` | — | — |
+
+#### `loader.ModuleLoader.link`
+
+```ts
+link(entry: URL, source?: Buffer | string | null, opts?: ModuleLoader.LinkOptions): Promise<Module>
+```
 
 **Parameters**
 
@@ -788,9 +827,9 @@ The import map when the module was loaded.
 | --- | --- | --- | --- |
 | `entry` | `URL` | — | — |
 | `source?` | `Buffer` \| `string` \| `null` | — | — |
-| `opts?` | `LinkOptions` | — | — |
+| `opts?` | `ModuleLoader.LinkOptions` | — | — |
 
-#### `loader.ModuleLoader.linkSync(entry: URL, source?: Buffer | string | null, opts?: LinkOptions): Module`
+#### `loader.ModuleLoader.linkSync(entry: URL, source?: Buffer | string | null, opts?: ModuleLoader.LinkOptions): Module`
 
 **Parameters**
 
@@ -798,21 +837,24 @@ The import map when the module was loaded.
 | --- | --- | --- | --- |
 | `entry` | `URL` | — | — |
 | `source?` | `Buffer` \| `string` \| `null` | — | — |
-| `opts?` | `LinkOptions` | — | — |
+| `opts?` | `ModuleLoader.LinkOptions` | — | — |
 
 #### `loader.ModuleLoader.main: Module`
 
 The module representing the entry script where the program was launched.
 
+#### `loader.ModuleLoader.patch(bundle: Bundle): URL[]`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bundle` | `Bundle` | — | — |
+
 #### `loader.ModuleLoader.protocol: Protocol`
 
 The `ModuleProtocol` modules are resolved and read through, shared with every module of the
 loader's graph.
-
-#### `loader.ModuleLoader.resolutions: ResolutionsMap`
-
-A map of preresolved imports with keys being serialized parent URLs and values being
-`"imports"` maps.
 
 ### Types
 
@@ -821,7 +863,7 @@ A map of preresolved imports with keys being serialized parent URLs and values b
 ```ts
 interface Options {
   builtins?: Builtins
-  cache?: Cache | boolean
+  cache?: Cache
   concurrency?: number
   defaultType?: number
   imports?: ImportsMap
@@ -835,7 +877,6 @@ interface Options {
 ```ts
 interface LinkOptions {
   attributes?: Attributes
-  conditions?: Conditions
 }
 ```
 
@@ -844,7 +885,6 @@ interface LinkOptions {
 ```ts
 interface ImportOptions {
   attributes?: Attributes
-  conditions?: Conditions
 }
 ```
 
