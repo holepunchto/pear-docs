@@ -10,6 +10,35 @@ A curated record of changes across Pear and its modules, newest first. Entries a
 
 {/* changelog:insert — automation inserts draft entries below this marker; keep it directly above the newest entry. */}
 
+## 2026-10-07 — Pear 3.6.0
+
+Pear 3.6.0 is a feature release on top of Pear 3.5.0. It removes no command or flag, but two changes can affect an existing script: unknown-argument errors have new wording, and `pear build` now fails when it is given no artifact flag. The rest is visibility. `pear build` reports what it builds, in plain text and as `--json` events a script can check, and `pear info` shows whether this machine can write to a link. A long-running `pear seed` stays current across releases, and the CLI accepts quoted links and leaves your terminal clean when you interrupt a prompt.
+
+{/* TODO(3.6.0 release day): reconcile this entry with upstream's v3.6.0 CHANGELOG section and the tag's lockfile. Confirm the tag contains holepunchto/pear#1229 (pear build output), #1237 (pear info writable), #1238 (quoted links), #1239 (error text), #1242 (Ctrl+C) and #1231 (seed refresh), that it locks pear-build v1.3.2 and bare-build v1.3.1. Run `pear versions` on the shipped binary and confirm the closing callout's Bare version: bare-build v1.3.1 embeds bare@1.34.0 in the executable, and the 3.5.0 binary prints 1.29.4, which matches bare-build v1.0.4. Whether the 3.6.0 CLI still starts on macOS 12 is not confirmed, so the lede and callout do not mention a platform floor. If the CLI no longer starts there, say so in the lede. */}
+
+### pear (CLI) — v3.6.0
+
+- Added: [`pear build`](/pear/reference/pear/cli#pear-build) prints the app, version, and target, then one `+ <file> (origin: <source>)` line for each artifact it places, and `Build complete!`. It printed nothing on success before. With `--json` it emits `building` (`name`, `version`, `target`), one `executable` (`file`, `origin`) per artifact, and `final`. An `executable` event has no architecture field, so a script reads the `by-arch/<arch>` segment of `file`. See [Preflight a release before staging](/pear/how-to/operate-an-app/manual-deployment/preflight-a-release).
+- Added: [`pear info`](/pear/reference/pear/cli#pear-info) reports `writable`—whether this machine's corestore holds the key pair for the link—as a row between `productName` and `length` and as a field of the `--json` `info` object. It describes stage and provision links, and it does not prove a stage will succeed.
+- Added: link arguments may be wrapped in one pair of matching single or double quotes, which Pear strips before it parses the link. Earlier releases reject a quoted link with `A valid pear link must be specified.`
+- Changed: [`pear seed`](/pear/reference/pear/cli#pear-seed) re-reads `package.json` whenever the drive grows or is truncated, so the `App:` row and the `--json` `stats` fields `name` and `semver` follow a release without restarting the seeder. They were read once at startup before.
+- Changed: an unknown command or argument fails with `✖ Unexpected argument  '<value>'`, with two spaces before the quote, where it failed with `✖ Unrecognized Argument at index <n> with value <value>`. A script that matches the old text should match both.
+- Changed: [`pear build`](/pear/reference/pear/cli#pear-build) reports an artifact that is not named after `productName`, `name`, or a `bin` entry as `ERR_INVALID_APP_NAME`, and prints only its message. It printed a stack trace before.
+- Fixed: Ctrl+C at a typed confirmation prompt (`STAGE` in `pear stage`, `CLEAR` in `pear gc cores`) restores the terminal. It could leave the terminal unresponsive or in raw mode before.
+
+### pear-build — v1.3.2, v1.3.1
+
+- Added (v1.3.1): a `building` event, which `pear build`'s new output is built on. A missing artifact path throws `ERR_NOT_FOUND` (`<path> does not exist`) where it threw a plain error.
+- Changed (v1.3.2): [`--package`](/pear/reference/pear/cli#pear-build) defaults to `./package.json`, so running `pear build` without it no longer prints the command's help. A build with no artifact flag fails with `at least one app build must be specified` where it created an empty deployment directory.
+
+### Internal — deps bump
+
+`hyperdb` v6.10.0 and `bare-worker` v4.5.0. No documented surface changes in these.
+
+<Callout type="info">
+Pear 3.6.0 also bundles newer Hypercore, HyperDHT, Hyperdrive, Corestore, Compact-encoding, Hyperschema, blind-peering, and blind-peer releases—see [P2P's release overview](/p2p/release-overview)—and its executable embeds Bare v1.34.0, up from v1.29.4—see [Bare's release overview](/bare/release-overview). `pear versions` prints the embedded version on its `bare:` line. An application pins its own copies of these modules in its `package.json`, so upgrading Pear does not change them in your app—upgrade those dependencies directly to pick the changes up.
+</Callout>
+
 ## 2026-09-22 — Pear 3.5.0
 
 Pear 3.5.0 is a feature release on top of Pear 3.4.0. One command is renamed: `pear blind-peer identity` is gone, replaced by the new `pear identity` command, which prints all four of this machine's network keys instead of just the one. The rest is `pear seed` reporting—a `Verlink` row in place of `Drive Key`, and block-level sync progress for both the drive and its blobs. Among the bundled modules, Hyperschema 1.23.0 changes how bool arrays are encoded, which matters to any app that regenerates its schemas—see [P2P's release overview](/p2p/release-overview).
