@@ -442,7 +442,7 @@ A field's `type` is a built-in type or a type you registered. Each built-in type
 
 [src](https://github.com/holepunchto/hyperschema/blob/v1.26.2/builder.cjs#L431)
 
-`schema.json` is the schema's memory. It records each type, in order, and the schema version at which each field and enum value was added. `Hyperschema.from(dir)` reads it, and the builder compares every registration against it. Updates are append-only, so data written under any earlier version still decodes.
+`schema.json` is the schema's memory. It records each type, in order, and the schema version at which each field and enum value was added. `Hyperschema.from(dir)` reads it, and the builder compares every registration against it. Updates are meant to be append-only, so data written under any earlier version still decodes. The builder enforces the rules in the table below, but not all of them: it doesn't catch every change that breaks old data, so keep to appending.
 
 | Change | Result |
 | --- | --- |
@@ -451,7 +451,7 @@ A field's `type` is a built-in type or a type you registered. Each built-in type
 | Add a field at the end of a struct | Accepted. The schema version goes up. Add it as optional, so decoders of earlier versions can read newer data. |
 | Add a `constant` field at the end of a struct | Accepted, and the version doesn't change. |
 | Remove a field | `A field was removed: <type>` |
-| Change a field's type, or reorder fields | `Field was modified: <type>/<field>` |
+| Change a field's type, including by moving a field so a different type sits at its old position | `Field was modified: <type>/<field>` |
 | Change whether a field is `required` | `A required field must always stay required: <type>/<field>` |
 | Turn an optional field into a constant | `A field was removed: <type>` |
 | Turn a constant into an optional field | `A constant field must always stay constant: <type>/<field>` |
@@ -461,6 +461,14 @@ A field's `type` is a built-in type or a type you registered. Each built-in type
 | Point an alias at another type | `Remapping an alias: <type>` |
 | Change an array's element type | `Array was modified: <type>` |
 | Change a record's key or value type | `Record was modified: <type>` |
+
+The builder compares each field with the one at the same position by type, `required` and whether it's a constant. It doesn't check anything else, so these changes are accepted without an error but change the bytes your schema reads and writes:
+
+- Renaming a field.
+- Swapping two fields that have the same type and the same `required` setting.
+- Changing a field's `array` or `inline` option.
+
+Don't make them in a schema that has shipped. Add a new field at the end instead.
 
 These mistakes fail at registration or when you build:
 
