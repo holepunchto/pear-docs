@@ -11,8 +11,8 @@
 // Unlike Pear's generator, this one does NOT restrict to one major line —
 // there is no "every 1.x since 1.0.0" requirement here, just "the N most
 // recent doc-states" (decided: N = 5). So it walks stable tags newest-first
-// and stops once it has collected 5 distinct surfaces, rather than scanning
-// a whole major's history.
+// and stops once it has collected 5 COMPLETE surfaces, rather than scanning
+// a whole major's history. "Complete" matters: see buildDocStates().
 //
 // Three axes, three extraction strategies:
 //   bare-cli      holepunchto/bare:bin/bare.js         scripts/bare-cli-surface.ts (paparam, text)
@@ -51,8 +51,22 @@ const root = path.resolve(import.meta.dirname, '..');
 /** How many recent doc-states each dropdown retains (decided: upper end of 2-5). */
 const DOC_STATE_COUNT = 5;
 
-/** Safety cap on how many stable tags to scan per axis before giving up. */
-const MAX_TAGS_SCANNED = 60;
+/**
+ * Safety cap on how many stable tags one axis may fetch before the run FAILS.
+ *
+ * This used to be 60 and silently truncated the walk: bare-cli's oldest
+ * collected state spans ~30 releases, so 60 tags ran out before 5 states were
+ * found, and every new Bare patch release pushed the oldest tag in the scan
+ * out of the window. The oldest state's `value` then drifted (1.17.5 -> 1.19.0
+ * -> 1.20.3) through releases that changed nothing, and the file kept calling
+ * it a "5-state window" boundary although only 3 states had been found.
+ *
+ * The walk now runs until the window is complete or history ends, so this
+ * cap is only a guard against a runaway scan (each tag is one API request),
+ * and hitting it throws instead of writing a truncated window. It sits well
+ * above the whole stable history of both repos (~130 tags each in 2026-09).
+ */
+const MAX_TAGS_SCANNED = 400;
 
 interface AxisConfig {
   key: string;
@@ -96,7 +110,8 @@ interface DocState {
   stable?: boolean;
   /** Every release sharing this surface, oldest first. Review aid. */
   releases: string[];
-  /** What changed vs. the previous (older) doc-state kept in this file. Review aid. */
+  /** What changed vs. the previous (older) surface. For the oldest state in
+   *  the file, that surface is the one just outside the window. Review aid. */
   delta: string[];
 }
 
@@ -158,14 +173,23 @@ function compareParsed(a: ParsedTag, b: ParsedTag): number {
   return (a.prerelease ?? '').localeCompare(b.prerelease ?? '');
 }
 
-/** Newest-first stable (non-prerelease) tags, capped at MAX_TAGS_SCANNED. */
+/**
+ * Every stable (non-prerelease) tag, newest first. Pages through the whole tag
+ * list (one request per 100 tags) instead of reading only the first page:
+ * both repos have more than 100 tags, and GitHub does not promise SemVer
+ * order across pages, so the full list is fetched and sorted here.
+ */
 async function listStableTagsNewestFirst(repo: string): Promise<ParsedTag[]> {
-  const raw = await api<{ name: string }[]>(`/repos/${repo}/tags?per_page=100`);
+  const raw: { name: string }[] = [];
+  for (let page = 1; ; page++) {
+    const batch = await api<{ name: string }[]>(`/repos/${repo}/tags?per_page=100&page=${page}`);
+    raw.push(...batch);
+    if (batch.length < 100) break;
+  }
   return raw
     .map((t) => parseTag(t.name))
     .filter((t): t is ParsedTag => t !== null && t.prerelease === null)
-    .sort((a, b) => compareParsed(b, a))
-    .slice(0, MAX_TAGS_SCANNED);
+    .sort((a, b) => compareParsed(b, a));
 }
 
 /**
@@ -245,25 +269,41 @@ async function buildDocStates(axis: AxisConfig, tmpDir: string): Promise<DocStat
 
   // Walk NEWEST-FIRST, collapsing consecutive releases with an identical
   // fingerprint into the doc-state already open, and only opening a new one
-  // when the surface actually changed. Stop once DOC_STATE_COUNT distinct
-  // doc-states are collected (or tags run out) — unlike Pear's generator,
-  // there is no "every release since some epoch" requirement here.
+  // when the surface actually changed. Unlike Pear's generator, there is no
+  // "every release since some epoch" requirement here.
+  //
+  // The walk does NOT stop as soon as DOC_STATE_COUNT states are open: the
+  // oldest one is still incomplete at that point, because older releases may
+  // share its surface. Its `value` (the release that introduced the surface)
+  // is only known once the walk reaches a tag whose surface differs, so the
+  // walk keeps going until that tag turns up, or history ends. That tag is
+  // outside the window and is not written, but its model gives the oldest
+  // state a real delta. Stopping early made `value` drift: it then depended
+  // on how far back the scan happened to reach, not on the surface itself.
   const statesNewestFirst: DocState[] = [];
   const modelsNewestFirst: unknown[] = []; // model for each state, aligned by index
   let currentFingerprint: string | null = null;
-  /** True when the walk stopped because the surface file predates the tag,
-   *  not because DOC_STATE_COUNT or MAX_TAGS_SCANNED was reached. */
+  /** Model of the first surface older than the window, once reached. */
+  let boundaryModel: unknown = null;
+  let foundBoundary = false;
+  /** True when the walk stopped because the surface file predates the tag. */
   let ranOutOfHistory = false;
+  let scanned = 0;
 
   for (const tag of tags) {
-    if (statesNewestFirst.length >= DOC_STATE_COUNT) break;
+    if (++scanned > MAX_TAGS_SCANNED) {
+      throw new Error(
+        `${axis.label}: scanned ${MAX_TAGS_SCANNED} stable tags of ${axis.repo} without completing ` +
+          `${DOC_STATE_COUNT} doc-states. Raise MAX_TAGS_SCANNED rather than writing a truncated window.`,
+      );
+    }
 
     const surface = await surfaceAt(axis, tag.tag, tmpDir);
     if (surface === null) {
       // The surface file didn't exist yet at this (older) tag — e.g.
-      // holepunchto/bare's npm/index.d.ts is newer than some stable tags
-      // still in the scan window. Stop walking further back rather than
-      // erroring the whole run; what's collected so far is still valid.
+      // holepunchto/bare's npm/index.d.ts is newer than some stable tags.
+      // Stop walking further back rather than erroring the whole run; the
+      // oldest state collected so far is then genuinely the first surface.
       ranOutOfHistory = true;
       break;
     }
@@ -276,15 +316,22 @@ async function buildDocStates(axis: AxisConfig, tmpDir: string): Promise<DocStat
       continue;
     }
 
+    if (statesNewestFirst.length >= DOC_STATE_COUNT) {
+      // A different surface below a full window: the oldest state is now
+      // complete, and this tag is where the window ends.
+      boundaryModel = model;
+      foundBoundary = true;
+      break;
+    }
+
     statesNewestFirst.push({ label: '', value: tag.version, releases: [tag.version], delta: [] });
     modelsNewestFirst.push(model);
     currentFingerprint = fingerprint;
   }
 
-  // Delta vs. the NEXT-OLDER doc-state (index+1, since this array is
-  // newest-first) — the last collected state has no older neighbor in this
-  // window, so it's reported as the window boundary, not "initial surface"
-  // (this generator doesn't scan back to a true epoch).
+  // Delta vs. the NEXT-OLDER surface (index+1, since this array is
+  // newest-first). For the oldest state that is the boundary surface found
+  // above; with no boundary, the oldest state is the first surface there is.
   for (let i = 0; i < statesNewestFirst.length; i++) {
     statesNewestFirst[i].releases.reverse();
     // `value` must be the OLDEST release in the group (the one that
@@ -296,14 +343,17 @@ async function buildDocStates(axis: AxisConfig, tmpDir: string): Promise<DocStat
     // walk assigns `value` at group-open time (the newest tag), which is
     // wrong; fix it up now that `releases` is sorted oldest-first.
     statesNewestFirst[i].value = statesNewestFirst[i].releases[0];
-    statesNewestFirst[i].delta =
-      i + 1 < statesNewestFirst.length
-        ? diffAt(axis, modelsNewestFirst[i + 1], modelsNewestFirst[i])
-        : [
-            ranOutOfHistory
-              ? `oldest doc-state — ${axis.file} does not exist further back in ${axis.repo}'s history`
-              : `oldest doc-state in this ${DOC_STATE_COUNT}-state window`,
-          ];
+    if (i + 1 < statesNewestFirst.length) {
+      statesNewestFirst[i].delta = diffAt(axis, modelsNewestFirst[i + 1], modelsNewestFirst[i]);
+    } else if (foundBoundary) {
+      statesNewestFirst[i].delta = diffAt(axis, boundaryModel, modelsNewestFirst[i]);
+    } else {
+      statesNewestFirst[i].delta = [
+        ranOutOfHistory
+          ? `oldest doc-state — ${axis.file} does not exist further back in ${axis.repo}'s history`
+          : `oldest doc-state — first stable release of ${axis.repo}`,
+      ];
+    }
   }
 
   statesNewestFirst[0].stable = true;
