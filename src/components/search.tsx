@@ -23,9 +23,15 @@ import { Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 // QVAC docs search service. Unset, failing or unauthorized -> Orama fallback.
+// No token: the service opens /api/search to browsers with QVAC_SEARCH_PUBLIC=1,
+// and anything bundled here would be public anyway.
 const QVAC_API =
   process.env.NEXT_PUBLIC_QVAC_API_URL || "https://mcp.pears.com";
-const QVAC_TOKEN = process.env.NEXT_PUBLIC_QVAC_API_TOKEN;
+// Wait this long after the last keystroke, and for at least this many
+// characters, before searching: each search is one embedding on a CPU box
+// shared with the MCP server.
+const DEBOUNCE_MS = 400;
+const MIN_CHARS = 3;
 
 function initOrama() {
   return create({ schema: { _: "string" }, language: "english" });
@@ -116,16 +122,13 @@ export default function CustomSearchDialog(props: SharedProps) {
   const [question, setQuestion] = useState("");
 
   useEffect(() => {
-    if (!search) return;
+    if (search.trim().length < MIN_CHARS) return;
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       try {
         const res = await fetch(`${QVAC_API}/api/search`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(QVAC_TOKEN ? { Authorization: `Bearer ${QVAC_TOKEN}` } : {}),
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: search, topK: 6 }),
           signal: ctrl.signal,
         });
@@ -138,14 +141,16 @@ export default function CustomSearchDialog(props: SharedProps) {
         setQvac("fallback");
         setSettled(search);
       }
-    }, 200);
+    }, DEBOUNCE_MS);
     return () => {
       clearTimeout(t);
       ctrl.abort();
     };
   }, [search]);
 
-  const results: SearchItemType[] | null = !search
+  // Below MIN_CHARS nothing is searched, so show no results and no spinner.
+  const tooShort = search.trim().length < MIN_CHARS;
+  const results: SearchItemType[] | null = tooShort
     ? null
     : qvac === "fallback"
       ? query.data && query.data !== "empty"
@@ -184,7 +189,7 @@ export default function CustomSearchDialog(props: SharedProps) {
       <SearchDialog
         search={search}
         onSearchChange={setSearch}
-        isLoading={(!!search && settled !== search) || query.isLoading}
+        isLoading={(!tooShort && settled !== search) || query.isLoading}
         {...props}
       >
         <SearchDialogOverlay />
