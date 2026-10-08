@@ -1,0 +1,839 @@
+{
+  "slug": "localdrive",
+  "repo": {
+    "org": "holepunchto",
+    "repo": "localdrive"
+  },
+  "description": "File system interoperable with Hyperdrive",
+  "tag": "v2.2.1",
+  "sha": "5eaf513932f74480d55cb3ae2d2de3ddb6e216c8",
+  "generatedAt": "2026-06-11T12:37:00.928Z",
+  "sections": [
+    {
+      "title": "Usage",
+      "markdown": "## Usage\n\n```js\nconst Localdrive = require('localdrive')\n\nconst drive = new Localdrive('./my-project')\n\nawait drive.put('/blob.txt', Buffer.from('example'))\nawait drive.put('/images/logo.png', Buffer.from('..'))\nawait drive.put('/images/old-logo.png', Buffer.from('..'))\n\nconst buffer = await drive.get('/blob.txt')\nconsole.log(buffer) // => <Buffer ..> \"example\"\n\nconst entry = await drive.entry('/blob.txt')\nconsole.log(entry) // => { key, value: { executable, linkname, blob, metadata } }\n\nawait drive.del('/images/old-logo.png')\n\nawait drive.symlink('/images/logo.shortcut', '/images/logo.png')\n\nfor await (const file of drive.list('/images')) {\n  console.log('list', file) // => { key, value }\n}\n\nconst rs = drive.createReadStream('/blob.txt')\nfor await (const chunk of rs) {\n  console.log('rs', chunk) // => <Buffer ..>\n}\n\nconst ws = drive.createWriteStream('/blob.txt')\nws.write('new example')\nws.end()\nws.once('close', () => console.log('file saved'))\n```"
+    },
+    {
+      "title": "Examples",
+      "markdown": "## Examples\n\n### Metadata hooks\n\nMetadata backed by `Map`:\n\n```js\nconst meta = new Map()\nconst metadata = {\n  get: (key) => (meta.has(key) ? meta.get(key) : null),\n  put: (key, value) => meta.set(key, value),\n  del: (key) => meta.delete(key)\n}\n\nconst drive = new Localdrive('./my-app', { metadata })\n\n// ...\n```\n\nNote: `metadata.del()` will also be called when metadata is `null`:\n\n```js\nawait drive.put('/file.txt', Buffer.from('a')) // Default metadata is null\n```"
+    }
+  ],
+  "classes": [
+    {
+      "name": "Localdrive",
+      "methods": [
+        {
+          "name": "constructor",
+          "signature": "const drive = new Localdrive(root, [options])",
+          "kind": "constructor",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "root",
+              "optional": false,
+              "description": "`root` can be relative or absolute.",
+              "type": "string"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "description": "Configuration options.",
+              "type": "LocaldriveOptions"
+            }
+          ],
+          "description": "Creates a drive based on a `root` directory. `root` can be relative or absolute.",
+          "options": [
+            {
+              "name": "followLinks",
+              "default": "false",
+              "description": "If enabled then `entry(key)` will follow the `linkname`"
+            },
+            {
+              "name": "metadata"
+            },
+            {
+              "name": "atomic",
+              "default": "false",
+              "description": "Enable atomicity for file writing (tmp file and rename)"
+            },
+            {
+              "name": "roots",
+              "description": "For mapping key prefixes to different roots"
+            }
+          ],
+          "examples": [
+            "{\n  followLinks: false, // If enabled then `entry(key)` will follow the `linkname`\n  metadata: { // Hook functions are called accordingly\n    get (key) {},\n    put (key) {},\n    del (key) {}\n  },\n  atomic: false // Enable atomicity for file writing (tmp file and rename)\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L11",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "ready",
+          "signature": "await drive.ready()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "returns": "Resolves immediately.",
+          "returnType": "Promise<void>",
+          "description": "No-op. Exists for API compatibility with Hyperdrive.",
+          "examples": [
+            "await drive.ready()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L22",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "close",
+          "signature": "await drive.close()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "returns": "Resolves immediately.",
+          "returnType": "Promise<void>",
+          "description": "No-op. Exists for API compatibility with Hyperdrive.",
+          "examples": [
+            "await drive.close()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L25",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "flush",
+          "signature": "await drive.flush()",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [],
+          "returns": "Resolves immediately.",
+          "returnType": "Promise<void>",
+          "description": "No-op. Exists for API compatibility with Hyperdrive.",
+          "examples": [
+            "await drive.flush()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L28",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "batch",
+          "signature": "drive.batch()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "This drive instance.",
+          "returnType": "Localdrive",
+          "description": "Returns the drive itself. Exists for API compatibility with Hyperdrive,\nwhich supports write-batching.",
+          "examples": [
+            "const batch = drive.batch()\nawait batch.put('/file.txt', Buffer.from('hello'))\n// on Localdrive, batch === drive"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L32",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "checkout",
+          "signature": "drive.checkout()",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returns": "This drive instance.",
+          "returnType": "Localdrive",
+          "description": "Returns the drive itself. Exists for API compatibility with Hyperdrive,\nwhich supports version checkouts.",
+          "examples": [
+            "const snapshot = drive.checkout()\n// on Localdrive, snapshot === drive"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L36",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "toPath",
+          "signature": "drive.toPath(key)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "type": "string",
+              "description": "Drive key to convert (for example `/images/logo.png`)."
+            }
+          ],
+          "returns": "Absolute filesystem path for the given key.",
+          "returnType": "string",
+          "description": "Converts a drive key (unix-style path) into an absolute filesystem path\nunder `drive.root`.",
+          "examples": [
+            "const drive = new Localdrive('/srv/data')\ndrive.toPath('/images/logo.png') // => '/srv/data/images/logo.png'"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L40",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "entry",
+          "signature": "const entry = await drive.entry(name, [options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "name",
+              "optional": false,
+              "description": "Drive key to look up (for example `/file.txt`).",
+              "type": "string"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "Entry lookup options.",
+              "type": "EntryOptions"
+            }
+          ],
+          "returns": "Returns the entry at `name` path in the drive.",
+          "returnType": "Promise<object|null>",
+          "description": "Available `options`:",
+          "options": [
+            {
+              "name": "key",
+              "default": "String"
+            },
+            {
+              "name": "value"
+            },
+            {
+              "name": "mtime",
+              "default": "Number"
+            }
+          ],
+          "examples": [
+            "{\n  key: String,\n  value: {\n    executable: Boolean,\n    linkname: null,\n    blob: {\n      byteOffset: Number,\n      blockOffset: Number,\n      blockLength: Number,\n      byteLength: Number\n    },\n    metadata: null\n  },\n  mtime: Number\n}",
+            "{\n  follow: false // Follow symlinks, 16 max or throws an error\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L46",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "get",
+          "signature": "const buffer = await drive.get(key, [options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "Drive key of the file to read (for example `/blob.txt`).",
+              "type": "string"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "`options` are the same as in `drive.entry` method.",
+              "type": "GetOptions"
+            }
+          ],
+          "returns": "Returns the blob at `key` path in the drive.",
+          "returnType": "Promise<Buffer|null>",
+          "description": "It also returns null for symbolic links.",
+          "examples": [
+            "const buffer = await drive.get('/blob.txt')\nconsole.log(buffer.toString()) // => 'example'"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L139",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "put",
+          "signature": "await drive.put(key, buffer, [options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "Drive key of the file to write (for example `/images/logo.png`).",
+              "type": "string"
+            },
+            {
+              "name": "buffer",
+              "optional": false,
+              "description": "Data to write.",
+              "type": "Buffer|string"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "`options` are the same as in `createWriteStream`.",
+              "type": "WriteStreamOptions"
+            }
+          ],
+          "returns": "Resolves when the file has been fully written and closed.",
+          "returnType": "Promise<void>",
+          "description": "Creates a file at `key` path in the drive. `options` are the same as in `createWriteStream`.",
+          "examples": [
+            "await drive.put('/blob.txt', Buffer.from('example'))\nawait drive.put('/images/logo.png', Buffer.from('..'), { executable: false })"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L151",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "del",
+          "signature": "await drive.del(key)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "Drive key of the file to delete (for example `/images/old-logo.png`).",
+              "type": "string"
+            }
+          ],
+          "returns": "Resolves when the file and any empty parent directories have been removed.",
+          "returnType": "Promise<void>",
+          "description": "Deletes the file at `key` path from the drive.",
+          "examples": [
+            "await drive.del('/images/old-logo.png')"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L166",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "symlink",
+          "signature": "await drive.symlink(key, linkname)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "Drive key where the symlink will be created.",
+              "type": "string"
+            },
+            {
+              "name": "linkname",
+              "optional": false,
+              "description": "Target path the symlink should point to.",
+              "type": "string"
+            }
+          ],
+          "returns": "Resolves when the symlink entry has been created.",
+          "returnType": "Promise<void>",
+          "description": "Creates an entry in drive at `key` path that points to the entry at `linkname`.",
+          "examples": [
+            "await drive.symlink('/images/logo.shortcut', '/images/logo.png')"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L191",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "compare",
+          "signature": "const comparison = drive.compare(entryA, entryB)",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "a",
+              "optional": false,
+              "description": "First entry (must have an `mtime` property in milliseconds).",
+              "type": "object"
+            },
+            {
+              "name": "b",
+              "optional": false,
+              "description": "Second entry (must have an `mtime` property in milliseconds).",
+              "type": "object"
+            }
+          ],
+          "returns": "Returns `0` if entries are the same, `1` if `entryA` is older, and `-1` if `entryB` is older.",
+          "returnType": "number",
+          "description": "Compares two drive entries by modification time.",
+          "examples": [
+            "const entryA = await drive.entry('/file-a.txt')\nconst entryB = await drive.entry('/file-b.txt')\nconst result = drive.compare(entryA, entryB)\n// result: 0 (same), 1 (a is newer), or -1 (b is newer)"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L214",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "list",
+          "signature": "const iterator = await drive.list([folder], [options])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "folder",
+              "optional": true,
+              "description": "Unix-style path prefix to list (for example `/images`).",
+              "type": "string"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "default": "{}",
+              "description": "Listing options.",
+              "type": "ListOptions"
+            }
+          ],
+          "returns": "Returns a stream of all entries in the drive inside of specified `folder`.",
+          "returnType": "AsyncIterable<object>",
+          "description": "Available `options`:",
+          "options": [
+            {
+              "name": "ignore",
+              "description": "Ignore file and folders by name."
+            }
+          ],
+          "examples": [
+            "{\n  ignore: String || Array // Ignore file and folders by name.\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L219",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "readdir",
+          "signature": "const iterator = await drive.readdir([folder])",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "folder",
+              "optional": true,
+              "description": "Unix-style path prefix to read (for example `/images`).",
+              "type": "string"
+            }
+          ],
+          "returns": "Returns a stream of all subpaths of entries in drive stored at paths prefixed by `folder`.",
+          "returnType": "AsyncIterable<string>",
+          "description": "Returns an async iterator that yields the immediate child names (not\nfull paths) under `folder`. Only non-empty sub-directories and files with\na valid entry are included.",
+          "examples": [
+            "for await (const name of drive.readdir('/images')) {\n  console.log(name) // => 'logo.png', 'banner.jpg', ...\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L256",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "exists",
+          "signature": "await drive.exists(name)",
+          "kind": "method",
+          "static": false,
+          "async": true,
+          "params": [
+            {
+              "name": "name",
+              "optional": false,
+              "type": "string",
+              "description": "Drive key to check (for example `/file.txt`)."
+            }
+          ],
+          "returns": "Whether an entry exists at the given path.",
+          "returnType": "Promise<boolean>",
+          "description": "Returns `true` if a file (or symlink) entry exists at `name`, `false` otherwise.",
+          "examples": [
+            "const found = await drive.exists('/blob.txt')\nconsole.log(found) // => true or false"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L291",
+          "source": [
+            "ast",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "mirror",
+          "signature": "const mirror = drive.mirror(out, [options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "out",
+              "optional": false,
+              "description": "Destination drive (must implement the same drive API).",
+              "type": "object"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "Options forwarded to `MirrorDrive`.",
+              "type": "MirrorOptions"
+            }
+          ],
+          "returns": "A MirrorDrive instance that runs the mirror operation.",
+          "returnType": "MirrorDrive",
+          "description": "Efficiently mirror this drive into another. Returns a [`MirrorDrive`](https://github.com/holepunchto/mirror-drive#api) instance constructed with `options`.",
+          "examples": [
+            "const src = new Localdrive('./source')\nconst dst = new Localdrive('./destination')\nconst mirror = src.mirror(dst)\nawait mirror.done()"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L295",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "createReadStream",
+          "signature": "const rs = drive.createReadStream(key, [options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "Drive key of the file to stream (for example `/blob.txt`).",
+              "type": "string"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "Range options.",
+              "type": "ReadStreamOptions"
+            }
+          ],
+          "returns": "Returns a stream to read out the blob stored in the drive at `key` path.",
+          "returnType": "FileReadStream",
+          "description": "Available `options`:",
+          "options": [
+            {
+              "name": "start",
+              "default": "Number"
+            },
+            {
+              "name": "end",
+              "default": "Number"
+            },
+            {
+              "name": "length",
+              "default": "Number"
+            }
+          ],
+          "examples": [
+            "{\n  start: Number,\n  end: Number,\n  length: Number\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L299",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "createWriteStream",
+          "signature": "const ws = drive.createWriteStream(key, [options])",
+          "kind": "method",
+          "static": false,
+          "async": false,
+          "params": [
+            {
+              "name": "key",
+              "optional": false,
+              "description": "Drive key of the file to write (for example `/blob.txt`).",
+              "type": "string"
+            },
+            {
+              "name": "opts",
+              "optional": true,
+              "description": "Write options.",
+              "type": "WriteStreamOptions"
+            }
+          ],
+          "returns": "Writable stream targeting the given key.",
+          "returnType": "FileWriteStream",
+          "description": "Stream a blob into the drive at `key` path.",
+          "options": [
+            {
+              "name": "executable",
+              "default": "Boolean"
+            }
+          ],
+          "examples": [
+            "{\n  executable: Boolean\n}"
+          ],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L306",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "root",
+          "signature": "drive.root",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "string",
+          "description": "String with the resolved (absolute) drive path.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L12",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        },
+        {
+          "name": "metadata",
+          "signature": "drive.metadata",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L91",
+          "source": [
+            "ast"
+          ]
+        },
+        {
+          "name": "supportsMetadata",
+          "signature": "drive.supportsMetadata",
+          "kind": "property",
+          "static": false,
+          "async": false,
+          "params": [],
+          "returnType": "boolean",
+          "description": "Boolean that indicates if the drive handles or not metadata. Default `false`.",
+          "examples": [],
+          "sourceLink": "https://github.com/holepunchto/localdrive/blob/v2.2.1/index.js#L14",
+          "source": [
+            "ast",
+            "readme",
+            "jsdoc"
+          ]
+        }
+      ]
+    }
+  ],
+  "typedefs": [
+    {
+      "name": "LocaldriveOptions",
+      "description": "Options for creating a Localdrive instance.",
+      "properties": [
+        {
+          "name": "followLinks",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "If enabled, `entry(key)` follows the `linkname` for symlinks."
+        },
+        {
+          "name": "followExternalLinks",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "If enabled, symlinks pointing outside the root are followed."
+        },
+        {
+          "name": "metadata",
+          "optional": true,
+          "type": "object|Map",
+          "description": "Hook functions called when metadata is read/written/deleted."
+        },
+        {
+          "name": "metadata.get",
+          "optional": true,
+          "type": "function",
+          "description": "Called with `(key)` to retrieve metadata for a file."
+        },
+        {
+          "name": "metadata.put",
+          "optional": true,
+          "type": "function",
+          "description": "Called with `(key, value)` to store metadata for a file."
+        },
+        {
+          "name": "metadata.del",
+          "optional": true,
+          "type": "function",
+          "description": "Called with `(key)` to delete metadata for a file."
+        },
+        {
+          "name": "atomic",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Enable atomic file writes (write to a tmp file then rename)."
+        }
+      ]
+    },
+    {
+      "name": "EntryOptions",
+      "description": "Options for `drive.entry()`.",
+      "properties": [
+        {
+          "name": "follow",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Follow symlinks (up to 16 levels deep)."
+        }
+      ]
+    },
+    {
+      "name": "GetOptions",
+      "description": "Options for `drive.get()`.",
+      "properties": [
+        {
+          "name": "follow",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Follow symlinks when resolving the key."
+        }
+      ]
+    },
+    {
+      "name": "WriteStreamOptions",
+      "description": "Options for `drive.put()` and `drive.createWriteStream()`.",
+      "properties": [
+        {
+          "name": "executable",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Mark the written file as executable (chmod 0o755)."
+        },
+        {
+          "name": "metadata",
+          "optional": true,
+          "type": "*",
+          "description": "Arbitrary metadata value stored via the metadata hook."
+        }
+      ]
+    },
+    {
+      "name": "ListOptions",
+      "description": "Options for `drive.list()`.",
+      "properties": [
+        {
+          "name": "ignore",
+          "optional": true,
+          "type": "string|Array<string>|function",
+          "description": "File/folder paths to exclude. May be a path string, an array of path strings, or a predicate function `(key) => boolean`."
+        }
+      ]
+    },
+    {
+      "name": "ReadStreamOptions",
+      "description": "Options for `drive.createReadStream()`.",
+      "properties": [
+        {
+          "name": "start",
+          "optional": true,
+          "default": "0",
+          "type": "number",
+          "description": "Byte offset to start reading from (inclusive)."
+        },
+        {
+          "name": "end",
+          "optional": true,
+          "type": "number",
+          "description": "Byte offset to stop reading at (inclusive). Ignored when `length` is set."
+        },
+        {
+          "name": "length",
+          "optional": true,
+          "type": "number",
+          "description": "Number of bytes to read. Overrides `end`."
+        }
+      ]
+    },
+    {
+      "name": "MirrorOptions",
+      "description": "Options for `drive.mirror()`.",
+      "properties": [
+        {
+          "name": "dryRun",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "List differences without writing any changes."
+        },
+        {
+          "name": "prune",
+          "optional": true,
+          "default": "true",
+          "type": "boolean",
+          "description": "Remove files in the destination that are not in the source."
+        },
+        {
+          "name": "filter",
+          "optional": true,
+          "type": "function",
+          "description": "Predicate `(key) => boolean` to include only matching entries."
+        },
+        {
+          "name": "batch",
+          "optional": true,
+          "default": "false",
+          "type": "boolean",
+          "description": "Use batched writes on a Hyperdrive destination."
+        }
+      ]
+    }
+  ]
+}
