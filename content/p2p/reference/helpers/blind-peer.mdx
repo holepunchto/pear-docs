@@ -1,0 +1,380 @@
+---
+title: "blind-peer"
+description: "Server library that stores and serves Hypercores for other peers without reading them: embed one in your process, set its limits and observe it."
+upstreamVersion: "3.15.1"
+seoTitle: "blind-peer: Run a Blind Peer Server in Your App"
+docType: reference
+product: p2p
+schemaType: APIReference
+---
+
+<Status level="stable" />
+
+`blind-peer` is the server half of [blind peering](/p2p/explanation/blind-peering). A blind peer accepts requests from [`blind-peering`](/p2p/reference/helpers/blind-peering) clients to keep [Hypercores](/p2p/reference/building-blocks/hypercore) available, replicates and stores them, and serves them to other peers, without holding the keys that decrypt their content. To run one as a standalone process, use [`pear blind-peer start`](/pear/reference/pear/cli#pear-blind-peer) or the [`blind-peer-cli`](https://github.com/holepunchto/blind-peer-cli) package. Both wrap this library. Use this page when you embed a blind peer in your own process, and for the limits, events, and metrics that apply either way. For upstream source and releases, see the [blind-peer repository](https://github.com/holepunchto/blind-peer).
+
+## Install
+
+```sh
+npm i blind-peer
+```
+
+## Quickstart
+
+```js
+import BlindPeer from 'blind-peer'
+
+const blindPeer = new BlindPeer('./blind-peer-storage', {
+  maxBytes: 10_000_000_000 // keep about 10 GB
+})
+
+blindPeer.on('add-core', (entry) => {
+  console.log('keeping a core, priority', entry.priority)
+})
+
+await blindPeer.listen()
+
+// Clients put this key in `blindPeers`
+console.log(blindPeer.publicKey.toString('hex'))
+```
+
+## API Reference
+
+### Constructor and lifecycle
+
+#### `new BlindPeer(rocks[, opts])`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L214)
+
+Create a blind peer. Nothing opens until you call `ready()` or `listen()`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rocks` | `string\|RocksDB` | — | A storage directory, or a [`rocksdb-native`](https://github.com/holepunchto/rocksdb-native) instance. The blind peer keeps its database there, and its Corestore too unless you pass `store`. |
+| `opts` | [`BlindPeerOptions`](#blindpeeroptions) | `{}` | Server options. |
+
+#### `await blindPeer.ready()`
+
+Open the storage, the database and the store, and create the swarm if you didn't pass one. `listen()` calls it for you. `blindPeer.opened` and `blindPeer.closed` report the state. Getters such as `publicKey` need the blind peer to be open.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+
+#### `await blindPeer.listen()`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L473)
+
+Open the blind peer if needed and start accepting connections.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)—resolves once the swarm is listening.
+
+#### `await blindPeer.close()`
+
+Stop accepting requests, write the database, and close what the blind peer owns: the swarm, store, and wakeup it created, plus the RocksDB handle, even when you passed it in. A `swarm`, `store` or `wakeup` you passed in stays open.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+
+### Properties
+
+#### `blindPeer.publicKey`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L354)
+
+The key clients put in [`blindPeers`](/p2p/reference/helpers/blind-peering#blindpeeringoptions): the public key of the blind peer's swarm. When the blind peer creates its own swarm, the key pair comes from a seed stored in its database, so the key stays the same across restarts of the same storage.
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer)
+- Throws: a `TypeError` before the blind peer is open.
+
+#### `blindPeer.encryptionPublicKey`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L350)
+
+The public key of the encryption key pair that the blind peer keeps in its database.
+
+- Returns: [`Buffer`](https://nodejs.org/api/buffer.html#class-buffer)
+
+#### `blindPeer.digest`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L358)
+
+What the blind peer stores, as of the last database write.
+
+- Returns: [`BlindPeerDigest`](#blindpeerdigest)
+
+#### `blindPeer.nrAnnouncedCores`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L362)
+
+How many [announced](#announce-and-trusted-peers) cores the blind peer has joined the swarm for.
+
+- Returns: `number`
+
+#### `blindPeer.stats`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L295)
+
+Counters since the process started. They are also the source of the [Prometheus gauges](#blindpeerregistermetricspromclient).
+
+- Returns: `object`
+
+| Counter | Counts |
+| --- | --- |
+| `addCoresRx` | `add-cores` requests received. |
+| `coresAdded` | Cores added or activated by requests. |
+| `activations` | Core activations. |
+| `activatedReplications` | Replication sessions opened for requests. |
+| `wakeups` | Wakeups received for a core. |
+| `muxerPaired` | `blind-peer-muxer` sessions paired. |
+| `muxerErrors` | Failures handling `add-cores` requests. |
+| `notificationsRx` | Notification requests received. |
+| `notificationsSent` | Notifications forwarded to a push gateway. |
+| `notificationErrors` | Notification requests that failed. |
+| `referrerRateLimited` | Requests dropped by [`perReferrerRateLimitParams`](#blindpeeroptions). |
+| `coreTrackersCreated` / `coreTrackersDestroyed` | Core trackers created / destroyed. |
+| `coreResetDownload` | Cores whose cleared blocks were scheduled for download again by a [priority `2`](#priority) request. |
+| `bytesGcd` | Bytes cleared by [garbage collection](#garbage-collection). |
+| `gc.coresGcd` | Cores cleared. |
+| `gc.firstTimeCoresGcd` | Cores cleared for the first time. |
+| `gc.prio0Gcd` / `gc.prio1Gcd` / `gc.prio2Gcd` | Cores cleared, by priority. |
+
+#### `blindPeer.store` / `blindPeer.swarm` / `blindPeer.wakeup`
+
+The [Corestore](/p2p/reference/helpers/corestore), [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) and `protomux-wakeup` instance the blind peer uses. They're the ones you passed in or the ones it created. A store it creates is passive unless you set `activeCorestore`, and it's opened with [`alwaysLatestBlock`](/p2p/reference/helpers/corestore#storealwayslatestblock) on, so its replicator asks for the latest block in every upgrade request. A store you pass in is used as given.
+
+### Trusted peers
+
+#### `blindPeer.addTrustedPubKey(key)`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L372)
+
+Trust a peer. The [`trustedPubKeys`](#blindpeeroptions) option does the same at construction. See [announce and trusted peers](#announce-and-trusted-peers) for what trust allows.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `key` | `Buffer\|string` | The peer's public key, as a Buffer or a hex or z32 string. It's the key pair of the peer's HyperDHT node. For a `blind-peering` client that's `dht.defaultKeyPair.publicKey`. On a Pear machine, [`pear identity blind-peer-client`](/pear/how-to/look-up-network-keys) prints it. |
+
+```js
+blindPeer.addTrustedPubKey(clientDht.defaultKeyPair.publicKey)
+```
+
+### Maintenance
+
+#### `await blindPeer.flush()`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L576)
+
+Write pending database updates, and run [garbage collection](#garbage-collection) first when the blind peer is over budget. It runs every 10 seconds and right after an add request that records a new core, and `close()` runs it too. It doesn't throw: a failure emits `flush-error`.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+
+#### `blindPeer.needsGc()`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L478)
+
+`true` when `digest.bytesAllocated` has reached [`maxBytes`](#blindpeeroptions).
+
+- Returns: `boolean`
+
+#### `blindPeer.getActiveReplicationSessions()`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L366)
+
+How many cores the blind peer is replicating for connected clients right now. A core counts once for each connection it's replicated over.
+
+- Returns: `number`
+
+#### `blindPeer.registerMetrics(promClient)`
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L1237)
+
+Register Prometheus gauges for the blind peer, its wakeup protocol and, when push gateways are configured, their client pool.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `promClient` | `object` | A `prom-client` compatible module. Use `bare-prom-client` under Bare. |
+
+The blind peer registers these gauges:
+
+| Group | Gauges |
+| --- | --- |
+| Storage | `blind_peer_bytes_allocated`, `blind_peer_cores`, `blind_peer_announced_cores`, `blind_peer_db_flushes` |
+| Requests | `blind_peer_add_cores_rx`, `blind_peer_cores_added`, `blind_peer_core_activations`, `blind_peer_active_replication_sessions`, `blind_peer_replication_sessions_opened`, `blind_peer_wakeups`, `blind_peer_muxer_paired`, `blind_peer_muxer_errors`, `blind_peer_referrer_rate_limited` |
+| Garbage collection | `blind_peer_bytes_gcd`, `blind_peer_gc_prio_0`, `blind_peer_gc_prio_1`, `blind_peer_gc_prio_2`, `blind_peer_gc_cores_total`, `blind_peer_gc_cores_first_time_total` |
+| Busiest senders | `blind_peer_add_cores_top5_by_remote_key`, `blind_peer_add_cores_top5_by_referrer`, `blind_peer_add_cores_top5_by_remote_ip`: the requests from the top senders in the [`topK`](#blindpeeroptions) window |
+
+These are registered only when the RocksDB handle exposes `stats`: `blind_peer_rocks_gets`, `blind_peer_rocks_puts`, `blind_peer_rocks_deletes`, `blind_peer_rocks_range_deletes`, `blind_peer_rocks_read_batches`, `blind_peer_rocks_write_batches`, `blind_peer_corestore_active` (`1` for an active store), `blind_peer_push_notifications_active` (`1` when a gateway is configured), `blind_peer_push_notifications_rx`, `blind_peer_push_notifications_sent`, `blind_peer_push_notifications_errors`, `blind_peer_core_trackers_created`, `blind_peer_core_trackers_destroyed` and `blind_peer_core_reset_download`.
+
+```js
+import promClient from 'prom-client'
+
+blindPeer.registerMetrics(promClient)
+```
+
+### Events
+
+A blind peer is an event emitter. The events below are listed by what they report.
+
+#### Requests and storage
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L861)
+
+| Event | Arguments | Emitted when |
+| --- | --- | --- |
+| `add-cores-received` | `(stream, request)` | An `add-cores` request arrives, before the blind peer handles it. `request` has `cores` (each `{ key, length }`), `referrer`, `priority` and `announce`. |
+| `add-new-core` | `(record, true, stream)` | A core record is written to the database, because the core is new, announced, or has no local data yet. `record` has `key`, `priority`, `announce` and `referrer`. The second argument is always `true`. |
+| `add-core` | `(entry, true, stream)` | The blind peer starts replicating a core with the client. `entry` has `key`, `discoveryKey`, `remoteLength`, `priority`, `announce` and `referrer`, plus `ownLength` and `ownContigLength` for what it already stores. The second argument is always `true`. |
+| `add-cores-done` | `(stream, request)` | Every core in the request is being replicated. |
+| `add-cores-downgrade-announce` | `({ request, remotePublicKey })` | A peer that isn't [trusted](#announce-and-trusted-peers) asked for `announce`, and the blind peer reset it to `false`. |
+| `downgrade-announce` | `({ record, remotePublicKey })` | The same, for a single-core request. |
+| `per-referrer-rate-limited` | `(referrerKey)` | [`perReferrerRateLimitParams`](#blindpeeroptions) dropped a request. `referrerKey` is a hex string. |
+| `connection-banned` | `(stream)` | A request came from an address on an IP ban list. |
+| `delete-core` | `(stream, { key, existing })` | A trusted peer asked to delete a core. `existing` is `false` when the blind peer didn't have it. |
+| `delete-core-end` | `(stream, { key, announced })` | The core is deleted. |
+| `delete-blocked` | `(stream, { key })` | A peer that isn't trusted asked to delete a core. The request fails. |
+
+#### Announced cores
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L779)
+
+| Event | Arguments | Emitted when |
+| --- | --- | --- |
+| `announce-core` | `(core)` | The blind peer joined the swarm for an announced core. |
+| `announced-initial-cores` | `()` | After a restart, every stored announced core has been announced. |
+| `core-client-mode-changed` | `(core, isClient)` | An announced core fell behind by more than [`replicationLagThreshold`](#blindpeeroptions) blocks and now also looks for peers to download from (`true`), or caught up and serves only (`false`). |
+| `core-append` | `(core)` | An announced core grew. |
+| `core-downloaded` | `(core)` | An announced core has all its blocks. |
+
+#### Activity and garbage collection
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L488)
+
+| Event | Arguments | Emitted when |
+| --- | --- | --- |
+| `core-activity` | `(core, record)` | A stored core uploaded or downloaded data. `record` is `null` until the core's record has loaded. |
+| `gc-start` | `({ bytesToClear })` | [Garbage collection](#garbage-collection) starts. |
+| `gc-done` | `({ bytesCleared })` | Garbage collection finished. |
+| `flush-error` | `(error)` | `flush()` failed. |
+
+#### Notifications and routing
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L1020)
+
+| Event | Arguments | Emitted when |
+| --- | --- | --- |
+| `notification-rx` | `(request, stream)` | A notification request arrives. `request` has `block` (`{ key, index }`), `destination` (`{ key, discoveryKey }`), `extra` and `appId`. |
+| `notification-sent` | `(request, payload, stream, ms)` | The notification went to a push gateway. `ms` is how long it took. |
+| `notification-error` | `(error, stream, request)` | Handling a notification failed. See [errors](#errors). |
+| `notification-error-snapshot` | `(snapshot)` | Diagnostics gathered after a failed notification. Upstream marks this event as temporary, with no semver guarantees. |
+| `resolve-peers` | `({ key, result })` | The router answered for a referrer. See [`routerKey`](#blindpeeroptions). |
+| `resolve-peers-error` | `({ key, error })` | The router couldn't be reached or failed. |
+
+#### Connections and diagnostics
+
+[src](https://github.com/holepunchto/blind-peer/blob/v3.15.1/index.js#L617)
+
+| Event | Arguments | Emitted when |
+| --- | --- | --- |
+| `muxer-paired` | `(stream)` | A client opened its `blind-peer-muxer` channel. |
+| `muxer-error` | `(error, stream)` | Handling an `add-cores` request failed. |
+| `invalid-request` | `(session, error, request, from)` | A peer sent an invalid Hypercore request for a stored core. |
+| `warn` | `(error)` | A diagnostic step failed without affecting requests. |
+
+## How a blind peer handles requests
+
+A blind peer accepts these requests over a client's connection:
+
+| Request | From | Effect |
+| --- | --- | --- |
+| `add-cores` | `blind-peering` clients, through [`addCore()`](/p2p/reference/helpers/blind-peering#await-blindaddcorecore-opts) and [`addAutobase()`](/p2p/reference/helpers/blind-peering#await-blindaddautobasebase-opts) | Records each core, replicates it with the client and keeps the request's `priority`, `announce` and `referrer`. |
+| Notification | `blind-peering` clients, through [`sendNotification()`](/p2p/reference/helpers/blind-peering#await-blindsendnotificationcore-opts) | Builds a `blind-push` notification from a stored block and forwards it to a [push gateway](#blindpeeroptions). |
+| `add-core` | A single-core request over `protomux-rpc` | Same as `add-cores` for one core. It caps `priority` at `1`. |
+| `delete-core` | Trusted peers only | Stops replicating the core, clears its data and removes its record. |
+
+### Priority
+
+A core record has a priority of `0` (low), `1` (normal) or `2` (high). The client sends `0` for a core and `1` for an autobase unless you set `priority`. An `add-cores` request is capped at `2`.
+
+A record's priority only goes up: a later request with a lower priority leaves it as it is. Priority decides what [garbage collection](#garbage-collection) clears first. Raising a core to `2` also makes the blind peer download blocks that garbage collection had cleared.
+
+### Announce and trusted peers
+
+An announced core is one the blind peer joins the swarm for, as a server, and keeps downloading in full, so any peer can find the core and fetch it from the blind peer. Announced cores are never garbage collected, and the blind peer announces them again after a restart.
+
+Only trusted peers can announce. A peer is trusted when its public key is in [`trustedPubKeys`](#blindpeeroptions) or was added with [`addTrustedPubKey()`](#blindpeeraddtrustedpubkeykey). `announce: true` from anyone else is reset to `false`, and the blind peer emits `add-cores-downgrade-announce`. A trusted peer can also switch an existing record to announced, delete cores, and query the busiest senders when you set [`adminRouter`](#blindpeeroptions).
+
+### Garbage collection
+
+The blind peer keeps `digest.bytesAllocated` under [`maxBytes`](#blindpeeroptions). When [`enableGc`](#blindpeeroptions) is on and usage reaches the budget, `flush()` clears cores until usage is back under it. Candidates go lowest priority first, and within a priority the core inactive for longest first. Announced cores are skipped.
+
+A cleared core loses the blocks it had at that moment. The blind peer keeps downloading blocks appended later, and its record keeps how much was cleared. `gc-start` and `gc-done` report each run.
+
+### Referrers and wakeups
+
+A request can name a `referrer` key. The blind peer stores it with the core. When the core grows, the blind peer wakes peers that follow the referrer and aren't already replicating the core, through `protomux-wakeup`. A peer that starts following a referrer hears about the 32 cores most recently updated under it. For an autobase, the client uses the autobase's wakeup capability key as the referrer.
+
+### Push notifications
+
+With [`pushGatewayKeys`](#blindpeeroptions) set, the blind peer turns a notification request into a `blind-push` payload from the stored core and sends a `forward-push` request to a push gateway. If it doesn't have the requested block yet, it replicates the core with the client first. A request for a core the blind peer doesn't know waits [`retryRecordLookupTimeout`](#blindpeeroptions) milliseconds for a record, retries once, then fails with `UNKNOWN_CORE` without closing the connection. Without gateways the blind peer counts the request and drops it.
+
+## Types
+
+### BlindPeerOptions
+
+Options for the [`BlindPeer`](#new-blindpeerrocks-opts) constructor.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `swarm` | [`Hyperswarm`](/p2p/reference/building-blocks/hyperswarm) | Created | The swarm that accepts connections. The blind peer creates one with a key pair from its database seed when you omit it. |
+| `store` | [`Corestore`](/p2p/reference/helpers/corestore) | Created | The store that holds the replicated cores. When you pass one, the blind peer doesn't call `store.replicate()` on connections, so do that yourself for other peers to fetch what it stores. |
+| `wakeup` | `object` | Created | A `protomux-wakeup` instance. When you pass one, add the connections to it yourself. |
+| `maxBytes` | `number` | `100_000_000_000` | The storage budget in bytes. See [garbage collection](#garbage-collection). |
+| `enableGc` | `boolean` | `true` | Clear cores when usage reaches `maxBytes`. With `false` the blind peer keeps everything. |
+| `trustedPubKeys` | `Array<Buffer\|string>` | `[]` | Public keys of [trusted peers](#announce-and-trusted-peers). |
+| `bootstrap` | `Array\|null` | `null` | DHT bootstrap nodes for the swarm it creates. |
+| `port` | `number\|Array<number>` | — | A port, or a `[min, max]` range, for the swarm it creates. A number `n` becomes `[n, n + 64]`. |
+| `announcingInterval` | `number` | `100` | Milliseconds between announcing each stored announced core at startup. |
+| `replicationLagThreshold` | `number` | `100` | How many blocks an announced core can lag before it also looks for peers to download from. |
+| `activeCorestore` | `boolean` | `false` | Whether the store it creates attaches loaded cores to active replication streams. |
+| `treeCache` | `object` | — | Sizes the tree-node cache of the store it creates, as [`CorestoreOptions.treeCache`](/p2p/reference/helpers/corestore#corestoreoptions) does. |
+| `ipBanListKeys` | `Array<Buffer\|string>` | `[]` | Keys of IP ban lists to follow. A request from a banned address is refused and emits `connection-banned`. |
+| `banTimeout` | `number` | `16000` | Milliseconds a refused single-core or delete request is held before it fails with `Timed out`. |
+| `routerKey` | `Buffer\|string` | `null` | The public key of a `blind-peer-router`. For a request with a `referrer`, the blind peer asks the router to resolve peers and emits `resolve-peers`. |
+| `routerPoolOpts` | `object` | `{}` | Options for the RPC client pool that talks to the router, such as `totalTimeout`, `rpcTimeout` and `retries`. |
+| `pushGatewayKeys` | `Array<Buffer\|string>` | `[]` | Public keys of push gateways to forward notifications to. |
+| `pushGatewayPoolOpts` | `object` | `{}` | Options for the RPC client pool that talks to the gateways. |
+| `notificationTimeout` | `number` | `30000` | Milliseconds to get the requested block when building a notification. |
+| `notificationErrorSnapshotDelay` | `number` | `30000` | Milliseconds before a failed notification's diagnostic snapshot is taken. Upstream marks it temporary, with no semver guarantees. |
+| `retryRecordLookupTimeout` | `number` | `5000` | Milliseconds to wait before the one retry for a notification about a core with no record yet. |
+| `perReferrerRateLimitParams` | `{ capacity, intervalMs }` | — | Limit `add-cores` requests per referrer. Each referrer can burst `capacity` requests, then one more every `intervalMs` milliseconds. The blind peer drops requests over the limit. Requests without a referrer aren't limited. |
+| `topK` | `object` | See below | The window that tracks the busiest senders of `add-cores` requests, by peer key, referrer and IP address. |
+| `adminRouter` | `object` | `null` | A `protomux-rpc-router` router. When set, trusted peers can ask it for the busiest senders with `query-top-k`. |
+| `wakeupGcTickTime` | `number` | `null` | The `gcTickTime` that the blind peer gives to the wakeup protocol it creates. |
+
+`topK` takes `bucketCount` (`6`), `bucketTime` (`10000` milliseconds) and `k` (`5`). Together they track the last `bucketCount × bucketTime` milliseconds and keep the `k` busiest senders. It also takes `peerThreshold` and `referrerThreshold` (both `100`), which blind-peer 3.15.1 accepts but doesn't act on.
+
+### BlindPeerDigest
+
+What `blindPeer.digest` returns.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `cores` | `number` | How many cores the blind peer stores. |
+| `bytesAllocated` | `number` | How many bytes those cores use. Garbage collection compares it to `maxBytes`. |
+| `referrers` | `number` | How many stored cores were added with a referrer. |
+| `flushed` | `boolean` | `false` while the blind peer is open. `close()` sets it to `true` after the final write. |
+
+## Errors
+
+Coded errors this module raises. Catch them through `err.code`.
+
+| Error | Raised when |
+| --- | --- |
+| `UNKNOWN_CORE` | A notification names a core the blind peer has no record of, after the retry. It arrives through the `notification-error` event. The connection stays open. |
+
+## See also
+
+- [Blind peering](/p2p/explanation/blind-peering)—the threat model, and how to run and register with a blind peer.
+- [blind-peering](/p2p/reference/helpers/blind-peering)—the client library that sends these requests.
+- [`pear blind-peer`](/pear/reference/pear/cli#pear-blind-peer)—run a blind peer from the Pear CLI, without writing code.
+- [Look up this machine's network keys](/pear/how-to/look-up-network-keys)—find the key to trust.
+- [Corestore](/p2p/reference/helpers/corestore)—the store a blind peer replicates through.
+- [Hyperswarm](/p2p/reference/building-blocks/hyperswarm)—the swarm it listens on.
+- [Upstream blind-peer repository](https://github.com/holepunchto/blind-peer)—source, releases and implementation details.

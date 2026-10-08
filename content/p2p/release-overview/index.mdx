@@ -14,6 +14,52 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 
 {/* changelog:insert — automation inserts draft entries below this marker; keep it directly above the newest entry. */}
 
+## 2026-10-07 — P2P module updates
+
+The module releases that [Pear 3.6.0](/pear/release-overview) bundles. An application pins its own copies in its `package.json`, so upgrade these dependencies directly to pick the changes up.
+
+### Hypercore — v11.37.2, v11.37.0
+
+- Fixed (v11.37.2): [`core.clear()`](/p2p/reference/building-blocks/hypercore#await-coreclearstart-end-options) deleted the tree nodes of still-stored blocks to the left of the cleared range (since v11.16.0), so a peer requesting one of those blocks failed with `INVALID_OPERATION: Expected tree node N from storage, got (nil)`. For example, after `clear(1)` a fresh peer could not read block 0. [`drive.clear()`](/p2p/reference/building-blocks/hyperdrive#await-driveclearpath-options) goes through it. Upgrading does not restore nodes that an earlier `clear()` already deleted.
+- Changed (v11.37.0): [manifest decoding](/p2p/reference/building-blocks/hypercore#new-hypercorestorage-key-options) accepts `version` 3, which is wire-compatible with version 2. Earlier releases throw `Unknown version: 3` on such a manifest, and versions above 3 are still rejected.
+
+### Hyperdrive — v13.3.4
+
+- Fixed: [`drive.downloadDiff()`](/p2p/reference/building-blocks/hyperdrive#await-drivedownloaddiffversion-folder-options) finished without fetching the data blocks of entries written with `dedup: true`. It downloaded each entry's contiguous range, which for those entries covers only the block map. It now follows the map, as [`drive.download()`](/p2p/reference/building-blocks/hyperdrive#drivedownloadfolder-options) has since v13.3.3.
+- Fixed: [`download.destroy()`](/p2p/reference/building-blocks/hyperdrive#download) no longer waits for the blobs core to open before closing, and closing the drive during a download resolves `download.done()` instead of rejecting with `REQUEST_CANCELLED`. This covers the `Download` that `drive.download()` and `drive.downloadDiff()` return.
+
+### HyperDHT — v6.34.1
+
+- Fixed: a server that relays a connection now notices when the relay is lost, before or after pairing. It releases the unconnected stream and its hole puncher once no direct connection has taken over within the grace period and no hole punch is still running. Previously a punch parked after `TRY_LATER`, or a relay that died after pairing, could hold them until another close event, such as keep-alive, cleaned up.
+- Added: a [`relayRecoveryWait`](/p2p/reference/building-blocks/hyperdht#createserveroptions) option to [`node.createServer()`](/p2p/reference/building-blocks/hyperdht#nodecreateserveroptions-onconnection), in milliseconds and `30000` by default, that sets that grace period.
+
+### Compact-encoding — v3.5.2
+
+- Changed: decoding [`cenc.arraybuffer`](/p2p/reference/helpers/compact-encoding#cencarraybuffer) or a [`cenc.frame(enc)`](/p2p/reference/helpers/compact-encoding#cencframeenc) frame whose declared length is longer than the bytes left now throws `Out of bounds`. Before, `arraybuffer` returned a zero-padded `ArrayBuffer` and `frame` decoded whatever bytes remained.
+
+### Corestore — v7.13.0, v7.12.6
+
+- Added (v7.13.0): an [`alwaysLatestBlock`](/p2p/reference/helpers/corestore#storealwayslatestblock) constructor option, `false` by default, that turns on [`allowLatestBlock`](/p2p/reference/building-blocks/hypercore#hypercoreoptions) for every core the store opens. Sessions and namespaces created from the store inherit it, and an `allowLatestBlock` passed to [`store.get()`](/p2p/reference/helpers/corestore#storegetkey---name-a-name-hypercoreopts) takes precedence.
+- Added (v7.12.6): `store.get()` accepts [`manifestVersion`](/p2p/reference/helpers/corestore#storegetkey---name-a-name-hypercoreopts), which overrides [`store.manifestVersion`](/p2p/reference/helpers/corestore#storemanifestversion) for the manifest of a new writable core. A core that already exists under that name keeps the version it was created with.
+
+### Hyperschema — v1.26.2, v1.26.0, v1.25.0
+
+- Changed (v1.25.0): versioned types have a [`framed`](/p2p/reference/helpers/hyperschema#versioned-type) option. A new versioned type defaults to `framed: true`, which length-prefixes each of its version structs unless the struct is `compact`, so a decoder from an earlier schema generation can skip fields that a later generation appended. A type already in your `schema.json` keeps its unframed layout (the next build records `framed: false`), and setting `framed: true` on it changes the bytes it writes. Keep the previous `schema.json` when you regenerate: without it every versioned type is framed, which differs from the layout of a spec generated with v1.24.0 or earlier.
+- Fixed (v1.26.0): a [`uint1`–`uint7`](/p2p/reference/helpers/hyperschema#built-in-types) field decoded as `true` or `false` instead of its value in code generated with v1.23.0 through v1.25.0. The bytes written were correct, so regenerating the spec with v1.26.0 or later is enough, and stored data needs no migration.
+- Added (v1.26.0): a [`constant`](/p2p/reference/helpers/hyperschema#fields) field option—a `bool`, integer, `string` or `null` literal that the decoder always returns for the field. A constant is never encoded, takes no flag bit and does not bump the schema version. It cannot be combined with `required`, `array`, `record` or `inline`.
+
+See the [Hyperschema reference](/p2p/reference/helpers/hyperschema) for the full API, and [RPC and schemas](/bare/explanation/rpc-and-schemas) for where it fits.
+
+### blind-peering — v2.10.1, v2.10.0, v2.9.1
+
+- Changed (v2.9.1): [`sendNotification()`](/p2p/reference/helpers/blind-peering#await-blindsendnotificationcore-opts) picks a random connected blind peer among the `pick` closest to `target` (2 by default), rather than the closest connected one, to spread notification load.
+- Added (v2.10.0): a [`client`](/p2p/reference/helpers/blind-peering#blindpeeringoptions) constructor option, `{ name, version }`, that identifies your application to blind peers. Both values are sent in the connection handshake, along with the blind-peering version.
+- Added (v2.10.1): a [`skipConnectionMetadata`](/p2p/reference/helpers/blind-peering#blindpeeringoptions) constructor option, `false` by default. When `true`, the handshake carries no metadata at all—neither `client` nor the blind-peering version.
+
+### blind-peer — v3.15.1
+
+- Changed: the [Corestore](/p2p/reference/helpers/corestore) that [blind-peer](/p2p/reference/helpers/blind-peer) creates when you do not pass a [`store`](/p2p/reference/helpers/blind-peer#blindpeeroptions) is opened with `alwaysLatestBlock: true` (added in v7.13.0, above), so its replicator includes a request for the latest block in every upgrade request. A `store` you pass in is used as given. [`pear blind-peer start`](/pear/reference/pear/cli#pear-blind-peer) passes none, so it gets the new behaviour.
+
 ## 2026-09-22 — P2P module updates
 
 The module releases that [Pear 3.5.0](/pear/release-overview) bundles. An application pins its own copies in its `package.json`, so upgrade these dependencies directly to pick the changes up.
@@ -55,7 +101,7 @@ The module releases that [Pear 3.5.0](/pear/release-overview) bundles. An applic
 - Changed (v1.23.0): the bitwise types `uint1`–`uint7` used as an array now fail at build time with `cannot be used as an array`; they only exist inside a struct's flags byte.
 - Added (v1.24.0): `fixed8`, `fixed16` and `fixed24` types, backed by the new compact-encoding codecs.
 
-See [RPC and schemas](/bare/explanation/rpc-and-schemas) for where Hyperschema fits.
+See the [Hyperschema reference](/p2p/reference/helpers/hyperschema) for the full API, and [RPC and schemas](/bare/explanation/rpc-and-schemas) for where it fits.
 
 ### blind-peering — v2.9.0, v2.8.0
 
@@ -65,7 +111,7 @@ See [RPC and schemas](/bare/explanation/rpc-and-schemas) for where Hyperschema f
 
 ### blind-peer — v3.15.0, v3.14.0
 
-- Added: constructor options `perReferrerRateLimitParams` (v3.15.0), a per-referrer rate limit on notification requests, and `notificationErrorSnapshotDelay` (v3.14.0).
+- Added: constructor options [`perReferrerRateLimitParams`](/p2p/reference/helpers/blind-peer#blindpeeroptions) (v3.15.0), a per-referrer rate limit on `add-cores` requests, and [`notificationErrorSnapshotDelay`](/p2p/reference/helpers/blind-peer#blindpeeroptions) (v3.14.0).
 - Changed (v3.15.0): the default `notificationTimeout` rises from 10 to 30 seconds.
 
 ## 2026-08-24 — P2P module updates
@@ -100,7 +146,7 @@ See [RPC and schemas](/bare/explanation/rpc-and-schemas) for where Hyperschema f
 
 ### Hyperdrive — v13.3.3
 
-- Fixed: [`drive.download()`](/p2p/reference/building-blocks/hyperdrive#drivedownloadfolder-options) and [`drive.has()`](/p2p/reference/building-blocks/hyperdrive) silently stalled or fetched the wrong data for entries written with `dedup: true`. Those entries store blobs as a non-contiguous block map rather than a contiguous range, and the contiguous form was being used for every entry. `downloadDiff()` had the same bug.
+- Fixed: [`drive.download()`](/p2p/reference/building-blocks/hyperdrive#drivedownloadfolder-options) and [`drive.has()`](/p2p/reference/building-blocks/hyperdrive) silently stalled or fetched the wrong data for entries written with `dedup: true`. Those entries store blobs as a non-contiguous block map rather than a contiguous range, and the contiguous form was being used for every entry. `downloadDiff()` had the same bug, and this release did not fix it: v13.3.4 did (see the 2026-10-07 entry).
 
 ### HyperDHT — v6.33.0
 

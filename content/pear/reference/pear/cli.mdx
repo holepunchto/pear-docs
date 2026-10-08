@@ -15,7 +15,7 @@ The Command Line Interface is the primary interface for Pear Development.
 <include>../../../_snippets/_interactive-menu-callout.mdx</include>
 
 <Callout type="info">
-This page tracks **Pear 3.5.0**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/pear/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
+This page tracks **Pear 3.6.0**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/pear/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
 
 Anything a release adds or removes carries an inline badge—<Since v="3.1.0" /> or <Until v="3.1.0" />—so you can tell whether your build has it. Run `pear versions` to check what you are on, and see the [Release Overview](/pear/release-overview) for the full history.
 </Callout>
@@ -90,7 +90,7 @@ In both cases the same `pear seed` command now appears in the hint block below t
 
 Most commands accept `--json`—use it for anything that parses a command's result. The default, human-readable output is meant for a person at a terminal and can change wording or formatting between releases; the JSON shape is the stable contract to script against.
 
-`--json` output is newline-delimited JSON (NDJSON): one object per line, each shaped `{"cmd", "tag", "data"}`. Intermediate tags are command-specific—[`pear changelog --json`](#pear-changelog) tags each release `"changelog"`, for example—so filter on `tag` rather than assuming a fixed number of lines.
+`--json` output is newline-delimited JSON (NDJSON): one object per line, each shaped `{"cmd", "tag", "data"}`. Intermediate tags are command-specific—[`pear changelog --json`](#pear-changelog) tags each release `"changelog"`, and [`pear build --json`](#pear-build) <Since v="3.6.0" /> tags the app `"building"` and each artifact it places `"executable"`, for example—so filter on `tag` rather than assuming a fixed number of lines.
 
 Most commands close the stream with a `tag: "final"` object whose `data` carries `success` alongside any result fields, as `pear touch --json` does with `{"success": true, "key": "…", "link": "pear://…"}`. Two exceptions to code defensively around: some commands emit **no** `final` object at all—`pear versions --json` emits only its `platform`, `runtimes`, `libraries`, and `modules` tags—and some emit a bare `final` with no `data`, as `pear multisig keys list --json` does. Treat a missing `success` as "no status reported" rather than as failure.
 
@@ -115,6 +115,15 @@ The wrong position is rejected with `✖ Unrecognized Flag: --json`, so a script
 <Since v="3.2.0" /> A command that fails under `--json` emits `{"cmd", "tag": "error", "data": {"success": false, "code", "message"}}` instead of human-readable error text—`code` is new in 3.2.0. On 3.1.0 and earlier, `--json` errors could print malformed (non-JSON) output.
 
 </Callout>
+
+## Quoting links
+<VersionSection since="3.6.0" />
+
+<a name="quoted-links"></a>
+
+<Since v="3.6.0" /> A link argument may be wrapped in one matching pair of double or single quotes. Pear strips the pair before it parses the link, so `pear stage "pear://<key>" ./out` does the same as `pear stage pear://<key> ./out`. This helps when a shell or CI system passes the quotes through literally, and when a link is pasted with its quotes. It applies to the commands that take a `pear://` link, such as `pear stage`, `pear seed`, `pear provision`, `pear info`, `pear dump`, and `pear changelog`.
+
+Only one surrounding pair is removed. The two quotes have to match, and nothing else is trimmed, so a link with mismatched quotes is still rejected with `A valid pear link must be specified.` On 3.5.0 and earlier a quoted link is rejected with that message too.
 
 ## Building and staging
 
@@ -176,9 +185,11 @@ Each make runs on its own OS, so transfer the per-platform outputs to one machin
 As of Pear v3, `pear build` is provided by the standalone [`pear-build`](https://github.com/holepunchto/pear-build) module and integrated into the CLI.
 </Callout>
 
+<VersionGate until="3.6.0">
 <Callout type="info">
 <Since v="3.2.0" /> Running `pear build` without `--package` now prints this command's help instead of failing partway through the build.
 </Callout>
+</VersionGate>
 
 <Callout type="info">
 <Since v="3.3.0" /> `--config [path]` points `pear build` at the project's `pear.json`. It is **mandatory for mobile targets** (`--ios-*`, `--android-arm64`). Added by [`pear-build`](https://github.com/holepunchto/pear-build) v1.2.0, which ships with Pear 3.3.0; the same release also checks up front that each `--<platform-arch>-app` source actually exists.
@@ -188,8 +199,15 @@ As of Pear v3, `pear build` is provided by the standalone [`pear-build`](https:/
 <Since v="3.4.0" /> Each `--<platform-arch>-app` flag can be passed **more than once**, placing several artifacts under the same architecture—which is how a standalone binary ships alongside a desktop app. Every artifact has to be named after `productName` (falling back to `name`), or after one of the `bin` names when `bin` is an object. Added by [`pear-build`](https://github.com/holepunchto/pear-build) v1.3.0, which ships with Pear 3.4.0.
 </Callout>
 
+<VersionGate since="3.6.0">
+<Callout type="info">
+<Since v="3.6.0" /> `--package` defaults to `./package.json`, so a build run from the project directory no longer needs it, and leaving it out no longer prints help. In exchange, at least one artifact flag (`--<platform-arch>-app`, `--ios-*`, or `--android-arm64`) is required: with none, the build fails with `at least one app build must be specified` and prints this command's help. A missing `./package.json` fails with `package.json not found`. Added by [`pear-build`](https://github.com/holepunchto/pear-build) v1.3.2, which ships with Pear 3.6.0.
+</Callout>
+</VersionGate>
+
 ```
-  --package [path]               Path to project package.json
+  --package [path]               Path to project package.json   [!version until=3.6.0]
+  --package [path]               Path to project package.json (default: ./package.json)   [!version since=3.6.0]
   --target [path]                Target build dir
   --config [path]                Path to project pear.json (mandatory for mobile)   [!version since=3.3.0]
   --darwin-arm64-app [path]      Path to Mac ARM64 app
@@ -207,6 +225,57 @@ As of Pear v3, `pear build` is provided by the standalone [`pear-build`](https:/
 ```
 
 For the full release walkthrough, see [Deploy a Pear desktop app](/pear/how-to/operate-an-app/manual-deployment/deployment) and [Build desktop distributables](/pear/how-to/operate-an-app/build-and-package/build-desktop-distributables); for the mobile flags (`--ios-*`, `--android-arm64`), see [Deploy your mobile application](/pear/how-to/operate-an-app/manual-deployment/mobile).
+
+#### Output
+<VersionSection since="3.6.0" />
+
+<a name="pear-build-output"></a>
+
+<Since v="3.6.0" /> `pear build` reports what it builds. On 3.5.0 and earlier a successful build printed nothing, including under `--json`, which was accepted but changed only how a failure printed.
+
+The default output names the app, version, and target, lists one line per artifact as its copy completes, and ends with `Build complete!`:
+
+```
+🍐 Building PearChat
+
+App:      PearChat
+Version:  1.0.1
+Target:   pear-chat-1.0.1
+
++ /work/pear-chat-1.0.1/by-arch/linux-arm64/app/PearChat.AppImage (origin: /work/pear-chat/out/PearChat-linux-arm64/PearChat.AppImage)
++ /work/pear-chat-1.0.1/by-arch/darwin-arm64/app/PearChat.app (origin: /work/pear-chat/out/PearChat-darwin-arm64/PearChat.app)
++ /work/pear-chat-1.0.1/by-arch/linux-x64/app/PearChat.AppImage (origin: /work/pear-chat/out/PearChat-linux-x64/PearChat.AppImage)
++ /work/pear-chat-1.0.1/by-arch/darwin-x64/app/PearChat.app (origin: /work/pear-chat/out/PearChat-darwin-x64/PearChat.app)
++ /work/pear-chat-1.0.1/by-arch/win32-x64/app/PearChat.msix (origin: /work/pear-chat/out/PearChat-win32-x64/PearChat.msix)
+
+Build complete!
+```
+
+- `App:` is `productName`, falling back to `name`. The 🍐 is `*` on Windows.
+- `Target:` is the `--target` value as you typed it, so a relative path stays relative. Without `--target` it is the auto-named `<name>-<version>` directory, resolved from the current directory.
+- Each `+` line is one artifact you passed: the path it now has inside the deployment directory, `<target>/by-arch/<platform-arch>/app/<artifact name>`, then, after `origin:`, the path it was copied from. Passing an artifact flag more than once prints one line per artifact. Lines appear in the order the copies finish, not the order of the flags.
+
+With [`--json`](#json-output) the same events arrive as one object per line:
+
+| Tag | Emitted | `data` |
+| --- | --- | --- |
+| `building` | Once, first | `name`, `version`, `target` |
+| `executable` | Once per artifact, as its copy completes | `file`, `origin` |
+| `final` | Last, only when the build succeeded | `success` |
+
+```json
+{"cmd":"build","tag":"building","data":{"name":"PearChat","version":"1.0.1","target":"pear-chat-1.0.1"}}
+{"cmd":"build","tag":"executable","data":{"file":"/work/pear-chat-1.0.1/by-arch/linux-arm64/app/PearChat.AppImage","origin":"/work/pear-chat/out/PearChat-linux-arm64/PearChat.AppImage"}}
+{"cmd":"build","tag":"executable","data":{"file":"/work/pear-chat-1.0.1/by-arch/darwin-arm64/app/PearChat.app","origin":"/work/pear-chat/out/PearChat-darwin-arm64/PearChat.app"}}
+{"cmd":"build","tag":"executable","data":{"file":"/work/pear-chat-1.0.1/by-arch/linux-x64/app/PearChat.AppImage","origin":"/work/pear-chat/out/PearChat-linux-x64/PearChat.AppImage"}}
+{"cmd":"build","tag":"executable","data":{"file":"/work/pear-chat-1.0.1/by-arch/darwin-x64/app/PearChat.app","origin":"/work/pear-chat/out/PearChat-darwin-x64/PearChat.app"}}
+{"cmd":"build","tag":"executable","data":{"file":"/work/pear-chat-1.0.1/by-arch/win32-x64/app/PearChat.msix","origin":"/work/pear-chat/out/PearChat-win32-x64/PearChat.msix"}}
+{"cmd":"build","tag":"final","data":{"success":true}}
+```
+
+`name` and `target` follow the same rules as the `App:` and `Target:` rows. `file` and `origin` are absolute paths, and `file` is a directory for a `.app` bundle and for the iOS and Android folders. An `executable` event has no architecture field: the architecture is the folder after `by-arch` in `file`, separated by `/` or, on Windows, `\`. Do not rely on the order of the `executable` events. To check that every architecture landed, see [Preflight a release before staging](/pear/how-to/operate-an-app/manual-deployment/preflight-a-release).
+
+A failed build emits no `final`. Under `--json` it prints one `error` object (`{"cmd":"build","tag":"error","data":{"success":false,"code","message"}}`) to stdout and the process exits with status 1; a failure after the manifest has been read leaves the `building` line ahead of it. A missing artifact path reports `ERR_NOT_FOUND` (`<path> does not exist`), and an artifact not named after `productName`, `name`, or a `bin` entry reports `ERR_INVALID_APP_NAME` (`expected PearChat but got Other.msix for win32-x64`). Both print the message alone, with no usage text. On 3.5.0 and earlier they carried a full stack trace instead.
 
 ### `pear stage <link> [dir]`
 
@@ -429,6 +498,10 @@ The request asks the blind peer to **announce** the drive, but that only sticks 
 <Since v="3.5.0" /> `Drive Length:` reports sync progress rather than a bare block count, and a `Blobs Length:` row is added alongside it. Each shows `<synced>/<total>` and a percentage while syncing, collapsing to just `<total>` once complete—so `12/40 [ 30%]` means 12 of 40 blocks are local, and `3 [100%]` means all 3 are. In-progress rows are highlighted, completed ones dimmed. The percentage is right-aligned to three digits in the live view (`[100%]`, `[ 30%]`) and spaced as `[ 30% ]` under `--no-tty`. The `--json` `stats` data gains `driveSynced`, `blobsSynced`, `blobsLength` and `driveFork` alongside the existing `driveLength`. On 3.4.0 and earlier `Drive Length:` is a plain number and there is no blobs block count.
 </Callout>
 
+<Callout type="info">
+<Since v="3.6.0" /> The `App:` row and the `--json` `stats` fields `name` and `semver` follow the drive. `pear seed` re-reads `package.json` whenever the drive grows or is truncated, so a seeder left running across a release shows the new `<name>@<version>` without a restart. On 3.5.0 and earlier both were read once, when the session started.
+</Callout>
+
 ### `pear install <link>`
 <a name="pear-install"></a>
 
@@ -514,15 +587,15 @@ Manage blind peers.
 | The blind peer's own key | `start` prints `Blind peer started listening using public key: <publicKey>` | The **target**: what others pass to [`pear seed --blind-peer <key>`](#pear-seed) or `pear blind-peer request --peer <key>` |
 | A client's identity key | [`pear identity blind-peer-client`](#pear-identity) <Since v="3.5.0" /> (`pear blind-peer identity` <Until v="3.5.0" /> before that), run **on the client machine** | The **authorization**: what the blind peer's operator passes to `start --trusted-peer <peer>` |
 
-`pear blind-peer start` runs the server. `--trusted-peer` may be passed more than once; each value must be a valid public key or the command rejects with `A valid trusted peer key must be specified`. Trust is what decides whether a request is honored in full. A trusted peer's cores are **announced**, so the blind peer advertises itself as a source for them; an untrusted peer's request has `announce` forced to `false`—the cores are still stored and served, but the blind peer never announces them, so peers looking for a source will not find it through the blind peer. Untrusted requests are also capped to a lower retention priority, and deleting a core is refused outright (`Only trusted peers can delete cores`). Only one blind peer runs per sidecar: starting a second fails with `ERR_OPERATION_FAILED`—`Blind peer is already running, cannot start another`. Its storage is a `blind-peer` directory in the Pear platform directory, beside the platform database and [`pear.log`](#sidecar-logs).
+`pear blind-peer start` runs the server. `--trusted-peer` may be passed more than once; each value must be a valid public key or the command rejects with `A valid trusted peer key must be specified`. Trust is what decides whether a request is honored in full. A trusted peer's cores are **announced**, so the blind peer advertises itself as a source for them; an untrusted peer's request has `announce` forced to `false`—the cores are still stored and served, but the blind peer never announces them, so peers looking for a source will not find it through the blind peer. Deleting a core is refused outright for an untrusted peer (`Only trusted peers can delete cores`), and trust doesn't change a request's retention priority. See [how a blind peer handles requests](/p2p/reference/helpers/blind-peer#how-a-blind-peer-handles-requests). Only one blind peer runs per sidecar: starting a second fails with `ERR_OPERATION_FAILED`—`Blind peer is already running, cannot start another`. Its storage is a `blind-peer` directory in the Pear platform directory, beside the platform database and [`pear.log`](#sidecar-logs).
 
-<Until v="3.5.0" label="Removed in 3.5.0" /> `pear blind-peer identity` printed **this machine's** sidecar public key—the identity a blind peer operator authorizes with `--trusted-peer`. From 3.5.0 it is [`pear identity blind-peer-client`](#pear-identity), which prints the same key; the old form fails with `✖ Unrecognized Argument at index 0 with value identity`.
+<Until v="3.5.0" label="Removed in 3.5.0" /> `pear blind-peer identity` printed **this machine's** sidecar public key—the identity a blind peer operator authorizes with `--trusted-peer`. From 3.5.0 it is [`pear identity blind-peer-client`](#pear-identity), which prints the same key; on 3.5.0 the old form fails with `✖ Unrecognized Argument at index 0 with value identity`. <Since v="3.6.0" /> From 3.6.0 the same failure reads `✖ Unexpected argument  'identity'`, with two spaces before the quote.
 
 `pear blind-peer request <key> --peer <peer>` asks the blind peer at `--peer` to seed `<key>`—a `pear://` link (a drive, or with `--core-only`, a bare core) or a raw public key. Both `--peer` and `<key>` are required and validated; an invalid or missing value fails with `ERR_INVALID_INPUT` before any request is sent.
 
 Without `--core-only` this registers **two** cores—the drive's metadata core and its blobs core—and to do that it first resolves the blobs core over the swarm, so the drive has to be reachable at the time you run it. The request itself gives the blind peer 30 seconds to answer, failing with `ERR_OPERATION_FAILED`, `Timed out connecting to blind peer <key>`. Like [`pear seed --blind-peer`](#pear-seed), the request always asks for the core to be announced—there is no flag to turn that off—so the trust rules above decide whether the announce actually sticks.
 
-This is the platform-native equivalent of running the standalone [`blind-peer-cli`](https://github.com/holepunchto/blind-peer-cli) package—see [Blind peering](/p2p/explanation/blind-peering#running-a-blind-peer-server) for the operational picture. Note that the disk budget described there is a `blind-peer-cli` flag (`-m <size>`); `pear blind-peer start` exposes no equivalent and uses the library default.
+This is the platform-native equivalent of running the standalone [`blind-peer-cli`](https://github.com/holepunchto/blind-peer-cli) package—see [Blind peering](/p2p/explanation/blind-peering#running-a-blind-peer-server) for the operational picture. Note that the disk budget described there is a `blind-peer-cli` flag (`-m <size>`); `pear blind-peer start` exposes no equivalent and uses the [library default](/p2p/reference/helpers/blind-peer#blindpeeroptions) of 100 GB.
 
 ### `pear blind-relay [command]`
 
@@ -607,15 +680,52 @@ Supply no argument to view platform information.
 
 `--key`, `--metadata`, and `--multisig` select sections: name any of them and only those print, in the order key, metadata, multisig. `--manifest` is not a selector—it prints the manifest and stops, so pairing it with `--metadata` or `--multisig` yields the manifest alone, and pairing it with `--key` still prints the key above it.
 
-With [`--json`](#json-output), output arrives as three tagged objects before the closing `final`:
+The default output prints the link, a `keys` table, and an `info` table. <Since v="3.6.0" /> The `info` table gains a `writable` row between `productName` and `length`:
+
+```
+ info              value
+-----------------  -----------------
+ name              pear-chat
+ version           1.0.1
+ productName       PearChat
+ writable          true
+ length            7
+ fork              0
+ byteLength        1192
+ blobs.length      12
+ blobs.fork        0
+ blobs.byteLength  262
+ verlink           pear://0.7.9mk396rygkm8t6ouy5nf5mimoysc1c7gixffzcabrrgxuya9k3ay
+ upgrade           pear://13id1dkg7k8wifk64tsnyrbh8h4hzc19rozrghc8ucd54fwx1hfo
+```
+
+The three `blobs.*` rows appear only once the drive's blobs core is open.
+
+With [`--json`](#json-output), a link that has data arrives as tagged objects before the closing `final`:
 
 | Tag | `data` |
 | --- | --- |
 | `retrieving` | `z32`, `onlyShowKey` |
 | `keys` | `project`, `content`, `discovery` |
-| `info` | `link`, `verlink`, `name`, `version`, `productName`, `upgrade` |
+| `info` | `link`, `verlink`, `name`, `version`, `productName`, `upgrade`, `writable` <Since v="3.6.0" />, `length`, `byteLength`, `blobs`, `fork` |
 
-Filter on `"tag": "info"` for the manifest values and `"tag": "keys"` for the key triplet, rather than relying on ordering. `verlink` is the versioned `pear://<fork>.<length>.<key>` form and was added in 3.1.0.
+Filter on `"tag": "info"` for the manifest values and `"tag": "keys"` for the key triplet, rather than relying on ordering. `verlink` is the versioned `pear://<fork>.<length>.<key>` form and was added in 3.1.0. `length`, `fork`, and `byteLength` are the block count, fork id, and size of the project's metadata core as this machine holds it, and `blobs` is `{ length, fork, byteLength }` for its blobs core, or `null` while that core is not open. `verlink` is built from the same local numbers, so passing a versioned link still reports this machine's current state. The `info` object of a staged project looks like this:
+
+```json
+{"cmd":"info","tag":"info","data":{"link":"pear://9mk396rygkm8t6ouy5nf5mimoysc1c7gixffzcabrrgxuya9k3ay","verlink":"pear://0.7.9mk396rygkm8t6ouy5nf5mimoysc1c7gixffzcabrrgxuya9k3ay","name":"pear-chat","version":"1.0.1","productName":"PearChat","upgrade":"pear://13id1dkg7k8wifk64tsnyrbh8h4hzc19rozrghc8ucd54fwx1hfo","writable":true,"length":7,"byteLength":1192,"blobs":{"length":12,"fork":0,"byteLength":262},"fork":0}}
+```
+
+Three more tags appear in particular cases. A project whose core has more than one signer adds a `multisig` object (`quorum`, `publicKeys`, `only`) after `info`. `--manifest` adds a `manifest` object (`manifest`) in place of `keys` and `info`. A link with nothing on this machine yet—one you just created with [`pear touch`](#pear-touch) and have not staged, for example—emits an `empty` object with no `data` in their place, and the default output prints `[ Empty ]`.
+
+<VersionGate since="3.6.0">
+<a name="pear-info-writable"></a>
+
+<Since v="3.6.0" /> `writable` is `true` when this machine's corestore holds the key pair for the project's drive, which is what lets it stage to that link, and `false` for a link this machine only reads. It is a local lookup. It does not check that the link is seeded or reachable, so `true` is not a promise that a stage will succeed. It is reported only in the `info` object, so an `empty` link has none.
+
+`writable` describes **stage** and **provision** links, which are machine-bound. A multisig production link is written by a quorum of signers rather than by one key pair on one machine, so `false` there does not mean write access is lost. To read it in a script, see [Preflight a release before staging](/pear/how-to/operate-an-app/manual-deployment/preflight-a-release#2-check-that-this-machine-can-write).
+</VersionGate>
+
+{/* TODO(before merge): the multisig production-link behaviour of writable is read from the source (the multisig core is created from a manifest with no key pair), not observed on the local 3.6.0 build, which was not set up with a multisig drive. Confirm it with a committed multisig link. */}
 
 <Callout type="info">
 <Until v="3.1.0" label="Fixed in 3.1.0" /> On 3.0.1 and earlier, `pear info` and [`pear changelog`](#pear-changelog) can fail outright with `✖ Cannot read properties of undefined (reading 'key')`.
@@ -956,7 +1066,7 @@ Moving user application storage between applications is no longer supported from
 
 <Status level="removed" />
 
-`pear init` has been removed from the Pear CLI. Unlike `pear run` (which prints a dedicated removal message), `init` is no longer a recognized command, so it is rejected as an unknown argument—`✖ Unrecognized Argument at index 0 with value init`, followed by the top-level usage.
+`pear init` has been removed from the Pear CLI. Unlike `pear run` (which prints a dedicated removal message), `init` is no longer a recognized command, so it is rejected as an unknown argument—`✖ Unrecognized Argument at index 0 with value init` up to 3.5.0, followed by the top-level usage. <Since v="3.6.0" /> From 3.6.0 the message reads `✖ Unexpected argument  'init'`, with two spaces before the quote.
 
 <Callout type="info">
 To scaffold a project, clone the official template instead—[`holepunchto/hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron)—and follow [Start from the hello-pear-electron template](/p2p/getting-started/from-a-template/start-from-hello-pear-electron).
