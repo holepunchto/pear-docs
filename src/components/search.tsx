@@ -109,14 +109,24 @@ function AskAI({
 
 export default function CustomSearchDialog(props: SharedProps) {
   const { onOpenChange } = props;
-  const { search, setSearch, query } = useDocsSearch({
+  const [search, setSearch] = useState("");
+  // Orama fallback. The static client downloads /api/search.json (several MB)
+  // on its first non-empty query, so it only gets one once QVAC has failed.
+  const orama = useDocsSearch({
     from: "/api/search.json",
     type: "static",
     initOrama,
   });
+  const query = orama.query;
 
   // `null` = no results yet; 'fallback' = use Orama.
   const [qvac, setQvac] = useState<SearchItemType[] | null | "fallback">(null);
+  const fallback = qvac === "fallback";
+  const setOramaSearch = orama.setSearch;
+
+  useEffect(() => {
+    setOramaSearch(fallback ? search : "");
+  }, [fallback, search, setOramaSearch]);
   const [settled, setSettled] = useState("");
   const [askOpen, setAskOpen] = useState(false);
   const [question, setQuestion] = useState("");
@@ -152,7 +162,7 @@ export default function CustomSearchDialog(props: SharedProps) {
   const tooShort = search.trim().length < MIN_CHARS;
   const results: SearchItemType[] | null = tooShort
     ? null
-    : qvac === "fallback"
+    : fallback
       ? query.data && query.data !== "empty"
         ? query.data
         : null
@@ -189,7 +199,9 @@ export default function CustomSearchDialog(props: SharedProps) {
       <SearchDialog
         search={search}
         onSearchChange={setSearch}
-        isLoading={(!tooShort && settled !== search) || query.isLoading}
+        isLoading={
+          (!tooShort && settled !== search) || (fallback && query.isLoading)
+        }
         {...props}
       >
         <SearchDialogOverlay />
