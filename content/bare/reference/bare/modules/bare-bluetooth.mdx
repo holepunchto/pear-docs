@@ -86,6 +86,7 @@ function expand(uuid) {
 }
 
 const central = new Central()
+let connecting = false
 
 central.on('stateChange', (state) => {
   if (state !== 'poweredOn') return
@@ -94,6 +95,9 @@ central.on('stateChange', (state) => {
 })
 
 central.on('discover', (peripheral) => {
+  if (connecting || peripheral.rssi === null) return
+
+  connecting = true
   central.stopScan()
   central.connect(peripheral)
 })
@@ -129,7 +133,7 @@ central.on('connect', (peripheral) => {
 })
 ```
 
-The upstream README compares UUIDs with `===`, which fails on every platform for these UUIDs; the `expand()` helper here comes from the repository's own [`example/gattpong.js`](https://github.com/holepunchto/bare-bluetooth/blob/main/example/gattpong.js). That `example/` directory also holds `scan.js` and `l2cappong.js`, runnable with `bare` on macOS and Linux.
+The upstream README compares UUIDs with `===`, which fails on every platform for these UUIDs; the `expand()` helper and the `discover` guard here come from the repository's own [`example/gattpong.js`](https://github.com/holepunchto/bare-bluetooth/blob/v0.6.3-0/example/gattpong.js). That `example/` directory also holds `scan.js` and `l2cappong.js`, runnable with `bare` on macOS and Linux.
 
 ## Platforms
 
@@ -203,7 +207,7 @@ Set `allowDuplicates` (Apple) to `true` for a `discover` on every advertising pa
 
 Set `transport` (Linux) to `'le'` (default), `'auto'`, or `'bredr'`. `'auto'` also scans classic, where dual-mode devices such as TVs advertise their name, but slows BLE discovery; a dual-mode device shows up once per channel, and only the BLE one can be connected.
 
-On Linux the name may arrive after the first `discover`; when it does, `discover` fires again with `name` set.
+On Linux the name may arrive after the first `discover`; when it does, `discover` fires again with `name` set. BlueZ also replays devices it cached from earlier scans, which have no `rssi`: a `null` `rssi` means this scan has not heard the device.
 
 Set `callbackType` (Android) to one of `Central.CALLBACK_TYPE_ALL_MATCHES`, `Central.CALLBACK_TYPE_FIRST_MATCH`, or `Central.CALLBACK_TYPE_MATCH_LOST`. `ALL_MATCHES` is the default and fires on every advertising packet, dozens per second per peripheral. `FIRST_MATCH` fires once per peripheral, but needs `serviceUUIDs` and hardware support: without it the scan fails with an `error`, so keep a fallback. It also stops `rssi` refreshing.
 
@@ -286,11 +290,11 @@ Represents a connected peripheral. Obtained from the `connect` event on `Central
 
 #### `peripheral.discoverServices([serviceUUIDs])`
 
-Discover services on the peripheral. On Apple, an optional `serviceUUIDs` array restricts discovery to those services. Android always discovers all services. Results are emitted via `servicesDiscover`.
+Discover services on the peripheral. On Apple and Linux, an optional `serviceUUIDs` array restricts discovery to those services. Android always discovers all services. Results are emitted via `servicesDiscover`.
 
 #### `peripheral.discoverCharacteristics(service[, characteristicUUIDs])`
 
-Discover characteristics for a `Service`. On Apple, an optional `characteristicUUIDs` array restricts discovery. Android always discovers all characteristics. Results are emitted via `characteristicsDiscover`.
+Discover characteristics for a `Service`. On Apple and Linux, an optional `characteristicUUIDs` array restricts discovery. Android always discovers all characteristics. Results are emitted via `characteristicsDiscover`.
 
 #### `peripheral.read(characteristic)`
 
@@ -390,7 +394,7 @@ Stop advertising.
 
 Respond to a `ReadRequest` or `WriteRequest` with the given ATT `result: number` code. Optionally include `data: Uint8Array` for read responses. Use the `Server.ATT_*` constants for `result`.
 
-On Android every read reaches `readRequest`, even for a characteristic created with a `value`, so answer each one. On Apple, the system answers reads of a characteristic created with a `value` itself. On Linux, a result BlueZ has no name for (`ATT_INVALID_HANDLE`, `ATT_INSUFFICIENT_RESOURCES`) reaches the central as `ATT_UNLIKELY_ERROR`. A read nobody listens for is answered with the characteristic's `value`; a write nobody listens for is accepted.
+On Android every read reaches `readRequest`, even for a characteristic created with a `value`, so answer each one. On Apple, the system answers reads of a characteristic created with a `value` itself. On Linux, a result BlueZ has no name for (`ATT_INVALID_HANDLE`, `ATT_INSUFFICIENT_RESOURCES`) reaches the central as `ATT_UNLIKELY_ERROR`, a read nobody listens for is answered with the characteristic's `value`, and a write nobody listens for is accepted.
 
 #### `server.updateValue(characteristic, data)`
 

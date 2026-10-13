@@ -122,6 +122,8 @@ export const STABILITY: Record<string, Stability> = {
   // README (main, 2026-09-17) opens with "Experimental — Claude generated
   // prototype"; not yet reflected in either catalog table.
   'bare-mdns-discovery': 'experimental',
+  // README opens "This module is experimental. The API is subject to change and may break at any time."
+  'bare-bluetooth-linux': 'experimental',
 };
 
 export function stabilityOf(name: string): Stability {
