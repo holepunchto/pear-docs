@@ -18,8 +18,9 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 
 The module releases that [Pear 3.6.0](/pear/release-overview) bundles. An application pins its own copies in its `package.json`, so upgrade these dependencies directly to pick the changes up.
 
-### Hypercore — v11.37.2, v11.37.0
+### Hypercore — v11.38.0, v11.37.2, v11.37.0
 
+- Added (v11.38.0): [`core.count(start, end)`](/p2p/reference/building-blocks/hypercore#await-corecountstart-end) returns how many blocks in `[start, end)` the core has stored locally. [`core.has(start, end)`](/p2p/reference/building-blocks/hypercore#await-corehasstart-end) is `true` exactly when the count is `end - start`.
 - Fixed (v11.37.2): [`core.clear()`](/p2p/reference/building-blocks/hypercore#await-coreclearstart-end-options) deleted the tree nodes of still-stored blocks to the left of the cleared range (since v11.16.0), so a peer requesting one of those blocks failed with `INVALID_OPERATION: Expected tree node N from storage, got (nil)`. For example, after `clear(1)` a fresh peer could not read block 0. [`drive.clear()`](/p2p/reference/building-blocks/hyperdrive#await-driveclearpath-options) goes through it. Upgrading does not restore nodes that an earlier `clear()` already deleted.
 - Changed (v11.37.0): [manifest decoding](/p2p/reference/building-blocks/hypercore#new-hypercorestorage-key-options) accepts `version` 3, which is wire-compatible with version 2. Earlier releases throw `Unknown version: 3` on such a manifest, and versions above 3 are still rejected.
 
@@ -46,6 +47,11 @@ The module releases that [Pear 3.6.0](/pear/release-overview) bundles. An applic
 - Added (v7.13.0): an [`alwaysLatestBlock`](/p2p/reference/helpers/corestore#storealwayslatestblock) constructor option, `false` by default, that turns on [`allowLatestBlock`](/p2p/reference/building-blocks/hypercore#hypercoreoptions) for every core the store opens. Sessions and namespaces created from the store inherit it, and an `allowLatestBlock` passed to [`store.get()`](/p2p/reference/helpers/corestore#storegetkey---name-a-name-hypercoreopts) takes precedence.
 - Added (v7.12.6): `store.get()` accepts [`manifestVersion`](/p2p/reference/helpers/corestore#storegetkey---name-a-name-hypercoreopts), which overrides [`store.manifestVersion`](/p2p/reference/helpers/corestore#storemanifestversion) for the manifest of a new writable core. A core that already exists under that name keeps the version it was created with.
 
+### Protomux — v3.13.0, v3.12.1
+
+- Added (v3.13.0): [`mux.watch()`](/p2p/reference/helpers/protomux#muxwatch-protocol-id--callback), [`mux.unwatch()`](/p2p/reference/helpers/protomux#muxunwatch-protocol-id--callback), and [`mux.unwatchAll()`](/p2p/reference/helpers/protomux#muxunwatchall-protocol-id-) observe channels opening for a protocol, and optionally an id, without pairing them. Any number of watchers can share a protocol. A watcher that throws, or returns a promise that rejects, emits a `warning` on the stream and leaves the channel open.
+- Fixed (v3.12.1): a batched message whose declared length runs past the end of the batch now fails with `Out of bounds`. It failed with `uint must be between 0 and 9007199254740991, use biguint` before.
+
 ### Hyperschema — v1.26.2, v1.26.0, v1.25.0
 
 - Changed (v1.25.0): versioned types have a [`framed`](/p2p/reference/helpers/hyperschema#versioned-type) option. A new versioned type defaults to `framed: true`, which length-prefixes each of its version structs unless the struct is `compact`, so a decoder from an earlier schema generation can skip fields that a later generation appended. A type already in your `schema.json` keeps its unframed layout (the next build records `framed: false`), and setting `framed: true` on it changes the bytes it writes. Keep the previous `schema.json` when you regenerate: without it every versioned type is framed, which differs from the layout of a spec generated with v1.24.0 or earlier.
@@ -60,8 +66,10 @@ See the [Hyperschema reference](/p2p/reference/helpers/hyperschema) for the full
 - Added (v2.10.0): a [`client`](/p2p/reference/helpers/blind-peering#blindpeeringoptions) constructor option, `{ name, version }`, that identifies your application to blind peers. Both values are sent in the connection handshake, along with the blind-peering version.
 - Added (v2.10.1): a [`skipConnectionMetadata`](/p2p/reference/helpers/blind-peering#blindpeeringoptions) constructor option, `false` by default. When `true`, the handshake carries no metadata at all—neither `client` nor the blind-peering version.
 
-### blind-peer — v3.15.1
+### blind-peer — v3.16.0, v3.15.1
 
+- Added (v3.16.0): the blind peer answers `add-cores` and notification requests that a client sends with `requestAddCores()` and `requestSendNotification()` from `blind-peer-muxer` v1.7.0, which builds on the new `protomux-request` v0.1.0. An `add-cores` response lists each core's `key`, the `length` the blind peer held, and whether the request `activated` it. [blind-peering](/p2p/reference/helpers/blind-peering) 2.10.1 still sends one-way messages, so it gets no response. See [Responses](/p2p/reference/helpers/blind-peer#responses).
+- Changed (v3.16.0): a request over [`perReferrerRateLimitParams`](/p2p/reference/helpers/blind-peer#blindpeeroptions) now raises a `RATE_LIMITED` error. It emits `muxer-error` and counts in `stats.muxerErrors`, in addition to the `per-referrer-rate-limited` event it already emitted. A client that sent the request with `requestAddCores()` gets the error as a rejection. A client that sent it as a one-way message, as blind-peering does, sees no difference.
 - Changed: the [Corestore](/p2p/reference/helpers/corestore) that [blind-peer](/p2p/reference/helpers/blind-peer) creates when you do not pass a [`store`](/p2p/reference/helpers/blind-peer#blindpeeroptions) is opened with `alwaysLatestBlock: true` (added in v7.13.0, above), so its replicator includes a request for the latest block in every upgrade request. A `store` you pass in is used as given. [`pear blind-peer start`](/pear/reference/pear/cli#pear-blind-peer) passes none, so it gets the new behaviour.
 
 ## 2026-09-22 — P2P module updates

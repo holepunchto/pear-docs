@@ -90,6 +90,8 @@ In both cases the same `pear seed` command now appears in the hint block below t
 
 Most commands accept `--json`—use it for anything that parses a command's result. The default, human-readable output is meant for a person at a terminal and can change wording or formatting between releases; the JSON shape is the stable contract to script against.
 
+<Since v="3.6.0" /> The human-readable output of [`pear build`](#pear-build), [`pear cores`](#pear-cores), [`pear dump`](#pear-dump), [`pear gc`](#pear-gc), [`pear info`](#pear-info), [`pear provision`](#pear-provision), [`pear stage`](#pear-stage), and [`pear versions`](#pear-versions) prints pear links in green, and some counts, sizes, and completion messages too. On macOS and Linux the color is ANSI escape codes around the text. Pear writes them when output is piped or redirected, and `NO_COLOR` does not turn them off, so a script that cuts a link out of that text has to strip them. Windows prints no color codes, and neither does `--json` output.
+
 `--json` output is newline-delimited JSON (NDJSON): one object per line, each shaped `{"cmd", "tag", "data"}`. Intermediate tags are command-specific—[`pear changelog --json`](#pear-changelog) tags each release `"changelog"`, and [`pear build --json`](#pear-build) <Since v="3.6.0" /> tags the app `"building"` and each artifact it places `"executable"`, for example—so filter on `tag` rather than assuming a fixed number of lines.
 
 Most commands close the stream with a `tag: "final"` object whose `data` carries `success` alongside any result fields, as `pear touch --json` does with `{"success": true, "key": "…", "link": "pear://…"}`. Two exceptions to code defensively around: some commands emit **no** `final` object at all—`pear versions --json` emits only its `platform`, `runtimes`, `libraries`, and `modules` tags—and some emit a bare `final` with no `data`, as `pear multisig keys list --json` does. Treat a missing `success` as "no status reported" rather than as failure.
@@ -453,7 +455,7 @@ Seeding will sparsely replicate the application. This means the entire history o
 
 The live view is a stats table above a log of peer and announce lines:
 
-<VersionGate since="3.5.0">
+<VersionGate since="3.5.0" until="3.6.0">
 ```
 Seeding:       pear://q9bhn175f34ahxnriujd68ykiww3syzmdf9w4humxoxqeshjhy6o
 Verlink:       pear://0.3.q9bhn175f34ahxnriujd68ykiww3syzmdf9w4humxoxqeshjhy6o
@@ -470,7 +472,29 @@ Network:       [ Peers 0 ]  [ ⬆ 0B - 0B/s ]  [ ⬇ 0B - 0B/s ]
 ──────────────────────────────────────────────────────
 ^_^ announced
 ```
+</VersionGate>
 
+<VersionGate since="3.6.0">
+```
+Seeding:       pear://q9bhn175f34ahxnriujd68ykiww3syzmdf9w4humxoxqeshjhy6o
+Verlink:       pear://0.3.q9bhn175f34ahxnriujd68ykiww3syzmdf9w4humxoxqeshjhy6o
+App:           seedcheck@1.2.3
+Drive Length:  3 [100%]
+Blobs Length:  4 [100%]
+Blobs Size:    131B
+Discovery Key: m5xisy4tfmd7wgnoxpjygdnynbweti7pb5d5tc8zb3zxaafzoz3y
+Content Key:   7qbpsi5hygtbppejymfnzitiygpysndgbrbm54og11d1gcqsdupo
+Firewalled:    true
+NAT Type:      consistent
+Whoami:        4ibhiwr1pstsw8h4gt3gti88m3de4zqb76bzsjjyomc9woipdbto
+Uptime:        2s
+Network:       [ Peers 0 ]  [ ⬆ 0B - 0B/s ]  [ ⬇ 0B - 0B/s ]
+──────────────────────────────────────────────────────
+^_^ announced
+```
+</VersionGate>
+
+<VersionGate since="3.5.0">
 The gap between labels and values is computed from the terminal width, so it will not match this sample exactly. Under `--no-tty` the same fields print as one `... <field> <value>` line each, re-emitted on every stats tick instead of redrawn in place.
 </VersionGate>
 
@@ -500,6 +524,10 @@ The request asks the blind peer to **announce** the drive, but that only sticks 
 
 <Callout type="info">
 <Since v="3.6.0" /> The `App:` row and the `--json` `stats` fields `name` and `semver` follow the drive. `pear seed` re-reads `package.json` whenever the drive grows or is truncated, so a seeder left running across a release shows the new `<name>@<version>` without a restart. On 3.5.0 and earlier both were read once, when the session started.
+</Callout>
+
+<Callout type="info">
+<Since v="3.6.0" /> The terminal stats table gains an `Uptime:` row between `Whoami:` and `Network:`. It shows how long this seed session has been running, as `45s`, `3m 12s`, `1h 0m 5s`, or `2d 3h 4m 5s`. Under `--no-tty` there is no row of its own. The network line ends with the uptime instead, as in `--- network 0 peers, upload 0B - 0B/s, download 0B - 0B/s, uptime 3m 12s`. The [`--json`](#json-output) `stats` data gains an `uptime` field, in milliseconds since the session started. On 3.5.0 and earlier none of these exist.
 </Callout>
 
 ### `pear install <link>`
@@ -536,6 +564,16 @@ pear install pear://<key>
 ```
 
 See [Storage and distribution](/pear/explanation/storage-and-distribution#installing-applications) for the install model and the direction described in [Pear Evolution](https://pears.com/news/pear-evolution/).
+</Callout>
+
+<Callout type="info">
+<Since v="3.6.0" /> `pear install` exits with code 1 when the install fails, so a script can check the exit code instead of reading the output. Under `--json` the run ends with a `final` object whose `success` is `false`. When the app's drive has `by-arch/` folders but none for this machine, the error also says which platforms it does have:
+
+```
+Not found: pear://<key>/by-arch/darwin-arm64/app/PearChat.app
+Target platform darwin-arm64 was not found in application drive.
+Available: linux-x64
+```
 </Callout>
 
 ### `pear run [flags] <link|dir> [...app-args]`
@@ -855,6 +893,8 @@ Manage the background sidecar process, read this machine's network keys, reclaim
 The sidecar is a local IPC server that brokers corestore access for every running Pear app.
 
 Running `pear sidecar` shuts down any existing sidecar and takes over as the new one, staying attached to this terminal.
+
+<Since v="3.6.0" /> `pear sidecar` and `pear sidecar shutdown` wait for the old sidecar to exit before they go on. A running sidecar holds a lock on `pear.lock` in the Pear platform directory, and the command prints `Sidecar has shutdown` only once it can take that lock.
 
 | Command | Description |
 | --- | --- |
