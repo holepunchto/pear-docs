@@ -1,0 +1,111 @@
+---
+title: "Set up Bluetooth in a mobile app"
+description: >-
+  Declare and request the iOS and Android Bluetooth permissions, link
+  bare-bluetooth's native addons, and start the Bare worklet only once the
+  user has granted access, for React Native and native Android hosts.
+docType: how-to
+product: bare
+schemaType: TechArticle
+---
+
+[`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) runs inside your app's Bare worklet, but the operating system grants Bluetooth access to the **app**, not to the worklet. So the host app has to declare what it uses, ask the user at runtime, and ship the native code the module needs. This guide covers each step for iOS and Android, from two working hosts:
+
+- [`bare-mobile-doctor`](https://github.com/holepunchto/bare-mobile-doctor), an Expo app using [`react-native-bare-kit`](https://github.com/holepunchto/react-native-bare-kit); its Bluetooth screen is walked through in [Build a Bluetooth chat for iOS and Android](/bare/how-to/connect-over-bluetooth/build-a-bluetooth-chat-for-ios-and-android).
+- The test app of [`bare-bluetooth-android`](https://github.com/holepunchto/bare-bluetooth-android/tree/main/test/test-app), a native Kotlin app using [Bare Kit](/bare/reference/bare/bare-kit) directly.
+
+On desktop there is less to do; see [Desktop](#desktop) at the end.
+
+<Callout type="info">
+On Android, `bare-bluetooth` only works inside an app that hosts Bare, such as a Bare Kit worklet: it calls the Android Bluetooth API through the app's Java VM, which a plain `bare` process doesn't have.
+</Callout>
+
+## Declare the permissions
+
+### iOS
+
+iOS terminates an app that touches Bluetooth without a usage description in its `Info.plist`, so add `NSBluetoothAlwaysUsageDescription` with a sentence the user will see in the permission prompt. In an Expo app, it goes under `ios.infoPlist` in `app.json`:
+
+```json file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/app.json#L18-L22 title="app.json" skip="example-import"
+```
+
+iOS shows the prompt the first time the app creates a Bluetooth manager, that is, the first `new Central()` or `new Server()`. If the user declines, the manager's `state` becomes `'unauthorized'` instead of `'poweredOn'`, so handle that state in your `stateChange` listener rather than waiting forever.
+
+### Android
+
+Android 12 (API level 31) and later splits Bluetooth access into three runtime permissions: `BLUETOOTH_SCAN` to discover devices, `BLUETOOTH_CONNECT` to connect to them, and `BLUETOOTH_ADVERTISE` to be discoverable. A native app declares them in `AndroidManifest.xml`:
+
+```xml file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth-android/test/test-app/app/src/main/AndroidManifest.xml#L2-L4 title="AndroidManifest.xml" skip="example-import"
+```
+
+`android:usesPermissionFlags="neverForLocation"` states that the app never derives the user's location from scan results, which lets it scan without a location permission. Without that flag, Android also requires `ACCESS_FINE_LOCATION` for scanning.
+
+An Expo app lists the permissions in `app.json` instead. `bare-mobile-doctor` lists the three above together with `ACCESS_FINE_LOCATION`, since it doesn't set the flag, and the legacy `BLUETOOTH` and `BLUETOOTH_ADMIN` permissions. It also raises the minimum SDK to 31, so it never runs on a release without the new permissions:
+
+```json file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/app.json#L30-L37 title="app.json" skip="example-import"
+```
+
+```json file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/app.json#L41-L48 title="app.json" skip="example-import"
+```
+
+## Request access before starting the worklet
+
+On Android, declaring a permission isn't enough: the user has to grant it at runtime, and a Bluetooth call made without it fails. Both hosts ask first and only start the worklet once everything is granted, so the Bare code never runs without access.
+
+In React Native, with `PermissionsAndroid`:
+
+```tsx file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/app/views/bluetooth/BluetoothTests.tsx#L39-L51 title="app/views/bluetooth/BluetoothTests.tsx" skip="example-import"
+```
+
+```tsx file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/app/views/bluetooth/BluetoothTests.tsx#L78-L91 title="app/views/bluetooth/BluetoothTests.tsx" skip="example-import"
+```
+
+In a native Kotlin activity, the same check with `checkSelfPermission()` and `requestPermissions()`:
+
+```kotlin file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth-android/test/test-app/app/src/main/java/to/holepunch/bare/bluetooth/test/MainActivity.kt#L28-L32 title="MainActivity.kt" skip="example-import"
+```
+
+```kotlin file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth-android/test/test-app/app/src/main/java/to/holepunch/bare/bluetooth/test/MainActivity.kt#L56-L75 title="MainActivity.kt" skip="example-import"
+```
+
+`run()` is where the activity starts the Bare Kit worklet. On iOS there is nothing to request up front: the system prompts on first use, as described above.
+
+## Link the native addons
+
+`bare-bluetooth` is JavaScript, but it loads native addons: `bare-bluetooth-apple` on iOS and `bare-bluetooth-android` on Android. They have to be linked into the app, which [`bare-link`](https://github.com/holepunchto/bare-link) does from the worklet's entry point. On Android, `bare-bluetooth-android` also carries Java helper classes, which `bare-link` writes out as a `*.classes.jar` next to the addon, and the app has to compile those in too.
+
+`bare-mobile-doctor` links every worklet into the addon folders `react-native-bare-kit` already picks up, with a short script run as `npm run link`:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/scripts/link.mjs#L1-L31 title="scripts/link.mjs" skip="example-import"
+```
+
+The native test app does the same from Gradle: a `link` task runs `bare-link`, a `pack` task bundles the worklet, both run before every build, and the dependencies pull in the addons' `*.classes.jar` files:
+
+```groovy file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth-android/test/test-app/app/build.gradle#L40-L69 title="app/build.gradle" skip="example-import"
+```
+
+Run the link step again whenever you reinstall dependencies or change an addon dependency.
+
+## Bundle the worklet
+
+The worklet itself is packed with [`bare-pack`](https://github.com/holepunchto/bare-pack) into one bundle per app, with a `--host` for every platform and architecture you ship and `--linked` so it loads the addons linked above. `bare-mobile-doctor` builds its Bluetooth bundle with:
+
+```json file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/package.json#L23-L23 title="package.json" skip="example-import"
+```
+
+[Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app) covers `bare-pack` in more depth.
+
+## Desktop
+
+The same `bare-bluetooth` code runs with plain `bare` on macOS and, from 0.6.3-0, on Linux:
+
+- **macOS** uses CoreBluetooth, as on iOS. A packaged macOS app needs the same `NSBluetoothAlwaysUsageDescription` key in its `Info.plist`.
+- **Linux** goes through the BlueZ daemon, so `bluetoothd` has to be running and the adapter powered on, for example with `bluetoothctl power on`. Linux has no system pairing prompt for the module to fall back on: if a peer asks to pair, your app gets a `pairRequest` event to accept or reject.
+- **Windows** isn't supported: `require('bare-bluetooth')` fails there.
+
+## Where to go next
+
+- [Build a Bluetooth chat for iOS and Android](/bare/how-to/connect-over-bluetooth/build-a-bluetooth-chat-for-ios-and-android): the app these steps set up.
+- [Embed Bare in a React Native app](/bare/how-to/run-on-native/embed-bare-in-react-native): worklets and IPC in general.
+- [Handle app suspension](/bare/how-to/run-on-native/handle-app-suspension): the radio and the worklet when the app goes to the background.
+- [Bluetooth in Bare](/bare/explanation/bluetooth-in-bare): which package runs on which platform, and why.

@@ -1,0 +1,91 @@
+---
+title: "Use platform-specific Bluetooth features"
+description: >-
+  Reach past bare-bluetooth's cross-platform API to bare-bluetooth-apple and
+  bare-bluetooth-android: reconnect to known devices without scanning, dial
+  bonded Android devices, and tune MTU and scanning on Android.
+docType: how-to
+product: bare
+schemaType: TechArticle
+---
+
+[`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) gives you one API on every platform, and leaves out what only one platform can do. When you need one of those features, write that part of your code against the platform package that `bare-bluetooth` would load anyway: [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple) on iOS and macOS, [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android) on Android.
+
+Every example below comes from the platform package's own test suite or from an app that ships, so expect test assertions (`t.ok()`, `t.is()`) in some of them.
+
+## Before you begin
+
+The platform packages are not drop-in replacements for `bare-bluetooth`:
+
+- **Names differ.** The peripheral role is `PeripheralManager` on Apple and `Server` on Android. `bare-bluetooth` calls it `Server` everywhere.
+- **States differ.** `bare-bluetooth-android` reports `'on'` and `'off'` where `bare-bluetooth` reports `'poweredOn'` and `'poweredOff'`. Apple's states are the same as `bare-bluetooth`'s.
+- **Objects don't mix.** A `Peripheral` from `bare-bluetooth` can't be passed to a platform package's `Central`, or the other way round. Use one package per Bluetooth manager.
+
+Some Android-only options need no platform package at all: `bare-bluetooth` passes them through and ignores them elsewhere. Those are marked below.
+
+## Apple: reconnect without scanning
+
+On Apple, a peripheral's `id` is a UUID that the system assigns and keeps on this host, rather than the device's address. Store it, and next time `central.retrievePeripherals([id])` turns it back into something you can `connect()` to, without waiting for a scan to hear it. The test below scans once to learn an `id`, then retrieves and connects:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth-apple/test/central.js#L237-L278 title="test/central.js (bare-bluetooth-apple)" skip="example-import"
+```
+
+- A retrieved peripheral has an `id`, a `name` and a connection `state`, but no `rssi` or `serviceData`: it comes from the system's records, not from an advertisement.
+- `retrievePeripherals()` throws unless Bluetooth is powered on, and throws for an `id` that isn't a UUID. An unknown `id` returns an empty array.
+- Like any connection attempt, `connect()` on a retrieved peripheral never times out by itself. The test gives up after 5 seconds and calls `disconnect()` to cancel the attempt; your app needs its own timeout too.
+
+`central.retrieveConnectedPeripherals(serviceUUIDs)` works the same way for peripherals that are already connected to the system and offer one of the given services, for example through another app. Its `state` reports that system connection. You still call `connect()` before this central can use them.
+
+## Apple: let iOS prompt to turn Bluetooth on
+
+By default, neither `Central` nor `PeripheralManager` asks the system to show its "turn on Bluetooth" alert when Bluetooth is off. Opt in when you create the manager:
+
+```js skip="snippet-illustration"
+const { Central } = require('bare-bluetooth-apple')
+
+const central = new Central({ showPowerAlert: true })
+```
+
+## Android: dial a bonded device
+
+Devices the user has paired with in system settings are *bonded*. `central.getBondedDevices()` lists them, and `new Peripheral({ device })` makes one dialable without a scan. The test below dials the first bonded device that supports Bluetooth Low Energy:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth-android/test/peripheral.js#L134-L177 title="test/peripheral.js (bare-bluetooth-android)" skip="example-import"
+```
+
+- `getBondedDevices()` throws without the `BLUETOOTH_CONNECT` permission, and returns an empty array unless the adapter is on.
+- Filter out `Device.DEVICE_TYPE_CLASSIC`: a classic-only device can't take a Bluetooth Low Energy connection.
+- A peripheral built from a `Device` has no `scanResult`, so its `rssi` is `null`.
+- The test gives up after 15 seconds and calls `disconnect()` to cancel the attempt if the device isn't reachable.
+
+## Android: ask for a larger MTU
+
+Each GATT write or notification carries at most the connection's MTU minus 3 bytes. Apple and Linux negotiate a larger MTU themselves; on Android, ask for one after connecting with `peripheral.requestMtu(517)`, and wait for `mtuChanged` with the size the two sides agreed on. A failure arrives as `error` with code `MTU_CHANGE_FAILED`.
+
+`requestMtu()` is also on `bare-bluetooth`'s `Peripheral`, where it does nothing on Apple and Linux. [`ble-swarm`](https://github.com/holepunchto/ble-swarm/blob/7a879a929539fb29084a7209f8ff2bf50bb00078/lib/transport.js#L729) calls it unconditionally after every connection for that reason.
+
+## Android: choose a scan mode
+
+On Android, a scan runs in low-latency mode unless you say otherwise: `bare-bluetooth-android` defaults `scanMode` to `SCAN_MODE_LOW_LATENCY`, not to Android's own power-saving default. That suits a device picker the user is waiting on. For a long scan in the background, pass `SCAN_MODE_BALANCED` or `SCAN_MODE_LOW_POWER` to trade discovery speed for battery.
+
+`scanMode` is one of `bare-bluetooth`'s own scan options, passed to Android and ignored elsewhere, so it needs no platform package. [`bare-mobile-doctor`](https://github.com/holepunchto/bare-mobile-doctor) sets it only on Android, spelling out the default:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/bare/bluetooth.js#L11-L12 title="bare/bluetooth.js" skip="example-import"
+```
+
+and passes it along with the service filter when it starts scanning:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/bare/bluetooth.js#L234-L234 title="bare/bluetooth.js" skip="example-import"
+```
+
+Whatever the mode, stop the scan as soon as you've found what you need.
+
+## Android: open the GATT server yourself
+
+`bare-bluetooth` opens Android's GATT server for you whenever the adapter turns on. With `bare-bluetooth-android` directly, that's your job: call `server.open()` once `state` is `'on'`, before `addService()`. The server doesn't survive the adapter turning off, and its services don't survive a reopen, so open it and add your services again on every transition back to `'on'`. `server.close()` closes it and drops its services.
+
+## Where to go next
+
+- [`bare-bluetooth-apple` reference](/bare/reference/bare/modules/bare-bluetooth-apple) and [`bare-bluetooth-android` reference](/bare/reference/bare/modules/bare-bluetooth-android): everything each platform package exposes, including Android's `ScanResult` and `ScanRecord` for raw advertisement data.
+- [Bluetooth in Bare](/bare/explanation/bluetooth-in-bare): how the cross-platform package maps onto the platform ones.
+- [Set up Bluetooth in a mobile app](/bare/how-to/connect-over-bluetooth/set-up-bluetooth-in-a-mobile-app): the permissions these calls need.

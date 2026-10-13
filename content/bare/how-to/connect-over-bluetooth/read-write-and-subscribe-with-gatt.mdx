@@ -1,0 +1,101 @@
+---
+title: "Read, write and subscribe with GATT"
+description: >-
+  Scan for nearby Bluetooth devices with bare-bluetooth, expose a GATT service
+  from a Server, and connect from a Central to write a characteristic and
+  receive its notifications.
+docType: how-to
+product: bare
+schemaType: TechArticle
+---
+
+GATT is how Bluetooth Low Energy devices expose small values: a **server** publishes services, each holding characteristics, and a **central** connects to read them, write them, or subscribe to be notified when they change. Use GATT for small values and for interoperating with existing devices, such as a heart-rate monitor's measurement. For a stream of data between two of your own apps, an [L2CAP channel](/bare/how-to/connect-over-bluetooth/exchange-data-over-l2cap) is usually the better fit.
+
+This guide follows two scripts from the [`bare-bluetooth`](https://github.com/holepunchto/bare-bluetooth/tree/7ac75b032b436a925902b5a18a90019a31b2a675/example) repository: `scan.js`, which lists what's nearby, and `gattpong.js`, in which a central writes `ping` to a characteristic and the server answers with a `pong` notification.
+
+## Before you begin
+
+- For `scan.js`, one machine with Bluetooth; for `gattpong.js`, two. macOS works, and Linux with `bare-bluetooth` 0.6.3-0 or later, with `bluetoothd` running and the adapter powered on (`bluetoothctl power on`).
+- [Bare](https://github.com/holepunchto/bare) on each: `npm i -g bare-runtime`.
+- The example scripts, which live in the repository rather than the npm package:
+
+```bash skip="install-instruction"
+git clone https://github.com/holepunchto/bare-bluetooth
+cd bare-bluetooth
+npm install
+```
+
+## Scan for nearby devices
+
+`scan.js` scans for ten seconds and prints every advertisement it hears. It's the quickest way to check that Bluetooth works on a machine at all:
+
+```bash skip="needs-bluetooth-radio"
+bare example/scan.js
+```
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth/example/scan.js#L1-L19 title="example/scan.js" skip="example-import"
+```
+
+`startScan()` with no arguments reports every device in range. Pass an array of service UUIDs to report only devices advertising one of them. Either way, `discover` fires for advertisements rather than devices, so the same device turns up many times: key what you find by `peripheral.id` and keep the latest. `startScan()` throws unless the state is `'poweredOn'`, which is why the call sits in the `stateChange` listener.
+
+## Run the GATT example
+
+On one machine, start the server:
+
+```bash skip="needs-bluetooth-radio"
+bare example/gattpong.js listen
+```
+
+On the other, start the central:
+
+```bash skip="needs-bluetooth-radio"
+bare example/gattpong.js connect
+```
+
+Unlike the L2CAP example, there's nothing to copy between the two: the central finds the server by its advertised service UUID.
+
+## Expose a characteristic from the server
+
+The server defines one characteristic that centrals can write to and subscribe to, adds it in a service once the radio is on, and starts advertising once the service has been added:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth/example/gattpong.js#L33-L65 title="example/gattpong.js" skip="example-import"
+```
+
+- **Writes** arrive as `writeRequest`, with an array of requests. If a request's `responseNeeded` is set, answer it with `respondToRequest()` and an ATT result code such as `Server.ATT_SUCCESS`; the central's write doesn't complete until you do. Answer before doing any slow work with the data.
+- **Notifications** go out with `server.updateValue(characteristic, data)`, which reaches every central subscribed to that characteristic. `subscribe` and `unsubscribe` tell you when a central starts or stops listening.
+- **Reads**, which this example doesn't use, arrive as `readRequest`. Answer them with `respondToRequest(request, Server.ATT_SUCCESS, data)`, using `request.offset` if a central reads a long value in parts. On Android every read reaches your listener. For a value that never changes, you can instead create the characteristic with a `value`: Apple then serves it itself, and so does Linux as long as nothing listens for `readRequest`.
+
+`bare-mobile-doctor` answers reads to hand out an L2CAP channel's PSM; see [Hand the PSM over automatically](/bare/how-to/connect-over-bluetooth/exchange-data-over-l2cap#hand-the-psm-over-automatically).
+
+## Connect and subscribe from the central
+
+The central scans for the service, stops scanning and connects to the first device it hears:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth/example/gattpong.js#L75-L98 title="example/gattpong.js" skip="example-import"
+```
+
+Once connected, everything happens through events on the `Peripheral`, one step at a time: discover the service, discover its characteristics, subscribe, and write once the subscription is confirmed by `notifyState`:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth/example/gattpong.js#L100-L135 title="example/gattpong.js" skip="example-import"
+```
+
+`peripheral.write()` waits for the server to confirm by default. Pass `false` as its third argument to write without a response, on a characteristic created with `writeWithoutResponse: true`. To read a value once instead of subscribing, call `peripheral.read(characteristic)` and listen for `read`.
+
+## Compare UUIDs the way the example does
+
+Every UUID comparison in `gattpong.js` goes through `same()`, never `===`:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth/example/gattpong.js#L10-L21 title="example/gattpong.js" skip="example-import"
+```
+
+CoreBluetooth reports UUIDs uppercase, and shortens UUIDs in the Bluetooth base range to 4 or 8 characters. Android and BlueZ report them long and lowercase. Whichever form you write your UUIDs in, a plain `===` fails on at least one platform, so copy this helper into any code that matches services or characteristics.
+
+## Keep values small
+
+A single write or notification carries at most the connection's ATT MTU minus 3 bytes. Apple and Linux negotiate the MTU themselves. On Android, ask for a larger one with `peripheral.requestMtu()` after connecting and wait for `mtuChanged`; see [Use platform-specific Bluetooth features](/bare/how-to/connect-over-bluetooth/use-platform-specific-bluetooth-features#android-ask-for-a-larger-mtu). Anything bigger than a few hundred bytes belongs on an [L2CAP channel](/bare/how-to/connect-over-bluetooth/exchange-data-over-l2cap).
+
+## Where to go next
+
+- [Exchange data over L2CAP](/bare/how-to/connect-over-bluetooth/exchange-data-over-l2cap): streams instead of single values.
+- [Bluetooth best practices](/bare/explanation/bluetooth-best-practices): flow control for notifications, caching, and other details of running GATT across platforms.
+- [`bare-bluetooth` reference](/bare/reference/bare/modules/bare-bluetooth): `Server`, `Central`, `Peripheral`, `Service` and `Characteristic` in full.
