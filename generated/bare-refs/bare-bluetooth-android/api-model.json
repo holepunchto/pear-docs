@@ -1,6 +1,6 @@
 {
   "name": "bare-bluetooth-android",
-  "version": "0.9.1",
+  "version": "0.11.3",
   "description": "Android Bluetooth bindings for Bare",
   "repoUrl": "https://github.com/holepunchto/bare-bluetooth-android",
   "npmUrl": "https://www.npmjs.com/package/bare-bluetooth-android",
@@ -11,7 +11,12 @@
     "bare-stream"
   ],
   "usage": "```js\nconst { Central } = require('bare-bluetooth-android')\n\nconst central = new Central()\n\ncentral.on('stateChange', (state) => {\n  if (state === 'on') {\n    central.startScan(['180D']) // Heart Rate service UUID\n  }\n})\n\ncentral.on('discover', (peripheral) => {\n  console.log('Found:', peripheral.name, peripheral.id)\n  central.stopScan()\n  central.connect(peripheral)\n})\n\ncentral.on('connect', (peripheral) => {\n  peripheral.discoverServices()\n\n  peripheral.on('servicesDiscover', (services) => {\n    // Discover characteristics for each service\n  })\n})\n```",
-  "extraSections": [],
+  "extraSections": [
+    {
+      "heading": "Errors",
+      "body": "Failures arrive three ways:\n\n- **Thrown** - the Android call itself failed. The message carries the Java exception, for example `java.lang.IllegalStateException: BT Adapter is not turned ON`. Wrap the call in `try`/`catch`.\n- **Emitted** - the call went through and the operation failed later. The `error` event carries a `BluetoothError` with a `code` such as `SCAN_FAILED` or `CONNECTION_FAILED`.\n- **Streamed** - an `L2CAPChannel` is a `Duplex`, so a failed write does not throw from the write itself. It destroys the stream with the Java exception, for example `java.io.IOException: Broken pipe` once the peer is gone. Listen for `error` on the channel; an unhandled one still throws."
+    }
+  ],
   "exports": [
     {
       "key": "BluetoothError",
@@ -61,6 +66,32 @@
             }
           ],
           "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.ADAPTER_UNAVAILABLE",
+          "name": "BluetoothError.ADAPTER_UNAVAILABLE",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.ADAPTER_UNAVAILABLE(msg: string): BluetoothError"
+          ],
+          "description": "Thrown by the `Central` and `Server` constructors on a device with no Bluetooth adapter.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
           "throws": [],
           "members": []
         },
@@ -985,7 +1016,7 @@
           "signatures": [
             "new Server()"
           ],
-          "description": "Create a new BLE peripheral server for advertising services and handling client requests.",
+          "description": "Create a new BLE peripheral server. Call `open()` once `state` is `'on'` before using it.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -1019,6 +1050,24 @@
           "members": []
         },
         {
+          "key": "Server.close",
+          "name": "close",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "close(): void"
+          ],
+          "description": "Close the GATT server, dropping its services. A no-op if it is not open.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "Server.destroy",
           "name": "destroy",
           "kind": "method",
@@ -1027,6 +1076,24 @@
             "destroy(): void"
           ],
           "description": "Destroy the server, stopping advertising and unpublishing all L2CAP channels.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Server.open",
+          "name": "open",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "open(): void"
+          ],
+          "description": "Open the GATT server. Throws unless `state` is `'on'`, and the handle does not\nsurvive the adapter going off, so reopen on every transition back to `'on'`.\nServices do not survive a reopen and have to be added again.",
           "deprecated": null,
           "params": [],
           "returns": {
@@ -2106,6 +2173,29 @@
           "members": []
         },
         {
+          "key": "Central.getBondedDevices",
+          "name": "getBondedDevices",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "getBondedDevices(): Device[]"
+          ],
+          "description": "The devices bonded with the adapter, mirroring `BluetoothAdapter.getBondedDevices()`. Empty\nunless the adapter is on.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Device[]",
+            "description": null
+          },
+          "throws": [
+            {
+              "type": null,
+              "condition": "if `BLUETOOTH_CONNECT` is not granted."
+            }
+          ],
+          "members": []
+        },
+        {
           "key": "Central.startScan",
           "name": "startScan",
           "kind": "method",
@@ -2203,7 +2293,7 @@
               "type": "PeripheralOptions",
               "optional": false,
               "default": null,
-              "description": "Options carrying the `ScanResult` this peripheral is derived from."
+              "description": "Options carrying the `ScanResult` or the `Device` this peripheral is derived\nfrom."
             }
           ],
           "returns": null,
@@ -2310,7 +2400,7 @@
           "signatures": [
             "id: string"
           ],
-          "description": "The unique identifier of the peripheral, equal to `scanResult.device.address`.",
+          "description": "The unique identifier of the peripheral, equal to the device address.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -2325,7 +2415,7 @@
           "signatures": [
             "name: string | null"
           ],
-          "description": "The advertised name of the peripheral, or `null` if unavailable. Equal to\n`scanResult.device.name`.",
+          "description": "The name of the peripheral, or `null` if unavailable.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -2491,9 +2581,9 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "rssi: number"
+            "rssi: number | null"
           ],
-          "description": "The signal strength of the most recent advertisement, equal to `scanResult.rssi`.",
+          "description": "The signal strength of the most recent advertisement, or `null` without a scan.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -2506,9 +2596,9 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "scanResult: ScanResult"
+            "scanResult: ScanResult | null"
           ],
-          "description": null,
+          "description": "The most recent advertisement, or `null` when the peripheral was built from a `Device`.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -2630,7 +2720,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface PeripheralOptions {\n  scanResult: ScanResult\n}"
+        "interface PeripheralOptions {\n  scanResult?: ScanResult\n  device?: Device\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -2638,6 +2728,21 @@
       "returns": null,
       "throws": [],
       "members": [
+        {
+          "key": "PeripheralOptions.device",
+          "name": "device",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "device: Device"
+          ],
+          "description": "A device to dial without a scan, such as one from `central.getBondedDevices()`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
         {
           "key": "PeripheralOptions.scanResult",
           "name": "scanResult",
@@ -2792,6 +2897,66 @@
           "members": []
         },
         {
+          "key": "Device.DEVICE_TYPE_CLASSIC",
+          "name": "Device.DEVICE_TYPE_CLASSIC",
+          "kind": "property",
+          "static": true,
+          "signatures": [
+            "Device.DEVICE_TYPE_CLASSIC: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.DEVICE_TYPE_DUAL",
+          "name": "Device.DEVICE_TYPE_DUAL",
+          "kind": "property",
+          "static": true,
+          "signatures": [
+            "Device.DEVICE_TYPE_DUAL: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.DEVICE_TYPE_LE",
+          "name": "Device.DEVICE_TYPE_LE",
+          "kind": "property",
+          "static": true,
+          "signatures": [
+            "Device.DEVICE_TYPE_LE: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.DEVICE_TYPE_UNKNOWN",
+          "name": "Device.DEVICE_TYPE_UNKNOWN",
+          "kind": "property",
+          "static": true,
+          "signatures": [
+            "Device.DEVICE_TYPE_UNKNOWN: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "Device.name",
           "name": "name",
           "kind": "property",
@@ -2805,10 +2970,25 @@
           "returns": null,
           "throws": [],
           "members": []
+        },
+        {
+          "key": "Device.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: number | null"
+          ],
+          "description": "One of the `Device.DEVICE_TYPE_*` constants, mirroring `BluetoothDevice.getType()`, or `null`\nwhen the device came from a scan.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
         }
       ]
     }
   ],
   "subpaths": [],
-  "generatedAt": "2026-09-30T14:06:25.035Z"
+  "generatedAt": "2026-10-13T15:12:40.294Z"
 }

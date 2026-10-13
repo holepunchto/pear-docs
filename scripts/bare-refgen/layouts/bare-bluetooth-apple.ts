@@ -11,7 +11,16 @@ import type { Layout } from '../layout';
 const layout: Layout = {
   seeAlso: [
     'Runs on Apple platforms (iOS and macOS) — on Android use [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android).',
+    '[`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API over this module, `bare-bluetooth-android` and `bare-bluetooth-linux`.',
     '[One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.',
+  ],
+  // serviceAdd carries only the UUID; a failed add is an 'error' event with code SERVICE_ADD_FAILED.
+  patch: [
+    {
+      in: 'usage',
+      from: "manager.on('serviceAdd', (uuid, error) => {\n  if (error) return\n\n",
+      to: "manager.on('serviceAdd', (uuid) => {\n",
+    },
   ],
   params: {
     'Service.constructor': {
@@ -35,6 +44,9 @@ const layout: Layout = {
     },
     'Central.connect': {
       peripheral: 'A discovered peripheral to connect to.',
+    },
+    'Central.retrieveConnectedPeripherals': {
+      services: 'The service UUIDs to match against the peripherals the system is connected to.',
     },
     'Central.disconnect': {
       peripheral: 'The connected peripheral to disconnect from.',
