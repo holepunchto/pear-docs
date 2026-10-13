@@ -13,22 +13,18 @@ const isDev = path.basename(Bare.argv[0]) === (isWindows ? 'bare.exe' : 'bare')
 const cmd = command(
   appName,
   summary(pkg.description),
-  flag('--version|-v', 'Print the current version'),
   flag('--storage <dir>', 'custom storage directory'),
   flag('--no-updates', 'disable OTA updates for this run')
 )
 
 cmd.parse(Bare.argv.slice(isDev ? 2 : 1))
 if (cmd.flags.help) Bare.exit()
-if (cmd.flags.version) {
-  console.log(`${appName} v${pkg.version}`)
-  Bare.exit()
-}
 
 const updates = cmd.flags.updates
 const storage = cmd.flags.storage || (isDev ? null : path.join(persistent(), appName))
 const dir = storage || path.join(os.tmpdir(), 'pear', appName)
 
+console.log(`${appName} v${pkg.version}`)
 console.log(`Updates: ${updates === false ? 'disabled' : 'enabled'}`)
 
 const app = new App({

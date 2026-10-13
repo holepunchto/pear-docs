@@ -1,8 +1,8 @@
 # hello-pear-bare `variant/single-thread` (documentation snapshot)
 
 Vendored from [`holepunchto/hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare),
-branch **`variant/single-thread`**, at commit `31934ae`
-([tree](https://github.com/holepunchto/hello-pear-bare/tree/31934aea35f3c0e32d357941218f95b325abbddb)).
+branch **`variant/single-thread`**, at commit `dc1cbd2`
+([tree](https://github.com/holepunchto/hello-pear-bare/tree/dc1cbd26f91542cd7b6d05443210211417666dba)).
 
 This is the workerless variant: `app.js` constructs `pear-runtime` directly in the main Bare
 process instead of spawning a Bare worker, so there is no `workers/` directory and no

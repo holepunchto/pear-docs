@@ -1,10 +1,10 @@
 ---
 title: "Embedder context API"
-description: "Reference for Bare's embedder context API: publish native handles with bare_context_set(), read them in addons with bare_context_get(), and the keys in use."
+description: "Reference for Bare's embedder context API: publish native handles with bare_context_set(), read them in addons with bare_context_get(), attach a process to a thread with bare_attach(), and the keys in use."
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "1.33.5"
+upstreamVersion: "1.34.1"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -62,7 +62,7 @@ int
 bare_context_get(const char *key, void **result);
 ```
 
-Retrieves the value published under `key` by the embedder of the process running on the calling thread. It takes no `bare_t *`, as an addon holds none. The process is instead the one whose runtime the calling thread has entered, which is well defined for as long as an addon can be called into, including while it initializes.
+Retrieves the value published under `key` by the embedder of the process attached to the calling thread. It takes no `bare_t *`, as an addon holds none. The process is instead the one [attached](#attaching) to the calling thread. `bare_run()`, `bare_load()`, and loading an addon attach the process for as long as they run, so native code reached through any of them, including an addon while it initializes, resolves against the right process. A call into the environment that the embedder makes itself isn't attached; see [Attaching](#attaching).
 
 | Parameter | Type | Description |
 | --------- | ---- | ----------- |
@@ -73,7 +73,7 @@ Retrieves the value published under `key` by the embedder of the process running
 | ------- | ------- |
 | `0` | The key is published, and `result` holds its value. |
 | `-1` | No entry is published under the key. This is an ordinary outcome: addons are expected to degrade rather than fail. |
-| `-2` | No process is running on the calling thread, such as a thread the addon started itself. |
+| `-2` | No process is attached to the calling thread, such as a thread the addon started itself, or a call the embedder made into the environment without attaching the process first. |
 
 The two failures are reported apart so that an addon asking from a thread of its own gets `-2` rather than a missing key it would otherwise degrade over, silently and for good. If a thread of the addon's own is going to need a handle, retrieve the handle while the addon initializes and stash it.
 
@@ -96,6 +96,72 @@ Store a retrieved handle in the state the addon builds for the environment it wa
 Use Bare 1.33.2 or later. In Bare 1.33.0 and 1.33.1, `bare_context_get()` could return `-2` to an addon constructed by a later `new Addon()` call when the embedder runs the event loop itself rather than through `bare_run()`.
 </Callout>
 
+## Attaching
+
+Each thread has at most one Bare process attached to it at a time. The attached process is the one that `bare_context_get()` resolves against and that an addon loaded while attached belongs to. `bare_run()` attaches the process while it runs, and so do `bare_load()` and loading an addon, so native code reached through them is already attached. A call the embedder makes into the environment itself, such as `js_call_function()` outside of `bare_run()`, isn't, and an addon reached from it gets `-2` from `bare_context_get()`. Attach the process around such a call with `bare_attach()` and `bare_detach()`. Requires Bare `>=1.34.0`.
+
+```c
+bare_t *previous;
+bare_attach(bare, &previous);
+
+js_call_function(env, receiver, fn, argc, argv, &result);
+
+bare_detach(bare, previous);
+
+bare_run(bare, UV_RUN_NOWAIT);
+```
+
+Attaching doesn't run the event loop. The call may leave work behind that only the loop will run, so run the loop once the process is detached, as with `bare_run()` above or [`bare_poll()`](/bare/reference/bare/runtime#embedding).
+
+<Callout type="info">
+Use Bare 1.34.0 or later if the embedder calls into the environment of its own accord and addons reached from that call read the registry. Earlier releases have no public API for attaching a process around a call of the embedder's own, so `bare_context_get()` returns `-2` to those addons.
+</Callout>
+
+### `bare_attach()`
+
+```c
+int
+bare_attach(bare_t *bare, bare_t **previous);
+```
+
+Attaches `bare` to the calling thread and stores the process that was attached before in `previous`.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `bare` | `bare_t *` | The process to attach. |
+| `previous` | `bare_t **` | Receives the process that was attached to the thread before, or `NULL` if none was. Pass it to `bare_detach()`. |
+
+Returns `0` on success, or `-1` if the process has terminated, is exiting, or has exited, as a process in that state may no longer be called into.
+
+### `bare_detach()`
+
+```c
+int
+bare_detach(bare_t *bare, bare_t *previous);
+```
+
+Detaches `bare` from the calling thread and attaches `previous` in its place.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `bare` | `bare_t *` | The process to detach. Must be the one attached to the calling thread. |
+| `previous` | `bare_t *` | The process to attach again, as stored by the matching `bare_attach()`. `NULL` leaves the thread attached to no process. |
+
+Returns `0` on success, or `-1` if `bare` isn't the process attached to the calling thread, which is what detaching out of order looks like. Nothing is restored in that case.
+
+Attachments nest. Each `bare_attach()` hands back the process attached before it, and the matching `bare_detach()` attaches that process again, so an embedder running several Bare processes can attach one inside another and get the outer one back afterwards. Detach on the same thread and in the reverse order of attaching:
+
+```c
+bare_t *outer;
+bare_attach(x, &outer);   // bare_context_get() resolves against x
+
+bare_t *inner;
+bare_attach(y, &inner);   // ...and now against y
+
+bare_detach(y, inner);    // back to x
+bare_detach(x, outer);    // back to whatever was attached before x
+```
+
 ## Scope
 
 The registry is scoped to the Bare process, like addons are. Embedders running several Bare processes within the same operating system process publish to each of them separately, and an addon loaded by two of them sees what each published and nothing of the other. Sealing one process has no effect on the registry of another.
@@ -107,7 +173,7 @@ Keys are compared by their contents and are namespaced by whoever owns the handl
 - **A key never changes meaning.** Once a key is in use, its type, what it points at, and who owns it are fixed. Anything that needs a different contract is a different key, which is what the version suffix is for.
 - **Nothing is required.** A missing key is an ordinary outcome, and consumers are expected to degrade rather than fail. An embedder that has no handle to publish publishes nothing.
 
-The authoritative list of keys in the `bare.` namespace, and the place a new one is registered, is [`docs/context-keys.md`](https://github.com/holepunchto/bare/blob/main/docs/context-keys.md). As of Bare 1.33.5, it lists the following keys.
+The authoritative list of keys in the `bare.` namespace, and the place a new one is registered, is [`docs/context-keys.md`](https://github.com/holepunchto/bare/blob/main/docs/context-keys.md). As of Bare 1.34.1, it lists the following keys.
 
 ### `bare.android.jvm.v1`
 
@@ -133,7 +199,7 @@ It must be a global reference, as the addon reading it runs on threads and at ti
 
 ## See also
 
-- [Bare runtime API: Embedding](/bare/reference/bare/runtime#embedding)—`bare_setup()`, `bare_load()`, and the rest of the embedding C API.
+- [Bare runtime API: Embedding](/bare/reference/bare/runtime#embedding)—`bare_setup()`, `bare_load()`, `bare_poll()`, and the rest of the embedding C API.
 - [`Bare.Addon.seal()`](/bare/reference/bare/runtime#bareaddon)—seals addon loading and the context registry together.
 - [Bare Kit](/bare/reference/bare/bare-kit)—embeds Bare in iOS and Android apps, and publishes `bare.android.jvm.v1` on Android.
 - [Native addons](/bare/explanation/native-addons)—what native addons are and how Bare loads them.

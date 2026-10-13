@@ -1,8 +1,8 @@
 # hello-pear-bare `variant/daemon` (documentation snapshot)
 
 Vendored from [`holepunchto/hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare),
-branch **`variant/daemon`**, at commit `1f0cebf`
-([tree](https://github.com/holepunchto/hello-pear-bare/tree/1f0cebf406f42dd1b3e90fc7e74e9831631e6441)).
+branch **`variant/daemon`**, at commit `dc5fcd1`
+([tree](https://github.com/holepunchto/hello-pear-bare/tree/dc5fcd140b6cbd124e83ca06357786635a44ff23)).
 
 This is the detached-updater variant: the foreground command spawns a `bare-daemon` updater and
 returns immediately, so a short-lived CLI invocation never blocks on an update check. There is no
