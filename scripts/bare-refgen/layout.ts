@@ -58,11 +58,27 @@ export interface Layout {
    */
   intro?: string;
   /**
+   * Exact-text fixes to the blocks that come from the upstream README: the
+   * Usage block (`in: 'usage'`) and the extra sections the research dossier
+   * carries (`in` is the section's heading). For what the README gets wrong or
+   * leaves out. `from` must occur in that block exactly once, or the render
+   * fails: a fix upstream has since made is noticed and dropped, not left
+   * silently doing nothing.
+   */
+  patch?: Array<{ in: string; from: string; to: string }>;
+  /**
    * Extra "See also" bullets (ready-to-render Markdown, e.g.
    * "[`bare-stream`](/reference/bare/modules/bare-stream) — the returned streams.").
    * Prepended to the default catalog/runtime links.
    */
   seeAlso?: string[];
+  /**
+   * Author-written `## heading` sections appended after the API section (and
+   * before any README sections captured by the research dossier). For what a
+   * `.d.ts` can't carry: event tables, aliases, untyped runtime exports.
+   * `body` is Markdown and may use `###`/`####` sub-headings.
+   */
+  extraSections?: Array<{ heading: string; body: string }>;
 }
 
 export async function loadLayout(name: string): Promise<Layout | null> {
@@ -78,13 +94,22 @@ export async function loadLayout(name: string): Promise<Layout | null> {
     ? JSON.parse(await readFile(descFile, 'utf8'))
     : null;
 
-  if (!base && !external) return null;
+  // Longer author-written sections live as data (`<name>.sections.json`, an
+  // array of { heading, body }) so Markdown with backticks stays unescaped.
+  const secFile = resolve(LAYOUTS_DIR, `${name}.sections.json`);
+  const sections: Array<{ heading: string; body: string }> = existsSync(secFile)
+    ? JSON.parse(await readFile(secFile, 'utf8'))
+    : [];
+
+  if (!base && !external && sections.length === 0) return null;
   return {
     groups: base?.groups ?? [],
     params: base?.params,
     returns: base?.returns,
     intro: base?.intro,
+    patch: base?.patch,
     seeAlso: base?.seeAlso,
+    extraSections: [...(base?.extraSections ?? []), ...sections],
     throws: base?.throws,
     describe: { ...(external ?? {}), ...(base?.describe ?? {}) },
   };
