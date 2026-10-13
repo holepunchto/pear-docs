@@ -1,6 +1,6 @@
 ---
 title: "Bluetooth in Bare"
-description: "How Bare apps talk over Bluetooth Low Energy: the bare-bluetooth module family, the central and peripheral roles, GATT versus L2CAP, and where encryption and peer identity fit."
+description: "How Bare apps talk over Bluetooth Low Energy: the bare-bluetooth module family, central and server roles, GATT versus L2CAP, and where encryption fits."
 docType: explanation
 product: bare
 schemaType: WebPage
@@ -56,7 +56,7 @@ Once connected, there are two ways to exchange data, and they suit different job
 
 GATT is the lingua franca of BLE: every device speaks it, and standard services have well-known UUIDs. But every value is small, and every operation is a round trip. L2CAP connection-oriented channels give you a real stream with flow control, which is what you want for messages, files or replication.
 
-The catch with L2CAP is the PSM. Neither CoreBluetooth nor BlueZ lets an app choose the number its channel listens on; the operating system assigns one when you call `publishChannel()`. So the other side can't know it in advance. The usual answer combines both mechanisms: advertise a service UUID so the central can find you, put the PSM in a readable GATT characteristic, and open the channel once the central has read it. Both `bare-mobile-doctor` and `ble-swarm` work this way; [Hand the PSM over automatically](/bare/how-to/connect-over-bluetooth/exchange-data-over-l2cap#hand-the-psm-over-automatically) shows the code.
+The catch with L2CAP is the PSM. CoreBluetooth and Android don't let an app choose the number its channel listens on; the operating system assigns one when you call `publishChannel()`. (On Linux, `publishChannel({ psm })` asks for a specific one, but code that also runs on Apple and Android can't rely on that.) So the other side can't know it in advance. The usual answer combines both mechanisms: advertise a service UUID so the central can find you, put the PSM in a readable GATT characteristic, and open the channel once the central has read it. `bare-mobile-doctor` works this way, and [Hand the PSM over automatically](/bare/how-to/connect-over-bluetooth/exchange-data-over-l2cap#hand-the-psm-over-automatically) shows the code. `ble-swarm` also sends the PSM over GATT, but inside a `HELLO` frame it notifies on its data characteristic.
 
 ## Everything is an event
 
@@ -67,7 +67,7 @@ flowchart LR
   s["stateChange: poweredOn"] --> scan["startScan()"] --> d["discover"] --> c["connect()"] --> cc["connect"] --> ds["discoverServices()"] --> sd["servicesDiscover"]
 ```
 
-Failures follow the same rule. Apart from `startScan()`, which throws when Bluetooth isn't powered on, a failed operation arrives as an `error` event with a `code`, not as an exception. That includes a failed connection attempt and, on Apple and Android, a disconnect caused by an error, which never shows up as `disconnect`. So the shape of a Bluetooth module in Bare is a small state machine driven by events, as in `bare-mobile-doctor`'s `BLECentral` and `BLEServer` classes. [Bluetooth best practices](/bare/explanation/bluetooth-best-practices) collects the rules that keep that state machine honest.
+Most failures follow the same rule: a failed operation arrives as an `error` event with a `code`, not as an exception. That includes a failed connection attempt and, on Apple and Android, a disconnect caused by an error, which never shows up as `disconnect`. A few failures are thrown instead: `startScan()` throws when Bluetooth isn't powered on, the Android binding throws the Java exception when a call itself fails, and the platform packages throw from calls such as `retrievePeripherals()` and `getBondedDevices()`. So the shape of a Bluetooth module in Bare is a small state machine driven by events, with `try`/`catch` around the calls, as in `bare-mobile-doctor`'s `BLECentral` and `BLEServer` classes. [Bluetooth best practices](/bare/explanation/bluetooth-best-practices) collects the rules that keep that state machine honest.
 
 ## Who is on the other end
 
@@ -82,7 +82,7 @@ Names aren't much better: on Android, `startAdvertising({ name })` can only swit
 
 Bluetooth offers link-level encryption, but it comes with pairing. `publishChannel({ encrypted: true })` asks for an encrypted L2CAP channel, which requires the two devices to be paired first. On Apple and Android the operating system runs the pairing and may prompt the user; on Linux there is no system prompt, so `bare-bluetooth` emits `pairRequest` for your app to accept or reject, and only supports "just works" pairing. Pairing also authenticates devices, not people or apps: it says nothing about which key the app on the other end holds.
 
-The alternative is to leave the link unencrypted and encrypt above it, the way the rest of the Pear stack does. `ble-swarm` publishes plain channels and runs a Noise handshake over each one, keyed by the same kind of key pair Hyperswarm uses, so each connection comes out as an encrypted, authenticated stream to a known public key, with no pairing prompt. Its connections are the same kind Hyperswarm emits, so they plug straight into `corestore.replicate()`. `ble-swarm` runs on macOS 13 and later, iOS and Android; it doesn't yet load the Linux binding.
+The alternative is to leave the link unencrypted and encrypt above it, the way the rest of the Pear stack does. `ble-swarm` publishes plain channels and runs a Noise handshake over each one, keyed by the same kind of key pair Hyperswarm uses, so each connection comes out as an encrypted, authenticated stream to a known public key, with no pairing prompt. (That is its default `l2cap` pipe; its `gatt` pipe runs the same handshake over a characteristic instead.) Its connections are the same kind Hyperswarm emits, so they plug straight into `corestore.replicate()`. `ble-swarm` is experimental upstream, like `bare-bluetooth`. It runs on macOS 13 and later, iOS and Android; it doesn't yet load the Linux binding.
 
 ## Common questions
 

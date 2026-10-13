@@ -2,8 +2,7 @@
 title: "Build a Bluetooth chat for iOS and Android"
 description: >-
   Walk through the Bluetooth chat in bare-mobile-doctor: two phones find each
-  other over Bluetooth Low Energy, open an L2CAP channel and exchange messages,
-  from a React Native app that runs bare-bluetooth in a Bare worklet.
+  other over Bluetooth Low Energy and trade messages over an L2CAP channel.
 docType: how-to
 product: bare
 schemaType: TechArticle
@@ -11,7 +10,7 @@ schemaType: TechArticle
 
 This guide walks through a working Bluetooth chat between two phones, with no network in between. The reference implementation is the Bluetooth screen of [`bare-mobile-doctor`](https://github.com/holepunchto/bare-mobile-doctor), Holepunch's diagnostics app for Bare on mobile: an Expo app in which every Bluetooth call runs in a Bare worklet through [`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth), and the React Native screen only draws what the worklet reports.
 
-Each phone advertises and scans at the same time. You tap a nearby phone to invite it, the other side accepts, and from then on messages travel over an L2CAP channel between the two.
+Every phone can advertise and scan at the same time: the screen has a **Discoverable** switch and a **Scan** switch, and either phone can invite the other. You tap a nearby phone to invite it, the other side accepts, and from then on messages travel over an L2CAP channel between the two.
 
 <Callout type="info">
 `bare-bluetooth` is experimental upstream, so its API may change. This guide follows `bare-mobile-doctor` at commit [`8639c02`](https://github.com/holepunchto/bare-mobile-doctor/tree/8639c02ef626bbaf122c11b5b7e66452f4ef9b4c), which depends on `bare-bluetooth` `^0.6.2`.
@@ -22,6 +21,7 @@ Each phone advertises and scans at the same time. You tap a nearby phone to invi
 - Two physical phones, iOS or Android in any mix. Simulators and emulators can't stand in for the radio, and upstream warns that emulated Android devices can crash under QEMU.
 - Android 12 (API level 31) or later: the app sets `minSdkVersion` to 31.
 - The toolchain for the platforms you build: Xcode for iOS, and Android Studio with the SDK, NDK and JDK versions listed in the upstream [README](https://github.com/holepunchto/bare-mobile-doctor#android).
+- The `patchelf` binary, which upstream's README asks for before `npm install`.
 - Familiarity with running Bare in a React Native app, covered in [Embed Bare in a React Native app](/bare/how-to/run-on-native/embed-bare-in-react-native).
 
 ## Clone and run
@@ -34,17 +34,25 @@ npm run link
 npm run bundle
 ```
 
-`npm run link` links the native addons the worklets load, `bare-bluetooth` among them, into `react-native-bare-kit`; run it again after every reinstall. `npm run bundle` packs every worklet, including the Bluetooth one. Then build and install on each phone:
+`npm run link` links the native addons the worklets load, `bare-bluetooth` among them, into `react-native-bare-kit`; run it again after every reinstall. `npm run bundle` packs every worklet, including the Bluetooth one. If your npm config has `ignore-scripts=true`, `@shopify/react-native-skia` needs its install script run by hand; upstream's [README](https://github.com/holepunchto/bare-mobile-doctor#usage) has the command. Then build and install on each phone:
 
 ```bash skip="native-build"
 npm run ios
 npm run android
 ```
 
+`npm run ios` is `expo run:ios`, which offers simulators as well as devices, so pick your iPhone. Installing on a physical iPhone needs a development team and provisioning profile; upstream's [iOS release build steps](https://github.com/holepunchto/bare-mobile-doctor#release-builds) walk through them in Xcode. For Android, upstream's [README](https://github.com/holepunchto/bare-mobile-doctor#android) also lists a Gradle wrapper downgrade to apply after `expo prebuild`, without which the Android build can fail.
+
 For two Android phones, upstream recommends a release build, which doesn't need a Metro dev server per device:
 
 ```bash skip="native-build"
 npx expo run:android --variant release --no-bundler
+```
+
+The release APK can then be installed on the second phone without rebuilding:
+
+```bash skip="native-build"
+adb -s <serial> install -r android/app/build/outputs/apk/release/app-release.apk
 ```
 
 On both phones, open the Bluetooth screen and allow Bluetooth access when asked. Then:
@@ -105,6 +113,8 @@ The server does its setup in `_start()`, which it calls from its constructor and
 
 ```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/bare/bluetooth.js#L351-L357 title="bare/bluetooth.js" skip="example-import"
 ```
+
+This sample has a gap. `_start()` skips `addService()` once `serviceAdded` is true and skips `publishChannel()` once it holds a PSM, and nothing resets either flag when the radio goes off. After a Bluetooth toggle, an Android phone (where `bare-bluetooth` closes the GATT server) would advertise with no service and a stale PSM. If your app has to survive that, clear both when the state leaves `'poweredOn'`, as [Bluetooth best practices](/bare/explanation/bluetooth-best-practices#wait-for-poweredon-every-time) describes.
 
 ### 2. Publish a channel and serve its PSM
 
@@ -171,7 +181,7 @@ The chat protocol is five messages, handled in `Session.handlePeerMessage()`:
 | `{ t: 'msg', d }` | either | a chat message with text `d` |
 | `{ t: 'disconnect' }` | either | the chat is over |
 
-L2CAP is reliable, so a peer that leaves shows up as `close` or `error` on the stream, the same on both platforms. That's why `PeerLink` needs no platform-specific disconnect detection.
+L2CAP is reliable, so a peer that closes the channel shows up as `close` or `error` on the stream, the same on both platforms. That's why `PeerLink` needs no platform-specific disconnect detection for that case. A peer that vanishes without closing the channel takes longer to notice; see [Notice a peer that has vanished](/bare/explanation/bluetooth-best-practices#notice-a-peer-that-has-vanished).
 
 ## Handle failures
 
@@ -184,6 +194,8 @@ On iOS and Android, a failed connection attempt, and a disconnect caused by an e
 
 ```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/bare/bluetooth.js#L601-L612 title="bare/bluetooth.js" skip="example-import"
 ```
+
+This timer abandons the session, but it doesn't cancel the pending connection. `BLECentral.disconnect()` only acts once a peripheral has connected, so a late `connect` can still arrive after the timeout. In your own code, call `central.disconnect()` with the object you passed to `connect()`, the way the Apple test in [Reconnect without scanning](/bare/how-to/connect-over-bluetooth/use-platform-specific-bluetooth-features#apple-reconnect-without-scanning) does.
 
 ## Tear down
 
@@ -198,7 +210,7 @@ When the user leaves the screen, the React Native side sends `disconnect` to the
 ```
 
 <Callout type="warn">
-On exit, the worklet deliberately skips `server.destroy()` and `central.destroy()`. Upstream found that on iOS the native module's runtime-teardown cleanup could free the same handle a second time after an explicit `destroy()`, and crash. Check the current `bare-bluetooth-apple` release before you copy that workaround; see [Bluetooth best practices](/bare/explanation/bluetooth-best-practices#clean-up-in-the-right-order).
+On exit, the worklet deliberately skips `server.destroy()` and `central.destroy()`. A comment in the code says that on iOS the native module's runtime-teardown cleanup frees the same handle a second time after an explicit `destroy()`, and crashes. `bare-bluetooth-apple` fixed that cleanup in July 2026, before the comment was written, so the workaround may be out of date. Test teardown on a device before you copy it or drop it; see [Bluetooth best practices](/bare/explanation/bluetooth-best-practices#clean-up-in-the-right-order).
 </Callout>
 
 ```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/bare/bluetooth.js#L653-L666 title="bare/bluetooth.js" skip="example-import"

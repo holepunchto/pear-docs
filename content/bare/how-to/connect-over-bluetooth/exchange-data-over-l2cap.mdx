@@ -1,9 +1,8 @@
 ---
 title: "Exchange data over L2CAP"
 description: >-
-  Open an L2CAP channel between two devices with bare-bluetooth and use it as
-  a duplex stream, then hand the channel's PSM to the other side through a
-  GATT characteristic instead of by hand.
+  Open an L2CAP channel between two devices with bare-bluetooth, use it as a
+  duplex stream, and hand its PSM to the other side through GATT.
 docType: how-to
 product: bare
 schemaType: TechArticle
@@ -16,11 +15,11 @@ This guide follows [`example/l2cappong.js`](https://github.com/holepunchto/bare-
 ## Before you begin
 
 - Two machines with Bluetooth: macOS, or Linux with `bare-bluetooth` 0.6.3-0 or later. On Linux, `bluetoothd` must be running and the adapter powered on (`bluetoothctl power on`).
-- [Bare](https://github.com/holepunchto/bare) on both: `npm i -g bare-runtime`.
-- The example scripts, which live in the repository rather than the npm package:
+- [Bare](https://github.com/holepunchto/bare) on both: `npm i -g bare`. On macOS, the terminal app you run it from needs Bluetooth access under System Settings, Privacy & Security.
+- The example scripts, which live in the repository rather than the npm package. Clone the `v0.6.3-0` tag, which is the version this guide's code comes from:
 
 ```bash skip="install-instruction"
-git clone https://github.com/holepunchto/bare-bluetooth
+git clone --branch v0.6.3-0 https://github.com/holepunchto/bare-bluetooth
 cd bare-bluetooth
 npm install
 ```
@@ -70,6 +69,8 @@ Three details matter here:
 - It ignores discoveries whose `rssi` is `null`. BlueZ replays devices it remembers from earlier scans, and those may not be in range now.
 - It listens for `error` on the central and the peripheral. A failed connection or channel arrives there, and an `error` event nobody listens for throws.
 
+The example has no deadline on opening the channel, and opening one can hang without an `error`: `ble-swarm` found that an iOS peripheral never answers a channel opened by a macOS central. In an app, start a timer when you call `openL2CAPChannel()` and give up if no `channelOpen` arrives; see [Put a deadline on opening a channel](/bare/explanation/bluetooth-best-practices#put-a-deadline-on-opening-a-channel).
+
 ## Use the channel as a stream
 
 Both ends now hold an `L2CAPChannel` and use it the same way: `write()` to send, `data` to receive, and `close` and `error` to learn that the other side has gone:
@@ -83,7 +84,7 @@ On Linux the channel also has an `mtu`, and a single write larger than it fails,
 
 ## Hand the PSM over automatically
 
-The example's one manual step is copying the PSM from one machine to the other. Neither CoreBluetooth nor BlueZ lets you choose the number, so the central has to learn it from the server. `bare-mobile-doctor` does that with GATT: the server adds a service with one readable characteristic and answers every read with the PSM, as text:
+The example's one manual step is copying the PSM from one machine to the other. CoreBluetooth and Android don't let you choose the number (Linux accepts a `psm` option, but Apple and Android ignore it), so code that runs on every platform has to let the central learn it from the server. `bare-mobile-doctor` does that with GATT: the server adds a service with one readable characteristic and answers every read with the PSM, as text:
 
 ```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/bare/bluetooth.js#L315-L335 title="bare/bluetooth.js" skip="example-import"
 ```
