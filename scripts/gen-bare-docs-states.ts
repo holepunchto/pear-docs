@@ -16,7 +16,8 @@
 //
 // Three axes, three extraction strategies:
 //   bare-cli      holepunchto/bare:bin/bare.js         scripts/bare-cli-surface.ts (paparam, text)
-//   bare-runtime  holepunchto/bare:npm/index.d.ts       scripts/bare-refgen/extract.ts + bare-model-surface.ts
+//   bare-runtime  holepunchto/bare:src/bare.d.ts       scripts/bare-refgen/extract.ts + bare-model-surface.ts
+//                 (npm/index.d.ts before v1.35.0)
 //   bare-kit      holepunchto/react-native-bare-kit:index.d.ts   (same as bare-runtime)
 //
 // Writes src/lib/bare-{cli,runtime,kit}-docs-states.json — committed, so a
@@ -73,7 +74,8 @@ interface AxisConfig {
   /** Dropdown label, matches src/lib/version-axes.ts. */
   label: string;
   repo: string;
-  file: string;
+  /** Surface file, newest location first. The first one that exists at a tag wins. */
+  files: string[];
   outPath: string;
 }
 
@@ -82,21 +84,21 @@ const AXES: AxisConfig[] = [
     key: 'bare-cli',
     label: 'Bare CLI version',
     repo: 'holepunchto/bare',
-    file: 'bin/bare.js',
+    files: ['bin/bare.js'],
     outPath: path.join(root, 'src/lib/bare-cli-docs-states.json'),
   },
   {
     key: 'bare-runtime',
     label: 'Bare runtime version',
     repo: 'holepunchto/bare',
-    file: 'npm/index.d.ts',
+    files: ['src/bare.d.ts', 'npm/index.d.ts'],
     outPath: path.join(root, 'src/lib/bare-runtime-docs-states.json'),
   },
   {
     key: 'bare-kit',
     label: 'Bare Kit version',
     repo: 'holepunchto/react-native-bare-kit',
-    file: 'index.d.ts',
+    files: ['index.d.ts'],
     outPath: path.join(root, 'src/lib/bare-kit-docs-states.json'),
   },
 ];
@@ -134,12 +136,12 @@ async function api<T>(pathname: string): Promise<T> {
 
 /**
  * `null` means the file did not exist at this tag — not an error. The
- * `npm/index.d.ts` packaging layout `bare-runtime` depends on is newer than
- * some of the older stable tags in the scan window (confirmed: 404 at
+ * `npm/index.d.ts` packaging layout `bare-runtime` once depended on is newer
+ * than some of the older stable tags in the scan window (confirmed: 404 at
  * v1.23.4), so a caller walking backward through history has to be able to
  * stop there rather than crash the whole run.
  */
-async function fetchFile(repo: string, file: string, tag: string): Promise<string | null> {
+async function fetchFileAt(repo: string, file: string, tag: string): Promise<string | null> {
   const res = await fetch(
     `https://api.github.com/repos/${repo}/contents/${file}?ref=${encodeURIComponent(tag)}`,
     { headers: apiHeaders('application/vnd.github.raw') },
@@ -147,6 +149,15 @@ async function fetchFile(repo: string, file: string, tag: string): Promise<strin
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Cannot read ${file} at ${tag} in ${repo}: ${res.status}`);
   return res.text();
+}
+
+/** First of `files` that exists at `tag`, so a file that moved between releases still resolves. */
+async function fetchFile(repo: string, files: string[], tag: string): Promise<string | null> {
+  for (const file of files) {
+    const src = await fetchFileAt(repo, file, tag);
+    if (src !== null) return src;
+  }
+  return null;
 }
 
 interface ParsedTag {
@@ -242,7 +253,7 @@ async function surfaceAt(
   tag: string,
   tmpDir: string,
 ): Promise<{ fingerprint: string; model: unknown } | null> {
-  const src = await fetchFile(axis.repo, axis.file, tag);
+  const src = await fetchFile(axis.repo, axis.files, tag);
   if (src === null) return null; // file didn't exist yet at this tag
 
   if (axis.key === 'bare-cli') {
@@ -301,7 +312,7 @@ async function buildDocStates(axis: AxisConfig, tmpDir: string): Promise<DocStat
     const surface = await surfaceAt(axis, tag.tag, tmpDir);
     if (surface === null) {
       // The surface file didn't exist yet at this (older) tag — e.g.
-      // holepunchto/bare's npm/index.d.ts is newer than some stable tags.
+      // holepunchto/bare's npm/index.d.ts is newer than the oldest stable tags.
       // Stop walking further back rather than erroring the whole run; the
       // oldest state collected so far is then genuinely the first surface.
       ranOutOfHistory = true;
@@ -350,7 +361,7 @@ async function buildDocStates(axis: AxisConfig, tmpDir: string): Promise<DocStat
     } else {
       statesNewestFirst[i].delta = [
         ranOutOfHistory
-          ? `oldest doc-state — ${axis.file} does not exist further back in ${axis.repo}'s history`
+          ? `oldest doc-state — ${axis.files.join(' or ')} does not exist further back in ${axis.repo}'s history`
           : `oldest doc-state — first stable release of ${axis.repo}`,
       ];
     }
@@ -364,7 +375,7 @@ async function buildDocStates(axis: AxisConfig, tmpDir: string): Promise<DocStat
 function serialize(axis: AxisConfig, states: DocState[]): string {
   return `${JSON.stringify(
     {
-      $generated: `by scripts/gen-bare-docs-states.ts from ${axis.repo}:${axis.file} — run \`npm run gen:bare-docs-states\` to refresh`,
+      $generated: `by scripts/gen-bare-docs-states.ts from ${axis.repo}:${axis.files[0]} — run \`npm run gen:bare-docs-states\` to refresh`,
       states,
     },
     null,
@@ -379,7 +390,7 @@ async function main(): Promise<void> {
 
   try {
     for (const axis of AXES) {
-      console.log(`\n🔍 Deriving ${axis.label} doc-states from ${axis.repo}:${axis.file}...`);
+      console.log(`\n🔍 Deriving ${axis.label} doc-states from ${axis.repo}:${axis.files[0]}...`);
 
       const states = await buildDocStates(axis, tmpDir);
       const next = serialize(axis, states);

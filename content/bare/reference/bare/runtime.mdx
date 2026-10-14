@@ -7,7 +7,7 @@ schemaType: APIReference
 ---
 
 {/* Maintainer note: this page's doc-states come from src/lib/bare-runtime-docs-states.json,
-generated from holepunchto/bare's npm/index.d.ts by scripts/gen-bare-docs-states.ts — run
+generated from holepunchto/bare's src/bare.d.ts (npm/index.d.ts before 1.35.0) by scripts/gen-bare-docs-states.ts — run
 `npm run gen:bare-docs-states` to refresh, then review the printed delta and add/adjust
 the markers below for anything that changed. `Since` = added in that release, `Until` =
 removed in it; pass `label` to override the badge text. Four tools, by the size of what
@@ -19,8 +19,8 @@ changed:
 This axis is independent of `bare-cli` and `bare-kit` — each Bare page tracks its own
 surface, not one shared "Bare version."
 
-As of 2026-09-17, across the tracked window (1.26.0 -> 1.32.0 — the window is a
-rolling 5 doc-states, so it dropped 1.23.5 as 1.32.0 entered):
+As of 2026-10-14, across the tracked window (1.27.0 -> 1.35.0 — the window is a
+rolling 5 doc-states, so it dropped 1.23.5 as 1.35.0 entered):
 
 Re-ran `npm run gen:bare-docs-states` after Bare shipped 1.33.0/.1/.2/.3: the
 1.32.0 doc-state's release list grew to include all four (`releases: 1.32.0,
@@ -34,13 +34,11 @@ one via `Module.Protocol`). That's a `bare-module` surface change, not a
 [Bare modules → bare-module](/bare/reference/bare/modules/bare-module)
 instead of here.
 
-`Addon.seal()`/`Addon.sealed` (added in 1.32.0 by holepunchto/bare#170) are real,
-shipped API — see the package README and `docs/threat-model.md` — but are absent
-from `npm/index.d.ts` as of 1.32.0, so they do not appear in the printed delta
-above and `scripts/bare-model-surface.ts` cannot fingerprint them. They are
-documented below from the README/threat-model instead, marked `<Since v="1.32.0" />`
-by the release that shipped them. Re-run `npm run gen:bare-docs-states` on future
-Bare releases to check whether the `.d.ts` catches up; if it does, this note can go.
+`Addon.seal()`/`Addon.sealed` (added in 1.32.0 by holepunchto/bare#170) were absent from the
+.d.ts until 1.35.0, so they were documented from the README and `docs/threat-model.md` and
+marked `<Since v="1.32.0" />` by the release that shipped them. That marker stays. The 1.35.0
+doc-state's printed delta lists them, and `Bare.IPC`, as additions only because 1.35.0 is
+where the .d.ts began to declare them: the delta is a typing change there, not a release.
 
 Re-ran `npm run gen:bare-docs-states` after Bare shipped 1.33.4 -> 1.34.1: the
 1.32.0 doc-state's release list grew to include them with an empty delta again
@@ -57,15 +55,23 @@ release adds to it. After each Bare release, run `npm run check:bare-c-api`: it 
 functions and types the headers declare that no page documents, and the `bare_*` names the
 docs use that the headers no longer declare. It exits 0 unless passed `--strict`, and
 takes `--ref <tag>` to read the headers at a particular release. Both lists are empty as of
-Bare 1.34.1. The embedder context pages are covered by the same check.
+Bare 1.35.1. The embedder context pages are covered by the same check.
 
-The README is the other source the page is written from, and nothing in CI compares against
-it either. As of 2026-10-08 the page and the embedder context page were audited against the
-README on holepunchto/bare `main`, which matches v1.34.1 apart from a shorter Context section
-and a new Sanitizers section. What the README says that is not on these two pages lives
-elsewhere: usage and flags on the CLI page, architecture on Inside Bare, the module list in the
-Bare modules catalog. Re-read the README's Building, Platform support and Suspension sections
-when it changes, since none of them is in the .d.ts or the headers.
+Since 1.35.0 (holepunchto/bare#239) the JavaScript API is documented in the JSDoc of
+`src/bare.d.ts`, and the README links there instead of repeating it. The JavaScript sections of
+this page are written from those comments; on a Bare release, diff `src/bare.d.ts` against the
+previous tag. The README is still the source for Building, Platform support and Suspension,
+none of which is in the .d.ts or the headers, so re-read those when it changes. The usage and
+flags it used to carry live on the CLI page, architecture on Inside Bare, and the module list in
+the Bare modules catalog. Nothing in CI compares the page against the README.
+
+Re-ran `npm run gen:bare-docs-states` after Bare shipped 1.35.0 and 1.35.1: a new 1.35.0
+doc-state, whose genuine changes are `Addon.loaded()` and the `mount` thread option, marked
+`<Since v="1.35.0" />`. The same release made `bare_module_find()` return `void *` instead of
+`uv_lib_t *` and added `wasi` and `wasm32` to `bare/target.h`; the headers are outside the
+doc-state machinery, so those are marked in prose. `Bare.suspend()` and `Bare.wakeup()`
+clamping `linger` and `deadline` (holepunchto/bare#250) landed on `main` after 1.35.1; revisit
+it when it is released.
 
 1.32.0's delta is otherwise narrow: `Thread`'s constructor and `Thread.create()`
 gained overloads so `source` can be passed positionally
@@ -123,7 +129,7 @@ The code returned once the process exits. If the process exits via `Bare.exit()`
 
 #### `Bare.version`
 
-The Bare version string, with a leading `v`, such as `v1.34.1`.
+The Bare version string, with a leading `v`, such as `v1.35.1`.
 
 #### `Bare.versions`
 
@@ -229,7 +235,8 @@ This is an advanced API most users never touch directly; native addons are norma
 
 - `new Addon(url)` <Since v="1.31.0" /> — load a static or dynamic addon from a `url` whose protocol is `builtin:`, `linked:`, or `file:`. If `url` is not a static addon, Bare looks for a matching dynamic object library instead. Throws for any other protocol, or if loading fails. Returns an `addon` whose `addon.url` is the WHATWG `URL` identifier of the addon and whose `addon.exports` are its exports.
 - `Addon.host`— the target triplet identifying the current addon host.
-- `Addon.seal()` <Since v="1.32.0" /> — freeze addon loading. Once sealed, no dynamic addon can be loaded by the current thread or any other thread of the process, now or in the future; loading one throws. Statically linked addons are unaffected. This is one-way for the lifetime of the process, and applies to this process alone—intended for embedders that load a fixed set of trusted addons up front and then want to block any further native code, for example when building a sandbox. Embedders running several Bare processes within the same operating system process can seal each of them independently, and sealing one has no effect on the addons the others can load. Addons are owned by the process that loaded them and are unloaded when it is torn down. From Bare 1.33.0, sealing also freezes the [embedder context](/bare/reference/bare/embedder-context) registry, after which no further handles can be published. See the [threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md) for what sealing does and doesn't guarantee.
+- `Addon.loaded(url)` <Since v="1.35.0" /> — whether the current process has already loaded the dynamic addon identified by `url`. Such an addon can still be loaded after sealing. Returns `false` for any URL that is not `file:` or `linked:`.
+- `Addon.seal()` <Since v="1.32.0" /> — freeze addon loading. Once sealed, no dynamic addon can be loaded by the current thread or any other thread of the process, now or in the future; loading one throws. Statically linked addons are unaffected, and from Bare 1.35.0 so are WebAssembly addons, which are read through the module protocol and run by the engine, so they reach no further than JavaScript. This is one-way for the lifetime of the process, and applies to this process alone—intended for embedders that load a fixed set of trusted addons up front and then want to block any further native code, for example when building a sandbox. Embedders running several Bare processes within the same operating system process can seal each of them independently, and sealing one has no effect on the addons the others can load. Addons are owned by the process that loaded them and are unloaded when it is torn down. From Bare 1.33.0, sealing also freezes the [embedder context](/bare/reference/bare/embedder-context) registry, after which no further handles can be published. See the [threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md) for what sealing does and doesn't guarantee.
 - `Addon.sealed` <Since v="1.32.0" /> — whether `Addon.seal()` has been called.
 - <Until v="1.31.0" label="Deprecated in 1.31.0" /> `Addon.cache`, `Addon.load(url)`, `Addon.resolve(specifier, parentURL[, options])`— superseded by `new Addon(url)`. Still work, but new code should use the constructor.
 
@@ -243,8 +250,9 @@ This is an advanced API most users never touch directly.
 
 - `Thread.isMainThread`— `true` on the main thread.
 - `Thread.self`— the current thread as a `ThreadProxy`, or `null` on the main thread. `Thread.self.data` is the data passed on creation, or `null` if none was passed.
-- `new Thread([filename][, options][, callback])`— start a thread running `filename`. If `callback` is given, its body runs on the new thread with `Thread.self.data` as its argument. Options: `data` (default `null`), `transfer` (a transfer list, default `[]`), `encoding` (the encoding of `source` when it is a string, default `'utf8'`), `stackSize` (in bytes, `0` for the default), and <Until v="1.32.0" label="Deprecated in 1.32.0" /> `source`.
+- `new Thread([filename][, options][, callback])`— start a thread running `filename`. If `callback` is given, its body runs on the new thread with `Thread.self.data` as its argument. Options: `data` (default `null`), `transfer` (a transfer list, default `[]`), `encoding` (the encoding of `source` when it is a string, default `'utf8'`), `stackSize` (in bytes, `0` for the default), `mount` <Since v="1.35.0" /> (the URL, as a `URL` or a string, to mount the thread's bundle at, defaulting to `filename` followed by a `/`), and <Until v="1.32.0" label="Deprecated in 1.32.0" /> `source`.
 - `new Thread(callback)`, `new Thread(filename, source[, options])` <Since v="1.32.0" /> — a plain callback can be passed with no `filename`, and `source` (a string or Buffer) can be passed positionally right after `filename` instead of via `options.source`.
+- <Since v="1.35.0" /> A bundle serves only the modules under its mount, so `mount: 'file:///'` lets the thread read any file. A `mount` that is not a URL throws a `TypeError`. When `filename` ends in `.bundle`, `source` is read as a bundle and the addons in it are treated as on disk, so the thread can load them.
 - <Until v="1.31.0" label="Deprecated in 1.31.0" /> `Thread.create(...)`— equivalent to `new Thread(...)`. Still works, but new code should use the constructor.
 - A thread is loaded through a protocol that reaches nothing, so it runs only the source it was given. `filename` names that source rather than locating it, and a thread does not inherit the module protocol of the thread that spawned it. Anything else the thread needs, including the modules it imports, must travel with it as `source` or `data`. Reading a module graph off disk and handing it over is the spawner's job, so that a thread never reaches further than the code that started it. To run a module graph on a thread, bundle it with [`bare-bundle`](https://github.com/holepunchto/bare-bundle) and pass the bundle as `source`, which is what [`bare-thread`](https://github.com/holepunchto/bare-thread) does.
 - `thread.joined`— whether the thread has been joined.
@@ -485,7 +493,7 @@ The listener types are `bare_before_exit_cb`, `bare_exit_cb`, `bare_suspend_cb`,
 | Header | Provides |
 | ------ | -------- |
 | `bare/version.h` | `BARE_VERSION_MAJOR`, `BARE_VERSION_MINOR`, `BARE_VERSION_PATCH`, and `BARE_VERSION`, the version of the header as a string such as `"1.34.1"`. |
-| `bare/target.h` | `BARE_PLATFORM` (`"ios"`, `"darwin"`, `"android"`, `"linux"` or `"win32"`), `BARE_ARCH` (`"arm64"`, `"arm"`, `"x64"`, `"ia32"`, `"riscv64"`, `"mips"` or `"mipsel"`), `BARE_LIBC` (`"gnu"`, `"musl"` or `"bionic"`, on Linux and Android only), `BARE_SIMULATOR`, and the combined `BARE_TARGET`, equal to `BARE_HOST`. Each platform and architecture also has a matching flag, such as `BARE_PLATFORM_LINUX` or `BARE_ARCH_X64`. |
+| `bare/target.h` | `BARE_PLATFORM` (`"ios"`, `"darwin"`, `"android"`, `"linux"`, `"win32"` or, from Bare 1.35.0, `"wasi"`), `BARE_ARCH` (`"arm64"`, `"arm"`, `"x64"`, `"ia32"`, `"riscv64"`, `"mips"`, `"mipsel"` or, from Bare 1.35.0, `"wasm32"`), `BARE_LIBC` (`"gnu"`, `"musl"` or `"bionic"`, on Linux and Android only), `BARE_SIMULATOR`, and the combined `BARE_TARGET`, equal to `BARE_HOST`. Each platform and architecture also has a matching flag, such as `BARE_PLATFORM_LINUX` or `BARE_ARCH_X64`. |
 | `bare/module.h` | The native addon API below. |
 
 `bare/module.h` is how a native addon registers itself, which is the C side of [`Bare.Addon`](#bareaddon):
@@ -497,11 +505,11 @@ BARE_MODULE(id, fn)
 Registers the addon, where `fn` is `js_value_t *fn(js_env_t *env, js_value_t *exports)` and returns the exports. `id` is an identifier that is unique within the library, used to name the generated registration code. Define `BARE_MODULE_NAME` before including the header to name the addon, which a statically linked addon requires. A library registers one module. By default the addon registers through exported symbols that Bare looks up once the library is loaded, which suits a dynamic addon. Define `BARE_MODULE_REGISTER_CONSTRUCTOR` to register from a library constructor instead, which suits both dynamic and statically linked addons.
 
 ```c
-uv_lib_t *
+void *
 bare_module_find(const char *query);
 ```
 
-Finds a loaded addon by name, optionally suffixed with `.bare`. Addons are named `<name>@<version>`, and the version may be cut off at a component boundary, so `foo@1` matches `foo@1.2.3` but not `foo@10.0.0`. A query with no version matches only an addon registered without one, and if several addons match, the most recently loaded is returned. Only the addons loaded by the process running on the calling thread are matched, along with the statically linked addons. Returns `NULL` if nothing matches or no process is running on the thread. The library belongs to Bare and must not be closed. It stays loaded for as long as the process that loaded the addon, so a caller that keeps it past the call must take a reference of its own.
+Finds a loaded addon by name, optionally suffixed with `.bare`. Addons are named `<name>@<version>`, and the version may be cut off at a component boundary, so `foo@1` matches `foo@1.2.3` but not `foo@10.0.0`. A query with no version matches only an addon registered without one, and if several addons match, the most recently loaded is returned. Only the addons loaded by the process running on the calling thread are matched, along with the statically linked addons. Returns `NULL` if nothing matches or no process is running on the thread. The library belongs to Bare and must not be closed. Before Bare 1.35.0 it was returned as a `uv_lib_t *`. It stays loaded for as long as the process that loaded the addon, so a caller that keeps it past the call must take a reference of its own.
 
 ```c
 void
