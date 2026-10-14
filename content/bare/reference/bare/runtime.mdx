@@ -69,7 +69,8 @@ Re-ran `npm run gen:bare-docs-states` after Bare shipped 1.35.0 and 1.35.1: a ne
 doc-state, whose genuine changes are `Addon.loaded()` and the `mount` thread option, marked
 `<Since v="1.35.0" />`. The same release made `bare_module_find()` return `void *` instead of
 `uv_lib_t *` and added `wasi` and `wasm32` to `bare/target.h`; the headers are outside the
-doc-state machinery, so those are marked in prose. `Bare.suspend()` and `Bare.wakeup()`
+doc-state machinery, so those are marked in prose. `Bare.platform` and `Bare.arch` return the
+same two values at runtime, though the .d.ts unions do not list them yet. `Bare.suspend()` and `Bare.wakeup()`
 clamping `linger` and `deadline` (holepunchto/bare#250) landed on `main` after 1.35.1; revisit
 it when it is released.
 
@@ -109,11 +110,11 @@ The core JavaScript API of [Bare](/bare/explanation/bare-runtime) is exposed thr
 
 #### `Bare.platform`
 
-The operating system Bare was compiled for. One of `android`, `darwin`, `ios`, `linux`, `win32`.
+The operating system Bare was compiled for. One of `android`, `darwin`, `ios`, `linux`, `win32` or, from Bare 1.35.0, `wasi`.
 
 #### `Bare.arch`
 
-The processor architecture Bare was compiled for. One of `arm`, `arm64`, `ia32`, `mips`, `mipsel`, `riscv64`, `x64`.
+The processor architecture Bare was compiled for. One of `arm`, `arm64`, `ia32`, `mips`, `mipsel`, `riscv64`, `x64` or, from Bare 1.35.0, `wasm32`.
 
 #### `Bare.argv`
 
@@ -250,9 +251,9 @@ This is an advanced API most users never touch directly.
 
 - `Thread.isMainThread`— `true` on the main thread.
 - `Thread.self`— the current thread as a `ThreadProxy`, or `null` on the main thread. `Thread.self.data` is the data passed on creation, or `null` if none was passed.
-- `new Thread([filename][, options][, callback])`— start a thread running `filename`. If `callback` is given, its body runs on the new thread with `Thread.self.data` as its argument. Options: `data` (default `null`), `transfer` (a transfer list, default `[]`), `encoding` (the encoding of `source` when it is a string, default `'utf8'`), `stackSize` (in bytes, `0` for the default), `mount` <Since v="1.35.0" /> (the URL, as a `URL` or a string, to mount the thread's bundle at, defaulting to `filename` followed by a `/`), and <Until v="1.32.0" label="Deprecated in 1.32.0" /> `source`.
+- `new Thread([filename][, options][, callback])`— start a thread running `filename`. If `callback` is given, its body runs on the new thread with `Thread.self.data` as its argument. Options: `data` (default `null`), `transfer` (a transfer list, default `[]`), `encoding` (the encoding of `source` when it is a string, default `'utf8'`), `stackSize` (in bytes, `0` for the default), `mount` <Since v="1.35.0" /> (the URL, as a `URL` or a string, to mount the thread's bundle at, defaulting to `filename` followed by a `/`; a `mount` that is not a URL throws a `TypeError`), and <Until v="1.32.0" label="Deprecated in 1.32.0" /> `source`.
 - `new Thread(callback)`, `new Thread(filename, source[, options])` <Since v="1.32.0" /> — a plain callback can be passed with no `filename`, and `source` (a string or Buffer) can be passed positionally right after `filename` instead of via `options.source`.
-- <Since v="1.35.0" /> A bundle serves only the modules under its mount, so `mount: 'file:///'` lets the thread read any file. A `mount` that is not a URL throws a `TypeError`. When `filename` ends in `.bundle`, `source` is read as a bundle and the addons in it are treated as on disk, so the thread can load them.
+- A `.bundle` thread source <Since v="1.35.0" /> — when `filename` ends in `.bundle`, `source` is read as a bundle and the addons in it are treated as on disk, so the thread can load them. The bundle serves only the modules under its `mount`, so `mount: 'file:///'` lets it serve modules at any `file:` URL.
 - <Until v="1.31.0" label="Deprecated in 1.31.0" /> `Thread.create(...)`— equivalent to `new Thread(...)`. Still works, but new code should use the constructor.
 - A thread is loaded through a protocol that reaches nothing, so it runs only the source it was given. `filename` names that source rather than locating it, and a thread does not inherit the module protocol of the thread that spawned it. Anything else the thread needs, including the modules it imports, must travel with it as `source` or `data`. Reading a module graph off disk and handing it over is the spawner's job, so that a thread never reaches further than the code that started it. To run a module graph on a thread, bundle it with [`bare-bundle`](https://github.com/holepunchto/bare-bundle) and pass the bundle as `source`, which is what [`bare-thread`](https://github.com/holepunchto/bare-thread) does.
 - `thread.joined`— whether the thread has been joined.
@@ -492,7 +493,7 @@ The listener types are `bare_before_exit_cb`, `bare_exit_cb`, `bare_suspend_cb`,
 
 | Header | Provides |
 | ------ | -------- |
-| `bare/version.h` | `BARE_VERSION_MAJOR`, `BARE_VERSION_MINOR`, `BARE_VERSION_PATCH`, and `BARE_VERSION`, the version of the header as a string such as `"1.34.1"`. |
+| `bare/version.h` | `BARE_VERSION_MAJOR`, `BARE_VERSION_MINOR`, `BARE_VERSION_PATCH`, and `BARE_VERSION`, the version of the header as a string such as `"1.35.1"`. |
 | `bare/target.h` | `BARE_PLATFORM` (`"ios"`, `"darwin"`, `"android"`, `"linux"`, `"win32"` or, from Bare 1.35.0, `"wasi"`), `BARE_ARCH` (`"arm64"`, `"arm"`, `"x64"`, `"ia32"`, `"riscv64"`, `"mips"`, `"mipsel"` or, from Bare 1.35.0, `"wasm32"`), `BARE_LIBC` (`"gnu"`, `"musl"` or `"bionic"`, on Linux and Android only), `BARE_SIMULATOR`, and the combined `BARE_TARGET`, equal to `BARE_HOST`. Each platform and architecture also has a matching flag, such as `BARE_PLATFORM_LINUX` or `BARE_ARCH_X64`. |
 | `bare/module.h` | The native addon API below. |
 
@@ -509,7 +510,7 @@ void *
 bare_module_find(const char *query);
 ```
 
-Finds a loaded addon by name, optionally suffixed with `.bare`. Addons are named `<name>@<version>`, and the version may be cut off at a component boundary, so `foo@1` matches `foo@1.2.3` but not `foo@10.0.0`. A query with no version matches only an addon registered without one, and if several addons match, the most recently loaded is returned. Only the addons loaded by the process running on the calling thread are matched, along with the statically linked addons. Returns `NULL` if nothing matches or no process is running on the thread. The library belongs to Bare and must not be closed. Before Bare 1.35.0 it was returned as a `uv_lib_t *`. It stays loaded for as long as the process that loaded the addon, so a caller that keeps it past the call must take a reference of its own.
+Finds a loaded addon by name, optionally suffixed with `.bare`. Addons are named `<name>@<version>`, and the version may be cut off at a component boundary, so `foo@1` matches `foo@1.2.3` but not `foo@10.0.0`. A query with no version matches only an addon registered without one, and if several addons match, the most recently loaded is returned. Only the addons loaded by the process running on the calling thread are matched, along with the statically linked addons. Returns `NULL` if nothing matches or no process is running on the thread. The library belongs to Bare and must not be closed. It stays loaded for as long as the process that loaded the addon, so a caller that keeps it past the call must take a reference of its own. Before Bare 1.35.0 the return type was `uv_lib_t *`.
 
 ```c
 void
