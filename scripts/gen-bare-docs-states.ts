@@ -16,7 +16,8 @@
 //
 // Three axes, three extraction strategies:
 //   bare-cli      holepunchto/bare:bin/bare.js         scripts/bare-cli-surface.ts (paparam, text)
-//   bare-runtime  holepunchto/bare:npm/index.d.ts       scripts/bare-refgen/extract.ts + bare-model-surface.ts
+//   bare-runtime  holepunchto/bare:src/bare.d.ts       scripts/bare-refgen/extract.ts + bare-model-surface.ts
+//                 (npm/index.d.ts before v1.35.0)
 //   bare-kit      holepunchto/react-native-bare-kit:index.d.ts   (same as bare-runtime)
 //
 // Writes src/lib/bare-{cli,runtime,kit}-docs-states.json — committed, so a
@@ -74,6 +75,8 @@ interface AxisConfig {
   label: string;
   repo: string;
   file: string;
+  /** Where `file` lived before it moved, tried when `file` does not exist at a tag. */
+  legacyFile?: string;
   outPath: string;
 }
 
@@ -89,7 +92,10 @@ const AXES: AxisConfig[] = [
     key: 'bare-runtime',
     label: 'Bare runtime version',
     repo: 'holepunchto/bare',
-    file: 'npm/index.d.ts',
+    // v1.35.0 moved the typings (and the API docs) from npm/index.d.ts into src/bare.d.ts;
+    // npm/prepack.js copies them back into the npm package.
+    file: 'src/bare.d.ts',
+    legacyFile: 'npm/index.d.ts',
     outPath: path.join(root, 'src/lib/bare-runtime-docs-states.json'),
   },
   {
@@ -242,7 +248,8 @@ async function surfaceAt(
   tag: string,
   tmpDir: string,
 ): Promise<{ fingerprint: string; model: unknown } | null> {
-  const src = await fetchFile(axis.repo, axis.file, tag);
+  let src = await fetchFile(axis.repo, axis.file, tag);
+  if (src === null && axis.legacyFile) src = await fetchFile(axis.repo, axis.legacyFile, tag);
   if (src === null) return null; // file didn't exist yet at this tag
 
   if (axis.key === 'bare-cli') {
@@ -350,7 +357,7 @@ async function buildDocStates(axis: AxisConfig, tmpDir: string): Promise<DocStat
     } else {
       statesNewestFirst[i].delta = [
         ranOutOfHistory
-          ? `oldest doc-state — ${axis.file} does not exist further back in ${axis.repo}'s history`
+          ? `oldest doc-state — ${axis.legacyFile ?? axis.file} does not exist further back in ${axis.repo}'s history`
           : `oldest doc-state — first stable release of ${axis.repo}`,
       ];
     }
@@ -364,7 +371,7 @@ async function buildDocStates(axis: AxisConfig, tmpDir: string): Promise<DocStat
 function serialize(axis: AxisConfig, states: DocState[]): string {
   return `${JSON.stringify(
     {
-      $generated: `by scripts/gen-bare-docs-states.ts from ${axis.repo}:${axis.file} — run \`npm run gen:bare-docs-states\` to refresh`,
+      $generated: `by scripts/gen-bare-docs-states.ts from ${axis.repo}:${axis.file}${axis.legacyFile ? ` (${axis.legacyFile} before v1.35.0)` : ''} — run \`npm run gen:bare-docs-states\` to refresh`,
       states,
     },
     null,
