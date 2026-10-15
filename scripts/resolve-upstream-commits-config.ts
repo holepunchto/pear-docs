@@ -140,7 +140,7 @@ async function resolvePlatformAxes(): Promise<CommitWatchEntry[]> {
   const kitBranch = await defaultBranch('holepunchto/react-native-bare-kit');
   return [
     { key: 'bare-cli', name: 'Bare CLI', repo: 'holepunchto/bare', branch: bareBranch, file: 'bin/bare.js', dts: false },
-    { key: 'bare-runtime', name: 'Bare runtime API', repo: 'holepunchto/bare', branch: bareBranch, file: 'npm/index.d.ts', dts: true },
+    { key: 'bare-runtime', name: 'Bare runtime API', repo: 'holepunchto/bare', branch: bareBranch, file: 'src/bare.d.ts', dts: true },
     { key: 'bare-kit', name: 'Bare Kit', repo: 'holepunchto/react-native-bare-kit', branch: kitBranch, file: 'index.d.ts', dts: true },
   ];
 }

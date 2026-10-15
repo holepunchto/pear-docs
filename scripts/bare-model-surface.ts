@@ -8,7 +8,7 @@
 // No new AST walking here. `extractModule(entryDts)` already turns a .d.ts
 // into a BareExport[] — this file only turns THAT into a comparable
 // fingerprint and a human-readable delta, reused for both the `bare-runtime`
-// axis (holepunchto/bare:npm/index.d.ts) and the `bare-kit` axis
+// axis (holepunchto/bare:src/bare.d.ts) and the `bare-kit` axis
 // (holepunchto/react-native-bare-kit:index.d.ts). Semantic, not a hash: two
 // exports compare equal when their kind/signatures/deprecated status match,
 // regardless of description prose or JSDoc wording, so a comment-only .d.ts
