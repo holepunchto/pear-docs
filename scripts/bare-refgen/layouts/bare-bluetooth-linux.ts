@@ -9,6 +9,7 @@ const layout: Layout = {
   seeAlso: [
     '[`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API, which wraps this module on Linux.',
     '[`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple) and [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android) — the same for Apple platforms and Android.',
+    '[Connect over Bluetooth](/bare/how-to/connect-over-bluetooth) — how-to guides for scanning, GATT, L2CAP and mobile setup.',
   ],
 };
 

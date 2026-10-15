@@ -15,6 +15,8 @@ const layout: Layout = {
     'Runs on Android only — on Apple platforms use [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple).',
     '[`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API over this module, `bare-bluetooth-apple` and `bare-bluetooth-linux`.',
     '[One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.',
+    '[Connect over Bluetooth](/bare/how-to/connect-over-bluetooth) — how-to guides for scanning, GATT, L2CAP and mobile setup.',
+    '[Use platform-specific Bluetooth features](/bare/how-to/connect-over-bluetooth/use-platform-specific-bluetooth-features) — when to use this module directly instead of `bare-bluetooth`.',
   ],
   params: {
     'BluetoothError.constructor': {

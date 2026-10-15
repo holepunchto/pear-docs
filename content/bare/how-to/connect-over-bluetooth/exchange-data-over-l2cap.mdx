@@ -1,0 +1,111 @@
+---
+title: "Exchange data over L2CAP"
+description: >-
+  Open an L2CAP channel between two devices with bare-bluetooth, use it as a
+  duplex stream, and hand its PSM to the other side through GATT.
+docType: how-to
+product: bare
+schemaType: TechArticle
+---
+
+An L2CAP channel is a connection-oriented stream between two Bluetooth devices: once it is open, both sides get an [`L2CAPChannel`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel), a [`bare-stream`](/bare/reference/bare/modules/bare-stream) `Duplex` you read and write like a socket. Use it when you want to send more than a few small values, such as messages, files or a replication stream. For small values that other devices may also want to read, see [Read, write and subscribe with GATT](/bare/how-to/connect-over-bluetooth/read-write-and-subscribe-with-gatt).
+
+This guide follows [`example/l2cappong.js`](https://github.com/holepunchto/bare-bluetooth/blob/7ac75b032b436a925902b5a18a90019a31b2a675/example/l2cappong.js) from the `bare-bluetooth` repository, in which two machines bounce `ping` and `pong` over a channel, then shows how [`bare-mobile-doctor`](https://github.com/holepunchto/bare-mobile-doctor) removes the one manual step it has.
+
+## Before you begin
+
+- Two machines with Bluetooth: macOS, or Linux with `bare-bluetooth` 0.6.3-0 or later. On Linux, `bluetoothd` must be running and the adapter powered on (`bluetoothctl power on`).
+- [Bare](https://github.com/holepunchto/bare) on both: `npm i -g bare`. On macOS, the terminal app you run it from needs Bluetooth access under System Settings, Privacy & Security.
+- The example scripts, which live in the repository rather than the npm package. Clone the `v0.6.3-0` tag, which is the version this guide's code comes from:
+
+```bash skip="install-instruction"
+git clone --branch v0.6.3-0 https://github.com/holepunchto/bare-bluetooth
+cd bare-bluetooth
+npm install
+```
+
+On iOS and Android the same code runs inside an app's worklet; see [Set up Bluetooth in a mobile app](/bare/how-to/connect-over-bluetooth/set-up-bluetooth-in-a-mobile-app).
+
+## Run the example
+
+On the first machine, start the listener. It prints the PSM its channel was given:
+
+```bash skip="needs-bluetooth-radio"
+bare example/l2cappong.js listen
+```
+
+On the second, connect with that PSM:
+
+```bash skip="needs-bluetooth-radio"
+bare example/l2cappong.js connect <psm>
+```
+
+The two sides then trade `ping` and `pong` once a second until you stop one of them.
+
+## Publish a channel and advertise
+
+The listening side is a `Server`. Once the radio is on, it publishes a channel and advertises a service UUID so the other side can find it. The operating system picks the channel's PSM and reports it in `channelPublish`:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth/example/l2cappong.js#L22-L45 title="example/l2cappong.js" skip="example-import"
+```
+
+When a central opens the channel, `channelOpen` hands the server its end of the stream. `channel.peer` identifies the device on the other end: a per-host UUID on Apple, the Bluetooth address on Android and Linux.
+
+The service UUID is picked from the Bluetooth base range, so it takes 2 bytes of the advertisement instead of 16:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth/example/l2cappong.js#L5-L9 title="example/l2cappong.js" skip="example-import"
+```
+
+## Find the server and open the channel
+
+The connecting side is a `Central`. It scans for the service UUID, connects to the first match, and opens the channel on the PSM it was given:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth/example/l2cappong.js#L47-L93 title="example/l2cappong.js" skip="example-import"
+```
+
+Three details matter here:
+
+- It stops scanning once it has found the server. A scan keeps the radio busy and costs battery for as long as it runs.
+- It ignores discoveries whose `rssi` is `null`. BlueZ replays devices it remembers from earlier scans, and those may not be in range now.
+- It listens for `error` on the central and the peripheral. A failed connection or channel arrives there, and an `error` event nobody listens for throws.
+
+The example has no deadline on opening the channel, and opening one can hang without an `error`: `ble-swarm` found that an iOS peripheral never answers a channel opened by a macOS central. In an app, start a timer when you call `openL2CAPChannel()` and give up if no `channelOpen` arrives; see [Put a deadline on opening a channel](/bare/explanation/bluetooth-best-practices#put-a-deadline-on-opening-a-channel).
+
+## Use the channel as a stream
+
+Both ends now hold an `L2CAPChannel` and use it the same way: `write()` to send, `data` to receive, and `close` and `error` to learn that the other side has gone:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth/example/l2cappong.js#L95-L114 title="example/l2cappong.js" skip="example-import"
+```
+
+The channel delivers bytes in order, but not necessarily in the chunks they were written in. To send messages rather than bytes, frame them: `bare-mobile-doctor` wraps the channel in [`framed-stream`](https://github.com/holepunchto/framed-stream), so each `write()` arrives as one `data` event on the other side. See [Chat over the channel](/bare/how-to/connect-over-bluetooth/build-a-bluetooth-chat-for-ios-and-android#6-chat-over-the-channel).
+
+On Linux the channel also has an `mtu`, and a single write larger than it fails, so keep writes to at most `channel.mtu` bytes there.
+
+## Hand the PSM over automatically
+
+The example's one manual step is copying the PSM from one machine to the other. CoreBluetooth and Android don't let you choose the number (Linux accepts a `psm` option, but Apple and Android ignore it), so code that runs on every platform has to let the central learn it from the server. `bare-mobile-doctor` does that with GATT: the server adds a service with one readable characteristic and answers every read with the PSM, as text:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/bare/bluetooth.js#L315-L335 title="bare/bluetooth.js" skip="example-import"
+```
+
+After connecting, the central discovers that characteristic, reads it, and opens the channel on the number it reads:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/bare/bluetooth.js#L185-L214 title="bare/bluetooth.js" skip="example-import"
+```
+
+Two rules make this reliable:
+
+- **Advertise only once both are ready.** A central that connects before `serviceAdd` and `channelPublish` have fired finds no characteristic, or reads an empty value. [Advertise once both are ready](/bare/how-to/connect-over-bluetooth/build-a-bluetooth-chat-for-ios-and-android#3-advertise-once-both-are-ready) shows how `bare-mobile-doctor` waits for both.
+- **Compare UUIDs normalized.** The discovered characteristic's UUID may come back uppercase, lowercase or shortened, depending on the platform; see [Normalize UUIDs before comparing them](/bare/explanation/bluetooth-best-practices#normalize-uuids-before-comparing-them).
+
+## Encrypt the channel
+
+`server.publishChannel()` publishes an unencrypted channel by default. `publishChannel({ encrypted: true })` asks for an encrypted link, which requires the two devices to be paired, so the user may see a pairing prompt, and on Linux your app has to answer `pairRequest`. To keep pairing out of the picture, [`ble-swarm`](https://github.com/holepunchto/ble-swarm) publishes unencrypted channels and runs a Noise handshake over them instead. [Bluetooth in Bare](/bare/explanation/bluetooth-in-bare#security) compares the two.
+
+## Where to go next
+
+- [Build a Bluetooth chat for iOS and Android](/bare/how-to/connect-over-bluetooth/build-a-bluetooth-chat-for-ios-and-android): this pattern in a complete mobile app.
+- [Read, write and subscribe with GATT](/bare/how-to/connect-over-bluetooth/read-write-and-subscribe-with-gatt): the other way to exchange data.
+- [`L2CAPChannel` reference](/bare/reference/bare/modules/bare-bluetooth#l2capchannel)
+- [Bluetooth best practices](/bare/explanation/bluetooth-best-practices)
