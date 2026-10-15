@@ -175,6 +175,11 @@ export const pearTree: Node[] = [
               },
               {
                 type: 'page',
+                name: 'Preflight a release before staging',
+                url: '/pear/how-to/operate-an-app/manual-deployment/preflight-a-release',
+              },
+              {
+                type: 'page',
                 name: 'Troubleshoot desktop releases',
                 url: '/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases',
               },
