@@ -4,7 +4,7 @@ description: "Android Bluetooth bindings for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.9.1"
+upstreamVersion: "0.11.4"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -15,7 +15,11 @@ upstreamVersion: "0.9.1"
 npm i bare-bluetooth-android
 ```
 
+As of v0.11.2, the prebuilds link the C++ standard library statically, so they no longer list `libc++_shared.so` among their needed libraries. As of v0.9.3, they also no longer list `libnativehelper.so`.
+
 ## Usage
+
+The central role scans for peripherals and connects to them.
 
 ```js
 const { Central } = require('bare-bluetooth-android')
@@ -43,9 +47,48 @@ central.on('connect', (peripheral) => {
 })
 ```
 
+The peripheral role advertises GATT services through a `Server`. Open the GATT server once the adapter is on, before adding services.
+
+```js
+const { Server, Service, Characteristic } = require('bare-bluetooth-android')
+
+const SERVICE_UUID = '01230000-0000-1000-8000-00805F9B34FB'
+
+const server = new Server()
+
+server.on('stateChange', (state) => {
+  if (state !== 'on') return
+
+  // The GATT server does not survive the adapter turning off, so reopen it and
+  // add the services again on every transition to 'on'. close() is a no-op
+  // when the server is not open, and open() throws when it already is.
+  server.close()
+  server.open()
+
+  const characteristic = new Characteristic('01230001-0000-1000-8000-00805F9B34FB', {
+    read: true,
+    value: new Uint8Array([0x01])
+  })
+
+  server.addService(new Service(SERVICE_UUID, [characteristic]))
+})
+
+server.on('serviceAdd', () => {
+  server.startAdvertising({ serviceUUIDs: [SERVICE_UUID] })
+})
+
+server.on('error', (err) => {
+  console.error('server error:', err.code, err.message)
+})
+```
+
 ## API
 
 ### BluetoothError
+
+The package root exports `BluetoothError` as of v0.11.3. Earlier versions did not export the class from the package root, although the errors they raised were instances of it.
+
+Failures reach your code three ways. A call can throw when the Android call itself fails, with the Java exception in the message, for example `java.lang.IllegalStateException: BT Adapter is not turned ON`. An operation that fails after the call went through is emitted as an `'error'` event carrying a `BluetoothError`. A failed write on an [`L2CAPChannel`](#l2capchannel) destroys the stream, so listen for `'error'` on the channel.
 
 #### `new BluetoothError(msg: string, fn?: Function, code?: string)`
 
@@ -56,6 +99,16 @@ central.on('connect', (peripheral) => {
 | `msg` | `string` | — | A human-readable error message. |
 | `fn?` | `Function` | — | The function to omit from the captured stack trace (default `BluetoothError`). |
 | `code?` | `string` | — | The error code; defaults to `fn.name` (for example `SCAN_FAILED`). |
+
+#### `BluetoothError.ADAPTER_UNAVAILABLE(msg: string): BluetoothError`
+
+Thrown by the `Central` and `Server` constructors on a device with no Bluetooth adapter. The error message reads `ADAPTER_UNAVAILABLE: Bluetooth adapter unavailable`. Added in v0.11.3.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | A human-readable error message. |
 
 #### `BluetoothError.ADVERTISE_FAILED(msg: string): BluetoothError`
 
@@ -180,6 +233,8 @@ The name of the error, always `'BluetoothError'`.
 
 A duplex stream representing an L2CAP connection-oriented channel. Extends `Duplex` from \<https://github.com/holepunchto/bare-stream>. Typically obtained via the `'channelOpen'` event rather than constructed directly.
 
+A failed write does not throw from `write()`. As of v0.11.1 it destroys the stream with the Java exception, for example `java.io.IOException: Broken pipe` once the peer is gone, so listen for `'error'` on the channel. An unhandled `'error'` still throws. A native channel error destroys the stream with that error, and a native close destroys it, instead of either being emitted directly.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
@@ -206,7 +261,7 @@ Create a new GATT service definition.
 | --- | --- | --- | --- |
 | `uuid` | `string` | — | The service's UUID. |
 | `characteristics?` | `Characteristic[]` | — | The characteristics belonging to the service. |
-| `opts?` | [`ServiceOptions`](#serviceoptions) | — | Options; set `primary: true` to mark this a primary service. |
+| `opts?` | [`ServiceOptions`](#serviceoptions) | — | Options; services are primary unless `primary: false` is set. |
 
 #### `characteristics: Characteristic[]`
 
@@ -259,17 +314,21 @@ The UUID of the characteristic.
 
 #### `value: Uint8Array | null`
 
-The current value of the characteristic, or `null`.
+The current value of the characteristic, or `null`. As of v0.11.4, assigning a value throws `Cannot set the value of a discovered characteristic` on a discovered characteristic. The check is on the native handle, which discovery sets and `server.addService()` also sets, so assigning to a local characteristic throws once it has been passed to `addService()`. The `value` option of the constructor is not affected.
 
 ### Server
 
+<Callout type="warn">
+As of v0.11.0, `new Server()` no longer opens the GATT server. Call `server.open()` once `server.state` is `'on'`, before `addService()`, `respondToRequest()`, or `updateValue()`. Code written for v0.10.0 or earlier does not call `open()`, so on v0.11.0 and later it throws `GATT server unavailable` from those calls.
+</Callout>
+
 #### `new Server()`
 
-Create a new BLE peripheral server for advertising services and handling client requests.
+Create a new BLE peripheral server for advertising services and handling client requests. The constructor does not open the GATT server; call [`open()`](#open-void) once `state` is `'on'`. It throws a `BluetoothError` with code `ADAPTER_UNAVAILABLE` on a device with no Bluetooth adapter, as of v0.11.3.
 
 #### `addService(service: Service): void`
 
-Add a `service` to the GATT server. The `'serviceAdd'` event is emitted when the service has been registered.
+Add a `service` to the GATT server. The `'serviceAdd'` event is emitted when the service has been registered. The GATT server has to be open: this throws `GATT server unavailable` before `open()` and after `close()`.
 
 **Parameters**
 
@@ -277,9 +336,19 @@ Add a `service` to the GATT server. The `'serviceAdd'` event is emitted when the
 | --- | --- | --- | --- |
 | `service` | `Service` | — | The `Service` to register with the GATT server. |
 
+#### `close(): void`
+
+Close the GATT server, dropping its services. Does nothing if the server is not open. Added in v0.11.0.
+
 #### `Server.destroy(): void`
 
-Destroy the server, stopping advertising and unpublishing all L2CAP channels.
+Destroy the server, stopping advertising, unpublishing all L2CAP channels, and closing the GATT server if it is open.
+
+#### `open(): void`
+
+Open the GATT server. Call it once `state` is `'on'`; it throws unless the adapter is on, and it throws `GATT server already open` when the server is already open. The GATT server does not survive the adapter turning off, so on every transition back to `'on'` call `close()` and then `open()` again. Services do not survive a reopen and have to be added again. Added in v0.11.0.
+
+`startAdvertising()` and `publishChannel()` do not check whether the GATT server is open.
 
 #### `publishChannel(opts?: ChannelOptions): void`
 
@@ -363,7 +432,7 @@ Start advertising the server.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`AdvertisingOptions`](#advertisingoptions) | — | Advertising options such as the local `name` and the `serviceUUIDs` to advertise. |
+| `opts?` | [`AdvertisingOptions`](#advertisingoptions) | — | Advertising options. `serviceUUIDs` lists the service UUIDs to advertise. When `name` is set, the adapter's own device name is included in the advertisement; only the presence of the option is used, not the string itself. On Apple platforms `name` is advertised as the local name. |
 
 #### `Server.state: BluetoothState`
 
@@ -400,7 +469,7 @@ Update the value of `characteristic` with `data` and notify subscribed clients.
 
 #### `new Central()`
 
-Create a new BLE central manager for scanning and connecting to peripherals.
+Create a new BLE central manager for scanning and connecting to peripherals. It throws a `BluetoothError` with code `ADAPTER_UNAVAILABLE` on a device with no Bluetooth adapter, as of v0.11.3.
 
 #### `Central.CALLBACK_TYPE_ALL_MATCHES: number`
 
@@ -428,13 +497,13 @@ Scan mode constants for use with `central.startScan()`.
 
 #### `connect(peripheral: Peripheral): void`
 
-Connect to a discovered `peripheral`.
+Connect to a discovered `peripheral`, or to one built from a [`Device`](#device) without a scan, such as a bonded device from [`getBondedDevices()`](#getbondeddevices-device). `peripheral.connecting` is `true` from this call until the `'connect'` event delivers the same `peripheral`.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `peripheral` | `Peripheral` | — | A discovered peripheral to connect to. |
+| `peripheral` | `Peripheral` | — | A discovered peripheral, or one built from a `Device`, to connect to. |
 
 #### `Central.destroy(): void`
 
@@ -450,6 +519,25 @@ Disconnect from a connected `peripheral`.
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `peripheral` | `Peripheral` | — | The connected peripheral to disconnect from. |
+
+#### `getBondedDevices(): Device[]`
+
+Return the devices bonded with the adapter, mirroring Android's `BluetoothAdapter.getBondedDevices()`. Each entry is a [`Device`](#device) with its `type` set. The array is empty unless the adapter is on, and the call throws if the `BLUETOOTH_CONNECT` permission is not granted. To connect to a bonded device, build a `Peripheral` from it and pass that to [`connect()`](#connectperipheral-peripheral-void). Added in v0.10.0.
+
+```js
+const { Central, Device, Peripheral } = require('bare-bluetooth-android')
+
+const central = new Central()
+
+central.on('stateChange', (state) => {
+  if (state !== 'on') return
+
+  // Choose a bonded device that is not a Classic device
+  const [device] = central.getBondedDevices().filter((d) => d.type !== Device.DEVICE_TYPE_CLASSIC)
+
+  if (device) central.connect(new Peripheral({ device }))
+})
+```
 
 #### `startScan(serviceUUIDs?: string[], opts?: { scanMode?: number; callbackType?: number }): void`
 
@@ -474,13 +562,13 @@ Stop scanning for peripherals.
 
 #### `new Peripheral(opts: PeripheralOptions)`
 
-Create a new peripheral instance from a `ScanResult`. Typically obtained via the `'discover'` event on `Central` rather than constructed directly. Its identity and advertised metadata are derived from the scan result.
+Create a new peripheral instance from a `ScanResult` or from a [`Device`](#device). Typically obtained via the `'discover'` event on `Central` rather than constructed directly. Its identity and advertised metadata are derived from the scan result. Build one from a `Device` to connect without a scan, such as to a bonded device from `central.getBondedDevices()`; such a peripheral has no scan result, so `scanResult`, `rssi`, and `serviceData` are `null`. The constructor throws `Peripheral needs a device or a scanResult` when `opts` carries neither. Building a peripheral from a `Device` was added in v0.10.0.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts` | [`PeripheralOptions`](#peripheraloptions) | — | Options carrying the `ScanResult` this peripheral is derived from. |
+| `opts` | [`PeripheralOptions`](#peripheraloptions) | — | Options carrying the `ScanResult` or the `Device` this peripheral is derived from. |
 
 #### `connected: boolean`
 
@@ -511,12 +599,11 @@ event.
 
 #### `Peripheral.id: string`
 
-The unique identifier of the peripheral, equal to `scanResult.device.address`.
+The unique identifier of the peripheral, equal to the device address (`scanResult.device.address` for a scanned peripheral). It is the hardware address of the device. On Apple platforms the id is a per host UUID instead.
 
 #### `name: string | null`
 
-The advertised name of the peripheral, or `null` if unavailable. Equal to
-`scanResult.device.name`.
+The name of the peripheral, or `null` if unavailable. Equal to the name of the device.
 
 #### `openL2CAPChannel(psm: number): void`
 
@@ -560,18 +647,18 @@ Request a new MTU size. The result is emitted via the `'mtuChanged'` event.
 | --- | --- | --- | --- |
 | `mtu` | `number` | — | The desired ATT MTU size, in bytes. |
 
-#### `rssi: number`
+#### `rssi: number | null`
 
-The signal strength of the most recent advertisement, equal to `scanResult.rssi`.
+The signal strength of the most recent advertisement, equal to `scanResult.rssi`, or `null` when the peripheral was built from a `Device` and has no scan result.
 
-#### `scanResult: ScanResult`
+#### `scanResult: ScanResult | null`
 
-The `ScanResult` from the most recent advertisement for this peripheral.
+The `ScanResult` from the most recent advertisement for this peripheral, or `null` when the peripheral was built from a `Device`.
 
 #### `serviceData: ServiceData | null`
 
 The advertised service data, or `null` when the advertisement carried no scan record or no
-service data.
+service data, or when there is no scan result.
 
 #### `subscribe(characteristic: Characteristic): void`
 
@@ -680,9 +767,68 @@ interface WriteRequest {
 
 ```ts
 interface PeripheralOptions {
-  scanResult: ScanResult
+  scanResult?: ScanResult
+  device?: Device
 }
 ```
+
+Pass `scanResult` for a peripheral that came from a scan, or `device` to dial a device without a scan, such as one from `central.getBondedDevices()`. At least one is required. `device` was added in v0.10.0.
+
+#### `CentralEventMap`
+
+```ts
+interface CentralEventMap {
+  stateChange: [state: BluetoothState]
+  discover: [peripheral: Peripheral]
+  connect: [peripheral: Peripheral]
+  disconnect: [peripheral: Peripheral | null]
+  error: [error: BluetoothError]
+}
+```
+
+`connect` carries the connected `Peripheral`. `disconnect` carries the disconnected `Peripheral`, or `null` if it was not tracked as connected; when the disconnect carried an error, `error` is emitted instead. The event map types are declared in the package's type files and are not re-exported from the package root.
+
+#### `PeripheralEventMap`
+
+```ts
+interface PeripheralEventMap {
+  servicesDiscover: [services: Service[]]
+  characteristicsDiscover: [service: Service | null, characteristics: Characteristic[]]
+  read: [characteristic: Characteristic | null, data: Uint8Array]
+  write: [characteristic: Characteristic | null]
+  notify: [characteristic: Characteristic | null, data: Uint8Array]
+  notifyState: [characteristic: Characteristic | null, isNotifying: boolean]
+  channelOpen: [channel: L2CAPChannel]
+  mtuChanged: [mtu: number]
+  disconnect: []
+  error: [error: BluetoothError]
+}
+```
+
+`disconnect` is emitted when the peripheral has disconnected without error. As of v0.9.2, `read`, `write`, `notify`, and `notifyState` are dropped, rather than emitted with `null`, when the characteristic is not one this peripheral has discovered.
+
+#### `ServerEventMap`
+
+```ts
+interface ServerEventMap {
+  stateChange: [state: BluetoothState]
+  serviceAdd: [uuid: string]
+  channelPublish: [psm: number]
+  channelOpen: [channel: L2CAPChannel]
+  readRequest: [request: ReadRequest]
+  writeRequest: [requests: WriteRequest[]]
+  subscribe: [deviceAddress: string, characteristicUuid: string]
+  unsubscribe: [deviceAddress: string, characteristicUuid: string]
+  connecting: [deviceAddress: string]
+  connected: [deviceAddress: string]
+  disconnecting: [deviceAddress: string]
+  disconnected: [deviceAddress: string]
+  notifySent: [deviceAddress: string, status: number]
+  error: [error: BluetoothError]
+}
+```
+
+`subscribe` and `unsubscribe` carry the address of the connected device and the UUID of the characteristic. On Apple platforms they carry a native central handle instead.
 
 #### `ServiceData`
 
@@ -718,13 +864,16 @@ class ScanRecord {
 class Device {
   address: string
   name: string | null
+  type: number | null
 }
 ```
+
+`type` is one of `Device.DEVICE_TYPE_UNKNOWN` (0), `Device.DEVICE_TYPE_CLASSIC` (1), `Device.DEVICE_TYPE_LE` (2), or `Device.DEVICE_TYPE_DUAL` (3), mirroring Android's `BluetoothDevice.getType()`. It is set on the devices that `central.getBondedDevices()` returns, and is `null` on a device that came from a scan. Added in v0.10.0.
 
 ## See also
 
 - Builds on `bare-events` and `bare-stream`.
-- Runs on Android only — on Apple platforms use [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple).
+- Runs on Android only — on Apple platforms use [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple). The two share most concepts under different names: the peripheral role is `Server` here and `PeripheralManager` there, adapter states are `'on'` and `'off'` here and `'poweredOn'` and `'poweredOff'` there, and a peripheral `id` is a hardware address here and a per host UUID there. To connect without a scan, this package builds a `Peripheral` from a `Device`, such as one from `getBondedDevices()`, while that one resolves saved ids with `retrievePeripherals()`.
 - [One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
 - [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

@@ -4,7 +4,7 @@ description: "Native process spawning for JavaScript"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "6.2.1"
+upstreamVersion: "6.2.2"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -80,9 +80,9 @@ signal.
 
 #### `Subprocess.getMaxListeners(): number`
 
-#### `kill(signum?: number): void`
+#### `kill(signum?: number): boolean`
 
-Send a signal to the child. `signum` may be a signal number or a name (for example `'SIGTERM'`). Defaults to `SIGTERM`.
+Send a signal to the child. `signum` may be a signal number or a name (for example `'SIGTERM'`). Defaults to `SIGTERM`. `kill()` can be called more than once, and each call on a running child sends its signal. A `signum` of `0` does not stop the child, which keeps running, but the call still returns `true` and sets `killed` while the child is alive. Before v6.2.2, `kill()` returned `undefined` and ignored every call after the first, so a `kill(0)` followed by `kill('SIGKILL')` left the child running.
 
 **Parameters**
 
@@ -90,13 +90,16 @@ Send a signal to the child. `signum` may be a signal number or a name (for examp
 | --- | --- | --- | --- |
 | `signum?` | `number` | — | Signal to send, as a signal number or name (for example `'SIGTERM'`); defaults to `SIGTERM`. |
 
+**Returns** `boolean` — `true` if the signal was sent, or `false` if the child has already exited, in which case no signal is sent.
+
 **Throws**
 
 - `UNKNOWN_SIGNAL` — thrown if `signum` is a string that isn't a recognized signal name.
+- `EINVAL` — `signum` is a number outside the range of signal numbers, such as `9999`.
 
 #### `killed: boolean`
 
-`true` if `subprocess.kill()` has been called, otherwise `false`.
+`true` once a call to `subprocess.kill()` has returned `true`, including `kill(0)`, otherwise `false`. It does not mean the child has exited. A `kill()` call on a child that has already exited returns `false` and leaves `killed` unchanged. Before v6.2.2, every `kill()` call set it, even after the child had exited.
 
 #### `Subprocess.listenerCount<E extends keyof M>(name: E): number`
 
@@ -598,5 +601,6 @@ interface SubprocessParentChannelEvents {
 - It's a native addon and requires Bare `>=1.7.0`; it's available on desktop (Windows, macOS, Linux).
 - From v6.2.0 it depends on [`bare-structured-clone`](/bare/reference/bare/modules/bare-structured-clone) v2, which frames `serialization: 'advanced'` messages. v6.2.0 has no API change.
 - v6.2.1 fixes `spawn()` when the child fails to launch, such as a missing executable. Before it, tearing down the failed subprocess could signal the process group of the parent. There is no API change.
+- v6.2.2 aligns `subprocess.kill()` with Node.js: it returns a boolean, sets `killed` only when it returns `true`, and can be called repeatedly. It also fixes a parent that stayed alive at teardown after `kill(0)`, because the child was then never sent `SIGTERM`.
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
 - [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.
