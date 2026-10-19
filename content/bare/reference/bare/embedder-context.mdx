@@ -4,7 +4,7 @@ description: "Reference for Bare's embedder context API: publish native handles 
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "1.34.1"
+upstreamVersion: "1.35.1"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -12,7 +12,7 @@ upstreamVersion: "1.34.1"
 The embedder context registry passes opaque native handles from an [embedder](/bare/reference/bare/runtime#embedding) to the native addons of a Bare process. An addon is only ever passed a JavaScript environment and its exports, so it has no route back to the embedder that started the process. The embedder publishes a handle under an agreed key with `bare_context_set()`, and addons retrieve it by key with `bare_context_get()`. Both are declared in [`include/bare.h`](https://github.com/holepunchto/bare/blob/main/include/bare.h). Requires Bare `>=1.33.0`.
 
 <Callout type="warn">
-A handle is a power. Publishing one grants it to every addon in the process, not only to the addon it was meant for: any addon that knows the key can read it. See the Bare [threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md#embedder-context) before publishing anything.
+A handle is a power. Publishing one grants it to every addon in the process, not only to the addon it was meant for: any addon that knows the key can read it. There is no per-addon grant, and a published handle can't be withdrawn until the process is torn down. Read the Bare [threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md#embedder-context) before publishing anything.
 </Callout>
 
 ## `bare_context_set()`
@@ -173,7 +173,7 @@ Keys are compared by their contents and are namespaced by whoever owns the handl
 - **A key never changes meaning.** Once a key is in use, its type, what it points at, and who owns it are fixed. Anything that needs a different contract is a different key, which is what the version suffix is for.
 - **Nothing is required.** A missing key is an ordinary outcome, and consumers are expected to degrade rather than fail. An embedder that has no handle to publish publishes nothing.
 
-The authoritative list of keys in the `bare.` namespace, and the place a new one is registered, is [`docs/context-keys.md`](https://github.com/holepunchto/bare/blob/main/docs/context-keys.md). As of Bare 1.34.1, it lists the following keys.
+The authoritative list of keys in the `bare.` namespace, and the place a new one is registered, is [`docs/context-keys.md`](https://github.com/holepunchto/bare/blob/main/docs/context-keys.md). As of Bare 1.35.1, it lists the following keys.
 
 ### `bare.android.jvm.v1`
 
@@ -183,7 +183,7 @@ The authoritative list of keys in the `bare.` namespace, and the place a new one
 | Published by | The embedder, on Android. [Bare Kit](/bare/reference/bare/bare-kit) publishes it as of bare-kit 2.5.0. |
 | Destructor | None. The JVM outlives the Bare process. |
 
-The Java virtual machine the process is running under, as returned by `JNI_OnLoad()` or by `GetJavaVM()` on a `JNIEnv *`. An addon needs it to attach its own threads and to reach anything in Java from one of them. [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android) reads this key as of 0.6.1 and requires it.
+The Java virtual machine the process is running under, as returned by `JNI_OnLoad()` or by `GetJavaVM()` on a `JNIEnv *`. An addon needs it to attach its own threads and to reach anything in Java from one of them. [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android) reads this key as of 0.6.1 and requires it. [`bare-dns`](/bare/reference/bare/modules/bare-dns#android) reads it as of 2.3.0, together with `bare.android.context.v1`, and skips its Android setup when either key is missing.
 
 ### `bare.android.context.v1`
 
@@ -196,6 +196,8 @@ The Java virtual machine the process is running under, as returned by `JNI_OnLoa
 The application context, which `getSystemService()` and the rest of the Android platform API hang off. The `Context` is published rather than any particular service derived from it, so each addon can derive what it needs, such as a `ConnectivityManager`, at the cost of a JNI call.
 
 It must be a global reference, as the addon reading it runs on threads and at times the embedder doesn't control, and a local reference is only valid for the call it was made in. The destructor releases it, which ties its lifetime to the Bare process rather than to whichever call published it. The destructor runs after the JavaScript environment has been destroyed, so it must do nothing but release the reference. The application context is published rather than an `Activity`, which comes and goes over the life of the process.
+
+[`bare-dns`](/bare/reference/bare/modules/bare-dns#android) reads this key as of 2.3.0 to get a `ConnectivityManager`. As of bare-kit 2.5.5, [Bare Kit](/bare/reference/bare/bare-kit) publishes only `bare.android.jvm.v1`.
 
 ## See also
 

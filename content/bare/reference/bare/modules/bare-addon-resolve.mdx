@@ -4,7 +4,7 @@ description: "Low-level addon resolution algorithm for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "1.10.1"
+upstreamVersion: "1.11.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -55,7 +55,7 @@ for await (const resolution of resolve('./addon', new URL('file:///directory/'),
 resolve(specifier: string, parentURL: URL, readPackage?: (url: URL) => JSON | null): Iterable<URL>
 ```
 
-Resolve `specifier` relative to `parentURL`, which must be a WHATWG `URL` instance. `readPackage` is called with a `URL` instance for every package manifest to be read and must either return the parsed JSON package manifest, if it exists, or `null`. If `readPackage` returns a promise, synchronous iteration is not supported.
+Resolve `specifier` relative to `parentURL`, which must be a WHATWG `URL` instance. `readPackage` is called with a `URL` instance for every package manifest to be read and must either return the parsed JSON package manifest, if it exists, or `null`. If `readPackage` returns a promise, synchronous iteration is not supported. To set options, pass a [`ResolveOptions`](#resolveoptions) object between `parentURL` and `readPackage`: `resolve(specifier, parentURL, opts, readPackage)`.
 
 **Parameters**
 
@@ -69,8 +69,8 @@ Resolve `specifier` relative to `parentURL`, which must be a WHATWG `URL` instan
 
 **Throws**
 
-- `INVALID_ADDON_SPECIFIER` — the addon specifier is not a valid package name or contains an invalid escape sequence.
-- `INVALID_PACKAGE_NAME` — a package manifest's `name` field is invalid (for example contains `__`).
+- `INVALID_ADDON_SPECIFIER` — the specifier is empty, is a scoped name without a `/`, or has a package name that starts with `.` or contains `\` or `%`. It is also thrown when `parentURL` is a `file:` URL and a relative or absolute specifier contains a percent-encoded `/` or `\` (`%2f` or `%5c`, in either case).
+- `INVALID_PACKAGE_NAME` — a package manifest's `name` field contains `__`.
 
 #### `resolve.addon(specifier: string, parentURL: URL, opts?: ResolveOptions): Resolver`
 
@@ -82,7 +82,7 @@ One step of the resolution algorithm, exposed for fine-grained use: resolve `spe
 | --- | --- | --- | --- |
 | `specifier` | `string` | — | The addon specifier to resolve. |
 | `parentURL` | `URL` | — | The URL to resolve `specifier` relative to. |
-| `opts?` | [`ResolveOptions`](#resolveoptions) | — | Options; see [`ResolveOptions`](#resolveoptions). If `opts.resolutions` is set, it is checked first and a matching entry short-circuits the rest of the algorithm. |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | Options; see [`ResolveOptions`](#resolveoptions). If `opts.resolutions` is set, it is checked first and a matching entry short-circuits the rest of the algorithm, unless the entry is a `deferred:` URL. A `deferred:` entry is ignored and resolution continues as if there were no entry. Changed in v1.11.0: a `deferred:` entry was resolved with the module algorithm, so `deferred:.` yielded a JavaScript file such as the package's `index.js` instead of an addon. |
 
 **Returns** `Resolver` — A `Resolver` yielding the candidate resolutions.
 
@@ -92,13 +92,52 @@ One step of the resolution algorithm, exposed for fine-grained use: resolve `spe
 resolve.directory(dirname: string, version: string, parentURL: URL, opts?: ResolveOptions): Resolver
 ```
 
-Resolve `dirname` as a prebuilds directory addon candidate relative to `parentURL`.
+Resolve the addon of the package in the directory `dirname`, relative to `parentURL`. It reads the `package.json` in that directory and resolves nothing when there is none, when its `name` is missing or empty, or when `version` is set and the manifest has a different `version`. The addon name is the manifest `name` with a leading `@` removed and every `/` replaced by `__`.
+
+It yields candidates in the order of these steps. A builtin match in step 1 ends the resolution. After that, it stops after the first step in which the caller reported a candidate as existing. A step goes through every host before it stops, so several hosts can each resolve to their own prebuild:
+
+1. A builtin, when the name matches an entry of `opts.builtins`: `builtin:<name>@<version>`, or `builtin:<name>` when neither the package nor the entry has a version. An entry with a version matches only a package with that version, or a package with none. `opts.builtinProtocol` sets the protocol.
+2. Native prebuilds: `prebuilds/<host>/<name>@<version>.<ext>` when the package has a version, and `prebuilds/<host>/<name>.<ext>` when the specifier named none, for each host that does not start with `wasi-` and each of `opts.extensions`. For `darwin-arm64`, `darwin-x64`, `ios-arm64-simulator`, and `ios-x64-simulator`, the same names are also tried with `universal` in place of the architecture, such as `darwin-universal`. The `prebuilds` directory is looked up in `dirname` and then in each parent directory.
+3. A linked addon, as [`resolve.linked`](#resolvelinkedname-string-version-string-opts-resolveoptions-resolver) yields them, unless `opts.linked` is `false`.
+4. WebAssembly prebuilds: the same file names as step 2, for each host that starts with `wasi-`, such as `wasi-wasm32`. They always use the `.wasm` extension, whatever `opts.extensions` is.
+
+Added in v1.11.0: step 4. Before, a `wasi-` host was looked up like a native one, with `opts.extensions`, in the same pass as the native hosts and before any linked addon.
+
+```js
+const resolve = require('bare-addon-resolve')
+
+function readPackage(url) {
+  if (url.href === 'file:///a/package.json') return { name: 'e', version: '1.2.3' }
+  return null
+}
+
+const options = { hosts: ['linux-x64', 'wasi-wasm32'], extensions: ['.bare'] }
+
+for (const resolution of resolve('.', new URL('file:///a/index.js'), options, readPackage)) {
+  console.log(resolution.href)
+}
+```
+
+```console
+file:///a/prebuilds/linux-x64/e@1.2.3.bare
+file:///a/prebuilds/linux-x64/e.bare
+file:///prebuilds/linux-x64/e@1.2.3.bare
+file:///prebuilds/linux-x64/e.bare
+linked:libe.1.2.3.so
+linked:libe.so
+file:///a/prebuilds/wasi-wasm32/e@1.2.3.wasm
+file:///a/prebuilds/wasi-wasm32/e.wasm
+file:///prebuilds/wasi-wasm32/e@1.2.3.wasm
+file:///prebuilds/wasi-wasm32/e.wasm
+```
+
+A `for...of` loop reports no candidate as existing, so it lists them all. A caller that drives the generator and passes `true` back for a candidate that exists stops at the step that resolved, so the WebAssembly candidates are only reached when no native prebuild and no linked addon exists. See the [Algorithm section of the README](https://github.com/holepunchto/bare-addon-resolve#algorithm) for the full lookup.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `dirname` | `string` | — | The prebuilds directory addon candidate. |
+| `dirname` | `string` | — | The directory of the package, relative to `parentURL`. It must hold a `package.json`. |
 | `version` | `string` | — | The package version, if the specifier carried one, else `null`. |
 | `parentURL` | `URL` | — | The URL to resolve `dirname` relative to. |
 | `opts?` | [`ResolveOptions`](#resolveoptions) | — | Options; see [`ResolveOptions`](#resolveoptions). |
@@ -231,6 +270,8 @@ interface ResolveOptions {
 }
 ```
 
+`hosts` lists the `<platform>-<arch>[-<environment>]` combinations to look for prebuilds under, such as `Bare.Addon.host` in Bare. `host` is shorthand for a list of one. Added in v1.11.0: a host that starts with `wasi-` is a WebAssembly host. It is looked up after the native hosts and linked addons, as `.wasm` files whatever `extensions` is. See [`resolve.directory`](#resolvedirectory).
+
 ## `bare-addon-resolve/errors`
 
 ### AddonResolveError
@@ -260,8 +301,8 @@ interface ResolveOptions {
 ## See also
 
 - Builds on `bare-module-resolve` and `bare-semver`.
-- The resolved addon is the first candidate `resolve` yields that exists as a file on the file system.
-- The `resolve.*` step functions are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.10.0`) when declaring the module dependency.
-- Addons normally resolve through the [runtime](/bare/reference/bare/runtime) or are bundled by [`bare-pack`](/bare/reference/bare/modules); reach for this module directly only when building tooling on the resolution algorithm itself, such as [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse).
+- The resolved addon is the first candidate `resolve` yields that exists as a file on the file system. Native prebuilds come first, then linked addons, then WebAssembly prebuilds.
+- The `resolve.*` step functions are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.11.0`) when declaring the module dependency. The [README](https://github.com/holepunchto/bare-addon-resolve#algorithm) lists the steps of each one.
+- Addons normally resolve through the [runtime](/bare/reference/bare/runtime) or are bundled by [`bare-pack`](/bare/reference/bare/modules/bare-pack); reach for this module directly only when building tooling on the resolution algorithm itself, such as [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse), which uses it to pick a package's [WebAssembly build](/bare/reference/bare/modules/bare-module-traverse#webassembly-addons).
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
 - [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

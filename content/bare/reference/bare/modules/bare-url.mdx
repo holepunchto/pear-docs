@@ -4,7 +4,7 @@ description: "WHATWG URL implementation for JavaScript"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "2.5.4"
+upstreamVersion: "2.5.5"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -160,11 +160,18 @@ character, or, on Windows, is not an absolute drive path.
 
 Convert a platform-specific file path to a `file:` URL.
 
+On Windows, a UNC path such as `\\server\share\foo` becomes `file://server/share/foo`. An extended-length path loses its `\\?\` prefix: `\\?\C:\foo\bar` becomes `file:///C:/foo/bar`, and `\\?\UNC\server\share\foo` becomes `file://server/share/foo`. Only the upper-case `\\?\UNC\` prefix marks a UNC path: `\\?\unc\server\share\foo` becomes `file:///unc/server/share/foo`. Added in v2.5.5: support for `\\?\` paths, which threw `INVALID_URL` before, and the `INVALID_ARG_VALUE` error for a UNC path without a server name or a resource path, which before produced a `file:` URL with the wrong host or path.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `pathname` | `string` | — | The platform-specific file path to convert. |
+
+**Throws**
+
+- `INVALID_ARG_VALUE` — (Windows) `pathname` is a UNC path with an empty server name, such as `\\\share\foo`, or with no resource path, such as `\\server` or `\\?\UNC\server`. An empty server name in the `\\?\UNC\` form does not throw: `\\?\UNC\\share` gives `file:///share`.
+- `INVALID_URL` — `pathname` does not form a valid `file:` URL, for example a UNC server name that contains a space.
 
 ### Type checks
 
@@ -325,6 +332,10 @@ type URLConstructor = typeof url.URL
 ```ts
 type URLSearchParamsConstructor = typeof url.URLSearchParams
 ```
+
+## Threat model
+
+`bare-url` is one of the addons Bare compiles into its binary, so every Bare process has it, sealed or not, and it inherits [Bare's threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md). The module's own [threat model](https://github.com/holepunchto/bare-url/blob/main/docs/threat-model.md), added in v2.5.5, says where it sits in that one. It parses and serializes WHATWG URLs through `liburl` and does not fetch, resolve, or open anything, so holding a `URL` reaches nothing. The risk is in the parser, which runs C code over strings an attacker chose. The module system uses URLs to name things and to pick a protocol, so an input whose scheme, host, origin, or path differs from what the WHATWG URL Standard says matters more than the parse itself suggests.
 
 ## See also
 

@@ -4,12 +4,12 @@ description: "Domain name resolution for JavaScript"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "2.2.1"
+upstreamVersion: "2.3.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-[`bare-dns`](https://github.com/holepunchto/bare-dns) — Domain name resolution for JavaScript. It is a native addon and requires Bare `>=1.7.0`.
+[`bare-dns`](https://github.com/holepunchto/bare-dns) — Domain name resolution for JavaScript. It is a native addon and requires Bare `>=1.33.0`. A Bare older than that refuses to load it with an `UNSUPPORTED_ENGINE` error on every platform, not only Android. v2.2.1 required `>=1.7.0`.
 
 Mirrors the Node.js [`dns`](https://nodejs.org/api/dns.html) module.
 
@@ -26,6 +26,14 @@ dns.lookup('github.com', (err, address, family) => {
   console.log(address, family)
 })
 ```
+
+## Android
+
+Added in v2.3.0. `bare-dns` sends its DNS protocol queries with c-ares. The c-ares documentation says that on Android 8 and newer, the system's DNS servers can only be read through the application's `ConnectivityManager`, and that the application needs the `ACCESS_NETWORK_STATE` permission. The `ConnectivityManager` has to come from the host application, so the addon asks the host for it.
+
+When the addon first loads in the operating system process, it reads two keys from the [embedder context](/bare/reference/bare/embedder-context): [`bare.android.jvm.v1`](/bare/reference/bare/embedder-context#bareandroidjvmv1) and [`bare.android.context.v1`](/bare/reference/bare/embedder-context#bareandroidcontextv1). It calls `getSystemService("connectivity")` on the application context, then passes the JVM and the `ConnectivityManager` to c-ares. The host must publish both keys before the first addon loads. The thread that loads the addon must be attached to the JVM, because the addon calls `GetEnv()` on it and asserts that the call succeeds. As of bare-kit 2.5.5, [Bare Kit](/bare/reference/bare/bare-kit) publishes `bare.android.jvm.v1` but not `bare.android.context.v1`, so an application that embeds Bare through Bare Kit skips this step unless something else publishes that key.
+
+If either key is not published, or the `ConnectivityManager` cannot be obtained, the addon skips this step without an error. c-ares then has no manager, and its documentation says DNS resolution does not work on Android 8 or newer without one when the application targets API level 26 or higher. `dns.lookup()` uses the operating system's `getaddrinfo()` and does not depend on any of this.
 
 ## API
 
@@ -172,6 +180,8 @@ Use the DNS protocol to resolve TXT records for `hostname`, on the global resolv
 | `servers` | `string[]` | — | — |
 
 ### DNSResolver
+
+The module exports this class as `dns.Resolver`, so create one with `new dns.Resolver()`. `DNSResolver` is its name in the type declarations, and `dns.DNSResolver` does not exist.
 
 #### `new DNSResolver(opts?: DNSResolverOptions)`
 
@@ -391,6 +401,8 @@ does not resolve.
 | `servers` | `string[]` | — | — |
 
 ### DNSError
+
+The module exports this class as `dns.errors`, which is the same class as `require('bare-dns/errors')`.
 
 #### `DNSError.code: string`
 
@@ -652,6 +664,8 @@ promises.lookup(hostname: string, opts?: LookupOptions & { all?: false }): Promi
 | `servers` | `string[]` | — | — |
 
 ### DNSPromiseResolver
+
+The module exports this class as `promises.Resolver`, so create one with `new promises.Resolver()`. `DNSPromiseResolver` is its name in the type declarations, and `promises.DNSPromiseResolver` does not exist.
 
 #### `new DNSPromiseResolver(opts?: DNSResolverOptions)`
 
@@ -1035,6 +1049,8 @@ constants: {
 ## `bare-dns/errors`
 
 ### DNSError
+
+`require('bare-dns/errors')` is the `DNSError` class itself, so its static methods are called as `errors.query()`, not `errors.DNSError.query()`. The headings below name them with the class prefix to match the type declarations.
 
 #### `errors.DNSError.code: string`
 
