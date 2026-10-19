@@ -4,7 +4,7 @@ description: "Reference for bare-bluetooth: cross-platform Bluetooth LE for Bare
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.6.3-0"
+upstreamVersion: "0.6.3"
 ---
 
 <mark style={{ backgroundColor: '#8484ff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>experimental</mark>
@@ -16,7 +16,7 @@ Upstream marks this module experimental: its API is subject to change and may br
 </Callout>
 
 <Callout type="info">
-This page describes 0.6.3-0, the release npm currently installs as `latest`. It is a prerelease: the Linux backend is new in it, and the last stable release, 0.6.2, supports Apple and Android only. Apart from Linux support, the two releases have the same API.
+This page describes 0.6.3, the release npm installs as `latest`. It adds the Linux backend: the previous release, 0.6.2, supports Apple and Android only.
 </Callout>
 
 ```sh
@@ -133,7 +133,7 @@ central.on('connect', (peripheral) => {
 })
 ```
 
-The upstream README compares UUIDs with `===`, which fails on every platform for these UUIDs; the `expand()` helper and the `discover` guard here come from the repository's own [`example/gattpong.js`](https://github.com/holepunchto/bare-bluetooth/blob/v0.6.3-0/example/gattpong.js). That `example/` directory also holds `scan.js` and `l2cappong.js`, runnable with `bare` on macOS and Linux.
+The upstream README compares UUIDs with `===`, which fails on every platform for these UUIDs; the `expand()` helper and the `discover` guard here come from the repository's own [`example/gattpong.js`](https://github.com/holepunchto/bare-bluetooth/blob/v0.6.3/example/gattpong.js). That `example/` directory also holds `scan.js` and `l2cappong.js`, runnable with `bare` on macOS and Linux.
 
 ## Platforms
 
@@ -143,9 +143,11 @@ The package resolves to a platform-specific implementation:
 - `darwin` and `ios` resolve to [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple)
 - `linux` resolves to [`bare-bluetooth-linux`](/bare/reference/bare/modules/bare-bluetooth-linux)
 
-There is no fallback, so `require('bare-bluetooth')` fails on any other platform, such as Windows. 0.6.3-0 depends on `bare-bluetooth-android` `^0.11.0`, `bare-bluetooth-apple` `^0.7.0` and `bare-bluetooth-linux` `^0.9.2`.
+There is no fallback, so `require('bare-bluetooth')` fails on any other platform, such as Windows. 0.6.3 depends on `bare-bluetooth-android` `^0.11.4`, `bare-bluetooth-apple` `^0.7.1` and `bare-bluetooth-linux` `^0.9.2`.
 
 On Android the module only works inside an app that hosts Bare, such as a [Bare Kit](/bare/reference/bare/bare-kit) worklet, since it needs the app's Java VM.
+
+On an Android device with no Bluetooth adapter, `new Central()` and `new Server()` do not throw. They report `'unsupported'` through `stateChange`, so `central.state` and `server.state` read `'unsupported'`. From then on `central.startScan()` throws `NOT_POWERED_ON`, `connect()`, `disconnect()`, `addService()`, `startAdvertising()`, `respondToRequest()` and `publishChannel()` emit `error` with that code instead, and the remaining calls do nothing.
 
 ## Types
 
@@ -157,7 +159,7 @@ A string describing the current Bluetooth adapter state.
 | ---------------- | --------------------- |
 | `'unknown'`      | Apple                 |
 | `'resetting'`    | Apple                 |
-| `'unsupported'`  | Apple, Linux          |
+| `'unsupported'`  | Android, Apple, Linux |
 | `'unauthorized'` | Apple                 |
 | `'poweredOff'`   | Android, Apple, Linux |
 | `'poweredOn'`    | Android, Apple, Linux |
@@ -166,7 +168,7 @@ A string describing the current Bluetooth adapter state.
 
 ### BluetoothError
 
-Thrown when a call cannot be made at all, with `code` saying why. This package raises two codes: `NOT_POWERED_ON`, thrown by `startScan`, and `NOT_INITIATED`, emitted on `error` when a GATT operation could not be sent. Only Android raises `NOT_INITIATED`, since only the Android backend queues GATT operations.
+Thrown when a call cannot be made at all, with `code` saying why. This package raises two codes: `NOT_POWERED_ON`, thrown by `startScan` (and, on an Android device with no Bluetooth adapter, [emitted on `error` by other calls](#platforms)), and `NOT_INITIATED`, emitted on `error` when a GATT operation could not be sent. Only Android raises `NOT_INITIATED`, since only the Android backend queues GATT operations.
 
 Other failures that happen after a call returns arrive on the `error` event too. Those come from the platform package, carry their own codes, and are not instances of this class.
 
@@ -605,12 +607,12 @@ Create a GATT characteristic definition.
 
 **Properties**
 
-| Property      | Type                 | Description                                   |
-| ------------- | -------------------- | --------------------------------------------- |
-| `uuid`        | `string`             | UUID of the characteristic                    |
-| `properties`  | `number`             | Bitmask of characteristic properties          |
-| `permissions` | `number \| null`     | Bitmask of permissions, or `null` if inferred |
-| `value`       | `Uint8Array \| null` | Static value (read/write)                     |
+| Property      | Type                 | Description                                                    |
+| ------------- | -------------------- | -------------------------------------------------------------- |
+| `uuid`        | `string`             | UUID of the characteristic                                     |
+| `properties`  | `number`             | Bitmask of characteristic properties                           |
+| `permissions` | `number \| null`     | Bitmask of permissions, or `null` if inferred                  |
+| `value`       | `Uint8Array \| null` | Static value. Setting it on a discovered characteristic throws |
 
 **Constants**
 
