@@ -25,6 +25,12 @@ const layout: Layout = {
     },
   ],
   params: {
+    'Central.constructor': {
+      opts: 'Manager options. With `showPowerAlert: true` the system shows its alert if Bluetooth is off when the manager is created; defaults to `false`.',
+    },
+    'PeripheralManager.constructor': {
+      opts: 'Manager options. With `showPowerAlert: true` the system shows its alert if Bluetooth is off when the manager is created; defaults to `false`.',
+    },
     'Service.constructor': {
       uuid: "The service's UUID.",
       characteristics: 'The characteristics belonging to the service.',
@@ -44,14 +50,8 @@ const layout: Layout = {
     'Central.startScan': {
       serviceUUIDs: 'The service UUIDs to filter advertisements by; omit to discover all peripherals.',
     },
-    'Central.connect': {
-      peripheral: 'A discovered peripheral to connect to.',
-    },
     'Central.retrieveConnectedPeripherals': {
       services: 'The service UUIDs to match against the peripherals the system is connected to.',
-    },
-    'Central.disconnect': {
-      peripheral: 'The connected peripheral to disconnect from.',
     },
     'Peripheral.discoverServices': {
       serviceUUIDs: 'The service UUIDs to discover; omit to discover all services.',
