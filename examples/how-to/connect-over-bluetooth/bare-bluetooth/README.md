@@ -1,8 +1,8 @@
 # bare-bluetooth examples (documentation snapshot)
 
 `example/` is vendored from [holepunchto/bare-bluetooth](https://github.com/holepunchto/bare-bluetooth),
-branch **`main`**, at commit `7ac75b0`
-([tree](https://github.com/holepunchto/bare-bluetooth/tree/7ac75b032b436a925902b5a18a90019a31b2a675/example)).
+branch **`main`**, at commit `d1ef344`
+([tree](https://github.com/holepunchto/bare-bluetooth/tree/d1ef34487f57cc183b5d7a0d6c588d95447eb420/example)).
 The repository has no `LICENSE` file; its `package.json` declares Apache-2.0.
 
 `example/scan.js`, `example/l2cappong.js` and `example/gattpong.js` back the code imports in

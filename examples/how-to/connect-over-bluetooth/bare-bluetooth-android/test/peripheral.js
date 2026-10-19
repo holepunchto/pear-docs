@@ -104,6 +104,13 @@ test('connect and discover services', { skip: isCI }, async (t) => {
     const char = characteristics[0]
     t.ok(typeof char.uuid === 'string', 'characteristic has uuid')
     t.ok(typeof char.properties === 'number', 'characteristic has properties bitmask')
+    t.exception(
+      () => {
+        char.value = new Uint8Array([1])
+      },
+      /discovered characteristic/,
+      'a discovered characteristic rejects a value'
+    )
   }
 })
 

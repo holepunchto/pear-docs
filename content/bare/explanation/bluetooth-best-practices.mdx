@@ -6,7 +6,7 @@ product: bare
 schemaType: WebPage
 ---
 
-Bluetooth code that works between two laptops on a desk often fails between two phones in a pocket. Radios turn off, peers walk out of range, platforms report the same thing in different ways, and some failures never raise an event at all. The practices below come from code that has already been through that: the [`bare-bluetooth`](https://github.com/holepunchto/bare-bluetooth) examples, the [`bare-mobile-doctor`](https://github.com/holepunchto/bare-mobile-doctor) chat, and [`ble-swarm`](https://github.com/holepunchto/ble-swarm), a Hyperswarm-shaped Bluetooth transport (version 2.3.5 here). Each one says why, and where upstream does it. All of these projects are experimental upstream, so recheck a rule against the version you use.
+Bluetooth code that works between two laptops on a desk often fails between two phones in a pocket. Radios turn off, peers walk out of range, platforms report the same thing in different ways, and some failures never raise an event at all. The practices below come from code that has already been through that: the [`bare-bluetooth`](https://github.com/holepunchto/bare-bluetooth) examples, the [`bare-mobile-doctor`](https://github.com/holepunchto/bare-mobile-doctor) chat, and [`ble-swarm`](https://github.com/holepunchto/ble-swarm), a Hyperswarm-shaped Bluetooth transport (version 2.4.0 here). Each one says why, and where upstream does it. All of these projects are experimental upstream, so recheck a rule against the version you use.
 
 For how the pieces fit together, read [Bluetooth in Bare](/bare/explanation/bluetooth-in-bare) first.
 
@@ -18,7 +18,7 @@ Nothing works until the adapter reports `'poweredOn'`. `central.startScan()` thr
 
 Treat every arrival at `'poweredOn'` as a fresh start, not just the first. When the user turns Bluetooth off, the operating system drops your GATT services, advertising and scans: on Android, `bare-bluetooth` closes the GATT server, and its services go with it. When the radio comes back, add your services and start advertising again. `ble-swarm` goes further: after a power cycle it builds new `Central` and `Server` objects altogether, having found the surviving ones unreliable.
 
-Handle the states that never become `'poweredOn'` too: `'unauthorized'` when the user denied Bluetooth access on Apple platforms, and `'unsupported'` on hardware without Bluetooth Low Energy. Show the user something instead of waiting forever.
+Handle the states that never become `'poweredOn'` too: `'unauthorized'` when the user denied Bluetooth access on Apple platforms, and `'unsupported'` on hardware without Bluetooth Low Energy. Android reports `'unsupported'` for a device with no Bluetooth adapter from `bare-bluetooth` 0.6.3; before that, creating a `Central` or `Server` there threw. The object is then inert: `startScan()` throws `NOT_POWERED_ON`, and calls such as `connect()`, `addService()` and `startAdvertising()` emit an `error` with that code. Show the user something instead of waiting forever.
 
 ## Errors and timeouts
 
@@ -28,7 +28,7 @@ Handle the states that never become `'poweredOn'` too: `'unauthorized'` when the
 
 ### Wrap calls in `try`/`catch` too
 
-Some failures are thrown instead. `central.startScan()` throws a `BluetoothError` with code `NOT_POWERED_ON`. The Android binding throws the Java exception when a call itself fails, for example when a runtime permission is missing. Linux's `central.disconnect()` throws when given a `DiscoveredPeripheral`, and the platform packages throw from calls such as `retrievePeripherals()` and `getBondedDevices()`. `ble-swarm` wraps its calls in `try`/`catch` for this reason, including [`requestMtu()`](https://github.com/holepunchto/ble-swarm/blob/7a879a929539fb29084a7209f8ff2bf50bb00078/lib/transport.js#L729) and `openL2CAPChannel()`.
+Some failures are thrown instead. `central.startScan()` throws a `BluetoothError` with code `NOT_POWERED_ON`. The Android binding throws the Java exception when a call itself fails, for example when a runtime permission is missing. Linux's `central.disconnect()` throws when given a `DiscoveredPeripheral`, and the platform packages throw from calls such as `retrievePeripherals()` and `getBondedDevices()`. `ble-swarm` wraps its calls in `try`/`catch` for this reason, including [`requestMtu()`](https://github.com/holepunchto/ble-swarm/blob/e9210ab2fe73d7717aba853d6508a9b102637e26/lib/transport.js#L729) and `openL2CAPChannel()`.
 
 ### Expect errors where you'd expect `disconnect`
 
@@ -45,7 +45,7 @@ Only a clean disconnect emits `disconnect`. If your code waits for `disconnect` 
 
 `bare-mobile-doctor` gives up after 15 seconds and goes back to scanning, but it doesn't cancel the attempt. Its `BLECentral.disconnect()` only acts once a peripheral has connected, so a late `connect` can still arrive after the timeout. Cancel the attempt yourself.
 
-On Linux, cancelling a pending attempt this way doesn't work in `bare-bluetooth` 0.6.3-0: `disconnect()` expects a connected `Peripheral`, and throws when given the `DiscoveredPeripheral` the attempt started from.
+On Linux, cancelling a pending attempt this way doesn't work in `bare-bluetooth` 0.6.3: `disconnect()` expects a connected `Peripheral`, and throws when given the `DiscoveredPeripheral` the attempt started from.
 
 ### Notice a peer that has vanished
 
@@ -77,7 +77,7 @@ CoreBluetooth reports UUIDs uppercase, and reports those in the Bluetooth base r
 
 A central waiting on a write with response, or on a read, times out if the server takes too long to answer. Call `server.respondToRequest()` first, then process the data, as `ble-swarm` does:
 
-```js title="lib/transport.js (ble-swarm 2.3.5)"
+```js title="lib/transport.js (ble-swarm 2.4.0)"
 _onWriteRequests(requests) {
   const ok = this.server.constructor.ATT_SUCCESS ?? 0
   for (const req of requests) {
@@ -89,7 +89,7 @@ _onWriteRequests(requests) {
 }
 ```
 
-This is [`_onWriteRequests()`](https://github.com/holepunchto/ble-swarm/blob/7a879a929539fb29084a7209f8ff2bf50bb00078/lib/transport.js#L366-L374), copied without its class indentation.
+This is [`_onWriteRequests()`](https://github.com/holepunchto/ble-swarm/blob/e9210ab2fe73d7717aba853d6508a9b102637e26/lib/transport.js#L366-L374), copied without its class indentation.
 
 ### Keep values small, or move to L2CAP
 
