@@ -19,7 +19,7 @@ With this shape you can build CLIs, REPLs, TUIs, services and daemons, or transp
 <include>../../../_snippets/_p2p-intro-callout.mdx</include>
 
 Take this path when you want to distribute a terminal app as a single executable and update it over the air.
-If you want to build a desktop app instead, follow the [hello-pear-electron template](/p2p/getting-started/from-a-template/start-from-hello-pear-electron).
+If your program is a short-lived command that runs and exits, follow the [hello-pear-daemon template](/p2p/getting-started/from-a-template/start-from-hello-pear-daemon). If you want to build a desktop app instead, follow the [hello-pear-electron template](/p2p/getting-started/from-a-template/start-from-hello-pear-electron).
 
 <include>../../../_snippets/_install-pear-cli-callout.mdx</include>
 
@@ -133,37 +133,7 @@ flowchart LR
 | [`hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare) (this page) | `pear-runtime` inside a Bare [worker](/pear/explanation/workers) thread, with the worker source inlined | Long-lived programs (services, REPLs, TUIs) and reusable backends. |
 | [`hello-pear-daemon`](https://github.com/holepunchto/hello-pear-daemon) | `pear-runtime` inside a detached `bare-daemon` updater | Short-lived CLI invocations that shouldn't block on an update check. |
 
-Clone it in place of step 1 of [Clone and run](#clone-and-run); the remaining steps are the same, apart from the differences called out below:
-
-```bash
-git clone https://github.com/holepunchto/hello-pear-daemon
-cd hello-pear-daemon
-npm install
-```
-
-It has no `workers/` directory, so the `workers/main.js` row in [Map the template](#map-the-template) applies to `hello-pear-bare` only. `bin.mjs` spawns a **detached** updater and returns immediately—the foreground command never blocks on the network:
-
-```js file=<rootDir>/examples/getting-started/hello-pear-daemon/bin.mjs#L50-L57 title="bin.mjs"
-```
-
-`App.spawnUpdater` re-invokes the same executable with a hidden `--updater` flag through [`bare-daemon`](https://github.com/holepunchto/bare-daemon):
-
-```js file=<rootDir>/examples/getting-started/hello-pear-daemon/app.js#L11-L18 title="app.js"
-```
-
-The daemon acquires an `updater.lock` file in the storage directory—via [`fs-native-extensions`](https://github.com/holepunchto/fs-native-extensions)—so only one updater runs per storage directory at a time, and logs to `<storage>/updates.log` instead of stdout, since nothing is attached to read it.
-
-`--update-window` (default `30000`, in milliseconds) bounds only how long the daemon waits for a download to **start**. Once one starts, it stays alive until the update is applied or errors out, however long that takes. See [`app.js`](https://github.com/holepunchto/hello-pear-daemon/blob/main/app.js) and [`bin.mjs`](https://github.com/holepunchto/hello-pear-daemon/blob/main/bin.mjs) in the `hello-pear-daemon` repository for the full files.
-
-Give a run longer to pick up a download before the daemon gives up:
-
-```bash
-npm start -- --updates --update-window 60000
-```
-
-<Callout type="warn">
-Two steps from [Clone and run](#clone-and-run) behave differently in `hello-pear-daemon`. `npm start` **returns immediately** rather than staying up, so there is no `Ctrl+C` to press. And because the foreground process never constructs [`pear-runtime`](/pear/reference/pear/runtime), an unreplaced placeholder `upgrade` link does **not** fail with `INVALID_URL` in your terminal—the detached updater writes that error to `<storage>/updates.log`. Check that file first whenever updates appear not to run.
-</Callout>
+See [Start a short-lived CLI from the hello-pear-daemon template](/p2p/getting-started/from-a-template/start-from-hello-pear-daemon) for the walkthrough.
 
 ## Build a standalone binary
 
@@ -182,10 +152,6 @@ HOST=linux-arm64 npm run make
 | `WINDOWS_CERT_SHA1` | Windows | Signs the executable with the certificate that has this SHA-1 thumbprint, using `signtool.exe` from the Windows 10 SDK. |
 
 The per-platform `make:<platform>-<arch>` scripts in `package.json` are still there for one-off builds. Each one builds an **unsigned** binary into `out/<platform>-<arch>`, under the fixed name `hello-pear-bare`.
-
-<Callout type="info">
-`hello-pear-daemon` hasn't picked up this builder. There, `npm run make` still just runs the matching `make:<platform>-<arch>` script, so it ignores `HOST` and the signing variables and writes an unsigned binary, under the fixed name `hello-pear-bare`, to `out/<platform>-<arch>`.
-</Callout>
 
 See [Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app#standalone-executable-with-bare-build) for what `npm run make` runs under the hood—[`bare-build`](https://github.com/holepunchto/bare-build), the same tool behind any standalone Bare executable, Pear app or not.
 
@@ -241,7 +207,8 @@ Before you ship, set your identity in `package.json`:
 
 ## Where to go next
 
-- [Start from a template](/p2p/getting-started/from-a-template)—all three boilerplates, side by side.
+- [Start from a template](/p2p/getting-started/from-a-template)—all four boilerplates, side by side.
+- [Start a short-lived CLI from the hello-pear-daemon template](/p2p/getting-started/from-a-template/start-from-hello-pear-daemon)—the short-lived CLI counterpart, with a detached updater instead of a worker.
 - [Start from the hello-pear-electron template](/p2p/getting-started/from-a-template/start-from-hello-pear-electron)—the desktop counterpart, with a renderer, preload bridge, and Bare worker.
 - [Inside Bare](/bare/explanation/bare-runtime)—what the runtime this template builds on actually is, and its lifecycle.
 - [How the stack fits together](/p2p/explanation/how-the-stack-fits-together)—where Bare and Pear sit relative to each other.

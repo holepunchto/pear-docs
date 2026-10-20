@@ -31,4 +31,6 @@ Desktop architecture (main/renderer/worker split):
 https://docs.pears.com/pear/explanation/pear-desktop-architecture/
 Terminal template (hello-pear-bare):
 https://docs.pears.com/p2p/getting-started/from-a-template/start-from-hello-pear-bare/
+Short-lived CLI template (hello-pear-daemon):
+https://docs.pears.com/p2p/getting-started/from-a-template/start-from-hello-pear-daemon/
 Configuration reference: https://docs.pears.com/pear/reference/pear/configuration/
