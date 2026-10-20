@@ -4,7 +4,7 @@ description: "Module bundling and harness generation for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.1.5"
+upstreamVersion: "0.1.7"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -73,6 +73,10 @@ ipc.on('exit', (code) => {
 ipc.destroy()
 ```
 
+`start()` rejects if the bundle fails, exits, or closes before it signals ready. Before v0.1.7 it stayed pending when the bundle exited or closed first.
+
+For the `bare-sidecar` target, `start()` takes the options of [`bare-sidecar`](/bare/reference/bare/modules/bare-sidecar#sidecaroptions) and passes them to the sidecar. Added in v0.1.6: the sidecar inherits the standard streams of the host unless `stdio` says otherwise. Before v0.1.6 its streams were pipes that nothing read, so the output of the bundle was not shown. The default takes effect with [`bare-sidecar`](/bare/reference/bare/modules/bare-sidecar) v0.5.8 or later, because earlier versions ignore `stdio`.
+
 ## API
 
 ### Functions
@@ -92,7 +96,7 @@ Bundle the module graph rooted at `entry` for `target`, writing a harness plus b
 | `entry` | `URL` \| `string` | — | The entry module to bundle, as a `file:` URL or path string. |
 | `target` | [`Target`](#target) \| `TargetName` | — | The bundling target: a `Target` object, or a target name resolved to one (the built-in `bare-sidecar` and `bare-worker`, or a `bare-stow-target-<name>` package). |
 | `out` | `URL` \| `string` | — | The path to write the harness to, as a `file:` URL or path string; the bundle is written alongside it. |
-| `opts?` | [`StowOptions`](#stowoptions) | — | Options; `client`/`server` wire an RPC library into the harness/shim, `base` sets the module graph root (defaults to the directory containing `entry`), `hosts` restricts the build to a subset of the target's supported host triples (defaults to all of them), `resolveTarget`/`resolveRPC` resolve a target/RPC name that isn't in the built-in registry, and any other option is forwarded to `bare-pack`. |
+| `opts?` | [`StowOptions`](#stowoptions) | — | Options; `client`/`server` wire an RPC library into the harness/shim, `base` sets the module graph root, which must contain every module in the bundle (defaults to the closest directory that does), `hosts` restricts the build to a subset of the target's supported host triples (defaults to all of them), `resolveTarget`/`resolveRPC` resolve a target/RPC name that isn't in the built-in registry, and any other option is forwarded to `bare-pack`. |
 
 **Returns** `AsyncGenerator<StowArtifact>` — An async generator that yields each written artifact's `url` as it is produced — the harness first, then the bundle, then any offloaded addon or asset files.
 
@@ -101,6 +105,7 @@ Bundle the module graph rooted at `entry` for `target`, writing a harness plus b
 - The `target` argument is missing.
 - The `out` argument is missing.
 - A host in `opts.hosts` is not supported by the resolved target.
+- A module in the graph is outside `opts.base`, with the message `Module '<url>' is outside base '<base>'`.
 
 ### Types
 
@@ -219,6 +224,8 @@ interface StowOptions {
 
 Options for `stow()`.
 
+`base` is the root of the module graph, and the paths of the modules inside the bundle are relative to it. It must contain every module in the bundle, and `stow()` throws if a module is outside it. It defaults to the closest directory that contains every module. Before v0.1.6 it defaulted to the directory containing `entry`, and the CLI used the working directory. When modules sat outside that directory, for example because `node_modules` was above it, they fell outside the root of the bundle and the sidecar failed to start with a `CANNOT_READ` error.
+
 #### `StowArtifact`
 
 ```ts
@@ -317,7 +324,7 @@ Wrap the host side of a stowed bundle's transport `stream`.
 
 #### `ready: Promise<void>`
 
-A promise that resolves once the worker has signaled ready, and rejects if the worker errors before then.
+A promise that resolves once the worker has signaled ready. It rejects if the worker errors, exits, or the transport closes before then, with `Worker exited with code <code> before ready` or `Worker closed before ready` for the last two. Before v0.1.7 only an error rejected it, and an exit or close left it pending. An exit or close after it has resolved does not change it.
 
 #### `terminate(): Promise<number | undefined>`
 
@@ -356,7 +363,7 @@ An incoming `error` frame destroys the local `ipc` with the carried error, surfa
 
 The `ipc` handle exposes the lifecycle as events and methods on the same duplex:
 
-- `ipc.ready`: A promise that resolves once the worker has signaled ready. Rejects if the worker errors before ready.
+- `ipc.ready`: A promise that resolves once the worker has signaled ready. Rejects if the worker errors, exits, or the transport closes before ready. The exit and close cases were added in v0.1.7.
 - `ipc.on('exit', code)`: Emitted when the worker signals exit. `code` carries the exit code.
 - `ipc.on('error', err)`: Emitted when the worker reports a fault, or when the underlying transport errors. Either way the `ipc` is destroyed.
 - `ipc.on('close')`: Emitted when the underlying transport closes.
@@ -412,6 +419,10 @@ The target runtime. Required. The built-in `bare-sidecar` and `bare-worker` are 
 ##### `--client <name>` and `--server <name>`
 
 The RPC library to wire into the harness (`--client`) or the bundle entry shim (`--server`). The built-in `bare-rpc` is resolved directly; any other `<name>` is loaded from its `bare-stow-rpc-<name>` package, or from `<name>` itself as a full module specifier, resolved from the working directory.
+
+##### `--base <path>`
+
+The base path of the module graph. It must contain every module in the bundle. Defaults to the closest directory that does. Before v0.1.6 it defaulted to the working directory.
 
 ##### `--builtins <path>` and `--imports <path>`
 

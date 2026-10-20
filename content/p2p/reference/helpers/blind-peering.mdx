@@ -1,0 +1,325 @@
+---
+title: "blind-peering"
+description: "Client that asks blind peers to keep Hypercores and Autobases available and to forward push notifications."
+upstreamVersion: "2.10.1"
+seoTitle: "blind-peering: Keep Cores Available via Blind Peers"
+docType: reference
+product: p2p
+schemaType: APIReference
+---
+
+<Status level="stable" />
+
+`blind-peering` is the client half of [blind peering](/p2p/explanation/blind-peering). It connects your app to one or more [blind peers](/p2p/reference/helpers/blind-peer)—always-on servers that replicate and store [Hypercores](/p2p/reference/building-blocks/hypercore) without being able to read them—and asks them to keep the cores and [Autobases](/p2p/reference/building-blocks/autobase) you register available when no writer is online. It can also ask a blind peer to forward a push notification about a new block. For upstream source and releases, see the [blind-peering repository](https://github.com/holepunchto/blind-peering).
+
+## Install
+
+```sh
+npm i blind-peering
+```
+
+## Quickstart
+
+```js
+import Hyperswarm from 'hyperswarm'
+import Corestore from 'corestore'
+import BlindPeering from 'blind-peering'
+
+const swarm = new Hyperswarm()
+const store = new Corestore('./app-storage')
+swarm.on('connection', (conn) => store.replicate(conn))
+
+const core = store.get({ name: 'messages' })
+await core.append('hello')
+
+const blind = new BlindPeering(swarm.dht, store.namespace('blind-peering'), {
+  blindPeers: [{ key: '<blind peer public key, hex or z32>' }]
+})
+
+// Resolves once the connection to each picked blind peer is open
+await blind.addCore(core)
+
+await blind.close()
+await swarm.destroy()
+await store.close()
+```
+
+Run the server side with [`pear blind-peer start`](/pear/reference/pear/cli#pear-blind-peer) or embed one with [`blind-peer`](/p2p/reference/helpers/blind-peer). The server prints the public key you pass in `blindPeers`.
+
+## API Reference
+
+### Constructor and lifecycle
+
+#### `new BlindPeering(dht, store[, opts])`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L24)
+
+Create a client. It connects to a blind peer only when a core, an autobase or a notification needs one.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `dht` | [`HyperDHT`](/p2p/reference/building-blocks/hyperdht) | — | The DHT node used to connect to blind peers, usually [`swarm.dht`](/p2p/reference/building-blocks/hyperswarm#swarmdht). The client reconnects when it emits `network-change`. |
+| `store` | [`Corestore`](/p2p/reference/helpers/corestore) | — | The store that holds the cores you register. The client replicates it over every blind-peer connection. A namespace such as `store.namespace('blind-peering')` works. |
+| `opts` | [`BlindPeeringOptions`](#blindpeeringoptions) | `{}` | Client options. |
+
+- Throws: if a key in `blindPeers` or `keys` isn't a 32-byte key or a [`hyperdht-address`](https://github.com/holepunchto/hyperdht-address) encoding of one. For example `Invalid Hypercore key`.
+
+```js
+const blind = new BlindPeering(swarm.dht, store.namespace('blind-peering'), {
+  blindPeers: [{ key: blindPeerKey }]
+})
+```
+
+#### `await blind.close()`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L364)
+
+Close the client. It closes every blind-peer connection, stops reconnecting and drops all registrations. A pending `addCore()` or `addAutobase()` call settles when the client closes.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+
+Close the client before the swarm and store it uses.
+
+#### `await blind.suspend()`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L137)
+
+Close every blind-peer connection and stop reconnecting. Registrations stay in place. Use it when your app goes to the background and shouldn't hold connections open.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+
+While the client is suspended, `addCore()` and `addAutobase()` record the registration and resolve at once. The request goes out on `resume()`.
+
+#### `await blind.resume()`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L148)
+
+Reconnect after `suspend()` and send every registration again. Clients created with the [`suspended`](#blindpeeringoptions) option start in this state, so call `resume()` to begin.
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+
+### Properties
+
+#### `blind.keys`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L107)
+
+The public keys of the configured blind peers.
+
+- Returns: [`Array<Buffer>`](https://nodejs.org/api/buffer.html#class-buffer)
+
+#### `blind.suspended` / `blind.closed`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L49)
+
+`true` while the client is suspended / once `close()` has been called.
+
+- Returns: `boolean`
+
+#### `blind.stats`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L80)
+
+Counters since the client was created.
+
+- Returns: `{ addCore, addAutobase, addCoresTx, notificationsTx }`
+
+| Counter | Counts |
+| --- | --- |
+| `addCore` | Core registrations sent to blind peers: one per core per blind peer, counted again when a core has grown. |
+| `addAutobase` | Autobase registrations: one per autobase per blind peer. |
+| `addCoresTx` | `add-cores` requests sent to blind peers. An autobase sends several. |
+| `notificationsTx` | Notifications sent to a blind peer. |
+
+### Blind peers
+
+#### `blind.setBlindPeers(blindPeers)`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L115)
+
+Replace the configured blind peers and register every core and autobase you already added with the new set.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `blindPeers` | [`Array<BlindPeerInfo>`](#blindpeerinfo) | The new list. |
+
+- Throws: if a key is invalid, as the constructor does.
+
+#### `blind.setKeys(keys)`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L111)
+
+Same as `setBlindPeers()` for a list of keys without groups. The [`keys`](#blindpeeringoptions) constructor option is the matching form.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `keys` | `Array<Buffer\|string>` | Blind peer public keys. |
+
+#### `blind.bump()`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L101)
+
+Reset the reconnect backoff of every blind-peer connection and retry now. The client calls it when the DHT emits `network-change`.
+
+### Keeping data available
+
+#### `await blind.addCore(core[, opts])`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L260)
+
+Ask blind peers to keep a Hypercore. Each picked blind peer replicates the core, stores it and serves it to other peers.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `core` | [`Hypercore`](/p2p/reference/building-blocks/hypercore) | The core to register. It's opened first if needed. |
+| `opts` | [`AddCoreOptions`](#addcoreoptions) | Registration options. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)—resolves once the connection to each picked blind peer is open.
+
+If a picked blind peer is unreachable, the client retries with backoff and the promise stays pending until it connects or the client closes. The promise resolves without registering anything when the core is closing. Closing a registered core removes its registration.
+
+Calling `addCore()` again for the same core keeps the options of the first call. The client sends a new request only when the core has grown and the blind peer isn't already replicating it.
+
+```js
+await blind.addCore(core, { priority: 1, pick: 3 })
+```
+
+#### `blind.addCoreBackground(core[, opts])`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L282)
+
+Same as `addCore()`, but returns at once and doesn't report failures.
+
+- Returns: `void`
+
+#### `await blind.addAutobase(base[, opts])`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L185)
+
+Ask blind peers to keep an [Autobase](/p2p/reference/building-blocks/autobase): its view cores and its writer cores. An [Autobee](/p2p/reference/building-blocks/autobee) works too, since 2.9.0.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `base` | [`Autobase`](/p2p/reference/building-blocks/autobase)\|[`Autobee`](/p2p/reference/building-blocks/autobee) | The autobase to register. It's opened first if needed. |
+| `opts` | [`AddCoreOptions`](#addcoreoptions) | Same options as `addCore()`, with the defaults noted there. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)—resolves once the connection to each picked blind peer is open.
+
+The client sends the autobase's view cores in one request, and your local writer core plus a sample of the other writer cores in another. The sample is sized by [`maxBatchMin`](#blindpeeringoptions) and [`maxBatchMax`](#blindpeeringoptions). Writers the autobase discovers afterwards go out once more, after [`batchIdleWait`](#blindpeeringoptions) milliseconds without a new writer and at most [`batchMaxWait`](#blindpeeringoptions) milliseconds after the call. The client doesn't send writers added after that again. It finds every view and writer core through the autobase itself, so the `additionalViews` option that earlier releases accepted is ignored since 2.9.0. Register cores that aren't part of the autobase with `addCore()`.
+
+```js
+await blind.addAutobase(base)
+```
+
+#### `blind.addAutobaseBackground(base[, opts])`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L256)
+
+Same as `addAutobase()`, but returns at once and doesn't report failures.
+
+- Returns: `void`
+
+### Push notifications
+
+#### `await blind.sendNotification(core[, opts])`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L286)
+
+Ask a blind peer to build a `blind-push` notification for a block of `core` and forward it to its push gateway. The blind peer needs the core already registered, and needs push gateways configured with [`pushGatewayKeys`](/p2p/reference/helpers/blind-peer#blindpeeroptions). Without a gateway it accepts the request and drops it.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `core` | [`Hypercore`](/p2p/reference/building-blocks/hypercore) | The core that has the new block. |
+| `opts` | [`SendNotificationOptions`](#sendnotificationoptions) | Notification options. |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)—resolves once a blind peer has accepted the request.
+- Throws: `Timed out` if the call can't get a rate-limit token within [`notificationRateLimit.timeout`](#blindpeeringoptions). `No peers available` if none of the picked blind peers could be reached or accepted the request. A failure from a blind peer that is already connected is thrown as is.
+
+The client picks among the [`pick`](#blindpeeringoptions) blind peers closest to `target`. It prefers a random one that is already connected. If none is connected it tries them in order, waiting up to 5 seconds for each connection. Before 2.9.1 it used the single closest connected blind peer. The call is rate limited by [`notificationRateLimit`](#blindpeeringoptions).
+
+```js
+await blind.sendNotification(core, { appId: 'my-app' })
+```
+
+#### `blind.sendNotificationBackground(core[, opts])`
+
+[src](https://github.com/holepunchto/blind-peering/blob/v2.10.1/index.js#L344)
+
+Same as `sendNotification()`, but returns at once and doesn't report failures.
+
+- Returns: `void`
+
+## Types
+
+### BlindPeeringOptions
+
+Options for the [`BlindPeering`](#new-blindpeeringdht-store-opts) constructor.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `blindPeers` | [`Array<BlindPeerInfo>`](#blindpeerinfo) | `[]` | The blind peers to use. Always set it, because with none the client has nobody to contact. |
+| `keys` | `Array<Buffer\|string>` | `[]` | Older form of `blindPeers`: keys without groups. Used only when `blindPeers` is empty. |
+| `pick` | `number` | `2` | How many blind peers each core or autobase registers with, and how many of the closest peers `sendNotification()` chooses among. |
+| `wakeup` | `object` | `null` | A `protomux-wakeup` instance, such as an Autobase's `wakeupProtocol`. The client adds every blind-peer connection to it, so the blind peer can wake your peers. |
+| `suspended` | `boolean` | `false` | Start suspended. Call `resume()` to connect. |
+| `relayThrough` | [`Buffer\|Array<Buffer>\|function`](/p2p/reference/building-blocks/hyperdht#nodeconnectremotepublickey-options) | `null` | Passed to [`dht.connect()`](/p2p/reference/building-blocks/hyperdht#nodeconnectremotepublickey-options) as `relayThrough` for every blind-peer connection. |
+| `client` | `{ name, version }` | `null` | Identifies your app to blind peers. Both values go in the connection handshake. Added in 2.10.0. |
+| `skipConnectionMetadata` | `boolean` | `false` | When `true`, the handshake carries no metadata: neither `client` nor the blind-peering version. Added in 2.10.1. |
+| `notificationRateLimit` | `{ capacity, interval, timeout }` | `{ capacity: 10, interval: 1000, timeout: 10000 }` | Limit on `sendNotification()`: bursts of up to `capacity` calls, then one more call every `interval` milliseconds. A call waits at most `timeout` milliseconds for its turn. Pass `null` to turn the limit off. |
+| `gcWait` | `number` | `2000` | Milliseconds between checks for idle blind-peer connections. A connection closes once every core and autobase registered through it has closed and uploads to it have been quiet for a few checks. |
+| `maxBatchMin` | `number` | `3` | How many writer cores an autobase request includes before the client starts sampling. Static cores, and cores whose first block no peer has acknowledged, are always included. |
+| `maxBatchMax` | `number` | `9` | The most writer cores the client adds by sampling to an autobase request. It samples at random, and prefers cores that no peer has fully acknowledged. |
+| `batchIdleWait` | `number` | `2000` | Milliseconds after the last newly found writer before the follow-up autobase request goes out. |
+| `batchMaxWait` | `number` | `10000` | Most milliseconds the follow-up autobase request waits. |
+| `backoffResetWait` | `number` | `10000` | Milliseconds a connection has to stay up before its reconnect backoff resets. The backoff grows from 0 to 60 seconds. |
+
+### BlindPeerInfo
+
+One blind peer.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `key` | `Buffer\|string` | The blind peer's public key: 32 bytes, or a hex or z32 string. A [`hyperdht-address`](https://github.com/holepunchto/hyperdht-address) encoding is also accepted: the key plus DHT node addresses that HyperDHT uses as relay addresses for the connection. |
+| `group` | `string` | Optional. Where the blind peer is hosted. When the client picks several peers for one core, it takes them from different groups where it can. |
+
+### AddCoreOptions
+
+Options for `addCore()` and `addAutobase()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `target` | `Buffer` | `core.key`. For an autobase, `base.wakeupCapability.key`. | The key the client measures XOR distance to when it picks blind peers. The default spreads cores across the configured peers. Set it to a blind peer's public key to use that peer. |
+| `pick` | `number` | The client's `pick` | How many blind peers to register with. |
+| `priority` | `number` | `0` for a core, `1` for an autobase | How long the blind peer should hold on to the data: `0` low, `1` normal, `2` high. See [priority](/p2p/reference/helpers/blind-peer#priority). |
+| `announce` | `boolean` | `false` | Ask the blind peer to announce the core on the swarm. Only [trusted peers](/p2p/reference/helpers/blind-peer#announce-and-trusted-peers) get this. For anyone else the blind peer resets it to `false`. |
+| `referrer` | `Buffer` | `null` for a core. For an autobase, `target`. | A key the blind peer files the core under. It uses the key to wake peers that follow it when the core changes. |
+| `blindPeers` | [`Array<BlindPeerInfo>`](#blindpeerinfo) | The client's list | Register with these blind peers instead of the configured ones. |
+| `keys` | `Array<Buffer\|string>` | — | Older form of `blindPeers`. |
+
+For an autobase, the writer cores carry the `referrer`. The view cores carry none.
+
+### SendNotificationOptions
+
+Options for `sendNotification()`.
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `roomKey` | `Buffer` | `core.key` | The key that encrypts the notification. A receiver needs it to read the notification. |
+| `roomDiscoveryKey` | `Buffer` | The discovery key of `roomKey` | The room's discovery key, exposed in the notification. |
+| `index` | `number` | `core.length - 1` | The index of the block the notification proves. |
+| `target` | `Buffer` | `core.key` | The key the client measures XOR distance to when it picks blind peers. |
+| `extra` | `Buffer` | `null` | Metadata embedded in the encrypted notification. |
+| `appId` | `string` | `null` | Identifies your app to the push gateway. |
+| `blindPeers` | [`Array<BlindPeerInfo>`](#blindpeerinfo) | The client's list | Use these blind peers instead of the configured ones. |
+| `keys` | `Array<Buffer\|string>` | — | Older form of `blindPeers`. |
+
+## See also
+
+- [Blind peering](/p2p/explanation/blind-peering)—why a blind peer never needs your read key, and how the pieces fit.
+- [Keep data available with blind peering](/p2p/how-to/blind-peering/keep-data-available-with-blind-peering)—the step-by-step guide for this client.
+- [Add blind peering to a chat app](/p2p/how-to/blind-peering/add-blind-peering-to-a-chat-app)—the client wired into a desktop app.
+- [blind-peer](/p2p/reference/helpers/blind-peer)—the server library these requests go to.
+- [Corestore](/p2p/reference/helpers/corestore)—the store the client replicates over each connection.
+- [Autobase](/p2p/reference/building-blocks/autobase)—the multi-writer log that `addAutobase()` registers.
+- [`pear blind-peer`](/pear/reference/pear/cli#pear-blind-peer)—run a blind peer from the Pear CLI.
+- [Upstream blind-peering repository](https://github.com/holepunchto/blind-peering)—source, releases and implementation details.

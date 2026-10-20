@@ -4,7 +4,7 @@ description: "Native file system operations for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "4.8.2"
+upstreamVersion: "4.8.4"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -769,7 +769,9 @@ Synchronous form: `linkSync(src: Path, dst: Path): void`
 
 Create a symbolic link at `filepath` pointing to `target`. `type` may be `'file'`, `'dir'`, or
 `'junction'` (Windows only) or a numeric flag. On Windows, if `type` is not provided, it is
-inferred from the target.
+inferred from the target: a target that is a directory gives a directory link, and anything else,
+including a target that does not exist, gives a file link. Before v4.8.3, an existing target that
+was not a directory gave a junction.
 
 Overloads:
 
@@ -947,7 +949,7 @@ Synchronous form: `copyFileSync(src: Path, dst: Path, mode?: number): void`
 
 #### `cp(src: Path, dst: Path, opts?: CpOptions): Promise<void>`
 
-Copy a file or directory from `src` to `dst`.
+Copy a file or directory from `src` to `dst`. A symbolic link is copied as a link and is not followed: the link is recreated at `dst` with the same target, whether or not the target exists. On Windows, a relative target is resolved against the directory of `dst` and stored as an absolute path. The link replaces a file or link already at `dst`, but not a directory. A special file, such as a named pipe, throws `ENOTSUP`. Before v4.8.3, symbolic links and special files were skipped without an error.
 
 Overloads:
 
@@ -970,6 +972,8 @@ Synchronous form: `cpSync(src: Path, dst: Path, opts?: CpOptions): void`
 **Throws**
 
 - `EISDIR` — `src` is a directory and `opts.recursive` is not set.
+- `EEXIST` — a symbolic link would replace an existing directory at `dst`.
+- `ENOTSUP` — `src` is a special file, such as a named pipe, or a directory that contains one and is copied recursively.
 
 ### Streams and watching
 
@@ -1939,7 +1943,7 @@ Copy a file from `src` to `dst`. `mode` is an optional bitmask created from
 
 #### `promises.cp(src: Path, dst: Path, opts?: CpOptions): Promise<void>`
 
-Copy a file or directory from `src` to `dst`.
+Copy a file or directory from `src` to `dst`. A symbolic link is copied as a link and is not followed: the link is recreated at `dst` with the same target, whether or not the target exists. On Windows, a relative target is resolved against the directory of `dst` and stored as an absolute path. The link replaces a file or link already at `dst`, but not a directory. A special file, such as a named pipe, throws `ENOTSUP`. Before v4.8.3, symbolic links and special files were skipped without an error.
 
 **Parameters**
 
@@ -1952,6 +1956,8 @@ Copy a file or directory from `src` to `dst`.
 **Throws**
 
 - `EISDIR` — `src` is a directory and `opts.recursive` is not set.
+- `EEXIST` — a symbolic link would replace an existing directory at `dst`.
+- `ENOTSUP` — `src` is a special file, such as a named pipe, or a directory that contains one and is copied recursively.
 
 #### `promises.lchown(filepath: Path, uid: number, gid: number): Promise<void>`
 
@@ -2213,7 +2219,9 @@ Truncate the file at `filename` to `len` bytes. `len` defaults to `0`.
 
 Create a symbolic link at `filepath` pointing to `target`. `type` may be `'file'`, `'dir'`, or
 `'junction'` (Windows only) or a numeric flag. On Windows, if `type` is not provided, it is
-inferred from the target.
+inferred from the target: a target that is a directory gives a directory link, and anything else,
+including a target that does not exist, gives a file link. Before v4.8.3, an existing target that
+was not a directory gave a junction.
 
 **Parameters**
 
@@ -2402,5 +2410,7 @@ An object containing file system constants, such as file access modes and file t
 ## See also
 
 - Builds on `bare-events`, `bare-path`, `bare-stream`, and `bare-url`.
+- v4.8.3 makes `fs.cp()` and `fs.cpSync()` copy symbolic links and throw `ENOTSUP` for special files, where earlier versions skipped both without an error. It also stops `fs.symlink()` from inferring a junction for a Windows target that is not a directory.
+- v4.8.4 computes `atimeMs`, `birthtimeMs`, `ctimeMs`, and `mtimeMs`, and the `Date` values built from them, with 64-bit arithmetic. Earlier versions could overflow in the seconds-to-milliseconds conversion on platforms where the native seconds field is a 32-bit `long`. There is no API change.
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
 - [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

@@ -4,7 +4,7 @@ description: "Start and manage Bare sidecar processes from Node.js and Electron"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.5.7"
+upstreamVersion: "0.5.8"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -40,13 +40,30 @@ In the sidecar entry (`entry.js`), the IPC channel is available as a stream on `
 Bare.IPC.on('data', (data) => Bare.IPC.write(data))
 ```
 
+### Standard streams
+
+By default, the standard input, output, and error of the sidecar process are pipes, exposed on the `Sidecar` as `stdin`, `stdout`, and `stderr`. Piped output must be read, or the sidecar blocks once the pipe buffer fills. The `stdio` option, added in v0.5.8, lets the sidecar share the streams of the host instead, or discard them:
+
+```js
+// Share the standard input, output, and error of the host
+const verbose = new Sidecar(require.resolve('./entry'), { stdio: 'inherit' })
+
+// Discard the standard input, output, and error
+const quiet = new Sidecar(require.resolve('./entry'), { stdio: 'ignore' })
+
+// Set up each stream on its own, as [stdin, stdout, stderr]
+const mixed = new Sidecar(require.resolve('./entry'), { stdio: ['ignore', 'pipe', 'inherit'] })
+```
+
+A stream that is not piped is `null` on the `Sidecar`. The IPC channel is not affected by `stdio`.
+
 ## API
 
 ### Sidecar
 
 #### `new Sidecar(entry: string, args?: string[], opts?: SidecarOptions)`
 
-Spawn a bundled Bare runtime running `entry` and return a `Sidecar`. `entry` is the path to the module to run, typically resolved with `require.resolve()`. `args` is an array of additional command line arguments passed to the process. `options` is reserved for future use.
+Spawn a bundled Bare runtime running `entry` and return a `Sidecar`. `entry` is the path to the module to run, typically resolved with `require.resolve()`. `args` is an array of additional command line arguments passed to the process. `opts` controls how the process is spawned, see [`SidecarOptions`](#sidecaroptions).
 
 Overloads:
 
@@ -61,7 +78,7 @@ new Sidecar(entry: string, opts?: SidecarOptions)
 | --- | --- | --- | --- |
 | `entry` | `string` | — | Path to the module the sidecar process runs, typically resolved with `require.resolve()`. |
 | `args?` | `string[]` | — | Additional command-line arguments passed to the process (default `[]`). |
-| `opts?` | [`SidecarOptions`](#sidecaroptions) | — | Reserved for future use. |
+| `opts?` | [`SidecarOptions`](#sidecaroptions) | — | Spawn options: `detached`, and, added in v0.5.8, `stdio`. |
 
 #### `_destroy(err: Error | null, cb: StreamCallback): void`
 
@@ -187,15 +204,15 @@ end(data: unknown, cb?: StreamCallback): this
 
 #### `stderr: Pipe | null`
 
-The readable standard error stream of the underlying process.
+The readable standard error stream of the underlying process. It is `null` when `stdio` sets the stream to `'inherit'` or `'ignore'`.
 
 #### `stdin: Pipe | null`
 
-The writable standard input stream of the underlying process.
+The writable standard input stream of the underlying process. It is `null` when `stdio` sets the stream to `'inherit'` or `'ignore'`.
 
 #### `stdout: Pipe | null`
 
-The readable standard output stream of the underlying process.
+The readable standard output stream of the underlying process. It is `null` when `stdio` sets the stream to `'inherit'` or `'ignore'`.
 
 #### `uncork(): void`
 
@@ -251,14 +268,29 @@ interface SidecarEvents {
 ```ts
 interface SidecarOptions {
   detached?: boolean
+  stdio?: SidecarStdio | [stdin?: SidecarStdio, stdout?: SidecarStdio, stderr?: SidecarStdio]
 }
 ```
+
+Options for `new Sidecar()`.
+
+- `detached`: Let the sidecar process lead its own process group. Added in v0.5.6.
+- `stdio`: How to set up the standard input, output, and error of the sidecar process, either for all three with one [`SidecarStdio`](#sidecarstdio) value or per stream with an array of `[stdin, stdout, stderr]`. Defaults to `'pipe'`, and so does any array entry that is left out. Added in v0.5.8.
+
+#### `SidecarStdio`
+
+```ts
+type SidecarStdio = 'pipe' | 'inherit' | 'ignore'
+```
+
+How one standard stream of the sidecar process is set up. `'pipe'` exposes the stream on the `Sidecar`, and a piped output stream must be read, or the sidecar blocks once the pipe buffer fills. `'inherit'` connects the stream to the matching stream of the host. `'ignore'` discards it. Added in v0.5.8.
 
 ## See also
 
 - Builds on `bare-fs`, `bare-module`, `bare-path`, `bare-pipe`, `bare-stream`, `bare-subprocess`, and `bare-url`.
 - The instance extends a duplex stream: writing to it sends data to the sidecar over its IPC channel, data received from the sidecar is emitted as `'data'` events, and destroying the stream kills the sidecar process.
 - The `'close'` event is emitted after the sidecar process has exited and its underlying stream has been destroyed.
+- The sidecar runs the Bare runtime that ships inside the package: v1.34.1 as of v0.5.8, v1.34.0 in v0.5.7.
 - [`bare-subprocess`](/bare/reference/bare/modules/bare-subprocess) — the lower-level process API.
 - [One core, many platforms](/bare/explanation/bare-on-native) — running a Bare core beside a host.
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.

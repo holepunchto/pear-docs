@@ -4,7 +4,7 @@ description: "The module system that powers Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "7.2.1"
+upstreamVersion: "7.4.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -44,6 +44,53 @@ const foo = require('./foo.js')
 ```
 
 The same machinery backs the `require()` and `import` available to modules as they run; see CommonJS modules and ECMAScript modules for what each exposes.
+
+### Loading bundles
+
+A `.bundle` loads as a module graph of its own. Pass the bundle as the `source`, either as its bytes or, from v7.4.0, as a `Bundle` that has already been parsed with [`bare-bundle`](/bare/reference/bare/modules/bare-bundle):
+
+```js
+const Module = require('bare-module')
+const Bundle = require('bare-bundle')
+
+const bundle = new Bundle()
+  .write('/foo.js', "module.exports = require('./bar')", { main: true })
+  .write('/bar.js', 'module.exports = __filename')
+
+const foo = Module.loadSync(new URL('file:///app.bundle'), bundle)
+
+foo.exports
+// '/app.bundle/bar.js'
+```
+
+The bundle serves the modules under its mount. The mount is the URL of the bundle followed by `/`, so the bundle in the example serves `file:///app.bundle/foo.js` and `file:///app.bundle/bar.js`. Added in v7.3.0: the `mount` option sets another URL to mount the entry at:
+
+```js
+const foo = Module.loadSync(new URL('file:///app.bundle'), bundle, {
+  mount: 'file:///app/'
+})
+
+foo.exports
+// '/app/bar.js'
+```
+
+`mount` is a `URL` or a string that parses as one, and a `/` is added to the end if it has none. A value that is neither throws a `TypeError`. `Module.load()`, `Module.loadSync()`, and the loader's `link()`, `linkSync()`, `import()`, and `importSync()` apply it. `instantiate()` and `instantiateSync()` take the same options but do not, so a bundle they compile is mounted at its own URL, unless the same loader was already linked with a `mount` for that URL. From Bare 1.35.0, [`Bare.Thread`](/bare/reference/bare/runtime#barethread) forwards its own `mount` option to `Module.loadSync()`.
+
+- A key that starts with `/`, such as `/foo.js`, is placed under the mount. A key that is already an absolute URL, such as `file:///app/foo.js`, stays where it is, so the mount has to cover it.
+- The bundle serves only the modules under its mount. Any other module is read through the protocol, and resolution fails with `MODULE_NOT_FOUND` if the protocol does not have it. This applies to a key outside the bundle, such as `/../bar.js`, and to an absolute key that the mount does not cover. Pass `file:///` as the mount to let a bundle serve any file.
+- Before v7.2.2 a bundle also served a module outside its mount when the protocol did not have it. A bundle whose absolute keys lie outside its own URL therefore loaded in v7.2.1 and fails from v7.2.2 with `MODULE_NOT_FOUND`, unless it is given a `mount` that covers the keys. The bundle's resolutions for such a module were merged into the graph's [`resolutions`](#resolutions-resolutionsmap), and no longer are.
+- `mount` applies to the entry only. A bundle that another module reaches with `require()` or `import` is mounted at its own URL.
+- Two bundles loaded with the same `cache`, the same protocol, and the same mount share modules. The second gets the modules that the first loaded, even if its own copies differ. A `cache` that is read through a different protocol is refused with `CACHE_INCOMPATIBLE`.
+- A bundle can leave an addon out and point its resolutions at a file outside the bundle, such as `/../node_modules/bare-tcp/prebuilds/darwin-arm64/bare-tcp.bare`, which is what [`bare-pack`](/bare/reference/bare/modules/bare-pack) writes with `--offload`. The addon is looked up through the protocol, so its `exists()` must report the file, or loading the bundle fails with `MODULE_NOT_FOUND`.
+
+### Asynchronous protocols
+
+`Module.load()` and `Module.resolve()` await a protocol that answers with promises, so modules can be served from a store that is not synchronous, such as a `Hyperdrive`. Once a graph is linked, `require()` runs synchronously and asks the protocol through its `*Sync` methods, which throw `UNEXPECTED_PROMISE` when the protocol can only answer asynchronously.
+
+From v7.2.2:
+
+- A `require()` or `require.asset()` of a specifier that the graph already looked up while linking is answered from that lookup. A module, package, or asset that was missing throws `MODULE_NOT_FOUND` or `ASSET_NOT_FOUND`, where it threw `UNEXPECTED_PROMISE` before. A specifier built at run time, such as `require('./' + name)`, was never looked up, so it still throws `UNEXPECTED_PROMISE`.
+- A `.bundle` loads through an asynchronous protocol, including one with an offloaded addon and one that a `.mjs` module imports. Before, loading a bundle through one threw `UNEXPECTED_PROMISE`.
 
 ## API
 
@@ -118,13 +165,13 @@ given.
 #### `Module.load(url: URL, opts: LoadOptions): Promise<Module>`
 
 Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will
-be passed to the matching `extension` for the `url`.
+be passed to the matching `extension` for the `url`. `source` is a `Buffer`, a string, or, from v7.4.0, a `Bundle` that has already been parsed. A `Bundle` is only accepted for a module that loads as a bundle, such as a `.bundle`. See [Loading bundles](#loading-bundles).
 
 Overloads:
 
 ```ts
 Module.load(url: URL, opts: LoadOptions): Promise<Module>
-Module.load(url: URL, source?: Buffer | string | null, opts?: LoadOptions): Promise<Module>
+Module.load(url: URL, source?: Buffer | Bundle | string | null, opts?: LoadOptions): Promise<Module>
 ```
 
 **Parameters**
@@ -132,7 +179,8 @@ Module.load(url: URL, source?: Buffer | string | null, opts?: LoadOptions): Prom
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `url` | `URL` | — | The WHATWG `URL` of the module to load. |
-| `opts` | [`LoadOptions`](#loadoptions) | — | Load options; may carry a `source` to load directly instead of reading it through the protocol. |
+| `source?` | `Buffer` \| `Bundle` \| `string` \| `null` | — | The source of the module, used instead of reading `url` through the protocol. A parsed `Bundle` is accepted from v7.4.0, for a module that loads as a bundle. It is its own argument, as `opts` does not carry a `source`. |
+| `opts` | [`LoadOptions`](#loadoptions) | — | Load options. |
 
 **Returns** `Promise<Module>` — The loaded `Module`, reusing the cached instance if `url` was already loaded.
 
@@ -140,6 +188,7 @@ Module.load(url: URL, source?: Buffer | string | null, opts?: LoadOptions): Prom
 
 - `TYPE_INCOMPATIBLE` — a module is already cached for `url` with a type incompatible with
 the requested `type`.
+- `TypeError` — `opts.mount` is neither a `URL` nor a string that parses as one. Added in v7.3.0.
 
 #### `Module.loadSync(url: URL, opts: LoadOptions): Module`
 
@@ -152,7 +201,7 @@ Overloads:
 
 ```ts
 Module.loadSync(url: URL, opts: LoadOptions): Module
-Module.loadSync(url: URL, source?: Buffer | string | null, opts?: LoadOptions): Module
+Module.loadSync(url: URL, source?: Buffer | Bundle | string | null, opts?: LoadOptions): Module
 ```
 
 **Parameters**
@@ -160,7 +209,8 @@ Module.loadSync(url: URL, source?: Buffer | string | null, opts?: LoadOptions): 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `url` | `URL` | — | The WHATWG `URL` of the module to load. |
-| `opts` | [`LoadOptions`](#loadoptions) | — | Load options; may carry a `source` to load directly instead of reading it through the protocol. |
+| `source?` | `Buffer` \| `Bundle` \| `string` \| `null` | — | The source of the module, used instead of reading `url` through the protocol. A parsed `Bundle` is accepted from v7.4.0, for a module that loads as a bundle. It is its own argument, as `opts` does not carry a `source`. |
+| `opts` | [`LoadOptions`](#loadoptions) | — | Load options. |
 
 **Returns** `Module` — The loaded `Module`, reusing the cached instance if `url` was already loaded.
 
@@ -169,6 +219,7 @@ Module.loadSync(url: URL, source?: Buffer | string | null, opts?: LoadOptions): 
 - `UNEXPECTED_PROMISE` — the protocol answered asynchronously.
 - `TYPE_INCOMPATIBLE` — a module is already cached for `url` with a type incompatible with
 the requested `type`.
+- `TypeError` — `opts.mount` is neither a `URL` nor a string that parses as one. Added in v7.3.0.
 
 #### `Module.resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): Promise<URL>`
 
@@ -364,16 +415,22 @@ The module representing the entry script where the program was launched.
 ```ts
 interface ImportOptions {
   attributes?: Attributes
+  mount?: URL | string
 }
 ```
+
+The same options as [`ModuleLoader.LinkOptions`](#moduleloaderlinkoptions).
 
 #### `ModuleLoader.LinkOptions`
 
 ```ts
 interface LinkOptions {
   attributes?: Attributes
+  mount?: URL | string
 }
 ```
+
+`attributes` are the import attributes, for example the `{ type: 'json' }` in `import foo from 'foo' with { type: 'json' }`. `mount` is the URL to mount the entry at if it is a bundle, defaulting to the URL of the bundle followed by a `/`. The bundle serves only the modules under it, so `file:///` lets it serve any file. Added in v7.3.0. See [Loading bundles](#loading-bundles). `instantiate()` and `instantiateSync()` do not apply `mount`.
 
 #### `ModuleLoader.Options`
 
@@ -556,8 +613,11 @@ interface LoadOptions {
   protocol?: Protocol
   resolutions?: ResolutionsMap
   attributes?: Attributes
+  mount?: URL | string
 }
 ```
+
+`LoadOptions` carries everything in [`ModuleLoader.Options`](#moduleloaderoptions) and [`ModuleLoader.LinkOptions`](#moduleloaderlinkoptions), so `mount` applies here as it does to the loader. Added in v7.3.0.
 
 #### `ResolveOptions`
 
@@ -885,14 +945,18 @@ interface Options {
 ```ts
 interface LinkOptions {
   attributes?: Attributes
+  mount?: URL | string
 }
 ```
+
+`mount` is the URL to mount the entry at if it is a bundle. Added in v7.3.0. See [Loading bundles](#loading-bundles).
 
 #### `ImportOptions`
 
 ```ts
 interface ImportOptions {
   attributes?: Attributes
+  mount?: URL | string
 }
 ```
 

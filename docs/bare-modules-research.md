@@ -3456,8 +3456,8 @@ Options include:
 
 Bluetooth bindings for Bare
 
-- repo: https://github.com/holepunchto/bare-bluetooth · 2★ · last push 2026-10-13 · JavaScript
-- version: 0.6.3-0 · pure-JS · min Bare: — · types: no · prebuilds: no
+- repo: https://github.com/holepunchto/bare-bluetooth · 2★ · last push 2026-10-14 · JavaScript
+- version: 0.6.3 · pure-JS · min Bare: — · types: no · prebuilds: no
 - node-compat: no · bare deps: bare-bluetooth-android, bare-bluetooth-apple, bare-bluetooth-linux · inbound deps: 1
 - disposition: **catalog-row-only**
 
@@ -3465,8 +3465,8 @@ Bluetooth bindings for Bare
 
 CoreBluetooth bindings for Bare
 
-- repo: https://github.com/holepunchto/bare-bluetooth-apple · 1★ · last push 2026-10-07 · Objective-C++
-- version: 0.7.0 · native addon · min Bare: — · types: yes · prebuilds: yes
+- repo: https://github.com/holepunchto/bare-bluetooth-apple · 1★ · last push 2026-10-14 · Objective-C++
+- version: 0.7.1 · native addon · min Bare: — · types: yes · prebuilds: yes
 - node-compat: no · bare deps: bare-events, bare-stream · inbound deps: 1
 - disposition: **catalog-row-only**
 
@@ -3480,8 +3480,8 @@ See the [`bare-bluetooth-apple` reference](https://docs.pears.com/reference/bare
 
 Android Bluetooth bindings for Bare
 
-- repo: https://github.com/holepunchto/bare-bluetooth-android · 1★ · last push 2026-10-13 · C++
-- version: 0.11.3 · native addon · min Bare: — · types: yes · prebuilds: yes
+- repo: https://github.com/holepunchto/bare-bluetooth-android · 1★ · last push 2026-10-19 · C++
+- version: 0.11.4 · native addon · min Bare: — · types: yes · prebuilds: yes
 - node-compat: no · bare deps: bare-events, bare-stream · inbound deps: 1
 - disposition: **catalog-row-only**
 

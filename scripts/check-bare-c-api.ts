@@ -5,7 +5,7 @@
 //
 // Why this exists: the C embedding API on /bare/reference/bare/runtime is
 // written by hand from include/bare.h and include/bare/module.h. Unlike the
-// `Bare` global, it is not in npm/index.d.ts, so the doc-state generator
+// `Bare` global, it is not in the typings (src/bare.d.ts), so the doc-state generator
 // (scripts/gen-bare-docs-states.ts) cannot see it, and a Bare release that adds
 // a function would otherwise go unnoticed. A 2026-10 audit found that only
 // bare_setup, bare_load, bare_run and bare_teardown were documented, out of
