@@ -1,0 +1,248 @@
+---
+title: "Bluetooth best practices"
+description: "The rules that make Bare Bluetooth code reliable on iOS, Android, macOS and Linux, from waiting for the radio to timeouts, flow control and teardown."
+docType: explanation
+product: bare
+schemaType: WebPage
+---
+
+Bluetooth code that works between two laptops on a desk often fails between two phones in a pocket. Radios turn off, peers walk out of range, platforms report the same event in different ways, and some failures never raise an event at all.
+
+These practices come from code that has already been through that:
+
+- The [`bare-bluetooth`](https://github.com/holepunchto/bare-bluetooth) examples.
+- The [`bare-mobile-doctor`](https://github.com/holepunchto/bare-mobile-doctor) chat.
+- [`ble-swarm`](https://github.com/holepunchto/ble-swarm), a Hyperswarm-shaped Bluetooth transport (version 2.4.0 here).
+
+Each practice says why, and where upstream does it.
+
+<Callout type="tip">
+For how the pieces fit together, read [Bluetooth in Bare](/bare/explanation/bluetooth) first.
+</Callout>
+
+<Callout type="warn">
+All of these projects are experimental upstream. Recheck a rule against the version you use.
+</Callout>
+
+## Radio state
+
+### Wait for `poweredOn`, every time
+
+Nothing works until the adapter reports [`'poweredOn'`](/bare/reference/bare/modules/bare-bluetooth#bluetoothstate). Before then, [`central.startScan()`](/bare/reference/bare/modules/bare-bluetooth#centralstartscanserviceuuids-options) throws a [`BluetoothError`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror) with code `NOT_POWERED_ON`, and the other calls fail or do nothing. To avoid this:
+
+1. Attach a [`stateChange`](/bare/reference/bare/modules/bare-bluetooth#central) listener as soon as you create the [`Central`](/bare/reference/bare/modules/bare-bluetooth#central) or [`Server`](/bare/reference/bare/modules/bare-bluetooth#server).
+2. Start work from that listener, not from your constructor.
+
+Treat every arrival at `'poweredOn'` as a fresh start, not only the first. When the user turns Bluetooth off, the operating system drops your GATT services, advertising, and scans. On Android, `bare-bluetooth` closes the GATT server, and its services go with it. When the radio comes back, add your services and start advertising again. `ble-swarm` goes further: after a power cycle, it builds new `Central` and `Server` objects, because it found the surviving ones unreliable.
+
+Handle the states that never become `'poweredOn'`:
+
+- `'unauthorized'`: the user denied Bluetooth access on an Apple platform.
+- `'unsupported'`: the hardware has no Bluetooth Low Energy. From `bare-bluetooth` 0.6.3, Android also reports `'unsupported'` for a device with no Bluetooth adapter. Before 0.6.3, creating a `Central` or `Server` there threw. The object is then inert: `startScan()` throws `NOT_POWERED_ON`, and calls such as [`connect()`](/bare/reference/bare/modules/bare-bluetooth#centralconnectperipheral), [`addService()`](/bare/reference/bare/modules/bare-bluetooth#serveraddserviceservice), and [`startAdvertising()`](/bare/reference/bare/modules/bare-bluetooth#serverstartadvertisingoptions) emit an [`error`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror) with that code.
+
+In both cases, show the user a message instead of waiting forever.
+
+## Errors and timeouts
+
+### Always listen for `error`
+
+`bare-bluetooth` reports most failures as an [`error`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror) event: a scan that fails, a connection that can't be made, a read that's refused. As with any event emitter, an `error` event that nobody listens for throws. In a Bare worklet, that can take the whole runtime down. Listen for `error` on:
+
+- Every [`Central`](/bare/reference/bare/modules/bare-bluetooth#central), [`Server`](/bare/reference/bare/modules/bare-bluetooth#server), and [`Peripheral`](/bare/reference/bare/modules/bare-bluetooth#peripheral).
+- Every [`L2CAPChannel`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel). A write to a peer that has gone destroys the stream with an error. It doesn't throw from [`write()`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel).
+
+### Wrap calls in `try`/`catch` too
+
+Some failures are thrown instead:
+
+- [`central.startScan()`](/bare/reference/bare/modules/bare-bluetooth#centralstartscanserviceuuids-options) throws a [`BluetoothError`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror) with code `NOT_POWERED_ON`.
+- The Android binding throws the Java exception when a call itself fails, for example when a runtime permission is missing.
+- On Linux, [`central.disconnect()`](/bare/reference/bare/modules/bare-bluetooth#centraldisconnectperipheral) throws when you pass it a [`DiscoveredPeripheral`](/bare/reference/bare/modules/bare-bluetooth#discoveredperipheral).
+- The platform packages throw from calls such as [`retrievePeripherals()`](/bare/reference/bare/modules/bare-bluetooth-apple#retrieveperipheralsids-string-retrievedperipheral) and [`getBondedDevices()`](/bare/reference/bare/modules/bare-bluetooth-android#getbondeddevices-device).
+
+`ble-swarm` wraps its calls in `try`/`catch` for this reason, including [`peripheral.requestMtu()`](/bare/reference/bare/modules/bare-bluetooth#peripheralrequestmtumtu) and [`peripheral.openL2CAPChannel()`](/bare/reference/bare/modules/bare-bluetooth#peripheralopenl2capchannelpsm). See [`lib/transport.js`](https://github.com/holepunchto/ble-swarm/blob/e9210ab2fe73d7717aba853d6508a9b102637e26/lib/transport.js#L729).
+
+### Expect errors where you'd expect `disconnect`
+
+On Apple and Android, two outcomes that you might expect as [`disconnect`](/bare/reference/bare/modules/bare-bluetooth#central) arrive as `error` instead:
+
+- A connection attempt that fails: `error` with code `CONNECTION_FAILED`, and the device's id as `error.id`.
+- A disconnect that carries an error, such as the link dropping: `error` with code `DISCONNECT`.
+
+Only a clean disconnect emits `disconnect`. If your code waits for `disconnect` to reset its state, route those two codes to the same place, as the [`BLECentral`](/bare/how-to/connect-over-bluetooth/build-a-bluetooth-chat-for-ios-and-android#handle-failures) class in `bare-mobile-doctor` does. The [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple#errors) and [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android#errors) references list these codes.
+
+### Set your own connection timeout
+
+`bare-bluetooth` sets no deadline on [`central.connect()`](/bare/reference/bare/modules/bare-bluetooth#centralconnectperipheral). On Apple, an attempt never times out by itself: if the peer is gone, the attempt waits until something cancels it. To add a deadline:
+
+1. Start a timer when you call `central.connect()`.
+2. When the timer fires, call `central.disconnect()` with the same object you passed to `connect()`.
+
+The test in `bare-bluetooth-apple` gives up after 5 seconds and does exactly that. It notes that a pending attempt otherwise "outlives this loop and fires later."
+
+`bare-mobile-doctor` gives up after 15 seconds and goes back to scanning, but it doesn't cancel the attempt. Its `BLECentral.disconnect()` acts only once a peripheral has connected, so a late [`connect`](/bare/reference/bare/modules/bare-bluetooth#central) event can still arrive after the timeout. Cancel the attempt yourself.
+
+<Callout type="warn">
+On Linux, you can't cancel a pending attempt this way in `bare-bluetooth` 0.6.3. `disconnect()` expects a connected `Peripheral`, and it throws when you pass it the `DiscoveredPeripheral` that the attempt started from.
+</Callout>
+
+### Notice a peer that has vanished
+
+When a peer walks out of range or its app is killed, you may hear nothing for a long time:
+
+- On iOS, a vanished peer never produces a disconnect event.
+- On an L2CAP channel, a peer that closes the channel shows up as [`close`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel) or `error` on the stream, on every platform. That is why the `bare-mobile-doctor` chat needs no extra disconnect detection for that case.
+- A peer that disappears without closing the channel takes longer to notice. If you need to know promptly, send keepalives and drop a link that stays silent. `ble-swarm` pings every 5 seconds and closes a link after 15 seconds without traffic. It keeps its keepalives even over L2CAP.
+
+## Discovery
+
+### Match peers on a service UUID, not a name
+
+An advertised name is unreliable:
+
+- It may arrive after the first [`discover`](/bare/reference/bare/modules/bare-bluetooth#central) event, or not at all.
+- On Android, [`server.startAdvertising({ name })`](/bare/reference/bare/modules/bare-bluetooth#serverstartadvertisingoptions) can include only the phone's own system Bluetooth name, not the string you pass.
+
+Advertise a service UUID and scan for it instead, as every upstream example does. When you can, pick the UUID from the Bluetooth base range (`0000xxxx-0000-1000-8000-00805f9b34fb`). It then takes 2 bytes of the advertisement instead of 16.
+
+An advertisement is small. Depending on the platform, an oversized one fails with `ADVERTISE_FAILED` or is accepted and cut down. Keep it to the service UUID.
+
+### Treat discovery as a stream of sightings
+
+`discover` reports advertisements, not devices, and `bare-bluetooth` passes them on without filtering. The same device turns up again and again:
+
+- On Android, by default, for every advertising packet: dozens of times a second.
+- On Apple, several times per scan, even with [`allowDuplicates: false`](/bare/reference/bare/modules/bare-bluetooth#centralstartscanserviceuuids-options).
+
+Key what you find by `id`, keep the latest, and drive your UI from that map, as `bare-mobile-doctor` does.
+
+On Linux, BlueZ also replays devices it remembers from earlier scans. Those arrive with [`rssi`](/bare/reference/bare/modules/bare-bluetooth#discoveredperipheral) set to `null`, which means this scan hasn't heard them. Skip them before connecting. A device's name may also arrive in a later `discover` for the same `id`.
+
+### Stop scanning once you've found what you need
+
+A scan keeps the radio busy and costs battery for as long as it runs. Stop it before you connect, as the upstream examples do, with [`central.stopScan()`](/bare/reference/bare/modules/bare-bluetooth#centralstopscan). Don't leave a scan running in the background. `ble-swarm` runs its scans in 5-second bursts with long pauses in between once it has a link.
+
+## GATT values and requests
+
+### Normalize UUIDs before comparing them
+
+CoreBluetooth reports UUIDs uppercase, and it reports those in the Bluetooth base range in their short 16-bit form (`180D`). Android and BlueZ report them long and lowercase. So `service.uuid === SERVICE_UUID` fails on at least one platform, whatever form you wrote `SERVICE_UUID` in. For example, the uppercase comparison in the `bare-bluetooth` README fails on Android and Linux.
+
+Expand and lowercase both sides first, with the helper from the [`gattpong.js` example](/bare/how-to/connect-over-bluetooth/read-write-and-subscribe-with-gatt#compare-uuids-the-way-the-example-does).
+
+### Answer requests right away
+
+A central waiting on a write with response, or on a read, times out if the server takes too long to answer. Call [`server.respondToRequest()`](/bare/reference/bare/modules/bare-bluetooth#serverrespondtorequestrequest-result-data) first, then process the data, as `ble-swarm` does:
+
+```js title="lib/transport.js (ble-swarm 2.4.0)"
+_onWriteRequests(requests) {
+  const ok = this.server.constructor.ATT_SUCCESS ?? 0
+  for (const req of requests) {
+    // must respond within ms or the central times out — before any parsing
+    if (req.responseNeeded !== false) this.server.respondToRequest(req, ok)
+    if (this._suspended) continue
+    this._onServerFrame(req.data)
+  }
+}
+```
+
+This is [`_onWriteRequests()`](https://github.com/holepunchto/ble-swarm/blob/e9210ab2fe73d7717aba853d6508a9b102637e26/lib/transport.js#L366-L374), copied without its class indentation. Each request is a [`WriteRequest`](/bare/reference/bare/modules/bare-bluetooth#writerequest).
+
+### Keep values small, or move to L2CAP
+
+A single GATT write or notification carries at most the connection's ATT MTU minus 3 bytes.
+
+- Apple and Linux negotiate a larger MTU on their own.
+- On Android, call [`peripheral.requestMtu(517)`](/bare/reference/bare/modules/bare-bluetooth#peripheralrequestmtumtu) after connecting and wait for [`mtuChanged`](/bare/reference/bare/modules/bare-bluetooth#peripheral).
+- If you have to split data across several GATT operations anyway, `ble-swarm` defaults to 150-byte pieces, which fit the MTU that most links end up with. It raises the size once a larger MTU is negotiated.
+
+For anything larger, an [L2CAP channel](/bare/how-to/connect-over-bluetooth/exchange-data-over-l2cap) is simpler and faster.
+
+### Respect notification flow control
+
+- [`server.updateValue()`](/bare/reference/bare/modules/bare-bluetooth#serverupdatevaluecharacteristic-data) returns `false` when it couldn't queue the notification. On Apple, that means the transmit queue is full. Hold the value, and send it again when the server emits [`readyToUpdate`](/bare/reference/bare/modules/bare-bluetooth#server). `ble-swarm` also retries on a 250 ms timer, because it found that `readyToUpdate` can be missed.
+- A return value of `true` means only that the notification was queued, not that it arrived.
+- On Android, only one GATT operation can be in flight per connection. `bare-bluetooth` queues reads, writes, subscriptions and MTU requests, and sends them one at a time. An operation that the system refuses to start arrives as `error` with code [`NOT_INITIATED`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror).
+
+## L2CAP channels
+
+### Hand over the PSM through GATT, and advertise only when it's ready
+
+The operating system assigns the PSM when you publish a channel, so the other side has to learn it. `bare-mobile-doctor` does this in three steps:
+
+1. Put the PSM in a readable characteristic.
+2. Advertise only after both [`serviceAdd`](/bare/reference/bare/modules/bare-bluetooth#server) and [`channelPublish`](/bare/reference/bare/modules/bare-bluetooth#server) have fired. Otherwise, a fast central connects before there's anything to read.
+3. Have the central read the characteristic after it connects.
+
+`ble-swarm` also sends the PSM over GATT, but inside a `HELLO` frame that it notifies on its data characteristic. [Exchange data over L2CAP](/bare/how-to/connect-over-bluetooth/exchange-data-over-l2cap#hand-the-psm-over-automatically) shows the pattern.
+
+### Put a deadline on opening a channel
+
+[`peripheral.openL2CAPChannel()`](/bare/reference/bare/modules/bare-bluetooth#peripheralopenl2capchannelpsm) can hang without an [`error`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror) or a `disconnect`. `ble-swarm` [found](https://github.com/holepunchto/ble-swarm/pull/4) that an iOS peripheral never answers a channel that a macOS central opens, and the link just sits there. It runs every open under a 3-second deadline and treats a silent hang as a failed dial, which it retries. Do the same:
+
+1. Start a timer when you call `openL2CAPChannel()`.
+2. If no [`channelOpen`](/bare/reference/bare/modules/bare-bluetooth#peripheral) event arrives before the timer fires, cancel the connection.
+
+### Publish a fresh channel after a session ends
+
+A dead session can leave channel state behind, and the operating system may then refuse a new connection to the same PSM ("L2CAP PSM already connected"). After each session ends, `ble-swarm` calls [`server.unpublishChannel()`](/bare/reference/bare/modules/bare-bluetooth#serverunpublishchannelpsm) and then [`server.publishChannel()`](/bare/reference/bare/modules/bare-bluetooth#serverpublishchanneloptions), which assigns a new PSM.
+
+### Frame messages on the stream
+
+An L2CAP channel delivers bytes in order, but not necessarily in the chunks that you wrote them in. To send messages, frame them, for example with [`framed-stream`](https://github.com/holepunchto/framed-stream), as `bare-mobile-doctor` does. On Linux, also keep each write to at most [`channel.mtu`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel) bytes, because a larger write fails.
+
+### Prefer encryption on top of the link to pairing
+
+[`server.publishChannel({ encrypted: true })`](/bare/reference/bare/modules/bare-bluetooth#serverpublishchanneloptions) requires the devices to be paired:
+
+- Apple and Android show a system prompt.
+- Linux sends a [`pairRequest`](/bare/reference/bare/modules/bare-bluetooth#pairrequest) event that your app must answer.
+- Pairing authenticates only devices, not the app on the other end.
+
+`ble-swarm` publishes unencrypted channels and runs a [Noise](https://noiseprotocol.org/) handshake over them, so peers are authenticated by public key with no prompt. See [Security](/bare/explanation/bluetooth#security).
+
+## App lifecycle
+
+### Pause the radio in the background
+
+Mobile systems throttle or stop the Bluetooth activity of a backgrounded app, and the Apple binding has no support for CoreBluetooth's state restoration. Don't leave scans and connections to fail on their own when the app goes to the background. Stop them deliberately, and start them again when the app returns, the way the `suspend()` and `resume()` methods of `ble-swarm` do. [Handle app suspension](/bare/how-to/run-on-native/handle-app-suspension) covers the pattern for Bare worklets.
+
+### Request permissions before the worklet starts
+
+The operating system grants Bluetooth access to the app, not to the Bare code inside it. On Android, request the runtime permissions, and start the [worklet](/bare/reference/bare/bare-kit#worklet) only once they're granted, so the Bare side never runs without access. [Set up Bluetooth in a mobile app](/bare/how-to/connect-over-bluetooth/set-up-bluetooth-in-a-mobile-app) shows both a React Native host and a native host doing this.
+
+### Clean up in the right order
+
+Release things from the top down:
+
+1. Tell the peer you're leaving.
+2. Close streams and L2CAP channels.
+3. Stop scanning and advertising.
+4. Disconnect.
+5. Destroy the managers with [`central.destroy()`](/bare/reference/bare/modules/bare-bluetooth#centraldestroy) and [`server.destroy()`](/bare/reference/bare/modules/bare-bluetooth#serverdestroy).
+
+`destroy()` does part of this itself. On Apple, a [`Server`](/bare/reference/bare/modules/bare-bluetooth#server)'s `destroy()` stops advertising and removes its services. On Android, it unpublishes its channels.
+
+<Callout type="warn">
+On iOS, test teardown on a real device before you rely on `destroy()`. Two upstream consumers skip it there. A comment in `bare-mobile-doctor` says that the native module's cleanup at runtime teardown frees the same handle a second time after an explicit `destroy()`. `ble-swarm` calls [`server.removeAllServices()`](/bare/reference/bare/modules/bare-bluetooth#serverremoveallservices) instead on iOS for the same reason. (`ble-swarm` does call `destroy()` on macOS and Android.)
+</Callout>
+
+That workaround may be out of date:
+
+- `bare-bluetooth-apple` made this cleanup safe in July 2026 ([#53](https://github.com/holepunchto/bare-bluetooth-apple/pull/53), [#56](https://github.com/holepunchto/bare-bluetooth-apple/pull/56) and [#58](https://github.com/holepunchto/bare-bluetooth-apple/pull/58)), and the fix has shipped since 0.3.x. Its tests include `destroy then exit does not double-free`.
+- Both consumers' comments are newer than those fixes, and `bare-bluetooth` 0.6.2 and later require `bare-bluetooth-apple` 0.7.0 or later. So both consumers already have the fixes.
+- These docs haven't confirmed on a device that the crash is gone.
+
+Until you confirm it, use the order that the consumers use on iOS:
+
+1. Stop scanning and advertising.
+2. Call `removeAllServices()`.
+3. Close the streams.
+4. Let the runtime reclaim the managers.
+
+## See also
+
+- [Bluetooth in Bare](/bare/explanation/bluetooth)—the module family, the roles, and GATT versus L2CAP.
+- [Connect over Bluetooth](/bare/how-to/connect-over-bluetooth)—guides that apply these practices.
+- [`bare-bluetooth` reference](/bare/reference/bare/modules/bare-bluetooth)—every event and error code mentioned here.
+- [Handle app suspension](/bare/how-to/run-on-native/handle-app-suspension)—the radio and the worklet when the app goes to the background.

@@ -50,14 +50,16 @@ export const bareTree: Node[] = [
         url: '/bare/explanation/rpc-and-schemas',
       },
       {
-        type: 'page',
-        name: 'Bluetooth in Bare',
-        url: '/bare/explanation/bluetooth-in-bare',
-      },
-      {
-        type: 'page',
-        name: 'Bluetooth best practices',
-        url: '/bare/explanation/bluetooth-best-practices',
+        type: 'folder',
+        name: 'Bluetooth',
+        index: { type: 'page', name: 'Bluetooth in Bare', url: '/bare/explanation/bluetooth' },
+        children: [
+          {
+            type: 'page',
+            name: 'Bluetooth best practices',
+            url: '/bare/explanation/bluetooth/best-practices',
+          },
+        ],
       },
       {
         type: 'page',
