@@ -3,9 +3,10 @@
 // Enforces that every example updater worker stays byte-identical to the
 // canonical one. All `examples/**/workers/main.js` files are inlined copies of
 // upstream's `hello-pear-worker` package (holepunchto/hello-pear-worker) — the
-// same worker `hello-pear-bare` and `hello-pear-electron` ship as
-// `require('hello-pear-worker')`. The pear-chat scaffold and every how-to app
-// that extends it reuse that exact worker.
+// same worker `hello-pear-electron` ships as `require('hello-pear-worker')`.
+// `hello-pear-bare` ships it inlined upstream, under a two-line source header
+// (`// <repo> v<version>`) that its copy here omits. The pear-chat scaffold and
+// every how-to app that extends it reuse that exact worker.
 //
 // Because the host that spawns the worker passes its runtime config as
 // positional arguments in one fixed order, the worker's argv parsing and the
