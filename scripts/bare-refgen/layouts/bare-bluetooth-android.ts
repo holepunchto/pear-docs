@@ -13,6 +13,7 @@ import type { Layout } from '../layout';
 const layout: Layout = {
   seeAlso: [
     'Runs on Android only — on Apple platforms use [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple).',
+    '[`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API over this module, `bare-bluetooth-apple` and `bare-bluetooth-linux`.',
     '[One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.',
   ],
   params: {

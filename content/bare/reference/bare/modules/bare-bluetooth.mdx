@@ -1,0 +1,631 @@
+---
+title: "bare-bluetooth"
+description: "Reference for bare-bluetooth: cross-platform Bluetooth LE for Bare over the Apple, Android and Linux bindings."
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "0.6.3"
+---
+
+<mark style={{ backgroundColor: '#8484ff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>experimental</mark>
+
+[`bare-bluetooth`](https://github.com/holepunchto/bare-bluetooth) provides Bluetooth bindings for [Bare](/bare/reference/bare/runtime): BLE central and peripheral roles, GATT services and characteristics, and L2CAP channels, across Apple, Android and Linux. It normalizes the differences between the platforms so that consumer code needs no platform conditionals: state strings, class names and constants are unified. It resolves, per platform, to [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple), [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android) or [`bare-bluetooth-linux`](/bare/reference/bare/modules/bare-bluetooth-linux).
+
+<Callout type="warn">
+Upstream marks this module experimental: its API is subject to change and may break at any time.
+</Callout>
+
+<Callout type="info">
+This page describes 0.6.3, the release npm installs as `latest`. It adds the Linux backend: the previous release, 0.6.2, supports Apple and Android only.
+</Callout>
+
+```sh
+npm i bare-bluetooth
+```
+
+## Usage
+
+The example below shows a peripheral advertising a single writable, notifying characteristic and a central that scans, connects, subscribes, and exchanges data with it. It also uses [`bare-encoding`](/bare/reference/bare/modules/bare-encoding), so install that too.
+
+Peripheral:
+
+```js
+const { TextEncoder, TextDecoder } = require('bare-encoding')
+const { Server, Service, Characteristic } = require('bare-bluetooth')
+
+const SERVICE_UUID = '01230000-0000-1000-8000-00805F9B34FB'
+const CHAR_UUID = '01230001-0000-1000-8000-00805F9B34FB'
+
+const server = new Server()
+let pingChar = null
+
+server.on('stateChange', (state) => {
+  if (state !== 'poweredOn') return
+
+  pingChar = new Characteristic(CHAR_UUID, {
+    write: true,
+    notify: true
+  })
+
+  server.addService(new Service(SERVICE_UUID, [pingChar]))
+})
+
+server.on('serviceAdd', (uuid) => {
+  server.startAdvertising({
+    name: 'MyDevice',
+    serviceUUIDs: [SERVICE_UUID]
+  })
+})
+
+server.on('writeRequest', (requests) => {
+  const request = requests[0]
+  const message = new TextDecoder().decode(request.data)
+
+  server.respondToRequest(request, Server.ATT_SUCCESS, null)
+  server.updateValue(pingChar, new TextEncoder().encode('pong: ' + message))
+})
+```
+
+Central:
+
+```js
+const { TextEncoder, TextDecoder } = require('bare-encoding')
+const { Central } = require('bare-bluetooth')
+
+const SERVICE_UUID = '01230000-0000-1000-8000-00805F9B34FB'
+const CHAR_UUID = '01230001-0000-1000-8000-00805F9B34FB'
+
+// Platforms report UUIDs in different forms: Apple uppercase, and in their
+// short form for UUIDs on the Bluetooth base; Android and Linux long and
+// lowercase. Expand both sides before comparing.
+function expand(uuid) {
+  uuid = uuid.toLowerCase()
+  if (uuid.length === 4) return `0000${uuid}-0000-1000-8000-00805f9b34fb`
+  if (uuid.length === 8) return `${uuid}-0000-1000-8000-00805f9b34fb`
+  return uuid
+}
+
+const central = new Central()
+let connecting = false
+
+central.on('stateChange', (state) => {
+  if (state !== 'poweredOn') return
+
+  central.startScan([SERVICE_UUID])
+})
+
+central.on('discover', (peripheral) => {
+  if (connecting || peripheral.rssi === null) return
+
+  connecting = true
+  central.stopScan()
+  central.connect(peripheral)
+})
+
+central.on('connect', (peripheral) => {
+  peripheral.on('servicesDiscover', (services) => {
+    for (const service of services) {
+      if (expand(service.uuid) === expand(SERVICE_UUID)) {
+        peripheral.discoverCharacteristics(service)
+      }
+    }
+  })
+
+  peripheral.on('characteristicsDiscover', (service, characteristics) => {
+    for (const characteristic of characteristics) {
+      if (expand(characteristic.uuid) === expand(CHAR_UUID)) {
+        peripheral.subscribe(characteristic)
+      }
+    }
+  })
+
+  peripheral.on('notifyState', (characteristic, isNotifying) => {
+    if (isNotifying) {
+      peripheral.write(characteristic, new TextEncoder().encode('ping'))
+    }
+  })
+
+  peripheral.on('notify', (characteristic, data) => {
+    console.log('received:', new TextDecoder().decode(data))
+  })
+
+  peripheral.discoverServices([SERVICE_UUID])
+})
+```
+
+The upstream README compares UUIDs with `===`, which fails on every platform for these UUIDs; the `expand()` helper and the `discover` guard here come from the repository's own [`example/gattpong.js`](https://github.com/holepunchto/bare-bluetooth/blob/v0.6.3/example/gattpong.js). That `example/` directory also holds `scan.js` and `l2cappong.js`, runnable with `bare` on macOS and Linux.
+
+## Platforms
+
+The package resolves to a platform-specific implementation:
+
+- `android` resolves to [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android)
+- `darwin` and `ios` resolve to [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple)
+- `linux` resolves to [`bare-bluetooth-linux`](/bare/reference/bare/modules/bare-bluetooth-linux)
+
+There is no fallback, so `require('bare-bluetooth')` fails on any other platform, such as Windows. 0.6.3 depends on `bare-bluetooth-android` `^0.11.4`, `bare-bluetooth-apple` `^0.7.1` and `bare-bluetooth-linux` `^0.9.2`.
+
+On Android the module only works inside an app that hosts Bare, such as a [Bare Kit](/bare/reference/bare/bare-kit) worklet, since it needs the app's Java VM.
+
+On an Android device with no Bluetooth adapter, `new Central()` and `new Server()` do not throw. They report `'unsupported'` through `stateChange`, so `central.state` and `server.state` read `'unsupported'`. From then on `central.startScan()` throws `NOT_POWERED_ON`, `connect()`, `disconnect()`, `addService()`, `startAdvertising()`, `respondToRequest()` and `publishChannel()` emit `error` with that code instead, and the remaining calls do nothing.
+
+## Types
+
+### BluetoothState
+
+A string describing the current Bluetooth adapter state.
+
+| Value            | Platforms             |
+| ---------------- | --------------------- |
+| `'unknown'`      | Apple                 |
+| `'resetting'`    | Apple                 |
+| `'unsupported'`  | Android, Apple, Linux |
+| `'unauthorized'` | Apple                 |
+| `'poweredOff'`   | Android, Apple, Linux |
+| `'poweredOn'`    | Android, Apple, Linux |
+| `'turningOn'`    | Android               |
+| `'turningOff'`   | Android               |
+
+### BluetoothError
+
+Thrown when a call cannot be made at all, with `code` saying why. This package raises two codes: `NOT_POWERED_ON`, thrown by `startScan` (and, on an Android device with no Bluetooth adapter, [emitted on `error` by other calls](#platforms)), and `NOT_INITIATED`, emitted on `error` when a GATT operation could not be sent. Only Android raises `NOT_INITIATED`, since only the Android backend queues GATT operations.
+
+Other failures that happen after a call returns arrive on the `error` event too. Those come from the platform package, carry their own codes, and are not instances of this class.
+
+## API
+
+### Central
+
+#### `const central = new Central([options])`
+
+Create a new BLE central manager. The central scans for and connects to peripherals. Apple and Android take no options. On Linux, `options` is passed to the `Adapter` of [`bare-bluetooth-linux`](/bare/reference/bare/modules/bare-bluetooth-linux), for example `{ path: '/org/bluez/hci1' }` to pick an adapter.
+
+**Properties**
+
+| Property | Type             | Description                     |
+| -------- | ---------------- | ------------------------------- |
+| `state`  | `BluetoothState` | Current Bluetooth adapter state |
+
+**Methods**
+
+#### `central.startScan([serviceUUIDs[, options]])`
+
+Start scanning for peripherals. If `serviceUUIDs` is provided, only peripherals advertising those services will be discovered.
+
+```js
+options = {
+  allowDuplicates: false, // Apple only
+  scanMode: Central.SCAN_MODE_LOW_LATENCY, // Android only
+  callbackType: Central.CALLBACK_TYPE_FIRST_MATCH, // Android only
+  transport: 'le' // Linux only
+}
+```
+
+Each option goes to the platform that understands it. Both platforms decide how often `discover` fires, but spell it differently, so set both to get the same behaviour everywhere.
+
+Set `allowDuplicates` (Apple) to `true` for a `discover` on every advertising packet. `false` asks CoreBluetooth to coalesce them, which it only does as a best effort: a peripheral still turns up several times per scan.
+
+`discover` reports what the platform reports, with no filtering of its own. Key peripherals by `id`, keep the latest, and de-duplicate there if you need to.
+
+Set `transport` (Linux) to `'le'` (default), `'auto'`, or `'bredr'`. `'auto'` also scans classic, where dual-mode devices such as TVs advertise their name, but slows BLE discovery; a dual-mode device shows up once per channel, and only the BLE one can be connected.
+
+On Linux the name may arrive after the first `discover`; when it does, `discover` fires again with `name` set. BlueZ also replays devices it cached from earlier scans, which have no `rssi`: a `null` `rssi` means this scan has not heard the device.
+
+Set `callbackType` (Android) to one of `Central.CALLBACK_TYPE_ALL_MATCHES`, `Central.CALLBACK_TYPE_FIRST_MATCH`, or `Central.CALLBACK_TYPE_MATCH_LOST`. `ALL_MATCHES` is the default and fires on every advertising packet, dozens per second per peripheral. `FIRST_MATCH` fires once per peripheral, but needs `serviceUUIDs` and hardware support: without it the scan fails with an `error`, so keep a fallback. It also stops `rssi` refreshing.
+
+Set `scanMode` (Android) to one of `Central.SCAN_MODE_OPPORTUNISTIC`, `Central.SCAN_MODE_LOW_POWER`, `Central.SCAN_MODE_BALANCED`, or `Central.SCAN_MODE_LOW_LATENCY`.
+
+Throws a `BluetoothError` with code `NOT_POWERED_ON` unless `central.state` is `'poweredOn'`.
+
+#### `central.stopScan()`
+
+Stop scanning for peripherals. Does nothing unless `central.state` is `'poweredOn'`, since the scan is already gone.
+
+#### `central.connect(peripheral)`
+
+Connect to a `DiscoveredPeripheral`.
+
+#### `central.disconnect(peripheral)`
+
+Disconnect from a connected `Peripheral`.
+
+#### `central.destroy()`
+
+Destroy the central manager and release all resources.
+
+**Events**
+
+| Event         | Arguments                          | Description                            |
+| ------------- | ---------------------------------- | -------------------------------------- |
+| `stateChange` | `state: BluetoothState`            | Bluetooth adapter state changed        |
+| `discover`    | `peripheral: DiscoveredPeripheral` | A peripheral was found during scanning |
+| `connect`     | `peripheral: Peripheral`           | Connection to a peripheral established |
+| `disconnect`  | `peripheral: Peripheral \| null`   | A peripheral disconnected cleanly      |
+| `error`       | `error: Error`                     | An error occurred                      |
+
+| Event         | Arguments              | Platform |
+| ------------- | ---------------------- | -------- |
+| `pairRequest` | `request: PairRequest` | Linux    |
+
+On Apple and Android, a connection attempt that fails, and a disconnect that carries an error, arrive as `error` (codes `CONNECTION_FAILED` and `DISCONNECT`) rather than as `disconnect`. The module sets no connection timeout of its own: on Apple and Android, give up on an attempt by calling `central.disconnect()` with the peripheral passed to `connect()`.
+
+**Constants**
+
+Android only. `undefined` on other platforms.
+
+| Constant                            | Description                                            |
+| ----------------------------------- | ------------------------------------------------------ |
+| `Central.SCAN_MODE_OPPORTUNISTIC`   | Scan only while other apps are scanning                |
+| `Central.SCAN_MODE_LOW_POWER`       | Low power scan mode                                    |
+| `Central.SCAN_MODE_BALANCED`        | Balanced scan mode                                     |
+| `Central.SCAN_MODE_LOW_LATENCY`     | Low latency scan mode                                  |
+| `Central.CALLBACK_TYPE_ALL_MATCHES` | Emit `discover` for every advertising packet (default) |
+| `Central.CALLBACK_TYPE_FIRST_MATCH` | Emit `discover` once per peripheral                    |
+| `Central.CALLBACK_TYPE_MATCH_LOST`  | Emit when a peripheral stops advertising               |
+
+### DiscoveredPeripheral
+
+Represents a peripheral found during scanning. Emitted by the `discover` event on `Central`. Pass it directly to `central.connect()`. Its `id` is a per-host UUID on Apple, which hides the real address, and the Bluetooth address on Android and Linux.
+
+**Properties**
+
+| Property      | Type                                     | Description                                |
+| ------------- | ---------------------------------------- | ------------------------------------------ |
+| `id`          | `string`                                 | Unique identifier of the peripheral        |
+| `name`        | `string \| null`                         | Advertised name, or `null`                 |
+| `rssi`        | `number \| null`                         | Signal strength in dBm                     |
+| `serviceData` | `{ [uuid: string]: Uint8Array } \| null` | Service data from advertisement, or `null` |
+
+### Peripheral
+
+Represents a connected peripheral. Obtained from the `connect` event on `Central`.
+
+**Properties**
+
+| Property      | Type                                     | Description                         |
+| ------------- | ---------------------------------------- | ----------------------------------- |
+| `id`          | `string`                                 | Unique identifier of the peripheral |
+| `name`        | `string \| null`                         | Advertised name, or `null`          |
+| `serviceData` | `{ [uuid: string]: Uint8Array } \| null` | Service data, or `null`             |
+
+**Methods**
+
+#### `peripheral.discoverServices([serviceUUIDs])`
+
+Discover services on the peripheral. On Apple and Linux, an optional `serviceUUIDs` array restricts discovery to those services. Android always discovers all services. Results are emitted via `servicesDiscover`.
+
+#### `peripheral.discoverCharacteristics(service[, characteristicUUIDs])`
+
+Discover characteristics for a `Service`. On Apple and Linux, an optional `characteristicUUIDs` array restricts discovery. Android always discovers all characteristics. Results are emitted via `characteristicsDiscover`.
+
+#### `peripheral.read(characteristic)`
+
+Read the value of a `Characteristic`. The result is emitted via `read`. While subscribed, Linux also emits a `notify` with the same value, and Apple emits `notify` instead of `read`.
+
+#### `peripheral.write(characteristic, data[, withResponse])`
+
+Write `data: Uint8Array` to a `Characteristic`. If `withResponse` is `true` (the default), the write is confirmed by the peripheral.
+
+#### `peripheral.subscribe(characteristic)`
+
+Subscribe to notifications for a `Characteristic`.
+
+#### `peripheral.unsubscribe(characteristic)`
+
+Unsubscribe from notifications for a `Characteristic`.
+
+#### `peripheral.openL2CAPChannel(psm)`
+
+Open an L2CAP channel to the peripheral using the given `psm: number`. The result is emitted via `channelOpen`.
+
+#### `peripheral.requestMtu(mtu)`
+
+Request a new MTU size (`mtu: number`). The result is emitted via `mtuChanged`. No-op on Apple and Linux, which negotiate the MTU themselves.
+
+#### `peripheral.destroy()`
+
+Destroy the peripheral instance and release resources.
+
+**Events**
+
+| Event                     | Arguments                                                       | Description                              |
+| ------------------------- | --------------------------------------------------------------- | ---------------------------------------- |
+| `servicesDiscover`        | `services: Service[]`                                           | Services discovered                      |
+| `characteristicsDiscover` | `service: Service \| null`, `characteristics: Characteristic[]` | Characteristics discovered for a service |
+| `read`                    | `characteristic: Characteristic`, `data: Uint8Array`            | Characteristic value read                |
+| `write`                   | `characteristic: Characteristic`                                | Characteristic write completed           |
+| `notify`                  | `characteristic: Characteristic`, `data: Uint8Array`            | Notification received                    |
+| `notifyState`             | `characteristic: Characteristic`, `isNotifying: boolean`        | Notification state changed               |
+| `channelOpen`             | `channel: L2CAPChannel`                                         | L2CAP channel opened                     |
+| `error`                   | `error: Error`                                                  | An error occurred                        |
+
+| Event        | Arguments     | Platform       |
+| ------------ | ------------- | -------------- |
+| `disconnect` | _(none)_      | Android, Linux |
+| `mtuChanged` | `mtu: number` | Android        |
+
+**Constants**
+
+| Constant                                     | Value  |
+| -------------------------------------------- | ------ |
+| `Peripheral.PROPERTY_READ`                   | `0x02` |
+| `Peripheral.PROPERTY_WRITE_WITHOUT_RESPONSE` | `0x04` |
+| `Peripheral.PROPERTY_WRITE`                  | `0x08` |
+| `Peripheral.PROPERTY_NOTIFY`                 | `0x10` |
+| `Peripheral.PROPERTY_INDICATE`               | `0x20` |
+
+### Server
+
+#### `const server = new Server([options])`
+
+Create a new BLE peripheral manager (server). The server advertises services and handles read/write requests from centrals. As with `Central`, `options` only applies on Linux.
+
+On Android the GATT server is opened each time the adapter reaches `'poweredOn'` and closed when it leaves it, which drops its services. Add services in your `stateChange` handler on every transition to `'poweredOn'`, as the usage example does.
+
+**Properties**
+
+| Property | Type             | Description                     |
+| -------- | ---------------- | ------------------------------- |
+| `state`  | `BluetoothState` | Current Bluetooth adapter state |
+
+**Methods**
+
+#### `server.addService(service)`
+
+Add a `Service` to the GATT server. The `serviceAdd` event is emitted when the service has been registered.
+
+#### `server.startAdvertising([options])`
+
+Start advertising the server.
+
+```js
+options = {
+  name: null,
+  serviceUUIDs: null,
+  serviceData: null // Apple and Linux only
+}
+```
+
+On Android, `name` only switches on the device's own Bluetooth name in the advertisement; the string itself is not used.
+
+#### `server.stopAdvertising()`
+
+Stop advertising.
+
+#### `server.respondToRequest(request, result[, data])`
+
+Respond to a `ReadRequest` or `WriteRequest` with the given ATT `result: number` code. Optionally include `data: Uint8Array` for read responses. Use the `Server.ATT_*` constants for `result`.
+
+On Android every read reaches `readRequest`, even for a characteristic created with a `value`, so answer each one. On Apple, the system answers reads of a characteristic created with a `value` itself. On Linux, a result BlueZ has no name for (`ATT_INVALID_HANDLE`, `ATT_INSUFFICIENT_RESOURCES`) reaches the central as `ATT_UNLIKELY_ERROR`, a read nobody listens for is answered with the characteristic's `value`, and a write nobody listens for is accepted.
+
+#### `server.updateValue(characteristic, data)`
+
+Update the value of a `Characteristic` and notify subscribed centrals. `data` is a `Uint8Array`. Returns `true` if the update was sent successfully. On Apple, `false` means the transmit queue is full: send again after `readyToUpdate`.
+
+#### `server.publishChannel([options])`
+
+Publish an L2CAP channel. The `channelPublish` event is emitted with the assigned PSM. The operating system picks the PSM, so a central has to learn it some other way, for example by reading it from a characteristic.
+
+```js
+options = {
+  encrypted: false
+}
+```
+
+`encrypted: true` requires the devices to be paired. On Linux, `options.psm` asks for a specific PSM instead of an assigned one.
+
+#### `server.unpublishChannel(psm)`
+
+Unpublish a previously published L2CAP channel identified by `psm: number`.
+
+#### `server.removeAllServices()`
+
+Remove every service previously added with `server.addService()`. Apple and Linux only. `undefined` on Android.
+
+#### `server.destroy()`
+
+Destroy the server and release all resources.
+
+**Events**
+
+| Event            | Arguments                                     | Description                             |
+| ---------------- | --------------------------------------------- | --------------------------------------- |
+| `stateChange`    | `state: BluetoothState`                       | Bluetooth adapter state changed         |
+| `serviceAdd`     | `uuid: string`                                | Service registered                      |
+| `readRequest`    | `request: ReadRequest`                        | Central read a characteristic           |
+| `writeRequest`   | `requests: WriteRequest[]`                    | Central wrote to a characteristic       |
+| `subscribe`      | `peer: unknown`, `characteristicUuid: string` | Central subscribed to notifications     |
+| `unsubscribe`    | `peer: unknown`, `characteristicUuid: string` | Central unsubscribed from notifications |
+| `error`          | `error: Error`                                | An error occurred                       |
+| `channelPublish` | `psm: number`                                 | L2CAP channel published                 |
+| `channelOpen`    | `channel: L2CAPChannel`                       | L2CAP channel opened by a central       |
+
+`peer` is an opaque handle on Apple, the device address on Android, and `null` on Linux: BlueZ does not say which central toggled notifications.
+
+| Event           | Arguments                                 | Platform       |
+| --------------- | ----------------------------------------- | -------------- |
+| `connecting`    | `deviceAddress: string`                   | Android        |
+| `connected`     | `deviceAddress: string`                   | Android, Linux |
+| `disconnecting` | `deviceAddress: string`                   | Android        |
+| `disconnected`  | `deviceAddress: string`                   | Android, Linux |
+| `notifySent`    | `deviceAddress: string`, `status: number` | Android        |
+| `readyToUpdate` | _(none)_                                  | Apple          |
+| `pairRequest`   | `request: PairRequest`                    | Linux          |
+
+**Constants**
+
+**State constants**
+
+| Constant                    | Value |
+| --------------------------- | ----- |
+| `Server.STATE_UNKNOWN`      | `0`   |
+| `Server.STATE_RESETTING`    | `1`   |
+| `Server.STATE_UNSUPPORTED`  | `2`   |
+| `Server.STATE_UNAUTHORIZED` | `3`   |
+| `Server.STATE_POWERED_OFF`  | `4`   |
+| `Server.STATE_POWERED_ON`   | `5`   |
+
+**Connection state constants (Android)**
+
+| Constant                                | Value |
+| --------------------------------------- | ----- |
+| `Server.CONNECTION_STATE_DISCONNECTED`  | `0`   |
+| `Server.CONNECTION_STATE_CONNECTING`    | `1`   |
+| `Server.CONNECTION_STATE_CONNECTED`     | `2`   |
+| `Server.CONNECTION_STATE_DISCONNECTING` | `3`   |
+
+**Property constants**
+
+| Constant                                 | Value  |
+| ---------------------------------------- | ------ |
+| `Server.PROPERTY_READ`                   | `0x02` |
+| `Server.PROPERTY_WRITE_WITHOUT_RESPONSE` | `0x04` |
+| `Server.PROPERTY_WRITE`                  | `0x08` |
+| `Server.PROPERTY_NOTIFY`                 | `0x10` |
+| `Server.PROPERTY_INDICATE`               | `0x20` |
+
+**Permission constants**
+
+The values differ on Linux, so build bitmasks from the constants rather than from numbers.
+
+| Constant                            | Apple, Android | Linux  |
+| ----------------------------------- | -------------- | ------ |
+| `Server.PERMISSION_READABLE`        | `0x01`         | `0x01` |
+| `Server.PERMISSION_WRITEABLE`       | `0x02`         | `0x10` |
+| `Server.PERMISSION_READ_ENCRYPTED`  | `0x04`         | `0x02` |
+| `Server.PERMISSION_WRITE_ENCRYPTED` | `0x08`         | `0x20` |
+
+**ATT result codes**
+
+| Constant                            | Value  |
+| ----------------------------------- | ------ |
+| `Server.ATT_SUCCESS`                | `0x00` |
+| `Server.ATT_INVALID_HANDLE`         | `0x01` |
+| `Server.ATT_READ_NOT_PERMITTED`     | `0x02` |
+| `Server.ATT_WRITE_NOT_PERMITTED`    | `0x03` |
+| `Server.ATT_INSUFFICIENT_RESOURCES` | `0x11` |
+| `Server.ATT_UNLIKELY_ERROR`         | `0x0E` |
+
+### ReadRequest
+
+Represents a read request from a central. Emitted by the `readRequest` event on `Server`. Pass it directly to `server.respondToRequest()`.
+
+**Properties**
+
+| Property             | Type     | Description                           |
+| -------------------- | -------- | ------------------------------------- |
+| `characteristicUuid` | `string` | UUID of the characteristic being read |
+| `offset`             | `number` | Byte offset for the read              |
+
+### WriteRequest
+
+Represents a write request from a central. Emitted as an array by the `writeRequest` event on `Server`. Pass it directly to `server.respondToRequest()`.
+
+**Properties**
+
+| Property             | Type         | Description                              |
+| -------------------- | ------------ | ---------------------------------------- |
+| `characteristicUuid` | `string`     | UUID of the characteristic being written |
+| `offset`             | `number`     | Byte offset for the write                |
+| `data`               | `Uint8Array` | Data being written                       |
+| `responseNeeded`     | `boolean`    | Whether the central expects a response   |
+
+### PairRequest
+
+Linux only. A peer wants to pair. Emitted by the `pairRequest` event on `Central` and `Server`, and refused when nothing is listening.
+
+Apple and Android hand the decision to the operating system, which prompts the user; BlueZ has no prompt to fall back on, so the app answers instead. Pairing is always "just works": a machine with no screen and no keyboard cannot compare a passkey, so there is nothing else to answer. Use [`bare-bluetooth-linux`](/bare/reference/bare/modules/bare-bluetooth-linux) directly for BlueZ's other pairing modes.
+
+**Properties**
+
+| Property        | Type             | Description                     |
+| --------------- | ---------------- | ------------------------------- |
+| `deviceAddress` | `string`         | Address of the peer             |
+| `name`          | `string \| null` | Name of the peer, if it has one |
+
+**Methods**
+
+#### `request.accept()`
+
+Allow the pairing. The first answer wins; a later one does nothing.
+
+#### `request.reject()`
+
+Refuse the pairing.
+
+### L2CAPChannel
+
+An L2CAP connection-oriented channel. Obtained through the `channelOpen` event on `Server` or `Peripheral`. Extends `Duplex` from [`bare-stream`](/bare/reference/bare/modules/bare-stream) and supports standard readable and writable stream operations.
+
+**Properties**
+
+| Property | Type             | Description                                    |
+| -------- | ---------------- | ---------------------------------------------- |
+| `psm`    | `number`         | Protocol/Service Multiplexer number            |
+| `peer`   | `string \| null` | Remote device identifier, or `null` if unknown |
+
+The value of `peer` is platform-specific. On Apple it is the OS-assigned peer UUID (`CBPeer.identifier`); the system hides the real Bluetooth address. On Android and Linux it is the remote device's Bluetooth address (for example `AA:BB:CC:DD:EE:FF`). It matches the identifier reported by device discovery on the same platform, so it can be used to correlate an accepted channel with a known device.
+
+Listen for `error` on the channel: a write to a peer that has gone destroys the stream rather than throwing, and an unhandled `error` throws. On Linux the channel is the `L2CAPChannel` of [`bare-bluetooth-linux`](/bare/reference/bare/modules/bare-bluetooth-linux), which also has an `mtu` property: a single write larger than `mtu` fails.
+
+### Service
+
+#### `const service = new Service(uuid[, characteristics[, options]])`
+
+Create a GATT service definition.
+
+| Parameter         | Type               | Default | Description                       |
+| ----------------- | ------------------ | ------- | --------------------------------- |
+| `uuid`            | `string`           |         | Service UUID                      |
+| `characteristics` | `Characteristic[]` | `[]`    | Characteristics for this service  |
+| `options.primary` | `boolean`          | `true`  | Whether this is a primary service |
+
+**Properties**
+
+| Property          | Type               | Description                              |
+| ----------------- | ------------------ | ---------------------------------------- |
+| `uuid`            | `string`           | UUID of the service                      |
+| `characteristics` | `Characteristic[]` | Characteristics belonging to the service |
+| `primary`         | `boolean`          | Whether this is a primary service        |
+
+### Characteristic
+
+#### `const characteristic = new Characteristic(uuid[, options])`
+
+Create a GATT characteristic definition.
+
+| Parameter                      | Type                 | Default | Description                                                      |
+| ------------------------------ | -------------------- | ------- | ---------------------------------------------------------------- |
+| `uuid`                         | `string`             |         | Characteristic UUID                                              |
+| `options.read`                 | `boolean`            | `false` | Enable read property                                             |
+| `options.write`                | `boolean`            | `false` | Enable write property                                            |
+| `options.writeWithoutResponse` | `boolean`            | `false` | Enable write-without-response property                           |
+| `options.notify`               | `boolean`            | `false` | Enable notify property                                           |
+| `options.indicate`             | `boolean`            | `false` | Enable indicate property                                         |
+| `options.permissions`          | `number \| null`     | `null`  | Explicit permission bitmask. If `null`, inferred from properties |
+| `options.value`                | `Uint8Array \| null` | `null`  | Static value                                                     |
+
+**Properties**
+
+| Property      | Type                 | Description                                                    |
+| ------------- | -------------------- | -------------------------------------------------------------- |
+| `uuid`        | `string`             | UUID of the characteristic                                     |
+| `properties`  | `number`             | Bitmask of characteristic properties                           |
+| `permissions` | `number \| null`     | Bitmask of permissions, or `null` if inferred                  |
+| `value`       | `Uint8Array \| null` | Static value. Setting it on a discovered characteristic throws |
+
+**Constants**
+
+| Constant                                         | Value  |
+| ------------------------------------------------ | ------ |
+| `Characteristic.PROPERTY_READ`                   | `0x02` |
+| `Characteristic.PROPERTY_WRITE_WITHOUT_RESPONSE` | `0x04` |
+| `Characteristic.PROPERTY_WRITE`                  | `0x08` |
+| `Characteristic.PROPERTY_NOTIFY`                 | `0x10` |
+| `Characteristic.PROPERTY_INDICATE`               | `0x20` |
+
+## See also
+
+- Builds on [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple), [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android) and [`bare-bluetooth-linux`](/bare/reference/bare/modules/bare-bluetooth-linux), which have their own, platform-specific APIs.
+- [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

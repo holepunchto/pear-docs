@@ -269,3 +269,54 @@ test('collapseType: leaves explicit separators, unions and single-line types alo
   assert.equal(collapseType('string\n  | number'), 'string | number');
   assert.equal(collapseType('(\n  a: string,\n  b: number\n) => void'), '( a: string, b: number ) => void');
 });
+
+const patchBase: BareModel = {
+  name: 'thing', version: '1.0.0', description: null, repoUrl: null,
+  npmUrl: '', minBare: null, native: false, dependencies: [], usage: 'Call `old()` once.',
+  extraSections: [{ heading: 'Protocol', body: 'Send `ping` first.' }],
+  exports: [], subpaths: [], generatedAt: null,
+};
+
+test('layout patch rewrites its text once, in the usage block or in a README section picked by heading', () => {
+  const { mdx } = renderPage(patchBase, {
+    patch: [
+      { in: 'usage', from: 'old()', to: 'new() ($& stays literal)' },
+      { in: 'Protocol', from: 'ping', to: 'hello' },
+    ],
+  });
+  assert.match(mdx, /Call `new\(\) \(\$& stays literal\)` once\./, 'usage patched, replacement not treated as a pattern');
+  assert.match(mdx, /Send `hello` first\./, 'README section patched by its heading');
+});
+
+test('layout patch fails the render when its text is gone or ambiguous, so a stale fix gets noticed', () => {
+  assert.throws(
+    () => renderPage(patchBase, { patch: [{ in: 'usage', from: 'fixed upstream', to: 'x' }] }),
+    /matches 0 times, needs exactly 1/,
+  );
+  assert.throws(
+    () => renderPage({ ...patchBase, usage: 'old() then old()' }, { patch: [{ in: 'usage', from: 'old()', to: 'new()' }] }),
+    /matches 2 times, needs exactly 1/,
+  );
+});
+
+test('layout patch fails the render when the page has no block for it', () => {
+  assert.throws(
+    () => renderPage({ ...patchBase, usage: null }, { patch: [{ in: 'usage', from: 'old()', to: 'new()' }] }),
+    /targets "usage", which this page has no block for/,
+  );
+  assert.throws(
+    () => renderPage(patchBase, { patch: [{ in: 'Missing', from: 'ping', to: 'x' }] }),
+    /targets "Missing", which this page has no block for/,
+  );
+});
+
+test('layout extraSections come after the API section and before the README sections, and keep links to their own headings', () => {
+  const model: BareModel = { ...patchBase, exports: extract('thin.d.ts') };
+  const { mdx } = renderPage(model, {
+    extraSections: [{ heading: 'Events', body: 'See [Protocol](#protocol) and [Nowhere](#nowhere).\n\n### `Err` events\n\nNone.' }],
+  });
+  const at = (s: string) => mdx.indexOf(s);
+  assert.ok(at('## API') >= 0 && at('## API') < at('## Events'), 'after the API section');
+  assert.ok(at('## Events') < at('## Protocol'), 'before README sections');
+  assert.match(mdx, /See \[Protocol\]\(#protocol\) and Nowhere\./, 'live anchor kept, dangling one reduced to its label');
+});

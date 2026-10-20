@@ -141,7 +141,7 @@ function extraSections(md: string): Array<{ heading: string; body: string }> {
   const out: Array<{ heading: string; body: string }> = [];
   for (let i = 0; i < headings.length; i++) {
     const { heading, start } = headings[i];
-    if (SKIP_EXTRA_HEADINGS.has(heading.toLowerCase())) continue;
+    if (SKIP_EXTRA_HEADINGS.has(heading.toLowerCase()) || /^(testing|running the tests)\b/i.test(heading)) continue;
     const end = i + 1 < headings.length ? headings[i + 1].start - 1 : lines.length;
     const body = lines.slice(start, end).join('\n').trim();
     if (body) out.push({ heading, body });

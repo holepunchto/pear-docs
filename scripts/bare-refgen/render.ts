@@ -551,12 +551,29 @@ function buildsOnLine(model: BareModel): string | null {
 
 export function renderPage(model: BareModel, layout: Layout | null): { mdx: string; orphans: string[] } {
   const ctx: Ctx = { model, layout, typeAnchors: buildTypeAnchors(model.exports), target: 'mdx' };
-  const usageBlock = model.usage ? mdxSafeReadmeBlock(model.usage.trim()) : null;
+  // A layout patch edits a README-derived block as rendered, and must hit exactly once: one that
+  // no longer does is stale (upstream fixed its README) and fails the render so it gets dropped.
+  const applied = new Set<number>();
+  const patched = (target: string, block: string): string =>
+    (layout?.patch ?? []).reduce((text, p, i) => {
+      if (p.in !== target) return text;
+      const hits = text.split(p.from).length - 1;
+      if (hits !== 1) {
+        throw new Error(`${model.name}: layout patch in "${target}" matches ${hits} times, needs exactly 1: ${JSON.stringify(p.from.slice(0, 80))}`);
+      }
+      applied.add(i);
+      return text.replace(p.from, () => p.to);
+    }, block);
+
+  const usageBlock = model.usage ? patched('usage', mdxSafeReadmeBlock(model.usage.trim())) : null;
   // Defensive: committed api-model.json files predating this field lack it.
-  const extraBlocks = (model.extraSections ?? []).map(({ heading, body }) => ({
+  const extraBlocks = [...(layout?.extraSections ?? []), ...(model.extraSections ?? [])].map(({ heading, body }) => ({
     heading,
-    body: mdxSafeReadmeBlock(body.trim()),
+    body: patched(heading, mdxSafeReadmeBlock(body.trim())),
   }));
+  (layout?.patch ?? []).forEach((p, i) => {
+    if (!applied.has(i)) throw new Error(`${model.name}: layout patch targets "${p.in}", which this page has no block for`);
+  });
   const { lines: apiLines, orphans } = apiSection(ctx);
 
   // Verbatim README prose sometimes links to a same-page section that this

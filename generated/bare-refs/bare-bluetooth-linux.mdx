@@ -1,0 +1,905 @@
+---
+title: "bare-bluetooth-linux"
+description: "BlueZ D-Bus bindings for Bare"
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "0.9.2"
+---
+
+<mark style={{ backgroundColor: '#8484ff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>experimental</mark>
+
+[`bare-bluetooth-linux`](https://github.com/holepunchto/bare-bluetooth-linux) — BlueZ bindings for Bare. Provides central and peripheral roles, GATT services and characteristics, and L2CAP channels on Linux. It is a native addon that talks to the BlueZ daemon (`bluetoothd`) over D-Bus, so `bluetoothd` must be running and the adapter powered on. Upstream marks it experimental: its API is subject to change and may break at any time.
+
+```sh
+npm i bare-bluetooth-linux
+```
+
+## Usage
+
+Central, scanning for a Heart Rate monitor and reading its measurement:
+
+```js
+const { Adapter } = require('bare-bluetooth-linux')
+
+const adapter = new Adapter()
+
+adapter.on('device', async (device) => {
+  if (!device.uuids.includes('0000180d-0000-1000-8000-00805f9b34fb')) return
+
+  await adapter.stopDiscovery()
+  await device.connect()
+
+  device.on('servicesResolved', (resolved) => {
+    if (!resolved) return
+
+    for (const service of device.services.values()) {
+      for (const characteristic of service.characteristics.values()) {
+        if (characteristic.flags.includes('notify')) {
+          characteristic.on('data', (value) => console.log(new Uint8Array(value)))
+          characteristic.startNotify()
+        }
+      }
+    }
+  })
+})
+
+adapter.setDiscoveryFilter({ transport: 'le' }).then(() => adapter.startDiscovery())
+```
+
+Peripheral, publishing a Heart Rate service and notifying a new value every second:
+
+```js
+const {
+  Adapter,
+  Advertisement,
+  Agent,
+  GattApplication,
+  GattService,
+  GattCharacteristic
+} = require('bare-bluetooth-linux')
+
+const SERVICE = '0000180d-0000-1000-8000-00805f9b34fb'
+
+const characteristic = new GattCharacteristic({
+  uuid: '00002a37-0000-1000-8000-00805f9b34fb',
+  flags: ['read', 'notify'],
+  value: new Uint8Array([0, 60])
+})
+
+const service = new GattService({ uuid: SERVICE })
+service.addCharacteristic(characteristic)
+
+const app = new GattApplication({ path: '/com/example/heart' })
+app.addService(service)
+
+class AcceptAll extends Agent {
+  requestAuthorization() {
+    return Promise.resolve(true)
+  }
+}
+
+const adapter = new Adapter()
+
+async function main() {
+  await adapter.registerAgent(new AcceptAll())
+  await adapter.requestDefaultAgent()
+  await adapter.registerApplication(app)
+  await adapter.registerAdvertisement(
+    new Advertisement({ localName: 'bare', serviceUUIDs: [SERVICE] })
+  )
+
+  setInterval(() => {
+    characteristic.value = new Uint8Array([0, 60 + Math.round(Math.random() * 10)])
+  }, 1000)
+}
+
+main()
+```
+
+## API
+
+### Adapter
+
+#### `new Adapter(opts?: AdapterOptions)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | [`AdapterOptions`](#adapteroptions) | — | — |
+
+#### `address: string | null`
+
+Bluetooth address of the controller, `null` without one at `path`
+
+#### `destroy(): void`
+
+Releases the D-Bus connection, every later call rejects
+
+#### `devices: Map<string, Device>`
+
+Every device known to bluetoothd, keyed by D-Bus path
+
+#### `discovering: boolean`
+
+Whether a discovery session is active
+
+#### `Adapter.path: string`
+
+D-Bus path of the controller
+
+#### `powered: boolean`
+
+Switches the controller on or off, throws when BlueZ refuses
+
+#### `publishL2CAPChannel(opts?: ChannelOptions): void`
+
+Listens for L2CAP connections, `channelPublish` carries the PSM
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | [`ChannelOptions`](#channeloptions) | — | — |
+
+#### `registerAdvertisement(advertisement: Advertisement): Promise<void>`
+
+Registers an advertisement to be sent over the LE advertising channel
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `advertisement` | `Advertisement` | — | — |
+
+#### `registerAgent(agent: Agent, capability?: AgentCapability): Promise<void>`
+
+Registers the pairing agent, `NoInputNoOutput` capability by default
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `agent` | `Agent` | — | — |
+| `capability?` | [`AgentCapability`](#agentcapability) | — | — |
+
+#### `registerApplication(application: GattApplication): Promise<void>`
+
+Registers a local GATT service hierarchy, the GATT server role
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `application` | `GattApplication` | — | — |
+
+#### `removeDevice(device: Device): Promise<void>`
+
+Removes the device and its cached information, bonding included
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `device` | `Device` | — | — |
+
+#### `requestDefaultAgent(): Promise<void>`
+
+Makes the registered agent the default one for pairing requests
+
+#### `setDiscoveryFilter(filter?: DiscoveryFilter): Promise<void>`
+
+Sets the discovery filter for this adapter, no filter removes it
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `filter?` | [`DiscoveryFilter`](#discoveryfilter) | — | — |
+
+#### `startDiscovery(): Promise<void>`
+
+Starts a discovery session: inquiry, scanning and name resolving
+
+#### `stopDiscovery(): Promise<void>`
+
+Stops the session started by `startDiscovery`
+
+#### `unpublishL2CAPChannel(psm: number): void`
+
+Stops listening on the PSM
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `psm` | `number` | — | — |
+
+#### `unregisterAdvertisement(advertisement: Advertisement): Promise<void>`
+
+Unregisters an advertisement registered with `registerAdvertisement`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `advertisement` | `Advertisement` | — | — |
+
+#### `unregisterAgent(): Promise<void>`
+
+Unregisters the agent registered with `registerAgent`
+
+#### `unregisterApplication(application: GattApplication): Promise<void>`
+
+Unregisters the hierarchy registered with `registerApplication`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `application` | `GattApplication` | — | — |
+
+### Device
+
+#### `address: string`
+
+Bluetooth address of the remote device
+
+#### `addressType: AddressType`
+
+`public` for dual-mode and BR/EDR devices, either for LE only ones
+
+#### `connect(): Promise<void>`
+
+Connects every profile the device supports and flags auto-connectable
+
+#### `connected: boolean`
+
+#### `disconnect(): Promise<void>`
+
+Disconnects every profile, then the ACL link
+
+#### `manufacturerData: { [id: number]: Uint8Array }`
+
+Manufacturer specific advertisement data, keyed by manufacturer id
+
+#### `name: string | undefined`
+
+Remote name, once a scan response or a connection carried it
+
+#### `openL2CAPChannel(psm: number, opts?: { security?: number }): void`
+
+Opens an L2CAP channel on the PSM, delivered on `channelOpen`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `psm` | `number` | — | — |
+| `opts?` | `{ security?: number }` | — | — |
+
+#### `pair(): Promise<void>`
+
+Connects, pairs, then discovers services
+
+#### `paired: boolean`
+
+Whether the devices exchanged keys for an encrypted connection
+
+#### `Device.path: string`
+
+D-Bus path of the device
+
+#### `preferredBearer: PreferredBearer | undefined`
+
+Bearer to try first when connecting, dual-mode devices only
+
+#### `rssi: number | undefined`
+
+Signal strength of the last advertisement, in dBm
+
+#### `Device.serviceData: { [uuid: string]: Uint8Array }`
+
+Service advertisement data, keyed by UUID
+
+#### `services: Map<string, Service>`
+
+Services discovered so far, keyed by D-Bus path
+
+#### `servicesResolved: boolean`
+
+Whether the GATT tree in `services` is complete
+
+#### `uuids: string[]`
+
+128-bit UUIDs of the remote services
+
+### Characteristic
+
+#### `descriptors: Map<string, Descriptor>`
+
+Descriptors discovered so far, keyed by D-Bus path
+
+#### `Characteristic.flags: string[]`
+
+How the value can be used: `read`, `write`, `notify`...
+
+#### `mtu: number`
+
+MTU for `read` and `write`
+
+#### `Characteristic.path: string`
+
+D-Bus path of the characteristic
+
+#### `Characteristic.read(): Promise<ArrayBuffer>`
+
+Reads the value from the peer
+
+#### `startNotify(): Promise<void>`
+
+Starts a notification session, values arrive on `data`
+
+#### `stopNotify(): Promise<void>`
+
+Stops the session started by `startNotify`
+
+#### `Characteristic.uuid: string`
+
+128-bit characteristic UUID
+
+#### `write(value: Uint8Array, opts?: WriteOptions): Promise<void>`
+
+Writes the value to the peer
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `Uint8Array` | — | — |
+| `opts?` | [`WriteOptions`](#writeoptions) | — | — |
+
+### Descriptor
+
+#### `Descriptor.flags: string[]`
+
+How the value can be used: `read`, `write`...
+
+#### `Descriptor.path: string`
+
+D-Bus path of the descriptor
+
+#### `Descriptor.read(): Promise<ArrayBuffer>`
+
+Reads the value from the peer
+
+#### `Descriptor.uuid: string`
+
+128-bit descriptor UUID
+
+#### `write(value: Uint8Array): Promise<void>`
+
+Writes the value to the peer
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `Uint8Array` | — | — |
+
+### Advertisement
+
+#### `new Advertisement(opts?: AdvertisementOptions)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | [`AdvertisementOptions`](#advertisementoptions) | — | — |
+
+#### `localName: string | undefined`
+
+#### `Advertisement.serviceData: { [uuid: string]: Uint8Array }`
+
+#### `serviceUUIDs: string[]`
+
+#### `type: 'broadcast' | 'peripheral'`
+
+### Agent
+
+#### `authorizeService(devicePath: string, uuid: string): Promise<boolean>`
+
+A connection or service request, `true` accepts
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `devicePath` | `string` | — | — |
+| `uuid` | `string` | — | — |
+
+#### `cancel(): Promise<void>`
+
+The pending request failed before a reply was returned
+
+#### `displayPasskey(devicePath: string, passkey: number, entered: number): Promise<void>`
+
+bluetoothd wants the passkey shown, `entered` counts typed digits
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `devicePath` | `string` | — | — |
+| `passkey` | `number` | — | — |
+| `entered` | `number` | — | — |
+
+#### `displayPinCode(devicePath: string, pincode: string): Promise<void>`
+
+bluetoothd wants the PIN code shown to the user
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `devicePath` | `string` | — | — |
+| `pincode` | `string` | — | — |
+
+#### `release(): Promise<void>`
+
+bluetoothd unregistered the agent
+
+#### `requestAuthorization(devicePath: string): Promise<boolean>`
+
+A pairing that shows nothing to confirm or type, `true` accepts
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `devicePath` | `string` | — | — |
+
+#### `requestConfirmation(devicePath: string, passkey: number): Promise<boolean>`
+
+bluetoothd needs the passkey confirmed, `true` accepts
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `devicePath` | `string` | — | — |
+| `passkey` | `number` | — | — |
+
+#### `requestPasskey(devicePath: string): Promise<number>`
+
+bluetoothd needs a passkey for an authentication
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `devicePath` | `string` | — | — |
+
+#### `requestPinCode(devicePath: string): Promise<string>`
+
+bluetoothd needs a PIN code for an authentication
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `devicePath` | `string` | — | — |
+
+### BluetoothError
+
+#### `new BluetoothError(msg: string, fn?: Function, code?: string)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+| `fn?` | `Function` | — | — |
+| `code?` | `string` | — | — |
+
+#### `BluetoothError.ADVERTISE_FAILED(msg: string): BluetoothError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.AGENT_CANCELED(msg: string): BluetoothError`
+
+The agent threw with this code: bluetoothd sees `Canceled` instead of `Rejected`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.CHANNEL_FAILED(msg: string): BluetoothError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.CHANNEL_PUBLISH_FAILED(msg: string): BluetoothError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.CONNECTION_FAILED(msg: string, id: string): BluetoothError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+| `id` | `string` | — | — |
+
+#### `BluetoothError.DISCONNECT(msg: string, id: string): BluetoothError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+| `id` | `string` | — | — |
+
+#### `BluetoothError.NOTIFY_STATE_FAILED(msg: string): BluetoothError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.READ_FAILED(msg: string): BluetoothError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.SCAN_FAILED(msg: string): BluetoothError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.SERVICE_ADD_FAILED(msg: string): BluetoothError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `BluetoothError.WRITE_FAILED(msg: string): BluetoothError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `code: string`
+
+#### `id: string`
+
+Address of the device, on `CONNECTION_FAILED` and `DISCONNECT`
+
+#### `name: 'BluetoothError'`
+
+### GattApplication
+
+#### `new GattApplication(opts?: GattApplicationOptions)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | [`GattApplicationOptions`](#gattapplicationoptions) | — | — |
+
+#### `addService(service: GattService): void`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `service` | `GattService` | — | — |
+
+#### `GattApplication.path: string`
+
+#### `services: GattService[]`
+
+### GattService
+
+#### `new GattService(opts: GattServiceOptions)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | [`GattServiceOptions`](#gattserviceoptions) | — | — |
+
+#### `addCharacteristic(characteristic: GattCharacteristic): void`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `characteristic` | `GattCharacteristic` | — | — |
+
+#### `characteristics: GattCharacteristic[]`
+
+#### `primary: boolean`
+
+#### `GattService.uuid: string`
+
+### GattCharacteristic
+
+#### `new GattCharacteristic(opts: GattCharacteristicOptions)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | [`GattCharacteristicOptions`](#gattcharacteristicoptions) | — | — |
+
+#### `GattCharacteristic.flags: string[]`
+
+#### `notifying: boolean`
+
+Whether a peer currently has notifications enabled
+
+#### `read: ReadHandler`
+
+#### `registered: boolean`
+
+Whether the hierarchy holding it is registered with an adapter
+
+#### `GattCharacteristic.uuid: string`
+
+#### `value: Uint8Array`
+
+Current value; setting it notifies subscribers, throws when not registered
+
+#### `write: WriteHandler`
+
+### Constants and variables
+
+#### `constants`
+
+### Types
+
+#### `AdapterOptions`
+
+```ts
+interface AdapterOptions {
+  path?: string
+}
+```
+
+#### `DiscoveryFilter`
+
+```ts
+interface DiscoveryFilter {
+  uuids?: string[]
+  rssi?: number
+  transport?: 'auto' | 'bredr' | 'le'
+}
+```
+
+#### `ChannelOptions`
+
+```ts
+interface ChannelOptions {
+  psm?: number
+  security?: number
+}
+```
+
+#### `AdapterEventMap`
+
+```ts
+interface AdapterEventMap {
+  device: [device: Device]
+  deviceCached: [device: Device]
+  deviceRemoved: [device: Device]
+  powered: [powered: boolean]
+  discovering: [discovering: boolean]
+  advertisementReleased: []
+  channelPublish: [psm: number]
+  channelOpen: [channel: L2CAPChannel]
+  error: [error: BluetoothError]
+}
+```
+
+#### `AddressType`
+
+```ts
+type AddressType = 'public' | 'random'
+```
+
+#### `PreferredBearer`
+
+```ts
+type PreferredBearer = 'last-used' | 'bredr' | 'le' | 'last-seen'
+```
+
+#### `DeviceEventMap`
+
+```ts
+interface DeviceEventMap {
+  connected: [connected: boolean]
+  paired: [paired: boolean]
+  servicesResolved: [resolved: boolean]
+  rssi: [rssi: number]
+  name: [name: string]
+  service: [service: Service]
+  serviceCached: [service: Service]
+  serviceRemoved: [service: Service]
+  channelOpen: [channel: L2CAPChannel]
+  error: [error: BluetoothError]
+}
+```
+
+#### `ServiceEventMap`
+
+```ts
+interface ServiceEventMap {
+  characteristic: [characteristic: Characteristic]
+  characteristicCached: [characteristic: Characteristic]
+  characteristicRemoved: [characteristic: Characteristic]
+}
+```
+
+#### `WriteOptions`
+
+```ts
+interface WriteOptions {
+  type?: 'request' | 'command'
+}
+```
+
+#### `CharacteristicEventMap`
+
+```ts
+interface CharacteristicEventMap {
+  data: [value: ArrayBuffer]
+  descriptor: [descriptor: Descriptor]
+  descriptorCached: [descriptor: Descriptor]
+  descriptorRemoved: [descriptor: Descriptor]
+}
+```
+
+#### `AdvertisementOptions`
+
+```ts
+interface AdvertisementOptions {
+  type?: 'broadcast' | 'peripheral'
+  localName?: string
+  serviceUUIDs?: string[]
+  serviceData?: { [uuid: string]: Uint8Array }
+}
+```
+
+#### `AgentCapability`
+
+```ts
+type AgentCapability = 'DisplayOnly' | 'DisplayYesNo' | 'KeyboardOnly' | 'NoInputNoOutput' | 'KeyboardDisplay'
+```
+
+#### `L2CAPChannelEventMap`
+
+```ts
+interface L2CAPChannelEventMap {
+  open: []
+}
+```
+
+#### `GattApplicationOptions`
+
+```ts
+interface GattApplicationOptions {
+  path?: string
+}
+```
+
+#### `GattServiceOptions`
+
+```ts
+interface GattServiceOptions {
+  uuid: string
+  primary?: boolean
+}
+```
+
+#### `GattCharacteristicOptions`
+
+```ts
+interface GattCharacteristicOptions {
+  uuid: string
+  flags?: string[]
+  value?: Uint8Array
+  read?: ReadHandler
+  write?: WriteHandler
+}
+```
+
+#### `ReadOptions`
+
+```ts
+interface ReadOptions {
+  offset: number
+  mtu: number
+  device: string
+  link: string
+}
+```
+
+#### `GattWriteOptions`
+
+```ts
+interface GattWriteOptions {
+  offset: number
+  type: string
+  mtu: number
+  device: string
+  link: string
+  prepareAuthorize: boolean
+}
+```
+
+#### `GattCharacteristicEventMap`
+
+```ts
+interface GattCharacteristicEventMap {
+  write: [value: Uint8Array, options: GattWriteOptions]
+  notifying: [notifying: boolean]
+}
+```
+
+### Classes
+
+#### `Service`
+
+```ts
+class Service {
+  characteristics: Map<string, Characteristic>
+  path: string
+  primary: boolean
+  uuid: string
+}
+```
+
+#### `L2CAPChannel`
+
+```ts
+class L2CAPChannel {
+  mtu: number
+  peer: string | null
+  psm: number
+}
+```
+
+## See also
+
+- Builds on `bare-events` and `bare-stream`.
+- [`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API, which wraps this module on Linux.
+- [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple) and [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android) — the same for Apple platforms and Android.
+- [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

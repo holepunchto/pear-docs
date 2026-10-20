@@ -11,9 +11,24 @@ import type { Layout } from '../layout';
 const layout: Layout = {
   seeAlso: [
     'Runs on Apple platforms (iOS and macOS) — on Android use [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android).',
+    '[`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API over this module, `bare-bluetooth-android` and `bare-bluetooth-linux`.',
     '[One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.',
   ],
+  // serviceAdd carries only the UUID; a failed add is an 'error' event with code SERVICE_ADD_FAILED.
+  patch: [
+    {
+      in: 'usage',
+      from: "manager.on('serviceAdd', (uuid, error) => {\n  if (error) return\n\n",
+      to: "manager.on('serviceAdd', (uuid) => {\n",
+    },
+  ],
   params: {
+    'Central.constructor': {
+      opts: 'Manager options. With `showPowerAlert: true` the system shows its alert if Bluetooth is off when the manager is created; defaults to `false`.',
+    },
+    'PeripheralManager.constructor': {
+      opts: 'Manager options. With `showPowerAlert: true` the system shows its alert if Bluetooth is off when the manager is created; defaults to `false`.',
+    },
     'Service.constructor': {
       uuid: "The service's UUID.",
       characteristics: 'The characteristics belonging to the service.',
@@ -33,11 +48,8 @@ const layout: Layout = {
     'Central.startScan': {
       serviceUUIDs: 'The service UUIDs to filter advertisements by; omit to discover all peripherals.',
     },
-    'Central.connect': {
-      peripheral: 'A discovered peripheral to connect to.',
-    },
-    'Central.disconnect': {
-      peripheral: 'The connected peripheral to disconnect from.',
+    'Central.retrieveConnectedPeripherals': {
+      services: 'The service UUIDs to match against the peripherals the system is connected to.',
     },
     'Peripheral.discoverServices': {
       serviceUUIDs: 'The service UUIDs to discover; omit to discover all services.',

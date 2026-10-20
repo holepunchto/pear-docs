@@ -350,6 +350,12 @@ Open the GATT server. Call it once `state` is `'on'`; it throws unless the adapt
 
 `startAdvertising()` and `publishChannel()` do not check whether the GATT server is open.
 
+#### `open(): void`
+
+Open the GATT server. Throws unless `state` is `'on'`, and the handle does not
+survive the adapter going off, so reopen on every transition back to `'on'`.
+Services do not survive a reopen and have to be added again.
+
 #### `publishChannel(opts?: ChannelOptions): void`
 
 Publish an L2CAP channel. The `'channelPublish'` event is emitted with the assigned PSM.
@@ -863,6 +869,10 @@ class ScanRecord {
 ```ts
 class Device {
   address: string
+  Device.DEVICE_TYPE_CLASSIC: number
+  Device.DEVICE_TYPE_DUAL: number
+  Device.DEVICE_TYPE_LE: number
+  Device.DEVICE_TYPE_UNKNOWN: number
   name: string | null
   type: number | null
 }
@@ -870,10 +880,66 @@ class Device {
 
 `type` is one of `Device.DEVICE_TYPE_UNKNOWN` (0), `Device.DEVICE_TYPE_CLASSIC` (1), `Device.DEVICE_TYPE_LE` (2), or `Device.DEVICE_TYPE_DUAL` (3), mirroring Android's `BluetoothDevice.getType()`. It is set on the devices that `central.getBondedDevices()` returns, and is `null` on a device that came from a scan. Added in v0.10.0.
 
+## Events
+
+Each class is an `EventEmitter`. These are the events each one emits and the arguments they carry. Failures arrive as `'error'` events; see [Errors](#errors) for the other ways a call can fail.
+
+### `Central` events
+
+| Event | Arguments | Description |
+| --- | --- | --- |
+| `'stateChange'` | `state: BluetoothState` | The adapter state changed. |
+| `'discover'` | `peripheral: Peripheral` | A peripheral was found while scanning. Repeated advertisements from the same device reuse the same `Peripheral`. |
+| `'connect'` | `peripheral: Peripheral` | A connection was established. |
+| `'disconnect'` | `peripheral: Peripheral \| null` | A peripheral disconnected, or `null` if it was not tracked as connected. If the disconnect carried an error, `'error'` is emitted with code `DISCONNECT` instead. |
+| `'error'` | `error: BluetoothError` | An operation failed: `SCAN_FAILED`, `CONNECTION_FAILED` or `DISCONNECT`. The last two carry the device address as `error.id`. |
+
+### `Peripheral` events
+
+| Event | Arguments | Description |
+| --- | --- | --- |
+| `'servicesDiscover'` | `services: Service[]` | Result of `discoverServices()`. |
+| `'characteristicsDiscover'` | `service: Service \| null, characteristics: Characteristic[]` | Result of `discoverCharacteristics()`. |
+| `'read'` | `characteristic: Characteristic, data: Uint8Array` | A read completed. |
+| `'write'` | `characteristic: Characteristic` | A write completed. |
+| `'notify'` | `characteristic: Characteristic, data: Uint8Array` | A subscribed characteristic changed value. |
+| `'notifyState'` | `characteristic: Characteristic, isNotifying: boolean` | Notifications were turned on or off for the characteristic. |
+| `'channelOpen'` | `channel: L2CAPChannel` | An L2CAP channel opened (result of `openL2CAPChannel()`). |
+| `'mtuChanged'` | `mtu: number` | The MTU changed (result of `requestMtu()`). |
+| `'disconnect'` | none | The peripheral disconnected without error. |
+| `'error'` | `error: BluetoothError` | An operation failed, for example `READ_FAILED`, `CHANNEL_FAILED` or `MTU_CHANGE_FAILED`. |
+
+The type declarations allow `null` for the characteristic of `'read'`, `'write'`, `'notify'` and `'notifyState'`, but the module drops those events for a characteristic the peripheral has not discovered rather than emitting `null`.
+
+### `Server` events
+
+| Event | Arguments | Description |
+| --- | --- | --- |
+| `'stateChange'` | `state: BluetoothState` | The adapter state changed. Call `open()` again after every transition back to `'on'`. |
+| `'serviceAdd'` | `uuid: string` | A service was registered with the GATT server (result of `addService()`). |
+| `'channelPublish'` | `psm: number` | An L2CAP channel was published, with its assigned PSM. |
+| `'channelOpen'` | `channel: L2CAPChannel` | A remote device opened a published L2CAP channel. |
+| `'readRequest'` | `request: ReadRequest` | A client asked to read a characteristic. Every read reaches this event; answer it with `respondToRequest()`. |
+| `'writeRequest'` | `requests: WriteRequest[]` | A client wrote to a characteristic. If `responseNeeded` is set, answer with `respondToRequest()`. |
+| `'subscribe'` | `deviceAddress: string, characteristicUuid: string` | A connected device subscribed to notifications for a characteristic. |
+| `'unsubscribe'` | `deviceAddress: string, characteristicUuid: string` | A connected device unsubscribed from notifications for a characteristic. |
+| `'connecting'`, `'connected'`, `'disconnecting'`, `'disconnected'` | `deviceAddress: string` | The connection state of a remote device changed. |
+| `'notifySent'` | `deviceAddress: string, status: number` | A notification was sent to a device, with the platform status code. |
+| `'error'` | `error: BluetoothError` | An operation failed: `SERVICE_ADD_FAILED`, `ADVERTISE_FAILED`, `CHANNEL_PUBLISH_FAILED` or `CHANNEL_FAILED`. |
+
+## Errors
+
+Failures arrive three ways:
+
+- **Thrown** - the Android call itself failed. The message carries the Java exception, for example `java.lang.IllegalStateException: BT Adapter is not turned ON`. Wrap the call in `try`/`catch`.
+- **Emitted** - the call went through and the operation failed later. The `error` event carries a `BluetoothError` with a `code` such as `SCAN_FAILED` or `CONNECTION_FAILED`.
+- **Streamed** - an `L2CAPChannel` is a `Duplex`, so a failed write does not throw from the write itself. It destroys the stream with the Java exception, for example `java.io.IOException: Broken pipe` once the peer is gone. Listen for `error` on the channel; an unhandled one still throws.
+
 ## See also
 
 - Builds on `bare-events` and `bare-stream`.
 - Runs on Android only — on Apple platforms use [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple). The two share most concepts under different names: the peripheral role is `Server` here and `PeripheralManager` there, adapter states are `'on'` and `'off'` here and `'poweredOn'` and `'poweredOff'` there, and a peripheral `id` is a hardware address here and a per host UUID there. To connect without a scan, this package builds a `Peripheral` from a `Device`, such as one from `getBondedDevices()`, while that one resolves saved ids with `retrievePeripherals()`.
+- [`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API over this module, `bare-bluetooth-apple` and `bare-bluetooth-linux`.
 - [One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
 - [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

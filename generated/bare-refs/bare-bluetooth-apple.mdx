@@ -4,7 +4,7 @@ description: "CoreBluetooth bindings for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.5.1"
+upstreamVersion: "0.7.1"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -34,9 +34,7 @@ manager.on('stateChange', (state) => {
   manager.addService(service)
 })
 
-manager.on('serviceAdd', (uuid, error) => {
-  if (error) return
-
+manager.on('serviceAdd', (uuid) => {
   manager.startAdvertising({
     name: 'MyDevice',
     serviceUUIDs: ['01230000-0000-1000-8000-00805F9B34FB']
@@ -140,14 +138,20 @@ The characteristic UUID
 
 #### `value: Uint8Array | null`
 
-The current value, if set
+The current value, if set. Assigning throws on a discovered characteristic
 
 ### PeripheralManager
 
-#### `new PeripheralManager()`
+#### `new PeripheralManager(opts?: PeripheralManagerOptions)`
 
 Create a new BLE peripheral manager. Advertises services and handles read/write requests from
 centrals.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | [`PeripheralManagerOptions`](#peripheralmanageroptions) | — | Manager options. With `showPowerAlert: true` the system shows its alert if Bluetooth is off when the manager is created; defaults to `false`. |
 
 #### `addService(service: Service): void`
 
@@ -282,9 +286,15 @@ Update the value of a `characteristic` and notify subscribed centrals.
 
 ### Central
 
-#### `new Central()`
+#### `new Central(opts?: CentralOptions)`
 
 Create a new BLE central manager. The central scans for and connects to peripherals.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | [`CentralOptions`](#centraloptions) | — | Manager options. With `showPowerAlert: true` the system shows its alert if Bluetooth is off when the manager is created; defaults to `false`. |
 
 #### `Central.STATE_POWERED_OFF: number`
 
@@ -300,21 +310,21 @@ Create a new BLE central manager. The central scans for and connects to peripher
 
 Bluetooth state constants.
 
-#### `connect(peripheral: DiscoveredPeripheral): void`
+#### `connect(peripheral: DiscoveredPeripheral | RetrievedPeripheral): void`
 
-Connect to a discovered `peripheral`.
+Connect to a discovered or retrieved `peripheral`.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `peripheral` | [`DiscoveredPeripheral`](#discoveredperipheral) | — | A discovered peripheral to connect to. |
+| `peripheral` | [`DiscoveredPeripheral`](#discoveredperipheral) \| [`RetrievedPeripheral`](#retrievedperipheral) | — | The peripheral to connect to. |
 
 #### `Central.destroy(): void`
 
 Destroy the instance and release all resources.
 
-#### `disconnect(peripheral: Peripheral | DiscoveredPeripheral): void`
+#### `disconnect(peripheral: Peripheral | DiscoveredPeripheral | RetrievedPeripheral): void`
 
 Disconnect from a connected `peripheral`, or cancel a pending connection to a discovered one.
 
@@ -322,7 +332,36 @@ Disconnect from a connected `peripheral`, or cancel a pending connection to a di
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `peripheral` | `Peripheral` \| [`DiscoveredPeripheral`](#discoveredperipheral) | — | The connected peripheral to disconnect from. |
+| `peripheral` | `Peripheral` \| [`DiscoveredPeripheral`](#discoveredperipheral) \| [`RetrievedPeripheral`](#retrievedperipheral) | — | The connected peripheral to disconnect from, or a discovered peripheral with a pending connection. |
+
+#### `retrieveConnectedPeripherals(services: string[]): RetrievedPeripheral[]`
+
+Peripherals already connected to the system that implement any of `services`. Those connected
+by another application still need `connect()` before this central can use them.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `services` | `string[]` | — | The service UUIDs to match against the peripherals the system is connected to. |
+
+**Throws**
+
+- if Bluetooth is not powered on.
+
+#### `retrievePeripherals(ids: string[]): RetrievedPeripheral[]`
+
+Resolve peripherals from identifiers persisted after an earlier scan, without scanning again.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ids` | `string[]` | — | The per host UUIDs reported as `peripheral.id`, not MAC addresses. |
+
+**Throws**
+
+- if an id is not a UUID, or if Bluetooth is not powered on.
 
 #### `startScan(serviceUUIDs?: string[], opts?: { allowDuplicates?: boolean }): void`
 
@@ -481,6 +520,14 @@ interface CharacteristicOptions {
 }
 ```
 
+#### `PeripheralManagerOptions`
+
+```ts
+interface PeripheralManagerOptions {
+  showPowerAlert?: boolean
+}
+```
+
 #### `BluetoothState`
 
 ```ts
@@ -541,6 +588,14 @@ interface PeripheralManagerEventMap {
 }
 ```
 
+#### `CentralOptions`
+
+```ts
+interface CentralOptions {
+  showPowerAlert?: boolean
+}
+```
+
 #### `DiscoveredPeripheral`
 
 ```ts
@@ -550,6 +605,25 @@ interface DiscoveredPeripheral {
   rssi: number
   serviceData: { [uuid: string]: Uint8Array } | null
 }
+```
+
+#### `RetrievedPeripheral`
+
+```ts
+interface RetrievedPeripheral {
+  id: string
+  name: string | null
+  state: PeripheralState
+}
+```
+
+A peripheral resolved without scanning. It carries no advertisement data, so it has no `rssi`
+or `serviceData`.
+
+#### `PeripheralState`
+
+```ts
+type PeripheralState = 'disconnected' | 'connecting' | 'connected' | 'disconnecting'
 ```
 
 #### `CentralEventMap`
@@ -589,10 +663,29 @@ interface PeripheralEventMap {
 }
 ```
 
+## Errors
+
+Failures are emitted as `'error'` events carrying a `BluetoothError`. It is not exported from the module, but its `code` identifies the failure:
+
+| Code | Emitted by | When |
+| --- | --- | --- |
+| `CONNECTION_FAILED` | `Central` | A connection attempt failed. The error's `id` is the peripheral's id. |
+| `DISCONNECT` | `Central` | A peripheral disconnected with an error. The error's `id` is the peripheral's id. |
+| `DISCOVER_FAILED` | `Peripheral` | Discovering services or characteristics failed. |
+| `READ_FAILED` | `Peripheral` | Reading a characteristic failed. |
+| `WRITE_FAILED` | `Peripheral` | Writing a characteristic failed. |
+| `NOTIFY_FAILED` | `Peripheral` | A notification update for a subscribed characteristic reported an error. |
+| `NOTIFY_STATE_FAILED` | `Peripheral` | Changing a characteristic's notification state (subscribing or unsubscribing) failed. |
+| `CHANNEL_FAILED` | `Peripheral`, `PeripheralManager` | Opening an L2CAP channel failed. |
+| `ADVERTISE_FAILED` | `PeripheralManager` | Advertising failed. |
+| `SERVICE_ADD_FAILED` | `PeripheralManager` | Adding a service failed. |
+| `CHANNEL_PUBLISH_FAILED` | `PeripheralManager` | Publishing an L2CAP channel failed. |
+
 ## See also
 
 - Builds on `bare-events` and `bare-stream`.
 - Runs on Apple platforms (iOS and macOS) — on Android use [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android).
+- [`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API over this module, `bare-bluetooth-android` and `bare-bluetooth-linux`.
 - [One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
 - [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.
