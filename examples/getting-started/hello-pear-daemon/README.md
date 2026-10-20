@@ -1,24 +1,24 @@
-# hello-pear-bare
+# hello-pear-daemon
 
 > Pear Hello World for Standalone Bare Processes with `pear-runtime`
 
 End-to-end boilerplate for embedding [pear-runtime] into a Standalone [Bare] Process with peer-to-peer OTA update support.
 
-This variant is for providing P2P OTA updates to short-lived CLI programs. It uses a detached [`bare-daemon`][bare-daemon] updater, allowing the foreground command to exit while the update check continues in the background. Long-lived programs (services, REPLs TUIs) with are better suited to `main` or `single-thread` variants.
+This repository provides P2P OTA updates to short-lived CLI programs. It uses a detached [`bare-daemon`][bare-daemon] updater, allowing the foreground command to exit while the update check continues in the background. For long-lived programs such as services, REPLs and TUIs, use [hello-pear-bare].
 
 - Peer-to-Peer deployment with [pear][pear-docs] CLI
 - Peer-to-Peer Over-the-Air updates with [`pear-runtime`][pear-runtime] module
 - Detached updater process via [`bare-daemon`][bare-daemon]
 - Cross-platform standalone distributables via [`bare-build`][bare-build]
 
-## Variants
+## Related Repositories
 
-- [`main`](https://github.com/holepunchto/hello-pear-bare/tree/main): runs `pear-runtime` inside a Bare worker thread.
-- [`single-thread`](https://github.com/holepunchto/hello-pear-bare/tree/variant/single-thread): workerless with `pear-runtime` updates.
-- (current) [`daemon`](https://github.com/holepunchto/hello-pear-bare/tree/variant/daemon): runs `pear-runtime` in a detached updater daemon.
+- [`hello-pear-bare`][hello-pear-bare]: runs `pear-runtime` in a dedicated Bare worker for long-running applications and reusable backends.
+- [`hello-pear-daemon`][hello-pear-daemon] (this repository): runs `pear-runtime` in a detached updater for short-lived CLI commands, allowing updates to continue after the foreground command exits.
 
 ## Table of Contents
 
+- [Related Repositories](#related-repositories)
 - [OS Support](#os-support)
 - [Requirements](#requirements)
 - [Development](#development)
@@ -155,3 +155,5 @@ npx pear-install pear://<key>
 [Bare]: https://github.com/holepunchto/bare
 [nodejs]: https://nodejs.org
 [bare-build]: https://github.com/holepunchto/bare-build
+[hello-pear-bare]: https://github.com/holepunchto/hello-pear-bare
+[hello-pear-daemon]: https://github.com/holepunchto/hello-pear-daemon

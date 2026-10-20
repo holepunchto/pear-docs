@@ -14,8 +14,9 @@ A Pear app is one of two shapes, both built around embedding the
   view with no P2P modules loaded directly. See the
   `hello-pear-electron` template.
 - **Terminal** — a standalone Bare binary with no Electron and no HTML/CSS/JS
-  UI at all: CLIs, REPLs, TUIs, daemons. The Pear CLI itself is built this
-  way. See the `hello-pear-bare` template.
+  UI at all: CLIs, REPLs, TUIs, services. The Pear CLI itself is built this
+  way. See the `hello-pear-bare` template, or the `hello-pear-daemon` sibling
+  for short-lived CLI commands that shouldn't block on an update check.
 
 In `package.json`, `pear-runtime` reads the top-level `version` field (bump
 it before every OTA update) and `upgrade` (a `pear://` link to the seeded

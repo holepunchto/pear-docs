@@ -1,11 +1,11 @@
 # hello-pear-bare (documentation snapshot)
 
 Vendored from [holepunchto/hello-pear-bare](https://github.com/holepunchto/hello-pear-bare),
-branch **`main`**, at commit `fba8b06`
-([tree](https://github.com/holepunchto/hello-pear-bare/tree/fba8b0614ecf53c2ca2e9c951750a3f1409911bb)).
+branch **`main`**, at commit `28ce09a`
+([tree](https://github.com/holepunchto/hello-pear-bare/tree/28ce09ac39f73507875433444a146da09bea48f5)).
 
 `bin.mjs` and `app.js` back the code imports in
-`content/getting-started/from-a-template/start-from-hello-pear-bare.mdx` (via
+`content/p2p/getting-started/from-a-template/start-from-hello-pear-bare.mdx` (via
 `file=<rootDir>/examples/getting-started/hello-pear-bare/…#L…`).
 
 Unlike the `hello-pear-electron` snapshot, this is a **complete, runnable app**. It is booted by the
@@ -15,9 +15,8 @@ Unlike the `hello-pear-electron` snapshot, this is a **complete, runnable app**.
 npm run test:examples -- --filter=hello-pear-bare
 ```
 
-See also the two variant snapshots alongside it — `../hello-pear-bare-single-thread` and
-`../hello-pear-bare-daemon` — which track long-lived non-default upstream branches and record their
-own provenance in `SNAPSHOT.md`.
+See also `../hello-pear-daemon`, the sibling boilerplate for short-lived CLIs. It lives in its own
+upstream repository and records its own provenance in `SNAPSHOT.md`.
 
 ## Deliberate deviations from upstream
 
@@ -28,13 +27,15 @@ Preserve these when refreshing; they are intentional, not drift:
   `pear://<YOUR_KEY_HERE>`, which fails URL validation at startup with `INVALID_URL` and would break
   the scenario. The link is inert — nothing seeds it. Everything else in `package.json` matches
   upstream byte-for-byte.
-- **`workers/main.js` is an inlined copy of the `hello-pear-worker` package**, not upstream's
-  two-line `require('hello-pear-worker')`. The docs show readers the actual worker source, so the
-  real upstream for this file is
-  [holepunchto/hello-pear-worker](https://github.com/holepunchto/hello-pear-worker) — do **not**
-  overwrite it from this repo's `main`. `scripts/check-workers-in-sync.ts` enforces that every
-  `examples/**/workers/main.js` stays byte-identical to the canonical copy in
-  `../hello-pear-electron/workers/main.js`, so this file can only change in lockstep with every other vendored copy.
+- **`workers/main.js` omits upstream's two-line source header.** Upstream inlines the worker (its
+  `npm run inline-worker` script runs `inline-worker-module` over the `hello-pear-worker` package),
+  so its file starts with `// https://github.com/holepunchto/hello-pear-worker v1.2.0` and a blank
+  line. This copy drops those two lines and is otherwise upstream's, so it stays byte-identical to
+  the canonical copy in `../hello-pear-electron/workers/main.js`.
+  `scripts/check-workers-in-sync.ts` enforces that for every `examples/**/workers/main.js`, so this
+  file can only change in lockstep with every other vendored copy. The `hello-pear-worker` entry in
+  `watch-boilerplates.yml` flags a new worker release; when it does, update the canonical copy and
+  every other copy together, and do **not** overwrite this file from this repo's `main`.
 - **`test/index.js` is a docs-authored test** asserting the `App` constructor's config handling.
   Upstream ships a `test('REMOVE ME')` placeholder; this replaces it with something meaningful.
 
