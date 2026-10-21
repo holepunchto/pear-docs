@@ -10,7 +10,7 @@ product: p2p
 schemaType: TechArticle
 ---
 
-This is the on-device AI counterpart to [Start a terminal app from the hello-pear-bare template](/p2p/getting-started/from-a-template/start-from-hello-pear-bare). It starts from the same shape—a Bare CLI that updates itself over the air through a worker—and adds a second worker that runs a language model **on the user's own machine**, plus a [`bare-tui`](https://github.com/holepunchto/bare-tui) terminal interface. There is no API key and no cloud round-trip, and it keeps working offline once the model is cached.
+This is the on-device AI counterpart to [Start a terminal app from the hello-pear-bare template](/p2p/getting-started/from-a-template/start-from-hello-pear-bare). It starts from the same shape—a Bare CLI that updates itself over the air through a worker—and adds a second worker that runs a language model **on the user's own machine**, plus a [`bare-tui`](https://github.com/holepunchto/bare-tui) terminal interface. There is no API key and no cloud round-trip.
 
 [`holepunchto/hello-pear-qvac-tui`](https://github.com/holepunchto/hello-pear-qvac-tui) is Holepunch's official boilerplate for this shape. The plumbing—CLI, workers, and IPC—is finished; the chat interface on top is only a demo, meant to be replaced with your own app.
 
@@ -56,12 +56,12 @@ Ask a question and the answer streams back. These keys work in the interface:
 
 ### 3. Pick a model and a context window
 
-Two flags matter, and `bin.mjs` defines them next to the usual `--storage`, `--no-updates`, and `--version`:
+Two flags matter, and `bin.mjs` defines them next to the usual `--storage`, `--no-updates`, and `--version`, plus `--verbose`, which logs engine and native addon detail to stderr:
 
 ```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/bin.mjs#L17-L26 title="bin.mjs"
 ```
 
-`--model` takes any model constant exported by [`@qvac/inference`](https://www.npmjs.com/package/@qvac/inference), and nothing else changes. `--ctx` sets the context window in tokens, the budget that the conversation, the model's reasoning, and the answer share. The defaults live in `package.json`:
+`--model` takes any completion model constant exported by [`@qvac/inference`](https://www.npmjs.com/package/@qvac/inference), since the template registers only the `llamacpp-completion` plugin, and nothing else changes. `--ctx` sets the context window in tokens, the budget that the conversation, the model's reasoning, and the answer share. The defaults live in `package.json`:
 
 ```json file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/package.json#L55-L58 title="package.json"
 ```
@@ -90,7 +90,7 @@ The repository also ships a [`CLAUDE.md`](https://github.com/holepunchto/hello-p
 
 ## How it's wired
 
-There are two workers and one pattern. Each runs in its own Bare thread through [`PearRuntime.run`](/pear/reference/pear/runtime#running-workers) and is spoken to over a `FramedStream`. The upstream README explains that loading a model file blocks its thread for seconds, so inference gets a worker of its own instead of freezing the interface. `bin.mjs` constructs the two clients side by side:
+There are two workers and one pattern. Each runs in its own Bare thread through [`PearRuntime.run`](/pear/reference/pear/runtime#running-workers) and is spoken to over a `FramedStream`. The upstream README explains that loading a model file blocks its thread for seconds, so inference gets a worker of its own instead of freezing the interface. `bin.mjs` constructs the two clients side by side. The update client exists only when updates are on and `upgrade` is a real link, so the default `npm start` runs the inference worker alone:
 
 ```js file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/bin.mjs#L50-L63 title="bin.mjs"
 ```
@@ -149,7 +149,7 @@ Before you ship, set your identity in `package.json`:
 - `name`, `productName`, `description`, `author`, and `license`. The template ships `hello-pear-qvac` as its `name`, and that name is also written into `scripts/make.js`, each `make:*` script, and `.github/workflows/build.yaml`. Change it in all of them.
 - the `upgrade` `pear://` link (see [Updates](#updates)).
 
-Pick the name carefully, because two tools read it differently. `bin.mjs` hands the updater `productName || name` exactly as written, plus `.exe` on Windows, and the updater looks for that file name in your release at `by-arch/<host>/app/<name>`. [`bare-build`](https://github.com/holepunchto/bare-build) lowercases the `--name` it is given and turns anything other than letters and digits into hyphens, so `My Chat` and `MyChat` both build `my-chat`. Use lowercase letters, digits, and hyphens everywhere, and keep every copy of the name identical. If they differ, the updater can't find the binary and reports `update not found`.
+Pick the name carefully, because two tools read it differently. `bin.mjs` hands the updater `productName || name` exactly as written, plus `.exe` on Windows, and the updater looks for that file name in your release at `by-arch/<host>/app/<name>`. [`bare-build`](https://github.com/holepunchto/bare-build) turns anything other than letters and digits in the `--name` it is given into a hyphen, adds a hyphen before a capital that follows a lowercase letter or digit, and lowercases the result, so `My Chat`, `MyChat`, and `my_chat` all build `my-chat`. Use lowercase letters, digits, and hyphens everywhere, and keep every copy of the name identical. If they differ, the updater can't find the binary and reports `update not found`.
 
 ## Remix it
 
