@@ -18,7 +18,11 @@ not in `scripts/test-examples.ts`.
 The examples arrived after the 0.6.2 release, alongside Linux support, and are not in the npm
 package.
 
-This snapshot isn't in `.github/workflows/watch-boilerplates.yml`. That job compares the whole upstream
-repository's HEAD with the pinned commit, and these repositories change often, so it would keep reporting
-drift that doesn't affect the guides. Re-pin by hand when the guides move to a newer release, and re-check
-every `#L` range.
+## Refreshing
+
+Drift is polled weekly by `.github/workflows/watch-boilerplates.yml`, which opens a tracking issue
+when `main` moves past the pinned commit. This is a partial snapshot of a repository that changes
+often, so most of that drift won't touch the files the guides import. Copy the imported files from the
+new commit, re-check every `#L…` range in the guides (`npm run check:code-imports` catches ranges that
+fall out of bounds, not ones that drift onto different code), then bump both the `pinned` SHA for
+`bare-bluetooth` in that workflow and the commit recorded here.
