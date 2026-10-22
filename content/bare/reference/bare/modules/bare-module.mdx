@@ -4,12 +4,12 @@ description: "The module system that powers Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "7.4.0"
+upstreamVersion: "7.5.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-[`bare-module`](https://github.com/holepunchto/bare-module) — The module system that powers Bare. It is a native addon and requires Bare `>=1.32.0`.
+[`bare-module`](https://github.com/holepunchto/bare-module) — The module system that powers Bare. It is a native addon and requires Bare `>=1.35.0`.
 
 ```sh
 npm i bare-module
@@ -443,8 +443,11 @@ interface Options {
   imports?: ImportsMap
   protocol?: Protocol
   resolutions?: ResolutionsMap
+  wasi?: (url: URL) => object
 }
 ```
+
+`wasi` is a function returning the WASI options of a WebAssembly addon, given its URL, for addons not imported with a `wasi` attribute. Without it, they get no capabilities except clocks. The options are versioned, so `version` must be `'preview1'`. A cache is read with a single `wasi`, like a single protocol: reading it from a loader with another `wasi` throws `CACHE_INCOMPATIBLE`. Added in v7.5.0.
 
 #### `ModuleLoader.patch(bundle: Bundle): URL[]`
 
@@ -585,11 +588,18 @@ Resolve a module `URL` to the `URL` that should be linked. The default implement
 interface Attributes {
   type?: Lowercase<keyof typeof constants>
   imports?: string
+  host?: string
+  wasi?: string
 }
 ```
 
 Import attributes instructing how a module should be loaded. A `type` that is not one of the
-known strings is turned down rather than passed over.
+known strings is turned down rather than passed over. `host` and `wasi` were added in v7.5.0:
+
+| Attribute | Description |
+| --- | --- |
+| `host` | The host to resolve the addons of the module and its dependencies for, such as `wasi-wasm32`. The conditions of the host may then also be targeted alongside those of the native host, in the order a package lists them. See [WebAssembly addons](#webassembly-addons). |
+| `wasi` | The specifier of a module providing the WASI capabilities of the WebAssembly addons of the module and its dependencies, resolved relative to the parent URL. |
 
 #### `Cache`
 
@@ -937,8 +947,11 @@ interface Options {
   imports?: ImportsMap
   protocol?: Protocol
   resolutions?: ResolutionsMap
+  wasi?: (url: URL) => object
 }
 ```
+
+`wasi` is a function returning the WASI options of a WebAssembly addon, given its URL, for addons not imported with a `wasi` attribute. Without it, they get no capabilities except clocks. The options are versioned, so `version` must be `'preview1'`. A cache is read with a single `wasi`, like a single protocol: reading it from a loader with another `wasi` throws `CACHE_INCOMPATIBLE`. Added in v7.5.0.
 
 #### `LinkOptions`
 
@@ -973,7 +986,7 @@ Returns the exported module contents.
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `specifier` | `string` | — | The module specifier to resolve and load. |
-| `options?` | [`RequireOptions`](#requireoptions) | — | Options for the call; `with.type` selects how the file should be loaded — one of `'script'`, `'module'`, `'json'`, `'bundle'`, `'addon'`, `'binary'`, or `'text'` (see [`Module.constants`](#moduleconstants)). A `type` that is not one of these is turned down rather than passed over, as is a `type` that is not a string. |
+| `options?` | [`RequireOptions`](#requireoptions) | — | Options for the call; `with.type` selects how the file should be loaded — one of `'script'`, `'module'`, `'json'`, `'bundle'`, `'addon'`, `'binary'`, or `'text'` (see [`Module.constants`](#moduleconstants)). A `type` that is not one of these is turned down rather than passed over, as is a `type` that is not a string. `with.imports` names an `"imports"` map to apply to the module and its dependencies, `with.host` selects the WebAssembly build of their addons, and `with.wasi` names its WASI provider (see [WebAssembly addons](#webassembly-addons)). |
 
 ### `require.main`
 
@@ -1030,6 +1043,12 @@ const contents = fs.readFileSync(require.asset('./foo.txt'))
 
 The static `import` declaration imports read-only live bindings that are exported by another module. The imported bindings are called _live_ bindings because they are updated by the module that exported the binding, but cannot be re-assigned by the importing module. For more on `import` syntax, see [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import).
 
+The `with` clause takes the same [attributes](#attributes) as the `with` option of `require()`, including `host` and `wasi`:
+
+```js
+import { DatabaseSync } from 'bare-sqlite' with { host: 'wasi-wasm32', wasi: './wasi.js' }
+```
+
 ### `import.meta.url`
 
 The string representation of the URL for the current module.
@@ -1071,6 +1090,61 @@ Resolves `specifier` relative to `parentURL` as an addon and returns the URL str
 ### `import.meta.asset(specifier[, parentURL])`
 
 Resolves `specifier` relative to `parentURL` and returns the URL of the asset as a string.
+
+## WebAssembly addons
+
+Added in v7.5.0, which ships with Bare 1.36.0. An addon package can ship a WebAssembly build, `prebuilds/wasi-wasm32/<name>.wasm`, next to its native prebuilds. The loader runs it through [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi), sandboxed by [`bare-wasi`](/bare/reference/bare/modules/bare-wasi): through WASI, the addon reaches only what its WASI provider grants. It still reaches whatever JavaScript in its realm can, because the ABI hands it the global object.
+
+### Loading an addon as WebAssembly
+
+The `host` attribute asks for the WebAssembly build of the addons of a module and everything it imports. The `wasi` attribute names the WASI provider for them:
+
+```js
+const { DatabaseSync } = require('bare-sqlite', {
+  with: { host: 'wasi-wasm32', wasi: './wasi.js' }
+})
+```
+
+`wasi-wasm32` is the only host the attribute accepts. A package with no `.wasm` build throws `ADDON_NOT_FOUND`. With `host` set, the `wasi` and `wasm32` conditions of a package's `"exports"` and `"imports"` match alongside those of the native host, in the order the package lists them. Without it, they are tried only as a fallback, after the native conditions.
+
+Without a `host` attribute, the loader uses the native build of an addon when one exists, and falls back to the `.wasm` build when there is no native prebuild or linked addon for the host. A fallback addon gets the provider of a `wasi` attribute on its import, which works without `host`, or else the loader's `wasi` option, which Bare doesn't set. With neither, it gets no capabilities except clocks.
+
+### WASI providers
+
+A WASI provider is a module that exports a function, as `module.exports` or its default export. The loader calls it with the `URL` of each WebAssembly addon and passes what it returns to [`new WASI()`](/bare/reference/bare/modules/bare-wasi#wasi):
+
+```js
+// wasi.js
+const { DirectorySync } = require('bare-directory')
+const { HostDirectory } = require('bare-wasi/host')
+
+module.exports = (url) => ({
+  version: 'preview1',
+  preopens: {
+    '/': new HostDirectory(DirectorySync.open(__dirname + '/data'))
+  }
+})
+```
+
+The `wasi` specifier is resolved relative to the importing module and loaded like any other module. A provider that exports something other than a function throws a `TypeError` when the addon is evaluated. Options without `version: 'preview1'` throw a `WASIError` with code `INVALID_VERSION`. An addon imported without a `wasi` attribute gets the options from the loader's [`wasi` option](#options), or only clocks.
+
+The README of v7.5.0 shows a provider that grants randomness with `crypto.getRandomValues()`. Bare has no `crypto` global, so use `randomFillSync()` from [`bare-crypto`](/bare/reference/bare/modules/bare-crypto) instead.
+
+### One context per package
+
+The addons of a package load in one context per loader: the host and WASI provider it is first imported under. Importing it under another throws:
+
+| Error code | Thrown when |
+| --- | --- |
+| `ADDON_HOST_INCOMPATIBLE` | A package's addons are already resolved for the default hosts and it is imported with `host`, or the other way round, or an addon below a `host` import is not WebAssembly. |
+| `ADDON_WASI_INCOMPATIBLE` | A package's WebAssembly addons already have one WASI provider and it is imported with another. |
+| `UNKNOWN_ADDON_HOST` | A `host` attribute is not `wasi-wasm32`. |
+
+These are thrown by [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse#the-host-and-wasi-import-attributes) while the importing module is linked, before any of its code runs, so a `try` block around a static `require()` doesn't catch them. An `ADDON_NOT_FOUND` for a missing `.wasm` build is thrown when the module that loads the addon runs, and can be caught.
+
+### After `Bare.Addon.seal()`
+
+Once the process is [sealed](/bare/reference/bare/runtime#bareaddon), a native addon loads only if the process already loaded it, while WebAssembly addons still load. When resolving an addon on a sealed process, the loader skips native builds that `Bare.Addon.loaded()` reports as not loaded, so a package that also ships a `.wasm` build falls back to it, with the capabilities described above. This applies only to addons resolved after the seal. A static `require()` in the module that calls `Bare.Addon.seal()` was resolved when that module was linked, before the seal, so its native addon throws `CANNOT_LOAD`.
 
 ## Packages
 
@@ -1320,7 +1394,7 @@ The `"engines"` field defines the engine requirements of the package. During mod
 
 ## See also
 
-- Builds on `bare-bundle`, `bare-module-lexer`, `bare-module-resolve`, `bare-module-traverse`, `bare-path`, `bare-type-stripper`, and `bare-url`.
+- Builds on `bare-bundle`, `bare-module-lexer`, `bare-module-resolve`, `bare-module-traverse`, `bare-path`, `bare-type-stripper`, `bare-url`, and `bare-wasm-abi`.
 - [`bare-module-resolve`](/bare/reference/bare/modules/bare-module-resolve) and [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse) — the resolution and traversal algorithms underneath.
 - [Bare runtime API](/bare/reference/bare/runtime#bareaddon) — `Bare.Addon`, the native-addon loader `require.addon` builds on.
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.

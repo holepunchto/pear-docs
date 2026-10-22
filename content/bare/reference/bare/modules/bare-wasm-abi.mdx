@@ -1,0 +1,99 @@
+---
+title: "bare-wasm-abi"
+description: "Reference for bare-wasm-abi: runs Bare addons compiled to wasm32-wasip1 by implementing the libjs ABI they import in JavaScript."
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "0.1.1"
+---
+
+<mark style={{ backgroundColor: '#8484ff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>experimental</mark>
+
+[`bare-wasm-abi`](https://github.com/holepunchto/bare-wasm-abi) runs Bare addons compiled to `wasm32-wasip1`. A native addon calls the [libjs](https://github.com/holepunchto/libjs) C API to create and read JavaScript values. A WebAssembly build of the same addon imports those functions instead, and `bare-wasm-abi` implements them in JavaScript. The addon reaches no further than JavaScript in the same realm and the WASI capabilities it is given through [`bare-wasi`](/bare/reference/bare/modules/bare-wasi).
+
+From Bare 1.36.0, the module system ([`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) 7.5.0) depends on this package and calls it for every `.wasm` addon it loads, so applications don't call it themselves. Use it directly to instantiate an addon outside the module system.
+
+<Callout type="info">
+This package has no type declarations, so this page is written from the README and source of 0.1.1.
+</Callout>
+
+```sh
+npm i bare-wasm-abi
+```
+
+## Usage
+
+```js
+const instantiate = require('bare-wasm-abi')
+
+const addon = instantiate(bytes, {
+  wasi: { version: 'preview1', stdout: (data) => console.log(data.toString()) }
+})
+```
+
+`bytes` is the binary of a WebAssembly addon, such as `prebuilds/wasi-wasm32/bare-png.wasm` from [`bare-png`](https://github.com/holepunchto/bare-png). The README names the result `exports`, which is already declared in a CommonJS module, so use another name there.
+
+## API
+
+#### `instantiate(bytes: BufferSource, opts?: { wasi?: WASIOptions }): unknown`
+
+The default export. Compiles `bytes`, checks that the module is an addon that imports nothing outside the ABI, instantiates it, initializes it as a WASI reactor, and registers it. Returns the value the addon registers, or the object it was given to fill in if it returns none, the same value `require()` returns for a native addon.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bytes` | `ArrayBuffer \| ArrayBufferView` | — | The binary format of the addon. |
+| `opts.wasi` | [`WASIOptions`](/bare/reference/bare/modules/bare-wasi#wasioptions) | `{ version: 'preview1' }` | The capabilities of the addon, passed to `new WASI()`. The default grants nothing except clocks. |
+
+**Throws**
+
+| Error | When |
+| --- | --- |
+| `CompileError` | `bytes` is not a valid WebAssembly module. |
+| `Error` `WebAssembly addon does not export '<name>'` | The module lacks one of the [required exports](#addon-requirements). |
+| `Error` `WebAssembly addon imports unsupported functions: …` | The module imports a function the ABI does not provide. Each one is listed, with the reason when it is [excluded by design](#excluded-functions). |
+| [`WASIError`](/bare/reference/bare/modules/bare-wasi#wasierror) | `opts.wasi` is invalid, such as `INVALID_VERSION` for a missing `version`. |
+
+An error the addon throws while registering is thrown from `instantiate()`.
+
+## Addon requirements
+
+An addon is a WASI reactor, built for `wasm32-wasip1`, that exports:
+
+| Export | Purpose |
+| --- | --- |
+| `memory` | The linear memory that values are copied in and out of. |
+| `__indirect_function_table` | The function table that callbacks are called through. |
+| `malloc`, `free` | Allocation of memory for values passed into the addon. |
+| `bare_register_module_v0` | The entry point that registers the addon's exports. |
+
+Undefined functions become imports. The only imports allowed are libjs functions from the `env` module, named `js_*`, that the ABI implements, and WASI preview 1 functions from the `wasi_snapshot_preview1` module. [`cmake-bare`](https://github.com/holepunchto/cmake-bare) builds addons this way for the `wasi-wasm32` target; see [Native-addon CI prebuilds](/bare/reference/native-addon-prebuilds#webassembly-prebuilds).
+
+## Excluded functions
+
+Some libjs functions are left out by design. An addon that imports one fails to instantiate, and the error names the reason:
+
+| Functions | Reason |
+| --- | --- |
+| Platform, environment, context, and inspector functions, such as `js_create_env` and `js_get_bindings` | Embedder API, not reachable from an addon |
+| `js_get_platform_loop`, `js_get_env_loop` | WebAssembly addons have no event loop |
+| Script, module, and function compilation, such as `js_run_script` and `js_create_module` | Compiles or evaluates code, which is left to the embedder |
+| Backing stores and shared array buffers, such as `js_create_sharedarraybuffer` | Shared memory cannot be copied in and out of linear memory |
+| Threadsafe functions, such as `js_create_threadsafe_function` | WebAssembly addons are single threaded |
+| Garbage collection tracking, heap statistics, and `js_get_error_location` | Engine introspection |
+| `js_get_typed_callback_info` | Typed functions always fall back to their untyped callback |
+
+A function can also be missing without being excluded, in which case the error lists it with no reason. In 0.1.1 this is the case for `js_add_teardown_callback`, so the WebAssembly builds of `bare-svg` 1.1.1 and `bare-heif` 1.2.1, which import it, fail to instantiate.
+
+## Isolation
+
+The addon sees JavaScript only through the ABI functions, which copy strings and buffers in and out of its linear memory. A trap inside the addon, such as an out-of-bounds access, throws a `RuntimeError` and poisons only that addon's instance: every later call into it throws `Error: WebAssembly addon has crashed`, with the trap as its `cause`. Other addons and the JavaScript that called it keep running.
+
+## See also
+
+- [`bare-wasi`](/bare/reference/bare/modules/bare-wasi) — the WASI capabilities given to an addon.
+- [`bare-wasm`](/bare/reference/bare/modules/bare-wasm) — the WebAssembly API it compiles and instantiates addons with.
+- [`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) — loading addons as WebAssembly with the `host` and `wasi` import attributes.
+- [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime#bareaddon) — `Bare.Addon`, which loads native addons.

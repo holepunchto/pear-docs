@@ -1,0 +1,2595 @@
+{
+  "name": "bare-wasi",
+  "version": "0.1.2",
+  "description": "Capability based WASI for JavaScript",
+  "repoUrl": "https://github.com/holepunchto/bare-wasi",
+  "npmUrl": "https://www.npmjs.com/package/bare-wasi",
+  "minBare": null,
+  "native": false,
+  "dependencies": [
+    "bare-hrtime",
+    "bare-wasm"
+  ],
+  "usage": "```js\nconst wasm = require('bare-wasm')\nconst WASI = require('bare-wasi')\nconst { MemoryDirectory } = require('bare-wasi/memory')\n\nconst wasi = new WASI({\n  version: 'preview1',\n  args: ['program'],\n  preopens: {\n    '/data': new MemoryDirectory({ 'hello.txt': 'Hello from JavaScript' })\n  },\n  stdout: (data) => console.log(data.toString())\n})\n\nconst module = new wasm.Module(bytes)\nconst instance = new wasm.Instance(module, wasi.getImportObject())\n\nconst exitCode = wasi.start(instance)\n```\n\nThe `version` option is required and must be `'preview1'` so that options are always read for the version of WASI they were written for.",
+  "extraSections": [
+    {
+      "heading": "Capabilities",
+      "body": "Every resource a guest can reach is passed in by the embedder:\n\n- **Streams.** Standard input, output, and error exist only if `stdin`, `stdout`, and `stderr` are given.\n- **Directories.** A guest can only reach the directories given as `preopens`, and paths are resolved by `bare-wasi` itself, one name at a time. Absolute paths, symbolic links that point outside of a directory, and `..` beyond where a lookup started all fail with `ENOTCAPABLE`.\n- **Clocks.** Clocks are available by default, as they are to any JavaScript, and can be denied with `clock: null`.\n- **Randomness.** `random_get` fails with `ENOTCAPABLE` unless a `random` function is given.\n\nBeyond these, a guest only sees the arguments and environment variables it is given. There are no sockets."
+    },
+    {
+      "heading": "Conformance",
+      "body": "`bare-wasi` passes the WASI preview 1 tests of the [WASI test suite](https://github.com/WebAssembly/wasi-testsuite), which are fetched at a pinned commit and run as part of `npm test`. Tests that are known to fail are listed with the reason in [`test/suite.json`](test/suite.json), and a listed test that starts passing fails the run."
+    },
+    {
+      "heading": "Backends",
+      "body": "Preopens are backed by objects implementing a small, synchronous interface. Directories are only ever asked about a single name, never a path, which keeps the resolution of paths, and so the enforcement of capabilities, in one place. Failures are reported by throwing errors with a POSIX `code`, such as `'ENOENT'`. See [`index.d.ts`](index.d.ts) for the interface.\n\n### In memory\n\n```js\nconst { MemoryDirectory, MemoryFile, MemorySymlink } = require('bare-wasi/memory')\n\nconst directory = new MemoryDirectory({\n  'file.txt': 'contents',\n  nested: { 'data.bin': new Uint8Array([1, 2, 3]) }\n})\n```\n\n### Host\n\nDirectories of the host filesystem are backed by [`bare-directory`](https://github.com/holepunchto/bare-directory) capabilities. They confine every operation to the directory in the kernel as well, and limit it to the rights the capability has.\n\n```js\nconst { DirectorySync } = require('bare-directory')\nconst { HostDirectory } = require('bare-wasi/host')\n\nconst directory = new HostDirectory(\n  DirectorySync.open('/srv/data', { rights: ['list', 'lookup', 'read'] })\n)\n```"
+    }
+  ],
+  "exports": [
+    {
+      "key": "WASI",
+      "name": "WASI",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "WASI"
+      ],
+      "description": "A capability based implementation of WASI preview 1 for a single WebAssembly\ninstance. The instance can only reach the streams, directories, clocks, and\nrandomness it is given.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASI.constructor",
+          "name": "WASI",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new WASI(opts: WASIOptions)"
+          ],
+          "description": "Create a WASI implementation for a single instance.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "WASIOptions",
+              "optional": false,
+              "default": null,
+              "description": "The capabilities of the instance."
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASI.getImportObject",
+          "name": "getImportObject",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "getImportObject(): { wasi_snapshot_preview1: Record<string, (...args: any[]) => number> }"
+          ],
+          "description": "Get an import object to pass when instantiating a WebAssembly module.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "{ wasi_snapshot_preview1: Record<string, (...args: any[]) => number> }",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASI.initialize",
+          "name": "initialize",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "initialize(instance: WASIInstance): void"
+          ],
+          "description": "Initialize a reactor instance by calling its `_initialize()` export, if it\nhas one. The instance must export its `memory` and must not export\n`_start()`, and an implementation may only be used with a single instance.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "instance",
+              "type": "WASIInstance",
+              "optional": false,
+              "default": null,
+              "description": "The instance to initialize."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASI.start",
+          "name": "start",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "start(instance: WASIInstance): number | undefined"
+          ],
+          "description": "Run the `_start()` export of a command instance. The instance must export\nits `memory` and must not export `_initialize()`, and an implementation\nmay only be used with a single instance.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "instance",
+              "type": "WASIInstance",
+              "optional": false,
+              "default": null,
+              "description": "The instance to run."
+            }
+          ],
+          "returns": {
+            "type": "number | undefined",
+            "description": "The exit code of the program, if `returnOnExit` is `true`. The\nprocess is exited with it otherwise."
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASI.constants",
+          "name": "WASI.constants",
+          "kind": "variable",
+          "static": true,
+          "signatures": [
+            "WASI.constants: {\n  /** Error codes, such as `errno.NOENT`. */\n  errno: Record<string, number>\n  /** The types of file descriptors and filesystem nodes. */\n  filetype: Record<string, number>\n  /** Clock identifiers. */\n  clockid: Record<string, number>\n  /** The positions an offset passed to `fd_seek` is relative to. */\n  whence: Record<string, number>\n  /** Flags of `path_open`, such as `oflags.CREAT`. */\n  oflags: Record<string, number>\n  /** Flags of file descriptors, such as `fdflags.APPEND`. */\n  fdflags: Record<string, number>\n  /** Flags that control how paths are looked up. */\n  lookupflags: Record<string, number>\n  /** Flags of `fd_filestat_set_times` and `path_filestat_set_times`. */\n  fstflags: Record<string, number>\n  /** The rights of file descriptors, such as `rights.FD_READ`. */\n  rights: Record<string, bigint>\n  /** The types of events reported by `poll_oneoff`. */\n  eventtype: Record<string, number>\n  /** Flags of clock subscriptions passed to `poll_oneoff`. */\n  subclockflags: Record<string, number>\n  /** The types of preopened resources. */\n  preopentype: Record<string, number>\n}"
+          ],
+          "description": "The constants of WASI preview 1, keyed by their names in the specification.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASI.wasiImport",
+          "name": "wasiImport",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "wasiImport: Record<string, (...args: any[]) => number>"
+          ],
+          "description": "The functions of the `wasi_snapshot_preview1` import module.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WASIOptions",
+      "name": "WASIOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface WASIOptions {\n  version: 'preview1'\n  args?: string[]\n  env?: Record<string, string>\n  preopens?: Record<string, WASIDirectory>\n  stdin?: string | Uint8Array | WASIReadable | WASIFile | null\n  stdout?: ((data: Uint8Array) => void) | WASIWritable | WASIFile | null\n  stderr?: ((data: Uint8Array) => void) | WASIWritable | WASIFile | null\n  clock?: WASIClock | null\n  random?: ((buffer: Uint8Array) => void) | null\n  returnOnExit?: boolean\n}"
+      ],
+      "description": "The capabilities granted to an instance, none of which are granted by default except clocks.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASIOptions.args",
+          "name": "args",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "args: string[]"
+          ],
+          "description": "The arguments of the program, including its name. Defaults to `[]`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIOptions.clock",
+          "name": "clock",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "clock: WASIClock | null"
+          ],
+          "description": "The clocks of the program, or `null` to deny access to clocks, which then\nfail with `ENOTCAPABLE`. Defaults to the clocks of the host.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIOptions.env",
+          "name": "env",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "env: Record<string, string>"
+          ],
+          "description": "The environment variables of the program. Defaults to `{}`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIOptions.preopens",
+          "name": "preopens",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "preopens: Record<string, WASIDirectory>"
+          ],
+          "description": "The directories made available to the program, keyed by the path the\nprogram sees each of them at. Defaults to `{}`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIOptions.random",
+          "name": "random",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "random: ((buffer: Uint8Array) => void) | null"
+          ],
+          "description": "A function that fills `buffer` with cryptographically secure random bytes,\nor `null` to deny access to randomness, which then fails with\n`ENOTCAPABLE`. Defaults to `null`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIOptions.returnOnExit",
+          "name": "returnOnExit",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "returnOnExit: boolean"
+          ],
+          "description": "Whether `start()` returns the exit code of the program rather than\nexiting the process with it. Defaults to `true`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIOptions.stderr",
+          "name": "stderr",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "stderr: ((data: Uint8Array) => void) | WASIWritable | WASIFile | null"
+          ],
+          "description": "The standard error of the program, given in the same ways as `stdout`.\nStandard error does not exist if `null`, which is the default.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIOptions.stdin",
+          "name": "stdin",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "stdin: string | Uint8Array | WASIReadable | WASIFile | null"
+          ],
+          "description": "The standard input of the program, given as its contents, as a source to\nread from, or as a file. Standard input does not exist if `null`, which is\nthe default.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIOptions.stdout",
+          "name": "stdout",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "stdout: ((data: Uint8Array) => void) | WASIWritable | WASIFile | null"
+          ],
+          "description": "The standard output of the program, given as a function called with each\nwrite, as a destination to write to, or as a file. Standard output does\nnot exist if `null`, which is the default.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIOptions.version",
+          "name": "version",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "version: 'preview1'"
+          ],
+          "description": "The version of WASI that the options are written for, which must be\n`'preview1'`. Required, as in Node.js.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WASIInstance",
+      "name": "WASIInstance",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface WASIInstance {\n  exports: wasm.Exports\n}"
+      ],
+      "description": "A WebAssembly instance, or anything with the same `exports`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASIInstance.exports",
+          "name": "exports",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "exports: wasm.Exports"
+          ],
+          "description": "The exports of the instance, which must include its `memory`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WASINode",
+      "name": "WASINode",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface WASINode {\n  readonly type: 'file' | 'directory' | 'symlink' | 'character-device'\n  readonly size: number\n  stat(): WASINodeStat\n  setTimes?(atime: bigint | undefined, mtime: bigint | undefined): void\n}"
+      ],
+      "description": "A node of a filesystem backend. Backends are synchronous and report failures\nby throwing errors whose `code` is a POSIX error name, such as `'ENOENT'`,\nwhich is passed on to the guest as the corresponding WASI error.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASINode.setTimes",
+          "name": "setTimes",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "setTimes(atime: bigint | undefined, mtime: bigint | undefined): void"
+          ],
+          "description": "Set the access and modification times of the node. Leave this out if the\nbackend does not support changing them, in which case the guest is told\n`ENOTSUP`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "atime",
+              "type": "bigint | undefined",
+              "optional": false,
+              "default": null,
+              "description": "The time of last access in nanoseconds since the Unix\nepoch, or `undefined` to leave it unchanged."
+            },
+            {
+              "name": "mtime",
+              "type": "bigint | undefined",
+              "optional": false,
+              "default": null,
+              "description": "The time of last modification in nanoseconds since the Unix\nepoch, or `undefined` to leave it unchanged."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASINode.size",
+          "name": "size",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "size: number"
+          ],
+          "description": "The size of the node: the length in bytes of a file or of the target of a\nsymbolic link, and the number of entries of a directory.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASINode.stat",
+          "name": "stat",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "stat(): WASINodeStat"
+          ],
+          "description": "Get the metadata of the node.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "WASINodeStat",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASINode.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: 'file' | 'directory' | 'symlink' | 'character-device'"
+          ],
+          "description": "The type of the node.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WASINodeStat",
+      "name": "WASINodeStat",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface WASINodeStat {\n  ino: bigint\n  nlink: bigint\n  size: bigint\n  atime: bigint\n  mtime: bigint\n  ctime: bigint\n}"
+      ],
+      "description": "The metadata of a filesystem node.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASINodeStat.atime",
+          "name": "atime",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "atime: bigint"
+          ],
+          "description": "The time of last access in nanoseconds since the Unix epoch.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASINodeStat.ctime",
+          "name": "ctime",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "ctime: bigint"
+          ],
+          "description": "The time of last status change in nanoseconds since the Unix epoch.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASINodeStat.ino",
+          "name": "ino",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "ino: bigint"
+          ],
+          "description": "The inode number, which identifies the node within its backend.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASINodeStat.mtime",
+          "name": "mtime",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "mtime: bigint"
+          ],
+          "description": "The time of last modification in nanoseconds since the Unix epoch.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASINodeStat.nlink",
+          "name": "nlink",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "nlink: bigint"
+          ],
+          "description": "The number of hard links to the node.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASINodeStat.size",
+          "name": "size",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "size: bigint"
+          ],
+          "description": "The size of the node in bytes.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WASIFile",
+      "name": "WASIFile",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface WASIFile {\n  readonly type: 'file'\n  read(buffer: Uint8Array, position: number): number\n  write(buffer: Uint8Array, position: number): number\n  truncate(size: number): void\n  sync?(): void\n  readonly size: number\n  stat(): WASINodeStat\n  setTimes?(atime: bigint | undefined, mtime: bigint | undefined): void\n}"
+      ],
+      "description": "A regular file of a filesystem backend.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASIFile.read",
+          "name": "read",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "read(buffer: Uint8Array, position: number): number"
+          ],
+          "description": "Read from the file into `buffer`, returning the number of bytes read,\nwhich is less than the length of `buffer` only at the end of the file.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "buffer",
+              "type": "Uint8Array",
+              "optional": false,
+              "default": null,
+              "description": "The buffer to read into."
+            },
+            {
+              "name": "position",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": "The byte offset to read from."
+            }
+          ],
+          "returns": {
+            "type": "number",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIFile.setTimes",
+          "name": "setTimes",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "setTimes(atime: bigint | undefined, mtime: bigint | undefined): void"
+          ],
+          "description": "Set the access and modification times of the node. Leave this out if the\nbackend does not support changing them, in which case the guest is told\n`ENOTSUP`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "atime",
+              "type": "bigint | undefined",
+              "optional": false,
+              "default": null,
+              "description": "The time of last access in nanoseconds since the Unix\nepoch, or `undefined` to leave it unchanged."
+            },
+            {
+              "name": "mtime",
+              "type": "bigint | undefined",
+              "optional": false,
+              "default": null,
+              "description": "The time of last modification in nanoseconds since the Unix\nepoch, or `undefined` to leave it unchanged."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIFile.size",
+          "name": "size",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "size: number"
+          ],
+          "description": "The size of the node: the length in bytes of a file or of the target of a\nsymbolic link, and the number of entries of a directory.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIFile.stat",
+          "name": "stat",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "stat(): WASINodeStat"
+          ],
+          "description": "Get the metadata of the node.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "WASINodeStat",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIFile.sync",
+          "name": "sync",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "sync(): void"
+          ],
+          "description": "Flush the contents of the file to storage, if the backend has any.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIFile.truncate",
+          "name": "truncate",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "truncate(size: number): void"
+          ],
+          "description": "Shorten or extend the file to `size` bytes, filling any extension with\nzeros.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "size",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": "The new size of the file in bytes."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIFile.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: 'file'"
+          ],
+          "description": "The type of the node, which is always `'file'`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIFile.write",
+          "name": "write",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "write(buffer: Uint8Array, position: number): number"
+          ],
+          "description": "Write `buffer` to the file, extending it as needed, and return the number\nof bytes written.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "buffer",
+              "type": "Uint8Array",
+              "optional": false,
+              "default": null,
+              "description": "The data to write."
+            },
+            {
+              "name": "position",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": "The byte offset to write at."
+            }
+          ],
+          "returns": {
+            "type": "number",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WASIDirectory",
+      "name": "WASIDirectory",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface WASIDirectory {\n  readonly type: 'directory'\n  lookup(name: string): WASINode | null\n  entries(): Iterable<[name: string, node: WASINode]>\n  create(name: string, type: 'file' | 'directory'): WASIFile | WASIDirectory\n  unlink(name: string): void\n  rmdir(name: string): void\n  rename(name: string, directory: WASIDirectory, target: string): void\n  symlink?(name: string, target: string): WASISymlink\n  link?(name: string, node: WASINode): void\n  readonly size: number\n  stat(): WASINodeStat\n  setTimes?(atime: bigint | undefined, mtime: bigint | undefined): void\n}"
+      ],
+      "description": "A directory of a filesystem backend. Every operation takes a single name\nrather than a path, as paths are resolved by the WASI implementation itself.\nNames are never empty, `.`, or `..`, and never contain `/` or NUL.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASIDirectory.create",
+          "name": "create",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "create(name: string, type: 'file' | 'directory'): WASIFile | WASIDirectory"
+          ],
+          "description": "Create an entry in the directory, throwing `EEXIST` if one by that name\nalready exists.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The name of the entry."
+            },
+            {
+              "name": "type",
+              "type": "'file' | 'directory'",
+              "optional": false,
+              "default": null,
+              "description": "The type of node to create."
+            }
+          ],
+          "returns": {
+            "type": "WASIFile | WASIDirectory",
+            "description": "The created node."
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIDirectory.entries",
+          "name": "entries",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "entries(): Iterable<[name: string, node: WASINode]>"
+          ],
+          "description": "Iterate the entries of the directory as pairs of names and nodes.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Iterable<[name: string, node: WASINode]>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIDirectory.link",
+          "name": "link",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "link(name: string, node: WASINode): void"
+          ],
+          "description": "Add another name for an existing node that is not a directory, throwing\n`EEXIST` if an entry by that name already exists. Leave this out if the\nbackend does not support hard links, in which case the guest is told\n`ENOTSUP`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The name of the new entry."
+            },
+            {
+              "name": "node",
+              "type": "WASINode",
+              "optional": false,
+              "default": null,
+              "description": "The node to link to."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIDirectory.lookup",
+          "name": "lookup",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "lookup(name: string): WASINode | null"
+          ],
+          "description": "Look up an entry of the directory.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The name of the entry."
+            }
+          ],
+          "returns": {
+            "type": "WASINode | null",
+            "description": "The entry, or `null` if there is none by that name."
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIDirectory.rename",
+          "name": "rename",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "rename(name: string, directory: WASIDirectory, target: string): void"
+          ],
+          "description": "Move an entry, replacing any entry of the same type at the target. Throw\n`ENOTEMPTY` if the entry it would replace is a directory with entries, and\n`EXDEV` if `directory` belongs to another backend.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The name of the entry to move."
+            },
+            {
+              "name": "directory",
+              "type": "WASIDirectory",
+              "optional": false,
+              "default": null,
+              "description": "The directory to move it to, which may be this one."
+            },
+            {
+              "name": "target",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The name to give it in `directory`."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIDirectory.rmdir",
+          "name": "rmdir",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "rmdir(name: string): void"
+          ],
+          "description": "Remove an empty directory, throwing `ENOENT` if there is none by that\nname, `ENOTDIR` if it is not a directory, and `ENOTEMPTY` if it has\nentries.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The name of the entry."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIDirectory.setTimes",
+          "name": "setTimes",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "setTimes(atime: bigint | undefined, mtime: bigint | undefined): void"
+          ],
+          "description": "Set the access and modification times of the node. Leave this out if the\nbackend does not support changing them, in which case the guest is told\n`ENOTSUP`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "atime",
+              "type": "bigint | undefined",
+              "optional": false,
+              "default": null,
+              "description": "The time of last access in nanoseconds since the Unix\nepoch, or `undefined` to leave it unchanged."
+            },
+            {
+              "name": "mtime",
+              "type": "bigint | undefined",
+              "optional": false,
+              "default": null,
+              "description": "The time of last modification in nanoseconds since the Unix\nepoch, or `undefined` to leave it unchanged."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIDirectory.size",
+          "name": "size",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "size: number"
+          ],
+          "description": "The size of the node: the length in bytes of a file or of the target of a\nsymbolic link, and the number of entries of a directory.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIDirectory.stat",
+          "name": "stat",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "stat(): WASINodeStat"
+          ],
+          "description": "Get the metadata of the node.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "WASINodeStat",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIDirectory.symlink",
+          "name": "symlink",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "symlink(name: string, target: string): WASISymlink"
+          ],
+          "description": "Create a symbolic link in the directory, throwing `EEXIST` if an entry by\nthat name already exists. Leave this out if the backend does not support\nsymbolic links, in which case the guest is told `ENOTSUP`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The name of the link."
+            },
+            {
+              "name": "target",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The path the link points at."
+            }
+          ],
+          "returns": {
+            "type": "WASISymlink",
+            "description": "The created link."
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIDirectory.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: 'directory'"
+          ],
+          "description": "The type of the node, which is always `'directory'`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIDirectory.unlink",
+          "name": "unlink",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "unlink(name: string): void"
+          ],
+          "description": "Remove an entry that is not a directory, throwing `ENOENT` if there is\nnone by that name and `EISDIR` if it is a directory.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The name of the entry."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WASISymlink",
+      "name": "WASISymlink",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface WASISymlink {\n  readonly type: 'symlink'\n  readonly target: string\n  readonly size: number\n  stat(): WASINodeStat\n  setTimes?(atime: bigint | undefined, mtime: bigint | undefined): void\n}"
+      ],
+      "description": "A symbolic link of a filesystem backend.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASISymlink.setTimes",
+          "name": "setTimes",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "setTimes(atime: bigint | undefined, mtime: bigint | undefined): void"
+          ],
+          "description": "Set the access and modification times of the node. Leave this out if the\nbackend does not support changing them, in which case the guest is told\n`ENOTSUP`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "atime",
+              "type": "bigint | undefined",
+              "optional": false,
+              "default": null,
+              "description": "The time of last access in nanoseconds since the Unix\nepoch, or `undefined` to leave it unchanged."
+            },
+            {
+              "name": "mtime",
+              "type": "bigint | undefined",
+              "optional": false,
+              "default": null,
+              "description": "The time of last modification in nanoseconds since the Unix\nepoch, or `undefined` to leave it unchanged."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASISymlink.size",
+          "name": "size",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "size: number"
+          ],
+          "description": "The size of the node: the length in bytes of a file or of the target of a\nsymbolic link, and the number of entries of a directory.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASISymlink.stat",
+          "name": "stat",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "stat(): WASINodeStat"
+          ],
+          "description": "Get the metadata of the node.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "WASINodeStat",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASISymlink.target",
+          "name": "target",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "target: string"
+          ],
+          "description": "The path the link points at. Paths are only ever followed within the\ndirectory a lookup started from, so a target that is absolute or that\nclimbs above that directory fails with `ENOTCAPABLE` when followed.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASISymlink.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: 'symlink'"
+          ],
+          "description": "The type of the node, which is always `'symlink'`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WASIReadable",
+      "name": "WASIReadable",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface WASIReadable {\n  read(buffer: Uint8Array): number\n}"
+      ],
+      "description": "A source of standard input.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASIReadable.read",
+          "name": "read",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "read(buffer: Uint8Array): number"
+          ],
+          "description": "Synchronously read into `buffer`, returning the number of bytes read or\n`0` at the end of input.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "buffer",
+              "type": "Uint8Array",
+              "optional": false,
+              "default": null,
+              "description": "The buffer to read into."
+            }
+          ],
+          "returns": {
+            "type": "number",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WASIWritable",
+      "name": "WASIWritable",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface WASIWritable {\n  write(data: Uint8Array): unknown\n}"
+      ],
+      "description": "A destination of standard output or standard error.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASIWritable.write",
+          "name": "write",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "write(data: Uint8Array): unknown"
+          ],
+          "description": "Write `data`, which is a copy that may be kept.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "data",
+              "type": "Uint8Array",
+              "optional": false,
+              "default": null,
+              "description": "The data written by the guest."
+            }
+          ],
+          "returns": {
+            "type": "unknown",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WASIClock",
+      "name": "WASIClock",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface WASIClock {\n  realtime(): bigint\n  monotonic(): bigint\n}"
+      ],
+      "description": "The clocks available to the guest.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASIClock.monotonic",
+          "name": "monotonic",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "monotonic(): bigint"
+          ],
+          "description": "Get the number of nanoseconds since an arbitrary point that never moves backwards.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "bigint",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIClock.realtime",
+          "name": "realtime",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "realtime(): bigint"
+          ],
+          "description": "Get the number of nanoseconds since the Unix epoch.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "bigint",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WASIError",
+      "name": "WASIError",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "WASIError"
+      ],
+      "description": "An error thrown when the API of `bare-wasi` is misused, as opposed to an error of the guest.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WASIError.constructor",
+          "name": "WASIError",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new WASIError(msg: string, code: string, fn?: WASIError)"
+          ],
+          "description": "Construct a `WASIError` with the given message and `code`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "Human-readable error message."
+            },
+            {
+              "name": "code",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The error code, assigned to `err.code`."
+            },
+            {
+              "name": "fn",
+              "type": "WASIError",
+              "optional": true,
+              "default": null,
+              "description": "The function to omit from the captured stack trace (default the `WASIError`\nconstructor)."
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIError.code",
+          "name": "code",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "code: string"
+          ],
+          "description": "The error code, such as `'ALREADY_STARTED'`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIError.ALREADY_STARTED",
+          "name": "WASIError.ALREADY_STARTED",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "WASIError.ALREADY_STARTED(msg: string): WASIError"
+          ],
+          "description": "Create a `WASIError` with code `'ALREADY_STARTED'`, for an implementation used with a second\ninstance.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "Human-readable error message."
+            }
+          ],
+          "returns": {
+            "type": "WASIError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIError.INVALID_PREOPEN",
+          "name": "WASIError.INVALID_PREOPEN",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "WASIError.INVALID_PREOPEN(msg: string): WASIError"
+          ],
+          "description": "Create a `WASIError` with code `'INVALID_PREOPEN'`, for a preopen that is not a directory.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "Human-readable error message."
+            }
+          ],
+          "returns": {
+            "type": "WASIError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIError.INVALID_VERSION",
+          "name": "WASIError.INVALID_VERSION",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "WASIError.INVALID_VERSION(msg: string): WASIError"
+          ],
+          "description": "Create a `WASIError` with code `'INVALID_VERSION'`, for options written for a version of WASI that is not supported.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "Human-readable error message."
+            }
+          ],
+          "returns": {
+            "type": "WASIError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIError.MISSING_EXPORT",
+          "name": "WASIError.MISSING_EXPORT",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "WASIError.MISSING_EXPORT(msg: string): WASIError"
+          ],
+          "description": "Create a `WASIError` with code `'MISSING_EXPORT'`, for an instance lacking a required export.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "Human-readable error message."
+            }
+          ],
+          "returns": {
+            "type": "WASIError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "WASIError.UNEXPECTED_EXPORT",
+          "name": "WASIError.UNEXPECTED_EXPORT",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "WASIError.UNEXPECTED_EXPORT(msg: string): WASIError"
+          ],
+          "description": "Create a `WASIError` with code `'UNEXPECTED_EXPORT'`, for a command instance that is\ninitialized or a reactor instance that is started.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "Human-readable error message."
+            }
+          ],
+          "returns": {
+            "type": "WASIError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    }
+  ],
+  "subpaths": [
+    {
+      "name": "bare-wasi/memory",
+      "exports": [
+        {
+          "key": "MemoryNode",
+          "name": "MemoryNode",
+          "kind": "class",
+          "static": false,
+          "signatures": [
+            "MemoryNode"
+          ],
+          "description": "A node of an in-memory filesystem.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": [
+            {
+              "key": "MemoryNode.setTimes",
+              "name": "setTimes",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "setTimes(atime: bigint | undefined, mtime: bigint | undefined): void"
+              ],
+              "description": "Set the access and modification times of the node.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "atime",
+                  "type": "bigint | undefined",
+                  "optional": false,
+                  "default": null,
+                  "description": "The time of last access in nanoseconds since the Unix\nepoch, or `undefined` to leave it unchanged."
+                },
+                {
+                  "name": "mtime",
+                  "type": "bigint | undefined",
+                  "optional": false,
+                  "default": null,
+                  "description": "The time of last modification in nanoseconds since the Unix\nepoch, or `undefined` to leave it unchanged."
+                }
+              ],
+              "returns": {
+                "type": "void",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryNode.size",
+              "name": "size",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "size: number"
+              ],
+              "description": "The size of the node: the length in bytes of a file or of the target of a\nsymbolic link, and the number of entries of a directory.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryNode.stat",
+              "name": "stat",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "stat(): WASINodeStat"
+              ],
+              "description": "Get the metadata of the node.",
+              "deprecated": null,
+              "params": [],
+              "returns": {
+                "type": "WASINodeStat",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryNode.type",
+              "name": "type",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "type: 'file' | 'directory' | 'symlink'"
+              ],
+              "description": "The type of the node.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            }
+          ]
+        },
+        {
+          "key": "MemoryFile",
+          "name": "MemoryFile",
+          "kind": "class",
+          "static": false,
+          "signatures": [
+            "MemoryFile"
+          ],
+          "description": "A regular file held in memory.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": [
+            {
+              "key": "MemoryFile.constructor",
+              "name": "MemoryFile",
+              "kind": "constructor",
+              "static": false,
+              "signatures": [
+                "new MemoryFile(data?: string | Uint8Array)"
+              ],
+              "description": "Create a file.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "data",
+                  "type": "string | Uint8Array",
+                  "optional": true,
+                  "default": null,
+                  "description": "The initial contents of the file, which are copied. Defaults to an empty file."
+                }
+              ],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryFile.data",
+              "name": "data",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "data: Uint8Array"
+              ],
+              "description": "The contents of the file, as a view that is invalidated by the next write.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryFile.read",
+              "name": "read",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "read(buffer: Uint8Array, position: number): number"
+              ],
+              "description": "Read from the file into `buffer`, returning the number of bytes read.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "buffer",
+                  "type": "Uint8Array",
+                  "optional": false,
+                  "default": null,
+                  "description": "The buffer to read into."
+                },
+                {
+                  "name": "position",
+                  "type": "number",
+                  "optional": false,
+                  "default": null,
+                  "description": "The byte offset to read from."
+                }
+              ],
+              "returns": {
+                "type": "number",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryFile.truncate",
+              "name": "truncate",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "truncate(size: number): void"
+              ],
+              "description": "Shorten or extend the file to `size` bytes, filling any extension with zeros.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "size",
+                  "type": "number",
+                  "optional": false,
+                  "default": null,
+                  "description": "The new size of the file in bytes."
+                }
+              ],
+              "returns": {
+                "type": "void",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryFile.type",
+              "name": "type",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "type: 'file'"
+              ],
+              "description": "The type of the node, which is always `'file'`.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryFile.write",
+              "name": "write",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "write(buffer: Uint8Array, position: number): number"
+              ],
+              "description": "Write `buffer` to the file, extending it as needed, and return the number of bytes written.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "buffer",
+                  "type": "Uint8Array",
+                  "optional": false,
+                  "default": null,
+                  "description": "The data to write."
+                },
+                {
+                  "name": "position",
+                  "type": "number",
+                  "optional": false,
+                  "default": null,
+                  "description": "The byte offset to write at."
+                }
+              ],
+              "returns": {
+                "type": "number",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            }
+          ]
+        },
+        {
+          "key": "MemorySymlink",
+          "name": "MemorySymlink",
+          "kind": "class",
+          "static": false,
+          "signatures": [
+            "MemorySymlink"
+          ],
+          "description": "A symbolic link held in memory.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": [
+            {
+              "key": "MemorySymlink.constructor",
+              "name": "MemorySymlink",
+              "kind": "constructor",
+              "static": false,
+              "signatures": [
+                "new MemorySymlink(target: string)"
+              ],
+              "description": "Create a symbolic link.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "target",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The path the link points at."
+                }
+              ],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemorySymlink.target",
+              "name": "target",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "target: string"
+              ],
+              "description": "The path the link points at.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemorySymlink.type",
+              "name": "type",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "type: 'symlink'"
+              ],
+              "description": "The type of the node, which is always `'symlink'`.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            }
+          ]
+        },
+        {
+          "key": "MemoryDirectory",
+          "name": "MemoryDirectory",
+          "kind": "class",
+          "static": false,
+          "signatures": [
+            "MemoryDirectory"
+          ],
+          "description": "A directory held in memory.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": [
+            {
+              "key": "MemoryDirectory.constructor",
+              "name": "MemoryDirectory",
+              "kind": "constructor",
+              "static": false,
+              "signatures": [
+                "new MemoryDirectory(entries?: MemoryEntries)"
+              ],
+              "description": "Create a directory.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "entries",
+                  "type": "MemoryEntries",
+                  "optional": true,
+                  "default": null,
+                  "description": "The initial entries of the directory. Defaults to an empty directory."
+                }
+              ],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryDirectory.create",
+              "name": "create",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "create(name: string, type: 'file' | 'directory'): MemoryFile | MemoryDirectory"
+              ],
+              "description": "Create an entry in the directory, throwing `EEXIST` if one by that name already exists.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "name",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The name of the entry."
+                },
+                {
+                  "name": "type",
+                  "type": "'file' | 'directory'",
+                  "optional": false,
+                  "default": null,
+                  "description": "The type of node to create."
+                }
+              ],
+              "returns": {
+                "type": "MemoryFile | MemoryDirectory",
+                "description": "The created node."
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryDirectory.entries",
+              "name": "entries",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "entries(): IterableIterator<[string, MemoryNode]>"
+              ],
+              "description": "Iterate the entries of the directory as pairs of names and nodes.",
+              "deprecated": null,
+              "params": [],
+              "returns": {
+                "type": "IterableIterator<[string, MemoryNode]>",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryDirectory.link",
+              "name": "link",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "link(name: string, node: MemoryNode): void"
+              ],
+              "description": "Add another name for an existing node that is not a directory, throwing `EEXIST` if an entry\nby that name already exists and `EPERM` if `node` is a directory.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "name",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The name of the new entry."
+                },
+                {
+                  "name": "node",
+                  "type": "MemoryNode",
+                  "optional": false,
+                  "default": null,
+                  "description": "The node to link to."
+                }
+              ],
+              "returns": {
+                "type": "void",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryDirectory.lookup",
+              "name": "lookup",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "lookup(name: string): MemoryNode | null"
+              ],
+              "description": "Look up an entry of the directory.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "name",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The name of the entry."
+                }
+              ],
+              "returns": {
+                "type": "MemoryNode | null",
+                "description": "The entry, or `null` if there is none by that name."
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryDirectory.rename",
+              "name": "rename",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "rename(name: string, directory: MemoryDirectory, target: string): void"
+              ],
+              "description": "Move an entry, replacing any entry of the same type at the target. Throws `ENOTEMPTY` if the\nentry it would replace is a directory with entries, and `EXDEV` if `directory` is not a\n`MemoryDirectory`.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "name",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The name of the entry to move."
+                },
+                {
+                  "name": "directory",
+                  "type": "MemoryDirectory",
+                  "optional": false,
+                  "default": null,
+                  "description": "The directory to move it to, which may be this one."
+                },
+                {
+                  "name": "target",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The name to give it in `directory`."
+                }
+              ],
+              "returns": {
+                "type": "void",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryDirectory.rmdir",
+              "name": "rmdir",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "rmdir(name: string): void"
+              ],
+              "description": "Remove an empty directory, throwing `ENOENT` if there is none by that name, `ENOTDIR` if it is\nnot a directory, and `ENOTEMPTY` if it has entries.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "name",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The name of the entry."
+                }
+              ],
+              "returns": {
+                "type": "void",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryDirectory.symlink",
+              "name": "symlink",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "symlink(name: string, target: string): MemorySymlink"
+              ],
+              "description": "Create a symbolic link in the directory, throwing `EEXIST` if an entry by that name already\nexists.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "name",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The name of the link."
+                },
+                {
+                  "name": "target",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The path the link points at."
+                }
+              ],
+              "returns": {
+                "type": "MemorySymlink",
+                "description": "The created link."
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryDirectory.type",
+              "name": "type",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "type: 'directory'"
+              ],
+              "description": "The type of the node, which is always `'directory'`.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "MemoryDirectory.unlink",
+              "name": "unlink",
+              "kind": "method",
+              "static": false,
+              "signatures": [
+                "unlink(name: string): void"
+              ],
+              "description": "Remove an entry that is not a directory, throwing `ENOENT` if there is none by that name and\n`EISDIR` if it is a directory.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "name",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The name of the entry."
+                }
+              ],
+              "returns": {
+                "type": "void",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "bare-wasi/host",
+      "exports": [
+        {
+          "key": "HostDirectory",
+          "name": "HostDirectory",
+          "kind": "class",
+          "static": false,
+          "signatures": [
+            "HostDirectory"
+          ],
+          "description": "A host directory backed by a `bare-directory` capability. The guest reaches\nonly what the capability reaches, with its rights, and `bare-wasi` resolves\nsymbolic links within the preopen. On Windows, link targets use `/` as the\nseparator and drive letter, UNC, and device paths are absolute.\n\nFiles are opened when looked up, with the most access the rights and the file\nallow, so an open file stays the same file if it's renamed. Creating symbolic\nand hard links isn't supported, and renaming into a directory of another\nbackend fails with `EXDEV`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": [
+            {
+              "key": "HostDirectory.constructor",
+              "name": "HostDirectory",
+              "kind": "constructor",
+              "static": false,
+              "signatures": [
+                "new HostDirectory(directory: DirectorySync)"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "directory",
+                  "type": "DirectorySync",
+                  "optional": false,
+                  "default": null,
+                  "description": "The `bare-directory` capability to expose to the guest."
+                }
+              ],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "HostDirectory.create",
+              "name": "create",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "create: WASIDirectory['create']"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "HostDirectory.entries",
+              "name": "entries",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "entries: WASIDirectory['entries']"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "HostDirectory.lookup",
+              "name": "lookup",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "lookup: WASIDirectory['lookup']"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "HostDirectory.rename",
+              "name": "rename",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "rename: WASIDirectory['rename']"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "HostDirectory.rmdir",
+              "name": "rmdir",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "rmdir: WASIDirectory['rmdir']"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "HostDirectory.setTimes",
+              "name": "setTimes",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "setTimes: NonNullable<WASIDirectory['setTimes']>"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "HostDirectory.size",
+              "name": "size",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "size: number"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "HostDirectory.stat",
+              "name": "stat",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "stat: WASIDirectory['stat']"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "HostDirectory.type",
+              "name": "type",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "type: 'directory'"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "HostDirectory.unlink",
+              "name": "unlink",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "unlink: WASIDirectory['unlink']"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "bare-wasi/constants",
+      "exports": [
+        {
+          "key": "constants",
+          "name": "constants",
+          "kind": "variable",
+          "static": false,
+          "signatures": [
+            "constants: {\n  /** Error codes, such as `errno.NOENT`. */\n  errno: Record<string, number>\n  /** The types of file descriptors and filesystem nodes. */\n  filetype: Record<string, number>\n  /** Clock identifiers. */\n  clockid: Record<string, number>\n  /** The positions an offset passed to `fd_seek` is relative to. */\n  whence: Record<string, number>\n  /** Flags of `path_open`, such as `oflags.CREAT`. */\n  oflags: Record<string, number>\n  /** Flags of file descriptors, such as `fdflags.APPEND`. */\n  fdflags: Record<string, number>\n  /** Flags that control how paths are looked up. */\n  lookupflags: Record<string, number>\n  /** Flags of `fd_filestat_set_times` and `path_filestat_set_times`. */\n  fstflags: Record<string, number>\n  /** The rights of file descriptors, such as `rights.FD_READ`. */\n  rights: Record<string, bigint>\n  /** The types of events reported by `poll_oneoff`. */\n  eventtype: Record<string, number>\n  /** Flags of clock subscriptions passed to `poll_oneoff`. */\n  subclockflags: Record<string, number>\n  /** The types of preopened resources. */\n  preopentype: Record<string, number>\n}"
+          ],
+          "description": "The constants of WASI preview 1, keyed by their names in the specification.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "name": "bare-wasi/errors",
+      "exports": [
+        {
+          "key": "WASIError",
+          "name": "WASIError",
+          "kind": "class",
+          "static": false,
+          "signatures": [
+            "WASIError"
+          ],
+          "description": "An error thrown when the API of `bare-wasi` is misused, as opposed to an error of the guest.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": [
+            {
+              "key": "WASIError.constructor",
+              "name": "WASIError",
+              "kind": "constructor",
+              "static": false,
+              "signatures": [
+                "new WASIError(msg: string, code: string, fn?: WASIError)"
+              ],
+              "description": "Construct a `WASIError` with the given message and `code`.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "Human-readable error message."
+                },
+                {
+                  "name": "code",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "The error code, assigned to `err.code`."
+                },
+                {
+                  "name": "fn",
+                  "type": "WASIError",
+                  "optional": true,
+                  "default": null,
+                  "description": "The function to omit from the captured stack trace (default the `WASIError`\nconstructor)."
+                }
+              ],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "WASIError.code",
+              "name": "code",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "code: string"
+              ],
+              "description": "The error code, such as `'ALREADY_STARTED'`.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "WASIError.ALREADY_STARTED",
+              "name": "WASIError.ALREADY_STARTED",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "WASIError.ALREADY_STARTED(msg: string): WASIError"
+              ],
+              "description": "Create a `WASIError` with code `'ALREADY_STARTED'`, for an implementation used with a second\ninstance.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "Human-readable error message."
+                }
+              ],
+              "returns": {
+                "type": "WASIError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "WASIError.INVALID_PREOPEN",
+              "name": "WASIError.INVALID_PREOPEN",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "WASIError.INVALID_PREOPEN(msg: string): WASIError"
+              ],
+              "description": "Create a `WASIError` with code `'INVALID_PREOPEN'`, for a preopen that is not a directory.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "Human-readable error message."
+                }
+              ],
+              "returns": {
+                "type": "WASIError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "WASIError.INVALID_VERSION",
+              "name": "WASIError.INVALID_VERSION",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "WASIError.INVALID_VERSION(msg: string): WASIError"
+              ],
+              "description": "Create a `WASIError` with code `'INVALID_VERSION'`, for options written for a version of WASI that is not supported.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "Human-readable error message."
+                }
+              ],
+              "returns": {
+                "type": "WASIError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "WASIError.MISSING_EXPORT",
+              "name": "WASIError.MISSING_EXPORT",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "WASIError.MISSING_EXPORT(msg: string): WASIError"
+              ],
+              "description": "Create a `WASIError` with code `'MISSING_EXPORT'`, for an instance lacking a required export.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "Human-readable error message."
+                }
+              ],
+              "returns": {
+                "type": "WASIError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "WASIError.UNEXPECTED_EXPORT",
+              "name": "WASIError.UNEXPECTED_EXPORT",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "WASIError.UNEXPECTED_EXPORT(msg: string): WASIError"
+              ],
+              "description": "Create a `WASIError` with code `'UNEXPECTED_EXPORT'`, for a command instance that is\ninitialized or a reactor instance that is started.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": "Human-readable error message."
+                }
+              ],
+              "returns": {
+                "type": "WASIError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "generatedAt": "2026-10-22T19:09:52.121Z"
+}

@@ -120,6 +120,26 @@ const layout: Layout = {
     'DatabaseSync.enableLoadExtension': [NOT_OPEN, EXT_DISABLED],
     'DatabaseSync.loadExtension': [NOT_OPEN, EXT_DISABLED],
   },
+  // 0.1.5 added prebuilds/wasi-wasm32/bare-sqlite.wasm (holepunchto/bare-sqlite#20).
+  // Behaviour below was run on Bare 1.36.0.
+  extraSections: [
+    {
+      heading: 'WebAssembly build',
+      body: [
+        'From 0.1.5, the package also ships a WebAssembly build, `prebuilds/wasi-wasm32/bare-sqlite.wasm`. On Bare 1.36.0 and later, the `host` import attribute loads it in place of the native build, sandboxed through WASI, so the database reaches only the directories its WASI provider grants:',
+        '',
+        '```js',
+        "const { DatabaseSync } = require('bare-sqlite', {",
+        "  with: { host: 'wasi-wasm32', wasi: './wasi.js' }",
+        '})',
+        '',
+        "const db = new DatabaseSync('/books.db')",
+        '```',
+        '',
+        "Database paths are paths inside the provider's `preopens`, so `/books.db` is `books.db` in the directory mounted at `/`. Without a provider, an in-memory database (`':memory:'`) still works, and opening a file throws `CANTOPEN`. The WebAssembly build cannot load extensions: on a database opened with `allowExtension: true`, `loadExtension()` throws with code `ERROR` and the message `extension loading is not supported`. See [WebAssembly addons](/bare/reference/bare/modules/bare-module#webassembly-addons) for the provider and the rules for loading a package this way.",
+      ].join('\n'),
+    },
+  ],
 };
 
 export default layout;

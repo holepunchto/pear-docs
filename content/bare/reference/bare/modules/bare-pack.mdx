@@ -4,7 +4,7 @@ description: "Bundle packing for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "2.2.4"
+upstreamVersion: "3.0.2"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -14,6 +14,14 @@ upstreamVersion: "2.2.4"
 ```sh
 npm i bare-pack
 ```
+
+<Callout type="warn">
+**Upgrading from 2.x.** Version 3.0.0 changed the arguments of `pack()`, what a bundle lists, and how the CLI resolves symlinks. Check these when you upgrade.
+
+- `pack()` takes a new `resolveModule` callback between `listPrefix` and `writeFile`. A 2.x call that passes `writeFile` in its old position, such as `pack(entry, opts, readModule, null, writeFile)`, now passes it as `resolveModule`. Your `writeFile` is then called with resolved URLs and no source, and offloaded files are left out of the bundle without being written. Pass `null` for `resolveModule` instead: `pack(entry, opts, readModule, null, null, writeFile)`. See [`pack`](#pack).
+- Offloaded addons and assets stay listed in `bundle.addons` and `bundle.assets`, under their rewritten resolution, such as `/../prebuilds/darwin-arm64/addon.bare`. Version 2.x left them out of both lists. See [Offloading](#offloading).
+- The CLI follows symlinks. A package installed through a symlink is stored in the bundle under its real path, and its dependencies are looked up next to that path. If the real path is outside `--base`, the module is stored under a `/../` key, and Bare fails to load the bundle with `MODULE_NOT_FOUND`. Set `--base` to a directory that contains the real paths. See [Symlinks](#symlinks).
+</Callout>
 
 ## Usage
 
@@ -38,32 +46,40 @@ const bundle = await pack(new URL('file:///directory/file.js'), readModule, list
 #### `pack`
 
 ```ts
-pack(entry: URL, opts: PackOptions, readModule: ReadModuleCallback, listPrefix: ListPrefixCallback | null, writeFile: WriteFileCallback): Promise<Bundle>
+pack(entry: URL, opts: PackOptions, readModule: ReadModuleCallback, listPrefix: ListPrefixCallback | null, resolveModule: ResolveModuleCallback | null, writeFile: WriteFileCallback): Promise<Bundle>
 ```
 
-Bundle the module graph rooted at `url`, which must be a WHATWG `URL` instance. `readModule` is
+Bundle the module graph rooted at `entry`, which must be a WHATWG `URL` instance. `readModule` is
 called with a `URL` instance for every module to be read and must either return the module
 source, if it exists, or `null`. `listPrefix` is called with a `URL` instance of every prefix to
 be listed and must yield `URL` instances that have the specified `URL` as a prefix. If not
-provided, prefixes won't be bundled. `writeFile` is called for every addon or asset that should
-be offloaded rather than embedded; see the [Offloading section of the
-README](https://github.com/holepunchto/bare-pack#offloading). When `writeFile` is provided,
-`listPrefix` must be passed positionally (or as `null`).
+provided, prefixes won't be bundled. `resolveModule` is called with the `URL` of each resolved
+module and returns the `URL` to use in its place; see [Symlinks](#symlinks). `writeFile` is called
+for every addon or asset that should be offloaded rather than embedded; see
+[Offloading](#offloading). When `writeFile` is provided, `listPrefix` and `resolveModule` must be
+passed positionally (or as `null`).
+
+`opts` can be left out, in which case the callbacks follow `entry` directly:
+`pack(entry, readModule, listPrefix, resolveModule, writeFile)`.
+
+Changed in v3.0.0: `resolveModule` was added before `writeFile`, which moved from the fifth
+argument to the sixth, or from the fourth to the fifth when `opts` is left out.
 
 `pack()` calls `readModule` at most once for each URL and keeps the result, a `null` included, for
 the rest of the call. Before v2.2.3, `readModule` was called again each time the traversal asked for
-the same URL, which for a `package.json` meant once for every lookup of it. The `listPrefix` and
-`writeFile` callbacks are not cached.
+the same URL, which for a `package.json` meant once for every lookup of it. The `listPrefix`,
+`resolveModule`, and `writeFile` callbacks are not cached.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `entry` | `URL` | — | The root of the module graph to bundle; must be a WHATWG `URL` instance (typically a `file:` URL). |
-| `opts` | [`PackOptions`](#packoptions) | — | Packing options, extending [`TraverseOptions`](/bare/reference/bare/modules/bare-module-traverse) from `bare-module-traverse`. Adds `concurrency`, `base` (the URL that offloaded file paths are made relative to), and `offload` (whether to write addons and/or assets to disk instead of embedding them). |
+| `opts` | [`PackOptions`](#packoptions) | — | Packing options, extending [`TraverseOptions`](/bare/reference/bare/modules/bare-module-traverse) from `bare-module-traverse`. Adds `concurrency`, `base` (the URL that offloaded file paths are made relative to), and `offload` (whether to write addons and/or assets to disk instead of embedding them). Can be left out. |
 | `readModule` | [`ReadModuleCallback`](#readmodulecallback) | — | Called with a `URL` for every module in the graph; returns the module source as a `Buffer` or string, or `null` if it does not exist. Called at most once for each URL. |
 | `listPrefix` | [`ListPrefixCallback`](#listprefixcallback) \| `null` | — | Called with a `URL` for every prefix to list; yields the `URL`s that have it as a prefix. Pass `null` (or omit) to skip prefix bundling. |
-| `writeFile` | [`WriteFileCallback`](#writefilecallback) | — | Called for each addon or asset to offload rather than embed, receiving the file `URL` and its source. See the [Offloading section of the README](https://github.com/holepunchto/bare-pack#offloading). |
+| `resolveModule` | [`ResolveModuleCallback`](#resolvemodulecallback) \| `null` | — | Called with the `URL` of each resolved module, addon, and asset; returns the `URL` to use in its place, such as its real path. Not called for `entry`. Defaults to the identity function. Added in v3.0.0. See [Symlinks](#symlinks). |
+| `writeFile` | [`WriteFileCallback`](#writefilecallback) | — | Called for each addon or asset to offload rather than embed, receiving the file `URL` and its source. See [Offloading](#offloading). |
 
 **Returns** `Promise<Bundle>` — a promise that resolves to the packed
 [`bare-bundle`](https://github.com/holepunchto/bare-bundle) `Bundle`, with all statically
@@ -84,12 +100,18 @@ interface PackOptions {
   aliases?: Record<string, AliasableExtension>
   resolve?: (entry: Import, parentURL: URL, opts?: ResolveOptions) => Resolver
   deferUnresolved?: boolean
+  mount?: URL | string
   builtinProtocol?: string
   builtins?: Builtins
   conditions?: Conditions
+  defer?: string[]
+  deferredProtocol?: string
+  directories?: boolean
+  engines?: Engines
   extensions?: string[]
   host?: string
   hosts?: string[]
+  imports?: ImportsMap
   linked?: boolean
   linkedProtocol?: string
   matchedConditions?: string[]
@@ -97,35 +119,95 @@ interface PackOptions {
 }
 ```
 
+`concurrency`, `base`, and `offload` belong to `bare-pack`. The other options come from the
+[`TraverseOptions`](/bare/reference/bare/modules/bare-module-traverse) of `bare-module-traverse`,
+which `bare-pack` depends on at `~2.7.0` since v2.2.5. Version 2.7 of `bare-module-traverse` added
+`mount`, and added the `bare-module-resolve` options `defer`, `deferredProtocol`, `directories`,
+`engines`, and `imports` to the type.
+
+When the entry is itself a bundle, `mount` is the URL it is mounted at, and the addons and assets
+that it declares resolve against `mount` instead of the entry's URL. A bundle that the graph
+imports, such as `require('./bar.bundle')`, adds the addons and assets that it declares to
+`bundle.addons` and `bundle.assets`, resolved against its own URL. Both come from
+`bare-module-traverse` 2.7.1.
+
 #### `ReadModuleCallback`
 
 ```ts
 interface ReadModuleCallback {
-  (url: URL): Buffer | string | null
+  (url: URL): Buffer | string | null | Promise<Buffer | string | null>
 }
 ```
 
-Called with a `URL` for every module in the graph; returns the module source as a `Buffer` or string, or `null` if it does not exist.
+Called with a `URL` for every module in the graph; returns the module source as a `Buffer` or string, or `null` if it does not exist. It may return a promise.
 
 #### `ListPrefixCallback`
 
 ```ts
 interface ListPrefixCallback {
-  (url: URL): Iterable<URL>
+  (url: URL): Iterable<URL> | AsyncIterable<URL>
 }
 ```
 
-Called with a `URL` for every prefix to list; yields the `URL`s that have it as a prefix.
+Called with a `URL` for every prefix to list; yields the `URL`s that have it as a prefix. It may be an async generator.
+
+#### `ResolveModuleCallback`
+
+```ts
+interface ResolveModuleCallback {
+  (url: URL): URL | Promise<URL>
+}
+```
+
+Called with the `URL` of each resolved module, addon, and asset; returns the `URL` to use in its place. The bundle stores the module under the returned `URL`, and the imports that resolved to `url` point to it. Added in v3.0.0. See [Symlinks](#symlinks).
 
 #### `WriteFileCallback`
 
 ```ts
 interface WriteFileCallback {
-  (url: URL, source: Buffer | string): string | null | void
+  (url: URL, source: Buffer | string): string | null | void | Promise<string | null | void>
 }
 ```
 
-Called for each addon or asset to offload rather than embed, receiving the file `URL` and its source. If it returns a string, that string replaces the file's resolution in the bundle's imports map; otherwise, when `base` is set, the resolution defaults to `'/../' + <path-relative-to-base>`, which resolves to a sibling of the bundle. See [Offloading](#offloading).
+Called for each addon or asset to offload rather than embed, receiving the file `URL` and its source. It may return a promise. If it returns a string, that string replaces the file's resolution in the bundle's imports map and in `bundle.addons` or `bundle.assets`; otherwise, when `base` is set, the resolution defaults to `'/../' + <path-relative-to-base>`, which resolves to a sibling of the bundle. See [Offloading](#offloading).
+
+## `bare-pack/fs`
+
+Callbacks for `pack()` that read from the file system. The CLI uses all three. On Bare, they use `bare-fs` and `bare-url` through the `imports` map of `bare-pack`. Types for these exports were added in v3.0.2.
+
+```js
+const { pathToFileURL } = require('url')
+const pack = require('bare-pack')
+const { readModule, listPrefix, resolveModule } = require('bare-pack/fs')
+
+const bundle = await pack(pathToFileURL('index.js'), readModule, listPrefix, resolveModule)
+```
+
+### Functions
+
+#### `readModule`
+
+```ts
+readModule(url: URL): Promise<Buffer | null>
+```
+
+A `readModule` callback that reads `url` from the file system. Resolves to the file's contents, or `null` if it could not be read.
+
+#### `resolveModule`
+
+```ts
+resolveModule(url: URL): Promise<URL>
+```
+
+A `resolveModule` callback that resolves a `file:` URL to its real path, following symlinks, and keeps a trailing slash. Other URLs, and URLs that cannot be resolved, such as a path that does not exist, are returned as they are. Added in v3.0.0.
+
+#### `listPrefix`
+
+```ts
+listPrefix(url: URL): AsyncGenerator<URL>
+```
+
+A `listPrefix` callback that yields `url` if it is a file, or every file nested under it if it is a directory.
 
 ## Aliases
 
@@ -149,7 +231,7 @@ const bundle = await pack(new URL('file:///foo.ts'), { aliases: { '.ts': '.js' }
 
 ## Offloading
 
-To keep addons and assets out of the bundle, set `offload` to `true` (or `{ addons: true }` / `{ assets: true }` for a single kind) and provide a `writeFile` callback. Each offloaded file is passed to `writeFile` instead of being embedded and is omitted from `bundle.addons` and `bundle.assets`.
+To keep addons and assets out of the bundle, set `offload` to `true` (or `{ addons: true }` / `{ assets: true }` for a single kind) and provide a `writeFile` callback. Each offloaded file is passed to `writeFile` instead of being embedded. `writeFile` comes after `listPrefix` and `resolveModule`, so pass `null` for them if you don't need them.
 
 ```js
 function writeFile(url, source) {
@@ -161,17 +243,32 @@ const bundle = await pack(
   { offload: true, base: new URL('file:///app/') },
   readModule,
   null,
+  null,
   writeFile
 )
 ```
 
+Offloaded files stay declared in `bundle.addons` and `bundle.assets` under their rewritten resolution, so the lists remain complete and loaders can tell which addons and assets the bundle needs. In the example above, an offloaded `file:///app/prebuilds/darwin-arm64/addon.bare` is listed as `/../prebuilds/darwin-arm64/addon.bare`. Changed in v3.0.0: version 2.x left offloaded files out of `bundle.addons` and `bundle.assets`.
+
 URLs with the `builtin:`, `linked:`, or `deferred:` protocol are never offloaded.
+
+## Symlinks
+
+Added in v3.0.0. Modules are resolved from the `URL`s they are read at, so a package installed through a symlink, as pnpm does, has its dependencies looked up next to the link rather than where the package actually lives. To follow symlinks like the module systems of Bare and Node do, pass a `resolveModule` callback, between `listPrefix` and `writeFile`, that maps each resolved `URL` to its real path. The `resolveModule` export of [`bare-pack/fs`](#bare-packfs) does this for `file:` URLs.
+
+```js
+const { resolveModule } = require('bare-pack/fs')
+
+const bundle = await pack(entry, opts, readModule, listPrefix, resolveModule)
+```
+
+The bundle then stores each module under its real path, and the imports that went through the link resolve to that path. When `base` is set and a real path is outside it, the module is stored under a `/../` key. Bare serves only the modules under the mount of a bundle, so such a bundle fails to load with `MODULE_NOT_FOUND`; see [Loading bundles](/bare/reference/bare/modules/bare-module#loading-bundles). Set `base`, or `--base` for the CLI, to a directory that contains the real paths. Without `resolveModule`, a symlinked package whose dependencies sit next to its real path fails to pack with `MODULE_NOT_FOUND`.
 
 ## WebAssembly addons
 
-Added in v2.2.4. An addon package can ship a WebAssembly build as `prebuilds/wasi-wasm32/<name>.wasm`. `bare-pack` 2.2.4 depends on `bare-module-traverse` `~2.6.0`, which resolves these files. The lookup, and the `host` and `wasi` import attributes, are described in [WebAssembly addons](/bare/reference/bare/modules/bare-module-traverse#webassembly-addons) on the `bare-module-traverse` page.
+Added in v2.2.4. An addon package can ship a WebAssembly build as `prebuilds/wasi-wasm32/<name>.wasm`. `bare-pack` resolves these files through `bare-module-traverse`, which it depends on at `~2.7.0` since v2.2.5 (`~2.6.0` in v2.2.4). The lookup, and the `host` and `wasi` import attributes, are described in [WebAssembly addons](/bare/reference/bare/modules/bare-module-traverse#webassembly-addons) on the `bare-module-traverse` page.
 
-With `resolve.bare` from `bare-module-traverse` and no `hosts`, `pack()` falls back to the WebAssembly build of a package that has no native build:
+A WebAssembly build is bundled only when `wasi-wasm32` is one of the hosts. Unlike Bare, `bare-pack` doesn't add that host on its own: the default resolver, an explicit `hosts` option, the [presets](#presets), and the [CLI](#webassembly) leave it out unless you list it. The exception is `resolve.bare` from `bare-module-traverse`, which defaults `hosts` to `[host, 'wasi-wasm32']` when `hosts` is not set, so `pack()` falls back to the WebAssembly build of a package that has no native build:
 
 ```js
 const traverse = require('bare-module-traverse')
@@ -179,9 +276,11 @@ const traverse = require('bare-module-traverse')
 const bundle = await pack(new URL('file:///app/foo.js'), { resolve: traverse.resolve.bare }, readModule)
 ```
 
-The `.wasm` file is read through `readModule` and embedded in the bundle like a native addon. Its URL is listed in `bundle.addons`, and `offload` passes it to `writeFile` with the other addons. The WebAssembly build is a fallback for a package that has no native build for any of the hosts. If at least one host has a native prebuild, only the native prebuilds are bundled, even when another host has none.
+The `.wasm` file is read through `readModule` and embedded in the bundle like a native addon. Its URL is listed in `bundle.addons`, and `offload` passes it to `writeFile` with the other addons. The WebAssembly build is a fallback for a package that has no native build for any of the hosts. Native prebuilds are tried first, whatever the order of `hosts`. If at least one host has a native prebuild, only the native prebuilds are bundled, even when another host has none. Linked addons are tried before the `.wasm` file, so with `linked` set, a package with no native build resolves to a `linked:` specifier instead. `resolve.bare` and the CLI leave `linked` off unless you set it, but the default resolver passes the options to `bare-addon-resolve` as they are, where `linked` defaults to `true`. With the default resolver, set `linked: false` to bundle the `.wasm` file.
 
-An import can ask for the WebAssembly build of its addons whatever `hosts` is, with `require('addon', { with: { host: 'wasi-wasm32' } })` or `import addon from 'addon' with { host: 'wasi-wasm32' }`. A `wasi` attribute names a module to bundle for the addon's WASI capabilities. `pack()` adds that module to the bundle and to the imports of the importing module. The bundle does not record which addon uses the module, because the `wasi` property that the traversal puts on the addon's `dependency` is not stored in the bundle. The addons of one package must load the same way throughout the graph, or `pack()` throws `ADDON_HOST_INCOMPATIBLE` or `ADDON_WASI_INCOMPATIBLE`.
+An import can ask for the WebAssembly build of its addons whatever `hosts` is, with `require('addon', { with: { host: 'wasi-wasm32' } })` or `import addon from 'addon' with { host: 'wasi-wasm32' }`. The attribute applies to the addons of the imported module and of everything it imports. A `wasi` attribute names a module to bundle for the addon's WASI capabilities. `pack()` adds that module to the bundle and to the imports of the importing module, and resolves the module's own imports like the other imports of the importing module, so the addons it uses come from the bundle's hosts. A `wasi` attribute without `host` does not select the WebAssembly build: a package with a native build for the hosts gets its native addon. The bundle does not record which addon uses the module, because the `wasi` property that the traversal puts on the addon's `dependency` is not stored in the bundle. The addons of one package must load the same way throughout the graph, or `pack()` throws `ADDON_HOST_INCOMPATIBLE` or `ADDON_WASI_INCOMPATIBLE`.
+
+Since v3.0.1, a module that the traversal reaches in several of these contexts, for example once with a `wasi` attribute and once without, is written to the bundle once, and an offloaded addon is passed to `writeFile` once.
 
 ## CLI
 
@@ -202,11 +301,14 @@ Flags include:
 --offload
 --offload-addons
 --offload-assets
---format|-f
---encoding|-e
+--format|-f <name>
+--encoding|-e <name>
 --host <host>
+--preset <name>
 --help|-h
 ```
+
+The CLI reads modules with the callbacks of [`bare-pack/fs`](#bare-packfs). Changed in v3.0.0: it also passes their `resolveModule`, so it follows symlinks. See [Symlinks](#symlinks).
 
 ##### Host
 
@@ -221,13 +323,39 @@ The `--host` flag may be specified multiple times to create a combined bundle fo
 > [!TIP]
 > Most often you'll use one of the possible values of [`Bare.Addon.host`](https://github.com/holepunchto/bare#addonhost). Omitting the architecture and environment is also valid; `--host ios` will create a bundle for iOS with no architecture specific code, for example, whereas `--host ios-arm64-simulator` will create a bundle specifically for iOS ARM64 simulators.
 
-The CLI always passes its own list of hosts, so it does not add `wasi-wasm32` the way the `resolve.bare` default does. To bundle the WebAssembly build of an addon package that has no native build, pass `--host wasi-wasm32` next to the native hosts:
+##### WebAssembly
+
+WebAssembly prebuilds, found at `prebuilds/wasi-wasm32/<name>.wasm`, are only bundled when `wasi-wasm32` is one of the hosts. The CLI always passes its own list of hosts, so it does not add `wasi-wasm32` the way the `resolve.bare` default does. To bundle the WebAssembly build of an addon package that has no native build, pass `--host wasi-wasm32` next to the native hosts:
 
 ```console
 bare-pack --host darwin-arm64 --host wasi-wasm32 index.js
 ```
 
-Native prebuilds are used where they exist, and the `.wasm` file only for a package with no native build for any of the native hosts. With `--host wasi-wasm32` alone, an addon package that has no `.wasm` build and is not a builtin fails with `ADDON_NOT_FOUND`. See [WebAssembly addons](#webassembly-addons).
+Native prebuilds are used where they exist, whatever the order of the `--host` flags, and the `.wasm` file only for a package with no native build for any of the native hosts. With `--host wasi-wasm32` alone, an addon package that has no `.wasm` build and is not a builtin fails with `ADDON_NOT_FOUND`. That includes the addons used by the module that a `wasi` attribute names. With `--linked`, a package with no native build resolves to a `linked:` specifier instead of its `.wasm` file. A `--preset` replaces the `--host` list, and no preset includes `wasi-wasm32`.
+
+Imports with the `host: 'wasi-wasm32'` attribute always resolve to WebAssembly prebuilds, whatever the hosts are:
+
+```js
+const { DatabaseSync } = require('bare-sqlite', { with: { host: 'wasi-wasm32', wasi: './wasi.js' } })
+```
+
+See [WebAssembly addons](#webassembly-addons).
+
+##### Presets
+
+To bundle for a group of systems, pass `--preset <name>`. The options that a preset sets replace those from the flags, so `--preset darwin --host wasi-wasm32` bundles for the `darwin` hosts only. An unknown name fails with `Unknown preset '<name>'`.
+
+| Preset    | Hosts                                                         | `linked` |
+| --------- | ------------------------------------------------------------- | -------- |
+| `darwin`  | `darwin-arm64`, `darwin-x64`                                  |          |
+| `linux`   | `linux-arm64`, `linux-x64`                                    |          |
+| `win32`   | `win32-arm64`, `win32-x64`                                    |          |
+| `desktop` | The `darwin`, `linux`, and `win32` hosts                      |          |
+| `ios`     | `ios-arm64`, `ios-arm64-simulator`, `ios-x64-simulator`       | `true`   |
+| `android` | `android-arm`, `android-arm64`, `android-ia32`, `android-x64` | `true`   |
+| `mobile`  | The `android` and `ios` hosts                                 | `true`   |
+
+The presets are exported from `bare-pack/preset`. `pack()` applies a `preset` option the same way, although `PackOptions` does not declare it.
 
 ##### Linking
 
@@ -309,7 +437,7 @@ To keep addons and assets out of the bundle and write them to disk alongside `--
 bare-pack --offload --out ./dist/index.bundle index.js
 ```
 
-Each offloaded file is written at the directory of `--out`, mirroring its path relative to `--base`. The bundle's resolution for the file becomes `/../<path-relative-to-base>`, so when the bundle is later mounted (for example at `./dist/index.bundle/`) the resolution points to the file's location next to the bundle. If `--out` happens to be inside `--base`, the file is not rewritten on disk.
+Each offloaded file is written at the directory of `--out`, mirroring its path relative to `--base`. The bundle's resolution for the file becomes `/../<path-relative-to-base>`, so when the bundle is later mounted (for example at `./dist/index.bundle/`) the resolution points to the file's location next to the bundle. If `--out` happens to be inside `--base`, the file is not rewritten on disk. Changed in v3.0.0: the bundle's `addons` and `assets` list the offloaded files under these resolutions.
 
 ##### Format
 
