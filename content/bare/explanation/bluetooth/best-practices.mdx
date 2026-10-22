@@ -49,7 +49,7 @@ In both cases, show the user a message instead of waiting forever.
 `bare-bluetooth` reports most failures as an [`error`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror) event: a scan that fails, a connection that can't be made, a read that's refused. As with any event emitter, an `error` event that nobody listens for throws. In a Bare worklet, that can take the whole runtime down. Listen for `error` on:
 
 - Every [`Central`](/bare/reference/bare/modules/bare-bluetooth#central), [`Server`](/bare/reference/bare/modules/bare-bluetooth#server), and [`Peripheral`](/bare/reference/bare/modules/bare-bluetooth#peripheral).
-- Every [`L2CAPChannel`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel). A write to a peer that has gone destroys the stream with an error. It doesn't throw from [`write()`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel).
+- Every [`L2CAPChannel`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel). A write to a peer that has gone destroys the stream with an error. It doesn't throw from [`write()`](/bare/reference/bare/modules/bare-stream#writablewritedata-unknown-encoding-bufferencoding-cb-streamcallback-boolean).
 
 ### Wrap calls in `try`/`catch` too
 
@@ -60,7 +60,7 @@ Some failures are thrown instead:
 - On Linux, [`central.disconnect()`](/bare/reference/bare/modules/bare-bluetooth#centraldisconnectperipheral) throws when you pass it a [`DiscoveredPeripheral`](/bare/reference/bare/modules/bare-bluetooth#discoveredperipheral).
 - The platform packages throw from calls such as [`retrievePeripherals()`](/bare/reference/bare/modules/bare-bluetooth-apple#retrieveperipheralsids-string-retrievedperipheral) and [`getBondedDevices()`](/bare/reference/bare/modules/bare-bluetooth-android#getbondeddevices-device).
 
-`ble-swarm` wraps its calls in `try`/`catch` for this reason, including [`peripheral.requestMtu()`](/bare/reference/bare/modules/bare-bluetooth#peripheralrequestmtumtu) and [`peripheral.openL2CAPChannel()`](/bare/reference/bare/modules/bare-bluetooth#peripheralopenl2capchannelpsm). See [`lib/transport.js`](https://github.com/holepunchto/ble-swarm/blob/e9210ab2fe73d7717aba853d6508a9b102637e26/lib/transport.js#L729).
+`ble-swarm` wraps its calls in `try`/`catch` for this reason, including [`peripheral.requestMtu()`](/bare/reference/bare/modules/bare-bluetooth#peripheralrequestmtumtu) and [`peripheral.openL2CAPChannel()`](/bare/reference/bare/modules/bare-bluetooth#peripheralopenl2capchannelpsm). See [`lib/transport.js`](https://github.com/holepunchto/ble-swarm/blob/e9210ab2fe73d7717aba853d6508a9b102637e26/lib/transport.js#L729) for `requestMtu()` and [`lib/l2cap.js`](https://github.com/holepunchto/ble-swarm/blob/e9210ab2fe73d7717aba853d6508a9b102637e26/lib/l2cap.js#L209-L214) for `openL2CAPChannel()`.
 
 ### Expect errors where you'd expect `disconnect`
 
@@ -92,9 +92,9 @@ On Linux, you can't cancel a pending attempt this way in `bare-bluetooth` 0.6.3.
 
 When a peer walks out of range or its app is killed, you may hear nothing for a long time:
 
-- On iOS, a vanished peer never produces a disconnect event.
-- On an L2CAP channel, a peer that closes the channel shows up as [`close`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel) or `error` on the stream, on every platform. That is why the `bare-mobile-doctor` chat needs no extra disconnect detection for that case.
-- A peer that disappears without closing the channel takes longer to notice. If you need to know promptly, send keepalives and drop a link that stays silent. `ble-swarm` pings every 5 seconds and closes a link after 15 seconds without traffic. It keeps its keepalives even over L2CAP.
+- On iOS, a vanished peer never produces a disconnect event, so you can't wait for one. The `DISCONNECT` error described earlier covers a drop that the system reports. To notice a vanished peer, send keepalives and drop a link that stays silent. `ble-swarm` pings every 5 seconds and closes a link after 15 seconds without traffic.
+- On an L2CAP channel, a peer that closes the channel shows up as [`close`](/bare/reference/bare/modules/bare-stream#duplexevents) or `error` on the stream, on every platform. That is why the `bare-mobile-doctor` chat needs no extra disconnect detection for that case.
+- A peer that disappears without closing the channel takes longer to notice on every platform, so `ble-swarm` keeps its keepalives even over L2CAP.
 
 ## Discovery
 
@@ -105,7 +105,7 @@ An advertised name is unreliable:
 - It may arrive after the first [`discover`](/bare/reference/bare/modules/bare-bluetooth#central) event, or not at all.
 - On Android, [`server.startAdvertising({ name })`](/bare/reference/bare/modules/bare-bluetooth#serverstartadvertisingoptions) can include only the phone's own system Bluetooth name, not the string you pass.
 
-Advertise a service UUID and scan for it instead, as every upstream example does. When you can, pick the UUID from the Bluetooth base range (`0000xxxx-0000-1000-8000-00805f9b34fb`). It then takes 2 bytes of the advertisement instead of 16.
+Advertise a service UUID and scan for it instead, as the `gattpong.js` and `l2cappong.js` examples do. When you can, pick the UUID from the Bluetooth base range (`0000xxxx-0000-1000-8000-00805f9b34fb`). It then takes 2 bytes of the advertisement instead of 16.
 
 An advertisement is small. Depending on the platform, an oversized one fails with `ADVERTISE_FAILED` or is accepted and cut down. Keep it to the service UUID.
 
@@ -180,7 +180,7 @@ The operating system assigns the PSM when you publish a channel, so the other si
 
 ### Put a deadline on opening a channel
 
-[`peripheral.openL2CAPChannel()`](/bare/reference/bare/modules/bare-bluetooth#peripheralopenl2capchannelpsm) can hang without an [`error`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror) or a `disconnect`. `ble-swarm` [found](https://github.com/holepunchto/ble-swarm/pull/4) that an iOS peripheral never answers a channel that a macOS central opens, and the link just sits there. It runs every open under a 3-second deadline and treats a silent hang as a failed dial, which it retries. Do the same:
+[`peripheral.openL2CAPChannel()`](/bare/reference/bare/modules/bare-bluetooth#peripheralopenl2capchannelpsm) can hang without an [`error`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror) or a `disconnect`. [The `ble-swarm` README](https://github.com/holepunchto/ble-swarm/blob/e9210ab2fe73d7717aba853d6508a9b102637e26/README.md) notes that, historically, an iOS peripheral never answered a channel that a macOS central opened, and gave no error. So `ble-swarm` runs every open under a 3-second deadline and treats a silent hang as a failed dial, which it retries. Do the same:
 
 1. Start a timer when you call `openL2CAPChannel()`.
 2. If no [`channelOpen`](/bare/reference/bare/modules/bare-bluetooth#peripheral) event arrives before the timer fires, cancel the connection.

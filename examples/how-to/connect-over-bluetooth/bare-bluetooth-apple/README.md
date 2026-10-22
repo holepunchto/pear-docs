@@ -13,3 +13,8 @@ which shows reconnecting to a known peripheral without scanning for it.
 
 This is a documentation-only snapshot: the test requires `./helpers` and `../lib/central` from an
 upstream checkout, and needs a Bluetooth radio, so it does not run here.
+
+This snapshot isn't in `.github/workflows/watch-boilerplates.yml`. That job compares the whole upstream
+repository's HEAD with the pinned commit, and these repositories change often, so it would keep reporting
+drift that doesn't affect the guides. Re-pin by hand when the guides move to a newer release, and re-check
+every `#L` range.

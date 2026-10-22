@@ -89,16 +89,16 @@ Three details matter here:
 - It listens for [`error`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror) on the central and on the [`Peripheral`](/bare/reference/bare/modules/bare-bluetooth#peripheral). A failed connection or channel arrives there, and an `error` event that nobody listens for throws.
 
 <Callout type="warn">
-The example has no deadline on opening the channel, and opening a channel can hang without an `error`. `ble-swarm` found that an iOS peripheral never answers a channel that a macOS central opens. In an app, start a timer when you call `openL2CAPChannel()`, and give up if no [`channelOpen`](/bare/reference/bare/modules/bare-bluetooth#peripheral) event arrives. See [Put a deadline on opening a channel](/bare/explanation/bluetooth/best-practices#put-a-deadline-on-opening-a-channel).
+The example has no deadline on opening the channel, and opening a channel can hang without an `error`. `ble-swarm` reports that, historically, an iOS peripheral never answered a channel that a macOS central opened, and gave no error. In an app, start a timer when you call `openL2CAPChannel()`, and give up if no [`channelOpen`](/bare/reference/bare/modules/bare-bluetooth#peripheral) event arrives. See [Put a deadline on opening a channel](/bare/explanation/bluetooth/best-practices#put-a-deadline-on-opening-a-channel).
 </Callout>
 
 ## Use the channel as a stream
 
 Both ends now hold an [`L2CAPChannel`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel) and use it the same way:
 
-- Call [`write()`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel) to send.
-- Listen for [`data`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel) to receive.
-- Listen for [`close`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel) and [`error`](/bare/reference/bare/modules/bare-bluetooth#l2capchannel) to learn that the other side has gone.
+- Call [`write()`](/bare/reference/bare/modules/bare-stream#writablewritedata-unknown-encoding-bufferencoding-cb-streamcallback-boolean) to send.
+- Listen for [`data`](/bare/reference/bare/modules/bare-stream#duplexevents) to receive.
+- Listen for [`close`](/bare/reference/bare/modules/bare-stream#duplexevents) and [`error`](/bare/reference/bare/modules/bare-stream#duplexevents) to learn that the other side has gone.
 
 ```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth/example/l2cappong.js#L95-L114 title="example/l2cappong.js" skip="example-import"
 ```
@@ -111,12 +111,12 @@ On Linux, the channel also has an [`mtu`](/bare/reference/bare/modules/bare-blue
 
 The example has one manual step: you copy the PSM from one machine to the other. CoreBluetooth and Android don't let you choose the number. Linux accepts a [`psm`](/bare/reference/bare/modules/bare-bluetooth#serverpublishchanneloptions) option, but Apple and Android ignore it. So code that runs on every platform has to let the central learn the PSM from the server.
 
-`bare-mobile-doctor` does this with GATT. The server adds a [`Service`](/bare/reference/bare/modules/bare-bluetooth#const-service--new-serviceuuid-characteristics-options) with one readable [`Characteristic`](/bare/reference/bare/modules/bare-bluetooth#const-characteristic--new-characteristicuuid-options), and answers every read with the PSM, as text:
+`bare-mobile-doctor` does this with GATT. The server creates one readable [`Characteristic`](/bare/reference/bare/modules/bare-bluetooth#const-characteristic--new-characteristicuuid-options) and adds it in a [`Service`](/bare/reference/bare/modules/bare-bluetooth#const-service--new-serviceuuid-characteristics-options). The code below is the part that answers every read of that characteristic with the PSM, as text:
 
 ```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/bare/bluetooth.js#L315-L335 title="bare/bluetooth.js" skip="example-import"
 ```
 
-After connecting, the central discovers that characteristic with [`peripheral.discoverCharacteristics()`](/bare/reference/bare/modules/bare-bluetooth#peripheraldiscovercharacteristicsservice-characteristicuuids), reads it with [`peripheral.read()`](/bare/reference/bare/modules/bare-bluetooth#peripheralreadcharacteristic), and opens the channel on the number it reads:
+After connecting, the central discovers the characteristic with [`peripheral.discoverCharacteristics()`](/bare/reference/bare/modules/bare-bluetooth#peripheraldiscovercharacteristicsservice-characteristicuuids). The code below handles the result: it reads the characteristic with [`peripheral.read()`](/bare/reference/bare/modules/bare-bluetooth#peripheralreadcharacteristic) and opens the channel on the number it reads:
 
 ```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/bare/bluetooth.js#L185-L214 title="bare/bluetooth.js" skip="example-import"
 ```

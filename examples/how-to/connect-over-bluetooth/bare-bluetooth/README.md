@@ -17,3 +17,8 @@ not in `scripts/test-examples.ts`.
 
 The examples arrived after the 0.6.2 release, alongside Linux support, and are not in the npm
 package.
+
+This snapshot isn't in `.github/workflows/watch-boilerplates.yml`. That job compares the whole upstream
+repository's HEAD with the pinned commit, and these repositories change often, so it would keep reporting
+drift that doesn't affect the guides. Re-pin by hand when the guides move to a newer release, and re-check
+every `#L` range.
