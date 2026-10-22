@@ -60,6 +60,16 @@ export const p2pTree: Node[] = [
           },
           {
             type: 'page',
+            name: 'Start a short-lived CLI from the hello-pear-daemon template',
+            url: '/p2p/getting-started/from-a-template/start-from-hello-pear-daemon',
+          },
+          {
+            type: 'page',
+            name: 'Start an on-device AI terminal app from the hello-pear-qvac-tui template',
+            url: '/p2p/getting-started/from-a-template/start-from-hello-pear-qvac-tui',
+          },
+          {
+            type: 'page',
             name: 'Start a mobile app from the hello-pear-react-native template',
             url: '/p2p/getting-started/from-a-template/start-from-hello-pear-react-native',
           },
