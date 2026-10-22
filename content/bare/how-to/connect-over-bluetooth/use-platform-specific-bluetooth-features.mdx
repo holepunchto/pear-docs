@@ -95,6 +95,13 @@ Each GATT write or notification carries at most the connection's MTU minus 3 byt
 
 A failure arrives as `error` with code [`MTU_CHANGE_FAILED`](/bare/reference/bare/modules/bare-bluetooth-android#bluetootherrormtu_change_failedmsg-string-bluetootherror).
 
+Android runs one GATT operation per connection at a time, and `bare-bluetooth-android` doesn't queue calls for you. If Android refuses to start the request, no `mtuChanged` event and no `error` follows. So:
+
+- Call `requestMtu()` before other GATT calls, such as `discoverServices()`.
+- Put a timeout on the wait for `mtuChanged`.
+
+`bare-bluetooth` queues `requestMtu()` with reads, writes, and subscriptions for you. It doesn't queue service discovery, characteristic discovery or `openL2CAPChannel()`.
+
 `requestMtu()` is also on [`bare-bluetooth`'s `Peripheral`](/bare/reference/bare/modules/bare-bluetooth#peripheralrequestmtumtu), where it does nothing on Apple and Linux. For that reason, [`ble-swarm`](https://github.com/holepunchto/ble-swarm/blob/e9210ab2fe73d7717aba853d6508a9b102637e26/lib/transport.js#L729) calls it unconditionally after every connection.
 
 ## Android: choose a scan mode
@@ -117,12 +124,11 @@ Whatever the mode, stop the scan with [`central.stopScan()`](/bare/reference/bar
 
 ## Android: open the GATT server yourself
 
-`bare-bluetooth` opens Android's GATT server for you whenever the adapter turns on. With `bare-bluetooth-android` directly, that's your job:
+`bare-bluetooth` opens Android's GATT server when the adapter turns on, and closes it when the adapter leaves `'on'`. With `bare-bluetooth-android` directly, both are your job:
 
 1. Call [`server.open()`](/bare/reference/bare/modules/bare-bluetooth-android#open-void) once `state` is `'on'`, before [`addService()`](/bare/reference/bare/modules/bare-bluetooth-android#addserviceservice-service-void).
-2. Open the server and add your services again on every transition back to `'on'`. The server doesn't survive the adapter turning off, and its services don't survive a reopen.
-
-[`server.close()`](/bare/reference/bare/modules/bare-bluetooth-android#close-void) closes the server and drops its services.
+2. When `state` leaves `'on'`, call [`server.close()`](/bare/reference/bare/modules/bare-bluetooth-android#close-void). The server doesn't survive the adapter turning off, but the binding keeps its handle until you close it. Without this step, the next `open()` throws `GATT server already open`.
+3. On every transition back to `'on'`, call `server.open()` again and add your services again. Services don't survive a reopen.
 
 ## Where to go next
 

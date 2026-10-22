@@ -69,7 +69,9 @@ On Apple and Android, two outcomes that you might expect as [`disconnect`](/bare
 - A connection attempt that fails: `error` with code `CONNECTION_FAILED`, and the device's id as `error.id`.
 - A disconnect that carries an error, such as the link dropping: `error` with code `DISCONNECT`.
 
-Only a clean disconnect emits `disconnect`. If your code waits for `disconnect` to reset its state, route those two codes to the same place, as the [`BLECentral`](/bare/how-to/connect-over-bluetooth/build-a-bluetooth-chat-for-ios-and-android#handle-failures) class in `bare-mobile-doctor` does. The [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple#errors) and [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android#errors) references list these codes.
+Only a clean disconnect emits `disconnect`. If your code waits for `disconnect` to reset its state, handle both codes as well. The [`BLECentral`](/bare/how-to/connect-over-bluetooth/build-a-bluetooth-chat-for-ios-and-android#handle-failures) class in `bare-mobile-doctor` does: it turns `CONNECTION_FAILED` into a `connectFailed` signal that sends the session back to scanning, and `DISCONNECT` into a `closed` signal that ends the session.
+
+The [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple#errors) reference lists both codes in its Errors section. The [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android#errors) reference documents them as [`BluetoothError.CONNECTION_FAILED`](/bare/reference/bare/modules/bare-bluetooth-android#bluetootherrorconnection_failedmsg-string-id-string-bluetootherror) and [`BluetoothError.DISCONNECT`](/bare/reference/bare/modules/bare-bluetooth-android#bluetootherrordisconnectmsg-string-id-string-bluetootherror).
 
 ### Set your own connection timeout
 
@@ -153,7 +155,7 @@ This is [`_onWriteRequests()`](https://github.com/holepunchto/ble-swarm/blob/e92
 A single GATT write or notification carries at most the connection's ATT MTU minus 3 bytes.
 
 - Apple and Linux negotiate a larger MTU on their own.
-- On Android, call [`peripheral.requestMtu(517)`](/bare/reference/bare/modules/bare-bluetooth#peripheralrequestmtumtu) after connecting and wait for [`mtuChanged`](/bare/reference/bare/modules/bare-bluetooth#peripheral).
+- On Android, call [`peripheral.requestMtu(517)`](/bare/reference/bare/modules/bare-bluetooth#peripheralrequestmtumtu) after connecting and wait for [`mtuChanged`](/bare/reference/bare/modules/bare-bluetooth#peripheral). Put a timeout on that wait: if Android refuses to start the request, no event follows.
 - If you have to split data across several GATT operations anyway, `ble-swarm` defaults to 150-byte pieces, which fit the MTU that most links end up with. It raises the size once a larger MTU is negotiated.
 
 For anything larger, an [L2CAP channel](/bare/how-to/connect-over-bluetooth/exchange-data-over-l2cap) is simpler and faster.
@@ -162,7 +164,7 @@ For anything larger, an [L2CAP channel](/bare/how-to/connect-over-bluetooth/exch
 
 - [`server.updateValue()`](/bare/reference/bare/modules/bare-bluetooth#serverupdatevaluecharacteristic-data) returns `false` when it couldn't queue the notification. On Apple, that means the transmit queue is full. Hold the value, and send it again when the server emits [`readyToUpdate`](/bare/reference/bare/modules/bare-bluetooth#server). `ble-swarm` also retries on a 250 ms timer, because it found that `readyToUpdate` can be missed.
 - A return value of `true` means only that the notification was queued, not that it arrived.
-- On Android, only one GATT operation can be in flight per connection. `bare-bluetooth` queues reads, writes, subscriptions and MTU requests, and sends them one at a time. An operation that the system refuses to start arrives as `error` with code [`NOT_INITIATED`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror).
+- On Android, only one GATT operation can be in flight per connection. `bare-bluetooth` queues reads, writes, subscriptions and MTU requests, and sends them one at a time. It doesn't queue service discovery, characteristic discovery or `openL2CAPChannel()`. An operation that the system refuses to start arrives as `error` with code [`NOT_INITIATED`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror).
 
 ## L2CAP channels
 
@@ -185,7 +187,12 @@ The operating system assigns the PSM when you publish a channel, so the other si
 
 ### Publish a fresh channel after a session ends
 
-A dead session can leave channel state behind, and the operating system may then refuse a new connection to the same PSM ("L2CAP PSM already connected"). After each session ends, `ble-swarm` calls [`server.unpublishChannel()`](/bare/reference/bare/modules/bare-bluetooth#serverunpublishchannelpsm) and then [`server.publishChannel()`](/bare/reference/bare/modules/bare-bluetooth#serverpublishchanneloptions), which assigns a new PSM.
+A dead session can leave channel state behind, and the operating system may then refuse a new connection to the same PSM ("L2CAP PSM already connected"). So `ble-swarm` rotates the channel after a session ends: it calls [`server.unpublishChannel()`](/bare/reference/bare/modules/bare-bluetooth#serverunpublishchannelpsm) and then [`server.publishChannel()`](/bare/reference/bare/modules/bare-bluetooth#serverpublishchanneloptions), which assigns a new PSM. It rotates only when both of these hold:
+
+- It uses the `l2cap` pipe, and it isn't suspended or closing.
+- No other session is still opening a channel on the old PSM. Otherwise, it holds the rotation until the last pending session resolves.
+
+Centrals learn the new PSM from the next `HELLO` frame. If you serve the PSM from a characteristic, answer reads with the current PSM. A characteristic created with a static `value` keeps serving the old one.
 
 ### Frame messages on the stream
 
@@ -224,7 +231,7 @@ Release things from the top down:
 `destroy()` does part of this itself. On Apple, a [`Server`](/bare/reference/bare/modules/bare-bluetooth#server)'s `destroy()` stops advertising and removes its services. On Android, it unpublishes its channels.
 
 <Callout type="warn">
-On iOS, test teardown on a real device before you rely on `destroy()`. Two upstream consumers skip it there. A comment in `bare-mobile-doctor` says that the native module's cleanup at runtime teardown frees the same handle a second time after an explicit `destroy()`. `ble-swarm` calls [`server.removeAllServices()`](/bare/reference/bare/modules/bare-bluetooth#serverremoveallservices) instead on iOS for the same reason. (`ble-swarm` does call `destroy()` on macOS and Android.)
+On iOS, test teardown on a real device before you rely on `destroy()`. Two upstream consumers avoid it there. A comment in `bare-mobile-doctor` says that the native module's cleanup at runtime teardown frees the same handle a second time after an explicit `destroy()`, and the app skips `destroy()` on every platform when it exits. `ble-swarm` never calls `destroy()` on a normal close. When it retires its managers after a power cycle, it calls `destroy()` on macOS and Android and [`server.removeAllServices()`](/bare/reference/bare/modules/bare-bluetooth#serverremoveallservices) on iOS, for the same reason.
 </Callout>
 
 That workaround may be out of date:
@@ -233,12 +240,11 @@ That workaround may be out of date:
 - Both consumers' comments are newer than those fixes, and `bare-bluetooth` 0.6.2 and later require `bare-bluetooth-apple` 0.7.0 or later. So both consumers already have the fixes.
 - These docs haven't confirmed on a device that the crash is gone.
 
-Until you confirm it, use the order that the consumers use on iOS:
+Until you confirm it, skip `destroy()` on iOS. When `ble-swarm` retires a transport, it releases things in this order, and you can do the same:
 
-1. Stop scanning and advertising.
-2. Call `removeAllServices()`.
-3. Close the streams.
-4. Let the runtime reclaim the managers.
+1. Pause the radio work: say goodbye to peers, disconnect, stop scanning and advertising, and close the streams.
+2. Call `removeAllServices()` if the process keeps running and you add services again.
+3. Let the runtime reclaim the managers.
 
 ## See also
 

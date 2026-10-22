@@ -9,8 +9,9 @@ upstream's.
 These files back code imports in `content/bare/how-to/connect-over-bluetooth/` (via
 `file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth-android/…#L…`):
 
-- `test/test-app/`: the minimal native Android app (Kotlin, no React Native) upstream uses to
-  run its test suite on a phone. Only three files are vendored:
+- `test/test-app/`: the minimal native Android app (Kotlin, no React Native) that upstream used
+  at this commit to run its test suite on a phone. Upstream's `main` has since removed it, so
+  link to the pinned tree above, not to `main`. Only three files are vendored:
   - `app/src/main/AndroidManifest.xml`: the Bluetooth permissions.
   - `app/src/main/java/to/holepunch/bare/bluetooth/test/MainActivity.kt`: requests the
     permissions at runtime before it starts the Bare Kit worklet.

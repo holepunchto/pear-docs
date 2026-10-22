@@ -43,7 +43,7 @@ npm run bundle
 
 These commands do the following:
 
-- `npm run link` links the native addons that the worklets load, `bare-bluetooth` among them, into [`react-native-bare-kit`](https://github.com/holepunchto/react-native-bare-kit). Run it again after every reinstall.
+- `npm run link` links the native addons that the worklets load, such as `bare-bluetooth-apple` and `bare-bluetooth-android`, into [`react-native-bare-kit`](https://github.com/holepunchto/react-native-bare-kit). Run it again after every reinstall. On iOS, run it before `pod install`, because the pod picks up the linked `.xcframework` bundles when CocoaPods reads the podspec.
 - `npm run bundle` packs every worklet, including the Bluetooth worklet, with [`bare-pack`](/bare/reference/bare/modules/bare-pack).
 - If your npm config has `ignore-scripts=true`, run the install script of `@shopify/react-native-skia` by hand. Upstream's [README](https://github.com/holepunchto/bare-mobile-doctor#usage) has the command.
 
@@ -54,7 +54,11 @@ npm run ios
 npm run android
 ```
 
-`npm run ios` is [`expo run:ios`](https://docs.expo.dev/more/expo-cli/#compiling), which offers simulators as well as devices, so pick your iPhone. Installing on a physical iPhone needs a development team and a provisioning profile. Upstream's [iOS release build steps](https://github.com/holepunchto/bare-mobile-doctor#release-builds) walk through them in Xcode. For Android, upstream's [README](https://github.com/holepunchto/bare-mobile-doctor#android) also lists a Gradle wrapper downgrade to apply after [`expo prebuild`](https://docs.expo.dev/workflow/prebuild/). Without the downgrade, the Android build can fail.
+`npm run ios` is [`expo run:ios`](https://docs.expo.dev/more/expo-cli/#compiling), which offers simulators as well as devices, so pick your iPhone. Installing on a physical iPhone needs a development team and a provisioning profile. Upstream's [iOS release build steps](https://github.com/holepunchto/bare-mobile-doctor#release-builds) walk through them in Xcode. For Android, upstream's [README](https://github.com/holepunchto/bare-mobile-doctor#android) also lists a Gradle wrapper downgrade to apply after any [`expo prebuild`](https://docs.expo.dev/workflow/prebuild/). Without the downgrade, the Android build can fail. `npm run android` prebuilds the `android/` folder only when it's missing, so on a fresh clone:
+
+1. Run `npx expo prebuild --platform android`.
+2. Apply the downgrade from the README. On macOS, its `sed -i` command needs an empty suffix: `sed -i ''`.
+3. Run `npm run android`.
 
 For two Android phones, upstream recommends a release build, which doesn't need a Metro dev server per device:
 
@@ -132,7 +136,7 @@ The server does its setup in `_start()`, which it calls from its constructor and
 ```
 
 <Callout type="warn">
-This sample has a gap. `_start()` skips [`server.addService()`](/bare/reference/bare/modules/bare-bluetooth#serveraddserviceservice) once `serviceAdded` is true, and skips [`server.publishChannel()`](/bare/reference/bare/modules/bare-bluetooth#serverpublishchanneloptions) once it holds a PSM. Nothing resets either flag when the radio goes off. After a Bluetooth toggle, an Android phone would advertise with no service and a stale PSM, because `bare-bluetooth` closes the GATT server there. To survive that, clear both flags when the state leaves `'poweredOn'`. See [Wait for `poweredOn`, every time](/bare/explanation/bluetooth/best-practices#wait-for-poweredon-every-time).
+This sample has a gap. `_start()` skips [`server.addService()`](/bare/reference/bare/modules/bare-bluetooth#serveraddserviceservice) once `serviceAdded` is true, and skips [`server.publishChannel()`](/bare/reference/bare/modules/bare-bluetooth#serverpublishchanneloptions) once it holds a PSM. Nothing resets either flag when the radio goes off. The advertising state has the same problem. It stays `ON`, `startAdvertising()` returns early while it is `ON`, and the `serviceAdd` and `channelPublish` handlers advertise only from `REQUESTED`. Turning Bluetooth off stops the advertisement, so after a toggle the phone stops advertising while the UI still shows Discoverable. On Android, `bare-bluetooth` also closes the GATT server, so the service is gone too. To survive that, when the state leaves `'poweredOn'`, clear `serviceAdded` and the PSM, and set advertising back to `REQUESTED` if the user had it on. See [Wait for `poweredOn`, every time](/bare/explanation/bluetooth/best-practices#wait-for-poweredon-every-time).
 </Callout>
 
 ### 2. Publish a channel and serve its PSM
@@ -209,7 +213,7 @@ L2CAP is reliable, so a peer that closes the channel shows up as [`close`](/bare
 
 ## Handle failures
 
-On iOS and Android, a failed connection attempt and a disconnect that an error causes both arrive as an [`error`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror) event rather than a [`disconnect`](/bare/reference/bare/modules/bare-bluetooth#central) event. The central routes those two codes, `CONNECTION_FAILED` and `DISCONNECT`, back into the session. Otherwise, the session would stay stuck in "connecting":
+On iOS and Android, a failed connection attempt and a disconnect that an error causes both arrive as an [`error`](/bare/reference/bare/modules/bare-bluetooth#bluetootherror) event rather than a [`disconnect`](/bare/reference/bare/modules/bare-bluetooth#central) event. The central routes those two codes, `CONNECTION_FAILED` and `DISCONNECT`, back into the session. Otherwise, a failed attempt would leave the session stuck connecting, and a dropped link would leave it stuck connected:
 
 ```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/bare/bluetooth.js#L156-L167 title="bare/bluetooth.js" skip="example-import"
 ```
