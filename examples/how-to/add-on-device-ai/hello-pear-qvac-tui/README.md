@@ -5,8 +5,11 @@ Vendored from [holepunchto/hello-pear-qvac-tui](https://github.com/holepunchto/h
 ([tree](https://github.com/holepunchto/hello-pear-qvac-tui/tree/605eb96186d25b1b3f888bb234844e4216433c57)).
 
 `bin.mjs`, `app.js`, `lib/inference.js`, and `workers/qvac.js` back the code imports in
-`content/bare/how-to/add-on-device-ai/build-a-local-ai-chat-tui-with-qvac.mdx` (via
-`file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/…#L…`).
+`content/bare/how-to/add-on-device-ai/build-a-local-ai-chat-tui-with-qvac.mdx`, and `bin.mjs`,
+`lib/inference.js`, and `package.json` back the ones in
+`content/p2p/getting-started/from-a-template/start-from-hello-pear-qvac-tui.mdx` (via
+`file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/…#L…`). A refresh has to
+re-check the `#L…` ranges in both pages.
 
 This is a **complete, runnable app**, and unlike the other vendored snapshots under
 `examples/how-to/`, it is booted by its own test suite rather than a live `bin.mjs` process — see
