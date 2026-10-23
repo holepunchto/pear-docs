@@ -17,7 +17,7 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 ## 2026-10-21 — Bare v1.36.0
 
 - Added: WebAssembly addons. An addon package can ship a WebAssembly build, `prebuilds/wasi-wasm32/<name>.wasm`, and Bare loads it sandboxed through WASI: through WASI, the addon reaches only the directories, streams, and randomness that a WASI provider grants, though it can still reach whatever JavaScript in its realm can. Ask for it with the `host` import attribute, and name the provider with the `wasi` attribute, as in `require('bare-sqlite', { with: { host: 'wasi-wasm32', wasi: './wasi.js' } })` or the same `with` clause on `import`. Without the attribute, Bare uses the `.wasm` build only when the package has no native build or linked addon for the platform, and with no provider it grants nothing except clocks. The support comes from the bundled [`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) v7.5.0, not from Bare's own source. See [WebAssembly addons](/bare/reference/bare/modules/bare-module#webassembly-addons).
-- Changed: on a process sealed with `Bare.Addon.seal()`, an addon resolved after the seal whose native build the process has not loaded falls back to the package's `.wasm` build, if it ships one, instead of failing with `CANNOT_LOAD`. An addon resolved before the seal, such as one a static `require()` in the sealing module loads, still fails. See [`Bare.Addon`](/bare/reference/bare/runtime#bareaddon).
+- Changed: on a process sealed with `Bare.Addon.seal()`, an addon resolved after the seal whose native build the process has not loaded falls back to the package's `.wasm` build, if it ships one, instead of failing with `CANNOT_LOAD`. A package without a `.wasm` build now fails there with `ADDON_NOT_FOUND` instead of `CANNOT_LOAD`. An addon resolved before the seal, such as one a static `require()` in the sealing module loads, still fails with `CANNOT_LOAD`. See [`Bare.Addon`](/bare/reference/bare/runtime#bareaddon).
 - Changed: `Bare.suspend()`, `Bare.wakeup()`, and the `suspend()` and `wakeup()` methods of a thread throw a `RangeError` for a `linger` or `deadline` above `2147483647`. Before, such a value wrapped to a 32-bit signed integer, so `Infinity` became `0` and a deadline that became negative left the wakeup timer never firing. See [`Bare.suspend()`](/bare/reference/bare/runtime#baresuspendlinger).
 - Deprecated: every form of `new Bare.Thread()` except `new Thread(filename, source[, options])`, including the callback forms that run the body of a function on the thread. `Thread.create()` has been deprecated since 1.31.0. Pass the source, or use [`bare-thread`](https://github.com/holepunchto/bare-thread). The deprecated forms still work. See [`Bare.Thread`](/bare/reference/bare/runtime#barethread).
 - Fixed: a resume or wakeup could be missed after an explicit `Bare.idle()`.
@@ -28,7 +28,7 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 
 ### bare-directory — v0.1.0
 
-- Added: a new module for capability-based directory access. A handle opened from a path reaches only what is inside the directory, operations take a single name rather than a path, symbolic links are never followed, and rights can only be narrowed. The kernel enforces the confinement as far as each platform allows. [`bare-wasi`](/bare/reference/bare/modules/bare-wasi) uses it to give a WebAssembly addon one host directory. See [bare-directory](/bare/reference/bare/modules/bare-directory).
+- Added: a new module for capability-based directory access. A handle opened from a path reaches only what is inside the directory, operations take a single name rather than a path, symbolic links are never followed, and rights can only be narrowed. The kernel enforces the confinement as far as each platform allows. [`bare-wasi`](/bare/reference/bare/modules/bare-wasi) uses it to give a WebAssembly addon host directories. See [bare-directory](/bare/reference/bare/modules/bare-directory).
 
 ### bare-module — v7.5.0
 
@@ -54,7 +54,7 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 
 ### bare-sqlite — v0.1.5
 
-- Added: a WebAssembly build, `prebuilds/wasi-wasm32/bare-sqlite.wasm`, which Bare 1.36.0 loads with the `host` import attribute. It cannot load extensions: on a database opened with `allowExtension: true`, `loadExtension()` throws with the message `extension loading is not supported`. See [WebAssembly build](/bare/reference/bare/modules/bare-sqlite#webassembly-build).
+- Added: a WebAssembly build, `prebuilds/wasi-wasm32/bare-sqlite.wasm`, which Bare 1.36.0 loads with the `host` import attribute. It cannot load extensions: on a database opened with `allowExtension: true`, `loadExtension()` throws a `SQLiteError` with code `ERROR` and the message `ERROR: extension loading is not supported`. The directory its WASI provider grants needs the `create` and `remove` rights, because it locks a database with a `.lock` directory. See [WebAssembly build](/bare/reference/bare/modules/bare-sqlite#webassembly-build).
 - Changed: the API is documented as TSDoc in the type declarations instead of the README.
 
 ### bare-wasi — v0.1.2
@@ -67,7 +67,7 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 
 ### bare-wasm-abi — v0.1.1
 
-- Added: a new module that runs Bare addons compiled to `wasm32-wasip1` by implementing in JavaScript the libjs functions they import. Threadsafe functions, the event loop, shared memory, and compiling code are left out by design. In v0.1.1, `js_add_teardown_callback` is not implemented, so the WebAssembly builds of `bare-svg` 1.1.1 and `bare-heif` 1.2.1 do not load. See [bare-wasm-abi](/bare/reference/bare/modules/bare-wasm-abi).
+- Added: a new module that runs Bare addons compiled to `wasm32-wasip1` by implementing in JavaScript the libjs functions they import. Threadsafe functions, the event loop, shared memory, and compiling code are left out by design. In v0.1.1, ten libjs functions are neither implemented nor excluded, among them `js_add_teardown_callback`, so the WebAssembly builds of `bare-svg` 1.1.1 and `bare-heif` 1.2.1 do not load. See [bare-wasm-abi](/bare/reference/bare/modules/bare-wasm-abi).
 
 ## 2026-10-13 — Bare v1.35.1
 

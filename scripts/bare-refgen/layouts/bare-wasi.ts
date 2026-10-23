@@ -25,11 +25,18 @@ const layout: Layout = {
       to: '[`bare-directory`](/bare/reference/bare/modules/bare-directory)',
     },
   ],
+  params: {
+    'WASI.constructor': {
+      opts: "The capabilities of the instance. `version` is required and must be `'preview1'`. `args` defaults to `[]`, `env` to `{}`, and `preopens` to `{}`. `stdin`, `stdout`, and `stderr` default to `null`, and then don't exist. `clock` defaults to the host clocks, and `null` denies them. `random` defaults to `null`, which denies randomness. `returnOnExit` defaults to `true`; with `false`, `start()` exits the process with the guest's exit code.",
+    },
+  },
   describe: {
+    'HostDirectory.constructor':
+      'A host directory backed by a `bare-directory` capability. The guest reaches only what the capability reaches, with its rights, and `bare-wasi` resolves symbolic links within the preopen. On Windows, link targets use `/` as the separator, and drive letter, UNC, and device paths are absolute. Files are opened when looked up, with the most access the rights and the file allow, so an open file stays the same file if it is renamed. Creating symbolic and hard links isn\'t supported.',
     'HostDirectory.create': 'Implements [`WASIDirectory.create()`](#wasidirectory).',
     'HostDirectory.entries': 'Implements [`WASIDirectory.entries()`](#wasidirectory).',
     'HostDirectory.lookup': 'Implements [`WASIDirectory.lookup()`](#wasidirectory).',
-    'HostDirectory.rename': 'Implements [`WASIDirectory.rename()`](#wasidirectory). Renaming into a directory of another backend fails with `EXDEV`.',
+    'HostDirectory.rename': 'Implements [`WASIDirectory.rename()`](#wasidirectory). Renaming into a directory of another backend fails with `EXDEV`. The capability needs `rename` on both directories and `remove` on the target, even when no entry is replaced.',
     'HostDirectory.rmdir': 'Implements [`WASIDirectory.rmdir()`](#wasidirectory).',
     'HostDirectory.setTimes': 'Implements [`WASINode.setTimes()`](#wasinode).',
     'HostDirectory.size': 'The number of entries of the directory.',

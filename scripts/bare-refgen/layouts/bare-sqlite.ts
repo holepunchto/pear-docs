@@ -108,6 +108,10 @@ const layout: Layout = {
     'TagStore.run':
       'A result object with `changes` (the number of rows modified) and `lastInsertRowid`.',
   },
+  describe: {
+    errors:
+      'The `SQLiteError` class. Errors thrown by the module are instances of it, with a `code` such as `DATABASE_NOT_OPEN`, `DATABASE_ALREADY_OPEN`, `INVALID_ARGUMENT`, or `LOAD_EXTENSION_DISABLED`, or an SQLite result code such as `CANTOPEN`, `BUSY`, or `IOERR`.',
+  },
   throws: {
     'DatabaseSync.open': ['`DATABASE_ALREADY_OPEN` — the database is already open.'],
     'DatabaseSync.close': [NOT_OPEN],
@@ -136,7 +140,9 @@ const layout: Layout = {
         "const db = new DatabaseSync('/books.db')",
         '```',
         '',
-        "Database paths are paths inside the provider's `preopens`, so `/books.db` is `books.db` in the directory mounted at `/`. Without a provider, an in-memory database (`':memory:'`) still works, and opening a file throws `CANTOPEN`. The WebAssembly build cannot load extensions: on a database opened with `allowExtension: true`, `loadExtension()` throws with code `ERROR` and the message `extension loading is not supported`. See [WebAssembly addons](/bare/reference/bare/modules/bare-module#webassembly-addons) for the provider and the rules for loading a package this way.",
+        "Database paths are paths inside the provider's `preopens`, so `/books.db` is `books.db` in the directory mounted at `/`. Without a provider, an in-memory database (`':memory:'`) still works, and opening a file throws `CANTOPEN`. The WebAssembly build cannot load extensions: on a database opened with `allowExtension: true`, `loadExtension()` throws a `SQLiteError` with code `ERROR` and the message `ERROR: extension loading is not supported`. See [WebAssembly addons](/bare/reference/bare/modules/bare-module#webassembly-addons) for the provider and the rules for loading a package this way.",
+        '',
+        "The WebAssembly build locks a database by creating and removing a `<name>.lock` directory next to it, so the provider's directory needs the `create` and `remove` [rights](/bare/reference/bare/modules/bare-directory#rights) as well as `lookup` and `read`, even for a database opened with `readOnly: true`. Writing also needs `write`, and `truncate`, which SQLite uses to shrink the file on `VACUUM` and when it rolls back a transaction. Without them, statements fail with `IOERR`. A process that leaves the `.lock` directory behind, because it lacked `remove` or exited while holding the lock, makes every later open fail with `BUSY` until the directory is deleted.",
       ].join('\n'),
     },
   ],

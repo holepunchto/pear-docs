@@ -1105,7 +1105,7 @@ const { DatabaseSync } = require('bare-sqlite', {
 })
 ```
 
-`wasi-wasm32` is the only host the attribute accepts. A package with no `.wasm` build throws `ADDON_NOT_FOUND`. With `host` set, the `wasi` and `wasm32` conditions of a package's `"exports"` and `"imports"` match alongside those of the native host, in the order the package lists them. Without it, they are tried only as a fallback, after the native conditions.
+`wasi-wasm32` is the only host the attribute accepts. A package with no `.wasm` build throws `ADDON_NOT_FOUND`. Write both attributes as string literals: they are read from the source before the module runs, so a computed value isn't seen, and the import fails with `ADDON_HOST_INCOMPATIBLE` or `ADDON_WASI_INCOMPATIBLE`. With `host` set, the `wasi` and `wasm32` conditions of a package's `"exports"` and `"imports"` match alongside those of the native host, in the order the package lists them. Without it, they are tried only as a fallback, after the native conditions.
 
 Without a `host` attribute, the loader uses the native build of an addon when one exists, and falls back to the `.wasm` build when there is no native prebuild or linked addon for the host. A fallback addon gets the provider of a `wasi` attribute on its import, which works without `host`, or else the loader's `wasi` option, which Bare doesn't set. With neither, it gets no capabilities except clocks.
 
@@ -1140,11 +1140,11 @@ The addons of a package load in one context per loader: the host and WASI provid
 | `ADDON_WASI_INCOMPATIBLE` | A package's WebAssembly addons already have one WASI provider and it is imported with another. |
 | `UNKNOWN_ADDON_HOST` | A `host` attribute is not `wasi-wasm32`. |
 
-These are thrown by [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse#the-host-and-wasi-import-attributes) while the importing module is linked, before any of its code runs, so a `try` block around a static `require()` doesn't catch them. An `ADDON_NOT_FOUND` for a missing `.wasm` build is thrown when the module that loads the addon runs, and can be caught.
+These are thrown by [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse#the-host-and-wasi-import-attributes) while the importing module is linked, before any of its code runs, so a `try` block around a static `require()` doesn't catch them. A `require()` whose specifier the lexer can't read, such as a computed name, is linked when it runs, so these errors are thrown from that call and can be caught. A `require.resolve()` of the package counts as importing it with the default hosts. An `ADDON_NOT_FOUND` for a missing `.wasm` build is thrown when the module that loads the addon runs, and can be caught.
 
 ### After `Bare.Addon.seal()`
 
-Once the process is [sealed](/bare/reference/bare/runtime#bareaddon), a native addon loads only if the process already loaded it, while WebAssembly addons still load. When resolving an addon on a sealed process, the loader skips native builds that `Bare.Addon.loaded()` reports as not loaded, so a package that also ships a `.wasm` build falls back to it, with the capabilities described above. This applies only to addons resolved after the seal. A static `require()` in the module that calls `Bare.Addon.seal()` was resolved when that module was linked, before the seal, so its native addon throws `CANNOT_LOAD`.
+Once the process is [sealed](/bare/reference/bare/runtime#bareaddon), a native addon loads only if the process already loaded it, while WebAssembly addons still load. When resolving an addon on a sealed process, the loader skips native builds that `Bare.Addon.loaded()` reports as not loaded, so a package that also ships a `.wasm` build falls back to it, with the capabilities described above. This applies only to addons resolved after the seal. A `require()` or `import()` with a string-literal specifier in the module that calls `Bare.Addon.seal()` was resolved when that module was linked, before the seal, so its native addon throws `CANNOT_LOAD`. A package resolved after the seal that ships no `.wasm` build throws `ADDON_NOT_FOUND`, where Bare 1.35 threw `CANNOT_LOAD`.
 
 ## Packages
 

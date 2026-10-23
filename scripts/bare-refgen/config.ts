@@ -165,7 +165,6 @@ export const NODE_PARITY: Record<string, string> = {
   'bare-inspector': 'inspector',
   'bare-repl': 'repl',
   'bare-readline': 'readline',
-  'bare-wasi': 'wasi',
 };
 
 export function nodeParityUrl(name: string): string | null {

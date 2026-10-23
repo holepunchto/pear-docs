@@ -543,6 +543,8 @@ An entry of a directory.
 
 ## Rights
 
+`Directory` and `File` run their operations on the thread pool and return promises, and `DirectorySync` and `FileSync` are their synchronous counterparts. Names are single path components, and names and rights are checked before an operation starts.
+
 A handle carries a set of rights. `open()` takes them from `opts.rights` and defaults to all of them, `openDirectory()` passes on the rights of its parent, and `restrict()` returns a handle with fewer. An operation without the right it needs fails with `ENOTCAPABLE`.
 
 | Right | Needed by |
@@ -550,7 +552,7 @@ A handle carries a set of rights. `open()` takes them from `opts.rights` and def
 | `list` | `list()` |
 | `lookup` | `openDirectory()`, `openFile()`, `stat(name)`, and `readLink()` |
 | `create` | `createDirectory()`, and `openFile()` with `create` |
-| `remove` | `removeFile()` and `removeDirectory()`, and `rename()` onto an existing target, on the target directory |
+| `remove` | `removeFile()` and `removeDirectory()`, and `rename()` on the target directory unless `opts.replace` is `false`, even when no entry is replaced |
 | `rename` | `rename()`, on both directories |
 | `read` | `openFile()` with `read`, then `read()` on the file |
 | `write` | `openFile()` with `write`, then `write()` anywhere in the file |
@@ -559,6 +561,39 @@ A handle carries a set of rights. `open()` takes them from `opts.rights` and def
 | `setTimes` | `setTimes()` |
 
 A file opened from a directory gets only the rights its open flags ask for, plus `setTimes`, and `truncate` when it is opened for writing, each only if the directory has it.
+
+## Options
+
+The `.d.ts` declares these option types without exporting them.
+
+### `OpenOptions`
+
+Options for `Directory.open()` and `DirectorySync.open()`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `rights` | All rights | The rights of the directory. See [Rights](#rights). |
+
+### `OpenFileOptions`
+
+Options for `openFile()`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `read` | `true` unless `write` or `append` is set | Open the file for reading. |
+| `write` | `false` | Open the file for writing anywhere. |
+| `append` | `false` | Open the file for writing only at its end. |
+| `create` | `false` | Create the file if it doesn't exist. |
+| `exclusive` | `false` | Fail with `EEXIST` if the file exists. Without `create`, fails with `EINVAL`. |
+| `truncate` | `false` | Truncate the file to empty. Without `write`, fails with `EINVAL`. |
+
+### `RenameOptions`
+
+Options for `rename()`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `replace` | `true` | Replace an existing target. With `false`, an existing target fails with `EEXIST`. While it is `true`, `rename()` needs `remove` on the target directory, even when no entry is replaced. |
 
 ## Security model
 

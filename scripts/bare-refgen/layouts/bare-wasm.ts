@@ -5,6 +5,8 @@
 import type { Layout } from '../layout';
 
 const layout: Layout = {
+  intro:
+    '[`bare-wasm`](https://github.com/holepunchto/bare-wasm) — WebAssembly JavaScript API for Bare. In 0.1.0, each export is the same-named member of the `WebAssembly` global, so the module needs an engine that provides WebAssembly.',
   describe: {
     ModuleExportDescriptor: 'An export of a module, as listed by `Module.exports()`.',
     ModuleImportDescriptor: 'An import of a module, as listed by `Module.imports()`.',
