@@ -50,6 +50,18 @@ export const bareTree: Node[] = [
         url: '/bare/explanation/rpc-and-schemas',
       },
       {
+        type: 'folder',
+        name: 'Bluetooth',
+        index: { type: 'page', name: 'Bluetooth in Bare', url: '/bare/explanation/bluetooth' },
+        children: [
+          {
+            type: 'page',
+            name: 'Bluetooth best practices',
+            url: '/bare/explanation/bluetooth/best-practices',
+          },
+        ],
+      },
+      {
         type: 'page',
         name: 'How the stack fits together →',
         url: '/p2p/explanation/how-the-stack-fits-together',
@@ -104,6 +116,38 @@ export const bareTree: Node[] = [
             type: 'page',
             name: 'Build a local AI chat TUI with QVAC',
             url: '/bare/how-to/add-on-device-ai/build-a-local-ai-chat-tui-with-qvac',
+          },
+        ],
+      },
+      {
+        type: 'folder',
+        name: 'Connect over Bluetooth',
+        index: { type: 'page', name: 'Connect over Bluetooth', url: '/bare/how-to/connect-over-bluetooth' },
+        children: [
+          {
+            type: 'page',
+            name: 'Build a Bluetooth chat for iOS and Android',
+            url: '/bare/how-to/connect-over-bluetooth/build-a-bluetooth-chat-for-ios-and-android',
+          },
+          {
+            type: 'page',
+            name: 'Set up Bluetooth in a mobile app',
+            url: '/bare/how-to/connect-over-bluetooth/set-up-bluetooth-in-a-mobile-app',
+          },
+          {
+            type: 'page',
+            name: 'Exchange data over L2CAP',
+            url: '/bare/how-to/connect-over-bluetooth/exchange-data-over-l2cap',
+          },
+          {
+            type: 'page',
+            name: 'Read, write and subscribe with GATT',
+            url: '/bare/how-to/connect-over-bluetooth/read-write-and-subscribe-with-gatt',
+          },
+          {
+            type: 'page',
+            name: 'Use platform-specific Bluetooth features',
+            url: '/bare/how-to/connect-over-bluetooth/use-platform-specific-bluetooth-features',
           },
         ],
       },

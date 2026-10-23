@@ -13,6 +13,8 @@ const layout: Layout = {
     'Runs on Apple platforms (iOS and macOS) — on Android use [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android).',
     '[`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API over this module, `bare-bluetooth-android` and `bare-bluetooth-linux`.',
     '[One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.',
+    '[Connect over Bluetooth](/bare/how-to/connect-over-bluetooth) — how-to guides for scanning, GATT, L2CAP and mobile setup.',
+    '[Use platform-specific Bluetooth features](/bare/how-to/connect-over-bluetooth/use-platform-specific-bluetooth-features) — when to use this module directly instead of `bare-bluetooth`.',
   ],
   // serviceAdd carries only the UUID; a failed add is an 'error' event with code SERVICE_ADD_FAILED.
   patch: [

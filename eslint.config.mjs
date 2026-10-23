@@ -23,6 +23,10 @@ const config = [
       // Git worktrees checked out inside the repo. Without this, every finding
       // in src/ and scripts/ is reported once per worktree.
       '.claude/worktrees/**',
+      // Byte-identical documentation snapshots of upstream Bluetooth repos.
+      // They can't be edited to fit this config, and some use syntax the
+      // parser rejects (`using` in bare-bluetooth-apple's test/central.js).
+      'examples/how-to/connect-over-bluetooth/**',
     ],
   },
   {
