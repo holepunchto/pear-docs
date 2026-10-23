@@ -18,9 +18,11 @@ Use this guide when **desktop OTA** or **`pear stage`** behaves unexpectedly aft
 
 An update will not apply unless `package.json` **`version`** changes. Use `npm version patch` (or the level you intend) before rebuilding and staging.
 
-### Advance the release pointer after `pear stage`
+### Stage to the link the app follows
 
-`pear stage` writes new content into the [Hypercore](/p2p/reference/building-blocks/hypercore) but does **not** move the `release` pointer that peers poll. Staging ends by printing the new **`Latest`** length and the post-stage versioned link:
+There is no release pointer to advance after `pear stage`. [`pear-runtime-updater`](https://github.com/holepunchto/pear-runtime-updater) listens for `append` on the [Hypercore](/p2p/reference/building-blocks/hypercore) behind the app's `upgrade` link. When the drive grows, it checks out the latest length and reads `package.json` from it. If that `version` is higher than the running build's, it downloads `by-arch/<host>/app/<name>` from the checkout, where `<host>` is the running machine's `<platform>-<arch>`, such as `darwin-arm64`, and `<name>` is the `name` the app passes to `PearRuntime`. A staged drive with nothing at that path makes the updater emit an `update not found` error.
+
+Staging ends by printing the new **`Latest`** length, the post-stage versioned link, and the link you staged to:
 
 ```text skip="sample-output"
 Staging complete!
@@ -31,7 +33,7 @@ pear://0.1191.<stage-key>
 [  pear://<stage-link>  ]
 ```
 
-The stage output does not show a release pointer, so a clean stage on its own never changes what peers already tracking the link fetch—they keep the previous release until the pointer advances. The single-key `pear release` command was **removed in Pear v3**—advance the pointer for a production release with [`pear provision`](/pear/how-to/operate-an-app/manual-deployment/deployment#6-provision) followed by [`pear multisig`](/pear/reference/pear/cli#pear-multisig) quorum cosigning, which manage the release pointer.
+Any build whose `upgrade` field is that stage link sees the drive grow to the new `Latest` length, so once the staged `version` is higher and the link is [seeded](#seed-the-link), it needs no further command, only the wait described under [Tune `PearRuntime` `delay` for live OTA visibility](#tune-pearruntime-delay-for-live-ota-visibility). A stage link and a production link are different drives, though. `pear stage` appends only to the link you name, so a build whose `upgrade` is a provision link or the production multisig link is not affected. The single-key `pear release` command was **removed in Pear v3**—release to production with [`pear provision`](/pear/how-to/operate-an-app/manual-deployment/deployment#6-provision) followed by [`pear multisig`](/pear/reference/pear/cli#pear-multisig) quorum cosigning, which is what writes the production drive. If a build did not update, compare the `[  pear://<stage-link>  ]` line above with its `upgrade` field; see [Confirm the `upgrade` link](#confirm-the-upgrade-link).
 
 ### Tune `PearRuntime` `delay` for live OTA visibility
 
