@@ -112,6 +112,9 @@ const layout: Layout = {
     errors:
       'The `SQLiteError` class. Errors thrown by the module are instances of it, with a `code` such as `DATABASE_NOT_OPEN`, `DATABASE_ALREADY_OPEN`, `INVALID_ARGUMENT`, or `LOAD_EXTENSION_DISABLED`, or an SQLite result code such as `CANTOPEN`, `BUSY`, or `IOERR`.',
   },
+  seeAlso: [
+    '[Run an addon sandboxed in WebAssembly](/bare/how-to/run-an-addon-sandboxed-in-webassembly) — load the WebAssembly build with one directory granted.',
+  ],
   throws: {
     'DatabaseSync.open': ['`DATABASE_ALREADY_OPEN` — the database is already open.'],
     'DatabaseSync.close': [NOT_OPEN],
