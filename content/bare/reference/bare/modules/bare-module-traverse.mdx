@@ -1,0 +1,588 @@
+---
+title: "bare-module-traverse"
+description: "Low-level module graph traversal for Bare"
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "2.6.0"
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-module-traverse`](https://github.com/holepunchto/bare-module-traverse) — Low-level module graph traversal for Bare.
+
+```sh
+npm i bare-module-traverse
+```
+
+## Usage
+
+For synchronous traversal:
+
+```js
+const traverse = require('bare-module-traverse')
+
+function readModule(url) {
+  // Read `url` if it exists, otherwise `null`
+}
+
+function* listPrefix(url) {
+  // Yield URLs that have `url` as a prefix. The list may be empty.
+}
+
+for (const dependency of traverse(new URL('file:///directory/file.js'), readModule, listPrefix)) {
+  console.log(dependency)
+}
+```
+
+For asynchronous traversal:
+
+```js
+const traverse = require('bare-module-traverse')
+
+async function readModule(url) {
+  // Read `url` if it exists, otherwise `null`
+}
+
+async function* listPrefix(url) {
+  // Yield URLs that have `url` as a prefix. The list may be empty.
+}
+
+for await (const dependency of traverse(
+  new URL('file:///directory/file.js'),
+  readModule,
+  listPrefix
+)) {
+  console.log(dependency)
+}
+```
+
+## API
+
+### Functions
+
+#### `traverse`
+
+```ts
+traverse(entry: URL, readModule: (url: URL) => Buffer | string | null, listPrefix?: (url: URL) => Iterable<URL>, probeModule?: (url: URL) => boolean | undefined, resolveModule?: (url: URL) => URL): Iterable<Dependency>
+```
+
+Traverse the module graph rooted at `entry`, which must be a WHATWG `URL` instance. `readModule`
+is called with a `URL` instance for every module to be read and must either return the module
+source, if it exists, or `null`. `listPrefix` is called with a `URL` instance of every prefix to
+be listed and must yield `URL` instances that have the specified `URL` as a prefix. If not
+provided, prefixes won't be traversed. If `readModule` returns a promise or `listPrefix` returns
+a promise generator, synchronous iteration is not supported.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `URL` | — | The WHATWG `URL` of the entry module to root the graph at. |
+| `readModule` | `(url: URL) => Buffer \| string \| null` | — | Called with the `URL` of each module to read; returns its source as a `Buffer` or `string`, or `null` if it does not exist. Returning a promise disables synchronous iteration. |
+| `listPrefix?` | `(url: URL) => Iterable<URL>` | — | Called with the `URL` of each prefix to list; must yield the `URL`s that have it as a prefix. If omitted, prefixes are not traversed. |
+| `probeModule?` | `(url: URL) => boolean \| undefined` | — | Called with the `URL` of each module to probe for existence; returns a boolean, or `undefined` to fall back to `readModule`. |
+| `resolveModule?` | `(url: URL) => URL` | — | Called with each resolution `URL` to transform; returns the `URL` to use in its place. Defaults to the identity function. |
+
+**Returns** `Iterable<Dependency>` — An iterable of resolved `Dependency` records for the module graph; asynchronous when any
+callback returns a promise.
+
+#### `traverse.addons`
+
+```ts
+traverse.addons(parentURL: URL, artifacts: Artifacts, visited: Set<string>, opts?: TraverseOptions): Traversal
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `parentURL` | `URL` | — | — |
+| `artifacts` | [`Artifacts`](#artifacts) | — | — |
+| `visited` | `Set<string>` | — | — |
+| `opts?` | [`TraverseOptions`](#traverseoptions) | — | — |
+
+#### `traverse.assertAddonContext`
+
+```ts
+traverse.assertAddonContext(url: URL, scope: string, context: Partial<AddonContext>, addonContexts: Map<string, AddonContext>): void
+```
+
+Record in `addonContexts` that the package at `scope` loads its addons in `context`, and throw if that conflicts with what is already recorded or with `url`. The traversal calls this for every addon it resolves, so a package's addons load in one context for the whole graph. A driver that loads addons on its own can call it to apply the same rule. See [WebAssembly addons](#webassembly-addons). Added in v2.6.0.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | The addon being loaded. A `builtin:` URL is accepted without being recorded. |
+| `scope` | `string` | — | The key to record the context under. The traversal uses the URL of the importing package's `package.json`, or the URL of the importing module when it has no package. |
+| `context` | [`Partial<AddonContext>`](#addoncontext) | — | The `host` and the `wasi` provider the addon loads with. `wasi` is the URL of the provider module, as a string. A value left out is `null`, which means the defaults. |
+| `addonContexts` | `Map<string, AddonContext>` | — | The contexts recorded so far, by scope. A scope with no entry gets one for `context`. |
+
+**Throws**
+
+- `ADDON_HOST_INCOMPATIBLE` — `context.host` is set and `url` is not a WebAssembly addon, which is a URL with a path that ends in `.wasm`, or `scope` was recorded with a different `host`.
+- `ADDON_WASI_INCOMPATIBLE` — `scope` was recorded with a different `wasi` provider. Only a WebAssembly addon has a `wasi` provider, so `context.wasi` is ignored for any other `url`.
+
+#### `traverse.assets`
+
+```ts
+traverse.assets(patterns: ConditionalSpecifier, parentURL: URL, artifacts: Artifacts, visited: Set<string>, opts?: TraverseOptions): Traversal
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `patterns` | `ConditionalSpecifier` | — | — |
+| `parentURL` | `URL` | — | — |
+| `artifacts` | [`Artifacts`](#artifacts) | — | — |
+| `visited` | `Set<string>` | — | — |
+| `opts?` | [`TraverseOptions`](#traverseoptions) | — | — |
+
+#### `traverse.imports`
+
+```ts
+traverse.imports(parentURL: URL, source: string | Buffer, imports: ImportsMap, artifacts: Artifacts, lexer: {
+      imports: Import[]
+      exports: Export[]
+    }, visited: Set<string>, opts?: TraverseOptions): Traversal
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `parentURL` | `URL` | — | — |
+| `source` | `string` \| `Buffer` | — | — |
+| `imports` | `ImportsMap` | — | — |
+| `artifacts` | [`Artifacts`](#artifacts) | — | — |
+| `lexer` | `{ imports: Import[] exports: Export[] }` | — | — |
+| `visited` | `Set<string>` | — | — |
+| `opts?` | [`TraverseOptions`](#traverseoptions) | — | — |
+
+#### `traverse.link`
+
+```ts
+traverse.link(entry: Import, specifier: string, condition: string, parentURL: URL, imports: ImportsMap, artifacts: Artifacts, visited: Set<string>, opts?: TraverseOptions): Traversal
+```
+
+Resolve one import and record the result in `imports`. Before that, it resolves the specifier of each of the `imports` and `wasi` attributes of `entry` as a module and records it in `imports` too. The `wasi` attribute is new in v2.6.0. See [The `host` and `wasi` import attributes](#the-host-and-wasi-import-attributes).
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | — |
+| `specifier` | `string` | — | — |
+| `condition` | `string` | — | — |
+| `parentURL` | `URL` | — | — |
+| `imports` | `ImportsMap` | — | — |
+| `artifacts` | [`Artifacts`](#artifacts) | — | — |
+| `visited` | `Set<string>` | — | — |
+| `opts?` | [`TraverseOptions`](#traverseoptions) | — | — |
+
+#### `traverse.module`
+
+```ts
+traverse.module(url: URL, source: string | Buffer, attributes: Record<string, string> | null, artifacts: Artifacts, visited: Set<string>, opts?: TraverseOptions): Traversal
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | — |
+| `source` | `string` \| `Buffer` | — | — |
+| `attributes` | `Record<string, string> \| null` | — | The import attributes of the import that reached `url`. As of v2.6.0 they include `host` and `wasi`; see [WebAssembly addons](#webassembly-addons). |
+| `artifacts` | [`Artifacts`](#artifacts) | — | — |
+| `visited` | `Set<string>` | — | — |
+| `opts?` | [`TraverseOptions`](#traverseoptions) | — | — |
+
+#### `traverse.package`
+
+```ts
+traverse.package(url: URL, source: string | Buffer, artifacts: Artifacts, visited: Set<string>, opts?: TraverseOptions): Traversal
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | — |
+| `source` | `string` \| `Buffer` | — | — |
+| `artifacts` | [`Artifacts`](#artifacts) | — | — |
+| `visited` | `Set<string>` | — | — |
+| `opts?` | [`TraverseOptions`](#traverseoptions) | — | — |
+
+#### `traverse.preresolved`
+
+```ts
+traverse.preresolved(url: URL, source: string | Buffer, attributes: Record<string, string> | null, resolution: ResolutionsMap, artifacts: Artifacts, visited: Set<string>, opts?: TraverseOptions): Traversal
+```
+
+Traverse `url` using the imports recorded for it in `resolution` instead of resolving its specifiers again. The generator returns `false` when `resolution` has no imports map for `url`, and `traverse.module` then resolves the module as usual.
+
+A resolutions map doesn't hold import attributes, so they are read from `source`. As of v2.6.0 the `type`, `host`, and `wasi` attributes of each import are applied this way. In v2.5.9 the `type` attribute was ignored for an import that the map resolved, so a `.txt` file imported with `type: 'binary'` was traversed as text. The `naturalType` of its `dependency` is now the type the module has without the attribute, `constants.TEXT` for that file, where in v2.5.9 it was always equal to `type`.
+
+An entry that the map lists under the `addon` condition is traversed as an addon whatever its file extension, so its `dependency` has type `constants.ADDON`. In v2.5.9 its type came from its extension, and a `.wasm` file was a script.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | — |
+| `source` | `string` \| `Buffer` | — | — |
+| `attributes` | `Record<string, string> \| null` | — | The import attributes that `url` was imported with. They set the type of the module as they do for [`traverse.module`](#traversemodule). Added in v2.6.0, ahead of `resolution`, so a call written for v2.5.9 passes `resolution` in the wrong position. |
+| `resolution` | `ResolutionsMap` | — | — |
+| `artifacts` | [`Artifacts`](#artifacts) | — | — |
+| `visited` | `Set<string>` | — | — |
+| `opts?` | [`TraverseOptions`](#traverseoptions) | — | — |
+
+### Constants and variables
+
+#### `traverse.constants`
+
+```ts
+traverse.constants: {
+    SCRIPT: number
+    MODULE: number
+    JSON: number
+    BUNDLE: number
+    ADDON: number
+    BINARY: number
+    TEXT: number
+  }
+```
+
+### Types
+
+#### `traverse.Traversal`
+
+```ts
+type Traversal = Generator<
+    | { module: URL; artifact: boolean }
+    | { probe: URL }
+    | { resolution: URL }
+    | { prefix: URL }
+    | { links: Traversal[] }
+    | { children: Traversal; deferred: boolean }
+    | { dependency: Dependency },
+    boolean,
+    void | URL | URL[] | Buffer | string | boolean | null
+  >
+```
+
+#### `TraverseOptions`
+
+```ts
+interface TraverseOptions {
+  defaultType?: number
+  importType?: number
+  artifacts?: boolean
+  aliases?: Record<string, AliasableExtension>
+  resolve?: (entry: Import, parentURL: URL, opts?: ResolveOptions) => Resolver
+  deferUnresolved?: boolean
+  builtinProtocol?: string
+  builtins?: Builtins
+  conditions?: Conditions
+  extensions?: string[]
+  host?: string
+  hosts?: string[]
+  linked?: boolean
+  linkedProtocol?: string
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
+}
+```
+
+#### `Artifacts`
+
+```ts
+interface Artifacts {
+  addons: URL[] | Set<string>
+  assets: URL[] | Set<string>
+}
+```
+
+#### `Dependency`
+
+```ts
+interface Dependency {
+  url: URL
+  source: string | Buffer
+  type: number
+  naturalType: number
+  imports: ImportsMap
+  lexer: {
+    imports: Import[]
+    exports: Export[]
+  }
+}
+```
+
+#### `AddonContext`
+
+```ts
+interface AddonContext {
+  host: string | null
+  wasi: string | null
+}
+```
+
+The context that the addons of one package load in. `host` is the host asked for with the `host` import attribute, or `null` for the default hosts. `wasi` is the URL of the module that provides the WASI capabilities of a WebAssembly addon, or `null` for the default capabilities. Added in v2.6.0.
+
+## WebAssembly addons
+
+Added in v2.6.0. An addon package can ship a WebAssembly build as `prebuilds/wasi-wasm32/<name>.wasm`, or `<name>@<version>.wasm` for a package with a version. A traversal falls back to that build when a package has no native build, and an import can ask for it with the `host` attribute.
+
+### Fallback resolution
+
+[`bare-addon-resolve`](/bare/reference/bare/modules/bare-addon-resolve) treats a host that starts with `wasi-` as a WebAssembly host. It tries the native prebuilds first, then linked addons, then the `.wasm` file of the WebAssembly hosts, so a WebAssembly build is used only when no native build or linked addon was found. See [`resolve.directory`](/bare/reference/bare/modules/bare-addon-resolve#resolvedirectory).
+
+[`traverse.resolve.bare`](#bare-module-traverseresolve) adds `wasi-wasm32` to its default hosts. When `hosts` is not set, it is `[host, 'wasi-wasm32']`, where `host` is the `host` option, or the host of the running platform when `host` is not set. Pass `hosts` to leave `wasi-wasm32` out. The default resolver and `traverse.resolve.node` do not add it. Before v2.6.0 the default was `[host]`.
+
+```js
+const traverse = require('bare-module-traverse')
+
+// Falls back to prebuilds/wasi-wasm32/<name>.wasm
+traverse(entry, { resolve: traverse.resolve.bare }, readModule)
+
+// Native addons only
+traverse(entry, { resolve: traverse.resolve.bare, hosts: [Bare.Addon.host] }, readModule)
+```
+
+The lookup for `.wasm` files is in `bare-addon-resolve` 1.11.0 and later. `bare-module-traverse` 2.6.0 still declares `^1.5.0` for that dependency, so an install that keeps an older `bare-addon-resolve` looks for the `wasi-wasm32` host like a native one, with `.bare` and `.node` files, and a package that has only a `.wasm` build throws `ADDON_NOT_FOUND`.
+
+A host also supplies import conditions, so `wasi-wasm32` adds `wasi` and `wasm32`. With `resolve.bare` and no `hosts`, a package whose `exports` or `imports` has a `wasi` or `wasm32` condition has that branch traversed and recorded next to its `default` branch. Before v2.6.0 only the `default` branch was.
+
+### What a driver sees
+
+A WebAssembly addon is not a lazy artifact. The traversal does not call `probeModule` for it. It yields `{ module: url, artifact: false }` and treats the addon as present only if the driver returns its source, so the driver must read the file. A native addon that `probeModule` reports as existing is yielded with `artifact: true`, and the driver may leave it unread, in which case its `dependency.source` is `null`. The URL is added to `artifacts.addons` either way.
+
+The `dependency` for a `.wasm` addon has `type` set to `constants.ADDON`. Its `naturalType` is the `defaultType` option, `constants.SCRIPT` unless set otherwise, because the `.wasm` extension has no type of its own. When the `wasi` attribute applies, the dependency also has a `wasi` property holding the URL of the provider module as a string. The `Dependency` type declaration does not list `wasi` in v2.6.0.
+
+### The `host` and `wasi` import attributes
+
+Two import attributes set the context that the addons of a module, and of everything it imports, load in:
+
+```js
+const addon = require('addon', { with: { host: 'wasi-wasm32', wasi: './wasi.js' } })
+```
+
+```js
+import addon from 'addon' with { host: 'wasi-wasm32', wasi: './wasi.js' }
+```
+
+- `host` asks for the WebAssembly build of the addons in the graph below the import. `wasi-wasm32` is the only value it accepts. It overrides `hosts` for those addons, so it applies even when `hosts` has only native hosts. Addons of packages outside that graph keep the default hosts.
+- `wasi` is a module specifier, resolved from the importing module. The traversal adds the module it names to the graph and records it in the imports map of the importing module. Each WebAssembly addon loaded in that context gets that URL as `wasi` on its `dependency`. `wasi` works without `host`, for example for a package that only ships a `.wasm` build. A native addon never gets a `wasi` property.
+
+A module is traversed again for each context it is imported under, so the same URL can be yielded more than once. The `type`, `host`, and `wasi` attributes are also applied when a `resolutions` map is in use.
+
+The addons of one package load in one context for the whole graph. Importing the same package with the default hosts and with `host` throws an error rather than letting one package load in two ways. So does importing a package with two different `wasi` modules when its addon is WebAssembly. A package without addons can be imported under any context.
+
+| Error code | Thrown when |
+| --- | --- |
+| `UNKNOWN_ADDON_HOST` | A `host` attribute is not `wasi-wasm32`. |
+| `ADDON_HOST_INCOMPATIBLE` | A module in the graph below an import with a `host` attribute loads an addon that is not WebAssembly, such as a `.bare` file that it requires by path, or the addons of one package are reached with different hosts. |
+| `ADDON_WASI_INCOMPATIBLE` | The WebAssembly addons of one package are reached with different `wasi` modules. |
+
+A `host` attribute for a package with no `.wasm` build throws `ADDON_NOT_FOUND`, as any missing addon does. [`traverse.assertAddonContext()`](#traverseassertaddoncontext) applies the same rules to a driver that loads addons itself.
+
+## `bare-module-traverse/resolve`
+
+### Functions
+
+#### `module(specifier: string, parentURL: URL, opts?: ResolveOptions): Resolver`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | — |
+| `parentURL` | `URL` | — | — |
+| `opts?` | `ResolveOptions` | — | — |
+
+#### `addon(specifier: string, parentURL: URL, opts?: ResolveOptions): Resolver`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | — |
+| `parentURL` | `URL` | — | — |
+| `opts?` | `ResolveOptions` | — | — |
+
+#### `default(entry: Import, parentURL: URL, opts?: ResolveOptions): Resolver`
+
+The default resolver, which simply forwards to \<https://github.com/holepunchto/bare-module-resolve> and \<https://github.com/holepunchto/bare-addon-resolve> with the literal options passed by the caller.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `ResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+#### `bare(entry: Import, parentURL: URL, opts?: BareResolveOptions): Resolver`
+
+The Bare resolver, which matches the options used by the Bare module system. When `hosts` is not set, it defaults to `[host, 'wasi-wasm32']`, so a package with no native build for `host` resolves to its `prebuilds/wasi-wasm32/<name>.wasm` file. Changed in v2.6.0: before, `hosts` defaulted to `[host]`. See [WebAssembly addons](#webassembly-addons).
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `BareResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+#### `node(entry: Import, parentURL: URL, opts?: NodeResolveOptions): Resolver`
+
+The Node.js resolver, which matches the options used by the Node.js module system.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `NodeResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+### Types
+
+#### `bare.BareResolveOptions`
+
+```ts
+interface BareResolveOptions {
+  linked?: boolean
+  host?: string
+  hosts?: string[]
+  builtinProtocol?: string
+  builtins?: Builtins
+  conditions?: Conditions
+  extensions?: string[]
+  linkedProtocol?: string
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
+}
+```
+
+#### `node.NodeResolveOptions`
+
+```ts
+interface NodeResolveOptions {
+  host?: string
+  hosts?: string[]
+  builtinProtocol?: string
+  builtins?: Builtins
+  conditions?: Conditions
+  extensions?: string[]
+  linked?: boolean
+  linkedProtocol?: string
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
+}
+```
+
+## `bare-module-traverse/resolve/default`
+
+### Functions
+
+#### `resolve(entry: Import, parentURL: URL, opts?: ResolveOptions): Resolver`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `ResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+## `bare-module-traverse/resolve/bare`
+
+### Functions
+
+#### `resolve(entry: Import, parentURL: URL, opts?: BareResolveOptions): Resolver`
+
+The Bare resolver. When `hosts` is not set, it defaults to `[host, 'wasi-wasm32']`. Changed in v2.6.0: before, `hosts` defaulted to `[host]`. See [WebAssembly addons](#webassembly-addons).
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `BareResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+### Types
+
+#### `BareResolveOptions`
+
+```ts
+interface BareResolveOptions {
+  linked?: boolean
+  host?: string
+  hosts?: string[]
+  builtinProtocol?: string
+  builtins?: Builtins
+  conditions?: Conditions
+  extensions?: string[]
+  linkedProtocol?: string
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
+}
+```
+
+## `bare-module-traverse/resolve/node`
+
+### Functions
+
+#### `resolve(entry: Import, parentURL: URL, opts?: NodeResolveOptions): Resolver`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
+| `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
+| `opts?` | `NodeResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+
+**Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+### Types
+
+#### `NodeResolveOptions`
+
+```ts
+interface NodeResolveOptions {
+  host?: string
+  hosts?: string[]
+  builtinProtocol?: string
+  builtins?: Builtins
+  conditions?: Conditions
+  extensions?: string[]
+  linked?: boolean
+  linkedProtocol?: string
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
+}
+```
+
+## See also
+
+- Builds on `bare-addon-resolve`, `bare-mime`, `bare-module-lexer`, and `bare-module-resolve`. Addon lookup, including the WebAssembly fallback, is in [`bare-addon-resolve`](/bare/reference/bare/modules/bare-addon-resolve).
+- It's the engine behind [`bare-pack`](/bare/reference/bare/modules/bare-pack) — a low-level building block; use `bare-pack` to produce a bundle, and reach for this directly only when building tooling on top of the graph.
+- The step generators exposed on `traverse` (`traverse.module`, `traverse.package`, `traverse.preresolved`, `traverse.imports`, `traverse.link`, `traverse.addons`, and `traverse.assets`), and `traverse.assertAddonContext`, are subject to change between minor releases; if using them directly, specify a tilde range (for example `~2.6.0`) when declaring the dependency. v2.6.0 added a parameter to `traverse.preresolved`, and `bare-pack` 2.2.4 declares `~2.6.0`. See the [repository README](https://github.com/holepunchto/bare-module-traverse) for each step generator.
+- [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

@@ -1,0 +1,191 @@
+---
+title: "Release Overview"
+description: "Curated overview of releases across Bare's building-block and helper modules—breaking changes, removals, and additions."
+docType: page
+product: bare
+schemaType: WebPage
+---
+
+A curated record of changes across Bare's runtime and ecosystem modules, newest first. For the raw upstream record, see each module's GitHub releases; this page is the docs-team view of what the changes mean for your application.
+
+<Callout type="info">
+Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release overview](/pear/release-overview).
+</Callout>
+
+{/* changelog:insert — automation inserts draft entries below this marker; keep it directly above the newest entry. */}
+
+## 2026-10-13 — Bare v1.35.1
+
+- Fixed: the `bare` package on npm. `bare@1.35.0` was published without `index.d.ts`, although its `package.json` points to that file, so TypeScript found no declarations for it. The publish workflow did not run the `prepack` script that copies the typings from `src/bare.d.ts`, and v1.35.1 runs it before publishing. The runtime is unchanged apart from its version number. See [Bare runtime API](/bare/reference/bare/runtime).
+
+## 2026-10-13 — Bare v1.35.0
+
+- **Breaking:** a thread started from a bundle now serves only the modules under the mount of the bundle, which defaults to `filename` followed by `/`. A bundle keyed by absolute URLs outside its mount fails with `MODULE_NOT_FOUND` unless the thread is started with the new `mount` option. The bundles that [`bare-thread`](https://github.com/holepunchto/bare-thread) and [`bare-worker`](https://github.com/holepunchto/bare-worker) prepare from files on disk are keyed this way. See [Starting a thread from a bundle](/bare/reference/bare/runtime#starting-a-thread-from-a-bundle).
+- **Breaking:** `bare-thread` before v1.3.0 and `bare-worker` before v4.5.1 do not pass `mount`, so they fail on Bare 1.35.0. A worker started with `bare-worker` v4.5.0 fails at startup with `MODULE_NOT_FOUND` for `bare-worker/lib/worker-thread.js`. Use `bare-thread` v1.3.0 or later and `bare-worker` v4.5.1 or later. A worker that loads a native addon needs `bare-worker` v4.5.3 or later.
+- Added: `Bare.Addon.loaded(url)`, which reports whether the current process has already loaded the dynamic addon at `url`, a `file:` or `linked:` URL. It loads nothing and keeps answering `true` after `Addon.seal()`. Any other protocol, including `builtin:`, gives `false`. See [`Bare.Addon`](/bare/reference/bare/runtime#bareaddon).
+- Added: the `mount` option of `Bare.Thread`, the URL to mount the bundle of the thread at. It defaults to `filename` followed by `/`, a value that is not a URL throws a `TypeError`, and `file:///` lets the bundle serve any file. See [`Bare.Thread`](/bare/reference/bare/runtime#barethread).
+- Added: the `BARE_ENGINE_SHARED` compile option, which links the JavaScript engine as a shared library instead of embedding it. When it is on, the prebuilds that `BARE_PREBUILDS` enables for the default engine are not used. See [Compile options](/bare/reference/bare/runtime#compile-options).
+- Added: `bare/target.h` recognizes a compiler that targets WebAssembly under WASI. `BARE_PLATFORM` is then `"wasi"`, `BARE_ARCH` is `"wasm32"`, and `BARE_PLATFORM_WASI` and `BARE_ARCH_WASM32` are defined. The platform support table lists no WebAssembly target, and the types of `Bare.platform` and `Bare.arch` do not include these values. See [Headers and macros](/bare/reference/bare/runtime#headers-and-macros).
+- Changed: a thread started from a bundle treats the addons that the bundle declares but does not embed as present on disk, and loads them through `Bare.Addon`. Earlier releases fail with `MODULE_NOT_FOUND` for such an addon, so `bare-thread` v1.4.0, which leaves addons out of the bundles it prepares, needs Bare 1.35.0 or later in a thread that loads one. `Addon.seal()` still applies: on a sealed process, such an addon loads only if the process has already loaded it.
+- Changed: `bare_module_find()` returns `void *` instead of `uv_lib_t *`. C code compiles unchanged, and C++ code needs a cast. See [Headers and macros](/bare/reference/bare/runtime#headers-and-macros).
+- Changed: libuv is v1.53.0, up from v1.52.1.
+- Changed: bundles [`bare-module`](/bare/reference/bare/modules/bare-module) v7.4.0, up from v7.2.0. It is the cause of the first breaking change in this release, adds a `mount` option to `Module.load()`, `Module.loadSync()`, and the loader's `link()`, `linkSync()`, `import()`, and `importSync()`, and accepts a parsed `Bundle` as the `source`. See [Loading bundles](/bare/reference/bare/modules/bare-module#loading-bundles).
+- Changed: bundles [`bare-addon-resolve`](/bare/reference/bare/modules/bare-addon-resolve) v1.11.0 and [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse) v2.6.0, which resolve WebAssembly addons, and [`bare-module-resolve`](/bare/reference/bare/modules/bare-module-resolve) v1.12.6. See [Bare module updates](#2026-10-13--bare-module-updates).
+- Changed: bundles [`bare-timers`](/bare/reference/bare/modules/bare-timers) v3.2.4, where `timeout.refresh()` rearms a timeout that has already fired, and [`bare-url`](/bare/reference/bare/modules/bare-url) v2.5.5, where `URL.pathToFileURL()` handles Windows extended-length paths.
+- Changed: the JavaScript API is documented as TSDoc in `src/bare.d.ts` instead of in the README. The declarations now include `Bare.IPC`, `Addon.seal()`, and `Addon.sealed`, which the earlier typings left out. They import `Duplex` from [`bare-stream`](/bare/reference/bare/modules/bare-stream) for the type of [`Bare.IPC`](/bare/reference/bare/runtime#bareipc), and `bare` lists `bare-stream` as an optional peer dependency.
+- Changed: the [threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md) says that code that can write to the shared intrinsics can watch and steer every module graph in a realm, so the protocol you hand to untrusted code is not a reliable limit unless you run that code in a realm of its own or freeze the intrinsics first. It also says that WebAssembly addons can still load after `Addon.seal()`. Keeping untrusted code away from the shared intrinsics is now one of five embedder duties. See [Embedding](/bare/reference/bare/runtime#embedding).
+- Fixed: the type of `Bare.arch` now includes `riscv64`, which Bare already reported on RISC-V 64 builds. See [`Bare.arch`](/bare/reference/bare/runtime#barearch).
+
+## 2026-10-13 — Bare module updates
+
+### bare-addon-resolve — v1.11.0
+
+- Added: WebAssembly prebuilds. A host that starts with `wasi-`, such as `wasi-wasm32`, is looked up last, as `prebuilds/<host>/<name>.wasm`, after the native prebuilds and linked addons. See [bare-addon-resolve](/bare/reference/bare/modules/bare-addon-resolve).
+- Changed: a `wasi-` host no longer uses `opts.extensions` or shares the native lookup. Before, `wasi-wasm32` yielded `.bare` and `.node` candidates, ahead of linked addons.
+- Fixed: a `deferred:` entry in the `resolutions` map is ignored for an addon, and resolution continues as if the map had no entry. Before, the entry was resolved as a module, so `deferred:.` could yield a JavaScript file, such as the `index.js` of the package, instead of an addon.
+
+### bare-assert — v1.3.0
+
+- Added: `deepStrictEqual()`, `notDeepStrictEqual()`, and `partialDeepStrictEqual()`; `throws()`, `doesNotThrow()`, `rejects()`, and `doesNotReject()`; and `match()`, `doesNotMatch()`, and `ifError()`. See [bare-assert](/bare/reference/bare/modules/bare-assert).
+- Changed: the minimum Bare is 1.32.0, because `bare-assert` depends on `bare-type` v1.3.0 or later, which requires it. An older Bare refuses to load `bare-assert` with `UNSUPPORTED_ENGINE`. A fresh install of v1.2.0 already has the same requirement, because it pulls in `bare-type` through `bare-inspect`.
+- Fixed: `AssertionError.code` is `'ASSERTION'` instead of `undefined`, and the type declarations now include `fail()` and `notOk()`.
+
+### bare-bluetooth-android — v0.11.3
+
+- **Breaking (v0.11.0):** `new Server()` no longer opens the GATT server. Call `server.open()` once `server.state` is `'on'`, and again each time the adapter returns to `'on'`, then add the services again. Without it, `addService()`, `respondToRequest()`, and `updateValue()` throw `GATT server unavailable`. `server.close()` closes the server. See [bare-bluetooth-android](/bare/reference/bare/modules/bare-bluetooth-android).
+- Added (v0.10.0): `central.getBondedDevices()`, a `type` property on `Device` with the `DEVICE_TYPE_*` constants, and `new Peripheral({ device })`, which connects to a device without scanning. `scanResult`, `rssi`, and `serviceData` are `null` for such a peripheral.
+- Added: `BluetoothError` is exported from the package root, and the `Central` and `Server` constructors throw it with the code `ADAPTER_UNAVAILABLE` on a device with no Bluetooth adapter.
+- Changed (v0.11.1): a failed `L2CAPChannel` write destroys the stream with the error instead of throwing from `write()`, and native channel errors and close destroy the stream instead of being emitted directly. Listen for `'error'` on the channel.
+- Changed (v0.9.3): the native build no longer pins `ANDROID_PLATFORM` to `android-34`, and the prebuilds no longer list `libnativehelper.so` as a needed library.
+- Changed (v0.11.2): the prebuilds link the C++ standard library statically and no longer list `libc++_shared.so` as a needed library.
+- Fixed (v0.9.2): a peripheral drops its `read`, `write`, `notify`, and `notifyState` events for a characteristic that it did not discover, instead of emitting them with a `null` characteristic.
+
+### bare-bluetooth-apple — v0.7.0
+
+- Added (v0.6.0): `central.retrievePeripherals(ids)` and `central.retrieveConnectedPeripherals(services)`, which return `RetrievedPeripheral` entries without scanning. `central.connect()` and `central.disconnect()` accept them, so a saved peripheral id can be reconnected without a scan. See [bare-bluetooth-apple](/bare/reference/bare/modules/bare-bluetooth-apple).
+- Changed: `Central` and `PeripheralManager` no longer let the system show its Bluetooth power alert when Bluetooth is off. Pass `{ showPowerAlert: true }` to the constructor to restore it.
+
+### bare-dns — v2.3.0
+
+- **Breaking:** the minimum Bare is now 1.33.0 (was 1.7.0) on every platform, in a minor release. An older Bare refuses to load `bare-dns` with `UNSUPPORTED_ENGINE`.
+- Added: DNS resolution on Android. When the addon first loads, it reads `bare.android.jvm.v1` and `bare.android.context.v1` from the [embedder context](/bare/reference/bare/embedder-context) and gives the Java VM and the connectivity manager to c-ares. It skips this step without an error if a key is missing. See [Android](/bare/reference/bare/modules/bare-dns#android).
+
+### bare-fs — v4.8.4
+
+- Changed (v4.8.3): `fs.cp()`, `fs.cpSync()`, and `fs.promises.cp()` copy symbolic links as links instead of skipping them. A link replaces a file or link at the destination, but copying over a directory throws `EEXIST`. Special files such as named pipes throw `ENOTSUP` instead of being skipped silently. See [bare-fs](/bare/reference/bare/modules/bare-fs).
+- Fixed (v4.8.3): on Windows, `fs.symlink()` and `fs.symlinkSync()` without a `type` no longer create a junction for an existing target that is not a directory. A directory target gives a directory link, and anything else gives a file link.
+- Fixed: the millisecond timestamps of `Stats`, and the `Date` values that go with them, are computed with 64-bit arithmetic, so they no longer overflow when the seconds value is held in 32 bits.
+
+### bare-make — v2.1.0
+
+- **Breaking (v2.0.0):** the macOS, iOS, Linux, and `win32` targets use the Clang from `llvm-runtime` and, for the targets that assemble with NASM, the NASM from `nasm-runtime`, instead of a compiler found on the machine, such as Apple Clang on macOS. The Android and MinGW targets still use the Android NDK and a MinGW compiler found on `PATH`. `node` must be on `PATH` when you generate a build system for one of the targets that changed, including when `bare-make` runs on Bare. Without it, `generate()` rejects with `GENERATE_FAILED`. See [Toolchain](/bare/reference/bare/modules/bare-make#toolchain).
+- **Breaking (v2.0.0):** `generate()` passes the flags it adds for `sanitize`, `fuzz`, `color`, and `debug` builds through the `CFLAGS`, `CXXFLAGS`, and `LDFLAGS` environment variables instead of `CMAKE_C_FLAGS` and the linker flag cache entries. They now append to flags already in the environment, and they apply to C++ as well as C. CMake reads the variables only when it first configures a build tree, so calling `generate()` again on an existing tree with a different `sanitize` value leaves its flags as they were. Set `cache` to `false`, or pass `--no-cache`, to configure the tree again. See [Compiler and linker flags](/bare/reference/bare/modules/bare-make#compiler-and-linker-flags).
+- **Breaking (v2.0.0):** the `bare-process` dependency is gone. The JavaScript API still runs on Bare, but running the CLI, `bin.js`, through `bare` fails with `MODULE_NOT_FOUND` for `process`.
+- Added: `make.test.env()` and `bare-make test env`, which return or print the environment variables that the test launcher adds or changes, so that programs run outside CTest can apply them. `generate()` now always sets `CMAKE_PROJECT_INCLUDE` to record the launcher, and a `CMAKE_PROJECT_INCLUDE` entry in `define` is kept and runs first. See [Environment](/bare/reference/bare/modules/bare-make#environment).
+- Added: the `wasi-wasm32` target, selected with `platform: 'wasi'` and `arch: 'wasm32'`, which needs the optional `wasi-sysroot` package and builds executables with the `.wasm` suffix. The target comes from `cmake-toolchains` v2.1.0, which `bare-make` v2.1.0 is the first release to require. With an older `cmake-toolchains`, such as the one `bare-make` v1.8.0 uses, `generate()` rejects the target with `UNKNOWN_TOOLCHAIN`.
+- Changed: the musl targets need the optional `musl-sysroot` package instead of a musl cross compiler on `PATH`.
+- Fixed (v2.0.1): on `win32`, `sanitize` also passes `/OPT:NOICF` to the linker, so identical code folding no longer causes false AddressSanitizer one-definition-rule reports.
+
+### bare-module — v7.4.0
+
+- **Breaking (v7.2.2):** a bundle serves only the modules under its mount, which is the URL of the bundle followed by `/`. A module outside it, such as a key of `/../bar.js` or an absolute URL that the mount does not cover, is read through the protocol and fails with `MODULE_NOT_FOUND` if the protocol does not have it. In v7.2.1 the bundle served its own copy. A bundle with absolute keys outside its own URL needs the `mount` option from v7.3.0. See [Loading bundles](/bare/reference/bare/modules/bare-module#loading-bundles).
+- Added (v7.3.0): the `mount` option, the URL that the entry bundle is mounted at, on `Module.load()`, `Module.loadSync()`, and the loader's `link()`, `linkSync()`, `import()`, and `importSync()`. A value that is not a URL throws a `TypeError`. [`Bare.Thread`](/bare/reference/bare/runtime#barethread) forwards its own `mount` option to it.
+- Added: `Module.load()` and `Module.loadSync()` accept an already parsed `Bundle` as the `source`. In v7.3.0, passing one threw a misleading `Mount must be a URL` `TypeError`.
+- Fixed (v7.2.2): a `.bundle` loads through an asynchronous protocol instead of throwing `UNEXPECTED_PROMISE`, and `require()` of a missing literal specifier through one throws `MODULE_NOT_FOUND`, and `require.asset()` throws `ASSET_NOT_FOUND`. A specifier computed at run time still throws `UNEXPECTED_PROMISE`. See [Asynchronous protocols](/bare/reference/bare/modules/bare-module#asynchronous-protocols).
+- Fixed (v7.2.1): loaders that share a `cache` and read through the default protocol no longer throw `CACHE_INCOMPATIBLE` with `Cache is read through a different protocol`, which a second `Module.load()` with the same `cache` hit. `loader.patch()` leaves `loader.protocol` as it was, and a loader that shares the cache also reads the patch.
+
+### bare-module-resolve — v1.12.6
+
+- Fixed: a target that is a URL, such as `deferred:d` or `node:fs`, in a `resolutions` or `imports` map that resolves to nothing no longer falls through to a package lookup, so `readPackage` is not called for a package named after the target, such as `node_modules/deferred:d/package.json`. See [bare-module-resolve](/bare/reference/bare/modules/bare-module-resolve).
+
+### bare-module-traverse — v2.6.0
+
+- Added: WebAssembly addons. A `.wasm` addon is traversed as an addon, and `traverse.resolve.bare` defaults `hosts` to `[host, 'wasi-wasm32']`, so a package with no native build falls back to `prebuilds/wasi-wasm32/<name>.wasm`. See [WebAssembly addons](/bare/reference/bare/modules/bare-module-traverse#webassembly-addons).
+- Added: the `host` and `wasi` import attributes, `traverse.assertAddonContext()`, and the errors `UNKNOWN_ADDON_HOST`, `ADDON_HOST_INCOMPATIBLE`, and `ADDON_WASI_INCOMPATIBLE`.
+- **Breaking:** `traverse.preresolved()` takes a new `attributes` argument before the resolutions map, which breaks direct callers.
+- Changed: with `traverse.resolve.bare` and no `hosts`, the `wasi` and `wasm32` conditions in package `exports` and `imports` are matched and recorded next to `default`.
+- Fixed: the `type` import attribute is applied to imports resolved through a `resolutions` map, and addons listed in a `resolutions` map are typed as addons whatever their extension.
+
+### bare-pack — v2.2.4
+
+- Added: WebAssembly addon bundling, through `bare-module-traverse` ~2.6.0. With `resolve.bare` and no `hosts`, `pack()` falls back to the `.wasm` build of a package with no native build and embeds it like a native addon. The CLI takes the host platform by default, so pass `--host wasi-wasm32` next to the native hosts to bundle it. See [WebAssembly addons](/bare/reference/bare/modules/bare-pack#webassembly-addons).
+- Changed (v2.2.3): `pack()` calls `readModule` at most once per URL, which avoids reading the same `package.json` repeatedly.
+
+### bare-sidecar — v0.5.8
+
+- Added: the `stdio` option, `'pipe'`, `'inherit'`, or `'ignore'`, for all three standard streams or for each one. A sidecar can now write to the host's streams or discard them. Earlier versions always piped them, and an unread pipe could block the sidecar. See [Standard streams](/bare/reference/bare/modules/bare-sidecar#standard-streams).
+- Changed: the bundled Bare runtime is v1.34.1, up from v1.34.0.
+
+### bare-stow — v0.1.7
+
+- Changed (v0.1.6): `base` defaults to the closest directory that contains every module in the bundle. It was the directory that contains `entry` for the API and the working directory for the CLI, so a bundle could hold keys such as `/../node_modules/...` when `node_modules` sat in a parent directory of the entry. An explicit `base` that does not contain every module makes `stow()` throw `Module '<url>' is outside base '<base>'`. See [bare-stow](/bare/reference/bare/modules/bare-stow).
+- Changed (v0.1.6): the `start()` of the `bare-sidecar` target inherits the standard streams of the host by default, so the console output of the bundle is shown. Pass `stdio` to override it. This needs `bare-sidecar` v0.5.8 or later, because earlier versions ignore `stdio`.
+- Fixed: `ipc.ready`, and so the harness `start()`, rejects with `Worker exited with code <code> before ready` or `Worker closed before ready` when the worker exits or the transport closes first, instead of staying pending forever.
+
+### bare-subprocess — v6.2.2
+
+- Changed: `subprocess.kill()` returns `true` if the signal was sent and `false` if the child had already exited. It can be called more than once, and it sets `subprocess.killed` only when it returns `true`. See [bare-subprocess](/bare/reference/bare/modules/bare-subprocess).
+- Fixed: a parent that called `kill(0)` on a child no longer waits for the child at teardown, because the child now receives `SIGTERM` if it is still running.
+- Fixed (v6.2.1): a `spawn()` that fails, for example for a command that does not exist, no longer sends `SIGTERM` to the whole process group of the parent when the process tears down.
+
+### bare-timers — v3.2.4
+
+- Fixed: `timeout.refresh()` on a timeout that has already fired rearms it, so the callback runs again after its delay. Before, the callback did not run again when no other timer was pending. See [bare-timers](/bare/reference/bare/modules/bare-timers).
+
+### bare-url — v2.5.5
+
+- Changed: on Windows, `URL.pathToFileURL()` handles extended-length paths such as `\\?\C:\foo` and `\\?\UNC\server\share\foo`, and throws `INVALID_ARG_VALUE` for a UNC path with an empty server name or no resource path, such as `\\server`. See [bare-url](/bare/reference/bare/modules/bare-url).
+
+### react-native-bare-kit — v0.16.0
+
+- **Breaking:** native addons are no longer linked automatically. Earlier releases ran `bare-link` from the podspec on iOS and from a Gradle task before each Android build. v0.16.0 removed both steps and its dependency on `bare-link`, so an app must link its own addons. See [Linking native addons](/bare/reference/bare/bare-kit#linking-native-addons).
+
+## 2026-09-30 — Bare v1.34.1
+
+- **Breaking:** the minimum macOS is now 13.0 (was 12.0) and the minimum iOS is now 15.0 (was 14.0), in a patch release. See [Supported platforms](/bare/reference/bare/runtime#supported-platforms).
+- Changed: bundles [`bare-module`](/bare/reference/bare/modules/bare-module) v7.2.0, which adds `loader.patch()` and `loader.evict()` for cache eviction and accepts an `imports` attribute in `require.resolve()` and `import.meta.resolve()`.
+
+## 2026-09-28 — Bare v1.34.0
+
+- Added: `bare_poll()`, which runs the event loop without blocking so a host loop that owns the thread, a UI run loop for example, can drive Bare. See [Embedding](/bare/reference/bare/runtime#embedding).
+- Added: `bare_attach()` and `bare_detach()`, for calling into JavaScript from embedder code that Bare did not call. See [`bare_attach()` and `bare_detach()`](/bare/reference/bare/runtime#bare_attach-and-bare_detach).
+- Changed: bundles [`bare-module`](/bare/reference/bare/modules/bare-module) v7.1.0, which exposes the graph-wide resolutions map as `module.resolutions`, along with [`bare-subprocess`](/bare/reference/bare/modules/bare-subprocess) v6.2.0, [`bare-structured-clone`](/bare/reference/bare/modules/bare-structured-clone) v2.0.1, and [`bare-type`](/bare/reference/bare/modules/bare-type) v1.4.0.
+
+## 2026-09-14 — Bare v1.33.0
+
+- Added: an embedder context API, letting the embedder pass state to addons. Reaching it from a deferred `new Addon()` call needs v1.33.2.
+- Fixed (v1.33.1): a prefix with a trailing `/` is always treated as a directory.
+- Changed: `bare-module` is bumped to v7, so the module system no longer carries its own file system read capability—the embedder must pass one in. See the [threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md) for what this changes.
+- Changed: `resolutions` and `imports` are no longer read from `module`.
+
+## 2026-09-07 — Bare v1.32.0
+
+- Added: [`Bare.Addon.seal()`](/bare/reference/bare/runtime#bareaddon), letting an embedder permanently freeze dynamic addon loading in a process after loading a trusted set of addons—so any JavaScript that runs afterward can't bring in new native code. Statically linked addons are unaffected, and `Bare.Addon.sealed` reports whether the process is sealed.
+- Added: `new Thread(callback)` runs a function body on the new thread, and `new Thread(filename, source[, options])` takes the source positionally. See [`Bare.Thread`](/bare/reference/bare/runtime#barethread).
+- Deprecated: `ThreadOptions.source`, in favor of the positional form. `Thread.create()` stays deprecated, as it has been since v1.31.0—use `new Thread()`.
+
+## 2026-09-01 — Bare module updates
+
+### bare-type — v1.1.1
+
+- **Breaking:** `type.createTag()`, `type.addTag()` and `type.checkTag()` removed, with no replacement, in a patch release. See [bare-type](/bare/reference/bare/modules/bare-type).
+
+## 2026-08-04 — Bare v1.31.0
+
+- Deprecated: `Addon.cache`, `Addon.resolve(specifier)`, and `Addon.load(url)`, in favor of `new Addon(url)`, and `Thread.create()`, in favor of `new Thread()`. `bare-module` v7 will use the new API to take over addon resolution, initialization, and caching.
+
+## 2026-07-01 — Bare v1.30.0
+
+- Added: TypeScript module support.
+- Changed: module caches are isolated; addon resolution now relies only on `bare-module`'s public API.
+
+<Callout type="info">
+Patch releases in this window (dependency bumps, prebuild updates) and most of Bare's ecosystem modules (bare-buffer, bare-http1, bare-inspect, etc.) aren't covered yet—that backfill is in progress as a separate effort across Bare, P2P, and Pear. See each module's GitHub releases for the raw upstream record in the meantime.
+</Callout>
+
+## See also
+
+- [Pear's release overview](/pear/release-overview)—`pear` CLI and `pear-*` module releases.
+- [P2P's release overview](/p2p/release-overview)—Hypercore, Hyperdrive, HyperDHT, Corestore, and other P2P building-block/helper-module changes.
+- [Building blocks reference](/p2p/reference/building-blocks/hypercore)—current API for P2P modules.
+- [Helpers reference](/p2p/reference/helpers/corestore)—current API for P2P helpers.

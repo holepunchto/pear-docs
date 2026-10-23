@@ -1,0 +1,138 @@
+---
+title: "Set up Bluetooth in a mobile app"
+description: >-
+  Declare and request the iOS and Android Bluetooth permissions, link
+  bare-bluetooth's native addons, and start the worklet only after access is
+  granted.
+docType: how-to
+product: bare
+schemaType: TechArticle
+---
+
+[`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) runs inside your app's Bare worklet, but the operating system grants Bluetooth access to the **app**, not to the worklet. So the host app has to declare what it uses, ask the user at runtime, and ship the native code that the module needs. This guide covers each step for iOS and Android, using two working hosts:
+
+- [`bare-mobile-doctor`](https://github.com/holepunchto/bare-mobile-doctor), an Expo app that uses [`react-native-bare-kit`](https://github.com/holepunchto/react-native-bare-kit). [Build a Bluetooth chat for iOS and Android](/bare/how-to/connect-over-bluetooth/build-a-bluetooth-chat-for-ios-and-android) walks through its Bluetooth screen.
+- The test app of [`bare-bluetooth-android`](https://github.com/holepunchto/bare-bluetooth-android/tree/ca36e9b16f6c15ac9f54a78e528acd8cf647260d/test/test-app) at commit `ca36e9b`, a native Kotlin app that uses [Bare Kit](/bare/reference/bare/bare-kit) directly. Upstream's main branch no longer contains it.
+
+On desktop there is less to do. See [Desktop](#desktop) at the end.
+
+<Callout type="tip">
+For how the pieces fit together, read [Bluetooth in Bare](/bare/explanation/bluetooth) first.
+</Callout>
+
+<Callout type="info">
+On Android, `bare-bluetooth` works only inside an app that hosts Bare, such as a [Bare Kit worklet](/bare/reference/bare/bare-kit#worklet). It calls the Android Bluetooth API through the app's Java VM, which a plain `bare` process doesn't have.
+</Callout>
+
+## Declare the permissions
+
+### iOS
+
+iOS terminates an app that touches Bluetooth without a usage description in its [`Info.plist`](https://developer.apple.com/documentation/bundleresources/information-property-list). Add [`NSBluetoothAlwaysUsageDescription`](https://developer.apple.com/documentation/bundleresources/information_property_list/nsbluetoothalwaysusagedescription) with a sentence that the user sees in the permission prompt. In an Expo app, it goes under `ios.infoPlist` in [`app.json`](https://docs.expo.dev/versions/latest/config/app/):
+
+```json file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/app.json#L18-L22 title="app.json" skip="example-import"
+```
+
+iOS shows the prompt the first time the app creates a Bluetooth manager: the first [`new Central()`](/bare/reference/bare/modules/bare-bluetooth#const-central--new-centraloptions) or [`new Server()`](/bare/reference/bare/modules/bare-bluetooth#const-server--new-serveroptions). If the user declines, the manager's `state` becomes `'unauthorized'` instead of `'poweredOn'`. Handle that [`BluetoothState`](/bare/reference/bare/modules/bare-bluetooth#bluetoothstate) in your [`stateChange`](/bare/reference/bare/modules/bare-bluetooth#central) listener rather than waiting forever.
+
+### Android
+
+Android 12 (API level 31) and later splits Bluetooth access into three runtime permissions:
+
+- [`BLUETOOTH_SCAN`](https://developer.android.com/reference/android/Manifest.permission#BLUETOOTH_SCAN) to discover devices.
+- [`BLUETOOTH_CONNECT`](https://developer.android.com/reference/android/Manifest.permission#BLUETOOTH_CONNECT) to connect to them.
+- [`BLUETOOTH_ADVERTISE`](https://developer.android.com/reference/android/Manifest.permission#BLUETOOTH_ADVERTISE) to be discoverable.
+
+A native app declares them in [`AndroidManifest.xml`](https://developer.android.com/guide/topics/manifest/manifest-intro):
+
+```xml file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth-android/test/test-app/app/src/main/AndroidManifest.xml#L2-L4 title="AndroidManifest.xml" skip="example-import"
+```
+
+The [`android:usesPermissionFlags="neverForLocation"`](https://developer.android.com/develop/connectivity/bluetooth/bt-permissions) attribute states that the app never derives the user's location from scan results, which lets it scan without a location permission. Android then filters some BLE beacons out of the scan results. Without that flag, Android also requires [`ACCESS_FINE_LOCATION`](https://developer.android.com/reference/android/Manifest.permission#ACCESS_FINE_LOCATION) for scanning.
+
+An Expo app lists the permissions in `app.json` instead. `bare-mobile-doctor` lists:
+
+- The three permissions listed earlier.
+- `ACCESS_FINE_LOCATION`, because it doesn't set the flag.
+- The legacy [`BLUETOOTH`](https://developer.android.com/reference/android/Manifest.permission#BLUETOOTH) and [`BLUETOOTH_ADMIN`](https://developer.android.com/reference/android/Manifest.permission#BLUETOOTH_ADMIN) permissions.
+
+```json file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/app.json#L30-L37 title="app.json" skip="example-import"
+```
+
+It also raises the minimum SDK to 31 with [`minSdkVersion`](https://developer.android.com/guide/topics/manifest/uses-sdk-element), so the app never runs on a release without the new permissions:
+
+```json file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/app.json#L41-L52 title="app.json" skip="example-import"
+```
+
+The `ios` options in the same entry set the app's iOS deployment target and scene support. They aren't Bluetooth settings.
+
+## Request access before starting the worklet
+
+On Android, declaring a permission isn't enough. The user has to grant it at runtime, and a Bluetooth call made without it fails. The Android binding surfaces that failure as a thrown Java exception. Both hosts ask first and start the worklet only once everything is granted, so the Bare code never runs without access.
+
+In React Native, use [`PermissionsAndroid`](https://reactnative.dev/docs/permissionsandroid):
+
+```tsx file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/app/views/bluetooth/BluetoothTests.tsx#L39-L51 title="app/views/bluetooth/BluetoothTests.tsx" skip="example-import"
+```
+
+```tsx file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/app/views/bluetooth/BluetoothTests.tsx#L78-L91 title="app/views/bluetooth/BluetoothTests.tsx" skip="example-import"
+```
+
+In a native Kotlin activity, make the same check with [`checkSelfPermission()`](https://developer.android.com/reference/android/content/Context#checkSelfPermission(java.lang.String)) and [`requestPermissions()`](https://developer.android.com/reference/android/app/Activity#requestPermissions(java.lang.String[],%20int)):
+
+```kotlin file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth-android/test/test-app/app/src/main/java/to/holepunch/bare/bluetooth/test/MainActivity.kt#L28-L32 title="MainActivity.kt" skip="example-import"
+```
+
+```kotlin file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth-android/test/test-app/app/src/main/java/to/holepunch/bare/bluetooth/test/MainActivity.kt#L56-L75 title="MainActivity.kt" skip="example-import"
+```
+
+The activity's `run()` method starts the Bare Kit [worklet](/bare/reference/bare/bare-kit#worklet). On iOS there is nothing to request up front: the system prompts on first use, as described in the iOS section.
+
+## Link the native addons
+
+`bare-bluetooth` is JavaScript, but it loads [native addons](/bare/explanation/native-addons): `bare-bluetooth-apple` on iOS and `bare-bluetooth-android` on Android. You have to link them into the app. [`bare-link`](https://github.com/holepunchto/bare-link) does this from the worklet's entry point.
+
+On Android, `bare-bluetooth-android` also carries Java helper classes. `bare-link` copies them next to the addon, and the app has to compile them in too.
+
+`bare-mobile-doctor` links every worklet into the addon folders that `react-native-bare-kit` already picks up, with a short script that you run as `npm run link`:
+
+```js file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/scripts/link.mjs#L1-L31 title="scripts/link.mjs" skip="example-import"
+```
+
+The native test app does the same from [Gradle](https://gradle.org/):
+
+- A `link` task runs `bare-link`.
+- A `pack` task bundles the worklet.
+- Both tasks run before every build.
+- The dependencies include the class files in `src/main/addons`.
+
+```groovy file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-bluetooth-android/test/test-app/app/build.gradle#L40-L69 title="app/build.gradle" skip="example-import"
+```
+
+<Callout type="tip">
+Run the link step again whenever you reinstall dependencies or change an addon dependency.
+</Callout>
+
+## Bundle the worklet
+
+[`bare-pack`](/bare/reference/bare/modules/bare-pack) packs the worklet into one bundle per app. Pass a `--host` for every platform and architecture you ship, and `--linked` so the bundle loads the addons that you linked in the previous section. `bare-mobile-doctor` builds its Bluetooth bundle with:
+
+```json file=<rootDir>/examples/how-to/connect-over-bluetooth/bare-mobile-doctor/package.json#L23-L23 title="package.json" skip="example-import"
+```
+
+[Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app) covers `bare-pack` in more depth.
+
+## Desktop
+
+The same `bare-bluetooth` code runs with plain `bare` on macOS and, from 0.6.3, on Linux:
+
+- **macOS** uses CoreBluetooth, as on iOS. A packaged macOS app needs the same `NSBluetoothAlwaysUsageDescription` key in its `Info.plist`. If it runs in the App Sandbox, it also needs the [`com.apple.security.device.bluetooth`](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.device.bluetooth) entitlement. A script that you run with plain `bare` takes its permission from the terminal app, which needs Bluetooth access under System Settings, Privacy & Security.
+- **Linux** goes through the [BlueZ](https://github.com/bluez/bluez) daemon, so `bluetoothd` has to be running and the adapter powered on, for example with `bluetoothctl power on`. Linux has no system pairing prompt for the module to fall back on. If a peer asks to pair, your app gets a `pairRequest` event with a [`PairRequest`](/bare/reference/bare/modules/bare-bluetooth#pairrequest) to accept or reject.
+- **Windows** isn't supported. `require('bare-bluetooth')` fails there.
+
+## Where to go next
+
+- [Build a Bluetooth chat for iOS and Android](/bare/how-to/connect-over-bluetooth/build-a-bluetooth-chat-for-ios-and-android): the app these steps set up.
+- [Embed Bare in a React Native app](/bare/how-to/run-on-native/embed-bare-in-react-native): worklets and IPC in general.
+- [Handle app suspension](/bare/how-to/run-on-native/handle-app-suspension): the radio and the worklet when the app goes to the background.
+- [Bluetooth in Bare](/bare/explanation/bluetooth): which package runs on which platform, and why.
