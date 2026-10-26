@@ -52,7 +52,7 @@ Add the `host` and `wasi` import attributes to the `require()` of the addon. Cre
 
 {/* @harness example=wasm-sandbox step=copy from=examples/how-to/run-an-addon-sandboxed-in-webassembly/app.js to=app/app.js */}
 
-`host: 'wasi-wasm32'` loads the WebAssembly build of `bare-sqlite`, and of every other addon in the modules this import pulls in. `wasi` names the provider, resolved relative to `app.js`. Write both values as string literals: Bare reads them from the source before the module runs, so it doesn't see a computed value, and the import fails with `ADDON_HOST_INCOMPATIBLE` or `ADDON_WASI_INCOMPATIBLE`. The database path `/books.db` is a path inside the sandbox, so the file is created as `data/books.db`.
+`host: 'wasi-wasm32'` loads the WebAssembly build of `bare-sqlite`, and of every other addon in the modules this import pulls in. `wasi` names the provider, resolved relative to `app.js`. Because the specifier is a string literal, write both values as string literals too: Bare links the import before the module runs, using only literal attributes, so a computed value conflicts with that link, and the call throws `ADDON_HOST_INCOMPATIBLE` or `ADDON_WASI_INCOMPATIBLE`. The database path `/books.db` is a path inside the sandbox, so the file is created as `data/books.db`.
 
 Run it:
 
@@ -111,9 +111,9 @@ DirectorySync.open(__dirname + '/data', { rights: ['lookup', 'read', 'create', '
 DirectorySync.open(__dirname + '/data', { rights: ['lookup', 'read', 'write', 'create', 'remove', 'truncate'] })
 ```
 
-`create` and `remove` also let the addon create directories and delete files in `data`. It can't create files without `write`, so the read-only set stops it writing to the database, not changing the directory.
+`create` and `remove` also let the addon create directories and delete files in `data`, the database included. It can't create files without `write`, so the read-only set stops it writing to the database, not changing the directory.
 
-Without `create` or `remove`, or without `truncate` when writing, SQLite fails with `IOERR`. Without `remove`, the first open succeeds but leaves the `data/books.db.lock` directory behind. After that, opening the database still succeeds, but its first statement fails with `BUSY`, whatever the rights, until you delete `data/books.db.lock` while no process has the database open. See [Rights](/bare/reference/bare/modules/bare-directory#rights) for what each right allows.
+Without `create`, SQLite fails with `IOERR`, even for reads. Writing without `write` fails with `CANTOPEN`. Without `truncate`, `VACUUM` fails with `IOERR`, and rolling back a transaction that grew the file can report success but leave a hot `data/books.db-journal`, after which statements fail with `IOERR`. Without `remove`, reads succeed but leave the `data/books.db.lock` directory behind, and so does a process that is killed while it holds the lock. After that, opening the database still succeeds, but its first statement fails with `BUSY`, whatever the rights, until you delete `data/books.db.lock` while no process has the database open. See [Rights](/bare/reference/bare/modules/bare-directory#rights) for what each right allows.
 
 ## Keep the files in memory
 
@@ -163,7 +163,7 @@ module.exports = (url) => ({
 })
 ```
 
-Bare has no `crypto` global, so take random bytes from [`bare-crypto`](/bare/reference/bare/modules/bare-crypto) (`npm i bare-crypto`). An addon written in Rust can need `random`: the `bare-svg` README says its WebAssembly build does, because the Rust standard library seeds its hash maps with it. `url` is a `URL`, so compare `url.href` to grant different addons different capabilities. Set `clock: null` to deny clocks. There is no capability for sockets. See [`WASIOptions`](/bare/reference/bare/modules/bare-wasi#wasioptions) for every option.
+Bare has no `crypto` global, so take random bytes from [`bare-crypto`](/bare/reference/bare/modules/bare-crypto) (`npm i bare-crypto`). An addon written in Rust can need `random`: the `bare-svg` README says its WebAssembly build does, because the Rust standard library seeds its hash maps with it. `url` is a `URL`, so compare `url.href` to grant different addons different capabilities. The WebAssembly build of `bare-sqlite` doesn't ask WASI for random bytes, so `random` changes nothing for it. Set `clock: null` to deny clocks; file timestamps set to now still come from the host clock. There is no capability for sockets. See [`WASIOptions`](/bare/reference/bare/modules/bare-wasi#wasioptions) for every option.
 
 ## Bundle the app
 
@@ -202,16 +202,16 @@ An addon imported without the `host` attribute is bundled only for the hosts you
 | --- | --- | --- |
 | `UNKNOWN_ADDON_HOST: Addon host '…' is not supported` | The `host` attribute is not `wasi-wasm32`. | Use `host: 'wasi-wasm32'`. |
 | `ADDON_NOT_FOUND` | The package, or a package it imports, has no `.wasm` build. | Check that `prebuilds/wasi-wasm32/` exists in the package, or import the package without `host`. |
-| `ADDON_HOST_INCOMPATIBLE: Addons of '…' are already resolved for …` | The same package is imported both with and without `host`, or `host` isn't a string literal. A package's addons load one way per process. | Import it with the same attributes everywhere, written as string literals. |
-| `ADDON_WASI_INCOMPATIBLE: Addons of '…' are already given …` | Imports of the same package have different `wasi` attributes: two providers, a provider in one and none in another, or a value that isn't a string literal. A dynamic `import()` with a `wasi` attribute also throws it on Bare 1.36.0, even with the same provider. | Use one provider in every import, and grant different addons different capabilities with its `url` argument. |
-| `TypeError: WASI provider '…' must export a function` | The provider exports an object. | Export a function that returns the options. |
+| `ADDON_HOST_INCOMPATIBLE`, as `Addons of '…' are already resolved for …`, `Addon '…' is not a WebAssembly addon, but 'wasi-wasm32' was asked for`, or `Cannot resolve addon '.' from '…', which is linked in several contexts` | The same package is imported both with and without `host`, `host` isn't a string literal, or the package is also loaded natively elsewhere, for example by the provider itself, as `bare-directory` is. A package's addons load one way per process. | Import it with the same attributes everywhere, written as string literals, and don't import with `host` a package the provider loads natively. |
+| `ADDON_WASI_INCOMPATIBLE: Addons of '…' are already given …` | Imports of the same package have different `wasi` attributes: two providers, a provider in one and none in another, or a value that isn't a string literal. A dynamic `import()` with a `wasi` attribute also throws it on Bare 1.36.0, even with the same provider. | Use one provider in every import. To give one addon several directories, preopen each at its own path in that provider, such as `/` on disk and `/mem` in memory. Use its `url` argument only to tell different addons apart. Pass a provider with `require()` or a static `import`, not a dynamic `import()`. |
+| `TypeError: WASI provider '…' must export a function` | The provider exports neither a function nor an object whose `default` is a function. | Export a function that returns the options. |
 | `WASIError: INVALID_VERSION` | The options have no `version: 'preview1'`. | Add it. |
 | `WASIError: INVALID_PREOPEN: Preopen '/' is not a directory` | A preopen isn't a `bare-wasi` directory, such as a `DirectorySync` that isn't wrapped. | Wrap it: `new HostDirectory(DirectorySync.open(…))`. |
 | `WebAssembly addon imports unsupported functions` | The addon's `.wasm` build uses a libjs function that `bare-wasm-abi` doesn't provide. | Use the native build. See [excluded functions](/bare/reference/bare/modules/bare-wasm-abi#excluded-functions). |
-| `CANTOPEN` from SQLite | The path is outside the preopened directories, there is no provider, or the directory lacks `lookup` (or `write`, when writing). | Use a path under a preopen, such as `/books.db`, and grant the rights in [Narrow the rights](#narrow-the-rights). |
+| `CANTOPEN` from SQLite | The path is outside the preopened directories, there is no provider, the provider returns nothing (an arrow function with a block body), a dynamic `import()` with a computed specifier dropped the `wasi` attribute, or the directory lacks `lookup` (or `write`, when writing). | Use a path under a preopen, such as `/books.db`, return the options with `(url) => ({ … })`, and grant the rights in [Narrow the rights](#narrow-the-rights). |
 | `IOERR` or `BUSY` from SQLite | The directory lacks a right SQLite needs, or a stale `<database>.lock` directory was left behind. | See [Narrow the rights](#narrow-the-rights). |
 
-`UNKNOWN_ADDON_HOST`, `ADDON_HOST_INCOMPATIBLE`, and `ADDON_WASI_INCOMPATIBLE` are thrown while Bare links the importing module, before any of its code runs, so a `try` block around a `require()` with a string-literal specifier doesn't catch them. Fix the import instead. `ADDON_NOT_FOUND` is thrown when the module that loads the addon runs, and can be caught.
+`UNKNOWN_ADDON_HOST`, `ADDON_HOST_INCOMPATIBLE`, and `ADDON_WASI_INCOMPATIBLE` are thrown while Bare links the importing module, before any of its code runs, so a `try` block around a `require()` whose specifier and attributes are all string literals doesn't catch them. Fix the import instead. With a computed attribute or specifier, they're thrown from the call and can be caught. `ADDON_NOT_FOUND` is thrown when the module that loads the addon runs, and can be caught around a `require()` or `import()`, but not around a static `import` declaration.
 
 ## See also
 
