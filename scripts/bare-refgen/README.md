@@ -93,13 +93,29 @@ author-written, never AI. Members are referenced by model key or display name;
 unlisted members fall through to their by-kind group. Fields:
 
 - **`groups`** — ordered `{ title, members[] }` for the API section ("File handles", …).
-- **`describe`** — member → one-line description.
-- **`params`** — member → `{ paramName: description }`; rendered under Parameters and emitted as `@param`.
+- **`describe`** — member → one-line description, used only when the `.d.ts` has none.
+- **`params`** — member → `{ paramName: description }`; rendered under Parameters and emitted as `@param`. Wins over the `.d.ts` text.
+- **`returns`** — member → Returns prose, used only when the `.d.ts` has no `@returns`.
 - **`throws`** — member → throw bullets the `.d.ts` doesn't yet annotate.
 - **`intro`** — an author lead paragraph, used instead of the auto description sentence.
 - **`seeAlso`** — extra "See also" bullets, prepended to the catalog/runtime links.
+- **`extraSections`** — author `## heading` sections after the API section, such as event tables.
+- **`patch`** — `{ in, from, to }` exact-text fixes to the README-derived blocks (`in: 'usage'` or a README section heading) and to the intro (`in: 'intro'`).
+- **`memberPatch`** — `{ member, from, to }` exact-text edits to one member's rendered block, for docs prose that replaces or extends the `.d.ts` TSDoc. Docs page only.
+- **`extraMembers`** — `{ after, body }` blocks for symbols the `.d.ts` doesn't carry, rendered right after the member `after`. Docs page only.
 
-See `layouts/bare-os.ts` for a worked example of all of these. With no manifest a
+A `patch` or `memberPatch` whose `from` doesn't occur exactly once, or a member
+ref that doesn't resolve to exactly one entry, fails the render. So when
+upstream rewrites the text an edit was written against, the edit gets
+reviewed instead of hiding the new upstream text.
+
+Long Markdown lives next to the manifest as data, so backticks stay unescaped:
+`<name>.describe.json` (`describe`), `<name>.sections.json` (`extraSections`),
+`<name>.patches.json` (`patch` entries with `in`, `memberPatch` entries with
+`member`) and `<name>.members.json` (`extraMembers`).
+
+See `layouts/bare-os.ts` for a worked example of the common fields, and
+`layouts/bare-bluetooth-android.*` for patches and extra members. With no manifest a
 page falls back to deterministic by-kind grouping (Functions, Classes, Types, …).
 
 ## Automation (two loops)

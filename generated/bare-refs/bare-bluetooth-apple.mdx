@@ -17,6 +17,8 @@ npm i bare-bluetooth-apple
 
 ## Usage
 
+The peripheral role advertises GATT services through a `PeripheralManager`.
+
 ```js
 const bluetooth = require('bare-bluetooth-apple')
 
@@ -48,6 +50,34 @@ manager.on('error', (err) => {
 manager.on('writeRequest', (requests) => {
   // Handle incoming write requests
   manager.respondToRequest(requests[0], bluetooth.PeripheralManager.ATT_SUCCESS, null)
+})
+```
+
+A failure to add a service is emitted as an `'error'` event. `'serviceAdd'` carries only the service `uuid`.
+
+The central role scans for peripherals and connects to them. To connect to a peripheral seen in an earlier scan, store its `id` and resolve it again with `retrievePeripherals()`, which needs no scan. The central has to be powered on first, because the call throws otherwise.
+
+```js
+const bluetooth = require('bare-bluetooth-apple')
+
+const savedId = '9D1F6A4C-0F3B-4E5A-8A52-5F3A8B7C1D20' // a peripheral.id stored by your app
+
+const central = new bluetooth.Central()
+
+central.on('stateChange', (state) => {
+  if (state !== 'poweredOn') return
+
+  const [peripheral] = central.retrievePeripherals([savedId])
+
+  if (peripheral) central.connect(peripheral)
+})
+
+central.on('connect', (peripheral) => {
+  peripheral.discoverServices()
+})
+
+central.on('error', (err) => {
+  console.error('central error:', err.code, err.message)
 })
 ```
 
@@ -85,7 +115,7 @@ Create a GATT service definition.
 | --- | --- | --- | --- |
 | `uuid` | `string` | — | The service's UUID. |
 | `characteristics?` | `Characteristic[]` | — | The characteristics belonging to the service. |
-| `opts?` | [`ServiceOptions`](#serviceoptions) | — | Options; set `primary: true` to mark this a primary service. |
+| `opts?` | [`ServiceOptions`](#serviceoptions) | — | Options; services are primary unless `primary: false` is set. |
 
 #### `characteristics: Characteristic[]`
 
@@ -138,7 +168,7 @@ The characteristic UUID
 
 #### `value: Uint8Array | null`
 
-The current value, if set. Assigning throws on a discovered characteristic
+The current value, if set. As of v0.7.1, assigning a value throws `Cannot set the value of a discovered characteristic` on a discovered characteristic. The check is on the native handle, which discovery sets and `manager.addService()` also sets, so assigning to a local characteristic throws once it has been passed to `addService()`. The `value` option of the constructor is not affected.
 
 ### PeripheralManager
 
@@ -147,11 +177,13 @@ The current value, if set. Assigning throws on a discovered characteristic
 Create a new BLE peripheral manager. Advertises services and handles read/write requests from
 centrals.
 
+As of v0.7.0 the manager no longer lets the system show its Bluetooth power alert when Bluetooth is off. Pass `showPowerAlert: true` to let the system show it.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`PeripheralManagerOptions`](#peripheralmanageroptions) | — | Manager options. With `showPowerAlert: true` the system shows its alert if Bluetooth is off when the manager is created; defaults to `false`. |
+| `opts?` | [`PeripheralManagerOptions`](#peripheralmanageroptions) | — | Manager options such as `showPowerAlert`. Added in v0.7.0. |
 
 #### `addService(service: Service): void`
 
@@ -290,11 +322,13 @@ Update the value of a `characteristic` and notify subscribed centrals.
 
 Create a new BLE central manager. The central scans for and connects to peripherals.
 
+As of v0.7.0 the manager no longer lets the system show its Bluetooth power alert when Bluetooth is off. Pass `showPowerAlert: true` to let the system show it.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`CentralOptions`](#centraloptions) | — | Manager options. With `showPowerAlert: true` the system shows its alert if Bluetooth is off when the manager is created; defaults to `false`. |
+| `opts?` | [`CentralOptions`](#centraloptions) | — | Manager options such as `showPowerAlert`. Added in v0.7.0. |
 
 #### `Central.STATE_POWERED_OFF: number`
 
@@ -312,13 +346,13 @@ Bluetooth state constants.
 
 #### `connect(peripheral: DiscoveredPeripheral | RetrievedPeripheral): void`
 
-Connect to a discovered or retrieved `peripheral`.
+Connect to a discovered or retrieved `peripheral`. The `Peripheral` delivered by `'connect'` takes its `name` and `serviceData` from the latest `'discover'` event this central emitted for the same `id`. As of v0.8.0 the central keeps those events until the next `startScan()`, so stopping the scan before the connection completes no longer loses them. For a peripheral this central has not discovered since its last `startScan()`, such as a retrieved one, `serviceData` is `null` and `name` falls back to the device's own name. Before v0.8.0, `stopScan()` discarded the saved events, so both were `null` if the scan had stopped by the time the connection completed.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `peripheral` | [`DiscoveredPeripheral`](#discoveredperipheral) \| [`RetrievedPeripheral`](#retrievedperipheral) | — | The peripheral to connect to. |
+| `peripheral` | [`DiscoveredPeripheral`](#discoveredperipheral) \| [`RetrievedPeripheral`](#retrievedperipheral) | — | A discovered or retrieved peripheral to connect to. Connecting to a retrieved peripheral was added in v0.6.0. |
 
 #### `Central.destroy(): void`
 
@@ -326,32 +360,29 @@ Destroy the instance and release all resources.
 
 #### `disconnect(peripheral: Peripheral | DiscoveredPeripheral | RetrievedPeripheral): void`
 
-Disconnect from a connected `peripheral`, or cancel a pending connection to a discovered one.
+Disconnect from a connected `peripheral`, or cancel a pending connection to a discovered or retrieved one.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `peripheral` | `Peripheral` \| [`DiscoveredPeripheral`](#discoveredperipheral) \| [`RetrievedPeripheral`](#retrievedperipheral) | — | The connected peripheral to disconnect from, or a discovered peripheral with a pending connection. |
+| `peripheral` | `Peripheral` \| [`DiscoveredPeripheral`](#discoveredperipheral) \| [`RetrievedPeripheral`](#retrievedperipheral) | — | The connected peripheral to disconnect from, or a discovered or retrieved peripheral with a pending connection. |
 
 #### `retrieveConnectedPeripherals(services: string[]): RetrievedPeripheral[]`
 
-Peripherals already connected to the system that implement any of `services`. Those connected
-by another application still need `connect()` before this central can use them.
+Return the peripherals already connected to the system that implement any of `services`. A peripheral connected by another app still needs `connect()` before this central can use it. Throws `Bluetooth is not powered on` unless the central is powered on. Added in v0.6.0.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `services` | `string[]` | — | The service UUIDs to match against the peripherals the system is connected to. |
+| `services` | `string[]` | — | The service UUIDs to match; a peripheral is returned if it implements any of them. |
 
-**Throws**
-
-- if Bluetooth is not powered on.
+**Returns** `RetrievedPeripheral[]` — The matching peripherals. Each `state` may reflect a connection made by another app.
 
 #### `retrievePeripherals(ids: string[]): RetrievedPeripheral[]`
 
-Resolve peripherals from identifiers persisted after an earlier scan, without scanning again.
+Resolve peripherals from identifiers saved after an earlier scan, without scanning again. It returns one entry for each id the system knows, and no entry for an id it does not know. Pass an entry to `connect()` to connect to it. Throws `Invalid peripheral id '<id>'` if an id is not a UUID, and `Bluetooth is not powered on` unless the central is powered on. Added in v0.6.0.
 
 **Parameters**
 
@@ -359,9 +390,7 @@ Resolve peripherals from identifiers persisted after an earlier scan, without sc
 | --- | --- | --- | --- |
 | `ids` | `string[]` | — | The per host UUIDs reported as `peripheral.id`, not MAC addresses. |
 
-**Throws**
-
-- if an id is not a UUID, or if Bluetooth is not powered on.
+**Returns** `RetrievedPeripheral[]` — The peripherals the system knows, with no advertisement data. See [`RetrievedPeripheral`](#retrievedperipheral).
 
 #### `startScan(serviceUUIDs?: string[], opts?: { allowDuplicates?: boolean }): void`
 
@@ -422,12 +451,11 @@ Discover services on the peripheral. If `serviceUUIDs` is provided, only those s
 
 #### `id: string`
 
-The peripheral UUID identifier
+The peripheral UUID identifier. It is a UUID that is specific to the host, not a hardware address, so it differs from the address `bare-bluetooth-android` reports as `id` for the same device. Save it to resolve the peripheral again later with `central.retrievePeripherals()`.
 
 #### `name: string | null`
 
-The advertised name, or the GAP device name once connected. `null` while neither is
-available yet.
+The advertised name, or the GAP device name once connected. `null` while neither is available yet. The fallback to the device name was added in v0.7.2. Before that, a peripheral that connected without an advertised name kept `null`. The [`'nameChange'`](#peripheraleventmap) event reports later changes.
 
 #### `openL2CAPChannel(psm: number): void`
 
@@ -529,6 +557,8 @@ interface PeripheralManagerOptions {
 }
 ```
 
+`showPowerAlert` lets the system show its own Bluetooth power alert when Bluetooth is off. It defaults to `false`. Added in v0.7.0.
+
 #### `BluetoothState`
 
 ```ts
@@ -589,6 +619,8 @@ interface PeripheralManagerEventMap {
 }
 ```
 
+`subscribe` and `unsubscribe` carry a native handle for the central. On Android they carry the address of the device instead.
+
 #### `CentralOptions`
 
 ```ts
@@ -596,6 +628,8 @@ interface CentralOptions {
   showPowerAlert?: boolean
 }
 ```
+
+`showPowerAlert` lets the system show its own Bluetooth power alert when Bluetooth is off. It defaults to `false`. Added in v0.7.0.
 
 #### `DiscoveredPeripheral`
 
@@ -618,14 +652,15 @@ interface RetrievedPeripheral {
 }
 ```
 
-A peripheral resolved without scanning. It carries no advertisement data, so it has no `rssi`
-or `serviceData`.
+A peripheral resolved without scanning, as returned by `central.retrievePeripherals()` and `central.retrieveConnectedPeripherals()`. It carries no advertisement data, so it has no `rssi` or `serviceData`. `state` is the connection state, which may reflect a connection made by another app. Added in v0.6.0.
 
 #### `PeripheralState`
 
 ```ts
 type PeripheralState = 'disconnected' | 'connecting' | 'connected' | 'disconnecting'
 ```
+
+The connection state of a `RetrievedPeripheral`. Added in v0.6.0.
 
 #### `CentralEventMap`
 
@@ -688,7 +723,7 @@ Failures are emitted as `'error'` events carrying a `BluetoothError`. It is not 
 ## See also
 
 - Builds on `bare-events` and `bare-stream`.
-- Runs on Apple platforms (iOS and macOS) — on Android use [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android).
+- Runs on Apple platforms (iOS and macOS) — on Android use [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android). The two share most concepts under different names: the peripheral role is `PeripheralManager` here and `Server` there, adapter states are `'poweredOn'` and `'poweredOff'` here and `'on'` and `'off'` there, and a peripheral `id` is a per host UUID here and a hardware address there. To connect without a scan, this package resolves saved ids with `retrievePeripherals()`, while that one builds a `Peripheral` from a `Device`, such as one from `getBondedDevices()`.
 - [`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API over this module, `bare-bluetooth-android` and `bare-bluetooth-linux`.
 - [One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.
 - [Connect over Bluetooth](/bare/how-to/connect-over-bluetooth) — how-to guides for scanning, GATT, L2CAP and mobile setup.
