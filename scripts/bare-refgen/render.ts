@@ -389,6 +389,36 @@ function dedupeHeadings(entries: Entry[], ctx: Ctx): void {
   }
 }
 
+/**
+ * Apply the layout's `memberPatch` and `extraMembers` to the rendered entries
+ * (docs page only). Each names a member by key or name, as `groups` does, and
+ * must resolve to exactly one entry; a patch's `from` must occur in that
+ * entry's block exactly once. A renamed member, or an edit that upstream TSDoc
+ * has overtaken, fails the render instead of silently doing nothing.
+ */
+function amendEntries(entries: Entry[], ctx: Ctx): void {
+  const { model, layout } = ctx;
+  const find = (ref: string, what: string): Entry => {
+    const hits = entries.filter((e) => e.key === ref || e.name === ref);
+    if (hits.length !== 1) {
+      throw new Error(`${model.name}: layout ${what} "${ref}" matches ${hits.length} members, needs exactly 1 (use the model key)`);
+    }
+    return hits[0];
+  };
+  for (const p of layout?.memberPatch ?? []) {
+    const e = find(p.member, 'memberPatch for');
+    const hits = e.mdx.split(p.from).length - 1;
+    if (hits !== 1) {
+      throw new Error(`${model.name}: layout memberPatch for "${p.member}" matches ${hits} times, needs exactly 1: ${JSON.stringify(p.from.slice(0, 80))}`);
+    }
+    e.mdx = e.mdx.replace(p.from, () => p.to);
+  }
+  for (const x of layout?.extraMembers ?? []) {
+    const e = find(x.after, 'extraMembers entry after');
+    e.mdx = `${e.mdx}\n\n${x.body.trim()}`;
+  }
+}
+
 /** Last path segment of a subpath specifier, e.g. `bare-fs/promises` → `promises`. */
 function subpathScope(name: string): string {
   return name.split('/').pop() ?? name;
@@ -518,7 +548,10 @@ function apiSection(ctx: Ctx): { lines: string[]; orphans: string[] } {
     .filter((s) => s.entries.length > 0);
 
   // De-duplicate anchors across the whole page (main + every subpath section).
-  dedupeHeadings([...mainEntries, ...subSections.flatMap((s) => s.entries)], ctx);
+  const allEntries = [...mainEntries, ...subSections.flatMap((s) => s.entries)];
+  dedupeHeadings(allEntries, ctx);
+  // After the de-duplication, which re-renders colliding entries from scratch.
+  if (ctx.target === 'mdx') amendEntries(allEntries, ctx);
 
   const { groups, orphans } = layout
     ? groupByLayout(mainEntries, layout)
@@ -565,6 +598,7 @@ export function renderPage(model: BareModel, layout: Layout | null): { mdx: stri
       return text.replace(p.from, () => p.to);
     }, block);
 
+  const introBlock = patched('intro', intro(model, layout));
   const usageBlock = model.usage ? patched('usage', mdxSafeReadmeBlock(model.usage.trim())) : null;
   // Defensive: committed api-model.json files predating this field lack it.
   const extraBlocks = [...(layout?.extraSections ?? []), ...(model.extraSections ?? [])].map(({ heading, body }) => ({
@@ -593,7 +627,7 @@ export function renderPage(model: BareModel, layout: Layout | null): { mdx: stri
   const stripDanglingAnchors = (text: string) =>
     text.replace(/\[([^\]]+)\]\(#([^)]+)\)/g, (m, label: string, anchor: string) => (realAnchors.has(anchor) ? m : label));
 
-  const parts: string[] = [frontmatter(model), '', stabilityBadge(model.name), '', intro(model, layout), ''];
+  const parts: string[] = [frontmatter(model), '', stabilityBadge(model.name), '', introBlock, ''];
   if (usageBlock) parts.push('## Usage', '', stripDanglingAnchors(usageBlock), '');
 
   parts.push(...apiLines);

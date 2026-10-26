@@ -61,11 +61,30 @@ export interface Layout {
    * Exact-text fixes to the blocks that come from the upstream README: the
    * Usage block (`in: 'usage'`) and the extra sections the research dossier
    * carries (`in` is the section's heading). For what the README gets wrong or
-   * leaves out. `from` must occur in that block exactly once, or the render
-   * fails: a fix upstream has since made is noticed and dropped, not left
-   * silently doing nothing.
+   * leaves out. `in: 'intro'` targets the page intro (the lead paragraph and
+   * the install fence). `from` must occur in that block exactly once, or the
+   * render fails: a fix upstream has since made is noticed and dropped, not
+   * left silently doing nothing.
    */
   patch?: Array<{ in: string; from: string; to: string }>;
+  /**
+   * Exact-text edits to one member's rendered block (`member` is its model key
+   * or name, as in `groups`). For docs-page prose that the `.d.ts` TSDoc lacks
+   * or gets wrong, which `describe` can't supply because it only fills a
+   * missing description. Same contract as `patch`: `from` must occur in the
+   * block exactly once, so an edit that upstream TSDoc has since overtaken
+   * fails the render instead of hiding the new text. Docs page only; the README
+   * `## API` that emit-tsdoc writes is left alone.
+   */
+  memberPatch?: Array<{ member: string; from: string; to: string }>;
+  /**
+   * Author-written blocks for symbols the `.d.ts` doesn't carry, such as a
+   * factory that only the `.js` defines or an event map the package root
+   * doesn't re-export. Each `body` (Markdown, usually a `####` entry) renders
+   * right after the block of the member named by `after`, in its group. Docs
+   * page only.
+   */
+  extraMembers?: Array<{ after: string; body: string }>;
   /**
    * Extra "See also" bullets (ready-to-render Markdown, e.g.
    * "[`bare-stream`](/reference/bare/modules/bare-stream) — the returned streams.").
@@ -101,13 +120,39 @@ export async function loadLayout(name: string): Promise<Layout | null> {
     ? JSON.parse(await readFile(secFile, 'utf8'))
     : [];
 
-  if (!base && !external && sections.length === 0) return null;
+  // Long patches and extra member blocks live as data for the same reason:
+  // `<name>.patches.json` is an array of `patch` ({ in, from, to }) and
+  // `memberPatch` ({ member, from, to }) entries, `<name>.members.json` an
+  // array of `extraMembers` entries.
+  const patchFile = resolve(LAYOUTS_DIR, `${name}.patches.json`);
+  const patches: Array<{ in?: string; member?: string; from: string; to: string }> = existsSync(patchFile)
+    ? JSON.parse(await readFile(patchFile, 'utf8'))
+    : [];
+  for (const p of patches) {
+    if ((p.in === undefined) === (p.member === undefined)) {
+      throw new Error(`${patchFile}: every entry needs exactly one of "in" or "member": ${JSON.stringify(p.from.slice(0, 80))}`);
+    }
+  }
+  const membersFile = resolve(LAYOUTS_DIR, `${name}.members.json`);
+  const members: Array<{ after: string; body: string }> = existsSync(membersFile)
+    ? JSON.parse(await readFile(membersFile, 'utf8'))
+    : [];
+
+  if (!base && !external && sections.length === 0 && patches.length === 0 && members.length === 0) return null;
   return {
     groups: base?.groups ?? [],
     params: base?.params,
     returns: base?.returns,
     intro: base?.intro,
-    patch: base?.patch,
+    patch: [
+      ...(base?.patch ?? []),
+      ...patches.flatMap((p) => (p.in !== undefined ? [{ in: p.in, from: p.from, to: p.to }] : [])),
+    ],
+    memberPatch: [
+      ...(base?.memberPatch ?? []),
+      ...patches.flatMap((p) => (p.member !== undefined ? [{ member: p.member, from: p.from, to: p.to }] : [])),
+    ],
+    extraMembers: [...(base?.extraMembers ?? []), ...members],
     seeAlso: base?.seeAlso,
     extraSections: [...(base?.extraSections ?? []), ...sections],
     throws: base?.throws,
