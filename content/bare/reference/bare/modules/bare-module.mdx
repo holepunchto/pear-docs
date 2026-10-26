@@ -1137,14 +1137,14 @@ The addons of a package load in one context per loader: the host and WASI provid
 | Error code | Thrown when |
 | --- | --- |
 | `ADDON_HOST_INCOMPATIBLE` | A package's addons are already resolved for the default hosts and it is imported with `host`, or the other way round, or an addon below a `host` import is not WebAssembly. |
-| `ADDON_WASI_INCOMPATIBLE` | A package's WebAssembly addons already have one WASI provider and it is imported with another. |
+| `ADDON_WASI_INCOMPATIBLE` | A package's WebAssembly addons already have one WASI provider and it is imported with another. In v7.5.0, a dynamic `import()` with a `wasi` attribute also throws it, naming the same provider. |
 | `UNKNOWN_ADDON_HOST` | A `host` attribute is not `wasi-wasm32`. |
 
 These are thrown by [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse#the-host-and-wasi-import-attributes) while the importing module is linked, before any of its code runs, so a `try` block around a static `require()` doesn't catch them. A `require()` whose specifier the lexer can't read, such as a computed name, is linked when it runs, so these errors are thrown from that call and can be caught. A `require.resolve()` of the package counts as importing it with the default hosts. An `ADDON_NOT_FOUND` for a missing `.wasm` build is thrown when the module that loads the addon runs, and can be caught.
 
 ### After `Bare.Addon.seal()`
 
-Once the process is [sealed](/bare/reference/bare/runtime#bareaddon), a native addon loads only if the process already loaded it, while WebAssembly addons still load. When resolving an addon on a sealed process, the loader skips native builds that `Bare.Addon.loaded()` reports as not loaded, so a package that also ships a `.wasm` build falls back to it, with the capabilities described above. This applies only to addons resolved after the seal. A `require()` or `import()` with a string-literal specifier in the module that calls `Bare.Addon.seal()` was resolved when that module was linked, before the seal, so its native addon throws `CANNOT_LOAD`. A package resolved after the seal that ships no `.wasm` build throws `ADDON_NOT_FOUND`, where Bare 1.35 threw `CANNOT_LOAD`.
+Once the process is [sealed](/bare/reference/bare/runtime#bareaddon), a native addon loads only if the process already loaded it, while WebAssembly addons still load. When resolving an addon on a sealed process, the loader skips native builds that `Bare.Addon.loaded()` reports as not loaded, so a package that also ships a `.wasm` build falls back to it, with the capabilities described above. This applies only to addons resolved after the seal. An addon reached through string-literal `require()` or `import()` specifiers from the module that calls `Bare.Addon.seal()`, or from any module linked with it before the seal, was resolved at link time, so its native addon throws `CANNOT_LOAD` even when the module that loads it runs after the seal. A package resolved after the seal that ships no `.wasm` build throws `ADDON_NOT_FOUND`, where Bare 1.35 threw `CANNOT_LOAD`.
 
 ## Packages
 
