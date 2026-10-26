@@ -31,9 +31,9 @@ const layout: Layout = {
     {
       heading: 'Rights',
       body: [
-        '`Directory` and `File` run their operations on the thread pool and return promises, and `DirectorySync` and `FileSync` are their synchronous counterparts. Names are single path components, and names and rights are checked before an operation starts.',
+        '`Directory` and `File` run their operations on the thread pool and return promises, except `close()` and `restrict()`, which are synchronous, and `DirectorySync` and `FileSync` are their synchronous counterparts. Names are single path components, and names and rights are checked before an operation starts.',
         '',
-        'A handle carries a set of rights. `open()` takes them from `opts.rights` and defaults to all of them, `openDirectory()` passes on the rights of its parent, and `restrict()` returns a handle with fewer. An operation without the right it needs fails with `ENOTCAPABLE`.',
+        'A handle carries a set of rights. `open()` takes them from `opts.rights` and defaults to all of them, `openDirectory()` passes on the rights of its parent, and `restrict()` returns a handle with fewer. An operation without the right it needs fails with `ENOTCAPABLE`. The type comment of `Right` says `remove` is needed to replace an entry by renaming, but `rename()` needs it on the target directory whenever `replace` is `true`, even when nothing is replaced.',
         '',
         '| Right | Needed by |',
         '| --- | --- |',

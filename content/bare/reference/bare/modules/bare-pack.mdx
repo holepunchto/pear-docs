@@ -20,7 +20,7 @@ npm i bare-pack
 
 - `pack()` takes a new `resolveModule` callback between `listPrefix` and `writeFile`. A 2.x call that passes `writeFile` in its old position, such as `pack(entry, opts, readModule, null, writeFile)`, now passes it as `resolveModule`. Your `writeFile` is then called with resolved URLs and no source, and offloaded files are left out of the bundle without being written. Pass `null` for `resolveModule` instead: `pack(entry, opts, readModule, null, null, writeFile)`. See [`pack`](#pack).
 - Offloaded addons and assets stay listed in `bundle.addons` and `bundle.assets`, under their rewritten resolution, such as `/../prebuilds/darwin-arm64/addon.bare`. Version 2.x left them out of both lists. See [Offloading](#offloading).
-- The CLI follows symlinks. A package installed through a symlink is stored in the bundle under its real path, and its dependencies are looked up next to that path. If the real path is outside `--base`, the module is stored under a `/../` key, and Bare fails to load the bundle with `MODULE_NOT_FOUND`. Set `--base` to a directory that contains the real paths. See [Symlinks](#symlinks).
+- The CLI follows symlinks. A package installed through a symlink is stored in the bundle under its real path, and its dependencies are looked up next to that path. If the real path is outside `--base`, the module is stored under a `/../` key, which Bare reads from the file system next to the bundle, so the bundle works only where those real paths exist and fails with `MODULE_NOT_FOUND` elsewhere. Set `--base` to a directory that contains the real paths. See [Symlinks](#symlinks).
 </Callout>
 
 ## Usage
@@ -262,13 +262,13 @@ const { resolveModule } = require('bare-pack/fs')
 const bundle = await pack(entry, opts, readModule, listPrefix, resolveModule)
 ```
 
-The bundle then stores each module under its real path, and the imports that went through the link resolve to that path. When `base` is set and a real path is outside it, the module is stored under a `/../` key. Bare serves only the modules under the mount of a bundle, so such a bundle fails to load with `MODULE_NOT_FOUND`; see [Loading bundles](/bare/reference/bare/modules/bare-module#loading-bundles). Set `base`, or `--base` for the CLI, to a directory that contains the real paths. Without `resolveModule`, a symlinked package whose dependencies sit next to its real path fails to pack with `MODULE_NOT_FOUND`.
+The bundle then stores each module under its real path, and the imports that went through the link resolve to that path. When `base` is set and a real path is outside it, the module is stored under a `/../` key. Bare serves only the modules under the mount of a bundle and reads the rest from the file system, so such a bundle works only where the real paths exist next to it, as on the machine that packed it, and fails with `MODULE_NOT_FOUND` elsewhere; see [Loading bundles](/bare/reference/bare/modules/bare-module#loading-bundles). Set `base`, or `--base` for the CLI, to a directory that contains the real paths. Without `resolveModule`, a symlinked package whose dependencies sit next to its real path fails to pack with `MODULE_NOT_FOUND`.
 
 ## WebAssembly addons
 
 Added in v2.2.4. An addon package can ship a WebAssembly build as `prebuilds/wasi-wasm32/<name>.wasm`. `bare-pack` resolves these files through `bare-module-traverse`, which it depends on at `~2.7.0` since v2.2.5 (`~2.6.0` in v2.2.4). The lookup, and the `host` and `wasi` import attributes, are described in [WebAssembly addons](/bare/reference/bare/modules/bare-module-traverse#webassembly-addons) on the `bare-module-traverse` page.
 
-A WebAssembly build is bundled only when `wasi-wasm32` is one of the hosts. Unlike Bare, `bare-pack` doesn't add that host on its own: the default resolver, an explicit `hosts` option, the [presets](#presets), and the [CLI](#webassembly) leave it out unless you list it. The exception is `resolve.bare` from `bare-module-traverse`, which defaults `hosts` to `[host, 'wasi-wasm32']` when `hosts` is not set, so `pack()` falls back to the WebAssembly build of a package that has no native build:
+Without a `host` attribute, a WebAssembly build is bundled only when `wasi-wasm32` is one of the hosts. Unlike Bare, `bare-pack` doesn't add that host on its own: the default resolver, an explicit `hosts` option, the [presets](#presets), and the [CLI](#webassembly) leave it out unless you list it. The exception is `resolve.bare` from `bare-module-traverse`, which defaults `hosts` to `[host, 'wasi-wasm32']` when `hosts` is not set, so `pack()` falls back to the WebAssembly build of a package that has no native build:
 
 ```js
 const traverse = require('bare-module-traverse')
@@ -325,7 +325,7 @@ The `--host` flag may be specified multiple times to create a combined bundle fo
 
 ##### WebAssembly
 
-WebAssembly prebuilds, found at `prebuilds/wasi-wasm32/<name>.wasm`, are only bundled when `wasi-wasm32` is one of the hosts. The CLI always passes its own list of hosts, so it does not add `wasi-wasm32` the way the `resolve.bare` default does. To bundle the WebAssembly build of an addon package that has no native build, pass `--host wasi-wasm32` next to the native hosts:
+Without a `host` attribute, WebAssembly prebuilds, found at `prebuilds/wasi-wasm32/<name>.wasm`, are only bundled when `wasi-wasm32` is one of the hosts. The CLI always passes its own list of hosts, so it does not add `wasi-wasm32` the way the `resolve.bare` default does. To bundle the WebAssembly build of an addon package that has no native build, pass `--host wasi-wasm32` next to the native hosts:
 
 ```console
 bare-pack --host darwin-arm64 --host wasi-wasm32 index.js
@@ -437,7 +437,7 @@ To keep addons and assets out of the bundle and write them to disk alongside `--
 bare-pack --offload --out ./dist/index.bundle index.js
 ```
 
-Each offloaded file is written at the directory of `--out`, mirroring its path relative to `--base`. The bundle's resolution for the file becomes `/../<path-relative-to-base>`, so when the bundle is later mounted (for example at `./dist/index.bundle/`) the resolution points to the file's location next to the bundle. If `--out` happens to be inside `--base`, the file is not rewritten on disk. Changed in v3.0.0: the bundle's `addons` and `assets` list the offloaded files under these resolutions.
+Each offloaded file is written at the directory of `--out`, mirroring its path relative to `--base`. The bundle's resolution for the file becomes `/../<path-relative-to-base>`, so when the bundle is later mounted (for example at `./dist/index.bundle/`) the resolution points to the file's location next to the bundle. If the directory of `--out` is `--base` itself, the files are not written, since they are already there. Changed in v3.0.0: the bundle's `addons` and `assets` list the offloaded files under these resolutions.
 
 ##### Format
 

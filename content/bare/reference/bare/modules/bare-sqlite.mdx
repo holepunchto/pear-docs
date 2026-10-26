@@ -4,7 +4,7 @@ description: "SQLite bindings for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.1.5"
+upstreamVersion: "0.1.6"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -483,7 +483,7 @@ const db = new DatabaseSync('/books.db')
 
 Database paths are paths inside the provider's `preopens`, so `/books.db` is `books.db` in the directory mounted at `/`. Without a provider, an in-memory database (`':memory:'`) still works, and opening a file throws `CANTOPEN`. The WebAssembly build cannot load extensions: on a database opened with `allowExtension: true`, `loadExtension()` throws a `SQLiteError` with code `ERROR` and the message `ERROR: extension loading is not supported`. See [WebAssembly addons](/bare/reference/bare/modules/bare-module#webassembly-addons) for the provider and the rules for loading a package this way.
 
-The WebAssembly build locks a database by creating and removing a `<name>.lock` directory next to it, so the provider's directory needs the `create` and `remove` [rights](/bare/reference/bare/modules/bare-directory#rights) as well as `lookup` and `read`, even for a database opened with `readOnly: true`. Writing also needs `write`, and `truncate`, which SQLite uses to shrink the file on `VACUUM` and when it rolls back a transaction. Without them, statements fail with `IOERR`. A process that leaves the `.lock` directory behind, because it lacked `remove` or exited while holding the lock, makes every later open fail with `BUSY` until the directory is deleted.
+The WebAssembly build locks a database by creating and removing a `<name>.lock` directory next to it, so the provider's directory needs the `create` and `remove` [rights](/bare/reference/bare/modules/bare-directory#rights) as well as `lookup` and `read`, even for a database opened with `readOnly: true`. Writing also needs `write` and `truncate`. Without `create`, statements fail with `IOERR`. Without `write`, writes fail with `CANTOPEN`. Without `truncate`, which SQLite uses to shrink the file, `VACUUM` fails with `IOERR`, and a `ROLLBACK` of a transaction that grew the file can report success but leave a hot journal, after which statements fail with `IOERR`. A `.lock` directory left behind, because the process lacked `remove` or was killed while holding the lock, makes every later statement on the database fail with `BUSY` until the directory is deleted, though `new DatabaseSync()` still succeeds.
 
 ## See also
 
