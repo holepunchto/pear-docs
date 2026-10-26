@@ -11,12 +11,23 @@
 import type { Layout } from '../layout';
 
 const layout: Layout = {
+  // The JVM requirement is from binding.cc (bare_context_get on load); the Bare Kit version from its v2.5.0 release.
+  intro:
+    '[`bare-bluetooth-android`](https://github.com/holepunchto/bare-bluetooth-android) — Android Bluetooth bindings for Bare. It is a native addon that needs the app\'s Java VM, which it reads from the [`bare.android.jvm.v1`](/bare/reference/bare/embedder-context#bareandroidjvmv1) context key when it loads. So it runs only inside an app whose host publishes that key. [Bare Kit](/bare/reference/bare/bare-kit) does so from 2.5.0, so a Bare Kit worklet needs Bare Kit 2.5.0 or later.',
   seeAlso: [
     'Runs on Android only — on Apple platforms use [`bare-bluetooth-apple`](/bare/reference/bare/modules/bare-bluetooth-apple).',
     '[`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API over this module, `bare-bluetooth-apple` and `bare-bluetooth-linux`.',
     '[One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.',
     '[Connect over Bluetooth](/bare/how-to/connect-over-bluetooth) — how-to guides for scanning, GATT, L2CAP and mobile setup.',
     '[Use platform-specific Bluetooth features](/bare/how-to/connect-over-bluetooth/use-platform-specific-bluetooth-features) — when to use this module directly instead of `bare-bluetooth`.',
+  ],
+  // 0.11.6 throws NOT_CONNECTED from the Peripheral calls (lib/peripheral.js _assertConnected); the README's Errors section predates it.
+  patch: [
+    {
+      in: 'Errors',
+      from: 'Wrap the call in `try`/`catch`.',
+      to: "Wrap the call in `try`/`catch`. As of v0.11.6, the `Peripheral` methods that talk to the device (`discoverServices()`, `discoverCharacteristics()`, `read()`, `write()`, `subscribe()`, `unsubscribe()`, `openL2CAPChannel()` and `requestMtu()`) also throw a `BluetoothError` with code `NOT_CONNECTED` before `'connect'` and once the link is gone.",
+    },
   ],
   params: {
     'BluetoothError.constructor': {
