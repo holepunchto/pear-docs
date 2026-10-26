@@ -219,6 +219,7 @@ export const bareTree: Node[] = [
               { type: 'page', name: 'bare-bluetooth-android', url: '/bare/reference/bare/modules/bare-bluetooth-android' },
               { type: 'page', name: 'bare-bluetooth-apple', url: '/bare/reference/bare/modules/bare-bluetooth-apple' },
               { type: 'page', name: 'bare-bluetooth-linux', url: '/bare/reference/bare/modules/bare-bluetooth-linux' },
+              { type: 'page', name: 'ble-swarm', url: '/bare/reference/bare/modules/ble-swarm' },
               { type: 'page', name: 'bare-module', url: '/bare/reference/bare/modules/bare-module' },
               { type: 'page', name: 'bare-url', url: '/bare/reference/bare/modules/bare-url' },
               { type: 'page', name: 'bare-path', url: '/bare/reference/bare/modules/bare-path' },
