@@ -27,13 +27,13 @@ const layout: Layout = {
   ],
   params: {
     'WASI.constructor': {
-      opts: "The capabilities of the instance. `version` is required and must be `'preview1'`. `args` defaults to `[]`, `env` to `{}`, and `preopens` to `{}`. `stdin`, `stdout`, and `stderr` default to `null`, and then don't exist. `clock` defaults to the host clocks, and `null` denies them. `random` defaults to `null`, which denies randomness. `returnOnExit` defaults to `true`; with `false`, `start()` exits the process with the guest's exit code.",
+      opts: "The capabilities of the instance. `version` is required and must be `'preview1'`. `args` defaults to `[]`, `env` to `{}`, and `preopens` to `{}`. `stdin`, `stdout`, and `stderr` default to `null`, and then don't exist. `clock` defaults to the host clocks, and `null` denies them, though file timestamps set to now still come from the host clock. `random` defaults to `null`, which denies randomness. `returnOnExit` defaults to `true`; with `false`, `start()` exits the process with the guest's exit code.",
     },
   },
   describe: {
     'HostDirectory.constructor':
-      'A host directory backed by a `bare-directory` capability. The guest reaches only what the capability reaches, with its rights, and `bare-wasi` resolves symbolic links within the preopen. On Windows, link targets use `/` as the separator, and drive letter, UNC, and device paths are absolute. Files are opened when looked up, with the most access the rights and the file allow, so an open file stays the same file if it is renamed. Creating symbolic and hard links isn\'t supported.',
-    'HostDirectory.create': 'Implements [`WASIDirectory.create()`](#wasidirectory).',
+      'A host directory backed by a `bare-directory` capability. The guest reaches only what the capability reaches, with its rights, and `bare-wasi` resolves symbolic links within the preopen. On Windows, link targets use `/` as the separator, and drive letter, UNC, and device paths are absolute. Files are opened when looked up, with the most access the rights and the file allow, so an open file stays the same file if it is renamed. Without the `write` right, a file is opened for appending if the rights include `append`, so the guest can still write at the end of existing files. Creating symbolic and hard links isn\'t supported.',
+    'HostDirectory.create': 'Implements [`WASIDirectory.create()`](#wasidirectory). Creating a file needs the `write` right as well as `create`; creating a directory needs only `create`.',
     'HostDirectory.entries': 'Implements [`WASIDirectory.entries()`](#wasidirectory).',
     'HostDirectory.lookup': 'Implements [`WASIDirectory.lookup()`](#wasidirectory).',
     'HostDirectory.rename': 'Implements [`WASIDirectory.rename()`](#wasidirectory). Renaming into a directory of another backend fails with `EXDEV`. The capability needs `rename` on both directories and `remove` on the target, even when no entry is replaced.',
@@ -71,7 +71,7 @@ const layout: Layout = {
         '})',
         '```',
         '',
-        'An addon with no provider gets the options `{ version: \'preview1\' }`, which grant nothing except clocks. Bare has no `crypto` global, so take random bytes from [`bare-crypto`](/bare/reference/bare/modules/bare-crypto) when an addon needs them. An addon written in Rust can need them: the `bare-svg` README says its WebAssembly build needs `random` because the Rust standard library seeds its hash maps with it.',
+        'The provider runs as application code, so install what it imports, such as `bare-wasi` and `bare-directory`: the copy of `bare-wasi` that Bare bundles for its loader can\'t be imported. An addon with no provider gets the options `{ version: \'preview1\' }`, which grant nothing through WASI except clocks. WASI limits only system calls: an addon still reaches the JavaScript global object through the ABI. Bare has no `crypto` global, so take random bytes from [`bare-crypto`](/bare/reference/bare/modules/bare-crypto) when an addon needs them. An addon written in Rust can need them: the `bare-svg` README says its WebAssembly build needs `random` because the Rust standard library seeds its hash maps with it.',
       ].join('\n'),
     },
     {
