@@ -40,6 +40,7 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
   const githubUrl = `https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/content/${page.path}`;
 
   const seoConfig = getDocsSeoConfig();
+  const absoluteMarkdownUrl = new URL(markdownUrl, seoConfig.metadataBase).toString();
   const seoState = getPageSeoState(page, seoConfig);
   const jsonLd = buildJsonLdGraph(page, seoState, seoConfig);
 
@@ -71,7 +72,7 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
           markdownUrl={markdownUrl}
           fallbackMarkdown={markdownForCopy}
         />
-        <ViewOptions githubUrl={githubUrl} />
+        <ViewOptions githubUrl={githubUrl} markdownUrl={absoluteMarkdownUrl} />
         {/* Reference pages declare `upstreamVersion`; renders nothing elsewhere. */}
         <UpstreamVersion version={page.data.upstreamVersion} />
       </div>
