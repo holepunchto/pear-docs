@@ -746,9 +746,56 @@ await core.close()
 
 [src](https://github.com/holepunchto/hypercore/blob/v11.39.4/index.js#L957)
 
-Close every session on this core and permanently delete its storage from disk. Unlike `core.clear()`, which drops selected blocks, `purge()` removes the entire core.
+Close every session on this core and permanently delete the core from its storage: its blocks, Merkle tree, bitfield, user data, key pair, and manifest. Unlike `core.clear()`, which drops selected blocks, `purge()` removes the entire core. Other cores in the same storage, such as those in a [Corestore](/p2p/reference/helpers/corestore), and the storage itself are left alone. Calling it on any session closes all of them, including that one, and opening the same key afterwards gives an empty core that is not writable. A Corestore can purge cores by key with [`store.purge()`](/p2p/reference/helpers/corestore#await-storepurgekeys-options). Works from 11.39.0. Earlier 11.x releases throw `TypeError: this._closeAllSessions is not a function`.
 
-- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the core's storage has been deleted.
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once every session is closed and the core has been deleted from storage.
+- Throws:
+  - `Error` (`Cannot purge a closed core`) if the core is already closed.
+  - `Error` (`Cannot purge while sessions are open`) if a session does not close. The core stays open and nothing is deleted.
+
+```js
+const core = new Hypercore('./purge-example')
+await core.append('hello')
+
+const key = core.key
+await core.purge() // closes every session, then deletes the core
+
+const reopened = new Hypercore('./purge-example', key)
+await reopened.ready()
+console.log(reopened.length, reopened.writable) // 0 false
+await reopened.close()
+```
+
+#### `await core.recover([options])`
+
+[src](https://github.com/holepunchto/hypercore/blob/v11.39.4/index.js#L712)
+
+Wait until the recovery peers have nothing more for this core, then clear its [`recovering`](#corerecovering) flag. Storage flags every core in a store as recovering after it repairs a database that may have lost recent writes. While a core is flagged, `core.append()` and `core.commit()` on the default session wait the same way, with the default `settle`, before they write. If blocks arrive from a peer during that wait, they throw `SESSION_NOT_WRITABLE` and you can retry. Added in 11.27.2. The `options` argument was added in 11.39.2.
+
+The recovery peers are the connected peers whose public key you passed to [`Hypercore.setRecoveryPeers()`](#hypercoresetrecoverypeerspeers). Every 250 ms `recover()` checks them, and it resolves once none of them has had more blocks than this core for `settle` milliseconds in a row. A peer that has more blocks, has not finished syncing, or disconnects restarts the count. With no recovery peer connected it looks again every 5 seconds.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `options` | `object` | `{}` | Recovery options. |
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `timeout` | `0` | Reject with `REQUEST_TIMEOUT` after this many milliseconds (0 means no timeout) |
+| `settle` | `8000` | How many milliseconds the recovery peers must have nothing more for this core |
+
+- Returns: [`Promise<void>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — Resolves once the recovery peers have nothing more for this core.
+- Throws:
+  - `BAD_ARGUMENT` if no recovery peers are set, or if called on a snapshot or a named session. Only the default session can recover.
+  - `REQUEST_TIMEOUT` if `timeout` passes first.
+  - `SESSION_CLOSED` if the session or the core closes while waiting.
+
+```js
+// trustedKey is the 32-byte public key of a peer you trust to hold the latest blocks
+Hypercore.setRecoveryPeers([trustedKey])
+
+await core.recover({ timeout: 60000 })
+console.log(core.recovering) // 0
+```
 
 #### `await core.ready()`
 
@@ -1006,6 +1053,14 @@ Array of current peers the core is replicating with.
 
 - Returns: [`Array<object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) — Live array of Replicator peer objects (empty before the core is opened).
 
+#### `core.recovering`
+
+[src](https://github.com/holepunchto/hypercore/blob/v11.39.4/index.js#L704)
+
+Whether storage has flagged this core as recovering. [`core.recover()`](#await-corerecoveroptions) clears the flag. Added in 11.27.2.
+
+- Returns: `number` — The time the core was flagged, in milliseconds since the epoch, or `0` when it is not recovering (and before the core is opened).
+
 ### Events
 
 #### `core.on('close')`
@@ -1190,6 +1245,25 @@ Called internally by the constructor; exposed for advanced use.
 
 ```js
 const storage = Hypercore.defaultStorage('./my-core')
+```
+
+#### `Hypercore.setRecoveryPeers(peers)`
+
+[src](https://github.com/holepunchto/hypercore/blob/v11.39.4/index.js#L129)
+
+Set which peers [`core.recover()`](#await-corerecoveroptions) waits for, for every core in this process. A connected peer is a recovery peer when its public key is in `peers`. Pass `null` to clear the list. Without one, `core.recover()` throws `BAD_ARGUMENT`, and `core.append()` and `core.commit()` on a core flagged as recovering wait for every connected peer. Added in 11.27.3.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `peers` | [`Array<Buffer>\|null`](https://nodejs.org/api/buffer.html#class-buffer) | The 32-byte public keys of the peers to wait for, matched against each connection's remote public key, such as `connection.remotePublicKey` from Hyperswarm. |
+
+- Returns: `void`
+
+```js
+// laptopKey and phoneKey are the 32-byte public keys of two peers you trust
+Hypercore.setRecoveryPeers([laptopKey, phoneKey])
+
+Hypercore.setRecoveryPeers(null) // clear the list
 ```
 
 ## Types
@@ -1407,10 +1481,11 @@ Coded errors this module can throw — catch them via `err.code`.
 | Error | Thrown when |
 | --- | --- |
 | `ASSERTION` | if `index` is not a valid block index.; if `bytes` is not a valid byte offset.; if the `start`/`end` range is invalid.; if the provider does not satisfy the `HypercoreEncryption` interface.; if the core is already in gc mode, or is a named or atomic session. |
-| `BAD_ARGUMENT` | if an appended block exceeds the maximum suggested block size. |
+| `BAD_ARGUMENT` | if an appended block exceeds the maximum suggested block size.; if `core.recover()` is called with no recovery peers set, or on a snapshot or a named session. |
 | `INVALID_OPERATION` | if the append is inconsistent with the manifest prologue.; if the truncation would break the manifest prologue.; if no database batch was passed, or the tree changed during the batch. |
-| `SESSION_CLOSED` | if called on a core that is already closing.; if the core has been closed. |
-| `SESSION_NOT_WRITABLE` | if the core is not writable. |
+| `REQUEST_TIMEOUT` | if `core.recover()` runs past its `timeout`. |
+| `SESSION_CLOSED` | if called on a core that is already closing.; if the core has been closed.; if the session or the core closes while `core.recover()` waits. |
+| `SESSION_NOT_WRITABLE` | if the core is not writable.; if the core's length changes while `core.append()` or `core.commit()` waits for recovery. |
 
 ## See also
 
