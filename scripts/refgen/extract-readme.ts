@@ -238,7 +238,7 @@ function paramsFromSignature(signature: string): ReadmeParam[] {
       token = token.slice(1, -1).trim();
     }
     let def: string | undefined;
-    const eq = token.indexOf('=');
+    const eq = topLevelEquals(token);
     if (eq !== -1) {
       def = token.slice(eq + 1).trim();
       token = token.slice(0, eq).trim();
@@ -246,6 +246,23 @@ function paramsFromSignature(signature: string): ReadmeParam[] {
     }
     return { name: token, optional, default: def };
   });
+}
+
+/**
+ * Index of the first `=` outside (), [], {} nesting — a param's default marker.
+ * A destructured param like `{ protocol, id = null }` keeps its inner defaults
+ * to itself instead of being read as a param named `{ protocol, id` that
+ * defaults to `null }`.
+ */
+function topLevelEquals(s: string): number {
+  let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch)) depth--;
+    else if (ch === '=' && depth === 0) return i;
+  }
+  return -1;
 }
 
 /** Comma-split that respects (), [], {} nesting. */
