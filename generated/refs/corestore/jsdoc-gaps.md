@@ -1,6 +1,6 @@
 # JSDoc gap report — corestore
 
-`holepunchto/corestore` at **v7.13.0** · **0%** of published members fully documented (0/20) · 23 source member(s) not in the manifest (internal or unfiled) — not graded.
+`holepunchto/corestore` at **v7.16.1** · **0%** of published members fully documented (0/20) · 24 source member(s) not in the manifest (internal or unfiled) — not graded.
 
 Coverage by dimension: **descriptions 55%** · **param types 0%** · **typed returns 0%** · **examples 27%**. (Prose is usually present; the gap is mostly types.)
 
@@ -28,17 +28,17 @@ See the [JSDoc convention](../../../scripts/refgen/JSDOC_CONVENTION.md) for the 
 - [ ] L375 `const store = store.namespace(name)` — add @param {Type} + description for `name`; @param {Type} + description for `opts`; @returns {Type}
 - [ ] L382 `const stream = store.list(namespace)` — add @param {Type} + description for `namespace`; @returns {Type}; @example
 - [ ] L386 `store.getAuth(discoveryKey)` — add description; @param {Type} + description for `discoveryKey`; @returns {Type}; @example
-- [ ] L479 `const stream = store.replicate(optsOrStream)` — add @param {Type} + description for `isInitiator`; @param {Type} + description for `opts`; @returns {Type}
-- [ ] L518 `await store.staticify(core, opts)` — add description; @param {Type} + description for `core`; @param {Type} + description for `opts`; @returns {Type}; @example
-- [ ] L562 `const core = store.get(key | { name: 'a-name', ...hypercoreOpts})` — add @param {Type} + description for `opts`; @returns {Type}; @example
-- [ ] L620 `const keypair = await store.createKeyPair(name, ns = this.ns)` — add @param {Type} + description for `name`; @param {Type} for `ns`; @returns {Type}; @example
+- [ ] L515 `const stream = store.replicate(optsOrStream)` — add @param {Type} + description for `isInitiator`; @param {Type} + description for `opts`; @returns {Type}
+- [ ] L554 `await store.staticify(core, opts = {})` — add description; @param {Type} + description for `core`; @param {Type} + description for `opts`; @returns {Type}; @example
+- [ ] L602 `const core = store.get(key | { name: 'a-name', ...hypercoreOpts})` — add @param {Type} + description for `opts`; @returns {Type}; @example
+- [ ] L662 `const keypair = await store.createKeyPair(name, ns = this.ns)` — add @param {Type} + description for `name`; @param {Type} for `ns`; @returns {Type}; @example
 
 ## Suggested `@typedef`s (7)
 
 _Define these once near the class; they become linkable types and drive options tables._
 
 - `options` on `await store.suspend()` — define a `@typedef` for the options shape (becomes a linkable type + options table).
-- `opts` on `await store.staticify(core, opts)` — define a `@typedef` for the options shape (becomes a linkable type + options table).
+- `opts` on `await store.staticify(core, opts = {})` — define a `@typedef` for the options shape (becomes a linkable type + options table).
 - `opts` on `const core = store.get(key | { name: 'a-name', ...hypercoreOpts})` — define a `@typedef` for the options shape (becomes a linkable type + options table).
 - `opts` on `const store = new Corestore(storage, options = {})` — define a `@typedef` for the options shape (becomes a linkable type + options table).
 - `opts` on `const store = store.namespace(name)` — define a `@typedef` for the options shape (becomes a linkable type + options table).

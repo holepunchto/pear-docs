@@ -1,17 +1,20 @@
 # Reference generation improvement plan — protomux
-Generated from `holepunchto/protomux` at **v3.12.1** (`eb144a1f81`) on 2026-10-05T21:15:03.905Z.
-**Doc-completeness: 57%** — 8 of 14 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
+Generated from `holepunchto/protomux` at **v3.13.0** (`30a595e292`) on 2026-10-27T15:06:00.957Z.
+**Doc-completeness: 47%** — 8 of 17 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
 _No existing MDX page found for this slug._
 ## Completeness gaps
-### Undocumented parameters (6)
+### Undocumented parameters (9)
 
 _Cause: parameter present in the signature but not described — README gap or extractor name-mismatch._
 
 - `mux = Protomux.from(stream | muxer, [options])` → opts
-- `mux.pair({ protocol, id }, callback)` → options, notify
-- `mux.unpair({ protocol, id })` → options
+- `mux.pair({ protocol, id = null }, callback)` → options, notify
+- `mux.unpair({ protocol, id = null })` → options
+- `mux.watch({ protocol, id = null }, callback)` → options
+- `mux.unwatch({ protocol, id = null }, callback)` → options
+- `mux.unwatchAll({ protocol, id = null })` → options
 - `const opened = mux.opened({ protocol, id })` → options
 - `const channel = mux.createChannel(opts)` → options
 - `channel.open([handshake])` → handshake
@@ -25,7 +28,7 @@ _Cause: signature captures a scalar return but no prose/shape explains it — cl
 - `const channel = mux.createChannel(opts)`
 - `const m = channel.addMessage(opts)`
 
-### No example (11)
+### No example (14)
 
 _Cause: no code fence under the README entry — add a usage snippet._
 
@@ -33,8 +36,11 @@ _Cause: no code fence under the README entry — add a usage snippet._
 - `mux.isIdle()`
 - `mux.cork()`
 - `mux.uncork()`
-- `mux.pair({ protocol, id }, callback)`
-- `mux.unpair({ protocol, id })`
+- `mux.pair({ protocol, id = null }, callback)`
+- `mux.unpair({ protocol, id = null })`
+- `mux.watch({ protocol, id = null }, callback)`
+- `mux.unwatch({ protocol, id = null }, callback)`
+- `mux.unwatchAll({ protocol, id = null })`
 - `const opened = mux.opened({ protocol, id })`
 - `channel.open([handshake])`
 - `channel.cork()`
