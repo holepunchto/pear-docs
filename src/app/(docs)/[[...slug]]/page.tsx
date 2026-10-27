@@ -139,6 +139,11 @@ export async function generateMetadata(props: PageProps<'/[[...slug]]'>): Promis
     isHomePage,
   });
 
+  metadata.alternates = {
+    ...metadata.alternates,
+    types: { 'text/markdown': new URL(pageMarkdownUrl(page.url), seoConfig.metadataBase).toString() },
+  };
+
   // The home title is `{ absolute }` (no template), so it would otherwise equal
   // the on-page <h1>. Give it a distinct, keyword-rich title instead.
   if (isHomePage) {

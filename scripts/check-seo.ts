@@ -5,7 +5,8 @@
  * Default: invariants that hold for any content, safe to run in CI. For every
  * page in sitemap.xml it asserts a title, a description, a self-canonical,
  * index/follow robots, og:title/description/url/image (the image file must
- * exist), a twitter card, and parseable JSON-LD whose `url` is the page. It
+ * exist), a Markdown alternate link (the file must exist), a twitter card, and
+ * parseable JSON-LD whose `url` is the page. It
  * also asserts robots.txt points at the sitemap and carries Content-Signal,
  * that the sitemap lists exactly the indexable pages under out/, and that
  * llms.txt links every page's built .md twin on the same origin.
@@ -142,6 +143,12 @@ function checkInvariants(snapshot: Snapshot, urls: string[]): string[] {
     if (meta.get('robots')?.includes('noindex')) fail(`robots meta is "${meta.get('robots')}"`);
     for (const key of ['og:title', 'og:description', 'og:url', 'og:image', 'twitter:card']) {
       if (!meta.get(key)?.trim()) fail(`missing ${key}`);
+    }
+    const markdown = page.links.find(([rel]) => rel === 'alternate text/markdown')?.[1];
+    if (!markdown) fail('missing <link rel="alternate" type="text/markdown">');
+    else {
+      const { pathname } = new URL(decode(markdown), origin);
+      if (!existsSync(join(OUT_DIR, decodeURIComponent(pathname)))) fail(`markdown alternate ${pathname} is not in out/`);
     }
     const ogImage = meta.get('og:image');
     if (ogImage) {
