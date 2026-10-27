@@ -9,7 +9,8 @@
  * parseable JSON-LD whose `url` is the page. It
  * also asserts robots.txt points at the sitemap and carries Content-Signal,
  * that the sitemap is sorted and lists exactly the indexable pages under out/,
- * and that llms.txt links every page's built .md twin on the same origin.
+ * that llms.txt links every page's built .md twin on the same origin, and that
+ * no two pages share a <title>.
  *
  *   --snapshot <file>  write every page's SEO head, JSON-LD, robots.txt,
  *                      sitemap.xml and OG image hashes to <file>
@@ -166,6 +167,15 @@ function checkInvariants(snapshot: Snapshot, urls: string[]): string[] {
   }
 
   if (urls.some((url, i) => i > 0 && url < urls[i - 1])) failures.push('sitemap.xml: URLs are not sorted');
+
+  const byTitle = new Map<string, string[]>();
+  for (const url of urls) {
+    const title = snapshot.pages[url]?.title;
+    if (title) byTitle.set(title, [...(byTitle.get(title) ?? []), url]);
+  }
+  for (const [title, pages] of byTitle) {
+    if (pages.length > 1) failures.push(`duplicate <title> "${decode(title)}": ${pages.join(', ')}`);
+  }
 
   if (!snapshot.robots.includes(`Sitemap: ${origin}/sitemap.xml`)) {
     failures.push('robots.txt: no Sitemap line for this origin');
