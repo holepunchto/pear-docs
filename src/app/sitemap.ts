@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { buildDocsSitemap } from '@tetherto/docs-seo-next';
+import { buildDocsSitemap } from '@/lib/seo';
 import { source } from '@/lib/source';
 import { getDocsSeoConfig } from '@/lib/seo-config';
 
