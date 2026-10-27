@@ -6,7 +6,8 @@
  * page in sitemap.xml it asserts a title, a description, a self-canonical,
  * index/follow robots, og:title/description/url/image (the image file must
  * exist), a twitter card, and parseable JSON-LD whose `url` is the page. It
- * also asserts robots.txt points at the sitemap and carries Content-Signal,
+ * also asserts robots.txt points at the sitemap and carries Content-Signal in
+ * every User-Agent group,
  * that the sitemap lists exactly the indexable pages under out/, and that
  * llms.txt links every page's built .md twin on the same origin.
  *
@@ -161,7 +162,10 @@ function checkInvariants(snapshot: Snapshot, urls: string[]): string[] {
   if (!snapshot.robots.includes(`Sitemap: ${origin}/sitemap.xml`)) {
     failures.push('robots.txt: no Sitemap line for this origin');
   }
-  if (!/^Content-Signal: /m.test(snapshot.robots)) failures.push('robots.txt: no Content-Signal line');
+  const groups = snapshot.robots.split(/\n{2,}/).filter((g) => /^User-Agent: /im.test(g));
+  if (groups.length === 0 || groups.some((g) => !/^Content-Signal: /m.test(g))) {
+    failures.push('robots.txt: a User-Agent group has no Content-Signal line');
+  }
 
   // Every indexable built page must be in the sitemap.
   const listed = new Set(urls);

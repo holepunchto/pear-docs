@@ -8,5 +8,6 @@ export default function robots(): MetadataRoute.Robots {
   const { metadataBase } = getDocsSeoConfig();
   return buildDocsRobots({
     sitemapUrl: new URL('/sitemap.xml', metadataBase).toString(),
+    disallowTrainingBots: false,
   });
 }
