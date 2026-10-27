@@ -173,6 +173,12 @@ function checkInvariants(snapshot: Snapshot, urls: string[]): string[] {
   return failures;
 }
 
+// source.getPages() order varies between builds, so compare entries as a set.
+function normalizeSitemap(xml: string): string {
+  const entries = [...xml.matchAll(/<url>[\s\S]*?<\/url>/g)].map((m) => m[0]).sort();
+  return xml.replace(/<url>[\s\S]*<\/url>/, entries.join(''));
+}
+
 function diffSnapshots(before: Snapshot, after: Snapshot): string[] {
   const diffs: string[] = [];
   const keys = new Set([...Object.keys(before.pages), ...Object.keys(after.pages)]);
@@ -193,7 +199,9 @@ function diffSnapshots(before: Snapshot, after: Snapshot): string[] {
     }
   }
   if (before.robots !== after.robots) diffs.push('robots.txt differs');
-  if (before.sitemap !== after.sitemap) diffs.push('sitemap.xml differs');
+  if (normalizeSitemap(before.sitemap) !== normalizeSitemap(after.sitemap)) {
+    diffs.push('sitemap.xml differs');
+  }
   const images = new Set([...Object.keys(before.ogImages), ...Object.keys(after.ogImages)]);
   for (const image of [...images].sort()) {
     if (before.ogImages[image] !== after.ogImages[image]) {
