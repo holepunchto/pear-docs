@@ -584,9 +584,6 @@ function shellQuote(value: string): string {
 function childEnv(): NodeJS.ProcessEnv {
   return {
     ...process.env,
-    // The repo .npmrc reads `${GITHUB_TOKEN}`. Default it to an empty string so
-    // app-local installs parse cleanly without requiring private-package auth.
-    GITHUB_TOKEN: process.env.GITHUB_TOKEN ?? '',
     PATH: [dirname(RESOLVED_NODE), process.env.PATH || '']
       .filter(Boolean)
       .join(delimiter),

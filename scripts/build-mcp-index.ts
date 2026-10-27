@@ -21,9 +21,8 @@
  * locally via `npm run mcp:index`.
  *
  * `@qvac/sdk` is deliberately NOT a dependency of the root package. It pulls
- * ~176 packages including native binaries, and this repo's CI cannot `npm ci`
- * at the root anyway (the `@tetherto/*` packages are token-gated). It lives in
- * `scripts/mcp-index/`, a separate package with its own lockfile, pinned to the
+ * ~176 packages including native binaries that the site build never needs. It
+ * lives in `scripts/mcp-index/`, a separate package with its own lockfile, pinned to the
  * SDK and embedder versions the search service locks — index and query vectors
  * must come from the same llama.cpp build. To run it locally:
  *

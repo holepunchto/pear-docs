@@ -22,9 +22,9 @@ import {
   buildDocsMetadata,
   buildJsonLdGraph,
   DocsJsonLd,
+  getPageImage,
   getPageSeoState,
-} from '@tetherto/docs-seo-next';
-import { getPageImage } from '@tetherto/docs-seo-og';
+} from '@/lib/seo';
 import { getDocsSeoConfig } from '@/lib/seo-config';
 
 export const dynamic = 'force-static';

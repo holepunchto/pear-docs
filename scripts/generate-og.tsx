@@ -1,6 +1,6 @@
 // OG image prebuild entrypoint. Engine-agnostic by name so the rendering
 // backend can be swapped without renaming the script or its npm scripts;
-// today it uses Takumi via `@tetherto/docs-seo-og/build`.
+// today it uses Takumi via `scripts/og/precompute.tsx`.
 
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
@@ -9,7 +9,7 @@ import React from 'react';
 import {
   precomputeTakumiOgImages,
   type RenderTemplateContext,
-} from '@tetherto/docs-seo-og/build';
+} from './og/precompute';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
