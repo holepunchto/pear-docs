@@ -8,6 +8,7 @@ const worklets = [
   'bare/hypercore/hypercore.mjs',
   'bare/hyperdb/hyperdb.mjs',
   'bare/ipc.js',
+  'bare/lwp3.js',
   'bare/os.js',
   'bare/rocksdb/index.mjs',
   'bare/udx.js',

@@ -1,8 +1,8 @@
 # bare-mobile-doctor (documentation snapshot)
 
 Vendored from [holepunchto/bare-mobile-doctor](https://github.com/holepunchto/bare-mobile-doctor),
-branch **`main`**, at commit `5bfe51b`
-([tree](https://github.com/holepunchto/bare-mobile-doctor/tree/5bfe51b288fa66ed524502fd46fff3ef2038b4fe)).
+branch **`main`**, at commit `b59f79b`
+([tree](https://github.com/holepunchto/bare-mobile-doctor/tree/b59f79b207f9173cca9362999e0080224fd808ca)).
 Apache-2.0, Copyright 2025 Holepunch Inc (see upstream `LICENSE` and `NOTICE`).
 
 Only the files behind the Bluetooth chat screen are vendored. They back code imports in the guides under
