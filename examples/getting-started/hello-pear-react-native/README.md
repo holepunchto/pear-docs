@@ -1,11 +1,12 @@
 # hello-pear-react-native (documentation snapshot)
 
 Vendored from [holepunchto/hello-pear-react-native](https://github.com/holepunchto/hello-pear-react-native),
-branch **`main`**, at commit `aa421c0`
-([tree](https://github.com/holepunchto/hello-pear-react-native/tree/aa421c0febd005642201059182cec27ca2390102)).
+branch **`main`**, at commit `972e44a`
+([tree](https://github.com/holepunchto/hello-pear-react-native/tree/972e44ab06277537ca961d69ef3ce62ee570887e)).
 
-`src/App.tsx` backs the code import in
-`content/getting-started/from-a-template/start-from-hello-pear-react-native.mdx`
+`src/App.tsx` backs the code imports in
+`content/p2p/getting-started/from-a-template/start-from-hello-pear-react-native.mdx` and
+`content/pear/how-to/operate-an-app/integrate-pear-ota/mobile.mdx`
 (via `file=<rootDir>/examples/getting-started/hello-pear-react-native/src/App.tsx#L…`).
 
 This is a partial, documentation-only snapshot — only the one imported file is vendored, so it is
@@ -15,8 +16,9 @@ not a runnable app.
 
 Unlike the `hello-pear-electron` and `hello-pear-bare` snapshots beside it, this snapshot does
 **not** vendor a copy of `workers/main.js`. Upstream's is the literal `require('hello-pear-worker')`
-one-liner — identical in spirit to the other two templates — and the docs already inline and explain
-that shared worker once, via `content/_snippets/_hello-pear-worker-source-callout.mdx`, which imports
+one-liner (the other two templates inline the same package into their `workers/main.js`), and the
+docs already inline and explain that shared worker once, via
+`content/_snippets/_hello-pear-worker-source-callout.mdx`, which imports
 from the **canonical** copy at `examples/getting-started/hello-pear-electron/workers/main.js`. This
 page's "Where the app logic goes" section includes that same snippet rather than duplicating the
 explanation. Do not add a `workers/main.js` here to "complete" this snapshot — it would just be a
@@ -29,7 +31,7 @@ pipe in a `pipeRef` and derives `applyUpdate` with `useCallback`, and drops the 
 `!applyUpdate` guard that goes with it. The behaviour is identical.
 `content/pear/how-to/operate-an-app/integrate-pear-ota/mobile.mdx` calls this out for readers, and
 it must change in step with this file. Upstream's `src/App.tsx` was unchanged between the previous
-pin (`5c79f39`) and `aa421c0`, so only the hunks above differ.
+pins (`5c79f39`, `aa421c0`) and `972e44a`, so only the hunks above differ.
 
 ## Refreshing
 

@@ -218,7 +218,7 @@ Everything from the worklet arrives on the same pipe, as plain `Uint8Array` chun
 
 ### Add boot control
 
-A release build has to decide, on every launch, whether to boot the JS bundle shipped inside the binary or a newer one your app already downloaded and staged via `pear-mobile`. That decision is what [`pear-runtime-react-native`](/pear/reference/pear/mobile-boot-control) patches in: `bundleURL()` on iOS, and the `jsBundleFilePath` passed into `getDefaultReactHost()` on Android. Install it and register it as an Expo config plugin, then run `expo prebuild` to apply the patch—see [Mobile OTA Boot Control](/pear/reference/pear/mobile-boot-control#expo-setup) for the exact install command and `app.json` entry.
+A release build has to decide, on every launch, whether to boot the JS bundle shipped inside the binary or a newer one your app already downloaded and staged via `pear-mobile`. That decision is what [`pear-runtime-react-native`](/pear/reference/pear/mobile-boot-control) patches in: `bundleURL()` on iOS, and the `jsBundleFilePath` passed into `getDefaultReactHost()` on Android, plus a small generated Expo module on Android that repeats the check on every reload. Install it and register it as an Expo config plugin, then run `expo prebuild` to apply the patch—see [Mobile OTA Boot Control](/pear/reference/pear/mobile-boot-control#expo-setup) for the exact install command and `app.json` entry.
 
 If your app isn't on Expo, there's no config-plugin path—the same `bundleURL()` / `getJSBundleFile()` override has to be applied by hand once, in your native project. [Plain React Native](/pear/reference/pear/mobile-boot-control#plain-react-native) has the condition both platforms check (a newer `version` in the downloaded OTA's `package.json` than the installed app version) and links the exact Swift and Kotlin the plugin generates, for reference.
 
@@ -230,12 +230,13 @@ Skip this step and updates still download and stage correctly—they just never 
 
 ### Handle the restart
 
-`applyUpdate()` stages the new bundle on disk, but activation isn't immediate—[Runtime activation](/pear/reference/pear/mobile-boot-control#runtime-activation) documents that the two platforms differ on when the staged bundle actually takes effect. iOS re-reads `bundleURL()` on reload, so a plain JS-level reload picks up a freshly staged OTA. Android caches `jsBundleFilePath` when the React host is created, so the same JS-only reload generally reuses the old path—there, the update takes effect on the next full process launch.
+`applyUpdate()` stages the new bundle on disk, but activation isn't immediate: it happens at the next native bundle selection, and [Runtime activation](/pear/reference/pear/mobile-boot-control#runtime-activation) documents when that is. With `pear-runtime-react-native` 3.0.1 or later, both platforms repeat the selection on every JS reload, so a reload after the apply boots the staged bundle. iOS re-reads `bundleURL()` on reload, and on Android the generated `modules/pear-runtime-reload` module repeats the version check.
 
-The template does the JS-level reload, with no `Platform.OS` branch, on `pear:updateApplied`—an Expo [`reloadAppAsync()`](https://docs.expo.dev/versions/latest/sdk/expo/#reloadappasyncreason) call (the `reloadAppAsync` branch in the excerpt in *Wire the update and minver events*). One call, both platforms, no branching—but [Runtime activation](/pear/reference/pear/mobile-boot-control#runtime-activation) says to **treat a full restart as the requirement on both platforms**, not just Android. Be honest with yourself about what a JS-level reload actually buys on each side:
+The template does the JS-level reload, with no `Platform.OS` branch, on `pear:updateApplied`—an Expo [`reloadAppAsync()`](https://docs.expo.dev/versions/latest/sdk/expo/#reloadappasyncreason) call (the `reloadAppAsync` branch in the excerpt in *Wire the update and minver events*). One call, both platforms, no branching. What that buys depends on how the native side was set up:
 
-- **iOS** re-reads `bundleURL()` on reload, so this JS reload picks up the freshly applied OTA in practice—but a JS reload isn't a guaranteed cold start, so don't design around it as a contract.
-- **Android** caches `jsBundleFilePath` when the React host is created, so the same JS-only reload generally reuses the old path—there, the new bundle boots on the next cold start, not this reload. Either accept next-launch activation and tell the user the update applies on next open, or add a native restart module to force a cold start on both platforms.
+- **Expo, with the plugin at 3.0.1 or later**—the reload activates the update on iOS and Android. On Android it relies on the generated reload module, so regenerate the native projects with `npx expo prebuild --clean` after upgrading the package.
+- **Plugin 3.0.0 or earlier**—Android captures `jsBundleFilePath` when the React host is created, so the same JS-only reload reuses the old path and the new bundle boots on the next cold start. Either upgrade the plugin, or accept next-launch activation and tell the user the update applies on next open.
+- **Plain React Native on Android**—the generated reload module requires Expo, so the project needs its own bundle loader that repeats the check on reload, or a full process restart after the apply.
 
 Either way, don't branch the *call* per platform—branch only the message you show the user, if you show one.
 
@@ -249,8 +250,8 @@ Either way, don't branch the *call* per platform—branch only the message you s
 - The bundle is freshly rebuilt after **any** change to the worker or something it imports—rerun `bare-pack` and confirm the timestamp on `worker.bundle.js` moved, since a stale bundle gives no error and just runs old code.
 - `updating` → `updated` fire in a release build (not a dev/Metro build—those always load from Metro, so the update path isn't exercised) when a newer version is staged.
 - Raising a payload's `pear.json` `updates.minver` above the currently-running JS bundle's own `version` (see the callout in *First-time `package.json` and `pear.json` setup*) actually produces the `minver-required` path—a store-update prompt in the UI—rather than a silent download.
-- The boot-control patch is present after `expo prebuild` (or your hand-applied equivalent): look for the `pear-runtime-react-native OTA v3` marker comment in `AppDelegate.swift` and `MainApplication.kt`.
-- A full restart after `applyUpdate()` actually boots the new bundle on both a release iOS build and a release Android build—not just one of them.
+- The boot-control patch is present after `expo prebuild` (or your hand-applied equivalent): look for the `pear-runtime-react-native OTA v4` marker comment in `AppDelegate.swift` and `MainApplication.kt`, and for the generated `modules/pear-runtime-reload` folder on Android.
+- After `applyUpdate()`, the reload boots the new bundle on both a release iOS build and a release Android build—not just one of them. If Android keeps the old bundle until the app is relaunched, the native projects came from an older plugin version.
 
 ## See also
 
