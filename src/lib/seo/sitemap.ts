@@ -23,5 +23,6 @@ export function buildDocsSitemap(
     });
   }
 
-  return entries;
+  // `getPages()` order varies between builds.
+  return entries.sort((a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0));
 }
