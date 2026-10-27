@@ -1,18 +1,25 @@
-import { defaultHandlers, type Handle, type State } from 'mdast-util-to-markdown';
+import { defaultHandlers, type Handle, type Options, type State } from 'mdast-util-to-markdown';
+import { gfmToMarkdown } from 'mdast-util-gfm';
+import { mdxToMarkdown } from 'mdast-util-mdx';
 
 type Peek = (node: never, parent: never, state: State) => string;
 type Peekable = Handle & { peek?: Peek };
 
+const flatten = (extension: Options): Options[] => [extension, ...(extension.extensions ?? []).flatMap(flatten)];
+
+// The handler tables the pipeline serializes with: core, plus the mdx and gfm extensions.
+const TABLES = [
+  defaultHandlers as Record<string, Peekable>,
+  ...[mdxToMarkdown(), gfmToMarkdown()].flatMap(flatten).map((e) => (e.handlers ?? {}) as Record<string, Peekable>),
+];
+
 // fumadocs-mdx 14.2.14+ drops `peek` when it wraps handlers; without it `*` and `` ` `` get entity-encoded.
 const PEEK: Record<string, Peek> = {
   ...Object.fromEntries(
-    Object.entries(defaultHandlers as Record<string, Peekable>).flatMap(([type, handle]) =>
-      handle.peek ? [[type, handle.peek]] : [],
+    TABLES.flatMap((handlers) =>
+      Object.entries(handlers).flatMap(([type, handle]) => (handle.peek ? [[type, handle.peek]] : [])),
     ),
   ),
-  delete: () => '~',
-  footnoteReference: () => '[',
-  mdxJsxTextElement: () => '<',
   mdxTextExpression: () => '{',
 };
 

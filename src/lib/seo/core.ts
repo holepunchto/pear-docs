@@ -66,10 +66,7 @@ function normalizeRootRelativeAssetPath(path: string): string {
 }
 
 function toAbsoluteUrl(metadataBase: URL, pathname: string): string {
-  const base =
-    metadataBase.href.endsWith('/') && metadataBase.href !== '/'
-      ? metadataBase.href.slice(0, -1)
-      : metadataBase.href.replace(/\/$/, '');
+  const base = metadataBase.href.replace(/\/$/, '');
   const path = pathname.startsWith('/') ? pathname : `/${pathname}`;
   return `${base}${path}`;
 }
@@ -84,7 +81,7 @@ function parseLastModified(
 }
 
 /**
- * Infer JSON-LD @type from Diataxis-style first slug segment when honest defaults suffice.
+ * JSON-LD @type: `schemaType` wins, the root and `docType: page` are WebPage, the rest TechArticle.
  */
 export function inferJsonLdType(
   slugs: string[],
@@ -95,26 +92,6 @@ export function inferJsonLdType(
 
   if (docType === 'page' || slugs.length === 0) {
     return 'WebPage';
-  }
-
-  const first = slugs[0]?.toLowerCase();
-  if (first === 'reference') {
-    return 'TechArticle';
-  }
-  if (
-    first === 'tutorial' ||
-    first === 'how-to' ||
-    first === 'explanation' ||
-    first === 'faqs' ||
-    first === 'getting-started' ||
-    docType === 'tutorial' ||
-    docType === 'how-to' ||
-    docType === 'explanation' ||
-    docType === 'reference' ||
-    docType === 'faq' ||
-    docType === 'getting-started'
-  ) {
-    return 'TechArticle';
   }
 
   return 'TechArticle';

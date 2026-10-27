@@ -10,13 +10,14 @@
 // the validator picks it up automatically — no schema list to maintain.
 //
 // Also enforces a second, unrelated invariant: every page must declare a
-// valid `product` (pear/bare/shared) — see docs/plans/PEAR-BARE-SPLIT-PITCH.md.
+// valid `product` (pear/bare/p2p/shared) — see docs/plans/PEAR-BARE-SPLIT-PITCH.md.
 // Unlike docType, product isn't directory-derived (a page's nav-tree home
 // isn't its content/ path), so this just validates the value against the
 // schema's enum rather than mapping it from the path.
 //
 // Run as `npm run check:doctypes`. Exit 0 on pass, 1 on any mismatch.
 import { readFile } from 'fs/promises';
+import { productSchema } from '../src/lib/seo/schema';
 import { CONTENT_DIR, getFiles } from './helpers';
 
 interface Mismatch {
@@ -25,13 +26,12 @@ interface Mismatch {
   actual: string | null;
 }
 
-/** Keep in sync with `productSchema` in source.config.ts. */
-const VALID_PRODUCTS = new Set(['pear', 'bare', 'p2p', 'shared']);
+const VALID_PRODUCTS = new Set<string>(productSchema.options);
 
 /**
  * Top-level directory under content/ -> required docType for every .mdx
- * inside (recursive). Singular, matching the @tetherto/docs-seo-schema
- * docType enum.
+ * inside (recursive). Singular, matching the `docTypeSchema` enum in
+ * src/lib/seo/schema.ts.
  *
  * `getting-started/` is a template-specific helper, not one of the four
  * Diátaxis quadrants. The Diátaxis skill classifies it as "tutorial in

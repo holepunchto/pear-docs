@@ -30,6 +30,23 @@ export function urlToMarkdownRelativePath(url: string): string {
   return `${trimmed}.md`;
 }
 
+// Serializer regressions in fumadocs-mdx (see src/lib/restore-markdown-peek.ts):
+// entity-encoded `*`/`` ` `` markers, and headings that lost their `#` markers.
+const ENCODED_MARKER = /&#x(?:2A|60);/;
+const HEADING_WITHOUT_MARKER = /^(?![#\s|>`-])\S.* \[#[\w-]+\]$/m;
+
+export function findMarkdownProblems(entries: ManifestEntry[]): string[] {
+  const problems: string[] = [];
+  for (const { url, content } of entries) {
+    if (ENCODED_MARKER.test(content)) problems.push(`${url}: entity-encoded \`*\` or backtick`);
+    if (HEADING_WITHOUT_MARKER.test(content)) problems.push(`${url}: heading without \`#\` marker`);
+  }
+  if (entries.length > 0 && !entries.some((e) => /^#{2,} /m.test(e.content))) {
+    problems.push('no entry has a heading');
+  }
+  return problems;
+}
+
 async function main(): Promise<void> {
   console.log(`Generating per-page .md files from ${MANIFEST_PATH}…`);
 
@@ -50,6 +67,14 @@ async function main(): Promise<void> {
 
   if (entries.length === 0) {
     console.warn('Manifest is empty — no .md files written.');
+  }
+
+  const problems = findMarkdownProblems(entries);
+  if (problems.length > 0) {
+    throw new Error(
+      `Markdown serializer regressed:\n  ${problems.slice(0, 10).join('\n  ')}` +
+        (problems.length > 10 ? `\n  … and ${problems.length - 10} more` : ''),
+    );
   }
 
   for (const entry of entries) {

@@ -7,7 +7,8 @@
  * index/follow robots, og:title/description/url/image (the image file must
  * exist), a twitter card, and parseable JSON-LD whose `url` is the page. It
  * also asserts robots.txt points at the sitemap and carries Content-Signal,
- * and that the sitemap lists exactly the indexable pages under out/.
+ * that the sitemap lists exactly the indexable pages under out/, and that
+ * llms.txt links every page's built .md twin on the same origin.
  *
  *   --snapshot <file>  write every page's SEO head, JSON-LD, robots.txt,
  *                      sitemap.xml and OG image hashes to <file>
@@ -17,6 +18,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { pageMarkdownUrl } from '../src/lib/page-markdown-url';
 
 const OUT_DIR = 'out';
 const OG_DIR = join(OUT_DIR, 'og', 'docs');
@@ -170,13 +172,33 @@ function checkInvariants(snapshot: Snapshot, urls: string[]): string[] {
     const path = '/' + relative(OUT_DIR, file).replace(/index\.html$/, '');
     if (!listed.has(origin + path)) failures.push(`${path}: indexable page missing from sitemap.xml`);
   }
+
+  // llms.txt must link each page's .md twin, on this origin, and the file must exist.
+  const llmsFile = join(OUT_DIR, 'llms.txt');
+  if (!existsSync(llmsFile)) {
+    failures.push('llms.txt is missing');
+  } else {
+    const linked = new Set<string>();
+    for (const m of readFileSync(llmsFile, 'utf-8').matchAll(/^- \[.*?\]\((\S+?)\)/gm)) {
+      const href = m[1];
+      linked.add(href);
+      if (!href.startsWith(`${origin}/`)) failures.push(`llms.txt: ${href} is not on ${origin}`);
+      else if (!existsSync(join(OUT_DIR, decodeURIComponent(new URL(href).pathname)))) {
+        failures.push(`llms.txt: ${href} is not in out/`);
+      }
+    }
+    for (const url of urls) {
+      const twin = origin + pageMarkdownUrl(new URL(url).pathname);
+      if (!linked.has(twin)) failures.push(`llms.txt: no link to ${twin}`);
+    }
+  }
   return failures;
 }
 
 // source.getPages() order varies between builds, so compare entries as a set.
 function normalizeSitemap(xml: string): string {
   const entries = [...xml.matchAll(/<url>[\s\S]*?<\/url>/g)].map((m) => m[0]).sort();
-  return xml.replace(/<url>[\s\S]*<\/url>/, entries.join(''));
+  return xml.replace(/<url>[\s\S]*<\/url>/, () => entries.join(''));
 }
 
 function diffSnapshots(before: Snapshot, after: Snapshot): string[] {
@@ -219,7 +241,13 @@ function main(): void {
   const args = process.argv.slice(2);
   const flag = (name: string) => {
     const i = args.indexOf(name);
-    return i >= 0 ? args[i + 1] : undefined;
+    if (i < 0) return undefined;
+    const value = args[i + 1];
+    if (!value || value.startsWith('--')) {
+      console.error(`❌ ${name} needs a file path.`);
+      process.exit(1);
+    }
+    return value;
   };
   const { snapshot, urls } = collect();
 

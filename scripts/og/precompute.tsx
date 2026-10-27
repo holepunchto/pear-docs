@@ -125,8 +125,10 @@ export async function precomputeTakumiOgImages(
   const pubRoot = path.resolve(publicDir);
 
   const { glob } = await import('glob');
+  // `_`-prefixed files are snippets, not pages (see `files` in source.config.ts).
   const absFiles = await glob('**/*.{md,mdx}', {
     cwd: docsRoot,
+    ignore: '**/_*.{md,mdx}',
     nodir: true,
     absolute: true,
   });
