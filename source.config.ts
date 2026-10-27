@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { remarkVersionSections } from './src/lib/remark-version-sections';
 import { remarkVersionCodeLines } from './src/lib/remark-version-code-lines';
 import { remarkStripMdxComments } from './src/lib/remark-strip-mdx-comments';
+import { restoreMarkdownPeek } from './src/lib/restore-markdown-peek';
 import { transformerVersionLines } from './src/lib/shiki-version-lines';
 
 const execFile = promisify(execFileCb);
@@ -151,7 +152,7 @@ export const docs = defineDocs({
       .extend(tetherSeoFrontmatterSchema.shape)
       .passthrough(),
     postprocess: {
-      includeProcessedMarkdown: true,
+      includeProcessedMarkdown: { stringify: restoreMarkdownPeek },
     },
   },
   meta: {
