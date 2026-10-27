@@ -68,6 +68,14 @@ export async function GET() {
 
   const lines = [`# ${siteName}`, '', `> ${SUMMARY}`, ''];
   lines.push('Every page link below points at its Markdown version.', '');
+  const mcpUrl = process.env.NEXT_PUBLIC_MCP_URL?.trim().replace(/\/+$/, '');
+  if (mcpUrl) {
+    const card = new URL('/.well-known/mcp/server-card.json', metadataBase);
+    lines.push(
+      `MCP server: ${mcpUrl} (streamable HTTP, no authentication). Tools: search_docs for semantic search, fetch_doc for a page as Markdown. Server card: ${card}`,
+      '',
+    );
+  }
   overview.sort((a, b) => a.rank - b.rank);
   lines.push('## Overview', '', ...overview.map((e) => e.line), '');
   for (const [title, { entries }] of [...sections].sort(([, a], [, b]) => a.rank - b.rank)) {
