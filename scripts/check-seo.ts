@@ -8,8 +8,8 @@
  * exist), a Markdown alternate link (the file must exist), a twitter card, and
  * parseable JSON-LD whose `url` is the page. It
  * also asserts robots.txt points at the sitemap and carries Content-Signal,
- * that the sitemap lists exactly the indexable pages under out/, and that
- * llms.txt links every page's built .md twin on the same origin.
+ * that the sitemap is sorted and lists exactly the indexable pages under out/,
+ * and that llms.txt links every page's built .md twin on the same origin.
  *
  *   --snapshot <file>  write every page's SEO head, JSON-LD, robots.txt,
  *                      sitemap.xml and OG image hashes to <file>
@@ -164,6 +164,8 @@ function checkInvariants(snapshot: Snapshot, urls: string[]): string[] {
       else if (ld.url !== url) fail(`JSON-LD url is ${String(ld.url)}`);
     }
   }
+
+  if (urls.some((url, i) => i > 0 && url < urls[i - 1])) failures.push('sitemap.xml: URLs are not sorted');
 
   if (!snapshot.robots.includes(`Sitemap: ${origin}/sitemap.xml`)) {
     failures.push('robots.txt: no Sitemap line for this origin');
