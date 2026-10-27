@@ -60,6 +60,7 @@ module.exports = {
       platforms: ['win32'],
       config: {
         appManifest: path.join(__dirname, 'build', 'AppxManifest.xml'),
+        packageAssets: path.join(__dirname, 'build', 'msix-assets'),
         windowsKitVersion: getWindowsKitVersion(),
         ...(process.env.WINDOWS_SIGN_HOOK
           ? {
