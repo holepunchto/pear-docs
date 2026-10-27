@@ -168,6 +168,8 @@ Loads a Hypercore, either by name (if the `name` option is provided), or from th
 
 When `get()` creates a new writable core, from `name` or `keyPair`, you can pass `manifestVersion` to override [`store.manifestVersion`](#storemanifestversion) for that call. A core that already exists under that name keeps the manifest it was created with. Added in 7.12.6.
 
+`userData` is an object of keys and values that `get()` writes to the core's local User Data store, as the Hypercore [`userData` option](/p2p/reference/building-blocks/hypercore#new-hypercorestorage-key-options) does. Added in 7.14.0. `weak` is forwarded like the Hypercore [`weak` option](/p2p/reference/building-blocks/hypercore#hypercoreoptions), so the session does not keep the core alive and does not stop [`store.purge()`](#await-storepurgekeys-options). Added in 7.15.0.
+
 ```js
 const core = store.get({ name: 'my-core' })
 ```
@@ -313,22 +315,61 @@ An audit report describing the state of the backing store and any detected incon
 for await (const report of store.audit()) console.log(report)
 ```
 
-#### `await store.staticify(core, opts)`
+#### `await store.staticify(core, opts = {})`
 
 [src](https://github.com/holepunchto/corestore/blob/v7.16.1/index.js#L554)
 
 A reopened Hypercore whose manifest is converted into a static prologue-based manifest for the current data snapshot.
 
-| Parameter | Type | Description |
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `core` | [`Hypercore`](/p2p/reference/building-blocks/hypercore) | — | The source core to snapshot. Must have data. |
+| `opts` | `object` | `{}` | Options forwarded to `store.get()` for the new core. `key` and `name` are ignored, because the static core's key comes from its manifest. |
+
+| Option | Default | Description |
 | --- | --- | --- |
-| `core` | [`Hypercore`](/p2p/reference/building-blocks/hypercore) | The source core to snapshot. Must have data. |
-| `opts` | `object` | Options forwarded to `store.get()` for the new core. |
+| `manifest` | — | Manifest fields that replace the defaults of the static manifest, for example `version` or `userData`. The defaults are `version` 1, the source core's `hash`, a `quorum` of 0, no `signers`, and a `prologue` that covers the source core's current length. The new core's key is the key of the resulting manifest. Added in 7.16.0. |
 
 - Returns: [`Promise<Hypercore>`](/p2p/reference/building-blocks/hypercore) — The new static Hypercore.
 - Throws: if the core has no data to staticify.
 
 ```js
 const staticCore = await store.staticify(core)
+
+// Give the static core a version 2 manifest that carries user data
+const custom = await store.staticify(core, {
+  manifest: { version: 2, userData: Buffer.from('mapped from somewhere') }
+})
+```
+
+#### `await store.purge(keys, [options])`
+
+[src](https://github.com/holepunchto/corestore/blob/v7.16.1/index.js#L390)
+
+Permanently delete cores from the store's storage, using [`core.purge()`](/p2p/reference/building-blocks/hypercore#await-corepurge) for each one. A core the store does not hold is skipped, and so is a core with an open session unless you pass `force`. Weak sessions do not count as open. Added in 7.15.0.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keys` | `Array<Buffer\|string\|object>\|Buffer\|string\|object` | — | The cores to purge, one entry or an array. An entry is a core key as a Buffer or a hex/z32 string, or an object with a `key` or a `discoveryKey`, such as a Hypercore. |
+| `options` | `object` | `{}` | Purge options. |
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `force` | `false` | Purge cores that have open sessions too. Their sessions are closed first, including sessions made through [`store.session()`](#storeasession) and [`store.namespace()`](#storenamespacename) of the same store. |
+
+- Returns: [`Promise<Buffer[]>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) — The discovery keys of the cores that were purged, in the order of `keys`. Skipped cores are left out.
+
+A purged name starts over the next time you call [`store.get({ name })`](#storegetkey---name-a-name-hypercoreopts): it opens an empty core with the same key, unless you pass a different `manifestVersion`.
+
+```js
+const core = store.get({ name: 'drafts' })
+await core.append('hello')
+
+const key = core.key
+await core.close() // purge skips cores with open sessions
+
+const purged = await store.purge(key) // or an array of keys
+console.log(purged.length) // 1
 ```
 
 ### Watchers
@@ -390,7 +431,9 @@ handle.on('update', () => console.log('group changed'))
 Group notifications are experimental. The API is subject to change and may break in any release.
 </Callout>
 
-#### `handle.update(opts = {})`
+#### `handle.updates(opts = {})`
+
+[src](https://github.com/holepunchto/corestore/blob/v7.16.1/lib/notify.js#L12)
 
 Gets updates for the `topic` the handle is for.
 
@@ -402,6 +445,8 @@ Gets updates for the `topic` the handle is for.
 | --- | --- | --- |
 | `since` | `0` | What timestamp to start returning updates from. Default `0` returns all updates |
 | `reverse` | `true` | Flag to return updates in reverse order. Defaults to `true` so latest returned first |
+
+- Returns: [`Readable`](https://nodejs.org/api/stream.html#class-streamreadable) — A stream of the keys of the cores that updated.
 
 ```js
 for await (const key of handle.updates()) {
