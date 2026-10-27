@@ -28,10 +28,17 @@ export const source = loader({
   },
 });
 
-export async function getLLMText(page: InferPageType<typeof source>) {
+export const compareUrls = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+/** Pages ordered by URL, since `getPages()` order varies between builds. */
+export function getSortedPages() {
+  return [...source.getPages()].sort((a, b) => compareUrls(a.url, b.url));
+}
+
+export async function getLLMText(page: InferPageType<typeof source>, sourceUrl?: string) {
   const processed = cleanProcessedMarkdown(await page.data.getText('processed'));
 
   return `# ${page.data.title}
 
-${processed}`;
+${sourceUrl ? `Source: ${sourceUrl}\n\n` : ''}${processed}`;
 }
