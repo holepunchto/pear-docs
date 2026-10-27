@@ -10,6 +10,7 @@ import { metaSchema } from 'fumadocs-core/source/schema';
 import {
   remarkMdxMermaid,
   rehypeCodeDefaultOptions,
+  type LLMsOptions,
 } from 'fumadocs-core/mdx-plugins';
 import { transformerMetaHighlight } from '@shikijs/transformers';
 import codeImport from 'remark-code-import';
@@ -81,7 +82,8 @@ export const docs = defineDocs({
       .extend(tetherSeoFrontmatterSchema.shape)
       .passthrough(),
     postprocess: {
-      includeProcessedMarkdown: { stringify: restoreMarkdownPeek },
+      // mdx 14.2.14 still runs its own stringifier, which takes `stringify`; core 16.17's type dropped it.
+      includeProcessedMarkdown: { stringify: restoreMarkdownPeek } as unknown as LLMsOptions,
     },
   },
   meta: {

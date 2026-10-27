@@ -12,7 +12,7 @@ import {
   type SharedProps,
 } from "fumadocs-ui/components/dialog/search";
 import { useDocsSearch } from "fumadocs-core/search/client";
-import { create } from "@orama/orama";
+import { create } from "zbsearch";
 import {
   InkeepModalChat,
   type AIChatFunctions,
