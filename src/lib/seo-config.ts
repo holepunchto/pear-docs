@@ -1,7 +1,8 @@
 import type { DocsSeoConfig } from '@/lib/seo';
 
 /**
- * Production SEO base URL. Set in CI/deploy (e.g. `https://docs.pears.com`).
+ * Production SEO base URL. Pinned in `.env.production`; a value in the build
+ * environment overrides it.
  * Falls back to `http://localhost:8080` to match the `serve` script
  * (`serve out -p 8080`), which is what previews the static export locally.
  * Override with `NEXT_PUBLIC_DOCS_ORIGIN` if you serve on a different port
