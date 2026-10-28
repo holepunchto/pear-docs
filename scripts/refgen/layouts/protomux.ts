@@ -41,7 +41,7 @@ const layout: Layout = {
 
   groups: [
     { title: 'Constructor and mux helpers', members: ['constructor', 'static:from', 'static:isProtomux', 'cork', 'uncork', 'isIdle', 'for'] },
-    { title: 'Pairing and channel discovery', members: ['pair', 'unpair', 'opened', 'getLastChannel'] },
+    { title: 'Pairing and channel discovery', members: ['pair', 'unpair', 'watch', 'unwatch', 'unwatchAll', 'opened', 'getLastChannel'] },
     { title: 'Creating channels', members: ['createChannel'] },
     { title: 'Mux properties', members: ['stream', 'drained'] },
     { title: 'Channel lifecycle', members: ['open', 'fullyOpened', 'fullyClosed', 'close', 'Channel.cork', 'Channel.uncork'] },

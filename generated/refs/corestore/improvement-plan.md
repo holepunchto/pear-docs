@@ -1,5 +1,5 @@
 # Reference generation improvement plan — corestore
-Generated from `holepunchto/corestore` at **v7.13.0** (`37e30967ab`) on 2026-10-05T21:15:01.237Z.
+Generated from `holepunchto/corestore` at **v7.16.1** (`95598ed10a`) on 2026-10-27T14:56:05.310Z.
 **Doc-completeness: 50%** — 7 of 14 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
@@ -45,14 +45,15 @@ _Cause: no code fence under the README entry — add a usage snippet._
 - `handle.destroy()`
 
 ## Drift
-### Undocumented in README (in source) (42)
+### Undocumented in README (in source) (43)
 
 _Cause: public method in source with no README entry — add upstream docs, or confirm it is internal._
 
 - `store.findingPeers()`
 - `store.audit(opts = {})`
 - `store.getAuth(discoveryKey)`
-- `await store.staticify(core, opts)`
+- `await store.purge(keys, options = {})`
+- `await store.staticify(core, opts = {})`
 - `await store.ready()`
 - `store.opened`
 - `store.closed`

@@ -1,6 +1,6 @@
 # Reference generation improvement plan — hypercore
-Generated from `holepunchto/hypercore` at **v11.37.2** (`373fc43684`) on 2026-10-05T21:14:53.914Z.
-**Doc-completeness: 75%** — 45 of 60 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
+Generated from `holepunchto/hypercore` at **v11.39.4** (`5790f41bcb`) on 2026-10-27T14:56:01.200Z.
+**Doc-completeness: 75%** — 46 of 61 source methods fully documented (description + documented params). Return values and examples are reported separately as enhancement signals.
 > This replaces OpenAPI/ratemyopenapi scoring, which does not apply to JS library APIs. The score grades the upstream README against the source surface extracted by the AST pass.
 ## Parity vs curated page
 _No existing MDX page found for this slug._
@@ -37,7 +37,7 @@ _Cause: parameter present in the signature but not described — README gap or e
 - `const ext = core.registerExtension(name, handlers = {})` → name
 
 ## Enhancements
-### Return value not explained (17)
+### Return value not explained (18)
 
 _Cause: signature captures a scalar return but no prose/shape explains it — clarity enhancement._
 
@@ -49,6 +49,7 @@ _Cause: signature captures a scalar return but no prose/shape explains it — cl
 - `const info = await core.info([options])`
 - `const updated = await core.update([options])`
 - `const has = await core.has(start, [end])`
+- `const count = await core.count(start, end)`
 - `const block = await core.get(index, [options])`
 - `const cleared = await core.clear(start, [end], [options])`
 - `const stream = core.createReadStream([options])`
@@ -59,7 +60,7 @@ _Cause: signature captures a scalar return but no prose/shape explains it — cl
 - `const proof = await core.proof(opts)`
 - `const ext = core.registerExtension(name, handlers = {})`
 
-### No example (38)
+### No example (39)
 
 _Cause: no code fence under the README entry — add a usage snippet._
 
@@ -91,6 +92,7 @@ _Cause: no code fence under the README entry — add a usage snippet._
 - `const value = await core.getUserData(key)`
 - `const done = core.findingPeers()`
 - `const has = await core.has(start, [end])`
+- `const count = await core.count(start, end)`
 - `await core.markBlock(start, end = start + 1)`
 - `await core.clearMarkings()`
 - `const buffer = await core.signable([length], [fork])`
@@ -124,7 +126,7 @@ _Cause: public method in source with no README entry — add upstream docs, or c
 - `core.contiguousByteLength`
 - `core.globalCache`
 - `core.recovering`
-- `await core.recover()`
+- `await core.recover(opts)`
 - `core.transferSession(core)`
 - `await core.purge()`
 - `core.undownload(range)`
