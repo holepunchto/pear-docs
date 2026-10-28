@@ -46,6 +46,11 @@ export const bareTree: Node[] = [
       },
       {
         type: 'page',
+        name: 'WebAssembly addons',
+        url: '/bare/explanation/webassembly-addons',
+      },
+      {
+        type: 'page',
         name: 'Structured RPC and schema-first design',
         url: '/bare/explanation/rpc-and-schemas',
       },
@@ -155,6 +160,11 @@ export const bareTree: Node[] = [
         type: 'page',
         name: 'Migrate a Node.js app to Bare',
         url: '/bare/how-to/migrate-a-nodejs-app-to-bare',
+      },
+      {
+        type: 'page',
+        name: 'Run an addon sandboxed in WebAssembly',
+        url: '/bare/how-to/run-an-addon-sandboxed-in-webassembly',
       },
       {
         type: 'page',

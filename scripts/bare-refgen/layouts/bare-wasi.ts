@@ -45,6 +45,8 @@ const layout: Layout = {
     'HostDirectory.unlink': 'Implements [`WASIDirectory.unlink()`](#wasidirectory).',
   },
   seeAlso: [
+    '[Run an addon sandboxed in WebAssembly](/bare/how-to/run-an-addon-sandboxed-in-webassembly) — load `bare-sqlite` as WebAssembly with one directory granted.',
+    '[WebAssembly addons](/bare/explanation/webassembly-addons) — how the sandbox works and what it doesn\'t stop.',
     '[`bare-directory`](/bare/reference/bare/modules/bare-directory) — the host directory capabilities behind `HostDirectory`.',
     '[`bare-wasm`](/bare/reference/bare/modules/bare-wasm) — the WebAssembly API used to compile and instantiate a guest.',
     '[`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) — how Bare passes these options to WebAssembly addons.',

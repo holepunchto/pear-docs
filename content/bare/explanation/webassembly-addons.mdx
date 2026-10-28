@@ -1,0 +1,79 @@
+---
+title: "WebAssembly addons"
+description: "How Bare runs an addon's WebAssembly build sandboxed through WASI, when it picks that build over the native one, and what the sandbox does and doesn't protect."
+docType: explanation
+product: bare
+schemaType: WebPage
+---
+
+A [native addon](/bare/explanation/native-addons) is a shared library that Bare loads into the process. Once loaded, it can do anything the process can: open any file the process can open, connect to any host, start threads. From Bare 1.36.0, an addon package can also ship a WebAssembly build of the same code. Bare runs that build sandboxed through WASI, so the files and system calls it can use are limited to what the application grants, and the same file can stand in on platforms the package has no native build for.
+
+## Two builds of one addon
+
+A native addon is C or C++ compiled for one platform and architecture, such as `darwin-arm64`, and installed under `prebuilds/<host>/`. Bare loads it with [`Bare.Addon`](/bare/reference/bare/runtime#bareaddon), and the addon calls the [libjs](https://github.com/holepunchto/libjs) C API to create and read JavaScript values.
+
+The WebAssembly build is the same source compiled for `wasm32-wasip1` and installed as `prebuilds/wasi-wasm32/<name>.wasm`. [`cmake-bare`](https://github.com/holepunchto/cmake-bare) builds it as a WASI reactor whose undefined functions become imports, so its calls to libjs become imports too. Bare doesn't load it as a shared library. The JavaScript engine compiles it, and [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi) implements each libjs function it imports in JavaScript. The addon runs in its own linear memory, and strings and buffers are copied in and out of it.
+
+Because the build is one file for every platform, a package that ships it covers platforms it has no native prebuild for, wherever the JavaScript engine provides WebAssembly. The [`bare-wasm`](/bare/reference/bare/modules/bare-wasm) README warns that the `WebAssembly` global may not be available, and which platforms provide it in Bare 1.36.0 isn't documented upstream.
+
+<Callout type="info">
+The behavior on this page was checked with Bare 1.36.0 on macOS.
+</Callout>
+
+## How Bare picks a build
+
+[`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) 7.5.0, which ships with Bare 1.36.0, decides which build to load:
+
+- An import with the `host` attribute, `require('bare-sqlite', { with: { host: 'wasi-wasm32' } })`, gets the WebAssembly build of every addon in the modules it pulls in.
+- An import without it gets a statically linked builtin, then the native build when one exists for the platform, then a linked addon, and the `.wasm` file only when none of these exists. A native build that exists but fails to load throws `CANNOT_LOAD`, with no fallback.
+- On a process sealed with `Bare.Addon.seal()`, no new native code can load, so for an addon resolved after the seal, the loader skips native builds the process hasn't loaded yet and falls back to the `.wasm` file. An addon resolved before the seal still fails with `CANNOT_LOAD`. That covers every addon reached through string-literal `require()` and `import()` specifiers from the sealing module, or from any module linked with it, since those are resolved at link time. A package that ships no `.wasm` build fails with `ADDON_NOT_FOUND`. A bundle keeps the resolutions recorded when it was packed, so inside one nothing falls back.
+
+The addons of one package load one way per module loader, which for an application means one way per process. Importing a package once with `host` and once without, or with different `wasi` attributes, throws `ADDON_HOST_INCOMPATIBLE` or `ADDON_WASI_INCOMPATIBLE` while the importing module is linked, before its code runs. Bare links those imports from the source before the module runs, so next to a string-literal specifier the attributes must be string literals too.
+
+## What the sandbox grants
+
+Through WASI, a WebAssembly addon gets nothing from the system except clocks unless the application hands it over. The application names a WASI provider with the `wasi` import attribute: a module that exports a function, which Bare calls with the URL of each WebAssembly addon. What it returns is passed to [`bare-wasi`](/bare/reference/bare/modules/bare-wasi), which implements WASI preview 1 on a deny-by-default basis:
+
+| Capability | Default | Granted by |
+| --- | --- | --- |
+| Files | None | `preopens`, directories the addon sees at paths of your choosing |
+| Standard input, output, and error | None | `stdin`, `stdout`, `stderr` |
+| Randomness | None | `random`, a function that fills a buffer |
+| Arguments and environment variables | None | `args`, `env` |
+| Clocks | The host's clocks | `clock`, or `clock: null` to deny them, though file timestamps set to now still use the host clock |
+| Sockets | None | Nothing: WASI preview 1 in `bare-wasi` has no sockets |
+
+An addon imported without a provider gets the defaults, which is how the fallback build runs when the application didn't plan for it: through WASI, it can compute, but it can't open a file.
+
+Directories are confined twice. `bare-wasi` resolves every path the addon passes, one name at a time, and refuses absolute paths, `..` beyond the starting directory, and symbolic links that point outside. A directory on disk is handed over as a [`bare-directory`](/bare/reference/bare/modules/bare-directory) capability, which opens each name relative to the directory handle with the kernel's confinement flags, such as `openat2()` with `RESOLVE_BENEATH` on Linux, and which carries a set of rights that can only be narrowed. Through WASI, an addon given a directory without the `write` and `append` rights can't change its files, whatever path it passes, though `create`, `remove` and `rename` still let it add directories and delete or rename entries. Without `write` alone, `bare-wasi` opens files for appending, so the addon can still add to the end of existing files.
+
+Because the provider is called once per addon URL, an application can give different addons different capabilities from one provider.
+
+## What the sandbox doesn't stop
+
+WASI limits what the addon can reach through system calls. It does not separate the addon from the JavaScript it runs next to.
+
+- **JavaScript's reach.** The libjs ABI gives the addon the global object and lets it call any function it can reach, as a native addon can. Whatever JavaScript in the same realm can do, the addon can do. On a process that hasn't called `Bare.Addon.seal()`, that includes loading a native addon through `Bare.Addon`. On a sealed process it includes getting back any native addon the process already loaded, by its path, such as the provider's own `bare-directory`, which opens any directory with any rights. A test addon did exactly that and read a file outside its preopen. Bare's [threat model](https://github.com/holepunchto/bare/blob/v1.36.0/docs/threat-model.md) puts it as WebAssembly addons reaching "no further than JavaScript."
+- **The process.** The addon shares the process, its CPU time, and its memory limit with everything else. It can loop forever or allocate until the process runs out.
+- **The engine.** Compiling WebAssembly hands the engine bytes to process, and the threat model lists it among the places where memory bugs in the engine could be reached. Only an operating system sandbox contains those.
+
+So the WASI sandbox is the right tool to keep an addon's file and system access to what it needs, and to stop a buggy addon from writing outside its directory. It isn't a boundary for code you don't trust with your JavaScript realm. For that, the [threat model](https://github.com/holepunchto/bare/blob/v1.36.0/docs/threat-model.md#what-embedders-must-do) lists five things embedders must do: check what the powers they hand out add up to, load untrusted code through a protocol of their own, keep it away from the shared intrinsics with a [realm](/bare/reference/bare/modules/bare-realm) of its own or by freezing them, run it inside an OS sandbox, which it calls required rather than a bonus, and seal early.
+
+## What an addon can't do as WebAssembly
+
+Some of what a native addon can do has no WebAssembly equivalent, and `bare-wasm-abi` rejects an addon that imports it:
+
+- **Threads.** A WebAssembly addon is single-threaded, so threadsafe functions are out.
+- **The event loop.** It has no libuv loop, so it can't run work in the background.
+- **Shared memory.** Its memory is copied in and out, so `SharedArrayBuffer` and the backing-store functions are out.
+- **Compiling code.** Running scripts and creating modules is left to the embedder.
+
+A package therefore ships a WebAssembly build only for addons that fit these limits, such as codecs, parsers, and SQLite. Some libjs functions are also not implemented yet: in `bare-wasm-abi` 0.1.1, the WebAssembly builds of `bare-svg` 1.1.1 and `bare-heif` 1.2.1 import `js_add_teardown_callback` and don't load.
+
+## See also
+
+- [Run an addon sandboxed in WebAssembly](/bare/how-to/run-an-addon-sandboxed-in-webassembly): the steps, with SQLite as the example.
+- [`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons): the `host` and `wasi` attributes and the loading rules.
+- [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi): the ABI and the functions it leaves out.
+- [Native-addon CI prebuilds](/bare/reference/native-addon-prebuilds#webassembly-prebuilds): building and shipping a `.wasm` build.
+- [Native addons](/bare/explanation/native-addons): the native build.
