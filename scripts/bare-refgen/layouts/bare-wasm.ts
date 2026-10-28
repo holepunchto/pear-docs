@@ -6,7 +6,7 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   intro:
-    '[`bare-wasm`](https://github.com/holepunchto/bare-wasm) — WebAssembly JavaScript API for Bare. In 0.1.0, each export is the same-named member of the `WebAssembly` global, so the module needs an engine that provides WebAssembly.',
+    '[`bare-wasm`](https://github.com/holepunchto/bare-wasm) — WebAssembly JavaScript API for Bare. Each export is the same-named member of the `WebAssembly` global. Where the global is unavailable, such as when V8 runs without a JIT on iOS, 0.1.0 throws a `ReferenceError` when it loads. From 0.1.1, the exports still load, but the constructors, the static methods of `Module` and `validate()` throw an error with the code `WEBASSEMBLY_UNAVAILABLE`, and `compile()` and `instantiate()` reject with it. Bare 1.36.0 bundles 0.1.0.',
   describe: {
     ModuleExportDescriptor: 'An export of a module, as listed by `Module.exports()`.',
     ModuleImportDescriptor: 'An import of a module, as listed by `Module.imports()`.',
