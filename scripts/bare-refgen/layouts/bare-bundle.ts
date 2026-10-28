@@ -8,6 +8,8 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   groups: [],
+  // The README fences its format sketch without a language.
+  patch: [{ in: 'Format', from: '```\n[#!hashbang]', to: '```text\n[#!hashbang]' }],
   params: {
     'Bundle.constructor': {
       opts: 'Options; `File` defaults to `MemoryFile`.',

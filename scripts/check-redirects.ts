@@ -8,6 +8,8 @@
  *   3. The HTML contains `link rel="canonical"` pointing at the new URL.
  *   4. out/_redirects contains a line like `<from> <to> 301!` (forced).
  *   5. out/_redirects ends with the catch-all 404 rule from public/_redirects.
+ *   6. out/_redirects has an `Accept: text/markdown` rule for every path depth
+ *      that has a `.md` twin.
  *
  * Designed to be wired into CI alongside check:internal-links so the IA
  * can't drift back. See decisions/0001-adopt-diataxis-ia.md §6.
@@ -15,6 +17,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { buildRedirects } from './redirects';
+import { maxTwinDepth, negotiationRule } from './markdown-negotiation';
 
 interface Failure {
   from: string;
@@ -57,6 +60,18 @@ function main(): void {
       to: '/404.html',
       reason: 'catch-all 404 rule must be the last active rule in out/_redirects',
     });
+  }
+
+  const lines = redirectsFile.split('\n').map((l) => l.trim().split(/\s+/));
+  const depth = maxTwinDepth(OUT_DIR);
+  for (let d = 0; d <= depth; d++) {
+    const [from, to] = negotiationRule(d);
+    const found = lines.some(
+      (f) => f[0] === from && f[1] === to && f.includes('Header:Accept=text/markdown'),
+    );
+    if (!found) {
+      failures.push({ from, to, reason: `no Accept: text/markdown rule for depth ${d}` });
+    }
   }
 
   for (const { from, to } of redirects) {

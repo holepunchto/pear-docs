@@ -1,4 +1,5 @@
-import { source } from '@/lib/source';
+import { compareUrls, source } from '@/lib/source';
+import { LLMS_FULL_PRODUCTS } from '@/lib/llms-full';
 import { pageMarkdownUrl } from '@/lib/page-markdown-url';
 import { getDocsSeoConfig } from '@/lib/seo-config';
 
@@ -39,7 +40,7 @@ function label(list: [string, string][], key: string): string {
   return known ?? key.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
 }
 
-const byUrl = (a: Entry, b: Entry) => a.url.localeCompare(b.url);
+const byUrl = (a: Entry, b: Entry) => compareUrls(a.url, b.url);
 
 export async function GET() {
   const { metadataBase, siteName } = getDocsSeoConfig();
@@ -68,6 +69,14 @@ export async function GET() {
 
   const lines = [`# ${siteName}`, '', `> ${SUMMARY}`, ''];
   lines.push('Every page link below points at its Markdown version.', '');
+  const mcpUrl = process.env.NEXT_PUBLIC_MCP_URL?.trim().replace(/\/+$/, '');
+  if (mcpUrl) {
+    const card = new URL('/.well-known/mcp/server-card.json', metadataBase);
+    lines.push(
+      `MCP server: ${mcpUrl} (streamable HTTP, no authentication). Tools: search_docs for semantic search, fetch_doc for a page as Markdown. Server card: ${card}`,
+      '',
+    );
+  }
   overview.sort((a, b) => a.rank - b.rank);
   lines.push('## Overview', '', ...overview.map((e) => e.line), '');
   for (const [title, { entries }] of [...sections].sort(([, a], [, b]) => a.rank - b.rank)) {
@@ -77,6 +86,10 @@ export async function GET() {
     '## Optional',
     '',
     `- [Full documentation](${new URL('/llms-full.txt', metadataBase)}): every page above in one file`,
+    ...LLMS_FULL_PRODUCTS.map(
+      (key) =>
+        `- [${label(PRODUCTS, key)} documentation](${new URL(`/${key}/llms-full.txt`, metadataBase)}): every ${label(PRODUCTS, key)} page in one file`,
+    ),
     '',
   );
   return new Response(lines.join('\n'));

@@ -188,14 +188,17 @@ export function CopyPageButton({
 
 export function ViewOptions({
   githubUrl,
+  markdownUrl,
 }: {
   /**
    * Source file URL on GitHub (works for static sites; no runtime `/page.mdx` fetch).
    */
   githubUrl: string;
+  /** Absolute URL of the page's Markdown version, which is what the AI prompts quote. */
+  markdownUrl: string;
 }) {
   const items = useMemo(() => {
-    const q = `Read the documentation source at ${githubUrl}, I want to ask questions about it.`;
+    const q = `Read ${markdownUrl}, I want to ask questions about it.`;
 
     return [
       {
@@ -325,7 +328,7 @@ export function ViewOptions({
         })}`,
       },
     ];
-  }, [githubUrl]);
+  }, [githubUrl, markdownUrl]);
 
   return (
     <Popover>
