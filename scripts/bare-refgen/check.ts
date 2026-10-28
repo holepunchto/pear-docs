@@ -3,7 +3,7 @@
 // Validation gate for the generated bare references. Re-renders each committed
 // api-model.json and asserts:
 //   1. coverage      — every top-level export appears on the page (no silent drops);
-//   2. layout sanity — every manifest members/describe/throws key matches a real symbol;
+//   2. layout sanity — every manifest members/describe/throws/memberPatch key matches a real symbol;
 //   3. MDX validity  — the page compiles as MDX.
 // Exits non-zero on any failure so CI can gate the regeneration PR.
 //
@@ -58,10 +58,12 @@ function coverageGaps(model: BareModel, mdx: string): string[] {
   return gaps;
 }
 
-/** Manifest refs (group members, describe/params/returns/throws keys) that match no symbol. */
+/** Manifest refs (group members, describe/params/returns/throws keys, memberPatch/extraMembers targets) that match no symbol. */
 function layoutGaps(layout: Layout, ids: Set<string>): string[] {
   const refs = new Set<string>();
   for (const g of layout.groups ?? []) g.members.forEach((m) => refs.add(m));
+  for (const p of layout.memberPatch ?? []) refs.add(p.member);
+  for (const x of layout.extraMembers ?? []) refs.add(x.after);
   Object.keys(layout.describe ?? {}).forEach((k) => refs.add(k));
   Object.keys(layout.throws ?? {}).forEach((k) => refs.add(k));
   Object.keys(layout.params ?? {}).forEach((k) => refs.add(k));

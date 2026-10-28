@@ -11,11 +11,6 @@ This repository provides P2P OTA updates to short-lived CLI programs. It uses a 
 - Detached updater process via [`bare-daemon`][bare-daemon]
 - Cross-platform standalone distributables via [`bare-build`][bare-build]
 
-## Related Repositories
-
-- [`hello-pear-bare`][hello-pear-bare]: runs `pear-runtime` in a dedicated Bare worker for long-running applications and reusable backends.
-- [`hello-pear-daemon`][hello-pear-daemon] (this repository): runs `pear-runtime` in a detached updater for short-lived CLI commands, allowing updates to continue after the foreground command exits.
-
 ## Table of Contents
 
 - [Related Repositories](#related-repositories)
@@ -32,6 +27,10 @@ This repository provides P2P OTA updates to short-lived CLI programs. It uses a 
 - [Scripts](#scripts)
 - [Project Structure](#project-structure)
 - [Troubleshooting](#troubleshooting)
+
+## Related Repositories
+
+Pear has official templates for desktop, terminal, short-lived CLI, and mobile apps. See [Start from a template](https://docs.pears.com/p2p/getting-started/from-a-template/) to compare them and pick the one that matches what you're shipping.
 
 ## OS Support
 
@@ -150,6 +149,7 @@ npx pear-install pear://<key>
 <!-- Reference Links -->
 
 [pear-docs]: https://docs.pears.com
+[from-a-template]: https://docs.pears.com/p2p/getting-started/from-a-template/
 [bare-daemon]: https://github.com/holepunchto/bare-daemon
 [pear-runtime]: https://github.com/holepunchto/pear-runtime
 [Bare]: https://github.com/holepunchto/bare

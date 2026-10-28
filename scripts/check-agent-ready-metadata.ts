@@ -1,7 +1,7 @@
 /**
- * Validates the two static agent-discovery files.
+ * Validates the static agent-discovery files.
  *
- * The `public/.well-known/ai-catalog.json` and SKILL.md checks read only
+ * The `public/.well-known/ai-catalog.json`, MCP server card and SKILL.md checks read only
  * from `public/` (the committed source) and run without a build, so this is
  * safe to wire into CI even though a full `next build` isn't available
  * there (see docs-lint.yml — it can't `npm install` the token-gated
@@ -54,6 +54,50 @@ async function checkAiCatalog(): Promise<void> {
     for (const e of validate.errors ?? []) {
       errors.push(`ai-catalog.json: ${e.instancePath || '(root)'} ${e.message}`);
     }
+  }
+}
+
+const MCP_CARD_PATH = '.well-known/mcp/server-card.json';
+
+async function checkMcpServerCard(): Promise<void> {
+  const raw = await readFile(path.join(PUBLIC_DIR, MCP_CARD_PATH), 'utf8').catch(() => null);
+  if (raw === null) {
+    errors.push(`mcp: public/${MCP_CARD_PATH} does not exist`);
+    return;
+  }
+  const card = JSON.parse(raw);
+  const info = card.serverInfo;
+  if (typeof info?.name !== 'string' || typeof info?.version !== 'string') {
+    errors.push('mcp: server-card.json serverInfo needs string name and version');
+  }
+  if (card.transport?.type !== 'streamable-http') {
+    errors.push('mcp: server-card.json transport.type must be "streamable-http"');
+  }
+  const endpoint = card.transport?.endpoint;
+  if (typeof endpoint !== 'string' || !/^https:\/\//.test(endpoint)) {
+    errors.push('mcp: server-card.json transport.endpoint must be an absolute https URL');
+  }
+  if (typeof card.capabilities !== 'object' || card.capabilities === null) {
+    errors.push('mcp: server-card.json capabilities must be an object');
+  }
+
+  const catalog = JSON.parse(
+    await readFile(path.join(PUBLIC_DIR, '.well-known', 'ai-catalog.json'), 'utf8'),
+  );
+  const entry = catalog.entries?.find(
+    (e: { type?: string }) => e.type === 'application/mcp-server-card+json',
+  );
+  if (!entry) {
+    errors.push('mcp: ai-catalog.json has no application/mcp-server-card+json entry');
+  } else if (!String(entry.url).endsWith(`/${MCP_CARD_PATH}`)) {
+    errors.push(`mcp: ai-catalog.json MCP entry url must end with /${MCP_CARD_PATH}`);
+  } else if (entry.metadata?.endpoint !== endpoint) {
+    errors.push('mcp: ai-catalog.json MCP entry endpoint differs from the server card transport.endpoint');
+  }
+
+  const headers = await readFile(path.join(PUBLIC_DIR, '_headers'), 'utf8');
+  if (!headers.includes(`</${MCP_CARD_PATH}>; rel="mcp-server-card"`)) {
+    errors.push('mcp: public/_headers Link header does not advertise the server card');
   }
 }
 
@@ -134,7 +178,7 @@ async function checkGeneratedIndex(sourceDirs: string[]): Promise<void> {
 
 async function main(): Promise<void> {
   const sourceDirs = await checkAgentSkillsSource();
-  await Promise.all([checkAiCatalog(), checkGeneratedIndex(sourceDirs)]);
+  await Promise.all([checkAiCatalog(), checkMcpServerCard(), checkGeneratedIndex(sourceDirs)]);
 
   if (errors.length) {
     console.error(errors.join('\n'));

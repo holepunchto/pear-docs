@@ -1,8 +1,8 @@
 # bare-bluetooth-apple (documentation snapshot)
 
 Vendored from [holepunchto/bare-bluetooth-apple](https://github.com/holepunchto/bare-bluetooth-apple),
-branch **`main`**, at commit `e823f6d`
-([tree](https://github.com/holepunchto/bare-bluetooth-apple/tree/e823f6d68cafded14e2bda51cbd542160b06dd01)).
+branch **`main`**, at commit `806b596`
+([tree](https://github.com/holepunchto/bare-bluetooth-apple/tree/806b596190c9f15298fd22ad1b8c0a68346f7c8b)).
 The repository has no `LICENSE` file; its `package.json` declares Apache-2.0. Paths mirror
 upstream's.
 

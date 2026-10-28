@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { extractModule } from './extract';
-import { renderPage, collapseType } from './render';
+import { renderPage, renderReadmeApi, collapseType } from './render';
 import type { BareExport, BareModel } from './model';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__');
@@ -319,4 +319,68 @@ test('layout extraSections come after the API section and before the README sect
   assert.ok(at('## API') >= 0 && at('## API') < at('## Events'), 'after the API section');
   assert.ok(at('## Events') < at('## Protocol'), 'before README sections');
   assert.match(mdx, /See \[Protocol\]\(#protocol\) and Nowhere\./, 'live anchor kept, dangling one reduced to its label');
+});
+
+const member = (key: string, name: string, kind: BareExport['kind'], sig: string, description: string | null): BareExport => ({
+  key, name, kind, static: false, signatures: [sig], description,
+  deprecated: null, params: [], returns: null, throws: [], members: [],
+});
+const memberBase: BareModel = {
+  ...patchBase, usage: null, extraSections: [],
+  exports: [
+    member('start', 'start', 'function', 'start(): void', 'Start scanning.'),
+    member('stop', 'stop', 'function', 'stop(): void', 'Stop scanning.'),
+  ],
+};
+
+test('layout memberPatch edits only the named member, and extraMembers render right after theirs', () => {
+  const layout = {
+    memberPatch: [{ member: 'start', from: 'Start scanning.', to: 'Start scanning. Added in v2 ($& stays literal).' }],
+    extraMembers: [{ after: 'start', body: '#### `restart(): void`\n\nStop, then start.' }],
+  };
+  const { mdx } = renderPage(memberBase, layout);
+  assert.match(mdx, /Start scanning\. Added in v2 \(\$& stays literal\)\./, 'patched, replacement not treated as a pattern');
+  assert.match(mdx, /Stop scanning\./, 'the other member is untouched');
+  const at = (s: string) => mdx.indexOf(s);
+  assert.ok(at('#### `start(): void`') < at('#### `restart(): void`') && at('#### `restart(): void`') < at('#### `stop(): void`'), 'extra member sits after its member');
+  const readme = renderReadmeApi(memberBase, layout);
+  assert.doesNotMatch(readme, /Added in v2|restart/, 'the upstream README API is left alone');
+});
+
+test('layout memberPatch and extraMembers fail the render when their member or text is gone or ambiguous', () => {
+  assert.throws(
+    () => renderPage(memberBase, { memberPatch: [{ member: 'start', from: 'fixed upstream', to: 'x' }] }),
+    /memberPatch for "start" matches 0 times, needs exactly 1/,
+  );
+  assert.throws(
+    () => renderPage(memberBase, { memberPatch: [{ member: 'start', from: '`', to: 'x' }] }),
+    /memberPatch for "start" matches 2 times, needs exactly 1/,
+  );
+  assert.throws(
+    () => renderPage(memberBase, { extraMembers: [{ after: 'gone', body: 'x' }] }),
+    /extraMembers entry after "gone" matches 0 members, needs exactly 1/,
+  );
+  const twoClasses: BareModel = {
+    ...memberBase,
+    exports: ['A', 'B'].map((c) => ({
+      ...member(c, c, 'class', `class ${c}`, null),
+      members: [member(`${c}.destroy`, 'destroy', 'method', 'destroy(): void', 'Destroy it.')],
+    })),
+  };
+  assert.throws(
+    () => renderPage(twoClasses, { memberPatch: [{ member: 'destroy', from: 'Destroy it.', to: 'x' }] }),
+    /memberPatch for "destroy" matches 2 members, needs exactly 1 \(use the model key\)/,
+  );
+  assert.match(
+    renderPage(twoClasses, { memberPatch: [{ member: 'B.destroy', from: 'Destroy it.', to: 'Destroy B.' }] }).mdx,
+    /Destroy it\.[\s\S]*Destroy B\./,
+    'the model key picks one of the two',
+  );
+});
+
+test('layout patch can target the intro, lead paragraph and install fence', () => {
+  const { mdx } = renderPage(memberBase, {
+    patch: [{ in: 'intro', from: 'npm i thing\n```', to: 'npm i thing\n```\n\nNeeds a host app.' }],
+  });
+  assert.match(mdx, /npm i thing\n```\n\nNeeds a host app\.\n\n## API/);
 });

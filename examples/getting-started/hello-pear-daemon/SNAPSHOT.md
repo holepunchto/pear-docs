@@ -1,8 +1,8 @@
 # hello-pear-daemon (documentation snapshot)
 
 Vendored from [`holepunchto/hello-pear-daemon`](https://github.com/holepunchto/hello-pear-daemon),
-branch **`main`**, at commit `0a2e3ef`
-([tree](https://github.com/holepunchto/hello-pear-daemon/tree/0a2e3efbbf0cf0421fa78726d3c3ebe93234b244)).
+branch **`main`**, at commit `4aac96e`
+([tree](https://github.com/holepunchto/hello-pear-daemon/tree/4aac96ee0a83f4c1d915177ffeb212e1f80249be)).
 
 This is the detached-updater boilerplate: the foreground command spawns a `bare-daemon` updater and
 returns immediately, so a short-lived CLI invocation never blocks on an update check. There is no
@@ -32,24 +32,22 @@ build, a live `pear://` link, and a seeding peer.
 
 ## Deliberate deviations from upstream
 
-Every file is byte-identical to upstream at the commit above, with two exceptions, both in
-`package.json` (the name change is mirrored in `package-lock.json`):
+Every file is byte-identical to upstream at the commit above, with one exception in `package.json`:
 
 - `upgrade` is set to a syntactically valid placeholder key
   (`pear://bwkbsetjgy5uhtkckppgn4dxq36ajnh1ugokxmiizubhiwqa59uy`) instead of upstream's
   `pear://<YOUR_KEY_HERE>`. In this boilerplate an invalid link does not fail in the foreground — the
   detached updater reports `INVALID_URL` to `<storage>/updates.log` — but the placeholder keeps the
   snapshot consistent with its siblings. The link is inert; nothing seeds it.
-- `name` is `hello-pear-daemon`, as are the `--name` in every `make:*` script, the `repository` and
-  `bugs` URLs, and the lockfile's root entry and `bin` name. Upstream still carries
-  `hello-pear-bare` in all of them from before the split. `bin.mjs` derives the command, storage
-  directory, and updater lookup name from `productName || name`, so the copied name would make the
-  snapshot pose as `hello-pear-bare`. The MDX tells readers about upstream's value, since that is
-  what they get when they clone.
 
-Preserve both deviations when refreshing; drop the second one if upstream fixes its name.
-`test/index.js` is upstream's `REMOVE ME` placeholder; that is upstream's content and is
-intentionally kept as-is.
+Preserve it when refreshing. `test/index.js` is upstream's `REMOVE ME` placeholder; that is
+upstream's content and is intentionally kept as-is.
+
+Until `4aac96e`, upstream still named the package `hello-pear-bare` in `package.json`, the
+`make:*` scripts, the lockfile and its build workflow, left over from before the split, and this
+snapshot carried a rename of its own so that `bin.mjs` (which derives the command, storage
+directory and updater lookup name from `productName || name`) did not pose as `hello-pear-bare`.
+Upstream adopted that rename, so it is no longer a deviation.
 
 ## What the MDX says about this snapshot
 

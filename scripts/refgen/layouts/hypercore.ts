@@ -53,7 +53,7 @@ const layout: Layout = {
     },
     {
       title: 'Storage inspection and mark-and-sweep',
-      members: ['info', 'startMarking', 'markBlock', 'clearMarkings', 'sweep'],
+      members: ['info', 'count', 'startMarking', 'markBlock', 'clearMarkings', 'sweep'],
     },
     {
       title: 'Lifecycle and local configuration',

@@ -4,7 +4,7 @@ description: "CoreBluetooth bindings for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.7.1"
+upstreamVersion: "0.8.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -346,7 +346,7 @@ Bluetooth state constants.
 
 #### `connect(peripheral: DiscoveredPeripheral | RetrievedPeripheral): void`
 
-Connect to a discovered or retrieved `peripheral`. The `Peripheral` delivered by `'connect'` takes its `name` and `serviceData` from the `'discover'` event this central emitted for the same `id`. `stopScan()` discards those saved events, so both are `null` if the scan has been stopped by the time the connection completes, and for a retrieved peripheral that this central did not discover.
+Connect to a discovered or retrieved `peripheral`. The `Peripheral` delivered by `'connect'` takes its `name` and `serviceData` from the latest `'discover'` event this central emitted for the same `id`. As of v0.8.0 the central keeps those events until the next `startScan()`, so stopping the scan before the connection completes no longer loses them. For a peripheral this central has not discovered since its last `startScan()`, such as a retrieved one, `serviceData` is `null` and `name` falls back to the device's own name. Before v0.8.0, `stopScan()` discarded the saved events, so both were `null` if the scan had stopped by the time the connection completed.
 
 **Parameters**
 
@@ -394,7 +394,7 @@ Resolve peripherals from identifiers saved after an earlier scan, without scanni
 
 #### `startScan(serviceUUIDs?: string[], opts?: { allowDuplicates?: boolean }): void`
 
-Start scanning for peripherals. If `serviceUUIDs` is provided, only peripherals advertising those services will be discovered.
+Start scanning for peripherals. If `serviceUUIDs` is provided, only peripherals advertising those services will be discovered. As of v0.8.0, each call clears the `'discover'` events that `connect()` takes a peripheral's `name` and `serviceData` from. Before v0.8.0, `stopScan()` cleared them.
 
 **Parameters**
 
@@ -455,7 +455,7 @@ The peripheral UUID identifier. It is a UUID that is specific to the host, not a
 
 #### `name: string | null`
 
-The peripheral name, if available
+The advertised name, or the GAP device name once connected. `null` while neither is available yet. The fallback to the device name was added in v0.7.2. Before that, a peripheral that connected without an advertised name kept `null`. The [`'nameChange'`](#peripheraleventmap) event reports later changes.
 
 #### `openL2CAPChannel(psm: number): void`
 
@@ -679,7 +679,7 @@ interface CentralEventMap {
 ```ts
 interface PeripheralOptions {
   id?: string
-  name?: string
+  name?: string | null
   serviceData?: { [uuid: string]: Uint8Array } | null
 }
 ```
@@ -689,6 +689,7 @@ interface PeripheralOptions {
 ```ts
 interface PeripheralEventMap {
   error: [error: BluetoothError]
+  nameChange: [name: string | null]
   servicesDiscover: [services: Service[]]
   characteristicsDiscover: [service: Service | null, characteristics: Characteristic[]]
   read: [characteristic: Characteristic | null, data: Uint8Array | null]
@@ -698,6 +699,8 @@ interface PeripheralEventMap {
   channelOpen: [channel: L2CAPChannel]
 }
 ```
+
+`'nameChange'` is emitted when the device reports a new name, with `null` if it no longer has one. From then on `peripheral.name` returns the new value. Added in v0.8.0.
 
 ## Errors
 

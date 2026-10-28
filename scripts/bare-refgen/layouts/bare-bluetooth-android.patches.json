@@ -1,0 +1,122 @@
+[
+  {
+    "in": "intro",
+    "from": "npm i bare-bluetooth-android\n```",
+    "to": "npm i bare-bluetooth-android\n```\n\nAs of v0.11.2, the prebuilds link the C++ standard library statically, so they no longer list `libc++_shared.so` among their needed libraries. As of v0.9.3, they also no longer list `libnativehelper.so`.\n\nThe addon finds its Java helper classes (`to.holepunch.bare.bluetooth.*`) by name through JNI, which R8 can't see when it shrinks an app. As of v0.11.7, the classes JAR embeds a keep rule for them (`bare-bluetooth-android.pro`), so R8 applies it to an app that depends on that JAR. With an earlier version, a release build that shrinks the app needs `-keep class to.holepunch.bare.bluetooth.** { *; }` in its own R8 rules."
+  },
+  {
+    "in": "usage",
+    "from": "```js",
+    "to": "The central role scans for peripherals and connects to them.\n\n```js"
+  },
+  {
+    "in": "usage",
+    "from": "})\n```",
+    "to": "})\n```\n\nThe peripheral role advertises GATT services through a `Server`. Open the GATT server once the adapter is on, before adding services.\n\n```js\nconst { Server, Service, Characteristic } = require('bare-bluetooth-android')\n\nconst SERVICE_UUID = '01230000-0000-1000-8000-00805F9B34FB'\n\nconst server = new Server()\n\nserver.on('stateChange', (state) => {\n  if (state !== 'on') return\n\n  // The GATT server does not survive the adapter turning off, so reopen it and\n  // add the services again on every transition to 'on'. close() is a no-op\n  // when the server is not open, and open() throws when it already is.\n  server.close()\n  server.open()\n\n  const characteristic = new Characteristic('01230001-0000-1000-8000-00805F9B34FB', {\n    read: true,\n    value: new Uint8Array([0x01])\n  })\n\n  server.addService(new Service(SERVICE_UUID, [characteristic]))\n})\n\nserver.on('serviceAdd', () => {\n  server.startAdvertising({ serviceUUIDs: [SERVICE_UUID] })\n})\n\nserver.on('error', (err) => {\n  console.error('server error:', err.code, err.message)\n})\n```"
+  },
+  {
+    "member": "Server.constructor",
+    "from": "#### `new Server()`",
+    "to": "<Callout type=\"warn\">\nAs of v0.11.0, `new Server()` no longer opens the GATT server. Call `server.open()` once `server.state` is `'on'`, before `addService()`, `respondToRequest()`, or `updateValue()`. Code written for v0.10.0 or earlier does not call `open()`, so on v0.11.0 and later it throws `GATT server unavailable` from those calls.\n</Callout>\n\n#### `new Server()`"
+  },
+  {
+    "member": "BluetoothError.constructor",
+    "from": "#### `new BluetoothError(msg: string, fn?: Function, code?: string)`",
+    "to": "The package root exports `BluetoothError` as of v0.11.3. Earlier versions did not export the class from the package root, although the errors they raised were instances of it.\n\nFailures reach your code three ways. A call can throw when the Android call itself fails, with the Java exception in the message, for example `java.lang.IllegalStateException: BT Adapter is not turned ON`. An operation that fails after the call went through is emitted as an `'error'` event carrying a `BluetoothError`. A failed write on an [`L2CAPChannel`](#l2capchannel) destroys the stream, so listen for `'error'` on the channel.\n\n#### `new BluetoothError(msg: string, fn?: Function, code?: string)`"
+  },
+  {
+    "member": "BluetoothError.ADAPTER_UNAVAILABLE",
+    "from": "Thrown by the `Central` and `Server` constructors on a device with no Bluetooth adapter.",
+    "to": "Thrown by the `Central` and `Server` constructors on a device with no Bluetooth adapter. The error message reads `ADAPTER_UNAVAILABLE: Bluetooth adapter unavailable`. Added in v0.11.3."
+  },
+  {
+    "member": "L2CAPChannel.constructor",
+    "from": "A duplex stream representing an L2CAP connection-oriented channel. Extends `Duplex` from \\<https://github.com/holepunchto/bare-stream>. Typically obtained via the `'channelOpen'` event rather than constructed directly.",
+    "to": "A duplex stream representing an L2CAP connection-oriented channel. Extends `Duplex` from \\<https://github.com/holepunchto/bare-stream>. Typically obtained via the `'channelOpen'` event rather than constructed directly.\n\nA failed write does not throw from `write()`. As of v0.11.1 it destroys the stream with the Java exception, for example `java.io.IOException: Broken pipe` once the peer is gone, so listen for `'error'` on the channel. An unhandled `'error'` still throws. A native channel error destroys the stream with that error, and a native close destroys it, instead of either being emitted directly."
+  },
+  {
+    "member": "Characteristic.value",
+    "from": "The current value of the characteristic, or `null`. Assigning throws on a\ndiscovered characteristic.",
+    "to": "The current value of the characteristic, or `null`. As of v0.11.4, assigning a value throws `Cannot set the value of a discovered characteristic` on a discovered characteristic. The check is on the native handle, which discovery sets and `server.addService()` also sets, so assigning to a local characteristic throws once it has been passed to `addService()`. The `value` option of the constructor is not affected."
+  },
+  {
+    "member": "Server.constructor",
+    "from": "Create a new BLE peripheral server. Call `open()` once `state` is `'on'` before using it.",
+    "to": "Create a new BLE peripheral server for advertising services and handling client requests. The constructor does not open the GATT server; call [`open()`](#open-void) once `state` is `'on'`. It throws a `BluetoothError` with code `ADAPTER_UNAVAILABLE` on a device with no Bluetooth adapter, as of v0.11.3."
+  },
+  {
+    "member": "Server.addService",
+    "from": "Add a `service` to the GATT server. The `'serviceAdd'` event is emitted when the service has been registered.",
+    "to": "Add a `service` to the GATT server. The `'serviceAdd'` event is emitted when the service has been registered. The GATT server has to be open: this throws `GATT server unavailable` before `open()` and after `close()`."
+  },
+  {
+    "member": "Server.close",
+    "from": "Close the GATT server, dropping its services. A no-op if it is not open.",
+    "to": "Close the GATT server, dropping its services. Does nothing if the server is not open. Added in v0.11.0."
+  },
+  {
+    "member": "Server.destroy",
+    "from": "Destroy the server, stopping advertising and unpublishing all L2CAP channels.",
+    "to": "Destroy the server, stopping advertising, unpublishing all L2CAP channels, and closing the GATT server if it is open."
+  },
+  {
+    "member": "Central.constructor",
+    "from": "Create a new BLE central manager for scanning and connecting to peripherals.",
+    "to": "Create a new BLE central manager for scanning and connecting to peripherals. It throws a `BluetoothError` with code `ADAPTER_UNAVAILABLE` on a device with no Bluetooth adapter, as of v0.11.3."
+  },
+  {
+    "member": "Central.connect",
+    "from": "Connect to a discovered `peripheral`.",
+    "to": "Connect to a discovered `peripheral`, or to one built from a [`Device`](#device) without a scan, such as a bonded device from [`getBondedDevices()`](#getbondeddevices-device). `peripheral.connecting` is `true` from this call until the `'connect'` event delivers the same `peripheral`."
+  },
+  {
+    "member": "Peripheral.constructor",
+    "from": "Create a new peripheral instance from a `ScanResult`. Typically obtained via the `'discover'` event on `Central` rather than constructed directly. Its identity and advertised metadata are derived from the scan result.",
+    "to": "Create a new peripheral instance from a `ScanResult` or from a [`Device`](#device). Typically obtained via the `'discover'` event on `Central` rather than constructed directly. Its identity and advertised metadata are derived from the scan result. Build one from a `Device` to connect without a scan, such as to a bonded device from `central.getBondedDevices()`; such a peripheral has no scan result, so `scanResult`, `rssi`, and `serviceData` are `null`. The constructor throws `Peripheral needs a device or a scanResult` when `opts` carries neither. Building a peripheral from a `Device` was added in v0.10.0."
+  },
+  {
+    "member": "Peripheral.id",
+    "from": "The unique identifier of the peripheral, equal to the device address.",
+    "to": "The unique identifier of the peripheral, equal to the device address (`scanResult.device.address` for a scanned peripheral). It is the hardware address of the device. On Apple platforms the id is a per host UUID instead."
+  },
+  {
+    "member": "Peripheral.name",
+    "from": "The advertised name, or the device's own name once connected. `null` while neither is\navailable yet.",
+    "to": "The advertised name, or the device's own name once connected. `null` while neither is available yet. The advertised name is the `name` of the peripheral's `Device`. The fallback, added in v0.11.5, asks Android for the device's name while the peripheral is connected."
+  },
+  {
+    "member": "Peripheral.rssi",
+    "from": "The signal strength of the most recent advertisement, or `null` without a scan.",
+    "to": "The signal strength of the most recent advertisement, equal to `scanResult.rssi`, or `null` when the peripheral was built from a `Device` and has no scan result."
+  },
+  {
+    "member": "Peripheral.scanResult",
+    "from": "The most recent advertisement, or `null` when the peripheral was built from a `Device`.",
+    "to": "The `ScanResult` from the most recent advertisement for this peripheral, or `null` when the peripheral was built from a `Device`."
+  },
+  {
+    "member": "Peripheral.serviceData",
+    "from": "service data.",
+    "to": "service data, or when there is no scan result."
+  },
+  {
+    "member": "PeripheralOptions",
+    "from": "}\n```",
+    "to": "}\n```\n\nPass `scanResult` for a peripheral that came from a scan, or `device` to dial a device without a scan, such as one from `central.getBondedDevices()`. At least one is required. `device` was added in v0.10.0."
+  },
+  {
+    "member": "Device",
+    "from": "}\n```",
+    "to": "}\n```\n\n`type` is one of `Device.DEVICE_TYPE_UNKNOWN` (0), `Device.DEVICE_TYPE_CLASSIC` (1), `Device.DEVICE_TYPE_LE` (2), or `Device.DEVICE_TYPE_DUAL` (3), mirroring Android's `BluetoothDevice.getType()`. It is set on the devices that `central.getBondedDevices()` returns, and is `null` on a device that came from a scan. Added in v0.10.0."
+  },
+  {
+    "member": "Central.getBondedDevices",
+    "from": "The devices bonded with the adapter, mirroring `BluetoothAdapter.getBondedDevices()`. Empty\nunless the adapter is on.\n\n**Throws**\n\n- if `BLUETOOTH_CONNECT` is not granted.",
+    "to": "Return the devices bonded with the adapter, mirroring Android's `BluetoothAdapter.getBondedDevices()`. Each entry is a [`Device`](#device) with its `type` set. The array is empty unless the adapter is on, and the call throws if the `BLUETOOTH_CONNECT` permission is not granted. To connect to a bonded device, build a `Peripheral` from it and pass that to [`connect()`](#connectperipheral-peripheral-void). Added in v0.10.0.\n\n```js\nconst { Central, Device, Peripheral } = require('bare-bluetooth-android')\n\nconst central = new Central()\n\ncentral.on('stateChange', (state) => {\n  if (state !== 'on') return\n\n  // Choose a bonded device that is not a Classic device\n  const [device] = central.getBondedDevices().filter((d) => d.type !== Device.DEVICE_TYPE_CLASSIC)\n\n  if (device) central.connect(new Peripheral({ device }))\n})\n```"
+  },
+  {
+    "member": "Server.open",
+    "from": "Open the GATT server. Throws unless `state` is `'on'`, and the handle does not\nsurvive the adapter going off, so reopen on every transition back to `'on'`.\nServices do not survive a reopen and have to be added again.",
+    "to": "Open the GATT server. Call it once `state` is `'on'`; it throws unless the adapter is on, and it throws `GATT server already open` when the server is already open. The GATT server does not survive the adapter turning off, so on every transition back to `'on'` call `close()` and then `open()` again. Services do not survive a reopen and have to be added again. Added in v0.11.0.\n\n`startAdvertising()` and `publishChannel()` do not check whether the GATT server is open."
+  }
+]

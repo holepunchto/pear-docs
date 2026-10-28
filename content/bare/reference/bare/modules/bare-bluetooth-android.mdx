@@ -4,18 +4,20 @@ description: "Android Bluetooth bindings for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.11.4"
+upstreamVersion: "0.11.7"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-[`bare-bluetooth-android`](https://github.com/holepunchto/bare-bluetooth-android) — Android Bluetooth bindings for Bare. It is a native addon.
+[`bare-bluetooth-android`](https://github.com/holepunchto/bare-bluetooth-android) — Android Bluetooth bindings for Bare. It is a native addon that needs the app's Java VM, which it reads from the [`bare.android.jvm.v1`](/bare/reference/bare/embedder-context#bareandroidjvmv1) context key when it loads. So it runs only inside an app whose host publishes that key. [Bare Kit](/bare/reference/bare/bare-kit) does so from 2.5.0, so a Bare Kit worklet needs Bare Kit 2.5.0 or later.
 
 ```sh
 npm i bare-bluetooth-android
 ```
 
 As of v0.11.2, the prebuilds link the C++ standard library statically, so they no longer list `libc++_shared.so` among their needed libraries. As of v0.9.3, they also no longer list `libnativehelper.so`.
+
+The addon finds its Java helper classes (`to.holepunch.bare.bluetooth.*`) by name through JNI, which R8 can't see when it shrinks an app. As of v0.11.7, the classes JAR embeds a keep rule for them (`bare-bluetooth-android.pro`), so R8 applies it to an app that depends on that JAR. With an earlier version, a release build that shrinks the app needs `-keep class to.holepunch.bare.bluetooth.** { *; }` in its own R8 rules.
 
 ## Usage
 
@@ -167,6 +169,16 @@ Thrown by the `Central` and `Server` constructors on a device with no Bluetooth 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `msg` | `string` | — | — |
+
+#### `BluetoothError.NOT_CONNECTED(msg: string): BluetoothError`
+
+Thrown by the `Peripheral` methods that talk to the device when the peripheral is not connected: before `'connect'`, and once the link is gone. The error message reads `NOT_CONNECTED: Peripheral is not connected`. Added in v0.11.6. As of v0.11.6, `lib/errors.d.ts` does not declare this factory, although `lib/errors.js` defines it.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | A human-readable error message. |
 
 #### `BluetoothError.NOTIFY_FAILED(msg: string): BluetoothError`
 
@@ -349,12 +361,6 @@ Destroy the server, stopping advertising, unpublishing all L2CAP channels, and c
 Open the GATT server. Call it once `state` is `'on'`; it throws unless the adapter is on, and it throws `GATT server already open` when the server is already open. The GATT server does not survive the adapter turning off, so on every transition back to `'on'` call `close()` and then `open()` again. Services do not survive a reopen and have to be added again. Added in v0.11.0.
 
 `startAdvertising()` and `publishChannel()` do not check whether the GATT server is open.
-
-#### `open(): void`
-
-Open the GATT server. Throws unless `state` is `'on'`, and the handle does not
-survive the adapter going off, so reopen on every transition back to `'on'`.
-Services do not survive a reopen and have to be added again.
 
 #### `publishChannel(opts?: ChannelOptions): void`
 
@@ -609,7 +615,7 @@ The unique identifier of the peripheral, equal to the device address (`scanResul
 
 #### `name: string | null`
 
-The name of the peripheral, or `null` if unavailable. Equal to the name of the device.
+The advertised name, or the device's own name once connected. `null` while neither is available yet. The advertised name is the `name` of the peripheral's `Device`. The fallback, added in v0.11.5, asks Android for the device's name while the peripheral is connected.
 
 #### `openL2CAPChannel(psm: number): void`
 
@@ -931,7 +937,7 @@ The type declarations allow `null` for the characteristic of `'read'`, `'write'`
 
 Failures arrive three ways:
 
-- **Thrown** - the Android call itself failed. The message carries the Java exception, for example `java.lang.IllegalStateException: BT Adapter is not turned ON`. Wrap the call in `try`/`catch`.
+- **Thrown** - the Android call itself failed. The message carries the Java exception, for example `java.lang.IllegalStateException: BT Adapter is not turned ON`. Wrap the call in `try`/`catch`. As of v0.11.6, the `Peripheral` methods that talk to the device (`discoverServices()`, `discoverCharacteristics()`, `read()`, `write()`, `subscribe()`, `unsubscribe()`, `openL2CAPChannel()` and `requestMtu()`) also throw a `BluetoothError` with code `NOT_CONNECTED` before `'connect'` and once the link is gone.
 - **Emitted** - the call went through and the operation failed later. The `error` event carries a `BluetoothError` with a `code` such as `SCAN_FAILED` or `CONNECTION_FAILED`.
 - **Streamed** - an `L2CAPChannel` is a `Duplex`, so a failed write does not throw from the write itself. It destroys the stream with the Java exception, for example `java.io.IOException: Broken pipe` once the peer is gone. Listen for `error` on the channel; an unhandled one still throws.
 

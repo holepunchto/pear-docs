@@ -12,6 +12,8 @@
  *        - This script prepends generated IA 301 rules ahead of that file
  *          so legacy redirects stay first-match and public/_redirects
  *          rules (especially the catch-all 404) remain last.
+ *        - The `Accept: text/markdown` rules are generated here, one per
+ *          path depth, where public/_redirects has the marker line.
  *
  * IA redirects are derived from scripts/redirects.ts. See
  * decisions/0001-adopt-diataxis-ia.md §6.
@@ -19,6 +21,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { buildRedirects, stubHtml } from './redirects';
+import { NEGOTIATION_MARKER, maxTwinDepth, negotiationRules } from './markdown-negotiation';
 
 const OUT_DIR = 'out';
 const PUBLIC_REDIRECTS_PATH = 'public/_redirects';
@@ -28,7 +31,15 @@ function readPublicRedirects(): string {
     return '';
   }
 
-  return readFileSync(PUBLIC_REDIRECTS_PATH, 'utf-8').trimEnd();
+  const source = readFileSync(PUBLIC_REDIRECTS_PATH, 'utf-8').trimEnd();
+  if (!source.includes(NEGOTIATION_MARKER)) {
+    throw new Error(`${PUBLIC_REDIRECTS_PATH} is missing the "${NEGOTIATION_MARKER}" line.`);
+  }
+  const depth = maxTwinDepth(OUT_DIR);
+  if (depth === 0) {
+    throw new Error(`No .md twins in ${OUT_DIR}/; run generate-llm-md-files.ts first.`);
+  }
+  return source.replace(NEGOTIATION_MARKER, negotiationRules(depth).join('\n'));
 }
 
 function main(): void {

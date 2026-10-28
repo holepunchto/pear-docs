@@ -356,9 +356,6 @@ function shellQuote(value: string): string {
 function childEnv(): NodeJS.ProcessEnv {
   return {
     ...process.env,
-    // The repo .npmrc reads `${GITHUB_TOKEN}`. Default it to an empty string so
-    // scenario-local installs parse cleanly without requiring private-package auth.
-    GITHUB_TOKEN: '',
     // Pin Node/npm resolution so scenario setup does not accidentally fall back
     // to an older globally-installed npm (for example npm@6 under Node 25).
     PATH: [dirname(RESOLVED_NODE), process.env.PATH || '']

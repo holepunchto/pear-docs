@@ -12,7 +12,7 @@ import {
   type SharedProps,
 } from "fumadocs-ui/components/dialog/search";
 import { useDocsSearch } from "fumadocs-core/search/client";
-import { create } from "@orama/orama";
+import { create } from "zbsearch";
 import {
   InkeepModalChat,
   type AIChatFunctions,
@@ -22,7 +22,7 @@ import { useTheme } from "next-themes";
 import { Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-// QVAC docs search service. Unset, failing or unauthorized -> Orama fallback.
+// QVAC docs search service. Unset, failing or unauthorized -> static index fallback.
 // No token: the service opens /api/search to browsers with QVAC_SEARCH_PUBLIC=1,
 // and anything bundled here would be public anyway.
 const QVAC_API =
@@ -33,7 +33,7 @@ const QVAC_API =
 const DEBOUNCE_MS = 400;
 const MIN_CHARS = 3;
 
-function initOrama() {
+function initDB() {
   return create({ schema: { _: "string" }, language: "english" });
 }
 
@@ -110,23 +110,23 @@ function AskAI({
 export default function CustomSearchDialog(props: SharedProps) {
   const { onOpenChange } = props;
   const [search, setSearch] = useState("");
-  // Orama fallback. The static client downloads /api/search.json (several MB)
+  // Static index fallback. The static client downloads /api/search.json (several MB)
   // on its first non-empty query, so it only gets one once QVAC has failed.
-  const orama = useDocsSearch({
+  const staticSearch = useDocsSearch({
     from: "/api/search.json",
     type: "static",
-    initOrama,
+    initDB,
   });
-  const query = orama.query;
+  const query = staticSearch.query;
 
-  // `null` = no results yet; 'fallback' = use Orama.
+  // `null` = no results yet; 'fallback' = use the static index.
   const [qvac, setQvac] = useState<SearchItemType[] | null | "fallback">(null);
   const fallback = qvac === "fallback";
-  const setOramaSearch = orama.setSearch;
+  const setStaticSearch = staticSearch.setSearch;
 
   useEffect(() => {
-    setOramaSearch(fallback ? search : "");
-  }, [fallback, search, setOramaSearch]);
+    setStaticSearch(fallback ? search : "");
+  }, [fallback, search, setStaticSearch]);
   const [settled, setSettled] = useState("");
   const [askOpen, setAskOpen] = useState(false);
   const [question, setQuestion] = useState("");

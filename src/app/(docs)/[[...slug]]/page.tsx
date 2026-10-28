@@ -22,9 +22,9 @@ import {
   buildDocsMetadata,
   buildJsonLdGraph,
   DocsJsonLd,
+  getPageImage,
   getPageSeoState,
-} from '@tetherto/docs-seo-next';
-import { getPageImage } from '@tetherto/docs-seo-og';
+} from '@/lib/seo';
 import { getDocsSeoConfig } from '@/lib/seo-config';
 
 export const dynamic = 'force-static';
@@ -40,6 +40,7 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
   const githubUrl = `https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/content/${page.path}`;
 
   const seoConfig = getDocsSeoConfig();
+  const absoluteMarkdownUrl = new URL(markdownUrl, seoConfig.metadataBase).toString();
   const seoState = getPageSeoState(page, seoConfig);
   const jsonLd = buildJsonLdGraph(page, seoState, seoConfig);
 
@@ -71,7 +72,7 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
           markdownUrl={markdownUrl}
           fallbackMarkdown={markdownForCopy}
         />
-        <ViewOptions githubUrl={githubUrl} />
+        <ViewOptions githubUrl={githubUrl} markdownUrl={absoluteMarkdownUrl} />
         {/* Reference pages declare `upstreamVersion`; renders nothing elsewhere. */}
         <UpstreamVersion version={page.data.upstreamVersion} />
       </div>
@@ -137,6 +138,11 @@ export async function generateMetadata(props: PageProps<'/[[...slug]]'>): Promis
     siteName: seoConfig.siteName,
     isHomePage,
   });
+
+  metadata.alternates = {
+    ...metadata.alternates,
+    types: { 'text/markdown': new URL(pageMarkdownUrl(page.url), seoConfig.metadataBase).toString() },
+  };
 
   // The home title is `{ absolute }` (no template), so it would otherwise equal
   // the on-page <h1>. Give it a distinct, keyword-rich title instead.

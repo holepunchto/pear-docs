@@ -1,14 +1,14 @@
 # JSDoc gap report — hypercore
 
-`holepunchto/hypercore` at **v11.37.2** · **0%** of published members fully documented (0/58) · 60 source member(s) not in the manifest (internal or unfiled) — not graded.
+`holepunchto/hypercore` at **v11.39.4** · **0%** of published members fully documented (0/59) · 60 source member(s) not in the manifest (internal or unfiled) — not graded.
 
-Coverage by dimension: **descriptions 90%** · **param types 0%** · **typed returns 0%** · **examples 50%**. (Prose is usually present; the gap is mostly types.)
+Coverage by dimension: **descriptions 90%** · **param types 0%** · **typed returns 0%** · **examples 49%**. (Prose is usually present; the gap is mostly types.)
 
 Work through the checklist below in the source repo. Each item adds the JSDoc needed for a top-quality generated entry (typed param table, return type, example). When a file is fully checked off, its members render complete.
 
 See the [JSDoc convention](../../../scripts/refgen/JSDOC_CONVENTION.md) for the exact format each item expects.
 
-## To do (58)
+## To do (59)
 
 ### `index.js`
 
@@ -53,23 +53,24 @@ See the [JSDoc convention](../../../scripts/refgen/JSDOC_CONVENTION.md) for the 
 - [ ] L776 `const updated = await core.update([options])` — add @param {Type} for `opts`; @returns {Type}
 - [ ] L809 `const [index, relativeOffset] = await core.seek(byteOffset, [options])` — add @param {Type} + description for `bytes`; @param {Type} + description for `opts`; @returns {Type}
 - [ ] L851 `const has = await core.has(start, [end])` — add @param {Type} + description for `start`; @param {Type} + description for `end`; @returns {Type}; @example
-- [ ] L883 `const block = await core.get(index, [options])` — add @param {Type} + description for `index`; @param {Type} for `opts`; @returns {Type}
-- [ ] L914 `const cleared = await core.clear(start, [end], [options])` — add @param {Type} + description for `start`; @param {Type} + description for `end`; @param {Type} for `opts`; @returns {Type}
-- [ ] L1014 `await core.markBlock(start, end = start + 1)` — add @param {Type} + description for `start`; @param {Type} for `end`; @returns {Type}; @example
-- [ ] L1028 `await core.clearMarkings()` — add @returns {Type}; @example
-- [ ] L1037 `await core.startMarking()` — add @returns {Type}
-- [ ] L1053 `await core.sweep(opts)` — add @param {Type} for `options`; @returns {Type}
-- [ ] L1083 `const stream = core.createReadStream([options])` — add @param {Type} for `opts`; @returns {Type}
-- [ ] L1087 `const stream = core.createWriteStream()` — add @returns {Type}
-- [ ] L1091 `const bs = core.createByteStream([options])` — add @param {Type} for `opts`; @returns {Type}
-- [ ] L1095 `const range = core.download([range])` — add @param {Type} + description for `range`; @returns {Type}
-- [ ] L1109 `await core.truncate(newLength, [options])` — add @param {Type} + description for `newLength`; @param {Type} for `opts`; @returns {Type}
-- [ ] L1131 `const { length, byteLength } = await core.append(block, options = {})` — add @param {Type} + description for `blocks`; @param {Type} for `opts`; @returns {Type}
-- [ ] L1169 `const buffer = await core.signable([length], [fork])` — add description; @param {Type} + description for `length`; @param {Type} + description for `fork`; @returns {Type}; @example
-- [ ] L1177 `const hash = await core.treeHash([length])` — add @param {Type} + description for `length`; @returns {Type}; @example
-- [ ] L1191 `const proof = await core.proof(opts)` — add @param {Type} for `opts`; @returns {Type}
-- [ ] L1208 `const batch = await core.verifyFullyRemote(proof)` — add @param {Type} + description for `proof`; @returns {Type}; @example
-- [ ] L1266 `const ext = core.registerExtension(name, handlers = {})` — add @param {Type} + description for `name`; @param {Type} for `handlers`; @returns {Type}
+- [ ] L883 `const count = await core.count(start, end)` — add @param {Type} + description for `start`; @param {Type} + description for `end`; @returns {Type}; @example
+- [ ] L901 `const block = await core.get(index, [options])` — add @param {Type} + description for `index`; @param {Type} for `opts`; @returns {Type}
+- [ ] L932 `const cleared = await core.clear(start, [end], [options])` — add @param {Type} + description for `start`; @param {Type} + description for `end`; @param {Type} for `opts`; @returns {Type}
+- [ ] L1032 `await core.markBlock(start, end = start + 1)` — add @param {Type} + description for `start`; @param {Type} for `end`; @returns {Type}; @example
+- [ ] L1046 `await core.clearMarkings()` — add @returns {Type}; @example
+- [ ] L1055 `await core.startMarking()` — add @returns {Type}
+- [ ] L1071 `await core.sweep(opts)` — add @param {Type} for `options`; @returns {Type}
+- [ ] L1101 `const stream = core.createReadStream([options])` — add @param {Type} for `opts`; @returns {Type}
+- [ ] L1105 `const stream = core.createWriteStream()` — add @returns {Type}
+- [ ] L1109 `const bs = core.createByteStream([options])` — add @param {Type} for `opts`; @returns {Type}
+- [ ] L1113 `const range = core.download([range])` — add @param {Type} + description for `range`; @returns {Type}
+- [ ] L1127 `await core.truncate(newLength, [options])` — add @param {Type} + description for `newLength`; @param {Type} for `opts`; @returns {Type}
+- [ ] L1149 `const { length, byteLength } = await core.append(block, options = {})` — add @param {Type} + description for `blocks`; @param {Type} for `opts`; @returns {Type}
+- [ ] L1187 `const buffer = await core.signable([length], [fork])` — add description; @param {Type} + description for `length`; @param {Type} + description for `fork`; @returns {Type}; @example
+- [ ] L1195 `const hash = await core.treeHash([length])` — add @param {Type} + description for `length`; @returns {Type}; @example
+- [ ] L1209 `const proof = await core.proof(opts)` — add @param {Type} for `opts`; @returns {Type}
+- [ ] L1226 `const batch = await core.verifyFullyRemote(proof)` — add @param {Type} + description for `proof`; @returns {Type}; @example
+- [ ] L1284 `const ext = core.registerExtension(name, handlers = {})` — add @param {Type} + description for `name`; @param {Type} for `handlers`; @returns {Type}
 
 ## Suggested `@typedef`s (22)
 

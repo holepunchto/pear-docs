@@ -1,35 +1,96 @@
-import { source } from '@/lib/source';
+import { compareUrls, source } from '@/lib/source';
+import { LLMS_FULL_PRODUCTS } from '@/lib/llms-full';
+import { pageMarkdownUrl } from '@/lib/page-markdown-url';
+import { getDocsSeoConfig } from '@/lib/seo-config';
 
 export const dynamic = 'force-static';
 export const revalidate = false;
 
-// Maps a page's top-level URL segment to its llms.txt section heading, in
-// display order. A page whose first segment isn't one of these keys (just
-// the root index today) falls into 'Overview'.
-const SECTIONS: [key: string, title: string][] = [
-  ['', 'Overview'],
-  ['getting-started', 'Getting Started'],
-  ['how-to', 'How-to Guides'],
-  ['reference', 'Reference'],
-  ['explanation', 'Explanation'],
-  ['release-overview', 'Release Overview'],
+// Sections follow the URL: product (first segment), then quadrant (second),
+// in this order. Segments missing here still get a section, sorted last.
+const PRODUCTS: [key: string, title: string][] = [
+  ['pear', 'Pear'],
+  ['p2p', 'P2P'],
+  ['bare', 'Bare'],
 ];
 
+const QUADRANTS: [key: string, title: string][] = [
+  ['getting-started', 'Getting started'],
+  ['how-to', 'How-to guides'],
+  ['reference', 'Reference'],
+  ['explanation', 'Explanation'],
+  ['release-overview', 'Release overview'],
+];
+
+const SUMMARY =
+  'Pear loads applications remotely from peers and lets anyone create and share them. ' +
+  'P2P is the set of building blocks it is made from (Hypercore, Hyperswarm, Hyperbee, ' +
+  'Hyperdrive, Autobase, HyperDHT, Corestore), usable with or without Pear. Bare is the ' +
+  'small JavaScript runtime underneath, for desktop, mobile, and embedded use.';
+
+type Entry = { url: string; line: string };
+
+function rank(list: [string, string][], key: string): number {
+  const i = list.findIndex(([k]) => k === key);
+  return i < 0 ? list.length : i;
+}
+
+function label(list: [string, string][], key: string): string {
+  const known = list.find(([k]) => k === key)?.[1];
+  return known ?? key.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+}
+
+const byUrl = (a: Entry, b: Entry) => compareUrls(a.url, b.url);
+
 export async function GET() {
-  const bySection = new Map<string, string[]>();
+  const { metadataBase, siteName } = getDocsSeoConfig();
+
+  // Root and product landing pages, root first.
+  const overview: (Entry & { rank: number })[] = [];
+  const sections = new Map<string, { rank: number; entries: Entry[] }>();
   for (const page of source.getPages()) {
-    const key = page.url.split('/')[1] ?? '';
-    const line = `- [${page.data.title}](${page.url}): ${page.data.description}`;
-    const entries = bySection.get(key);
-    if (entries) entries.push(line);
-    else bySection.set(key, [line]);
+    const [product = '', quadrant = ''] = page.url.split('/').filter(Boolean);
+    const href = new URL(pageMarkdownUrl(page.url), metadataBase).toString();
+    const description = page.data.description.replace(/\s+/g, ' ').trim();
+    const entry = { url: page.url, line: `- [${page.data.title}](${href}): ${description}` };
+
+    if (!quadrant) {
+      overview.push({ ...entry, rank: product ? rank(PRODUCTS, product) + 1 : 0 });
+      continue;
+    }
+    const title = `${label(PRODUCTS, product)}: ${label(QUADRANTS, quadrant)}`;
+    const section = sections.get(title) ?? {
+      rank: rank(PRODUCTS, product) * 100 + rank(QUADRANTS, quadrant),
+      entries: [],
+    };
+    section.entries.push(entry);
+    sections.set(title, section);
   }
 
-  const lines: string[] = ['# Documentation', ''];
-  for (const [key, title] of SECTIONS) {
-    const entries = bySection.get(key);
-    if (!entries?.length) continue;
-    lines.push(`## ${title}`, '', ...entries, '');
+  const lines = [`# ${siteName}`, '', `> ${SUMMARY}`, ''];
+  lines.push('Every page link below points at its Markdown version.', '');
+  const mcpUrl = process.env.NEXT_PUBLIC_MCP_URL?.trim().replace(/\/+$/, '');
+  if (mcpUrl) {
+    const card = new URL('/.well-known/mcp/server-card.json', metadataBase);
+    lines.push(
+      `MCP server: ${mcpUrl} (streamable HTTP, no authentication). Tools: search_docs for semantic search, fetch_doc for a page as Markdown. Server card: ${card}`,
+      '',
+    );
   }
+  overview.sort((a, b) => a.rank - b.rank);
+  lines.push('## Overview', '', ...overview.map((e) => e.line), '');
+  for (const [title, { entries }] of [...sections].sort(([, a], [, b]) => a.rank - b.rank)) {
+    lines.push(`## ${title}`, '', ...entries.sort(byUrl).map((e) => e.line), '');
+  }
+  lines.push(
+    '## Optional',
+    '',
+    `- [Full documentation](${new URL('/llms-full.txt', metadataBase)}): every page above in one file`,
+    ...LLMS_FULL_PRODUCTS.map(
+      (key) =>
+        `- [${label(PRODUCTS, key)} documentation](${new URL(`/${key}/llms-full.txt`, metadataBase)}): every ${label(PRODUCTS, key)} page in one file`,
+    ),
+    '',
+  );
   return new Response(lines.join('\n'));
 }

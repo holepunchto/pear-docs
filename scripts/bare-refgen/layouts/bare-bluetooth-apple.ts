@@ -5,12 +5,15 @@
 // `.d.ts` interfaces. Errors surface via the `'error'` event rather than being
 // thrown, so there are no `throws` overrides. Bare method names are shared
 // across Central/Peripheral/PeripheralManager, so keys are fully qualified.
+// Prose that replaces or extends upstream TSDoc (version history, behaviour
+// checked against lib/*.js) is in bare-bluetooth-apple.patches.json, so a
+// TSDoc change upstream fails the render instead of being hidden.
 
 import type { Layout } from '../layout';
 
 const layout: Layout = {
   seeAlso: [
-    'Runs on Apple platforms (iOS and macOS) — on Android use [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android).',
+    "Runs on Apple platforms (iOS and macOS) — on Android use [`bare-bluetooth-android`](/bare/reference/bare/modules/bare-bluetooth-android). The two share most concepts under different names: the peripheral role is `PeripheralManager` here and `Server` there, adapter states are `'poweredOn'` and `'poweredOff'` here and `'on'` and `'off'` there, and a peripheral `id` is a per host UUID here and a hardware address there. To connect without a scan, this package resolves saved ids with `retrievePeripherals()`, while that one builds a `Peripheral` from a `Device`, such as one from `getBondedDevices()`.",
     '[`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform API over this module, `bare-bluetooth-android` and `bare-bluetooth-linux`.',
     '[One core, many platforms](/bare/explanation/bare-on-native) — using platform bindings from a native shell.',
     '[Connect over Bluetooth](/bare/how-to/connect-over-bluetooth) — how-to guides for scanning, GATT, L2CAP and mobile setup.',
@@ -26,15 +29,15 @@ const layout: Layout = {
   ],
   params: {
     'Central.constructor': {
-      opts: 'Manager options. With `showPowerAlert: true` the system shows its alert if Bluetooth is off when the manager is created; defaults to `false`.',
+      opts: 'Manager options such as `showPowerAlert`. Added in v0.7.0.',
     },
     'PeripheralManager.constructor': {
-      opts: 'Manager options. With `showPowerAlert: true` the system shows its alert if Bluetooth is off when the manager is created; defaults to `false`.',
+      opts: 'Manager options such as `showPowerAlert`. Added in v0.7.0.',
     },
     'Service.constructor': {
       uuid: "The service's UUID.",
       characteristics: 'The characteristics belonging to the service.',
-      opts: 'Options; set `primary: true` to mark this a primary service.',
+      opts: 'Options; services are primary unless `primary: false` is set.',
     },
     'Characteristic.constructor': {
       uuid: "The characteristic's UUID.",
@@ -50,8 +53,14 @@ const layout: Layout = {
     'Central.startScan': {
       serviceUUIDs: 'The service UUIDs to filter advertisements by; omit to discover all peripherals.',
     },
+    'Central.connect': {
+      peripheral: 'A discovered or retrieved peripheral to connect to. Connecting to a retrieved peripheral was added in v0.6.0.',
+    },
+    'Central.disconnect': {
+      peripheral: 'The connected peripheral to disconnect from, or a discovered or retrieved peripheral with a pending connection.',
+    },
     'Central.retrieveConnectedPeripherals': {
-      services: 'The service UUIDs to match against the peripherals the system is connected to.',
+      services: 'The service UUIDs to match; a peripheral is returned if it implements any of them.',
     },
     'Peripheral.discoverServices': {
       serviceUUIDs: 'The service UUIDs to discover; omit to discover all services.',
