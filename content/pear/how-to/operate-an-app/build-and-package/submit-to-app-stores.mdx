@@ -1,16 +1,16 @@
 ---
 title: Submit to app stores
 description: >-
-  Package a Pear app for platform stores—Flathub and the Snap Store on
-  desktop, the App Store and Google Play on mobile.
+  Package a Pear app for platform stores—Flathub, the Snap Store, and the Mac
+  App Store on desktop, the App Store and Google Play on mobile.
 docType: how-to
 product: pear
 schemaType: TechArticle
 ---
 
-Applications built from the [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron#store-submissions) template can also be distributed through platform-specific application stores. This guide covers the Linux store flows the template supports: **Flathub** (Flatpak) and the **Snap Store**. Mobile apps built on [`pear-mobile`](/pear/reference/pear/mobile) submit through the standard iOS App Store and Google Play flows—see [iOS](#ios) and [Android](#android) below.
+Applications built from the [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron#store-submissions) template can also be distributed through platform-specific application stores. This guide covers the three desktop store flows the template supports: **Flathub** (Flatpak), the **Snap Store**, and the **Mac App Store**. Mobile apps built on [`pear-mobile`](/pear/reference/pear/mobile) submit through the standard iOS App Store and Google Play flows—see [iOS](#ios) and [Android](#android) below.
 
-Both flows start from the Linux distributables produced by `npm run make`—see [Build desktop distributables](/pear/how-to/operate-an-app/build-and-package/build-desktop-distributables#linux) first. Store distribution complements, rather than replaces, peer-to-peer distribution: apps installed from a store still update over the air through [Pear OTA](/pear/reference/pear/runtime).
+The Flathub and Snap flows start from the Linux distributables produced by `npm run make`—see [Build desktop distributables](/pear/how-to/operate-an-app/build-and-package/build-desktop-distributables#linux) first. The Mac App Store flow starts from `npm run make:mas` on a Mac—see [Mac App Store](#mac-app-store). Store distribution complements, rather than replaces, peer-to-peer distribution: Flatpak and Snap installs still update over the air through [Pear OTA](/pear/reference/pear/runtime), but Mac App Store builds keep the updater off.
 
 ## Flathub
 
@@ -191,6 +191,43 @@ Upload a new Snap release to the desired channel (for example, `stable`):
 snapcraft upload <snap-name>.snap --release stable
 ```
 
+## Mac App Store
+
+The template can build a Mac App Store package from the same sources as its Developer ID build. `npm run make:mas` runs `electron-forge make --platform=mas`. On a Mac, that runs [`@electron-forge/maker-pkg`](https://www.npmjs.com/package/@electron-forge/maker-pkg)—the only maker the template configures for the `mas` platform—and writes the installer package to `out/make/<productName>-<version>-<arch>.pkg`.
+
+The template stops at the package. Nothing in it uploads to App Store Connect, and its CI job only stores the `.pkg` as a workflow artifact. For the Apple Developer account, App ID, and upload steps, follow Electron's [Mac App Store submission guide](https://www.electronjs.org/docs/latest/tutorial/mac-app-store-submission-guide).
+
+### What the build needs
+
+The build needs an [Apple Developer Program](https://developer.apple.com) membership, as macOS signing does in the template. It also needs an Apple Distribution certificate and an installer distribution certificate in your keychain, and a provisioning profile on disk. `forge.config.js` reads three environment variables:
+
+| Variable | Read by | What it is |
+| --- | --- | --- |
+| `MAS_DISTRIBUTION_IDENTITY` | `osxSign.identity` | The identity that signs the app bundle. |
+| `MAS_PROVISIONING_PROFILE` | `osxSign.provisioningProfile` | The path to your provisioning profile. |
+| `MAS_INSTALLER_DISTRIBUTION_IDENTITY` | The `identity` option of `@electron-forge/maker-pkg` | The identity that signs the `.pkg`. |
+
+```sh skip="store-tooling"
+MAS_DISTRIBUTION_IDENTITY="<apple-distribution-identity>" \
+MAS_PROVISIONING_PROFILE="<path-to-profile>" \
+MAS_INSTALLER_DISTRIBUTION_IDENTITY="<installer-distribution-identity>" \
+npm run make:mas
+```
+
+`forge.config.js` also writes `ElectronTeamID` into the app's `Info.plist` through `packagerConfig.extendInfo`, in every macOS build. The template ships the value `1A2B3C4D5E`; replace it with your Apple Developer Team ID, which is what Electron's guide describes the key as holding.
+
+### Sandbox and entitlements
+
+Mac App Store apps run in the App Sandbox. `build/entitlements.mas.plist` enables the sandbox with network client and server access, camera, microphone, and read-write access to user-selected files and the Downloads folder. `build/entitlements.mas.inherit.plist` enables the sandbox and `com.apple.security.inherit`. `forge.config.js` signs files nested inside an `.app` bundle (paths that contain `.app/`) with the inherit file and everything else with `entitlements.mas.plist`, and turns Hardened Runtime off for this build. Add or remove entitlements to match what your app uses.
+
+### Updates
+
+The template keeps the OTA updater off for Mac App Store builds: `shouldUpdate()` in `electron/main.js` returns `false` when `process.mas` is set. A Mac App Store install doesn't take updates from your `pear://` link.
+
+### Build in CI
+
+The template's `build-macos-mas` job runs the `make:mas` script through the `make-pear-app` action and uploads the `.pkg`. See [Build for the Mac App Store](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci#build-for-the-mac-app-store) for the inputs and a job to copy.
+
 ## iOS
 
 `hello-pear-react-native` carries no App Store submission tooling—no bundled EAS or CI release workflow, and signing/provisioning are project-specific. This section covers the Pear-specific parts of getting a build to the App Store; the submission mechanics themselves are standard Expo/React Native tooling.
@@ -259,7 +296,8 @@ Same as iOS: [EAS Submit](https://docs.expo.dev/submit/android/) or Fastlane—n
 
 ## See also
 
-- [Build desktop distributables](/pear/how-to/operate-an-app/build-and-package/build-desktop-distributables)—produce the Linux artifacts these store flows package.
+- [Build desktop distributables](/pear/how-to/operate-an-app/build-and-package/build-desktop-distributables)—produce the Linux artifacts the Flathub and Snap flows package.
+- [Build and sign desktop apps in CI](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci#build-for-the-mac-app-store)—build the Mac App Store package on a hosted runner.
 - [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment)—the peer-to-peer release flow that store installs update through.
 - [Deploy your mobile application](/pear/how-to/operate-an-app/manual-deployment/mobile)—build the mobile OTA payload before submitting to the App Store or Play Store.
 - [Pear Mobile OTA](/pear/reference/pear/mobile)—the `pear-mobile` API and the `minver` gate that store timing has to respect.

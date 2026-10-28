@@ -22,9 +22,71 @@ There is no project-scaffolding action. To bootstrap a new Pear project, clone t
 
 | Action | Purpose | Key inputs / outputs |
 | --- | --- | --- |
-| <a name="make-pear-app"></a>[`make-pear-app`](https://github.com/holepunchto/actions/tree/main/make-pear-app) | Run `npm run make` for the host OS with code signing and notarization, then upload distributables as artifacts. Handles its own `setup-node` + `npm ci`; precede it with `actions/checkout@v4`. See [Build and sign desktop apps in CI](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci). | In: `channel` (required), `upgrade_key`, macOS signing/notarization (`macos_certificate_base64`, `macos_p12_password`, `macos_codesign_identity`, `macos_notarization_method` = `appstore_connect` \| `apple_id_password`, plus the matching API-key or Apple-ID fields), Windows signing (`windows_signing_method` = `windows_cert_sha1` \| `windows_cert_pfx`, plus cert fields), `linux_set_up_snapcraft`. Out: `artifact-links` |
+| <a name="make-pear-app"></a>[`make-pear-app`](https://github.com/holepunchto/actions/tree/main/make-pear-app) | Run an npm script (`make` by default) for the host OS with code signing and notarization, then upload the files you name as workflow artifacts. Doesn't set up Node.js or install dependencies; precede it with `actions/checkout@v4`, `node-base-extended`, and `run-npm-script`. See [Build and sign desktop apps in CI](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci). | In: `channel` (required) plus the macOS, Mac App Store, Windows, and Linux groups in [`make-pear-app` inputs](#make-pear-app-inputs). Out: none |
 | [`pear-ci`](https://github.com/holepunchto/actions/tree/main/pear-ci) | Stage a directory into a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) on every run, producing a stable `pear://` link. Documented in full at [pear-ci GitHub Action](/pear/reference/ci-and-release/pear-ci-action). | `primary-key`, `namespace`, `target`, `dry-run`; out: `pr-url` |
 | [`pear-provision-recover`](https://github.com/holepunchto/actions/tree/main/pear-provision-recover) | Recover a provision drive from the network into a new writable drive (runs the `pear-provision-recover` CLI). Used to rebuild write access—see [Recovering from lost write access](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#recovering-from-lost-write-access). | `path`, `key`, `length`, `blobs-length`, `primary-key`, `name` (all required) |
+
+### `make-pear-app` inputs
+
+Every input is optional except `channel`. The action doesn't check that the inputs for a signing method are all set, so pass the full set for each method you use. [`action.yml`](https://github.com/holepunchto/actions/blob/main/make-pear-app/action.yml) is the source of truth, and `make-pear-app` has no outputs.
+
+Each file input names a file under `out/make` that your npm script writes; the action matches `out/make/**/<name>` and fails the job when nothing matches. It uploads the file as a workflow artifact named after the file, unless you set the matching `*_artifact_name` input.
+
+#### Build
+
+| Input | Notes |
+| --- | --- |
+| `channel` | Required. Exported to the build as `CHANNEL`. |
+| `upgrade_key` | Exported as `UPGRADE_KEY` when set. The template's `forge.config.js` writes it to `package.json#upgrade`. |
+| `script` | The npm script to run. Default `make`. |
+| `host` | Exported as `HOST`. |
+| `sfw` | Run the script through Socket Firewall. Default `true`, which needs `sfw` on the `PATH`; `node-base-extended` installs it. |
+| `standalone`, `standalone_artifact_name` | A standalone executable to upload, and its artifact name. |
+
+#### macOS
+
+| Input | Notes |
+| --- | --- |
+| `macos_dmg`, `macos_dmg_artifact_name` | A `.dmg` to upload, and its artifact name. |
+| `macos_app` | The file name for a ZIP of the `.app` bundle, which the action creates with `ditto` and uploads under that name. |
+| `macos_development_certificate_base64`, `macos_development_password` | The Developer ID Application certificate as a base64-encoded `.p12`, and its password. |
+| `macos_codesign_identity` | Exported as `MAC_CODESIGN_IDENTITY`. When it's empty, the template's `forge.config.js` doesn't sign. |
+| `macos_notarization_method` | `appstore_connect` or `apple_id_password`. When set, the action stores notarytool credentials in a keychain profile named `notary` and exports it as `KEYCHAIN_PROFILE`. |
+| `macos_api_key_base64`, `macos_api_key_id`, `macos_api_issuer` | For `appstore_connect`: the base64-encoded App Store Connect API key (`AuthKey_<id>.p8`), its 10-character key ID, and the issuer UUID. |
+| `macos_apple_id`, `macos_apple_password`, `macos_apple_team_id` | For `apple_id_password`: the Apple ID email, an app-specific password, and the Apple Developer Team ID. |
+
+#### Mac App Store
+
+Set `script` to `make:mas` for this build.
+
+| Input | Notes |
+| --- | --- |
+| `macos_mas_pkg`, `macos_mas_pkg_artifact_name` | The `.pkg` to upload, and its artifact name. |
+| `macos_distribution_certificate_base64`, `macos_distribution_password` | The Apple Distribution certificate as a base64-encoded `.p12`, and its password. |
+| `macos_distribution_identity` | Exported as `MAS_DISTRIBUTION_IDENTITY`. |
+| `macos_installer_distribution_certificate_base64`, `macos_installer_distribution_password` | The installer distribution certificate as a base64-encoded `.p12`, and its password. |
+| `macos_installer_distribution_identity` | Exported as `MAS_INSTALLER_DISTRIBUTION_IDENTITY`. |
+| `macos_distribution_provisioning_profile_base64` | A base64-encoded provisioning profile. The action copies the decoded file to `~/Library/MobileDevice/Provisioning Profiles/app.mas.provisionprofile` and exports its path as `MAS_PROVISIONING_PROFILE`. |
+
+#### Windows
+
+| Input | Notes |
+| --- | --- |
+| `windows_signing_method` | `cert_sha1` or `cert_pfx`. The action's conditions compare these exact strings; the upstream README writes `windows_cert_sha1` and `windows_cert_pfx`, and `windows_cert_pfx` skips the `.pfx` import. |
+| `windows_cert_sha1` | For `cert_sha1`: the SHA-1 thumbprint of a certificate on the runner. |
+| `windows_cert_pfx_base64`, `windows_cert_password` | For `cert_pfx`: the base64-encoded `.pfx`, and its password. The action imports it and uses its thumbprint. |
+| `windows_msix`, `windows_msix_artifact_name` | An `.msix` to upload, and its artifact name. |
+| `windows_zip`, `windows_zip_artifact_name` | A `.zip` to upload, and its artifact name. |
+
+The action exports the thumbprint as `WINDOWS_CERT_SHA1` and points `WINDOWS_SIGN_HOOK` at its bundled `windows-sign.js`.
+
+#### Linux
+
+| Input | Notes |
+| --- | --- |
+| `linux_appimage`, `linux_appimage_artifact_name` | An AppImage to upload, and its artifact name. |
+| `linux_snap`, `linux_snap_artifact_name` | A Snap to upload, and its artifact name. Setting `linux_snap` also installs Snapcraft and LXD on the runner. |
+| `linux_flatpak`, `linux_flatpak_artifact_name` | A Flatpak archive to upload, and its artifact name. |
 
 ## Release
 
