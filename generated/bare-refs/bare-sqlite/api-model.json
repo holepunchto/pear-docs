@@ -1,6 +1,6 @@
 {
   "name": "bare-sqlite",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "description": "SQLite bindings for Bare",
   "repoUrl": "https://github.com/holepunchto/bare-sqlite",
   "npmUrl": "https://www.npmjs.com/package/bare-sqlite",
@@ -62,14 +62,19 @@
           "signatures": [
             "close(): void"
           ],
-          "description": null,
+          "description": "Close the database. Throws if not open. Prepared statements that are still reachable from\nJavaScript remain valid until they are finalized; the underlying connection is released once\nthe last statement is gone.",
           "deprecated": null,
           "params": [],
           "returns": {
             "type": "void",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "DATABASE_NOT_OPEN",
+              "condition": "the database is not open."
+            }
+          ],
           "members": []
         },
         {
@@ -80,7 +85,7 @@
           "signatures": [
             "createTagStore(maxSize?: number): TagStore"
           ],
-          "description": null,
+          "description": "Create an LRU cache of prepared statements keyed on the SQL string produced by a tagged\ntemplate. `maxSize` defaults to `1000`. The returned store exposes `sql.all`, `sql.get`,\n`sql.iterate`, and `sql.run` as tag functions; placeholder values are bound positionally.",
           "deprecated": null,
           "params": [
             {
@@ -88,14 +93,23 @@
               "type": "number",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "Maximum number of cached prepared statements before the least-recently-used\nentry is evicted (default `1000`)."
             }
           ],
           "returns": {
             "type": "TagStore",
-            "description": null
+            "description": "A `TagStore` exposing `all`, `get`, `iterate`, and `run` as tagged-template functions."
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "DATABASE_NOT_OPEN",
+              "condition": "the database is not open."
+            },
+            {
+              "type": "INVALID_ARGUMENT",
+              "condition": "`maxSize` is not a positive integer."
+            }
+          ],
           "members": []
         },
         {
@@ -212,7 +226,7 @@
           "signatures": [
             "enableLoadExtension(allow: boolean): void"
           ],
-          "description": null,
+          "description": "Toggle extension loading at runtime. Useful for enabling extension loading during setup and\ndisabling it before running user-supplied SQL. Throws if `allowExtension` was not enabled at\nconstruction.",
           "deprecated": null,
           "params": [
             {
@@ -220,14 +234,23 @@
               "type": "boolean",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "When `true`, enable extension loading; when `false`, disable it."
             }
           ],
           "returns": {
             "type": "void",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "DATABASE_NOT_OPEN",
+              "condition": "the database is not open."
+            },
+            {
+              "type": "LOAD_EXTENSION_DISABLED",
+              "condition": "`allowExtension` was not enabled at construction."
+            }
+          ],
           "members": []
         },
         {
@@ -238,7 +261,7 @@
           "signatures": [
             "exec(sql: string): void"
           ],
-          "description": null,
+          "description": "Execute one or more SQL statements without returning rows. `sql` may contain multiple\nstatements separated by `;`.",
           "deprecated": null,
           "params": [
             {
@@ -246,14 +269,19 @@
               "type": "string",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "One or more SQL statements to execute, separated by `;`."
             }
           ],
           "returns": {
             "type": "void",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "DATABASE_NOT_OPEN",
+              "condition": "the database is not open."
+            }
+          ],
           "members": []
         },
         {
@@ -264,7 +292,7 @@
           "signatures": [
             "isOpen: boolean"
           ],
-          "description": null,
+          "description": "`true` if the database is currently open, `false` otherwise.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -279,7 +307,7 @@
           "signatures": [
             "loadExtension(path: string, entryPoint?: string | null): void"
           ],
-          "description": null,
+          "description": "Load an SQLite extension from `path`. `entryPoint` is the C initialization function name; when\nomitted, SQLite derives it from the filename. Throws if `allowExtension` was not enabled at\nconstruction.",
           "deprecated": null,
           "params": [
             {
@@ -287,21 +315,30 @@
               "type": "string",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "Path to the shared library implementing the SQLite extension."
             },
             {
               "name": "entryPoint",
               "type": "string | null",
               "optional": true,
               "default": null,
-              "description": null
+              "description": "Name of the C initialization function to call; when omitted (`null`),\nSQLite derives it from the filename."
             }
           ],
           "returns": {
             "type": "void",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "DATABASE_NOT_OPEN",
+              "condition": "the database is not open."
+            },
+            {
+              "type": "LOAD_EXTENSION_DISABLED",
+              "condition": "`allowExtension` was not enabled at construction."
+            }
+          ],
           "members": []
         },
         {
@@ -312,14 +349,19 @@
           "signatures": [
             "open(): void"
           ],
-          "description": null,
+          "description": "Open the database. Throws if already open. Useful when the database was constructed with `open:\nfalse`.",
           "deprecated": null,
           "params": [],
           "returns": {
             "type": "void",
             "description": null
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "DATABASE_ALREADY_OPEN",
+              "condition": "the database is already open."
+            }
+          ],
           "members": []
         },
         {
@@ -330,7 +372,7 @@
           "signatures": [
             "prepare(sql: string): StatementSync"
           ],
-          "description": null,
+          "description": "Compile `sql` into a prepared statement. The returned `StatementSync` can be reused with\ndifferent parameter values.",
           "deprecated": null,
           "params": [
             {
@@ -338,14 +380,19 @@
               "type": "string",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "The SQL to compile into a reusable prepared statement."
             }
           ],
           "returns": {
             "type": "StatementSync",
-            "description": null
+            "description": "A `StatementSync` that can be reused with different parameter values."
           },
-          "throws": [],
+          "throws": [
+            {
+              "type": "DATABASE_NOT_OPEN",
+              "condition": "the database is not open."
+            }
+          ],
           "members": []
         }
       ]
@@ -372,7 +419,7 @@
           "signatures": [
             "all<T extends SQLiteStatementSync.Row = SQLiteStatementSync.Row>(...params: SQLiteStatementSync.Parameters): T[]"
           ],
-          "description": null,
+          "description": "Execute the statement and return all rows as an array of objects keyed by column name.",
           "deprecated": null,
           "params": [
             {
@@ -398,12 +445,12 @@
           "signatures": [
             "columns(): SQLiteStatementSync.Column[]"
           ],
-          "description": null,
+          "description": "Return an array describing the statement's result columns.",
           "deprecated": null,
           "params": [],
           "returns": {
             "type": "SQLiteStatementSync.Column[]",
-            "description": null
+            "description": "An array describing the statement result columns."
           },
           "throws": [],
           "members": []
@@ -416,7 +463,7 @@
           "signatures": [
             "expandedSQL: string | null"
           ],
-          "description": null,
+          "description": "The SQL with bound parameter values substituted in, or `null` if SQLite couldn't expand it.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -431,7 +478,7 @@
           "signatures": [
             "get<T extends SQLiteStatementSync.Row = SQLiteStatementSync.Row>(...params: SQLiteStatementSync.Parameters): T | undefined"
           ],
-          "description": null,
+          "description": "Execute the statement and return the first row, or `undefined` if there are no rows.",
           "deprecated": null,
           "params": [
             {
@@ -457,7 +504,7 @@
           "signatures": [
             "iterate<T extends SQLiteStatementSync.Row = SQLiteStatementSync.Row>(...params: SQLiteStatementSync.Parameters): IterableIterator<T>"
           ],
-          "description": null,
+          "description": "Execute the statement and return an iterator that yields result rows one at a time as objects\nkeyed by column name.",
           "deprecated": null,
           "params": [
             {
@@ -483,7 +530,7 @@
           "signatures": [
             "run(...params: SQLiteStatementSync.Parameters): SQLiteStatementSync.RunResult"
           ],
-          "description": null,
+          "description": "Execute the statement and return a result object with `changes` (the number of rows modified)\nand `lastInsertRowid`.",
           "deprecated": null,
           "params": [
             {
@@ -509,7 +556,7 @@
           "signatures": [
             "setAllowBareNamedParameters(allow: boolean): void"
           ],
-          "description": null,
+          "description": "When `true` (the default), named-parameter lookup falls back to the bare key when the\nsigil-prefixed key (`':foo'`) is not found. When `false`, only sigil-prefixed keys are\nconsidered.",
           "deprecated": null,
           "params": [
             {
@@ -517,7 +564,7 @@
               "type": "boolean",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "When `true` (the default), named-parameter lookup falls back to the bare key\nwhen the sigil-prefixed key is not found; when `false`, only sigil-prefixed keys match."
             }
           ],
           "returns": {
@@ -535,7 +582,7 @@
           "signatures": [
             "setAllowUnknownNamedParameters(allow: boolean): void"
           ],
-          "description": null,
+          "description": "When `false` (the default), passing a named-parameters object with keys that don't correspond\nto any placeholder throws `INVALID_ARGUMENT`. When `true`, extras are silently ignored.",
           "deprecated": null,
           "params": [
             {
@@ -543,7 +590,7 @@
               "type": "boolean",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "When `false` (the default), unknown named-parameter keys throw; when `true`,\nthey are silently ignored."
             }
           ],
           "returns": {
@@ -561,7 +608,7 @@
           "signatures": [
             "setReadBigInts(enabled: boolean): void"
           ],
-          "description": null,
+          "description": "When `true`, `INTEGER` columns are returned as `BigInt` rather than `Number`. `changes` and\n`lastInsertRowid` from `stmt.run()` are returned as `BigInt` too. Default is `false`.",
           "deprecated": null,
           "params": [
             {
@@ -569,7 +616,7 @@
               "type": "boolean",
               "optional": false,
               "default": null,
-              "description": null
+              "description": "When `true`, `INTEGER` columns (and the `changes`/`lastInsertRowid` from\n`run()`) are returned as `BigInt` rather than `Number` (default `false`)."
             }
           ],
           "returns": {
@@ -587,7 +634,7 @@
           "signatures": [
             "sourceSQL: string"
           ],
-          "description": null,
+          "description": "The original SQL string that the statement was compiled from.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -600,7 +647,7 @@
           "kind": "typeAlias",
           "static": true,
           "signatures": [
-            "type BindValue = | null\n    | undefined\n    | number\n    | bigint\n    | string\n    | ArrayBuffer\n    | ArrayBufferView"
+            "type BindValue = null | undefined | number | bigint | string | ArrayBuffer | ArrayBufferView"
           ],
           "description": null,
           "deprecated": null,
@@ -814,7 +861,7 @@
           "signatures": [
             "values<T extends SQLiteStatementSync.Value[] = SQLiteStatementSync.Value[]>(...params: SQLiteStatementSync.Parameters): T[]"
           ],
-          "description": null,
+          "description": "Execute the statement and return all rows as an array of value tuples, one per row, in the\norder given by `stmt.columns()`. Cheaper than `stmt.all()` when column names aren't needed.",
           "deprecated": null,
           "params": [
             {
@@ -856,7 +903,7 @@
           "signatures": [
             "all<T extends StatementSync.Row = StatementSync.Row>(strings: readonly string[], ...params: StatementSync.BindValue[]): T[]"
           ],
-          "description": null,
+          "description": "Execute the statement and return all rows as an array of objects keyed by column name.",
           "deprecated": null,
           "params": [
             {
@@ -889,7 +936,7 @@
           "signatures": [
             "capacity: number"
           ],
-          "description": null,
+          "description": "The maximum number of statements the cache holds before evicting the least-recently-used entry.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -904,7 +951,7 @@
           "signatures": [
             "clear(): void"
           ],
-          "description": null,
+          "description": "Evict all cached prepared statements.",
           "deprecated": null,
           "params": [],
           "returns": {
@@ -922,7 +969,7 @@
           "signatures": [
             "db: DatabaseSync"
           ],
-          "description": null,
+          "description": "The `DatabaseSync` this store prepares statements against.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -937,7 +984,7 @@
           "signatures": [
             "get<T extends StatementSync.Row = StatementSync.Row>(strings: readonly string[], ...params: StatementSync.BindValue[]): T | undefined"
           ],
-          "description": null,
+          "description": "Execute the statement and return the first row, or `undefined` if there are no rows.",
           "deprecated": null,
           "params": [
             {
@@ -970,7 +1017,7 @@
           "signatures": [
             "iterate<T extends StatementSync.Row = StatementSync.Row>(strings: readonly string[], ...params: StatementSync.BindValue[]): IterableIterator<T>"
           ],
-          "description": null,
+          "description": "Execute the statement and return an iterator that yields result rows one at a time as objects\nkeyed by column name.",
           "deprecated": null,
           "params": [
             {
@@ -1003,7 +1050,7 @@
           "signatures": [
             "run(strings: readonly string[], ...params: StatementSync.BindValue[]): StatementSync.RunResult"
           ],
-          "description": null,
+          "description": "Execute the statement and return a result object with `changes` (the number of rows modified)\nand `lastInsertRowid`.",
           "deprecated": null,
           "params": [
             {
@@ -1036,7 +1083,7 @@
           "signatures": [
             "size: number"
           ],
-          "description": null,
+          "description": "The number of prepared statements currently cached.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -1051,7 +1098,7 @@
           "signatures": [
             "values<T extends StatementSync.Value[] = StatementSync.Value[]>(strings: readonly string[], ...params: StatementSync.BindValue[]): T[]"
           ],
-          "description": null,
+          "description": "Execute the statement and return all rows as an array of value tuples, one per row, in the\norder given by `stmt.columns()`. Cheaper than `stmt.all()` when column names aren't needed.",
           "deprecated": null,
           "params": [
             {
@@ -1093,6 +1140,21 @@
       "throws": [],
       "members": [
         {
+          "key": "errors.cause",
+          "name": "cause",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "cause: unknown"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "errors.code",
           "name": "code",
           "kind": "property",
@@ -1106,10 +1168,55 @@
           "returns": null,
           "throws": [],
           "members": []
+        },
+        {
+          "key": "errors.message",
+          "name": "message",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "message: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "errors.name",
+          "name": "name",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "name: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "errors.stack",
+          "name": "stack",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "stack: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
         }
       ]
     }
   ],
   "subpaths": [],
-  "generatedAt": "2026-08-06T18:23:53.585Z"
+  "generatedAt": "2026-10-26T13:43:57.281Z"
 }

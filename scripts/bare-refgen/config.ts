@@ -124,6 +124,12 @@ export const STABILITY: Record<string, Stability> = {
   'bare-mdns-discovery': 'experimental',
   // README opens "This module is experimental. The API is subject to change and may break at any time."
   'bare-bluetooth-linux': 'experimental',
+  // WebAssembly addon stack, first published 2026-10-07 to 10-14 at 0.1.x
+  // alongside Bare 1.36.0's `host`/`wasi` import attributes.
+  'bare-wasi': 'experimental',
+  'bare-directory': 'experimental',
+  'bare-wasm': 'experimental',
+  'bare-wasm-abi': 'experimental',
 };
 
 export function stabilityOf(name: string): Stability {

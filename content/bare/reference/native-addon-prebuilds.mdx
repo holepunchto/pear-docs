@@ -35,6 +35,40 @@ The typical shape is a build matrix where each job runs `compile-prebuilds`, the
 
 `wasi` and `musl` default to `false`. Set `wasi: true` to install the WASI sysroot for targeting WASI, and `musl: true` to install the musl sysroot for targeting musl. `compile-prebuilds` passes both inputs to `setup-bare-make`, and they do nothing else. The target itself is still chosen with `platform`, `arch`, and `flags`; see the [`bare-make` toolchain notes](/bare/reference/bare/modules/bare-make#toolchain) for the `wasi-wasm32` and musl targets.
 
+## WebAssembly prebuilds
+
+From Bare 1.36.0, an addon package can ship a WebAssembly build next to its native ones, which Bare loads sandboxed through WASI when an import asks for it with the `host` attribute, or when there is no native build for the platform. See [WebAssembly addons](/bare/reference/bare/modules/bare-module#webassembly-addons). The build is one more matrix entry, with `wasi` set so that `setup-bare-make` installs `wasi-sysroot`. This is how [`bare-sqlite`](https://github.com/holepunchto/bare-sqlite/blob/v0.1.5/.github/workflows/prebuild.yml) 0.1.5 builds its prebuilds:
+
+```yaml
+strategy:
+  matrix:
+    include:
+      # ...the native platforms
+      - os: ubuntu-24.04
+        platform: wasi
+        arch: wasm32
+steps:
+  - uses: holepunchto/actions/bare-base@v1
+  - uses: holepunchto/actions/compile-prebuilds@v1
+    with:
+      platform: ${{ matrix.platform }}
+      arch: ${{ matrix.arch }}
+      wasi: ${{ matrix.platform == 'wasi' }}
+      upload: true
+```
+
+What the job builds:
+
+| Piece | Behavior |
+| --- | --- |
+| Target | `bare-make generate --platform wasi --arch wasm32` uses the `wasi-wasm32` toolchain of `cmake-toolchains` 2.1.1 and later (2.1.0 added it, and 2.1.1 fixed its WebAssembly compile and link flags), which compiles for `wasm32-wasip1` with the Clang from `llvm-runtime` and the sysroot from `wasi-sysroot`. C++ exceptions and `setjmp()` use WebAssembly exception handling, and a shared library is built as a static one, because WebAssembly cannot link shared libraries. See the [`bare-make` toolchain notes](/bare/reference/bare/modules/bare-make#toolchain). |
+| Module | For a `wasi-` host, `add_bare_module()` of [`cmake-bare`](https://github.com/holepunchto/cmake-bare) 1.10.0 and later builds a WASI reactor instead of a shared library. It exports `bare_register_module_v0`, `malloc`, `free`, and the function table, and leaves undefined functions as imports, which the `--allow-undefined` linker flag of 1.10.1 allows. |
+| Output | The module is installed as `prebuilds/wasi-wasm32/<name>.wasm`, where [`bare-addon-resolve`](/bare/reference/bare/modules/bare-addon-resolve) looks for it after the native prebuilds and linked addons. |
+| Runtime dependencies | None. Passing any to `add_bare_module()` fails with `WebAssembly addons cannot install runtime dependencies`. |
+| Headers | `bare/target.h` defines the `wasi` platform and `wasm32` architecture from Bare 1.35.0. [`bare-sqlite`](https://github.com/holepunchto/bare-sqlite) 0.1.5 includes `<bare/module.h>` rather than `<bare.h>`, and no longer includes `<uv.h>`, to build for it. |
+
+The imports of the result are checked when it loads, not when it builds. Bare loads it through [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi), which rejects an addon that imports a libjs function it does not implement, such as threadsafe functions or the event loop. Load the built addon under Bare with `require('.', { with: { host: 'wasi-wasm32' } })` from the package directory to check it.
+
 ## Project and toolchain setup
 
 These are the supporting actions for a prebuild job. Use any of them directly in a workflow.

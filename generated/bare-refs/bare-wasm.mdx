@@ -1,0 +1,498 @@
+---
+title: "bare-wasm"
+description: "WebAssembly JavaScript API for Bare"
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "0.1.0"
+---
+
+<mark style={{ backgroundColor: '#8484ff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>experimental</mark>
+
+[`bare-wasm`](https://github.com/holepunchto/bare-wasm) — WebAssembly JavaScript API for Bare. In 0.1.0, each export is the same-named member of the `WebAssembly` global, so the module needs an engine that provides WebAssembly.
+
+```sh
+npm i bare-wasm
+```
+
+## Usage
+
+```js
+const { Module, Instance } = require('bare-wasm')
+
+const module = new Module(bytes)
+const instance = new Instance(module, imports)
+```
+
+## API
+
+### wasm
+
+#### `wasm.BufferSource`
+
+```ts
+type BufferSource = ArrayBuffer | ArrayBufferView
+```
+
+The bytes of a WebAssembly module in its binary format.
+
+#### `wasm.compile(bytes: BufferSource): Promise<Module>`
+
+Asynchronously compile a module.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bytes` | `BufferSource` | — | The binary format of the module. |
+
+#### `wasm.Exports`
+
+```ts
+type Exports = Record<string, ExportValue>
+```
+
+The exports of an instance, keyed by name.
+
+#### `wasm.ExportValue`
+
+```ts
+type ExportValue = Function | Global | Memory | Table | Tag
+```
+
+A value exported by an instance.
+
+#### `wasm.ImportExportKind`
+
+```ts
+type ImportExportKind = 'function' | 'table' | 'memory' | 'global' | 'tag'
+```
+
+The kind of an import or export of a module.
+
+#### `wasm.Imports`
+
+```ts
+type Imports = Record<string, ModuleImports>
+```
+
+The imports of a module, keyed by import module name.
+
+#### `wasm.ImportValue`
+
+```ts
+type ImportValue = ExportValue | number | bigint
+```
+
+A value that may be provided to satisfy an import.
+
+#### `wasm.instantiate(bytes: BufferSource, imports?: Imports): Promise<InstantiatedSource>`
+
+Asynchronously compile and instantiate a module.
+
+Overloads:
+
+```ts
+wasm.instantiate(bytes: BufferSource, imports?: Imports): Promise<InstantiatedSource>
+wasm.instantiate(module: Module, imports?: Imports): Promise<Instance>
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bytes` | `BufferSource` | — | The binary format of the module. |
+| `imports?` | `Imports` | — | The values to satisfy the imports of the module with. |
+
+#### `wasm.ModuleImports`
+
+```ts
+type ModuleImports = Record<string, ImportValue>
+```
+
+The imports of a single import module, keyed by name.
+
+#### `wasm.TableKind`
+
+```ts
+type TableKind = 'externref' | 'anyfunc'
+```
+
+The type of the elements of a table.
+
+#### `wasm.validate(bytes: BufferSource): boolean`
+
+Check whether `bytes` is a valid module.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bytes` | `BufferSource` | — | — |
+
+#### `wasm.ValueType`
+
+```ts
+type ValueType = 'i32' | 'i64' | 'f32' | 'f64' | 'v128' | 'externref' | 'anyfunc'
+```
+
+The type of a WebAssembly value.
+
+### Module
+
+#### `new Module(bytes: BufferSource)`
+
+Synchronously compile a module.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `bytes` | `BufferSource` | — | The binary format of the module. |
+
+**Throws**
+
+- `CompileError` — thrown if `bytes` is not a valid module.
+
+#### `Module.customSections(module: Module, sectionName: string): ArrayBuffer[]`
+
+Get the contents of the custom sections of `module` named `sectionName`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `module` | `Module` | — | — |
+| `sectionName` | `string` | — | — |
+
+#### `Module.exports(module: Module): ModuleExportDescriptor[]`
+
+Get descriptors of the exports of `module`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `module` | `Module` | — | — |
+
+#### `Module.imports(module: Module): ModuleImportDescriptor[]`
+
+Get descriptors of the imports of `module`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `module` | `Module` | — | — |
+
+### Instance
+
+#### `new Instance(module: Module, imports?: Imports)`
+
+Synchronously instantiate a module.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `module` | `Module` | — | The module to instantiate. |
+| `imports?` | `Imports` | — | The values to satisfy the imports of the module with. |
+
+**Throws**
+
+- `LinkError` — thrown if the imports of the module cannot be satisfied.
+- `RuntimeError` — thrown if the start function of the module traps.
+
+#### `exports: Exports`
+
+The exports of the instance.
+
+### Memory
+
+#### `new Memory(descriptor: MemoryDescriptor)`
+
+Create a memory of `descriptor.initial` pages.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `descriptor` | [`MemoryDescriptor`](#memorydescriptor) | — | — |
+
+#### `buffer: ArrayBuffer | SharedArrayBuffer`
+
+The buffer backing the memory, which is detached and replaced whenever it grows.
+
+#### `grow(delta: number): number`
+
+Grow the memory.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `delta` | `number` | — | The number of pages of 64 KiB to grow the memory by. |
+
+**Returns** `number` — The previous size of the memory in pages.
+
+**Throws**
+
+- `RangeError` — thrown if the memory cannot grow by `delta` pages.
+
+### Table
+
+#### `new Table(descriptor: TableDescriptor, value?: any)`
+
+Create a table of `descriptor.initial` elements, each set to `value`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `descriptor` | [`TableDescriptor`](#tabledescriptor) | — | The type and limits of the table. |
+| `value?` | `any` | — | The value to initialize the elements of the table with. |
+
+#### `get(index: number): any`
+
+Get the element at `index`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `index` | `number` | — | — |
+
+#### `grow(delta: number, value?: any): number`
+
+Grow the table.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `delta` | `number` | — | The number of elements to grow the table by. |
+| `value?` | `any` | — | The value to initialize the new elements with. |
+
+**Returns** `number` — The previous number of elements of the table.
+
+**Throws**
+
+- `RangeError` — thrown if the table cannot grow by `delta` elements.
+
+#### `length: number`
+
+The number of elements of the table.
+
+#### `set(index: number, value?: any): void`
+
+Set the element at `index` to `value`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `index` | `number` | — | — |
+| `value?` | `any` | — | — |
+
+### Global
+
+#### `new Global(descriptor: GlobalDescriptor, value?: T)`
+
+Create a global holding `value`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `descriptor` | [`GlobalDescriptor`](#globaldescriptor) | — | The type and mutability of the global. |
+| `value?` | `T` | — | The initial value of the global. |
+
+#### `value: T`
+
+The value of the global.
+
+#### `valueOf(): T`
+
+Get the value of the global.
+
+### Tag
+
+#### `new Tag(type: TagType)`
+
+Create an exception tag.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `type` | [`TagType`](#tagtype) | — | — |
+
+### Exception
+
+#### `new Exception(tag: Tag, payload: any[], options?: ExceptionOptions)`
+
+Create an exception of `tag` carrying `payload`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `tag` | `Tag` | — | The tag identifying the type of the exception. |
+| `payload` | `any[]` | — | The values carried by the exception, matching the parameters of `tag`. |
+| `options?` | [`ExceptionOptions`](#exceptionoptions) | — | Options for the exception. |
+
+#### `getArg(tag: Tag, index: number): any`
+
+Get a value carried by the exception.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `tag` | `Tag` | — | The tag the exception must have. |
+| `index` | `number` | — | The index of the value in the payload. |
+
+**Throws**
+
+- `TypeError` — thrown if the exception does not have `tag`.
+
+#### `is(tag: Tag): boolean`
+
+Check whether the exception has `tag`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `tag` | `Tag` | — | — |
+
+#### `stack: string`
+
+The stack trace of the exception, if requested with `traceStack`.
+
+### Types
+
+#### `ModuleExportDescriptor`
+
+```ts
+interface ModuleExportDescriptor {
+  name: string
+  kind: ImportExportKind
+}
+```
+
+An export of a module, as listed by `Module.exports()`.
+
+#### `ModuleImportDescriptor`
+
+```ts
+interface ModuleImportDescriptor {
+  module: string
+  name: string
+  kind: ImportExportKind
+}
+```
+
+An import of a module, as listed by `Module.imports()`.
+
+#### `MemoryDescriptor`
+
+```ts
+interface MemoryDescriptor {
+  initial: number
+  maximum?: number
+  shared?: boolean
+}
+```
+
+The size, in 64 KiB pages, and sharing of a memory.
+
+#### `TableDescriptor`
+
+```ts
+interface TableDescriptor {
+  element: TableKind
+  initial: number
+  maximum?: number
+}
+```
+
+The element type and size of a table.
+
+#### `GlobalDescriptor`
+
+```ts
+interface GlobalDescriptor {
+  value: ValueType
+  mutable?: boolean
+}
+```
+
+The value type and mutability of a global.
+
+#### `TagType`
+
+```ts
+interface TagType {
+  parameters: ValueType[]
+}
+```
+
+The parameter types of an exception tag.
+
+#### `ExceptionOptions`
+
+```ts
+interface ExceptionOptions {
+  traceStack?: boolean
+}
+```
+
+Options for an `Exception`.
+
+#### `InstantiatedSource`
+
+```ts
+interface InstantiatedSource {
+  module: Module
+  instance: Instance
+}
+```
+
+The result of instantiating the bytes of a module: the compiled `module` and its `instance`.
+
+### Classes
+
+#### `CompileError`
+
+```ts
+class CompileError {
+}
+```
+
+An error thrown when a module fails to decode or validate.
+
+#### `LinkError`
+
+```ts
+class LinkError {
+}
+```
+
+An error thrown when the imports of a module cannot be satisfied.
+
+#### `RuntimeError`
+
+```ts
+class RuntimeError {
+}
+```
+
+An error thrown when WebAssembly code traps.
+
+## See also
+
+- [`bare-wasi`](/bare/reference/bare/modules/bare-wasi) — WASI preview 1 imports for an instance.
+- [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi) — runs Bare addons compiled to WebAssembly on top of this API.
+- [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

@@ -5584,5 +5584,147 @@
     "catalogDescription": null,
     "inboundDeps": 0,
     "disposition": "catalog-row-only"
+  },
+  {
+    "name": "bare-wasi",
+    "repoUrl": "https://github.com/holepunchto/bare-wasi",
+    "stars": 0,
+    "lastPush": "2026-10-14",
+    "language": "JavaScript",
+    "category": "stdlib",
+    "hasPackageJson": true,
+    "version": "0.1.2",
+    "description": "Capability based WASI for JavaScript",
+    "native": false,
+    "minBare": null,
+    "bareDeps": [
+      "bare-hrtime",
+      "bare-wasm"
+    ],
+    "otherDeps": [],
+    "hasTypes": true,
+    "hasPrebuilds": false,
+    "nodeCompat": true,
+    "hasApi": true,
+    "apiMethods": 0,
+    "usage": "```js\nconst wasm = require('bare-wasm')\nconst WASI = require('bare-wasi')\nconst { MemoryDirectory } = require('bare-wasi/memory')\n\nconst wasi = new WASI({\n  version: 'preview1',\n  args: ['program'],\n  preopens: {\n    '/data': new MemoryDirectory({ 'hello.txt': 'Hello from JavaScript' })\n  },\n  stdout: (data) => console.log(data.toString())\n})\n\nconst module = new wasm.Module(bytes)\nconst instance = new wasm.Instance(module, wasi.getImportObject())\n\nconst exitCode = wasi.start(instance)\n```\n\nThe `version` option is required and must be `'preview1'` so that options are always read for the version of WASI they were written for.",
+    "api": null,
+    "extraSections": [
+      {
+        "heading": "Capabilities",
+        "body": "Every resource a guest can reach is passed in by the embedder:\n\n- **Streams.** Standard input, output, and error exist only if `stdin`, `stdout`, and `stderr` are given.\n- **Directories.** A guest can only reach the directories given as `preopens`, and paths are resolved by `bare-wasi` itself, one name at a time. Absolute paths, symbolic links that point outside of a directory, and `..` beyond where a lookup started all fail with `ENOTCAPABLE`.\n- **Clocks.** Clocks are available by default, as they are to any JavaScript, and can be denied with `clock: null`.\n- **Randomness.** `random_get` fails with `ENOTCAPABLE` unless a `random` function is given.\n\nBeyond these, a guest only sees the arguments and environment variables it is given. There are no sockets."
+      },
+      {
+        "heading": "Conformance",
+        "body": "`bare-wasi` passes the WASI preview 1 tests of the [WASI test suite](https://github.com/WebAssembly/wasi-testsuite), which are fetched at a pinned commit and run as part of `npm test`. Tests that are known to fail are listed with the reason in [`test/suite.json`](test/suite.json), and a listed test that starts passing fails the run."
+      },
+      {
+        "heading": "Backends",
+        "body": "Preopens are backed by objects implementing a small, synchronous interface. Directories are only ever asked about a single name, never a path, which keeps the resolution of paths, and so the enforcement of capabilities, in one place. Failures are reported by throwing errors with a POSIX `code`, such as `'ENOENT'`. See [`index.d.ts`](index.d.ts) for the interface.\n\n### In memory\n\n```js\nconst { MemoryDirectory, MemoryFile, MemorySymlink } = require('bare-wasi/memory')\n\nconst directory = new MemoryDirectory({\n  'file.txt': 'contents',\n  nested: { 'data.bin': new Uint8Array([1, 2, 3]) }\n})\n```\n\n### Host\n\nDirectories of the host filesystem are backed by [`bare-directory`](https://github.com/holepunchto/bare-directory) capabilities. They confine every operation to the directory in the kernel as well, and limit it to the rights the capability has.\n\n```js\nconst { DirectorySync } = require('bare-directory')\nconst { HostDirectory } = require('bare-wasi/host')\n\nconst directory = new HostDirectory(\n  DirectorySync.open('/srv/data', { rights: ['list', 'lookup', 'read'] })\n)\n```"
+      }
+    ],
+    "inCatalog": false,
+    "catalogDescription": null,
+    "inboundDeps": 0,
+    "disposition": "full-page candidate"
+  },
+  {
+    "name": "bare-directory",
+    "repoUrl": "https://github.com/holepunchto/bare-directory",
+    "stars": 0,
+    "lastPush": "2026-10-13",
+    "language": "C",
+    "category": "stdlib",
+    "hasPackageJson": true,
+    "version": "0.1.0",
+    "description": "Capability based directory access for Bare",
+    "native": true,
+    "minBare": null,
+    "bareDeps": [],
+    "otherDeps": [],
+    "hasTypes": true,
+    "hasPrebuilds": true,
+    "nodeCompat": false,
+    "hasApi": true,
+    "apiMethods": 0,
+    "usage": "```js\nconst { Directory } = require('bare-directory')\n\nconst root = await Directory.open('/srv/data')\n\nconst file = await root.openFile('notes.txt', { read: true, write: true, create: true })\n\nawait file.write(Buffer.from('hello'))\n\nconst images = (await root.openDirectory('images')).restrict(['list', 'lookup', 'read'])\n\nfor (const { name, type } of await images.list()) console.log(name, type)\n```\n\n`DirectorySync` and `FileSync` provide the same API synchronously. See [`index.d.ts`](index.d.ts) for the full API and the available rights.",
+    "api": null,
+    "extraSections": [
+      {
+        "heading": "Security model",
+        "body": "Only opening a directory by path needs ambient authority. It's meant for whoever hands out the capabilities, such as an embedder. Every other operation is relative to an open handle.\n\n- A name is a single path component. Empty names, `.`, `..`, names with `/` or NUL, and names longer than 255 bytes fail with `EINVAL`. On Windows, so do names with `\\ : \" * ? < > |` or control characters, names ending in a dot or space, and device names like `CON`, `NUL.txt`, or `COM` followed by a superscript digit.\n- Symbolic links are never followed. Opening one fails with `ELOOP`, and `readLink()` returns its target as text.\n- Only regular files and directories can be opened. Devices, FIFOs, and sockets fail with `ENOTSUP` and are never opened, so opening them has no side effects. On Windows, the same goes for reparse points that aren't links, such as cloud file placeholders.\n- A directory that is moved while open still refers to the same directory.\n- Rights can only be narrowed. Anything opened from a directory gets at most its rights, and `restrict()` can only remove rights. An operation without the right it needs fails with `ENOTCAPABLE`.\n- `list()` and `readLink()` fail with `EILSEQ` on names that aren't valid UTF-8, as these can't be represented as strings.\n\nNames are checked in JavaScript and again in native code. If an invalid name reaches native code, the JavaScript checks were bypassed, and the process is aborted instead of risking an escape.\n\nThe kernel also enforces the confinement, as far as each platform allows:\n\n| Platform | Enforcement                                                                                                                                                     |\n| :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| Linux    | `openat2()` of a single name with `RESOLVE_BENEATH`, `RESOLVE_NO_SYMLINKS`, and `RESOLVE_NO_MAGICLINKS` from Linux 5.6, otherwise `openat()` with `O_NOFOLLOW`. |\n| Android  | `openat()` of a single name with `O_NOFOLLOW`. `openat2()` is never used, as Android kills apps that call it.                                                   |\n| macOS    | `openat()` of a single name with `O_NOFOLLOW_ANY`.                                                                                                              |\n| iOS      | `openat()` of a single name with `O_NOFOLLOW_ANY`.                                                                                                              |\n| Windows  | `NtCreateFile()` of a single name relative to the directory handle, without following reparse points. Requires Windows 10 1809 or later.                        |"
+      }
+    ],
+    "inCatalog": false,
+    "catalogDescription": null,
+    "inboundDeps": 0,
+    "disposition": "full-page candidate"
+  },
+  {
+    "name": "bare-wasm",
+    "repoUrl": "https://github.com/holepunchto/bare-wasm",
+    "stars": 0,
+    "lastPush": "2026-10-09",
+    "language": "JavaScript",
+    "category": "stdlib",
+    "hasPackageJson": true,
+    "version": "0.1.0",
+    "description": "WebAssembly JavaScript API for Bare",
+    "native": false,
+    "minBare": null,
+    "bareDeps": [],
+    "otherDeps": [],
+    "hasTypes": true,
+    "hasPrebuilds": false,
+    "nodeCompat": false,
+    "hasApi": true,
+    "apiMethods": 0,
+    "usage": "```js\nconst { Module, Instance } = require('bare-wasm')\n\nconst module = new Module(bytes)\nconst instance = new Instance(module, imports)\n```",
+    "api": "The exports mirror the `WebAssembly` namespace of the WebAssembly JavaScript API:\n\n- `Module`, `Instance`, `Memory`, `Table`, `Global`, `Tag`, and `Exception`\n- `CompileError`, `LinkError`, and `RuntimeError`\n- `validate()`, `compile()`, and `instantiate()`",
+    "extraSections": [],
+    "inCatalog": false,
+    "catalogDescription": null,
+    "inboundDeps": 0,
+    "disposition": "full-page candidate"
+  },
+  {
+    "name": "bare-wasm-abi",
+    "repoUrl": "https://github.com/holepunchto/bare-wasm-abi",
+    "stars": 0,
+    "lastPush": "2026-10-09",
+    "language": "JavaScript",
+    "category": "stdlib",
+    "hasPackageJson": true,
+    "version": "0.1.1",
+    "description": "The libjs ABI for WebAssembly addons",
+    "native": false,
+    "minBare": null,
+    "bareDeps": [
+      "bare-type",
+      "bare-wasi",
+      "bare-wasm"
+    ],
+    "otherDeps": [],
+    "hasTypes": false,
+    "hasPrebuilds": false,
+    "nodeCompat": false,
+    "hasApi": false,
+    "apiMethods": 0,
+    "usage": "```js\nconst instantiate = require('bare-wasm-abi')\n\nconst exports = instantiate(bytes, {\n  wasi: { version: 'preview1', stdout: (data) => console.log(data.toString()) }\n})\n```\n\n`instantiate()` checks that the module is an addon and that it imports nothing outside the ABI, then registers it and returns its exports. The `wasi` options are passed on to `bare-wasi`, and an addon given none gets no capabilities. A trap inside the addon poisons only its own instance, and later calls into it throw.",
+    "api": null,
+    "extraSections": [
+      {
+        "heading": "Building addons",
+        "body": "An addon is a WASI reactor that exports `bare_register_module_v0`, `malloc`, `free`, its memory, and its function table. Undefined functions become imports, and `instantiate()` rejects any import outside the ABI. `cmake-bare` builds addons this way for the `wasi-wasm32` target of `cmake-toolchains`."
+      },
+      {
+        "heading": "Generating the bindings",
+        "body": "`lib/abi.js` and `lib/constants.js` are generated from `js.h`. They hold the marshalling for each libjs function and the enums and wasm32 struct layouts. The semantics of each function are written by hand in `lib/js.js`, along with the functions excluded by design.\n\n```\nnpm run generate\n```\n\nThe `libjs` release is pinned in `CMakeLists.txt` and must match the one Bare builds against."
+      }
+    ],
+    "inCatalog": false,
+    "catalogDescription": null,
+    "inboundDeps": 0,
+    "disposition": "full-page candidate"
   }
 ]

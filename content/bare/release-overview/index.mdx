@@ -15,6 +15,67 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 
 {/* changelog:insert — automation inserts draft entries below this marker; keep it directly above the newest entry. */}
 
+## 2026-10-24 — Bare module updates
+
+### bare-sqlite — v0.1.6
+
+- Changed: updates the bundled SQLite to 3.54.1, up from 3.53.1. The JavaScript API and the prebuild folders, `wasi-wasm32` included, are unchanged. See [bare-sqlite](/bare/reference/bare/modules/bare-sqlite).
+
+## 2026-10-21 — Bare v1.36.0
+
+- Added: WebAssembly addons. An addon package can ship a WebAssembly build, `prebuilds/wasi-wasm32/<name>.wasm`, and Bare loads it sandboxed through WASI: through WASI, the addon reaches only the directories, streams, and randomness that a WASI provider grants, though it can still reach whatever JavaScript in its realm can. Ask for it with the `host` import attribute, and name the provider with the `wasi` attribute, as in `require('bare-sqlite', { with: { host: 'wasi-wasm32', wasi: './wasi.js' } })` or the same `with` clause on `import`. Without the attribute, Bare uses the `.wasm` build only when the package has no native build or linked addon for the platform, and with no provider it grants nothing except clocks. The support comes from the bundled [`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) v7.5.0, not from Bare's own source. See [WebAssembly addons](/bare/reference/bare/modules/bare-module#webassembly-addons).
+- Changed: on a process sealed with `Bare.Addon.seal()`, an addon resolved after the seal whose native build the process has not loaded falls back to the package's `.wasm` build, if it ships one, instead of failing with `CANNOT_LOAD`. A package without a `.wasm` build now fails there with `ADDON_NOT_FOUND` instead of `CANNOT_LOAD`. An addon resolved before the seal, such as one reached through a static `require()` from the sealing module or any module linked with it, still fails with `CANNOT_LOAD`. Inside a bundle, which keeps the resolutions recorded at pack time, nothing falls back. See [`Bare.Addon`](/bare/reference/bare/runtime#bareaddon).
+- Changed: `Bare.suspend()`, `Bare.wakeup()`, and the `suspend()` and `wakeup()` methods of a thread throw a `RangeError` for a `linger` or `deadline` above `2147483647`. Before, such a value wrapped to a 32-bit signed integer, so `Infinity` became `0` and a deadline that became negative left the wakeup timer never firing. See [`Bare.suspend()`](/bare/reference/bare/runtime#baresuspendlinger).
+- Deprecated: every form of `new Bare.Thread()` except `new Thread(filename, source[, options])`, including the callback forms that run the body of a function on the thread. `Thread.create()` has been deprecated since 1.31.0. Pass the source, or use [`bare-thread`](https://github.com/holepunchto/bare-thread). The deprecated forms still work. See [`Bare.Thread`](/bare/reference/bare/runtime#barethread).
+- Fixed: a resume or wakeup could be missed after an explicit `Bare.idle()`.
+- Changed: bundles [`bare-module`](/bare/reference/bare/modules/bare-module) v7.5.0, up from v7.4.0, and [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse) v2.7.2, up from v2.6.0, and adds [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi) v0.1.1, [`bare-wasi`](/bare/reference/bare/modules/bare-wasi) v0.1.2, and [`bare-wasm`](/bare/reference/bare/modules/bare-wasm) v0.1.0, and bundles `bare-pipe` v4.4.0, up from v4.3.1. The bundled `bare-wasi` serves the loader and can't be imported, so an app installs its own `bare-wasi` and `bare-directory` for a WASI provider. See [Bare module updates](#2026-10-21--bare-module-updates).
+- Changed: the typings declare `Bare.IPC` in the `Bare` namespace. Nothing changes at run time.
+
+## 2026-10-21 — Bare module updates
+
+### bare-directory — v0.1.0
+
+- Added: a new module for capability-based directory access. A handle opened from a path reaches only what is inside the directory, operations take a single name rather than a path, symbolic links are never followed, and rights can only be narrowed. The kernel enforces the confinement as far as each platform allows. [`bare-wasi`](/bare/reference/bare/modules/bare-wasi) uses it to give a WebAssembly addon host directories. See [bare-directory](/bare/reference/bare/modules/bare-directory).
+
+### bare-module — v7.5.0
+
+- Added: WebAssembly addons. The `host` import attribute resolves the addons of a module and its dependencies for `wasi-wasm32`, and the `wasi` attribute names the module that provides their WASI capabilities. The loader runs a `.wasm` addon through [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi). See [WebAssembly addons](/bare/reference/bare/modules/bare-module#webassembly-addons).
+- Added: the `wasi` loader option, a function that returns the WASI options of an addon imported without a `wasi` attribute. A cache read from a loader with another `wasi` throws `CACHE_INCOMPATIBLE`.
+- Added: the errors `ADDON_HOST_INCOMPATIBLE` and `ADDON_WASI_INCOMPATIBLE`. The addons of a package load in one context per loader, and importing the package under another host or provider throws.
+- Changed: the minimum Bare is 1.35.0, up from 1.32.0. On a sealed process, the loader skips native addons that `Bare.Addon.loaded()`, added in Bare 1.35.0, reports as not loaded.
+
+### bare-module-traverse — v2.7.2
+
+- Added (v2.7.0): `conditions` in the options of `traverse.resolve.bare` and `traverse.resolve.node` mix in additional resolver conditions, and a `host` attribute adds the `wasi` and `wasm32` conditions to those of the native host. The options type now extends the options of both `bare-module-resolve` and `bare-addon-resolve`. See [bare-module-traverse](/bare/reference/bare/modules/bare-module-traverse).
+- Added (v2.7.1): the `mount` option, the URL that an entry bundle is mounted at, and the addons and assets that an imported bundle declares are added to the traversal's `artifacts`.
+- Added: the `Dependency` type declares `wasi`, the URL of the WASI provider of a WebAssembly addon, which the traversal has set since v2.6.0.
+- Changed (v2.7.0): queued subgraphs are walked first in, first out, so dependencies are yielded in a different order.
+
+### bare-pack — v3.0.2
+
+- **Breaking (v3.0.0):** `pack()` takes a `resolveModule` callback as a positional argument before `writeFile`, so a call that passes `writeFile` must pass `null` for `resolveModule` in front of it. A 2.x call on 3.0 hands its `writeFile` to `resolveModule`. See [bare-pack](/bare/reference/bare/modules/bare-pack).
+- **Breaking (v3.0.0):** offloaded addons and assets stay in `bundle.addons` and `bundle.assets`, under their rewritten resolution. 2.x left them out.
+- Changed (v3.0.0): the CLI resolves modules through `bare-pack/fs`, which follows symbolic links, so a linked package is keyed by its real path.
+- Fixed (v3.0.1): a module reached in several addon contexts is written once.
+- Added (v3.0.2): type declarations for `bare-pack/fs`.
+
+### bare-sqlite — v0.1.5
+
+- Added: a WebAssembly build, `prebuilds/wasi-wasm32/bare-sqlite.wasm`, which Bare 1.36.0 loads with the `host` import attribute. It cannot load extensions: on a database opened with `allowExtension: true`, `loadExtension()` throws a `SQLiteError` with code `ERROR` and the message `ERROR: extension loading is not supported`. The directory its WASI provider grants needs the `create` and `remove` rights, because it locks a database with a `.lock` directory. See [WebAssembly build](/bare/reference/bare/modules/bare-sqlite#webassembly-build).
+- Changed: the API is documented as TSDoc in the type declarations instead of the README.
+
+### bare-wasi — v0.1.2
+
+- Added: a new module that implements WASI preview 1 for WebAssembly instances. A guest gets nothing unless it is given it: streams, preopened directories backed by memory or by [`bare-directory`](/bare/reference/bare/modules/bare-directory), randomness, arguments, and environment variables. Clocks are available unless denied. There are no sockets. See [bare-wasi](/bare/reference/bare/modules/bare-wasi).
+
+### bare-wasm — v0.1.0
+
+- Added: a new module that exports the WebAssembly JavaScript API: `Module`, `Instance`, `Memory`, and the rest. Its README recommends importing them from it rather than from the `WebAssembly` global, which may not be available. v0.1.0 reads them from that global itself. See [bare-wasm](/bare/reference/bare/modules/bare-wasm).
+
+### bare-wasm-abi — v0.1.1
+
+- Added: a new module that runs Bare addons compiled to `wasm32-wasip1` by implementing in JavaScript the libjs functions they import. Threadsafe functions, the event loop, shared memory, and compiling code are left out by design. In v0.1.1, ten libjs functions are neither implemented nor excluded, among them `js_add_teardown_callback`, so the WebAssembly builds of `bare-svg` 1.1.1 and `bare-heif` 1.2.1 do not load. See [bare-wasm-abi](/bare/reference/bare/modules/bare-wasm-abi).
+
 ## 2026-10-13 — Bare v1.35.1
 
 - Fixed: the `bare` package on npm. `bare@1.35.0` was published without `index.d.ts`, although its `package.json` points to that file, so TypeScript found no declarations for it. The publish workflow did not run the `prepack` script that copies the typings from `src/bare.d.ts`, and v1.35.1 runs it before publishing. The runtime is unchanged apart from its version number. See [Bare runtime API](/bare/reference/bare/runtime).

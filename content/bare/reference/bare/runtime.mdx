@@ -31,15 +31,24 @@ when a release changes them. The C API reference under Embedding is written by h
 run `npm run check:bare-c-api`. It lists the functions and types the headers declare that no
 page documents, and the `bare_*` names the docs use that the headers no longer declare. It
 exits 0 unless passed `--strict`, and takes `--ref <tag>` to read the headers at a particular
-release. Both lists are empty as of Bare 1.35.1. The embedder context page is covered by the
+release. Both lists are empty as of Bare 1.36.0. The embedder context page is covered by the
 same check. Since 1.35.0 the README holds no API reference. Re-read its Embedding, Attaching,
-Context, Suspension, Building, and Platform support sections when it changes: as of 2026-10-14
-this page was audited against v1.35.1. What the README no longer says, or never said, lives
+Context, Suspension, Building, and Platform support sections when it changes: as of 2026-10-22
+this page was audited against v1.36.0, whose README is unchanged from v1.35.1. What the README no longer says, or never said, lives
 elsewhere: usage and flags on the CLI page, architecture on Inside Bare, the module list in the
 Bare modules catalog.
 
-As of 2026-10-14 the doc-state window is 1.27.0 to 1.35.0 (a rolling 5 doc-states, so 1.23.5
-dropped out when 1.35.0 entered). 1.35.0 is a doc-state of its own, covering 1.35.0 and 1.35.1.
+As of 2026-10-22 the doc-state window is 1.28.2 to 1.36.0 (a rolling 5 doc-states, so 1.27.0
+dropped out when 1.36.0 entered, as 1.23.5 did for 1.35.0). 1.36.0's printed delta is
+`~ Thread.constructor (newly deprecated)`, the callback forms (holepunchto/bare#252), badged
+`Deprecated in 1.36.0`, plus `~ Bare` and `~ Bare.IPC` from moving the `IPC` typing into the
+`Bare` namespace (#253), which changes no behaviour. Outside the typings, 1.36.0 throws a
+`RangeError` for a `linger` or `deadline` above 0x7fffffff (#250) and fixes missed resumes and
+wakeups on an explicit `Bare.idle()` (#251). Its WebAssembly addon support comes from
+bare-module 7.5.0 in the v1.36.0 lockfile (#255), not from Bare's own source. As of this date
+`src/bare.d.ts` still leaves `'wasi'` and `'wasm32'` out of the `Bare.platform` and
+`Bare.arch` unions; Bare itself never runs on them, only addons are built for them.
+1.35.0 is a doc-state of its own, covering 1.35.0 and 1.35.1.
 Its printed delta is `+ Addon.loaded`, `+ Addon.seal`, `+ Addon.sealed`, `+ Bare.IPC`,
 `+ ThreadOptions.mount`, and the `~` signature lines that come with them and with `riscv64`
 in `Bare.arch`. Only `Addon.loaded` and `ThreadOptions.mount` are new API, and both carry
@@ -102,7 +111,7 @@ typings are not. It is deprecated, so it is left that way. */}
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-The core JavaScript API of [Bare](/bare/explanation/bare-runtime) is exposed through the global `Bare` namespace. This page documents that surface as of Bare 1.35.1. For the command-line runner, see the [`bare` CLI](/bare/reference/bare/cli). Bare provides no standard library beyond this namespace; the collection of external `bare-*` modules built for it is in [Bare modules](/bare/reference/bare/modules).
+The core JavaScript API of [Bare](/bare/explanation/bare-runtime) is exposed through the global `Bare` namespace. This page documents that surface as of Bare 1.36.0. For the command-line runner, see the [`bare` CLI](/bare/reference/bare/cli). Bare provides no standard library beyond this namespace; the collection of external `bare-*` modules built for it is in [Bare modules](/bare/reference/bare/modules).
 
 Upstream documents the namespace as TSDoc comments in [`src/bare.d.ts`](https://github.com/holepunchto/bare/blob/main/src/bare.d.ts). Before Bare 1.35.0 this documentation was in the README. The npm [`bare`](https://www.npmjs.com/package/bare) package exports the `Bare` namespace, with `Addon` and `Thread` as named exports for ESM, and ships that file as `index.d.ts`. `bare@1.35.0` was published without it, although its `package.json` points to it, so TypeScript finds no typings for that version. `bare@1.35.1` ships it. The declarations import `Duplex` from [`bare-stream`](/bare/reference/bare/modules/bare-stream) for the type of [`Bare.IPC`](#bareipc), and `bare` lists `bare-stream` as an optional peer dependency from 1.35.0.
 
@@ -149,11 +158,11 @@ Immediately terminate the process or current thread with exit status `code`, def
 
 #### `Bare.suspend([linger])`
 
-Suspend the process and all threads, emitting a `suspend` event that signals all work should stop immediately. When all work has stopped and the process would otherwise exit, an `idle` event is emitted. If no listener resumes the process from that event, the loop blocks until the process is resumed, which keeps the process from exiting. `linger` is passed to `suspend` listeners and defaults to `0`.
+Suspend the process and all threads, emitting a `suspend` event that signals all work should stop immediately. When all work has stopped and the process would otherwise exit, an `idle` event is emitted. If no listener resumes the process from that event, the loop blocks until the process is resumed, which keeps the process from exiting. `linger` is passed to `suspend` listeners and defaults to `0`. <Since v="1.36.0" /> A `linger` above `2147483647` throws a `RangeError`. Earlier versions wrapped such a value to a 32-bit signed integer, so a large or `Infinity` linger could become negative or `0`.
 
 #### `Bare.wakeup([deadline])`
 
-Wake the process and all threads during suspension, emitting a `wakeup` event that signals work may be performed until `deadline`, a number of milliseconds that defaults to `0`. Once the process is idle, or `deadline` has passed, it suspends again and an `idle` event is emitted.
+Wake the process and all threads during suspension, emitting a `wakeup` event that signals work may be performed until `deadline`, a number of milliseconds that defaults to `0`. Once the process is idle, or `deadline` has passed, it suspends again and an `idle` event is emitted. <Since v="1.36.0" /> A `deadline` above `2147483647` throws a `RangeError`. Earlier versions wrapped such a value to a 32-bit signed integer, and a deadline that became negative left the wakeup timer never firing.
 
 #### `Bare.idle()`
 
@@ -246,6 +255,8 @@ This is an advanced API most users never touch directly; native addons are norma
 - `Addon.loaded(url)` <Since v="1.35.0" /> — whether the current process has already loaded the dynamic addon identified by `url`, a `URL` with the `file:` or `linked:` protocol. It loads nothing. Any other protocol, including `builtin:`, gives `false`. The answer covers every thread of the process, and it stays `true` after `Addon.seal()`. On a sealed process, `new Addon(url)` for a dynamic addon succeeds only if `Addon.loaded(url)` is `true`.
 - <Until v="1.31.0" label="Deprecated in 1.31.0" /> `Addon.cache`, `Addon.load(url)`, `Addon.resolve(specifier, parentURL[, options])`— superseded by `new Addon(url)`. Still work, but new code should use the constructor.
 
+`Bare.Addon` loads native code only. From Bare 1.36.0, which ships [`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) 7.5.0, the module system can also load the WebAssembly build of an addon, `prebuilds/wasi-wasm32/<name>.wasm`. It runs that build through [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi) rather than `Bare.Addon`, sandboxed through WASI, when an import asks for it with `with: { host: 'wasi-wasm32' }` or when the package has no native build for `Addon.host`. Sealing does not stop WebAssembly addons. On a sealed process, the module system skips native builds that `Addon.loaded()` reports as not loaded when it resolves an addon, so for an addon resolved after the seal, a package that also ships a `.wasm` build loads that build instead. Inside a bundle, which keeps the resolutions recorded at pack time, it doesn't fall back, and the native addon throws `CANNOT_LOAD`. If the package ships no `.wasm` build, the import throws `ADDON_NOT_FOUND`, where Bare 1.35 threw `CANNOT_LOAD`. WASI limits only the system calls of a WebAssembly addon: it still reaches the JavaScript global object, including `Bare.Addon`: before the seal it can load native addons, and after it, it can get back any native addon the process already loaded.
+
 ## `Bare.Thread`
 
 Lightweight threads with synchronous joins—similar to Node.js workers but with a minimal surface.
@@ -256,12 +267,12 @@ This is an advanced API most users never touch directly.
 
 - `Thread.isMainThread`— `true` on the main thread.
 - `Thread.self`— the current thread as a `ThreadProxy`, or `null` on the main thread. `Thread.self.data` is the data passed on creation, or `null` if none was passed.
-- `new Thread([filename][, options][, callback])`— start a thread that runs the source in `options.source` or, if `callback` is given, the body of `callback`, which is invoked on the new thread with `Thread.self.data` as its argument. `filename` names the source and defaults to `<thread>`. It does not say where to read the source from.
-- `new Thread(callback)`, `new Thread(filename, source[, options])` <Since v="1.32.0" /> — a plain callback can be passed with no `filename`, and `source` (a string or Buffer) can be passed positionally right after `filename` instead of via `options.source`.
+- `new Thread(filename, source[, options])` <Since v="1.32.0" /> — start a thread that runs `source`, a string or Buffer. `filename` names the source and does not say where to read it from. From 1.36.0, it is the only form that is not deprecated.
+- <Until v="1.36.0" label="Deprecated in 1.36.0" /> `new Thread([filename][, options][, callback])`, `new Thread(callback)`, `new Thread(filename, callback)` — start a thread that runs the source in `options.source` or, if `callback` is given, the body of `callback`, which is invoked on the new thread with `Thread.self.data` as its argument. `filename` defaults to `<thread>`. The plain-callback form has no `filename` and was added in 1.32.0. Still work, but new code should pass the source, or use [`bare-thread`](https://github.com/holepunchto/bare-thread), which also bundles the modules a thread imports.
 - <Until v="1.31.0" label="Deprecated in 1.31.0" /> `Thread.create(...)`— equivalent to `new Thread(...)`. Still works, but new code should use the constructor.
 - `thread.joined`— whether the thread has been joined with the current thread.
 - `thread.join()`— block and wait for the thread to exit.
-- `thread.suspend([linger])`, `thread.wakeup([deadline])`, `thread.resume()`— suspend, wake, or resume the thread. Each is equivalent to calling `Bare.suspend()`, `Bare.wakeup()`, or `Bare.resume()` from within the thread.
+- `thread.suspend([linger])`, `thread.wakeup([deadline])`, `thread.resume()`— suspend, wake, or resume the thread. Each is equivalent to calling `Bare.suspend()`, `Bare.wakeup()`, or `Bare.resume()` from within the thread. <Since v="1.36.0" /> The same `RangeError` applies to `linger` and `deadline`.
 - `thread.terminate()`— terminate the thread. Equivalent to calling `Bare.exit()` from within the thread.
 
 The options object takes:

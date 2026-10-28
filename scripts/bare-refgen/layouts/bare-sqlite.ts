@@ -108,6 +108,10 @@ const layout: Layout = {
     'TagStore.run':
       'A result object with `changes` (the number of rows modified) and `lastInsertRowid`.',
   },
+  describe: {
+    errors:
+      'The `SQLiteError` class. Errors thrown by the module are instances of it, with a `code` such as `DATABASE_NOT_OPEN`, `DATABASE_ALREADY_OPEN`, `INVALID_ARGUMENT`, or `LOAD_EXTENSION_DISABLED`, or an SQLite result code such as `CANTOPEN`, `BUSY`, or `IOERR`.',
+  },
   throws: {
     'DatabaseSync.open': ['`DATABASE_ALREADY_OPEN` — the database is already open.'],
     'DatabaseSync.close': [NOT_OPEN],
@@ -120,6 +124,28 @@ const layout: Layout = {
     'DatabaseSync.enableLoadExtension': [NOT_OPEN, EXT_DISABLED],
     'DatabaseSync.loadExtension': [NOT_OPEN, EXT_DISABLED],
   },
+  // 0.1.5 added prebuilds/wasi-wasm32/bare-sqlite.wasm (holepunchto/bare-sqlite#20).
+  // Behaviour below was run on Bare 1.36.0.
+  extraSections: [
+    {
+      heading: 'WebAssembly build',
+      body: [
+        'From 0.1.5, the package also ships a WebAssembly build, `prebuilds/wasi-wasm32/bare-sqlite.wasm`. On Bare 1.36.0 and later, the `host` import attribute loads it in place of the native build, sandboxed through WASI, so the database reaches only the directories its WASI provider grants:',
+        '',
+        '```js',
+        "const { DatabaseSync } = require('bare-sqlite', {",
+        "  with: { host: 'wasi-wasm32', wasi: './wasi.js' }",
+        '})',
+        '',
+        "const db = new DatabaseSync('/books.db')",
+        '```',
+        '',
+        "Database paths are paths inside the provider's `preopens`, so `/books.db` is `books.db` in the directory mounted at `/`. Without a provider, an in-memory database (`':memory:'`) still works, and opening a file throws `CANTOPEN`. The WebAssembly build cannot load extensions: on a database opened with `allowExtension: true`, `loadExtension()` throws a `SQLiteError` with code `ERROR` and the message `ERROR: extension loading is not supported`. See [WebAssembly addons](/bare/reference/bare/modules/bare-module#webassembly-addons) for the provider and the rules for loading a package this way.",
+        '',
+        "The WebAssembly build locks a database by creating and removing a `<name>.lock` directory next to it, so the provider's directory needs the `create` and `remove` [rights](/bare/reference/bare/modules/bare-directory#rights) as well as `lookup` and `read`, even for a database opened with `readOnly: true`. Writing also needs `write` and `truncate`. Without `create`, statements fail with `IOERR`. Without `write`, writes fail with `CANTOPEN`. Without `truncate`, which SQLite uses to shrink the file, `VACUUM` fails with `IOERR`, and a `ROLLBACK` of a transaction that grew the file can report success but leave a hot journal, after which statements fail with `IOERR`. A `.lock` directory left behind, because the process lacked `remove` or was killed while holding the lock, makes every later statement on the database fail with `BUSY` until the directory is deleted, though `new DatabaseSync()` still succeeds.",
+      ].join('\n'),
+    },
+  ],
 };
 
 export default layout;

@@ -1,0 +1,793 @@
+---
+title: "bare-wasi"
+description: "Capability based WASI for JavaScript"
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "0.1.2"
+---
+
+<mark style={{ backgroundColor: '#8484ff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>experimental</mark>
+
+[`bare-wasi`](https://github.com/holepunchto/bare-wasi) — Capability based WASI for JavaScript.
+
+```sh
+npm i bare-wasi
+```
+
+## Usage
+
+```js
+const wasm = require('bare-wasm')
+const WASI = require('bare-wasi')
+const { MemoryDirectory } = require('bare-wasi/memory')
+
+const wasi = new WASI({
+  version: 'preview1',
+  args: ['program'],
+  preopens: {
+    '/data': new MemoryDirectory({ 'hello.txt': 'Hello from JavaScript' })
+  },
+  stdout: (data) => console.log(data.toString())
+})
+
+const module = new wasm.Module(bytes)
+const instance = new wasm.Instance(module, wasi.getImportObject())
+
+const exitCode = wasi.start(instance)
+```
+
+The `version` option is required and must be `'preview1'` so that options are always read for the version of WASI they were written for.
+
+## API
+
+### WASI
+
+#### `new WASI(opts: WASIOptions)`
+
+Create a WASI implementation for a single instance.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts` | [`WASIOptions`](#wasioptions) | — | The capabilities of the instance. `version` is required and must be `'preview1'`. `args` defaults to `[]`, `env` to `{}`, and `preopens` to `{}`. `stdin`, `stdout`, and `stderr` default to `null`, and then don't exist. `clock` defaults to the host clocks, and `null` denies them, though file timestamps set to now still come from the host clock. `random` defaults to `null`, which denies randomness. `returnOnExit` defaults to `true`; with `false`, `start()` exits the process with the guest's exit code. |
+
+#### `getImportObject(): { wasi_snapshot_preview1: Record<string, (...args: any[]) => number> }`
+
+Get an import object to pass when instantiating a WebAssembly module.
+
+#### `initialize(instance: WASIInstance): void`
+
+Initialize a reactor instance by calling its `_initialize()` export, if it
+has one. The instance must export its `memory` and must not export
+`_start()`, and an implementation may only be used with a single instance.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `instance` | [`WASIInstance`](#wasiinstance) | — | The instance to initialize. |
+
+#### `start(instance: WASIInstance): number | undefined`
+
+Run the `_start()` export of a command instance. The instance must export
+its `memory` and must not export `_initialize()`, and an implementation
+may only be used with a single instance.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `instance` | [`WASIInstance`](#wasiinstance) | — | The instance to run. |
+
+**Returns** `number` | `undefined` — The exit code of the program, if `returnOnExit` is `true`. The
+process is exited with it otherwise.
+
+#### `WASI.constants`
+
+```ts
+WASI.constants: {
+  /** Error codes, such as `errno.NOENT`. */
+  errno: Record<string, number>
+  /** The types of file descriptors and filesystem nodes. */
+  filetype: Record<string, number>
+  /** Clock identifiers. */
+  clockid: Record<string, number>
+  /** The positions an offset passed to `fd_seek` is relative to. */
+  whence: Record<string, number>
+  /** Flags of `path_open`, such as `oflags.CREAT`. */
+  oflags: Record<string, number>
+  /** Flags of file descriptors, such as `fdflags.APPEND`. */
+  fdflags: Record<string, number>
+  /** Flags that control how paths are looked up. */
+  lookupflags: Record<string, number>
+  /** Flags of `fd_filestat_set_times` and `path_filestat_set_times`. */
+  fstflags: Record<string, number>
+  /** The rights of file descriptors, such as `rights.FD_READ`. */
+  rights: Record<string, bigint>
+  /** The types of events reported by `poll_oneoff`. */
+  eventtype: Record<string, number>
+  /** Flags of clock subscriptions passed to `poll_oneoff`. */
+  subclockflags: Record<string, number>
+  /** The types of preopened resources. */
+  preopentype: Record<string, number>
+}
+```
+
+The constants of WASI preview 1, keyed by their names in the specification.
+
+#### `wasiImport: Record<string, (...args: any[]) => number>`
+
+The functions of the `wasi_snapshot_preview1` import module.
+
+### WASIError
+
+#### `WASIError.new WASIError(msg: string, code: string, fn?: WASIError)`
+
+Construct a `WASIError` with the given message and `code`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+| `code` | `string` | — | The error code, assigned to `err.code`. |
+| `fn?` | `WASIError` | — | The function to omit from the captured stack trace (default the `WASIError` constructor). |
+
+#### `WASIError.code: string`
+
+The error code, such as `'ALREADY_STARTED'`.
+
+#### `WASIError.ALREADY_STARTED(msg: string): WASIError`
+
+Create a `WASIError` with code `'ALREADY_STARTED'`, for an implementation used with a second
+instance.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `WASIError.INVALID_PREOPEN(msg: string): WASIError`
+
+Create a `WASIError` with code `'INVALID_PREOPEN'`, for a preopen that is not a directory.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `WASIError.INVALID_VERSION(msg: string): WASIError`
+
+Create a `WASIError` with code `'INVALID_VERSION'`, for options written for a version of WASI that is not supported.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `WASIError.MISSING_EXPORT(msg: string): WASIError`
+
+Create a `WASIError` with code `'MISSING_EXPORT'`, for an instance lacking a required export.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `WASIError.UNEXPECTED_EXPORT(msg: string): WASIError`
+
+Create a `WASIError` with code `'UNEXPECTED_EXPORT'`, for a command instance that is
+initialized or a reactor instance that is started.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+### Types
+
+#### `WASIOptions`
+
+```ts
+interface WASIOptions {
+  version: 'preview1'
+  args?: string[]
+  env?: Record<string, string>
+  preopens?: Record<string, WASIDirectory>
+  stdin?: string | Uint8Array | WASIReadable | WASIFile | null
+  stdout?: ((data: Uint8Array) => void) | WASIWritable | WASIFile | null
+  stderr?: ((data: Uint8Array) => void) | WASIWritable | WASIFile | null
+  clock?: WASIClock | null
+  random?: ((buffer: Uint8Array) => void) | null
+  returnOnExit?: boolean
+}
+```
+
+The capabilities granted to an instance, none of which are granted by default except clocks.
+
+#### `WASIInstance`
+
+```ts
+interface WASIInstance {
+  exports: wasm.Exports
+}
+```
+
+A WebAssembly instance, or anything with the same `exports`.
+
+#### `WASINode`
+
+```ts
+interface WASINode {
+  readonly type: 'file' | 'directory' | 'symlink' | 'character-device'
+  readonly size: number
+  stat(): WASINodeStat
+  setTimes?(atime: bigint | undefined, mtime: bigint | undefined): void
+}
+```
+
+A node of a filesystem backend. Backends are synchronous and report failures
+by throwing errors whose `code` is a POSIX error name, such as `'ENOENT'`,
+which is passed on to the guest as the corresponding WASI error.
+
+#### `WASINodeStat`
+
+```ts
+interface WASINodeStat {
+  ino: bigint
+  nlink: bigint
+  size: bigint
+  atime: bigint
+  mtime: bigint
+  ctime: bigint
+}
+```
+
+The metadata of a filesystem node.
+
+#### `WASIFile`
+
+```ts
+interface WASIFile {
+  readonly type: 'file'
+  read(buffer: Uint8Array, position: number): number
+  write(buffer: Uint8Array, position: number): number
+  truncate(size: number): void
+  sync?(): void
+  readonly size: number
+  stat(): WASINodeStat
+  setTimes?(atime: bigint | undefined, mtime: bigint | undefined): void
+}
+```
+
+A regular file of a filesystem backend.
+
+#### `WASIDirectory`
+
+```ts
+interface WASIDirectory {
+  readonly type: 'directory'
+  lookup(name: string): WASINode | null
+  entries(): Iterable<[name: string, node: WASINode]>
+  create(name: string, type: 'file' | 'directory'): WASIFile | WASIDirectory
+  unlink(name: string): void
+  rmdir(name: string): void
+  rename(name: string, directory: WASIDirectory, target: string): void
+  symlink?(name: string, target: string): WASISymlink
+  link?(name: string, node: WASINode): void
+  readonly size: number
+  stat(): WASINodeStat
+  setTimes?(atime: bigint | undefined, mtime: bigint | undefined): void
+}
+```
+
+A directory of a filesystem backend. Every operation takes a single name
+rather than a path, as paths are resolved by the WASI implementation itself.
+Names are never empty, `.`, or `..`, and never contain `/` or NUL.
+
+#### `WASISymlink`
+
+```ts
+interface WASISymlink {
+  readonly type: 'symlink'
+  readonly target: string
+  readonly size: number
+  stat(): WASINodeStat
+  setTimes?(atime: bigint | undefined, mtime: bigint | undefined): void
+}
+```
+
+A symbolic link of a filesystem backend.
+
+#### `WASIReadable`
+
+```ts
+interface WASIReadable {
+  read(buffer: Uint8Array): number
+}
+```
+
+A source of standard input.
+
+#### `WASIWritable`
+
+```ts
+interface WASIWritable {
+  write(data: Uint8Array): unknown
+}
+```
+
+A destination of standard output or standard error.
+
+#### `WASIClock`
+
+```ts
+interface WASIClock {
+  realtime(): bigint
+  monotonic(): bigint
+}
+```
+
+The clocks available to the guest.
+
+## `bare-wasi/memory`
+
+### MemoryNode
+
+#### `setTimes(atime: bigint | undefined, mtime: bigint | undefined): void`
+
+Set the access and modification times of the node.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `atime` | `bigint` \| `undefined` | — | The time of last access in nanoseconds since the Unix epoch, or `undefined` to leave it unchanged. |
+| `mtime` | `bigint` \| `undefined` | — | The time of last modification in nanoseconds since the Unix epoch, or `undefined` to leave it unchanged. |
+
+#### `memory.MemoryNode.size: number`
+
+The size of the node: the length in bytes of a file or of the target of a
+symbolic link, and the number of entries of a directory.
+
+#### `stat(): WASINodeStat`
+
+Get the metadata of the node.
+
+#### `type: 'file' | 'directory' | 'symlink'`
+
+The type of the node.
+
+### MemoryFile
+
+#### `new MemoryFile(data?: string | Uint8Array)`
+
+Create a file.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data?` | `string` \| `Uint8Array` | — | The initial contents of the file, which are copied. Defaults to an empty file. |
+
+#### `data: Uint8Array`
+
+The contents of the file, as a view that is invalidated by the next write.
+
+#### `read(buffer: Uint8Array, position: number): number`
+
+Read from the file into `buffer`, returning the number of bytes read.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `buffer` | `Uint8Array` | — | The buffer to read into. |
+| `position` | `number` | — | The byte offset to read from. |
+
+#### `truncate(size: number): void`
+
+Shorten or extend the file to `size` bytes, filling any extension with zeros.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `size` | `number` | — | The new size of the file in bytes. |
+
+#### `type: 'file'`
+
+The type of the node, which is always `'file'`.
+
+#### `write(buffer: Uint8Array, position: number): number`
+
+Write `buffer` to the file, extending it as needed, and return the number of bytes written.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `buffer` | `Uint8Array` | — | The data to write. |
+| `position` | `number` | — | The byte offset to write at. |
+
+### MemorySymlink
+
+#### `new MemorySymlink(target: string)`
+
+Create a symbolic link.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `target` | `string` | — | The path the link points at. |
+
+#### `target: string`
+
+The path the link points at.
+
+#### `type: 'symlink'`
+
+The type of the node, which is always `'symlink'`.
+
+### MemoryDirectory
+
+#### `new MemoryDirectory(entries?: MemoryEntries)`
+
+Create a directory.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entries?` | `MemoryEntries` | — | The initial entries of the directory. Defaults to an empty directory. |
+
+#### `create(name: string, type: 'file' | 'directory'): MemoryFile | MemoryDirectory`
+
+Create an entry in the directory, throwing `EEXIST` if one by that name already exists.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The name of the entry. |
+| `type` | `'file'` \| `'directory'` | — | The type of node to create. |
+
+**Returns** `MemoryFile` | `MemoryDirectory` — The created node.
+
+#### `entries(): IterableIterator<[string, MemoryNode]>`
+
+Iterate the entries of the directory as pairs of names and nodes.
+
+#### `link(name: string, node: MemoryNode): void`
+
+Add another name for an existing node that is not a directory, throwing `EEXIST` if an entry
+by that name already exists and `EPERM` if `node` is a directory.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The name of the new entry. |
+| `node` | `MemoryNode` | — | The node to link to. |
+
+#### `lookup(name: string): MemoryNode | null`
+
+Look up an entry of the directory.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The name of the entry. |
+
+**Returns** `MemoryNode` | `null` — The entry, or `null` if there is none by that name.
+
+#### `rename(name: string, directory: MemoryDirectory, target: string): void`
+
+Move an entry, replacing any entry of the same type at the target. Throws `ENOTEMPTY` if the
+entry it would replace is a directory with entries, and `EXDEV` if `directory` is not a
+`MemoryDirectory`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The name of the entry to move. |
+| `directory` | `MemoryDirectory` | — | The directory to move it to, which may be this one. |
+| `target` | `string` | — | The name to give it in `directory`. |
+
+#### `rmdir(name: string): void`
+
+Remove an empty directory, throwing `ENOENT` if there is none by that name, `ENOTDIR` if it is
+not a directory, and `ENOTEMPTY` if it has entries.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The name of the entry. |
+
+#### `symlink(name: string, target: string): MemorySymlink`
+
+Create a symbolic link in the directory, throwing `EEXIST` if an entry by that name already
+exists.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The name of the link. |
+| `target` | `string` | — | The path the link points at. |
+
+**Returns** `MemorySymlink` — The created link.
+
+#### `memory.MemoryDirectory.type: 'directory'`
+
+The type of the node, which is always `'directory'`.
+
+#### `unlink(name: string): void`
+
+Remove an entry that is not a directory, throwing `ENOENT` if there is none by that name and
+`EISDIR` if it is a directory.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | The name of the entry. |
+
+## `bare-wasi/host`
+
+### HostDirectory
+
+#### `new HostDirectory(directory: DirectorySync)`
+
+A host directory backed by a `bare-directory` capability. The guest reaches only what the capability reaches, with its rights, and `bare-wasi` resolves symbolic links within the preopen. On Windows, link targets use `/` as the separator, and drive letter, UNC, and device paths are absolute. Files are opened when looked up, with the most access the rights and the file allow, so an open file stays the same file if it is renamed. Without the `write` right, a file is opened for appending if the rights include `append`, so the guest can still write at the end of existing files. Creating symbolic and hard links isn't supported.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `directory` | `DirectorySync` | — | The `bare-directory` capability to expose to the guest. |
+
+#### `create: WASIDirectory['create']`
+
+Implements [`WASIDirectory.create()`](#wasidirectory). Creating a file needs the `write` right as well as `create`; creating a directory needs only `create`.
+
+#### `entries: WASIDirectory['entries']`
+
+Implements [`WASIDirectory.entries()`](#wasidirectory).
+
+#### `lookup: WASIDirectory['lookup']`
+
+Implements [`WASIDirectory.lookup()`](#wasidirectory).
+
+#### `rename: WASIDirectory['rename']`
+
+Implements [`WASIDirectory.rename()`](#wasidirectory). Renaming into a directory of another backend fails with `EXDEV`. The capability needs `rename` on both directories and `remove` on the target, even when no entry is replaced.
+
+#### `rmdir: WASIDirectory['rmdir']`
+
+Implements [`WASIDirectory.rmdir()`](#wasidirectory).
+
+#### `setTimes: NonNullable<WASIDirectory['setTimes']>`
+
+Implements [`WASINode.setTimes()`](#wasinode).
+
+#### `host.HostDirectory.size: number`
+
+The number of entries of the directory.
+
+#### `stat: WASIDirectory['stat']`
+
+Implements [`WASINode.stat()`](#wasinode).
+
+#### `host.HostDirectory.type: 'directory'`
+
+The type of the node, which is always `'directory'`.
+
+#### `unlink: WASIDirectory['unlink']`
+
+Implements [`WASIDirectory.unlink()`](#wasidirectory).
+
+## `bare-wasi/constants`
+
+### Constants and variables
+
+#### `constants`
+
+```ts
+constants: {
+  /** Error codes, such as `errno.NOENT`. */
+  errno: Record<string, number>
+  /** The types of file descriptors and filesystem nodes. */
+  filetype: Record<string, number>
+  /** Clock identifiers. */
+  clockid: Record<string, number>
+  /** The positions an offset passed to `fd_seek` is relative to. */
+  whence: Record<string, number>
+  /** Flags of `path_open`, such as `oflags.CREAT`. */
+  oflags: Record<string, number>
+  /** Flags of file descriptors, such as `fdflags.APPEND`. */
+  fdflags: Record<string, number>
+  /** Flags that control how paths are looked up. */
+  lookupflags: Record<string, number>
+  /** Flags of `fd_filestat_set_times` and `path_filestat_set_times`. */
+  fstflags: Record<string, number>
+  /** The rights of file descriptors, such as `rights.FD_READ`. */
+  rights: Record<string, bigint>
+  /** The types of events reported by `poll_oneoff`. */
+  eventtype: Record<string, number>
+  /** Flags of clock subscriptions passed to `poll_oneoff`. */
+  subclockflags: Record<string, number>
+  /** The types of preopened resources. */
+  preopentype: Record<string, number>
+}
+```
+
+The constants of WASI preview 1, keyed by their names in the specification.
+
+## `bare-wasi/errors`
+
+### WASIError
+
+#### `errors.WASIError.new WASIError(msg: string, code: string, fn?: WASIError)`
+
+Construct a `WASIError` with the given message and `code`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+| `code` | `string` | — | The error code, assigned to `err.code`. |
+| `fn?` | `WASIError` | — | The function to omit from the captured stack trace (default the `WASIError` constructor). |
+
+#### `errors.WASIError.code: string`
+
+The error code, such as `'ALREADY_STARTED'`.
+
+#### `errors.WASIError.ALREADY_STARTED(msg: string): WASIError`
+
+Create a `WASIError` with code `'ALREADY_STARTED'`, for an implementation used with a second
+instance.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `errors.WASIError.INVALID_PREOPEN(msg: string): WASIError`
+
+Create a `WASIError` with code `'INVALID_PREOPEN'`, for a preopen that is not a directory.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `errors.WASIError.INVALID_VERSION(msg: string): WASIError`
+
+Create a `WASIError` with code `'INVALID_VERSION'`, for options written for a version of WASI that is not supported.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `errors.WASIError.MISSING_EXPORT(msg: string): WASIError`
+
+Create a `WASIError` with code `'MISSING_EXPORT'`, for an instance lacking a required export.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+#### `errors.WASIError.UNEXPECTED_EXPORT(msg: string): WASIError`
+
+Create a `WASIError` with code `'UNEXPECTED_EXPORT'`, for a command instance that is
+initialized or a reactor instance that is started.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | Human-readable error message. |
+
+## WebAssembly addons
+
+From Bare 1.36.0, the module system loads an addon compiled to WebAssembly through [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi), which creates one `WASI` instance per addon. The options for it come from a WASI provider: a module that exports a function, which is called with the `URL` of each WebAssembly addon and returns the options described by [`WASIOptions`](#wasioptions). An importer names the provider with the `wasi` import attribute. See [`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons).
+
+```js
+const { DirectorySync } = require('bare-directory')
+const { HostDirectory } = require('bare-wasi/host')
+const crypto = require('bare-crypto')
+
+module.exports = (url) => ({
+  version: 'preview1',
+  preopens: {
+    '/': new HostDirectory(DirectorySync.open(__dirname + '/data'))
+  },
+  random: (buffer) => crypto.randomFillSync(buffer)
+})
+```
+
+The provider runs as application code, so install what it imports, such as `bare-wasi` and `bare-directory`: the copy of `bare-wasi` that Bare bundles for its loader can't be imported. An addon with no provider gets the options `{ version: 'preview1' }`, which grant nothing through WASI except clocks. WASI limits only system calls: an addon still reaches the JavaScript global object through the ABI. Bare has no `crypto` global, so take random bytes from [`bare-crypto`](/bare/reference/bare/modules/bare-crypto) when an addon needs them. An addon written in Rust can need them: the `bare-svg` README says its WebAssembly build needs `random` because the Rust standard library seeds its hash maps with it.
+
+## Compared with Node.js
+
+The class has the shape of `WASI` in the Node.js [`wasi`](https://nodejs.org/api/wasi.html) module: `new WASI(options)` with a required `version`, `getImportObject()`, `start()`, `initialize()`, and `wasiImport`. The options differ in what they hand to the guest:
+
+| Option | `bare-wasi` | Node.js `wasi` |
+| --- | --- | --- |
+| `preopens` | Map guest paths to directory backends, such as `MemoryDirectory` or `HostDirectory`. | Map guest paths to host paths. |
+| `stdin`, `stdout`, `stderr` | Contents, functions, streams, or files. Absent unless given. | File descriptors, `0`, `1`, and `2` by default. |
+| `random` | Denied unless a function is given. | Always available. |
+| `clock` | Host clocks, or `null` to deny them. | Always available. |
+
+Node.js documents that its `wasi` module does not provide the comprehensive file system security properties of some WASI runtimes. `bare-wasi` resolves every path itself, one name at a time, and a `HostDirectory` is also confined by the kernel.
+
+## Capabilities
+
+Every resource a guest can reach is passed in by the embedder:
+
+- **Streams.** Standard input, output, and error exist only if `stdin`, `stdout`, and `stderr` are given.
+- **Directories.** A guest can only reach the directories given as `preopens`, and paths are resolved by `bare-wasi` itself, one name at a time. Absolute paths, symbolic links that point outside of a directory, and `..` beyond where a lookup started all fail with `ENOTCAPABLE`.
+- **Clocks.** Clocks are available by default, as they are to any JavaScript, and can be denied with `clock: null`.
+- **Randomness.** `random_get` fails with `ENOTCAPABLE` unless a `random` function is given.
+
+Beyond these, a guest only sees the arguments and environment variables it is given. There are no sockets.
+
+## Conformance
+
+`bare-wasi` passes the WASI preview 1 tests of the [WASI test suite](https://github.com/WebAssembly/wasi-testsuite), which are fetched at a pinned commit and run as part of `npm test`. Tests that are known to fail are listed with the reason in [`test/suite.json`](https://github.com/holepunchto/bare-wasi/blob/main/test/suite.json), and a listed test that starts passing fails the run.
+
+## Backends
+
+Preopens are backed by objects implementing a small, synchronous interface. Directories are only ever asked about a single name, never a path, which keeps the resolution of paths, and so the enforcement of capabilities, in one place. Failures are reported by throwing errors with a POSIX `code`, such as `'ENOENT'`. See [`WASIDirectory`](#wasidirectory), [`WASIFile`](#wasifile), and [`WASISymlink`](#wasisymlink) for the interface.
+
+### In memory
+
+```js
+const { MemoryDirectory, MemoryFile, MemorySymlink } = require('bare-wasi/memory')
+
+const directory = new MemoryDirectory({
+  'file.txt': 'contents',
+  nested: { 'data.bin': new Uint8Array([1, 2, 3]) }
+})
+```
+
+### Host
+
+Directories of the host filesystem are backed by [`bare-directory`](/bare/reference/bare/modules/bare-directory) capabilities. They confine every operation to the directory in the kernel as well, and limit it to the rights the capability has.
+
+```js
+const { DirectorySync } = require('bare-directory')
+const { HostDirectory } = require('bare-wasi/host')
+
+const directory = new HostDirectory(
+  DirectorySync.open('/srv/data', { rights: ['list', 'lookup', 'read'] })
+)
+```
+
+## See also
+
+- Builds on `bare-hrtime` and `bare-wasm`.
+- [`bare-directory`](/bare/reference/bare/modules/bare-directory) — the host directory capabilities behind `HostDirectory`.
+- [`bare-wasm`](/bare/reference/bare/modules/bare-wasm) — the WebAssembly API used to compile and instantiate a guest.
+- [`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) — how Bare passes these options to WebAssembly addons.
+- [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.
