@@ -1,0 +1,28 @@
+import type { DocsSeoConfig } from '@/lib/seo';
+
+/**
+ * Production SEO base URL. Pinned in `.env.production`; a value in the build
+ * environment overrides it.
+ * Falls back to `http://localhost:8080` to match the `serve` script
+ * (`serve out -p 8080`), which is what previews the static export locally.
+ * Override with `NEXT_PUBLIC_DOCS_ORIGIN` if you serve on a different port
+ * (e.g. set it to `http://localhost:3000` when running `npm run dev`).
+ *
+ * `trailingSlash: true` matches `next.config.mjs` so canonicals align with
+ * the deployed static URLs.
+ */
+export function getDocsSeoConfig(): DocsSeoConfig {
+  const origin =
+    process.env.NEXT_PUBLIC_DOCS_ORIGIN ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    'http://localhost:8080';
+
+  return {
+    metadataBase: new URL(origin),
+    siteName: 'Pear Docs',
+    imageSiteLabel: 'Pear',
+    publisherName: 'Tether',
+    publisherLogoUrl: process.env.NEXT_PUBLIC_DOCS_PUBLISHER_LOGO_URL,
+    trailingSlash: true,
+  };
+}

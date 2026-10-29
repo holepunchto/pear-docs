@@ -1,0 +1,1480 @@
+{
+  "name": "bare-directory",
+  "version": "0.1.0",
+  "description": "Capability based directory access for Bare",
+  "repoUrl": "https://github.com/holepunchto/bare-directory",
+  "npmUrl": "https://www.npmjs.com/package/bare-directory",
+  "minBare": null,
+  "native": true,
+  "dependencies": [],
+  "usage": "```js\nconst { Directory } = require('bare-directory')\n\nconst root = await Directory.open('/srv/data')\n\nconst file = await root.openFile('notes.txt', { read: true, write: true, create: true })\n\nawait file.write(Buffer.from('hello'))\n\nconst images = (await root.openDirectory('images')).restrict(['list', 'lookup', 'read'])\n\nfor (const { name, type } of await images.list()) console.log(name, type)\n```\n\n`DirectorySync` and `FileSync` provide the same API synchronously. See [`index.d.ts`](index.d.ts) for the full API and the available rights.",
+  "extraSections": [
+    {
+      "heading": "Security model",
+      "body": "Only opening a directory by path needs ambient authority. It's meant for whoever hands out the capabilities, such as an embedder. Every other operation is relative to an open handle.\n\n- A name is a single path component. Empty names, `.`, `..`, names with `/` or NUL, and names longer than 255 bytes fail with `EINVAL`. On Windows, so do names with `\\ : \" * ? < > |` or control characters, names ending in a dot or space, and device names like `CON`, `NUL.txt`, or `COM` followed by a superscript digit.\n- Symbolic links are never followed. Opening one fails with `ELOOP`, and `readLink()` returns its target as text.\n- Only regular files and directories can be opened. Devices, FIFOs, and sockets fail with `ENOTSUP` and are never opened, so opening them has no side effects. On Windows, the same goes for reparse points that aren't links, such as cloud file placeholders.\n- A directory that is moved while open still refers to the same directory.\n- Rights can only be narrowed. Anything opened from a directory gets at most its rights, and `restrict()` can only remove rights. An operation without the right it needs fails with `ENOTCAPABLE`.\n- `list()` and `readLink()` fail with `EILSEQ` on names that aren't valid UTF-8, as these can't be represented as strings.\n\nNames are checked in JavaScript and again in native code. If an invalid name reaches native code, the JavaScript checks were bypassed, and the process is aborted instead of risking an escape.\n\nThe kernel also enforces the confinement, as far as each platform allows:\n\n| Platform | Enforcement                                                                                                                                                     |\n| :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| Linux    | `openat2()` of a single name with `RESOLVE_BENEATH`, `RESOLVE_NO_SYMLINKS`, and `RESOLVE_NO_MAGICLINKS` from Linux 5.6, otherwise `openat()` with `O_NOFOLLOW`. |\n| Android  | `openat()` of a single name with `O_NOFOLLOW`. `openat2()` is never used, as Android kills apps that call it.                                                   |\n| macOS    | `openat()` of a single name with `O_NOFOLLOW_ANY`.                                                                                                              |\n| iOS      | `openat()` of a single name with `O_NOFOLLOW_ANY`.                                                                                                              |\n| Windows  | `NtCreateFile()` of a single name relative to the directory handle, without following reparse points. Requires Windows 10 1809 or later.                        |"
+    }
+  ],
+  "exports": [
+    {
+      "key": "Directory",
+      "name": "Directory",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "Directory"
+      ],
+      "description": "A directory capability, whose operations run on the thread pool and return\npromises. Names are single path components; anything else fails with\n`EINVAL`. Names and rights are checked before an operation starts.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Directory.close",
+          "name": "close",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "close(): void"
+          ],
+          "description": "Close the directory. Operations already in progress finish first, and\nlater ones fail with `EBADF`. Handles are also closed when garbage\ncollected.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.createDirectory",
+          "name": "createDirectory",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "createDirectory(name: string): Promise<void>"
+          ],
+          "description": "Create the directory `name`. Needs `create`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.open",
+          "name": "Directory.open",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "Directory.open(path: string, opts?: OpenOptions): Promise<Directory>"
+          ],
+          "description": "Open the directory at `path`. This is the only operation that takes a path,\nand is meant for whoever hands out the capabilities.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "path",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "OpenOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<Directory>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.list",
+          "name": "list",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "list(): Promise<Entry[]>"
+          ],
+          "description": "List the entries of the directory. Needs `list`. Fails with `EILSEQ` if a\nname isn't valid UTF-8.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<Entry[]>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.openDirectory",
+          "name": "openDirectory",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "openDirectory(name: string): Promise<Directory>"
+          ],
+          "description": "Open the directory `name` with the rights of this one. Needs `lookup`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<Directory>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.openFile",
+          "name": "openFile",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "openFile(name: string, opts?: OpenFileOptions): Promise<File>"
+          ],
+          "description": "Open the regular file `name`. Needs `lookup`, and the right of the same\nname for `read`, `write`, `append`, `create` and `truncate`. The file gets\nthe rights it was opened for, plus `setTimes`, and `truncate` if opened for\nwriting, where this directory has them. Symbolic links fail with `ELOOP`,\nand anything that isn't a regular file with `EISDIR` or `ENOTSUP`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "OpenFileOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<File>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.readLink",
+          "name": "readLink",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "readLink(name: string): Promise<string>"
+          ],
+          "description": "Read the target of the symbolic link `name` as text. Needs `lookup`. Fails\nwith `EILSEQ` if the target isn't valid UTF-8.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<string>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.removeDirectory",
+          "name": "removeDirectory",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "removeDirectory(name: string): Promise<void>"
+          ],
+          "description": "Remove the empty directory `name`. Needs `remove`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.removeFile",
+          "name": "removeFile",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "removeFile(name: string): Promise<void>"
+          ],
+          "description": "Remove the entry `name`, which must not be a directory. Needs `remove`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.rename",
+          "name": "rename",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "rename(name: string, directory: Directory | DirectorySync, target?: string, opts?: RenameOptions): Promise<void>"
+          ],
+          "description": "Move the entry `name` to `target`, defaulting to `name`, in `directory`,\nwhich may be this one. Needs `rename` on both directories.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "directory",
+              "type": "Directory | DirectorySync",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "target",
+              "type": "string",
+              "optional": true,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "RenameOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.restrict",
+          "name": "restrict",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "restrict(rights: Right[]): Directory"
+          ],
+          "description": "Get a new handle to the directory with only those `rights` that this one has.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "rights",
+              "type": "Right[]",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Directory",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.rights",
+          "name": "rights",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "rights: Right[]"
+          ],
+          "description": "The rights of the directory.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.setTimes",
+          "name": "setTimes",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "setTimes(atime: bigint | null, mtime: bigint | null): Promise<void>"
+          ],
+          "description": "Set the access and modification times of the directory, leaving either\nunchanged if `null`. Needs `setTimes`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "atime",
+              "type": "bigint | null",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "mtime",
+              "type": "bigint | null",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Directory.stat",
+          "name": "stat",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "stat(name?: string): Promise<Stat>"
+          ],
+          "description": "Get the metadata of the entry `name`, or of the directory itself if `name`\nis omitted. Needs `lookup` for an entry.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<Stat>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "DirectorySync",
+      "name": "DirectorySync",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "DirectorySync"
+      ],
+      "description": "The synchronous counterpart of `Directory`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "DirectorySync.close",
+          "name": "close",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "close(): void"
+          ],
+          "description": "Close the directory. Handles are also closed when garbage collected.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.createDirectory",
+          "name": "createDirectory",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "createDirectory(name: string): void"
+          ],
+          "description": "Create the directory `name`. Needs `create`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.open",
+          "name": "DirectorySync.open",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "DirectorySync.open(path: string, opts?: OpenOptions): DirectorySync"
+          ],
+          "description": "Open the directory at `path`. This is the only operation that takes a path,\nand is meant for whoever hands out the capabilities.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "path",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "OpenOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "DirectorySync",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.list",
+          "name": "list",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "list(): Entry[]"
+          ],
+          "description": "List the entries of the directory. Needs `list`. Fails with `EILSEQ` if a\nname isn't valid UTF-8.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Entry[]",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.openDirectory",
+          "name": "openDirectory",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "openDirectory(name: string): DirectorySync"
+          ],
+          "description": "Open the directory `name` with the rights of this one. Needs `lookup`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "DirectorySync",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.openFile",
+          "name": "openFile",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "openFile(name: string, opts?: OpenFileOptions): FileSync"
+          ],
+          "description": "Open the regular file `name`. Needs `lookup`, and the right of the same\nname for `read`, `write`, `append`, `create` and `truncate`. The file gets\nthe rights it was opened for, plus `setTimes`, and `truncate` if opened for\nwriting, where this directory has them. Symbolic links fail with `ELOOP`,\nand anything that isn't a regular file with `EISDIR` or `ENOTSUP`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "OpenFileOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "FileSync",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.readLink",
+          "name": "readLink",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "readLink(name: string): string"
+          ],
+          "description": "Read the target of the symbolic link `name` as text. Needs `lookup`. Fails\nwith `EILSEQ` if the target isn't valid UTF-8.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "string",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.removeDirectory",
+          "name": "removeDirectory",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "removeDirectory(name: string): void"
+          ],
+          "description": "Remove the empty directory `name`. Needs `remove`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.removeFile",
+          "name": "removeFile",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "removeFile(name: string): void"
+          ],
+          "description": "Remove the entry `name`, which must not be a directory. Needs `remove`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.rename",
+          "name": "rename",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "rename(name: string, directory: Directory | DirectorySync, target?: string, opts?: RenameOptions): void"
+          ],
+          "description": "Move the entry `name` to `target`, defaulting to `name`, in `directory`,\nwhich may be this one. Needs `rename` on both directories.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "directory",
+              "type": "Directory | DirectorySync",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "target",
+              "type": "string",
+              "optional": true,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "RenameOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.restrict",
+          "name": "restrict",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "restrict(rights: Right[]): DirectorySync"
+          ],
+          "description": "Get a new handle to the directory with only those `rights` that this one has.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "rights",
+              "type": "Right[]",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "DirectorySync",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.rights",
+          "name": "rights",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "rights: Right[]"
+          ],
+          "description": "The rights of the directory.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.setTimes",
+          "name": "setTimes",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "setTimes(atime: bigint | null, mtime: bigint | null): void"
+          ],
+          "description": "Set the access and modification times of the directory, leaving either\nunchanged if `null`. Needs `setTimes`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "atime",
+              "type": "bigint | null",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "mtime",
+              "type": "bigint | null",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DirectorySync.stat",
+          "name": "stat",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "stat(name?: string): Stat"
+          ],
+          "description": "Get the metadata of the entry `name`, or of the directory itself if `name`\nis omitted. Needs `lookup` for an entry.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Stat",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "File",
+      "name": "File",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "File"
+      ],
+      "description": "A file capability, whose operations run on the thread pool and return promises.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "File.close",
+          "name": "close",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "close(): void"
+          ],
+          "description": "Close the file. Operations already in progress finish first, and later ones\nfail with `EBADF`. Handles are also closed when garbage collected.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "File.read",
+          "name": "read",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "read(buffer: Uint8Array, position?: number): Promise<number>"
+          ],
+          "description": "Read into `buffer` from `position`, defaulting to `0`, and resolve with the\nnumber of bytes read. Needs `read`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "buffer",
+              "type": "Uint8Array",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "position",
+              "type": "number",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<number>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "File.restrict",
+          "name": "restrict",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "restrict(rights: Right[]): File"
+          ],
+          "description": "Get a new handle to the file with only those `rights` that this one has.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "rights",
+              "type": "Right[]",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "File",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "File.rights",
+          "name": "rights",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "rights: Right[]"
+          ],
+          "description": "The rights of the file.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "File.setTimes",
+          "name": "setTimes",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "setTimes(atime: bigint | null, mtime: bigint | null): Promise<void>"
+          ],
+          "description": "Set the access and modification times of the file, leaving either\nunchanged if `null`. Needs `setTimes`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "atime",
+              "type": "bigint | null",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "mtime",
+              "type": "bigint | null",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "File.stat",
+          "name": "stat",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "stat(): Promise<Stat>"
+          ],
+          "description": "Get the metadata of the file.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<Stat>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "File.sync",
+          "name": "sync",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "sync(): Promise<void>"
+          ],
+          "description": "Flush the file to storage.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "File.truncate",
+          "name": "truncate",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "truncate(size: number): Promise<void>"
+          ],
+          "description": "Truncate the file to `size` bytes. Needs `truncate`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "size",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "File.write",
+          "name": "write",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "write(buffer: Uint8Array, position?: number): Promise<number>"
+          ],
+          "description": "Write `buffer` at `position`, defaulting to `0`, and resolve with the\nnumber of bytes written. A file opened only for appending always writes at\nits end. Needs `write` or `append`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "buffer",
+              "type": "Uint8Array",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "position",
+              "type": "number",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<number>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "FileSync",
+      "name": "FileSync",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "FileSync"
+      ],
+      "description": "The synchronous counterpart of `File`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "FileSync.close",
+          "name": "close",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "close(): void"
+          ],
+          "description": "Close the file. Handles are also closed when garbage collected.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "FileSync.read",
+          "name": "read",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "read(buffer: Uint8Array, position?: number): number"
+          ],
+          "description": "Read into `buffer` from `position`, defaulting to `0`, and return the\nnumber of bytes read. Needs `read`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "buffer",
+              "type": "Uint8Array",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "position",
+              "type": "number",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "number",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "FileSync.restrict",
+          "name": "restrict",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "restrict(rights: Right[]): FileSync"
+          ],
+          "description": "Get a new handle to the file with only those `rights` that this one has.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "rights",
+              "type": "Right[]",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "FileSync",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "FileSync.rights",
+          "name": "rights",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "rights: Right[]"
+          ],
+          "description": "The rights of the file.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "FileSync.setTimes",
+          "name": "setTimes",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "setTimes(atime: bigint | null, mtime: bigint | null): void"
+          ],
+          "description": "Set the access and modification times of the file, leaving either\nunchanged if `null`. Needs `setTimes`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "atime",
+              "type": "bigint | null",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "mtime",
+              "type": "bigint | null",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "FileSync.stat",
+          "name": "stat",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "stat(): Stat"
+          ],
+          "description": "Get the metadata of the file.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Stat",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "FileSync.sync",
+          "name": "sync",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "sync(): void"
+          ],
+          "description": "Flush the file to storage.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "FileSync.truncate",
+          "name": "truncate",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "truncate(size: number): void"
+          ],
+          "description": "Truncate the file to `size` bytes. Needs `truncate`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "size",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "FileSync.write",
+          "name": "write",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "write(buffer: Uint8Array, position?: number): number"
+          ],
+          "description": "Write `buffer` at `position`, defaulting to `0`, and return the number of\nbytes written. A file opened only for appending always writes at its end.\nNeeds `write` or `append`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "buffer",
+              "type": "Uint8Array",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "position",
+              "type": "number",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "number",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "rights",
+      "name": "rights",
+      "kind": "variable",
+      "static": false,
+      "signatures": [
+        "rights: Right[]"
+      ],
+      "description": "The names of all rights.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": []
+    },
+    {
+      "key": "Right",
+      "name": "Right",
+      "kind": "typeAlias",
+      "static": false,
+      "signatures": [
+        "type Right = | 'list'\n  | 'lookup'\n  | 'create'\n  | 'remove'\n  | 'rename'\n  | 'read'\n  | 'write'\n  | 'append'\n  | 'truncate'\n  | 'setTimes'"
+      ],
+      "description": "A right of a directory or file handle:\n\n- `list`: list the entries of a directory.\n- `lookup`: open entries, get their metadata, and read symbolic links.\n- `create`: create files and directories.\n- `remove`: remove entries, including replacing one by renaming.\n- `rename`: move entries between directories. Both directories need it.\n- `read`: read files.\n- `write`: write files anywhere.\n- `append`: write files only at their end.\n- `truncate`: truncate files.\n- `setTimes`: set the access and modification times.\n\nOperations without the right they need fail with `ENOTCAPABLE`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": []
+    },
+    {
+      "key": "Stat",
+      "name": "Stat",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Stat {\n  type: 'file' | 'directory' | 'symlink' | 'other'\n  size: bigint\n  ino: bigint\n  nlink: bigint\n  atime: bigint\n  mtime: bigint\n  ctime: bigint\n}"
+      ],
+      "description": "The metadata of an entry. Times are in nanoseconds since the Unix epoch.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Stat.atime",
+          "name": "atime",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "atime: bigint"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Stat.ctime",
+          "name": "ctime",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "ctime: bigint"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Stat.ino",
+          "name": "ino",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "ino: bigint"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Stat.mtime",
+          "name": "mtime",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "mtime: bigint"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Stat.nlink",
+          "name": "nlink",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "nlink: bigint"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Stat.size",
+          "name": "size",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "size: bigint"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Stat.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: 'file' | 'directory' | 'symlink' | 'other'"
+          ],
+          "description": "The type of the entry. Symbolic links are never followed.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Entry",
+      "name": "Entry",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Entry {\n  name: string\n  type: Stat['type']\n}"
+      ],
+      "description": "An entry of a directory.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Entry.name",
+          "name": "name",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "name: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Entry.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: Stat['type']"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    }
+  ],
+  "subpaths": [],
+  "generatedAt": "2026-10-22T13:17:00.693Z"
+}

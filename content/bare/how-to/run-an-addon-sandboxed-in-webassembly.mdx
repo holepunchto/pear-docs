@@ -1,0 +1,221 @@
+---
+title: "Run an addon sandboxed in WebAssembly"
+description: "Load a native addon's WebAssembly build in Bare and limit what it can reach with WASI: grant one directory, narrow its rights, or keep its files in memory."
+docType: how-to
+product: bare
+schemaType: TechArticle
+---
+
+A native addon runs with everything the process can reach. From Bare 1.36.0, an addon package that also ships a WebAssembly build can be loaded as WebAssembly instead, sandboxed through WASI, so the files and system calls it can use are limited to what you grant it. It can still reach anything your JavaScript can, so the sandbox contains a buggy addon, not untrusted code. This guide loads [`bare-sqlite`](/bare/reference/bare/modules/bare-sqlite) this way, gives it one directory for its database, and checks that it can't reach other files.
+
+<Callout type="tip">
+For how the sandbox works and what it doesn't stop, read [WebAssembly addons](/bare/explanation/webassembly-addons).
+</Callout>
+
+## Before you begin
+
+- Node.js and npm.
+- An addon package that ships a `prebuilds/wasi-wasm32/<name>.wasm` build. On Bare 1.36.0 these load: `bare-sqlite` 0.1.5 and later, and `bare-bmp`, `bare-exif`, `bare-gif`, `bare-ico`, `bare-image-resample`, `bare-jpeg`, `bare-png`, `bare-tiff`, and `bare-webp`. `bare-svg` 1.1.1 and `bare-heif` 1.2.1 ship a `.wasm` build that doesn't load yet, because it imports a function that [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi#excluded-functions) 0.1.1 doesn't implement.
+
+## Create the project
+
+Install the addon, [`bare-directory`](/bare/reference/bare/modules/bare-directory) and [`bare-wasi`](/bare/reference/bare/modules/bare-wasi) for the sandbox, and Bare 1.36.0 or later as a development dependency, so the project doesn't depend on the version of `bare` on your `PATH`:
+
+```sh example=wasm-sandbox step=setup
+mkdir app
+cd app
+npm init -y
+npm i bare-sqlite bare-directory bare-wasi
+npm i -D bare
+mkdir data
+```
+
+The `data` directory is the only part of the file system the addon will see.
+
+## Grant the addon one directory
+
+A WASI provider is a module that exports a function. Bare calls it with the URL of each WebAssembly addon and passes what it returns to `bare-wasi` as the addon's capabilities. Create `app/wasi.js`:
+
+```javascript file=<rootDir>/examples/how-to/run-an-addon-sandboxed-in-webassembly/wasi.js title="app/wasi.js" lineNumbers skip="example-import"
+```
+
+{/* @harness example=wasm-sandbox step=copy from=examples/how-to/run-an-addon-sandboxed-in-webassembly/wasi.js to=app/wasi.js */}
+
+`version: 'preview1'` is required. `preopens` maps paths that the addon sees to directories: here, the addon's `/` is your `data` directory. `DirectorySync.open()` opens it as a [`bare-directory`](/bare/reference/bare/modules/bare-directory) capability, confined to that directory in JavaScript and, as far as the platform allows, by the kernel. `HostDirectory` from `bare-wasi/host` wraps it as a directory that `bare-wasi` can preopen. Everything you leave out is denied: the addon gets no standard streams, no randomness, no arguments, and no environment variables. It keeps access to clocks.
+
+## Load the addon as WebAssembly
+
+Add the `host` and `wasi` import attributes to the `require()` of the addon. Create `app/app.js`:
+
+```javascript file=<rootDir>/examples/how-to/run-an-addon-sandboxed-in-webassembly/app.js title="app/app.js" lineNumbers {1-3} skip="example-import"
+```
+
+{/* @harness example=wasm-sandbox step=copy from=examples/how-to/run-an-addon-sandboxed-in-webassembly/app.js to=app/app.js */}
+
+`host: 'wasi-wasm32'` loads the WebAssembly build of `bare-sqlite`, and of every other addon in the modules this import pulls in. `wasi` names the provider, resolved relative to `app.js`. Because the specifier is a string literal, write both values as string literals too: Bare links the import before the module runs, using only literal attributes, so a computed value conflicts with that link, and the call throws `ADDON_HOST_INCOMPATIBLE` or `ADDON_WASI_INCOMPATIBLE`. The database path `/books.db` is a path inside the sandbox, so the file is created as `data/books.db`.
+
+Run it:
+
+```sh example=wasm-sandbox step=run process=app cwd=app expect="Foundation"
+npx bare app.js
+```
+
+```text skip="output"
+{ id: 1, title: 'Dune' }
+{ id: 2, title: 'Foundation' }
+```
+
+An ES module takes the same attributes in its `with` clause. Create `app/app.mjs`:
+
+```javascript file=<rootDir>/examples/how-to/run-an-addon-sandboxed-in-webassembly/app.mjs title="app/app.mjs" lineNumbers skip="example-import"
+```
+
+{/* @harness example=wasm-sandbox step=copy from=examples/how-to/run-an-addon-sandboxed-in-webassembly/app.mjs to=app/app.mjs */}
+
+```sh example=wasm-sandbox step=run process=esm cwd=app expect="books: 2"
+npx bare app.mjs
+```
+
+```text skip="output"
+{ books: 2 }
+```
+
+## Check the sandbox
+
+Try to open a database outside the granted directory. Create `app/check-sandbox.js`:
+
+```javascript file=<rootDir>/examples/how-to/run-an-addon-sandboxed-in-webassembly/check-sandbox.js title="app/check-sandbox.js" lineNumbers skip="example-import"
+```
+
+{/* @harness example=wasm-sandbox step=copy from=examples/how-to/run-an-addon-sandboxed-in-webassembly/check-sandbox.js to=app/check-sandbox.js */}
+
+```sh example=wasm-sandbox step=run process=check cwd=app expect="Blocked: CANTOPEN"
+npx bare check-sandbox.js
+```
+
+```text skip="output"
+Blocked: CANTOPEN
+```
+
+This output is the expected result: the open was refused. The native build would create `/tmp/escape.db` on your machine. The WebAssembly build looks for `/tmp` inside `data`, finds nothing, and SQLite fails with `CANTOPEN`.
+
+## Narrow the rights
+
+`DirectorySync.open()` grants every right by default. Pass `rights` to grant fewer, and `bare-directory` refuses the rest with `ENOTCAPABLE`. Which rights an addon needs depends on how it uses files. The WebAssembly build of `bare-sqlite` 0.1.5 locks a database by creating and removing a `<database>.lock` directory next to it, so even reading needs `create` and `remove`. Writing also needs `truncate`, which SQLite uses to shrink the file on `VACUUM` and when it rolls back a transaction:
+
+```javascript skip="variant-of-wasi-js"
+// Read only: open the database with new DatabaseSync('/books.db', { readOnly: true })
+DirectorySync.open(__dirname + '/data', { rights: ['lookup', 'read', 'create', 'remove'] })
+
+// Read and write
+DirectorySync.open(__dirname + '/data', { rights: ['lookup', 'read', 'write', 'create', 'remove', 'truncate'] })
+```
+
+`create` and `remove` also let the addon create directories and delete files in `data`, the database included. It can't create files without `write`, so the read-only set stops it writing to the database, not changing the directory.
+
+Without `create`, SQLite fails with `IOERR`, even for reads. Writing without `write` fails with `CANTOPEN`. Without `truncate`, `VACUUM` fails with `IOERR`, and rolling back a transaction that grew the file can report success but leave a hot `data/books.db-journal`, after which statements fail with `IOERR`. Without `remove`, reads succeed but leave the `data/books.db.lock` directory behind, and so does a process that is killed while it holds the lock. After that, opening the database still succeeds, but its first statement fails with `BUSY`, whatever the rights, until you delete `data/books.db.lock` while no process has the database open. See [Rights](/bare/reference/bare/modules/bare-directory#rights) for what each right allows.
+
+## Keep the files in memory
+
+To give the addon a file system that never touches the disk, preopen a `MemoryDirectory` from `bare-wasi/memory` instead. Create `app/wasi-memory.js`:
+
+```javascript file=<rootDir>/examples/how-to/run-an-addon-sandboxed-in-webassembly/wasi-memory.js title="app/wasi-memory.js" lineNumbers skip="example-import"
+```
+
+{/* @harness example=wasm-sandbox step=copy from=examples/how-to/run-an-addon-sandboxed-in-webassembly/wasi-memory.js to=app/wasi-memory.js */}
+
+Point an import at it. Create `app/memory.js`:
+
+```javascript file=<rootDir>/examples/how-to/run-an-addon-sandboxed-in-webassembly/memory.js title="app/memory.js" lineNumbers {1-3} skip="example-import"
+```
+
+{/* @harness example=wasm-sandbox step=copy from=examples/how-to/run-an-addon-sandboxed-in-webassembly/memory.js to=app/memory.js */}
+
+```sh example=wasm-sandbox step=run process=memory cwd=app expect="Hyperion"
+npx bare memory.js
+```
+
+```text skip="output"
+[ { title: 'Hyperion' } ]
+```
+
+The database lives only as long as the process.
+
+## Grant more capabilities
+
+The provider can grant more, one capability at a time:
+
+```javascript skip="variant-of-wasi-js"
+const { DirectorySync } = require('bare-directory')
+const { HostDirectory } = require('bare-wasi/host')
+const crypto = require('bare-crypto')
+
+module.exports = (url) => ({
+  version: 'preview1',
+  args: ['books'],
+  env: { LANG: 'C' },
+  preopens: {
+    '/': new HostDirectory(DirectorySync.open(__dirname + '/data'))
+  },
+  stdout: (data) => console.log(data.toString()),
+  stderr: (data) => console.error(data.toString()),
+  random: (buffer) => crypto.randomFillSync(buffer)
+})
+```
+
+Bare has no `crypto` global, so take random bytes from [`bare-crypto`](/bare/reference/bare/modules/bare-crypto) (`npm i bare-crypto`). An addon written in Rust can need `random`: the `bare-svg` README says its WebAssembly build does, because the Rust standard library seeds its hash maps with it. `url` is a `URL`, so compare `url.href` to grant different addons different capabilities. The WebAssembly build of `bare-sqlite` doesn't ask WASI for random bytes, so `random` changes nothing for it. Set `clock: null` to deny clocks; file timestamps set to now still come from the host clock. There is no capability for sockets. See [`WASIOptions`](/bare/reference/bare/modules/bare-wasi#wasioptions) for every option.
+
+## Bundle the app
+
+[`bare-pack`](/bare/reference/bare/modules/bare-pack) bundles the `.wasm` build of an addon imported with the `host` attribute like any other addon. `bare-directory` is a native addon, and a native addon can't load from inside a bundle, so pass `--offload-addons` to write every addon, the `.wasm` build included, next to the bundle.
+
+Inside a bundle, `__dirname` is a path inside the bundle, so `DirectorySync.open(__dirname + '/data')` fails with `not a directory`. Open the data directory from the working directory instead. Install [`bare-os`](/bare/reference/bare/modules/bare-os) and [`bare-path`](/bare/reference/bare/modules/bare-path), and change `app/wasi.js` to:
+
+```javascript skip="bundling-variant"
+const { DirectorySync } = require('bare-directory')
+const { HostDirectory } = require('bare-wasi/host')
+const os = require('bare-os')
+const path = require('bare-path')
+
+module.exports = (url) => ({
+  version: 'preview1',
+  preopens: {
+    '/': new HostDirectory(DirectorySync.open(path.join(os.cwd(), 'data')))
+  }
+})
+```
+
+Then bundle the app, and run the bundle from `app`, where `data` is:
+
+```sh skip="bundling-variant"
+npm i bare-os bare-path
+npm i -D bare-pack
+npx bare-pack --offload-addons --out dist/app.bundle app.js
+npx bare dist/app.bundle
+```
+
+An addon imported without the `host` attribute is bundled only for the hosts you pass. To bundle its `.wasm` build as a fallback, add `--host wasi-wasm32` to the native hosts: it's used only for addons with no native build for them. `--host wasi-wasm32` on its own bundles only `.wasm` builds.
+
+## Fix common errors
+
+| Error | Cause | Fix |
+| --- | --- | --- |
+| `UNKNOWN_ADDON_HOST: Addon host '…' is not supported` | The `host` attribute is not `wasi-wasm32`. | Use `host: 'wasi-wasm32'`. |
+| `ADDON_NOT_FOUND` | The package, or a package it imports, has no `.wasm` build. | Check that `prebuilds/wasi-wasm32/` exists in the package, or import the package without `host`. |
+| `ADDON_HOST_INCOMPATIBLE`, as `Addons of '…' are already resolved for …`, `Addon '…' is not a WebAssembly addon, but 'wasi-wasm32' was asked for`, or `Cannot resolve addon '.' from '…', which is linked in several contexts` | The same package is imported both with and without `host`, `host` isn't a string literal, or the package is also loaded natively elsewhere, for example by the provider itself, as `bare-directory` is. A package's addons load one way per process. | Import it with the same attributes everywhere, written as string literals, and don't import with `host` a package the provider loads natively. |
+| `ADDON_WASI_INCOMPATIBLE: Addons of '…' are already given …` | Imports of the same package have different `wasi` attributes: two providers, a provider in one and none in another, or a value that isn't a string literal. A dynamic `import()` with a `wasi` attribute also throws it on Bare 1.36.0, even with the same provider. | Use one provider in every import. To give one addon several directories, preopen each at its own path in that provider, such as `/` on disk and `/mem` in memory. Use its `url` argument only to tell different addons apart. Pass a provider with `require()` or a static `import`, not a dynamic `import()`. |
+| `TypeError: WASI provider '…' must export a function` | The provider exports neither a function nor an object whose `default` is a function. | Export a function that returns the options. |
+| `WASIError: INVALID_VERSION` | The options have no `version: 'preview1'`. | Add it. |
+| `WASIError: INVALID_PREOPEN: Preopen '/' is not a directory` | A preopen isn't a `bare-wasi` directory, such as a `DirectorySync` that isn't wrapped. | Wrap it: `new HostDirectory(DirectorySync.open(…))`. |
+| `WebAssembly addon imports unsupported functions` | The addon's `.wasm` build uses a libjs function that `bare-wasm-abi` doesn't provide. | Use the native build. See [excluded functions](/bare/reference/bare/modules/bare-wasm-abi#excluded-functions). |
+| `CANTOPEN` from SQLite | The path is outside the preopened directories, there is no provider, the provider returns nothing (an arrow function with a block body), a dynamic `import()` with a computed specifier dropped the `wasi` attribute, or the directory lacks `lookup` (or `write`, when writing). | Use a path under a preopen, such as `/books.db`, return the options with `(url) => ({ … })`, and grant the rights in [Narrow the rights](#narrow-the-rights). |
+| `IOERR` or `BUSY` from SQLite | The directory lacks a right SQLite needs, or a stale `<database>.lock` directory was left behind. | See [Narrow the rights](#narrow-the-rights). |
+
+`UNKNOWN_ADDON_HOST`, `ADDON_HOST_INCOMPATIBLE`, and `ADDON_WASI_INCOMPATIBLE` are thrown while Bare links the importing module, before any of its code runs, so a `try` block around a `require()` whose specifier and attributes are all string literals doesn't catch them. Fix the import instead. With a computed attribute or specifier, they're thrown from the call and can be caught. `ADDON_NOT_FOUND` is thrown when the module that loads the addon runs, and can be caught around a `require()` or `import()`, but not around a static `import` declaration.
+
+## See also
+
+- [WebAssembly addons](/bare/explanation/webassembly-addons): how the sandbox works and what it does and doesn't protect.
+- [`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons): the `host` and `wasi` attributes and the loading rules.
+- [`bare-wasi`](/bare/reference/bare/modules/bare-wasi): every WASI option and backend.
+- [Native-addon CI prebuilds](/bare/reference/native-addon-prebuilds#webassembly-prebuilds): shipping a `.wasm` build of your own addon.

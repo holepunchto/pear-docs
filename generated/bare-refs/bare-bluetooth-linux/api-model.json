@@ -1,0 +1,3525 @@
+{
+  "name": "bare-bluetooth-linux",
+  "version": "0.9.2",
+  "description": "BlueZ D-Bus bindings for Bare",
+  "repoUrl": "https://github.com/holepunchto/bare-bluetooth-linux",
+  "npmUrl": "https://www.npmjs.com/package/bare-bluetooth-linux",
+  "minBare": null,
+  "native": true,
+  "dependencies": [
+    "bare-events",
+    "bare-stream"
+  ],
+  "usage": "Central, scanning for a Heart Rate monitor and reading its measurement:\n\n```js\nconst { Adapter } = require('bare-bluetooth-linux')\n\nconst adapter = new Adapter()\n\nadapter.on('device', async (device) => {\n  if (!device.uuids.includes('0000180d-0000-1000-8000-00805f9b34fb')) return\n\n  await adapter.stopDiscovery()\n  await device.connect()\n\n  device.on('servicesResolved', (resolved) => {\n    if (!resolved) return\n\n    for (const service of device.services.values()) {\n      for (const characteristic of service.characteristics.values()) {\n        if (characteristic.flags.includes('notify')) {\n          characteristic.on('data', (value) => console.log(new Uint8Array(value)))\n          characteristic.startNotify()\n        }\n      }\n    }\n  })\n})\n\nadapter.setDiscoveryFilter({ transport: 'le' }).then(() => adapter.startDiscovery())\n```\n\nPeripheral, publishing a Heart Rate service and notifying a new value every second:\n\n```js\nconst {\n  Adapter,\n  Advertisement,\n  Agent,\n  GattApplication,\n  GattService,\n  GattCharacteristic\n} = require('bare-bluetooth-linux')\n\nconst SERVICE = '0000180d-0000-1000-8000-00805f9b34fb'\n\nconst characteristic = new GattCharacteristic({\n  uuid: '00002a37-0000-1000-8000-00805f9b34fb',\n  flags: ['read', 'notify'],\n  value: new Uint8Array([0, 60])\n})\n\nconst service = new GattService({ uuid: SERVICE })\nservice.addCharacteristic(characteristic)\n\nconst app = new GattApplication({ path: '/com/example/heart' })\napp.addService(service)\n\nclass AcceptAll extends Agent {\n  requestAuthorization() {\n    return Promise.resolve(true)\n  }\n}\n\nconst adapter = new Adapter()\n\nasync function main() {\n  await adapter.registerAgent(new AcceptAll())\n  await adapter.requestDefaultAgent()\n  await adapter.registerApplication(app)\n  await adapter.registerAdvertisement(\n    new Advertisement({ localName: 'bare', serviceUUIDs: [SERVICE] })\n  )\n\n  setInterval(() => {\n    characteristic.value = new Uint8Array([0, 60 + Math.round(Math.random() * 10)])\n  }, 1000)\n}\n\nmain()\n```",
+  "extraSections": [],
+  "exports": [
+    {
+      "key": "Adapter",
+      "name": "Adapter",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "Adapter"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Adapter.constructor",
+          "name": "Adapter",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new Adapter(opts?: AdapterOptions)"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "AdapterOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.address",
+          "name": "address",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "address: string | null"
+          ],
+          "description": "Bluetooth address of the controller, `null` without one at `path`",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.destroy",
+          "name": "destroy",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "destroy(): void"
+          ],
+          "description": "Releases the D-Bus connection, every later call rejects",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.devices",
+          "name": "devices",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "devices: Map<string, Device>"
+          ],
+          "description": "Every device known to bluetoothd, keyed by D-Bus path",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.discovering",
+          "name": "discovering",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "discovering: boolean"
+          ],
+          "description": "Whether a discovery session is active",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": "D-Bus path of the controller",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.powered",
+          "name": "powered",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "powered: boolean"
+          ],
+          "description": "Switches the controller on or off, throws when BlueZ refuses",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.publishL2CAPChannel",
+          "name": "publishL2CAPChannel",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "publishL2CAPChannel(opts?: ChannelOptions): void"
+          ],
+          "description": "Listens for L2CAP connections, `channelPublish` carries the PSM",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "ChannelOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.registerAdvertisement",
+          "name": "registerAdvertisement",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "registerAdvertisement(advertisement: Advertisement): Promise<void>"
+          ],
+          "description": "Registers an advertisement to be sent over the LE advertising channel",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "advertisement",
+              "type": "Advertisement",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.registerAgent",
+          "name": "registerAgent",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "registerAgent(agent: Agent, capability?: AgentCapability): Promise<void>"
+          ],
+          "description": "Registers the pairing agent, `NoInputNoOutput` capability by default",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "agent",
+              "type": "Agent",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "capability",
+              "type": "AgentCapability",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.registerApplication",
+          "name": "registerApplication",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "registerApplication(application: GattApplication): Promise<void>"
+          ],
+          "description": "Registers a local GATT service hierarchy, the GATT server role",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "application",
+              "type": "GattApplication",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.removeDevice",
+          "name": "removeDevice",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "removeDevice(device: Device): Promise<void>"
+          ],
+          "description": "Removes the device and its cached information, bonding included",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "device",
+              "type": "Device",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.requestDefaultAgent",
+          "name": "requestDefaultAgent",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "requestDefaultAgent(): Promise<void>"
+          ],
+          "description": "Makes the registered agent the default one for pairing requests",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.setDiscoveryFilter",
+          "name": "setDiscoveryFilter",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "setDiscoveryFilter(filter?: DiscoveryFilter): Promise<void>"
+          ],
+          "description": "Sets the discovery filter for this adapter, no filter removes it",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "filter",
+              "type": "DiscoveryFilter",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.startDiscovery",
+          "name": "startDiscovery",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "startDiscovery(): Promise<void>"
+          ],
+          "description": "Starts a discovery session: inquiry, scanning and name resolving",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.stopDiscovery",
+          "name": "stopDiscovery",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "stopDiscovery(): Promise<void>"
+          ],
+          "description": "Stops the session started by `startDiscovery`",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.unpublishL2CAPChannel",
+          "name": "unpublishL2CAPChannel",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "unpublishL2CAPChannel(psm: number): void"
+          ],
+          "description": "Stops listening on the PSM",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "psm",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.unregisterAdvertisement",
+          "name": "unregisterAdvertisement",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "unregisterAdvertisement(advertisement: Advertisement): Promise<void>"
+          ],
+          "description": "Unregisters an advertisement registered with `registerAdvertisement`",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "advertisement",
+              "type": "Advertisement",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.unregisterAgent",
+          "name": "unregisterAgent",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "unregisterAgent(): Promise<void>"
+          ],
+          "description": "Unregisters the agent registered with `registerAgent`",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Adapter.unregisterApplication",
+          "name": "unregisterApplication",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "unregisterApplication(application: GattApplication): Promise<void>"
+          ],
+          "description": "Unregisters the hierarchy registered with `registerApplication`",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "application",
+              "type": "GattApplication",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "AdapterOptions",
+      "name": "AdapterOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface AdapterOptions {\n  path?: string\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "AdapterOptions.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": "D-Bus path of the controller, `/org/bluez/hci0` by default",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "DiscoveryFilter",
+      "name": "DiscoveryFilter",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface DiscoveryFilter {\n  uuids?: string[]\n  rssi?: number\n  transport?: 'auto' | 'bredr' | 'le'\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "DiscoveryFilter.rssi",
+          "name": "rssi",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "rssi: number"
+          ],
+          "description": "Only report devices with an RSSI above this threshold, in dBm",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DiscoveryFilter.transport",
+          "name": "transport",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "transport: 'auto' | 'bredr' | 'le'"
+          ],
+          "description": "Which transport to scan, `auto` by default",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DiscoveryFilter.uuids",
+          "name": "uuids",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "uuids: string[]"
+          ],
+          "description": "Only report devices advertising one of these service UUIDs",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "ChannelOptions",
+      "name": "ChannelOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface ChannelOptions {\n  psm?: number\n  security?: number\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "ChannelOptions.psm",
+          "name": "psm",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "psm: number"
+          ],
+          "description": "PSM to listen on, 0 lets the kernel pick one",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ChannelOptions.security",
+          "name": "security",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "security: number"
+          ],
+          "description": "One of `constants.security`, low by default",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "AdapterEventMap",
+      "name": "AdapterEventMap",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface AdapterEventMap {\n  device: [device: Device]\n  deviceCached: [device: Device]\n  deviceRemoved: [device: Device]\n  powered: [powered: boolean]\n  discovering: [discovering: boolean]\n  advertisementReleased: []\n  channelPublish: [psm: number]\n  channelOpen: [channel: L2CAPChannel]\n  error: [error: BluetoothError]\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "AdapterEventMap.advertisementReleased",
+          "name": "advertisementReleased",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "advertisementReleased: []"
+          ],
+          "description": "bluetoothd dropped the registered advertisement",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "AdapterEventMap.channelOpen",
+          "name": "channelOpen",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "channelOpen: [channel: L2CAPChannel]"
+          ],
+          "description": "A peer opened a channel on a published PSM",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "AdapterEventMap.channelPublish",
+          "name": "channelPublish",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "channelPublish: [psm: number]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "AdapterEventMap.device",
+          "name": "device",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "device: [device: Device]"
+          ],
+          "description": "A device bluetoothd just created",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "AdapterEventMap.deviceCached",
+          "name": "deviceCached",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "deviceCached: [device: Device]"
+          ],
+          "description": "A device bluetoothd already held when the adapter attached",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "AdapterEventMap.deviceRemoved",
+          "name": "deviceRemoved",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "deviceRemoved: [device: Device]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "AdapterEventMap.discovering",
+          "name": "discovering",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "discovering: [discovering: boolean]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "AdapterEventMap.error",
+          "name": "error",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "error: [error: BluetoothError]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "AdapterEventMap.powered",
+          "name": "powered",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "powered: [powered: boolean]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Device",
+      "name": "Device",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "Device"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Device.address",
+          "name": "address",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "address: string"
+          ],
+          "description": "Bluetooth address of the remote device",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.addressType",
+          "name": "addressType",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "addressType: AddressType"
+          ],
+          "description": "`public` for dual-mode and BR/EDR devices, either for LE only ones",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.connect",
+          "name": "connect",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "connect(): Promise<void>"
+          ],
+          "description": "Connects every profile the device supports and flags auto-connectable",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.connected",
+          "name": "connected",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "connected: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.disconnect",
+          "name": "disconnect",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "disconnect(): Promise<void>"
+          ],
+          "description": "Disconnects every profile, then the ACL link",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.manufacturerData",
+          "name": "manufacturerData",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "manufacturerData: { [id: number]: Uint8Array }"
+          ],
+          "description": "Manufacturer specific advertisement data, keyed by manufacturer id",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.name",
+          "name": "name",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "name: string | undefined"
+          ],
+          "description": "Remote name, once a scan response or a connection carried it",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.openL2CAPChannel",
+          "name": "openL2CAPChannel",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "openL2CAPChannel(psm: number, opts?: { security?: number }): void"
+          ],
+          "description": "Opens an L2CAP channel on the PSM, delivered on `channelOpen`",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "psm",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "{ security?: number }",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.pair",
+          "name": "pair",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "pair(): Promise<void>"
+          ],
+          "description": "Connects, pairs, then discovers services",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.paired",
+          "name": "paired",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "paired: boolean"
+          ],
+          "description": "Whether the devices exchanged keys for an encrypted connection",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": "D-Bus path of the device",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.preferredBearer",
+          "name": "preferredBearer",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "preferredBearer: PreferredBearer | undefined"
+          ],
+          "description": "Bearer to try first when connecting, dual-mode devices only",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.rssi",
+          "name": "rssi",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "rssi: number | undefined"
+          ],
+          "description": "Signal strength of the last advertisement, in dBm",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.serviceData",
+          "name": "serviceData",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "serviceData: { [uuid: string]: Uint8Array }"
+          ],
+          "description": "Service advertisement data, keyed by UUID",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.services",
+          "name": "services",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "services: Map<string, Service>"
+          ],
+          "description": "Services discovered so far, keyed by D-Bus path",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.servicesResolved",
+          "name": "servicesResolved",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "servicesResolved: boolean"
+          ],
+          "description": "Whether the GATT tree in `services` is complete",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Device.uuids",
+          "name": "uuids",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "uuids: string[]"
+          ],
+          "description": "128-bit UUIDs of the remote services",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "AddressType",
+      "name": "AddressType",
+      "kind": "typeAlias",
+      "static": false,
+      "signatures": [
+        "type AddressType = 'public' | 'random'"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": []
+    },
+    {
+      "key": "PreferredBearer",
+      "name": "PreferredBearer",
+      "kind": "typeAlias",
+      "static": false,
+      "signatures": [
+        "type PreferredBearer = 'last-used' | 'bredr' | 'le' | 'last-seen'"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": []
+    },
+    {
+      "key": "DeviceEventMap",
+      "name": "DeviceEventMap",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface DeviceEventMap {\n  connected: [connected: boolean]\n  paired: [paired: boolean]\n  servicesResolved: [resolved: boolean]\n  rssi: [rssi: number]\n  name: [name: string]\n  service: [service: Service]\n  serviceCached: [service: Service]\n  serviceRemoved: [service: Service]\n  channelOpen: [channel: L2CAPChannel]\n  error: [error: BluetoothError]\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "DeviceEventMap.channelOpen",
+          "name": "channelOpen",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "channelOpen: [channel: L2CAPChannel]"
+          ],
+          "description": "The channel requested with `openL2CAPChannel` is connected",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DeviceEventMap.connected",
+          "name": "connected",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "connected: [connected: boolean]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DeviceEventMap.error",
+          "name": "error",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "error: [error: BluetoothError]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DeviceEventMap.name",
+          "name": "name",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "name: [name: string]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DeviceEventMap.paired",
+          "name": "paired",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "paired: [paired: boolean]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DeviceEventMap.rssi",
+          "name": "rssi",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "rssi: [rssi: number]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DeviceEventMap.service",
+          "name": "service",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "service: [service: Service]"
+          ],
+          "description": "A service bluetoothd just discovered",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DeviceEventMap.serviceCached",
+          "name": "serviceCached",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "serviceCached: [service: Service]"
+          ],
+          "description": "A service bluetoothd already held when the adapter attached",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DeviceEventMap.serviceRemoved",
+          "name": "serviceRemoved",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "serviceRemoved: [service: Service]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "DeviceEventMap.servicesResolved",
+          "name": "servicesResolved",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "servicesResolved: [resolved: boolean]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Service",
+      "name": "Service",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "Service"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Service.characteristics",
+          "name": "characteristics",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "characteristics: Map<string, Characteristic>"
+          ],
+          "description": "Characteristics discovered so far, keyed by D-Bus path",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Service.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": "D-Bus path of the service",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Service.primary",
+          "name": "primary",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "primary: boolean"
+          ],
+          "description": "Whether this is a primary service, secondary otherwise",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Service.uuid",
+          "name": "uuid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "uuid: string"
+          ],
+          "description": "128-bit service UUID",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "ServiceEventMap",
+      "name": "ServiceEventMap",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface ServiceEventMap {\n  characteristic: [characteristic: Characteristic]\n  characteristicCached: [characteristic: Characteristic]\n  characteristicRemoved: [characteristic: Characteristic]\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "ServiceEventMap.characteristic",
+          "name": "characteristic",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "characteristic: [characteristic: Characteristic]"
+          ],
+          "description": "A characteristic bluetoothd just discovered",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ServiceEventMap.characteristicCached",
+          "name": "characteristicCached",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "characteristicCached: [characteristic: Characteristic]"
+          ],
+          "description": "A characteristic bluetoothd already held when the adapter attached",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ServiceEventMap.characteristicRemoved",
+          "name": "characteristicRemoved",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "characteristicRemoved: [characteristic: Characteristic]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Characteristic",
+      "name": "Characteristic",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "Characteristic"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Characteristic.descriptors",
+          "name": "descriptors",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "descriptors: Map<string, Descriptor>"
+          ],
+          "description": "Descriptors discovered so far, keyed by D-Bus path",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Characteristic.flags",
+          "name": "flags",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "flags: string[]"
+          ],
+          "description": "How the value can be used: `read`, `write`, `notify`...",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Characteristic.mtu",
+          "name": "mtu",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "mtu: number"
+          ],
+          "description": "MTU for `read` and `write`",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Characteristic.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": "D-Bus path of the characteristic",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Characteristic.read",
+          "name": "read",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "read(): Promise<ArrayBuffer>"
+          ],
+          "description": "Reads the value from the peer",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<ArrayBuffer>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Characteristic.startNotify",
+          "name": "startNotify",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "startNotify(): Promise<void>"
+          ],
+          "description": "Starts a notification session, values arrive on `data`",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Characteristic.stopNotify",
+          "name": "stopNotify",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "stopNotify(): Promise<void>"
+          ],
+          "description": "Stops the session started by `startNotify`",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Characteristic.uuid",
+          "name": "uuid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "uuid: string"
+          ],
+          "description": "128-bit characteristic UUID",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Characteristic.write",
+          "name": "write",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "write(value: Uint8Array, opts?: WriteOptions): Promise<void>"
+          ],
+          "description": "Writes the value to the peer",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "value",
+              "type": "Uint8Array",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "opts",
+              "type": "WriteOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "WriteOptions",
+      "name": "WriteOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface WriteOptions {\n  type?: 'request' | 'command'\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "WriteOptions.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: 'request' | 'command'"
+          ],
+          "description": "`request` waits for the peer's response, `command` does not",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "CharacteristicEventMap",
+      "name": "CharacteristicEventMap",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface CharacteristicEventMap {\n  data: [value: ArrayBuffer]\n  descriptor: [descriptor: Descriptor]\n  descriptorCached: [descriptor: Descriptor]\n  descriptorRemoved: [descriptor: Descriptor]\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "CharacteristicEventMap.data",
+          "name": "data",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "data: [value: ArrayBuffer]"
+          ],
+          "description": "A notification or indication, while notifying",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "CharacteristicEventMap.descriptor",
+          "name": "descriptor",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "descriptor: [descriptor: Descriptor]"
+          ],
+          "description": "A descriptor bluetoothd just discovered",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "CharacteristicEventMap.descriptorCached",
+          "name": "descriptorCached",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "descriptorCached: [descriptor: Descriptor]"
+          ],
+          "description": "A descriptor bluetoothd already held when the adapter attached",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "CharacteristicEventMap.descriptorRemoved",
+          "name": "descriptorRemoved",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "descriptorRemoved: [descriptor: Descriptor]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Descriptor",
+      "name": "Descriptor",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "Descriptor"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Descriptor.flags",
+          "name": "flags",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "flags: string[]"
+          ],
+          "description": "How the value can be used: `read`, `write`...",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Descriptor.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": "D-Bus path of the descriptor",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Descriptor.read",
+          "name": "read",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "read(): Promise<ArrayBuffer>"
+          ],
+          "description": "Reads the value from the peer",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<ArrayBuffer>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Descriptor.uuid",
+          "name": "uuid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "uuid: string"
+          ],
+          "description": "128-bit descriptor UUID",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Descriptor.write",
+          "name": "write",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "write(value: Uint8Array): Promise<void>"
+          ],
+          "description": "Writes the value to the peer",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "value",
+              "type": "Uint8Array",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Advertisement",
+      "name": "Advertisement",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "Advertisement"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Advertisement.constructor",
+          "name": "Advertisement",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new Advertisement(opts?: AdvertisementOptions)"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "AdvertisementOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Advertisement.localName",
+          "name": "localName",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "localName: string | undefined"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Advertisement.serviceData",
+          "name": "serviceData",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "serviceData: { [uuid: string]: Uint8Array }"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Advertisement.serviceUUIDs",
+          "name": "serviceUUIDs",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "serviceUUIDs: string[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Advertisement.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: 'broadcast' | 'peripheral'"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "AdvertisementOptions",
+      "name": "AdvertisementOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface AdvertisementOptions {\n  type?: 'broadcast' | 'peripheral'\n  localName?: string\n  serviceUUIDs?: string[]\n  serviceData?: { [uuid: string]: Uint8Array }\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "AdvertisementOptions.localName",
+          "name": "localName",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "localName: string"
+          ],
+          "description": "Local name for the advertising report, truncated when too long",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "AdvertisementOptions.serviceData",
+          "name": "serviceData",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "serviceData: { [uuid: string]: Uint8Array }"
+          ],
+          "description": "Service data elements, keyed by UUID",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "AdvertisementOptions.serviceUUIDs",
+          "name": "serviceUUIDs",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "serviceUUIDs: string[]"
+          ],
+          "description": "UUIDs for the \"Service UUID\" field of the advertising data",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "AdvertisementOptions.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: 'broadcast' | 'peripheral'"
+          ],
+          "description": "Type of advertising packet, `peripheral` by default",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Agent",
+      "name": "Agent",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "Agent"
+      ],
+      "description": "Answers bluetoothd during pairing. Every method gets the D-Bus path of the\ndevice. The base class refuses what it was not taught: subclass and resolve\nto answer, resolve `false` or throw to refuse.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Agent.authorizeService",
+          "name": "authorizeService",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "authorizeService(devicePath: string, uuid: string): Promise<boolean>"
+          ],
+          "description": "A connection or service request, `true` accepts",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "devicePath",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "uuid",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<boolean>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Agent.cancel",
+          "name": "cancel",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "cancel(): Promise<void>"
+          ],
+          "description": "The pending request failed before a reply was returned",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Agent.displayPasskey",
+          "name": "displayPasskey",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "displayPasskey(devicePath: string, passkey: number, entered: number): Promise<void>"
+          ],
+          "description": "bluetoothd wants the passkey shown, `entered` counts typed digits",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "devicePath",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "passkey",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "entered",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Agent.displayPinCode",
+          "name": "displayPinCode",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "displayPinCode(devicePath: string, pincode: string): Promise<void>"
+          ],
+          "description": "bluetoothd wants the PIN code shown to the user",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "devicePath",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "pincode",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Agent.release",
+          "name": "release",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "release(): Promise<void>"
+          ],
+          "description": "bluetoothd unregistered the agent",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "Promise<void>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Agent.requestAuthorization",
+          "name": "requestAuthorization",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "requestAuthorization(devicePath: string): Promise<boolean>"
+          ],
+          "description": "A pairing that shows nothing to confirm or type, `true` accepts",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "devicePath",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<boolean>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Agent.requestConfirmation",
+          "name": "requestConfirmation",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "requestConfirmation(devicePath: string, passkey: number): Promise<boolean>"
+          ],
+          "description": "bluetoothd needs the passkey confirmed, `true` accepts",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "devicePath",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "passkey",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<boolean>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Agent.requestPasskey",
+          "name": "requestPasskey",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "requestPasskey(devicePath: string): Promise<number>"
+          ],
+          "description": "bluetoothd needs a passkey for an authentication",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "devicePath",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<number>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Agent.requestPinCode",
+          "name": "requestPinCode",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "requestPinCode(devicePath: string): Promise<string>"
+          ],
+          "description": "bluetoothd needs a PIN code for an authentication",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "devicePath",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<string>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "AgentCapability",
+      "name": "AgentCapability",
+      "kind": "typeAlias",
+      "static": false,
+      "signatures": [
+        "type AgentCapability = 'DisplayOnly' | 'DisplayYesNo' | 'KeyboardOnly' | 'NoInputNoOutput' | 'KeyboardDisplay'"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": []
+    },
+    {
+      "key": "L2CAPChannel",
+      "name": "L2CAPChannel",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "L2CAPChannel"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "L2CAPChannel.mtu",
+          "name": "mtu",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "mtu: number"
+          ],
+          "description": "Largest chunk `write` accepts",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "L2CAPChannel.peer",
+          "name": "peer",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "peer: string | null"
+          ],
+          "description": "Bluetooth address of the peer, `null` once closed",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "L2CAPChannel.psm",
+          "name": "psm",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "psm: number"
+          ],
+          "description": "PSM the channel is connected on",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "L2CAPChannelEventMap",
+      "name": "L2CAPChannelEventMap",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface L2CAPChannelEventMap {\n  open: []\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "L2CAPChannelEventMap.open",
+          "name": "open",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "open: []"
+          ],
+          "description": "The channel is connected and ready for `write`",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "BluetoothError",
+      "name": "BluetoothError",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "BluetoothError"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "BluetoothError.constructor",
+          "name": "BluetoothError",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new BluetoothError(msg: string, fn?: Function, code?: string)"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "fn",
+              "type": "Function",
+              "optional": true,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "code",
+              "type": "string",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.ADVERTISE_FAILED",
+          "name": "BluetoothError.ADVERTISE_FAILED",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.ADVERTISE_FAILED(msg: string): BluetoothError"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.AGENT_CANCELED",
+          "name": "BluetoothError.AGENT_CANCELED",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.AGENT_CANCELED(msg: string): BluetoothError"
+          ],
+          "description": "The agent threw with this code: bluetoothd sees `Canceled` instead of `Rejected`",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.CHANNEL_FAILED",
+          "name": "BluetoothError.CHANNEL_FAILED",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.CHANNEL_FAILED(msg: string): BluetoothError"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.CHANNEL_PUBLISH_FAILED",
+          "name": "BluetoothError.CHANNEL_PUBLISH_FAILED",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.CHANNEL_PUBLISH_FAILED(msg: string): BluetoothError"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.CONNECTION_FAILED",
+          "name": "BluetoothError.CONNECTION_FAILED",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.CONNECTION_FAILED(msg: string, id: string): BluetoothError"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "id",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.DISCONNECT",
+          "name": "BluetoothError.DISCONNECT",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.DISCONNECT(msg: string, id: string): BluetoothError"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "id",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.NOTIFY_STATE_FAILED",
+          "name": "BluetoothError.NOTIFY_STATE_FAILED",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.NOTIFY_STATE_FAILED(msg: string): BluetoothError"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.READ_FAILED",
+          "name": "BluetoothError.READ_FAILED",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.READ_FAILED(msg: string): BluetoothError"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.SCAN_FAILED",
+          "name": "BluetoothError.SCAN_FAILED",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.SCAN_FAILED(msg: string): BluetoothError"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.SERVICE_ADD_FAILED",
+          "name": "BluetoothError.SERVICE_ADD_FAILED",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.SERVICE_ADD_FAILED(msg: string): BluetoothError"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.WRITE_FAILED",
+          "name": "BluetoothError.WRITE_FAILED",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "BluetoothError.WRITE_FAILED(msg: string): BluetoothError"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "BluetoothError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.code",
+          "name": "code",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "code: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.id",
+          "name": "id",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "id: string"
+          ],
+          "description": "Address of the device, on `CONNECTION_FAILED` and `DISCONNECT`",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "BluetoothError.name",
+          "name": "name",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "name: 'BluetoothError'"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "GattApplication",
+      "name": "GattApplication",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "GattApplication"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "GattApplication.constructor",
+          "name": "GattApplication",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new GattApplication(opts?: GattApplicationOptions)"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "GattApplicationOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattApplication.addService",
+          "name": "addService",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "addService(service: GattService): void"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "service",
+              "type": "GattService",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattApplication.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattApplication.services",
+          "name": "services",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "services: GattService[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "GattApplicationOptions",
+      "name": "GattApplicationOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface GattApplicationOptions {\n  path?: string\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "GattApplicationOptions.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": "D-Bus path to export the hierarchy at",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "GattService",
+      "name": "GattService",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "GattService"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "GattService.constructor",
+          "name": "GattService",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new GattService(opts: GattServiceOptions)"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "GattServiceOptions",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattService.addCharacteristic",
+          "name": "addCharacteristic",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "addCharacteristic(characteristic: GattCharacteristic): void"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "characteristic",
+              "type": "GattCharacteristic",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattService.characteristics",
+          "name": "characteristics",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "characteristics: GattCharacteristic[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattService.primary",
+          "name": "primary",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "primary: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattService.uuid",
+          "name": "uuid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "uuid: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "GattServiceOptions",
+      "name": "GattServiceOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface GattServiceOptions {\n  uuid: string\n  primary?: boolean\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "GattServiceOptions.primary",
+          "name": "primary",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "primary: boolean"
+          ],
+          "description": "Primary service, `true` by default",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattServiceOptions.uuid",
+          "name": "uuid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "uuid: string"
+          ],
+          "description": "128-bit service UUID",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "GattCharacteristic",
+      "name": "GattCharacteristic",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "GattCharacteristic"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "GattCharacteristic.constructor",
+          "name": "GattCharacteristic",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new GattCharacteristic(opts: GattCharacteristicOptions)"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "GattCharacteristicOptions",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristic.flags",
+          "name": "flags",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "flags: string[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristic.notifying",
+          "name": "notifying",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "notifying: boolean"
+          ],
+          "description": "Whether a peer currently has notifications enabled",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristic.read",
+          "name": "read",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "read: ReadHandler"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristic.registered",
+          "name": "registered",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "registered: boolean"
+          ],
+          "description": "Whether the hierarchy holding it is registered with an adapter",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristic.uuid",
+          "name": "uuid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "uuid: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristic.value",
+          "name": "value",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "value: Uint8Array"
+          ],
+          "description": "Current value; setting it notifies subscribers, throws when not registered",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristic.write",
+          "name": "write",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "write: WriteHandler"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "GattCharacteristicOptions",
+      "name": "GattCharacteristicOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface GattCharacteristicOptions {\n  uuid: string\n  flags?: string[]\n  value?: Uint8Array\n  read?: ReadHandler\n  write?: WriteHandler\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "GattCharacteristicOptions.flags",
+          "name": "flags",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "flags: string[]"
+          ],
+          "description": "How the value can be used: `read`, `write`, `notify`, `encrypt-read`...",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristicOptions.read",
+          "name": "read",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "read: ReadHandler"
+          ],
+          "description": "Answers reads, throw with a `code` such as `NotPermitted` to refuse",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristicOptions.uuid",
+          "name": "uuid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "uuid: string"
+          ],
+          "description": "128-bit characteristic UUID",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristicOptions.value",
+          "name": "value",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "value: Uint8Array"
+          ],
+          "description": "Initial value, served when no `read` handler is set",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristicOptions.write",
+          "name": "write",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "write: WriteHandler"
+          ],
+          "description": "Sees writes before they are accepted, throw to refuse",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "ReadOptions",
+      "name": "ReadOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface ReadOptions {\n  offset: number\n  mtu: number\n  device: string\n  link: string\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "ReadOptions.device",
+          "name": "device",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "device: string"
+          ],
+          "description": "D-Bus path of the reading device",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ReadOptions.link",
+          "name": "link",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "link: string"
+          ],
+          "description": "`BR/EDR` or `LE`",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ReadOptions.mtu",
+          "name": "mtu",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "mtu: number"
+          ],
+          "description": "MTU of the link",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ReadOptions.offset",
+          "name": "offset",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "offset: number"
+          ],
+          "description": "Offset the peer reads from",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "GattWriteOptions",
+      "name": "GattWriteOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface GattWriteOptions {\n  offset: number\n  type: string\n  mtu: number\n  device: string\n  link: string\n  prepareAuthorize: boolean\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "GattWriteOptions.device",
+          "name": "device",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "device: string"
+          ],
+          "description": "D-Bus path of the writing device",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattWriteOptions.link",
+          "name": "link",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "link: string"
+          ],
+          "description": "`BR/EDR` or `LE`",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattWriteOptions.mtu",
+          "name": "mtu",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "mtu: number"
+          ],
+          "description": "MTU of the link",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattWriteOptions.offset",
+          "name": "offset",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "offset: number"
+          ],
+          "description": "Offset the peer writes at",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattWriteOptions.prepareAuthorize",
+          "name": "prepareAuthorize",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "prepareAuthorize: boolean"
+          ],
+          "description": "The write is part of a prepared, long write",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattWriteOptions.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: string"
+          ],
+          "description": "`command`, `request` or `reliable`",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "GattCharacteristicEventMap",
+      "name": "GattCharacteristicEventMap",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface GattCharacteristicEventMap {\n  write: [value: Uint8Array, options: GattWriteOptions]\n  notifying: [notifying: boolean]\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "GattCharacteristicEventMap.notifying",
+          "name": "notifying",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "notifying: [notifying: boolean]"
+          ],
+          "description": "A peer started or stopped notifications",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "GattCharacteristicEventMap.write",
+          "name": "write",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "write: [value: Uint8Array, options: GattWriteOptions]"
+          ],
+          "description": "A peer wrote the value",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "constants",
+      "name": "constants",
+      "kind": "variable",
+      "static": false,
+      "signatures": [
+        "constants"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "constants.isSecurity",
+          "name": "constants.isSecurity",
+          "kind": "function",
+          "static": true,
+          "signatures": [
+            "constants.isSecurity(level: number): boolean"
+          ],
+          "description": "Whether `level` is one of `security`",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "level",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "boolean",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "constants.security",
+          "name": "constants.security",
+          "kind": "variable",
+          "static": true,
+          "signatures": [
+            "constants.security: {\n  readonly LOW: number\n  readonly MEDIUM: number\n  readonly HIGH: number\n  readonly FIPS: number\n}"
+          ],
+          "description": "L2CAP security levels, `BT_SECURITY_*` in the kernel",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    }
+  ],
+  "subpaths": [],
+  "generatedAt": "2026-10-13T15:12:40.294Z"
+}

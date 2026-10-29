@@ -1,0 +1,40 @@
+---
+name: build-a-pear-app
+description: Use when scaffolding a new Pear application — choosing the desktop (Electron + Bare worker) or terminal (standalone Bare binary) shape, the package.json fields pear-runtime actually reads, and the end-to-end path for building a peer-to-peer chat app from scratch.
+---
+
+# Build a Pear App
+
+A Pear app is one of two shapes, both built around embedding the
+`pear-runtime` (Pear OTA) library rather than around a `pear` CLI command:
+
+- **Desktop** — an Electron app where the main process is a thin shell that
+  spawns a Bare worker over IPC. The Bare worker (not the renderer) owns
+  `pear-runtime`, Hyperswarm, and Hypercore; the renderer stays a normal web
+  view with no P2P modules loaded directly. See the
+  `hello-pear-electron` template.
+- **Terminal** — a standalone Bare binary with no Electron and no HTML/CSS/JS
+  UI at all: CLIs, REPLs, TUIs, services. The Pear CLI itself is built this
+  way. See the `hello-pear-bare` template, the `hello-pear-daemon` sibling
+  for short-lived CLI commands that shouldn't block on an update check, or
+  `hello-pear-qvac-tui` for a terminal app that runs a language model on the
+  user's machine.
+
+In `package.json`, `pear-runtime` reads the top-level `version` field (bump
+it before every OTA update) and `upgrade` (a `pear://` link to the seeded
+app to update from). The `pear.stage.*` block (`entrypoints`, `ignore`,
+`only`, `purge`) controls what `pear stage` syncs — there is no `pear.type`
+or `permissions` field.
+
+Getting-started path: https://docs.pears.com/p2p/getting-started/
+Full walkthrough (build a P2P chat app end to end):
+https://docs.pears.com/p2p/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat/
+Desktop architecture (main/renderer/worker split):
+https://docs.pears.com/pear/explanation/pear-desktop-architecture/
+Terminal template (hello-pear-bare):
+https://docs.pears.com/p2p/getting-started/from-a-template/start-from-hello-pear-bare/
+Short-lived CLI template (hello-pear-daemon):
+https://docs.pears.com/p2p/getting-started/from-a-template/start-from-hello-pear-daemon/
+On-device AI terminal template (hello-pear-qvac-tui):
+https://docs.pears.com/p2p/getting-started/from-a-template/start-from-hello-pear-qvac-tui/
+Configuration reference: https://docs.pears.com/pear/reference/pear/configuration/

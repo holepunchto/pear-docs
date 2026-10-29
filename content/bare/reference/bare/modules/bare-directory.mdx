@@ -1,0 +1,626 @@
+---
+title: "bare-directory"
+description: "Capability based directory access for Bare"
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "0.1.0"
+---
+
+<mark style={{ backgroundColor: '#8484ff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>experimental</mark>
+
+[`bare-directory`](https://github.com/holepunchto/bare-directory) — Capability based directory access for Bare. It is a native addon.
+
+```sh
+npm i bare-directory
+```
+
+## Usage
+
+```js
+const { Directory } = require('bare-directory')
+
+const root = await Directory.open('/srv/data')
+
+const file = await root.openFile('notes.txt', { read: true, write: true, create: true })
+
+await file.write(Buffer.from('hello'))
+
+const images = (await root.openDirectory('images')).restrict(['list', 'lookup', 'read'])
+
+for (const { name, type } of await images.list()) console.log(name, type)
+```
+
+`DirectorySync` and `FileSync` provide the same API synchronously. See the [API](#api) below for the full API and [Rights](#rights) for the available rights.
+
+## API
+
+### Directory
+
+#### `Directory.close(): void`
+
+Close the directory. Operations already in progress finish first, and
+later ones fail with `EBADF`. Handles are also closed when garbage
+collected.
+
+#### `createDirectory(name: string): Promise<void>`
+
+Create the directory `name`. Needs `create`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+
+#### `Directory.open(path: string, opts?: OpenOptions): Promise<Directory>`
+
+Open the directory at `path`. This is the only operation that takes a path,
+and is meant for whoever hands out the capabilities.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | `string` | — | — |
+| `opts?` | `OpenOptions` | — | — |
+
+#### `list(): Promise<Entry[]>`
+
+List the entries of the directory. Needs `list`. Fails with `EILSEQ` if a
+name isn't valid UTF-8.
+
+#### `openDirectory(name: string): Promise<Directory>`
+
+Open the directory `name` with the rights of this one. Needs `lookup`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+
+#### `openFile(name: string, opts?: OpenFileOptions): Promise<File>`
+
+Open the regular file `name`. Needs `lookup`, and the right of the same
+name for `read`, `write`, `append`, `create` and `truncate`. The file gets
+the rights it was opened for, plus `setTimes`, and `truncate` if opened for
+writing, where this directory has them. Symbolic links fail with `ELOOP`,
+and anything that isn't a regular file with `EISDIR` or `ENOTSUP`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+| `opts?` | `OpenFileOptions` | — | — |
+
+#### `readLink(name: string): Promise<string>`
+
+Read the target of the symbolic link `name` as text. Needs `lookup`. Fails
+with `EILSEQ` if the target isn't valid UTF-8.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+
+#### `removeDirectory(name: string): Promise<void>`
+
+Remove the empty directory `name`. Needs `remove`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+
+#### `removeFile(name: string): Promise<void>`
+
+Remove the entry `name`, which must not be a directory. Needs `remove`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+
+#### `Directory.rename`
+
+```ts
+rename(name: string, directory: Directory | DirectorySync, target?: string, opts?: RenameOptions): Promise<void>
+```
+
+Move the entry `name` to `target`, defaulting to `name`, in `directory`,
+which may be this one. Needs `rename` on both directories.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+| `directory` | `Directory` \| `DirectorySync` | — | — |
+| `target?` | `string` | — | — |
+| `opts?` | `RenameOptions` | — | — |
+
+#### `restrict(rights: Right[]): Directory`
+
+Get a new handle to the directory with only those `rights` that this one has.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rights` | [`Right[]`](#right) | — | — |
+
+#### `Directory.rights: Right[]`
+
+The rights of the directory.
+
+#### `Directory.setTimes(atime: bigint | null, mtime: bigint | null): Promise<void>`
+
+Set the access and modification times of the directory, leaving either
+unchanged if `null`. Needs `setTimes`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `atime` | `bigint` \| `null` | — | — |
+| `mtime` | `bigint` \| `null` | — | — |
+
+#### `stat(name?: string): Promise<Stat>`
+
+Get the metadata of the entry `name`, or of the directory itself if `name`
+is omitted. Needs `lookup` for an entry.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name?` | `string` | — | — |
+
+### DirectorySync
+
+#### `DirectorySync.close(): void`
+
+Close the directory. Handles are also closed when garbage collected.
+
+#### `createDirectory(name: string): void`
+
+Create the directory `name`. Needs `create`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+
+#### `DirectorySync.open(path: string, opts?: OpenOptions): DirectorySync`
+
+Open the directory at `path`. This is the only operation that takes a path,
+and is meant for whoever hands out the capabilities.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | `string` | — | — |
+| `opts?` | `OpenOptions` | — | — |
+
+#### `list(): Entry[]`
+
+List the entries of the directory. Needs `list`. Fails with `EILSEQ` if a
+name isn't valid UTF-8.
+
+#### `openDirectory(name: string): DirectorySync`
+
+Open the directory `name` with the rights of this one. Needs `lookup`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+
+#### `openFile(name: string, opts?: OpenFileOptions): FileSync`
+
+Open the regular file `name`. Needs `lookup`, and the right of the same
+name for `read`, `write`, `append`, `create` and `truncate`. The file gets
+the rights it was opened for, plus `setTimes`, and `truncate` if opened for
+writing, where this directory has them. Symbolic links fail with `ELOOP`,
+and anything that isn't a regular file with `EISDIR` or `ENOTSUP`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+| `opts?` | `OpenFileOptions` | — | — |
+
+#### `readLink(name: string): string`
+
+Read the target of the symbolic link `name` as text. Needs `lookup`. Fails
+with `EILSEQ` if the target isn't valid UTF-8.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+
+#### `removeDirectory(name: string): void`
+
+Remove the empty directory `name`. Needs `remove`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+
+#### `removeFile(name: string): void`
+
+Remove the entry `name`, which must not be a directory. Needs `remove`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+
+#### `DirectorySync.rename`
+
+```ts
+rename(name: string, directory: Directory | DirectorySync, target?: string, opts?: RenameOptions): void
+```
+
+Move the entry `name` to `target`, defaulting to `name`, in `directory`,
+which may be this one. Needs `rename` on both directories.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | — | — |
+| `directory` | `Directory` \| `DirectorySync` | — | — |
+| `target?` | `string` | — | — |
+| `opts?` | `RenameOptions` | — | — |
+
+#### `restrict(rights: Right[]): DirectorySync`
+
+Get a new handle to the directory with only those `rights` that this one has.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rights` | [`Right[]`](#right) | — | — |
+
+#### `DirectorySync.rights: Right[]`
+
+The rights of the directory.
+
+#### `DirectorySync.setTimes(atime: bigint | null, mtime: bigint | null): void`
+
+Set the access and modification times of the directory, leaving either
+unchanged if `null`. Needs `setTimes`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `atime` | `bigint` \| `null` | — | — |
+| `mtime` | `bigint` \| `null` | — | — |
+
+#### `stat(name?: string): Stat`
+
+Get the metadata of the entry `name`, or of the directory itself if `name`
+is omitted. Needs `lookup` for an entry.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name?` | `string` | — | — |
+
+### File
+
+#### `File.close(): void`
+
+Close the file. Operations already in progress finish first, and later ones
+fail with `EBADF`. Handles are also closed when garbage collected.
+
+#### `read(buffer: Uint8Array, position?: number): Promise<number>`
+
+Read into `buffer` from `position`, defaulting to `0`, and resolve with the
+number of bytes read. Needs `read`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `buffer` | `Uint8Array` | — | — |
+| `position?` | `number` | — | — |
+
+#### `restrict(rights: Right[]): File`
+
+Get a new handle to the file with only those `rights` that this one has.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rights` | [`Right[]`](#right) | — | — |
+
+#### `File.rights: Right[]`
+
+The rights of the file.
+
+#### `File.setTimes(atime: bigint | null, mtime: bigint | null): Promise<void>`
+
+Set the access and modification times of the file, leaving either
+unchanged if `null`. Needs `setTimes`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `atime` | `bigint` \| `null` | — | — |
+| `mtime` | `bigint` \| `null` | — | — |
+
+#### `stat(): Promise<Stat>`
+
+Get the metadata of the file.
+
+#### `sync(): Promise<void>`
+
+Flush the file to storage.
+
+#### `truncate(size: number): Promise<void>`
+
+Truncate the file to `size` bytes. Needs `truncate`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `size` | `number` | — | — |
+
+#### `write(buffer: Uint8Array, position?: number): Promise<number>`
+
+Write `buffer` at `position`, defaulting to `0`, and resolve with the
+number of bytes written. A file opened only for appending always writes at
+its end. Needs `write` or `append`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `buffer` | `Uint8Array` | — | — |
+| `position?` | `number` | — | — |
+
+### FileSync
+
+#### `FileSync.close(): void`
+
+Close the file. Handles are also closed when garbage collected.
+
+#### `read(buffer: Uint8Array, position?: number): number`
+
+Read into `buffer` from `position`, defaulting to `0`, and return the
+number of bytes read. Needs `read`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `buffer` | `Uint8Array` | — | — |
+| `position?` | `number` | — | — |
+
+#### `restrict(rights: Right[]): FileSync`
+
+Get a new handle to the file with only those `rights` that this one has.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rights` | [`Right[]`](#right) | — | — |
+
+#### `FileSync.rights: Right[]`
+
+The rights of the file.
+
+#### `FileSync.setTimes(atime: bigint | null, mtime: bigint | null): void`
+
+Set the access and modification times of the file, leaving either
+unchanged if `null`. Needs `setTimes`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `atime` | `bigint` \| `null` | — | — |
+| `mtime` | `bigint` \| `null` | — | — |
+
+#### `stat(): Stat`
+
+Get the metadata of the file.
+
+#### `sync(): void`
+
+Flush the file to storage.
+
+#### `truncate(size: number): void`
+
+Truncate the file to `size` bytes. Needs `truncate`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `size` | `number` | — | — |
+
+#### `write(buffer: Uint8Array, position?: number): number`
+
+Write `buffer` at `position`, defaulting to `0`, and return the number of
+bytes written. A file opened only for appending always writes at its end.
+Needs `write` or `append`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `buffer` | `Uint8Array` | — | — |
+| `position?` | `number` | — | — |
+
+### Constants and variables
+
+#### `rights: Right[]`
+
+The names of all rights.
+
+### Types
+
+#### `Right`
+
+```ts
+type Right = | 'list'
+  | 'lookup'
+  | 'create'
+  | 'remove'
+  | 'rename'
+  | 'read'
+  | 'write'
+  | 'append'
+  | 'truncate'
+  | 'setTimes'
+```
+
+A right of a directory or file handle:
+
+- `list`: list the entries of a directory.
+- `lookup`: open entries, get their metadata, and read symbolic links.
+- `create`: create files and directories.
+- `remove`: remove entries, including replacing one by renaming.
+- `rename`: move entries between directories. Both directories need it.
+- `read`: read files.
+- `write`: write files anywhere.
+- `append`: write files only at their end.
+- `truncate`: truncate files.
+- `setTimes`: set the access and modification times.
+
+Operations without the right they need fail with `ENOTCAPABLE`.
+
+#### `Stat`
+
+```ts
+interface Stat {
+  type: 'file' | 'directory' | 'symlink' | 'other'
+  size: bigint
+  ino: bigint
+  nlink: bigint
+  atime: bigint
+  mtime: bigint
+  ctime: bigint
+}
+```
+
+The metadata of an entry. Times are in nanoseconds since the Unix epoch.
+
+#### `Entry`
+
+```ts
+interface Entry {
+  name: string
+  type: Stat['type']
+}
+```
+
+An entry of a directory.
+
+## Rights
+
+`Directory` and `File` run their operations on the thread pool and return promises, except `close()` and `restrict()`, which are synchronous, and `DirectorySync` and `FileSync` are their synchronous counterparts. Names are single path components, and names and rights are checked before an operation starts.
+
+A handle carries a set of rights. `open()` takes them from `opts.rights` and defaults to all of them, `openDirectory()` passes on the rights of its parent, and `restrict()` returns a handle with fewer. An operation without the right it needs fails with `ENOTCAPABLE`. The type comment of `Right` says `remove` is needed to replace an entry by renaming, but `rename()` needs it on the target directory whenever `replace` is `true`, even when nothing is replaced.
+
+| Right | Needed by |
+| --- | --- |
+| `list` | `list()` |
+| `lookup` | `openDirectory()`, `openFile()`, `stat(name)`, and `readLink()` |
+| `create` | `createDirectory()`, and `openFile()` with `create` |
+| `remove` | `removeFile()` and `removeDirectory()`, and `rename()` on the target directory unless `opts.replace` is `false`, even when no entry is replaced |
+| `rename` | `rename()`, on both directories |
+| `read` | `openFile()` with `read`, then `read()` on the file |
+| `write` | `openFile()` with `write`, then `write()` anywhere in the file |
+| `append` | `openFile()` with `append`, then `write()` at the end of the file |
+| `truncate` | `openFile()` with `truncate`, and `truncate()` on a file opened with `write` |
+| `setTimes` | `setTimes()` |
+
+A file opened from a directory gets only the rights its open flags ask for, plus `setTimes`, and `truncate` when it is opened for writing, each only if the directory has it.
+
+## Options
+
+The `.d.ts` declares these option types without exporting them.
+
+### `OpenOptions`
+
+Options for `Directory.open()` and `DirectorySync.open()`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `rights` | All rights | The rights of the directory. See [Rights](#rights). |
+
+### `OpenFileOptions`
+
+Options for `openFile()`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `read` | `true` unless `write` or `append` is set | Open the file for reading. |
+| `write` | `false` | Open the file for writing anywhere. |
+| `append` | `false` | Open the file for writing only at its end. |
+| `create` | `false` | Create the file if it doesn't exist. |
+| `exclusive` | `false` | Fail with `EEXIST` if the file exists. Without `create`, fails with `EINVAL`. |
+| `truncate` | `false` | Truncate the file to empty. Without `write`, fails with `EINVAL`. |
+
+### `RenameOptions`
+
+Options for `rename()`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `replace` | `true` | Replace an existing target. With `false`, an existing target fails with `EEXIST`. While it is `true`, `rename()` needs `remove` on the target directory, even when no entry is replaced. |
+
+## Security model
+
+Only opening a directory by path needs ambient authority. It's meant for whoever hands out the capabilities, such as an embedder. Every other operation is relative to an open handle.
+
+- A name is a single path component. Empty names, `.`, `..`, names with `/` or NUL, and names longer than 255 bytes fail with `EINVAL`. On Windows, so do names with `\ : " * ? < > |` or control characters, names ending in a dot or space, and device names like `CON`, `NUL.txt`, or `COM` followed by a superscript digit.
+- Symbolic links are never followed. Opening one fails with `ELOOP`, and `readLink()` returns its target as text.
+- Only regular files and directories can be opened. Devices, FIFOs, and sockets fail with `ENOTSUP` and are never opened, so opening them has no side effects. On Windows, the same goes for reparse points that aren't links, such as cloud file placeholders.
+- A directory that is moved while open still refers to the same directory.
+- Rights can only be narrowed. Anything opened from a directory gets at most its rights, and `restrict()` can only remove rights. An operation without the right it needs fails with `ENOTCAPABLE`.
+- `list()` and `readLink()` fail with `EILSEQ` on names that aren't valid UTF-8, as these can't be represented as strings.
+
+Names are checked in JavaScript and again in native code. If an invalid name reaches native code, the JavaScript checks were bypassed, and the process is aborted instead of risking an escape.
+
+The kernel also enforces the confinement, as far as each platform allows:
+
+| Platform | Enforcement                                                                                                                                                     |
+| :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Linux    | `openat2()` of a single name with `RESOLVE_BENEATH`, `RESOLVE_NO_SYMLINKS`, and `RESOLVE_NO_MAGICLINKS` from Linux 5.6, otherwise `openat()` with `O_NOFOLLOW`. |
+| Android  | `openat()` of a single name with `O_NOFOLLOW`. `openat2()` is never used, as Android kills apps that call it.                                                   |
+| macOS    | `openat()` of a single name with `O_NOFOLLOW_ANY`.                                                                                                              |
+| iOS      | `openat()` of a single name with `O_NOFOLLOW_ANY`.                                                                                                              |
+| Windows  | `NtCreateFile()` of a single name relative to the directory handle, without following reparse points. Requires Windows 10 1809 or later.                        |
+
+## See also
+
+- [`bare-wasi`](/bare/reference/bare/modules/bare-wasi#host) — `HostDirectory` exposes a `DirectorySync` to a WebAssembly guest.
+- [`bare-fs`](/bare/reference/bare/modules/bare-fs) — path-based file system access with the ambient authority of the process.
+- [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.
