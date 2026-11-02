@@ -103,9 +103,9 @@ pear info --json pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o \
              else error("this Pear does not report targets") end'
 ```
 
-`jq -e` exits non-zero when a platform is missing, when `targets` is absent (a Pear older than 3.7.0), or when no `info` object came back. Select on `"tag": "info"`: every line of the `--json` stream is its own JSON document, so a filter without it also runs on the `retrieving` and `keys` lines. A link with no data on this machine yet prints `[ Empty ]` and sends an `empty` object instead. That includes the first run on a machine that has never held the link, such as a fresh CI runner, even when a seeder is up: the metadata syncs in the background, and a second run reads it. Run the check on a machine that has staged to the link, or retry it as the CI step below does.
+`jq -e` exits non-zero when a platform is missing, when `targets` is absent (a Pear older than 3.7.0), or when no `info` object came back. Select on `"tag": "info"`: every line of the `--json` stream is its own JSON document, so a filter without it also runs on the `retrieving` and `keys` lines. A link with no data on this machine yet prints `[ Empty ]` and sends an `empty` object instead. That includes the first run on a machine that has never held the link, such as a fresh CI runner, even when a seeder is up: the metadata syncs in the background, and a second run reads it. Run the check on a machine that has staged to the link, or retry it, as the [GitHub Actions check](/pear/how-to/operate-an-app/github-actions/publish-with-github-actions#check-which-platforms-reached-the-link) does.
 
-The sizes come from the drive's metadata. `pear info` does not download the blobs to report them, so you can run the check on a machine that never built the release, such as a CI job or a teammate's laptop.
+The sizes come from the drive's metadata and the files' block maps. `pear info` does not download the files' contents to report them, so you can run the check on a machine that never built the release, such as a CI job or a teammate's laptop.
 
 ## Run the same checks in CI
 
@@ -122,7 +122,7 @@ Fail the job before it stages anything. This step reuses `build.ndjson` from ste
     jq -e -s 'any(.[]; .tag == "final" and .data.success == true) and all(.[]; .tag != "error")' \
       build.ndjson > /dev/null || { echo "pear build did not finish cleanly"; exit 1; }
     found=$(jq -r 'select(.tag == "executable") | .data.file
-                   | capture(".*[/\\\\]by-arch[/\\\\](?<arch>[^/\\\\]+)[/\\\\]app[/\\\\]").arch' build.ndjson | sort -u)
+                   | capture(".*[/\\\\]by-arch[/\\\\](?<arch>[^/\\\\]+)[/\\\\]app[/\\\\]").arch' build.ndjson | tr -d '\r' | sort -u)
     status=0
     for arch in $EXPECTED; do
       grep -qxF "$arch" <<< "$found" || { echo "missing: $arch"; status=1; }
@@ -130,7 +130,7 @@ Fail the job before it stages anything. This step reuses `build.ndjson` from ste
     exit $status
 ```
 
-`shell: bash` makes the step stop on a failed command, and it also works on a Windows runner through Git Bash.
+`shell: bash` makes the step stop on a failed command, and it also works on a Windows runner through Git Bash. The `tr -d '\r'` is for Windows, where a native `jq.exe` ends its lines with CRLF.
 
 After the stage, run the check from step 4 against the link you staged to. It reads the link from the network, so run it where `pear info` can reach a seeder. For a link that `pear-ci` staged, see [Check which platforms reached the link](/pear/how-to/operate-an-app/github-actions/publish-with-github-actions#check-which-platforms-reached-the-link).
 

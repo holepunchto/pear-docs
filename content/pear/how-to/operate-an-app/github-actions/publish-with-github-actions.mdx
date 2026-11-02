@@ -8,7 +8,7 @@ product: pear
 schemaType: TechArticle
 ---
 
-The simplest way to publish and update a Pear app is to let CI do it. The [`pear-ci` GitHub Action](https://github.com/holepunchto/actions/blob/main/pear-ci/action.yml) stages a directory from your repository into a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) on every push, so shipping a new version is just a `git push`. There is no local `pear touch`, `pear seed`, or `pear stage` to run by hand, and nothing to keep online between releases.
+The simplest way to publish and update a Pear app is to let CI do it. The [`pear-ci` GitHub Action](https://github.com/holepunchto/actions/blob/main/pear-ci/action.yml) stages a directory from your repository into a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) on every push, so shipping a new version is just a `git push`. There is no local `pear touch` or `pear stage` to run by hand. Peers still fetch the link from a seeder, so keep one running, such as [`pear seed`](/pear/reference/pear/cli#pear-seed) on an always-on machine.
 
 This is the goal-oriented recipe. If you need the full-control flow—release lines, provision, and multisig—use [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment) instead. The two are not mutually exclusive: CI is the fast path for development and staging links, while the manual flow gives you production gating.
 
@@ -137,6 +137,8 @@ A stage that succeeds does not prove it carried every platform. From Pear 3.7.0,
     needs: stage
     runs-on: ubuntu-latest
     steps:
+      - name: Install Pear
+        run: npx --yes pear versions > /dev/null
       - name: Check every platform reached the link
         env:
           LINK: pear://<drive-key>
@@ -147,6 +149,7 @@ A stage that succeeds does not prove it carried every platform. From Pear 3.7.0,
             grep -q '"tag":"info"' info.ndjson && break
             sleep 10
           done
+          grep -q '"tag":"info"' info.ndjson || { echo "::error::pear info returned no info object after 3 tries. Is the link seeded?"; exit 1; }
           jq -e --arg expected "$EXPECTED" 'select(.tag == "info") | .data
               | if has("targets") then
                   ($expected | split(" ")) - [.targets[].platform]
@@ -154,7 +157,7 @@ A stage that succeeds does not prove it carried every platform. From Pear 3.7.0,
                 else error("this Pear does not report targets") end' info.ndjson
 ```
 
-The loop is there because the first `pear info` on a fresh runner can print `[ Empty ]` while the metadata syncs. The step fails and names the missing platforms. If it fails with no `info` object after three tries, `pear info` found no peer with the link: confirm [the link is seeded](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#seed-the-link). The same check, run by hand, is step 4 of [Preflight a release before staging](/pear/how-to/operate-an-app/manual-deployment/preflight-a-release#4-after-staging-check-which-platforms-reached-the-link).
+The first step is there because on a fresh runner the first `npx pear` only installs Pear and exits without running the command. The loop is there because the first `pear info` on a fresh runner can print `[ Empty ]` while the metadata syncs. The check fails and names the missing platforms. `npx` runs the Pear on the production channel, so until 3.7.0 is there, the check fails with `this Pear does not report targets`. If it reports no `info` object after three tries, `pear info` found no peer with the link: confirm [the link is seeded](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#seed-the-link). The same check, run by hand, is step 4 of [Preflight a release before staging](/pear/how-to/operate-an-app/manual-deployment/preflight-a-release#4-after-staging-check-which-platforms-reached-the-link).
 
 ## Producing the build to stage
 
