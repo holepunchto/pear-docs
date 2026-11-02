@@ -128,6 +128,30 @@ Before publishing for real, set `dry-run: true` in the workflow. The action comp
 
 Read the diff in the Actions log. Look for the files you expect, no surprise additions (`.DS_Store`, editor swap files, secrets), and sensible byte counts. When it looks right, set `dry-run: false` and push. Every subsequent push to `main` then stages and publishes automatically.
 
+## Check which platforms reached the link
+
+A stage that succeeds does not prove it carried every platform. From Pear 3.7.0, `pear info` lists each `by-arch/` folder in the drive under `Targets:`, so a second job can fail the run when one is missing. This job reads the link from the network on a fresh runner, so it needs [Pear 3.7.0 or later](/pear/reference/pear/cli#pear-info) and something seeding the link:
+
+```yaml skip="ci-config"
+  verify:
+    needs: stage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check every platform reached the link
+        env:
+          LINK: pear://<drive-key>
+          EXPECTED: darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64
+        run: |
+          npx --yes pear info --json "$LINK" | grep '^{' \
+            | jq -e --arg expected "$EXPECTED" 'select(.tag == "info") | .data
+                | if has("targets") then
+                    ($expected | split(" ")) - [.targets[].platform]
+                    | if length == 0 then true else error("missing: " + join(" ")) end
+                  else error("this Pear does not report targets") end'
+```
+
+The step fails and names the missing platforms. If it fails with no `info` object, `pear info` found no peer with the link: confirm [the link is seeded](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#seed-the-link). The same check, run by hand, is step 4 of [Preflight a release before staging](/pear/how-to/operate-an-app/manual-deployment/preflight-a-release#4-after-staging-check-which-platforms-reached-the-link).
+
 ## Producing the build to stage
 
 `pear-ci` stages whatever is in `target`—the action itself has no idea whether that directory came from a desktop or a mobile build. To build and sign a desktop directory on CI first, pair it with [`make-pear-app`](/pear/reference/ci-and-release/github-actions#make-pear-app): one job produces signed, notarized distributables (see [Build and sign desktop apps in CI](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci)), and `pear-ci` stages the assembled deployment directory to your stable `pear://` link.

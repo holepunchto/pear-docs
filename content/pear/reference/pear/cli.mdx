@@ -15,7 +15,7 @@ The Command Line Interface is the primary interface for Pear Development.
 <include>../../../_snippets/_interactive-menu-callout.mdx</include>
 
 <Callout type="info">
-This page tracks **Pear 3.6.0**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/pear/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
+This page tracks **Pear 3.7.0**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/pear/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
 
 Anything a release adds or removes carries an inline badge—<Since v="3.1.0" /> or <Until v="3.1.0" />—so you can tell whether your build has it. Run `pear versions` to check what you are on, and see the [Release Overview](/pear/release-overview) for the full history.
 </Callout>
@@ -69,6 +69,8 @@ Run `npx pear` to move onto the v3 platform. From v3 on, the CLI is a standalone
 <Since v="3.2.0" /> Run `pear --menu` for an interactive, terminal-driven menu that walks through the available commands instead of remembering flags—handy when exploring the CLI for the first time. It requires an interactive terminal (TTY); running it from a script or a non-interactive shell exits immediately with `pear --menu requires an interactive terminal`. See [Browse commands with the interactive menu](/pear/how-to/browse-commands-with-the-interactive-menu) for a walkthrough.
 
 <Since v="3.3.0" /> Every argument and flag now carries a per-field hint covering its constraints, its interactions with other flags, and how it fails. The menu surfaces those hints as you move through a command's fields; `pear help <command>` does not show them.
+
+<Since v="3.7.0" /> The command list is grouped by workflow: **Ship** (`touch`, `stage`, `seed`, `build`), **Install & inspect** (`info`, `changelog`, `dump`, `install`), **Release** (`provision` and `multisig`), **Network** (`blind-relay`, `blind-peer`, `identity`), and **Platform** (`sidecar`, `cores`, `gc`, `data`, `versions`, `help`), which starts collapsed. Each group has a help panel, and a filter keeps the headers of the groups it matches. See [Find a command](/pear/how-to/browse-commands-with-the-interactive-menu#find-a-command).
 
 ## Next-step hints
 <VersionSection since="3.3.0" />
@@ -463,7 +465,7 @@ Seeding will sparsely replicate the application. This means the entire history o
   --help|-h                         Show help
 ```
 
-`<link>` accepts a versioned verlink, but only its key is used—`pear seed` always replicates the full, latest history and is never pinned to that version. `--stats-interval` defaults to 500 milliseconds with the live UI on, or 3000 milliseconds under `--no-tty`.
+`<link>` accepts a versioned verlink, but only its key is used—`pear seed` always replicates the full, latest history and is never pinned to that version. `--stats-interval` defaults to 500 milliseconds with the live UI on, or 3000 milliseconds under `--no-tty`. <Since v="3.7.0" /> The `Seeding:` row shows the link's origin, `pear://<key>`, instead of the argument as typed, so a verlink's version and any quotes around the link no longer appear in it. On 3.6.0 and earlier the row echoed the argument as typed.
 
 <Since v="3.2.0" /> `--until-sync <key>` takes a peer's public key (z32) and exits automatically once every specified peer has fully synced—pass the flag multiple times to wait for more than one peer. Useful for scripting a seed session that should end on its own instead of running indefinitely. The key to pass is the one printed after each peer join or peer sync line in the log below the stats table—or, for the machine you are on, what [`pear identity seed`](#pear-identity) prints <Since v="3.5.0" />.
 
@@ -542,6 +544,32 @@ The request asks the blind peer to **announce** the drive, but that only sticks 
 
 <Callout type="info">
 <Since v="3.6.0" /> The terminal stats table gains an `Uptime:` row between `Whoami:` and `Network:`. It shows how long this seed session has been running, as `45s`, `3m 12s`, `1h 0m 5s`, or `2d 3h 4m 5s`. Under `--no-tty` there is no row of its own. The network line ends with the uptime instead, as in `--- network 0 peers, upload 0B - 0B/s, download 0B - 0B/s, uptime 3m 12s`. The [`--json`](#json-output) `stats` data gains an `uptime` field, in milliseconds since the session started. On 3.5.0 and earlier none of these exist.
+</Callout>
+
+<a name="pear-seed-network-status"></a>
+
+<Callout type="info">
+<Since v="3.7.0" /> When the DHT is not healthy, the `Network:` row (under `--no-tty`, the network line) shows a status word in place of the peer and transfer counts:
+
+| Word | Meaning |
+| --- | --- |
+| `joining` | The node has not finished bootstrapping into the DHT |
+| `unstable` | The DHT reports degraded connectivity |
+| `unreachable` | The DHT reports the node offline |
+
+The words come from three booleans, and `joining` takes precedence over `unstable`, which takes precedence over `unreachable`. The [`--json`](#json-output) `stats` data gains them as `dht`: `{ "bootstrapped": true, "degraded": false, "online": true }`. A healthy node prints the counts as before. Under `--no-tty` the status word replaces the whole network line, including its `uptime` suffix. On 3.6.0 and earlier the row always shows the counts.
+</Callout>
+
+<a name="pear-seed-sidecar-loss"></a>
+
+<Callout type="info">
+<Since v="3.7.0" /> `pear seed` exits with code `1` when its connection to the sidecar closes, for example after [`pear sidecar shutdown`](#pear-sidecar) or a sidecar crash. The live view prints `x-x sidecar lost`, `--no-tty` prints `x-x sidecar disconnected`, and [`--json`](#json-output) emits an `error` object:
+
+```json
+{"cmd":"seed","tag":"error","data":{"success":false,"code":"ERR_CONNECTION","message":"sidecar disconnected"}}
+```
+
+A process supervisor such as systemd or launchd can restart the seeder on that exit. On 3.6.0 and earlier the command keeps running with the last stats frozen on screen and no error, so the seeder looks alive but serves nothing.
 </Callout>
 
 ### `pear install <link>`
@@ -732,6 +760,7 @@ Supply no argument to view platform information.
 
 `--key`, `--metadata`, and `--multisig` select sections: name any of them and only those print, in the order key, metadata, multisig. `--manifest` is not a selector—it prints the manifest and stops, so pairing it with `--metadata` or `--multisig` yields the manifest alone, and pairing it with `--key` still prints the key above it.
 
+<VersionGate since="3.6.0" until="3.7.0">
 The default output prints the link, a `keys` table, and an `info` table. <Since v="3.6.0" /> The `info` table gains a `writable` row between `productName` and `length`:
 
 ```text
@@ -752,27 +781,86 @@ The default output prints the link, a `keys` table, and an `info` table. <Since 
 ```
 
 The three `blobs.*` rows appear only once the drive's blobs core is open.
+</VersionGate>
+
+<VersionGate since="3.7.0">
+<a name="pear-info-targets"></a>
+
+<Since v="3.7.0" /> The default output is a list of labeled rows in place of the `keys` and `info` tables. This is `pear info` on a staged, multi-architecture app that this machine does not own:
+
+```text
+  Info:          pear://t7m5jminnexz7eis4jnhedkk6wzppdd3uco1zpmxw18b1fp4wqdy
+  Verlink:       pear://0.6.t7m5jminnexz7eis4jnhedkk6wzppdd3uco1zpmxw18b1fp4wqdy
+  App:           pear-chat@1.0.1
+  Product Name:  PearChat
+  Writable:      false
+
+  Targets:
+    darwin-arm64 (6.3MB)
+    linux-x64 (4.2MB)
+    win32-x64 (3.1MB)
+
+  Drive Key:     t7m5jminnexz7eis4jnhedkk6wzppdd3uco1zpmxw18b1fp4wqdy
+  Drive Fork:    0
+  Drive Length:  6
+  Drive Size:    985B
+
+  Blobs Key:     hd8s64aejn8jdc77qrohf6zcg5t3znfoxtgg7wkfry95prdsgfmy
+  Blobs Fork:    0
+  Blobs Length:  19
+  Blobs Size:    13.6MB
+
+  Discovery Key: eii8fiaoobih6b93dyrbp8g5y76wf9zjbosrydzzmz9riafp8sfo
+  Content Key:   hd8s64aejn8jdc77qrohf6zcg5t3znfoxtgg7wkfry95prdsgfmy
+
+  Upgrade:       pear://rbo766j9chy3fwg4id785ixhdt51w3rjwzmhp5ycgfmerq7wkrny
+```
+
+`Info:` is the link you passed, `Verlink:` is its versioned form for this machine's current state, and `App:` is `<name>@<version>`, or just the name when the manifest has no version. `Product Name:` and `Upgrade:` are left out when the manifest does not set them, and the `Blobs *` rows appear only once the drive's blobs core is open. While it fetches, a terminal shows `loading...` under `Info:`.
+
+**`Targets:`** lists one line per `by-arch/<platform>-<arch>` folder in the drive, with the folder's size. The size is the sum of the byte lengths of the blobs behind the folder's files, read from the drive's metadata, so `pear info` does not download the blobs to report it. It is how you read which platforms a release carries and how large each one is from the link alone, with no access to the machine that built it. The line is omitted when the drive has no `by-arch/` folder, which is the case for the platform link `pear info` prints with no arguments. `pear info` joins the swarm to fetch the metadata, so on a machine that holds nothing yet it prints `[ Empty ]` until a peer that has the link is reachable.
+
+<Callout type="warn">
+The new layout breaks a script that parses the old `keys` and `info` tables. Read [`--json`](#json-output) instead: `retrieving` carries `link` in place of `z32`, and the `info` object gains `targets` and `blobs.key`.
+</Callout>
+</VersionGate>
 
 With [`--json`](#json-output), a link that has data arrives as tagged objects before the closing `final`:
 
 | Tag | `data` |
 | --- | --- |
-| `retrieving` | `z32`, `onlyShowKey` |
+| `retrieving` | `link` <Since v="3.7.0" /> (`z32` <Until v="3.7.0" />), `onlyShowKey` |
 | `keys` | `project`, `content`, `discovery` |
-| `info` | `link`, `verlink`, `name`, `version`, `productName`, `upgrade`, `writable` <Since v="3.6.0" />, `length`, `byteLength`, `blobs`, `fork` |
+| `info` | `link`, `verlink`, `name`, `version`, `productName`, `upgrade`, `writable` <Since v="3.6.0" />, `length`, `byteLength`, `blobs`, `fork`, `targets` <Since v="3.7.0" /> |
 
-Filter on `"tag": "info"` for the manifest values and `"tag": "keys"` for the key triplet, rather than relying on ordering. `verlink` is the versioned `pear://<fork>.<length>.<key>` form and was added in 3.1.0. `length`, `fork`, and `byteLength` are the block count, fork id, and size of the project's metadata core as this machine holds it, and `blobs` is `{ length, fork, byteLength }` for its blobs core, or `null` while that core is not open. `verlink` is built from the same local numbers, so passing a versioned link still reports this machine's current state. The `info` object of a staged project looks like this:
+Filter on `"tag": "info"` for the manifest values and `"tag": "keys"` for the key triplet, rather than relying on ordering. `verlink` is the versioned `pear://<fork>.<length>.<key>` form and was added in 3.1.0. `length`, `fork`, and `byteLength` are the block count, fork id, and size of the project's metadata core as this machine holds it, and `blobs` is `{ length, fork, byteLength }` for its blobs core, or `null` while that core is not open. <Since v="3.7.0" /> `blobs` also carries `key`, the z32 key of the blobs core, and `retrieving.link` is the `pear://<key>` link where `z32` was the bare key. <Since v="3.7.0" /> `targets` is `[{ platform, size }]`, one entry per `by-arch/` folder with `size` in bytes, and an empty array when the drive has none. `verlink` is built from the same local numbers, so passing a versioned link still reports this machine's current state. The `info` object of a staged project looks like this:
+
+<VersionGate since="3.6.0" until="3.7.0">
 
 ```json
 {"cmd":"info","tag":"info","data":{"link":"pear://9mk396rygkm8t6ouy5nf5mimoysc1c7gixffzcabrrgxuya9k3ay","verlink":"pear://0.7.9mk396rygkm8t6ouy5nf5mimoysc1c7gixffzcabrrgxuya9k3ay","name":"pear-chat","version":"1.0.1","productName":"PearChat","upgrade":"pear://13id1dkg7k8wifk64tsnyrbh8h4hzc19rozrghc8ucd54fwx1hfo","writable":true,"length":7,"byteLength":1192,"blobs":{"length":12,"fork":0,"byteLength":262},"fork":0}}
 ```
+</VersionGate>
+
+<VersionGate since="3.7.0">
+
+```json
+{"cmd":"info","tag":"info","data":{"link":"pear://t7m5jminnexz7eis4jnhedkk6wzppdd3uco1zpmxw18b1fp4wqdy","verlink":"pear://0.6.t7m5jminnexz7eis4jnhedkk6wzppdd3uco1zpmxw18b1fp4wqdy","name":"pear-chat","version":"1.0.1","productName":"PearChat","upgrade":"pear://rbo766j9chy3fwg4id785ixhdt51w3rjwzmhp5ycgfmerq7wkrny","writable":false,"length":6,"byteLength":985,"blobs":{"key":"hd8s64aejn8jdc77qrohf6zcg5t3znfoxtgg7wkfry95prdsgfmy","length":19,"fork":0,"byteLength":13631830},"fork":0,"targets":[{"platform":"darwin-arm64","size":6291456},{"platform":"linux-x64","size":4194304},{"platform":"win32-x64","size":3145728}]}}
+```
+
+To list the platforms a link carries, select the `info` line. Every line of the stream is its own JSON document, so a filter that does not select on `tag` also runs on the other lines:
+
+```sh
+pear info --json <link> | jq -r 'select(.tag == "info") | .data.targets[].platform'
+```
+</VersionGate>
 
 Three more tags appear in particular cases. A project whose core has more than one signer adds a `multisig` object (`quorum`, `publicKeys`, `only`) after `info`. `--manifest` adds a `manifest` object (`manifest`) in place of `keys` and `info`. A link with nothing on this machine yet—one you just created with [`pear touch`](#pear-touch) and have not staged, for example—emits an `empty` object with no `data` in their place, and the default output prints `[ Empty ]`.
 
 <VersionGate since="3.6.0">
 <a name="pear-info-writable"></a>
 
-<Since v="3.6.0" /> `writable` is `true` when this machine's corestore holds the key pair for the project's drive, which is what lets it stage to that link, and `false` for a link this machine only reads. It is a local lookup. It does not check that the link is seeded or reachable, so `true` is not a promise that a stage will succeed. It is reported only in the `info` object, so an `empty` link has none.
+<Since v="3.6.0" /> `writable`, shown as the `Writable:` row from 3.7.0 and as the `writable` table row before it, is `true` when this machine's corestore holds the key pair for the project's drive, which is what lets it stage to that link, and `false` for a link this machine only reads. It is a local lookup. It does not check that the link is seeded or reachable, so `true` is not a promise that a stage will succeed. It is reported only in the `info` object, so an `empty` link has none.
 
 `writable` describes **stage** and **provision** links, which are machine-bound. A multisig production link is written by a quorum of signers rather than by one key pair on one machine, so `false` there does not mean write access is lost. To read it in a script, see [Preflight a release before staging](/pear/how-to/operate-an-app/manual-deployment/preflight-a-release#2-check-that-this-machine-can-write).
 </VersionGate>
@@ -790,6 +878,8 @@ Synchronize files from a link to a directory.
 <Callout type="info">
 To dump to stdout, use `-` in place of `<dir>`. <Since v="3.2.0" /> `<dir>` itself is now optional—handy with `--list`, which already sets it to `-` for you. On 3.1.0 and earlier, `<dir>` was required even when `--list` overrode it.
 </Callout>
+
+<Since v="3.7.0" /> `<link>` must be a `pear://` link or a verlink. A `file:` URL or a local directory path fails with `✖ A valid pear link must be specified.` Before 3.7.0 the help text for `<link>` read `May be file:, pear: or dir`, but the link check already rejected a local source with that same error. 3.7.0 removes that help text and the unreachable local-source code behind it, so no working behavior changes.
 
 `<link>` can contain a path portion to dump a subset of the files for the Pear application. For example, to dump only the `CHANGELOG.md` from an application into a `dump-dir` directory run:
 
@@ -911,12 +1001,16 @@ Running `pear sidecar` shuts down any existing sidecar and takes over as the new
 | Command | Description |
 | --- | --- |
 | `shutdown` | Shut down the running sidecar |
-| `inspect` | Enable the running sidecar inspector |
+| `inspect` <Until v="3.7.0" /> | Enable the running sidecar inspector |
 
 ```text
   --log-level <level>   Verbosity to log at — 0=off, 1=error, 2=info, or 3=trace
   --help|-h             Show help
 ```
+
+<Callout type="warn">
+<Until v="3.7.0" label="Removed in 3.7.0" /> `pear sidecar inspect` is gone, along with the `bare-inspector` and `pear-inspect` dependencies it used to open the sidecar for remote debugging. There is no replacement. On 3.7.0 it fails like any unknown subcommand, with `✖ Unexpected argument  'inspect'` followed by the `pear sidecar` help. On 3.6.0 and earlier it printed an inspector key that had to be kept secret.
+</Callout>
 
 <VersionGate until="3.1.0">
 <Callout type="info">

@@ -40,6 +40,7 @@ export interface DocsVersion {
  * by a gate in `content/` present here.
  */
 export const DOCS_VERSIONS: DocsVersion[] = [
+  { label: '3.7', value: '3.7.0', prerelease: true },
   { label: '3.6', value: '3.6.0', stable: true },
   { label: '3.5', value: '3.5.0' },
   { label: '3.4', value: '3.4.0' },
