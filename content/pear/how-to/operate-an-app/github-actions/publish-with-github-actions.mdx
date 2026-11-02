@@ -142,15 +142,19 @@ A stage that succeeds does not prove it carried every platform. From Pear 3.7.0,
           LINK: pear://<drive-key>
           EXPECTED: darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64
         run: |
-          npx --yes pear info --json "$LINK" | grep '^{' \
-            | jq -e --arg expected "$EXPECTED" 'select(.tag == "info") | .data
-                | if has("targets") then
-                    ($expected | split(" ")) - [.targets[].platform]
-                    | if length == 0 then true else error("missing: " + join(" ")) end
-                  else error("this Pear does not report targets") end'
+          for attempt in 1 2 3; do
+            npx --yes pear info --json "$LINK" | grep '^{' > info.ndjson || true
+            grep -q '"tag":"info"' info.ndjson && break
+            sleep 10
+          done
+          jq -e --arg expected "$EXPECTED" 'select(.tag == "info") | .data
+              | if has("targets") then
+                  ($expected | split(" ")) - [.targets[].platform]
+                  | if length == 0 then true else error("missing: " + join(" ")) end
+                else error("this Pear does not report targets") end' info.ndjson
 ```
 
-The step fails and names the missing platforms. If it fails with no `info` object, `pear info` found no peer with the link: confirm [the link is seeded](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#seed-the-link). The same check, run by hand, is step 4 of [Preflight a release before staging](/pear/how-to/operate-an-app/manual-deployment/preflight-a-release#4-after-staging-check-which-platforms-reached-the-link).
+The loop is there because the first `pear info` on a fresh runner can print `[ Empty ]` while the metadata syncs. The step fails and names the missing platforms. If it fails with no `info` object after three tries, `pear info` found no peer with the link: confirm [the link is seeded](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#seed-the-link). The same check, run by hand, is step 4 of [Preflight a release before staging](/pear/how-to/operate-an-app/manual-deployment/preflight-a-release#4-after-staging-check-which-platforms-reached-the-link).
 
 ## Producing the build to stage
 
