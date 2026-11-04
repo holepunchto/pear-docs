@@ -15,6 +15,39 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 
 {/* changelog:insert — automation inserts draft entries below this marker; keep it directly above the newest entry. */}
 
+## 2026-11-04 — P2P module updates
+
+### Hypercore — v11.40.0, v11.39.6
+
+- Fixed (v11.40.0): closing a session destroys the extensions it registered for peers that were already connected. Before, their `onmessage` handler kept firing.
+- Fixed (v11.39.6): `core.clear()` deletes the whole node range of a cleared sibling subtree. Before, a core could fail to serve some cleared blocks after downloading them again, and peers got `INVALID_OPERATION: Expected tree node N from storage, got (nil)`. Upgrading doesn't repair cores that are already affected. See [Hypercore](/p2p/reference/building-blocks/hypercore).
+
+### HyperDHT — v6.35.1, v6.35.0
+
+- Changed (v6.35.0): `server.close()` stops a first announce that is still in progress instead of waiting for it, and `node.suspend()` no longer waits for pending `listen()` calls. Suspend unannounces once, without retries.
+- Changed (v6.35.0): `node.unannounce(..., { force: true })` sends the unannounce requests without retries too, not only the lookup.
+- Changed (v6.35.1): announce relays are picked by lowest round-trip time among the closest nodes. See [HyperDHT](/p2p/reference/building-blocks/hyperdht).
+
+### Autobee — v2.13.2, v2.13.1, v2.13.0
+
+- Added (v2.13.0): a database created before 2.13.0 is remapped in the background onto cores in the newer format, with the `db.remapped` and `db.remapping` properties and a `remap` event. The remap replaces the boot reindex of 2.11 and 2.12, and waits for a Hypercore recovery peer.
+- **Breaking (v2.13.0):** releases before 2.13.0 can't read a remapped system, so they can't fast-forward onto heads that a remapped peer flushes.
+- Changed (v2.13.0): `db.moveTo()` waits for a fast-forward that is about to land, then replaces one in progress. Before, it resolved to `null`.
+- Added (v2.13.1): a failed remap emits `warning` instead of `error`, which closed the database. See [Autobee](/p2p/reference/building-blocks/autobee).
+
+### blind-peer — v3.18.1, v3.18.0, v3.17.0
+
+- Added (v3.17.0): the `metricsOpts` option labels four Prometheus gauges with the `client_name` and `client_version` that `blind-peering` clients send. The push-notification and core-tracker gauges no longer depend on RocksDB stats.
+- Added (v3.18.0): a notification's proof upgrades only to the `upgradeLength` the client sends.
+- Changed (v3.18.1): a notification that a push gateway rejects with the FCM rate-limit code is retried with the next gateway. See [blind-peer](/p2p/reference/helpers/blind-peer).
+
+### blind-peering — v2.13.1, v2.12.2, v2.12.1, v2.12.0, v2.11.0
+
+- **Breaking (v2.12.0):** core registrations and notifications are requests that the blind peer answers. A blind peer before 3.16.0 may leave cores unregistered, and a notification then waits for the request timeout.
+- Changed (v2.12.0): `sendNotification()` tries the picked blind peers one at a time, connected ones first, and throws an `AggregateError` with the message `No peers available` when none handles the request. v2.12.2 fixes the ordering, which v2.12.0 and v2.12.1 shuffled.
+- Added (v2.11.0): the handshake carries the OS platform, unless `skipConnectionMetadata` is set.
+- Added (v2.13.0): the `upgradeLength` option of `sendNotification()`. See [blind-peering](/p2p/reference/helpers/blind-peering).
+
 ## 2026-10-15 — P2P module updates
 
 The module releases that [Pear 3.6.0](/pear/release-overview) bundles. An application pins its own copies in its `package.json`, so upgrade these dependencies directly to pick the changes up.
