@@ -70,7 +70,7 @@ Overloads:
 
 ```ts
 Buffer.alloc(size: number, fill: string, encoding?: BufferEncoding): Buffer
-Buffer.alloc(size: number, fill?: Buffer | number | boolean): Buffer
+Buffer.alloc(size: number, fill?: Buffer | ArrayBufferView | number | boolean): Buffer
 ```
 
 **Parameters**
@@ -83,7 +83,8 @@ Buffer.alloc(size: number, fill?: Buffer | number | boolean): Buffer
 
 **Throws**
 
-- `RangeError` — thrown if `size` exceeds `Buffer.constants.MAX_LENGTH`.
+- `RangeError` — thrown if `size` is not an integer between `0` and `Buffer.constants.MAX_LENGTH`.
+- `TypeError` — thrown if `size` is not a number, or `fill` is not a value that can fill.
 
 #### `Buffer.allocUnsafe(size: number): Buffer`
 
@@ -97,12 +98,12 @@ Allocate a new `Buffer` of `size` bytes without zeroing its contents first.
 
 **Throws**
 
-- `RangeError` — thrown if `size` exceeds `Buffer.constants.MAX_LENGTH`.
+- `RangeError` — thrown if `size` is not an integer between `0` and `Buffer.constants.MAX_LENGTH`.
+- `TypeError` — thrown if `size` is not a number.
 
 #### `Buffer.allocUnsafeSlow(size: number): Buffer`
 
-Allocate a new `Buffer` of `size` bytes without zeroing its contents first, bypassing the
-internal buffer pool.
+Allocate a new `Buffer` of `size` bytes without zeroing its contents first, bypassing the internal buffer pool.
 
 **Parameters**
 
@@ -112,7 +113,8 @@ internal buffer pool.
 
 **Throws**
 
-- `RangeError` — thrown if `size` exceeds `Buffer.constants.MAX_LENGTH`.
+- `RangeError` — thrown if `size` is not an integer between `0` and `Buffer.constants.MAX_LENGTH`.
+- `TypeError` — thrown if `size` is not a number.
 
 #### `Buffer.atob(data: unknown): string`
 
@@ -171,18 +173,17 @@ Return the number of bytes `string` would occupy once encoded as `encoding`.
 
 - `Error` — thrown if the encoding is not a recognized `BufferEncoding`.
 
-#### `Buffer.coerce(buffer: Buffer): Buffer`
+#### `Buffer.coerce(buffer: Buffer | ArrayBufferView): Buffer`
 
-Return `buffer` unchanged if it is already a `Buffer`, otherwise wrap its underlying
-`ArrayBuffer` in a new `Buffer`.
+Return `buffer` unchanged if it is already a `Buffer`, otherwise wrap its underlying `ArrayBuffer` in a new `Buffer`.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `buffer` | `Buffer` | — | The value to coerce into a `Buffer`. |
+| `buffer` | `Buffer` \| `ArrayBufferView` | — | The value to coerce into a `Buffer`. |
 
-#### `Buffer.compare(a: Buffer, b: Buffer): number`
+#### `Buffer.compare(a: Buffer | ArrayBufferView, b: Buffer | ArrayBufferView): number`
 
 Compare two buffers' contents lexicographically, returning -1, 0, or 1 for sort ordering.
 
@@ -190,13 +191,17 @@ Compare two buffers' contents lexicographically, returning -1, 0, or 1 for sort 
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `a` | `Buffer` | — | The first buffer to compare. |
-| `b` | `Buffer` | — | The second buffer to compare. |
+| `a` | `Buffer` \| `ArrayBufferView` | — | The first buffer to compare. |
+| `b` | `Buffer` \| `ArrayBufferView` | — | The second buffer to compare. |
+
+**Throws**
+
+- `TypeError` — thrown if `a` or `b` is not a view.
+- `RangeError` — thrown if either view's range lies outside its backing store.
 
 #### `Buffer.concat(buffers: Buffer[], length?: number): Buffer`
 
-Concatenate `buffers` into a single new `Buffer`, optionally truncated or zero-padded to
-`length`.
+Concatenate `buffers` into a single new `Buffer`, optionally truncated or zero-padded to `length`.
 
 **Parameters**
 
@@ -205,10 +210,13 @@ Concatenate `buffers` into a single new `Buffer`, optionally truncated or zero-p
 | `buffers` | `Buffer[]` | — | The buffers to concatenate, in order. |
 | `length?` | `number` | — | Total byte length of the result; defaults to the sum of `buffers`' lengths. |
 
+**Throws**
+
+- `RangeError` — thrown if an offset or length is not an integer.
+
 #### `Buffer.constants: { MAX_LENGTH: number; MAX_STRING_LENGTH: number }`
 
-Limits for buffers and strings: `MAX_LENGTH` (largest possible `Buffer`) and `MAX_STRING_LENGTH`
-(largest possible string).
+Limits for buffers and strings: `MAX_LENGTH` (largest possible `Buffer`) and `MAX_STRING_LENGTH` (largest possible string).
 
 #### `Buffer.copyBytesFrom(view: ArrayBufferLike, offset?: number, length?: number): Buffer`
 
@@ -225,6 +233,7 @@ Copy the bytes of `view`, starting at `offset` for `length` elements, into a new
 **Throws**
 
 - `RangeError` — thrown if `offset + length` exceeds `view.length`.
+- `RangeError` — thrown if an offset or length is not an integer.
 
 #### `Buffer.from(data: Iterable<number>): Buffer`
 
@@ -247,19 +256,10 @@ Buffer.from(arrayBuffer: ArrayBufferLike, offset?: number, length?: number): Buf
 
 **Throws**
 
-- `Error` — thrown if the encoding is not a recognized `BufferEncoding`.
+- `Error` — thrown if the encoding is not a recognized `BufferEncoding`, or if `string` is not valid in it, as a hex or base64 string can fail to be.
+- `RangeError` — thrown if an offset or length is not an integer.
 
-#### `Buffer.isAscii(buffer: Buffer): boolean`
-
-Check whether `buffer` contains only valid ASCII-encoded data.
-
-**Parameters**
-
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `buffer` | `Buffer` | — | The buffer to check. |
-
-#### `Buffer.isASCII(buffer: Buffer): boolean`
+#### `Buffer.isAscii(buffer: Buffer | ArrayBufferView): boolean`
 
 Check whether `buffer` contains only valid ASCII-encoded data.
 
@@ -267,7 +267,27 @@ Check whether `buffer` contains only valid ASCII-encoded data.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `buffer` | `Buffer` | — | The buffer to check. |
+| `buffer` | `Buffer` \| `ArrayBufferView` | — | The buffer to check. |
+
+**Throws**
+
+- `TypeError` — thrown if `buffer` is not a view.
+- `RangeError` — thrown if `buffer`'s range lies outside its backing store.
+
+#### `Buffer.isASCII(buffer: Buffer | ArrayBufferView): boolean`
+
+Check whether `buffer` contains only valid ASCII-encoded data.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `buffer` | `Buffer` \| `ArrayBufferView` | — | The buffer to check. |
+
+**Throws**
+
+- `TypeError` — thrown if `buffer` is not a view.
+- `RangeError` — thrown if `buffer`'s range lies outside its backing store.
 
 #### `Buffer.isBuffer(value: unknown): value is Buffer`
 
@@ -289,7 +309,7 @@ Check whether `encoding` is a supported `BufferEncoding`.
 | --- | --- | --- | --- |
 | `encoding` | `string` | — | The encoding name to check. |
 
-#### `Buffer.isUtf8(buffer: Buffer): boolean`
+#### `Buffer.isUtf8(buffer: Buffer | ArrayBufferView): boolean`
 
 Check whether `buffer` contains only valid UTF-8-encoded data.
 
@@ -297,9 +317,14 @@ Check whether `buffer` contains only valid UTF-8-encoded data.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `buffer` | `Buffer` | — | The buffer to check. |
+| `buffer` | `Buffer` \| `ArrayBufferView` | — | The buffer to check. |
 
-#### `Buffer.isUTF8(buffer: Buffer): boolean`
+**Throws**
+
+- `TypeError` — thrown if `buffer` is not a view.
+- `RangeError` — thrown if `buffer`'s range lies outside its backing store.
+
+#### `Buffer.isUTF8(buffer: Buffer | ArrayBufferView): boolean`
 
 Check whether `buffer` contains only valid UTF-8-encoded data.
 
@@ -307,11 +332,16 @@ Check whether `buffer` contains only valid UTF-8-encoded data.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `buffer` | `Buffer` | — | The buffer to check. |
+| `buffer` | `Buffer` \| `ArrayBufferView` | — | The buffer to check. |
+
+**Throws**
+
+- `TypeError` — thrown if `buffer` is not a view.
+- `RangeError` — thrown if `buffer`'s range lies outside its backing store.
 
 #### `Buffer.poolSize: number`
 
-The size, in bytes, of the internal buffer pool used to satisfy small allocations.
+The size, in bytes, of the internal buffer pool used to satisfy small allocations. Setting it to `0` turns pooling off.
 
 #### `Buffer.transcode(buffer: Buffer, from: BufferEncoding, to: BufferEncoding): Buffer`
 
@@ -340,39 +370,51 @@ The size in bytes of each element in the array.
 #### `compare`
 
 ```ts
-compare(target: Buffer, targetStart?: number, targetEnd?: number, sourceStart?: number, sourceEnd?: number): number
+compare(target: Buffer | ArrayBufferView, targetStart?: number, targetEnd?: number, sourceStart?: number, sourceEnd?: number): number
 ```
 
-Compare this buffer's contents against `target` lexicographically, optionally comparing only
-a sub-range of each, returning -1, 0, or 1 for sort ordering.
+Compare this buffer's contents against `target` lexicographically, optionally comparing only a sub-range of each, returning -1, 0, or 1 for sort ordering.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `target` | `Buffer` | — | The buffer to compare against. |
+| `target` | `Buffer` \| `ArrayBufferView` | — | The buffer to compare against. |
 | `targetStart?` | `number` | — | Offset within `target` to start comparing from; defaults to `0`. |
 | `targetEnd?` | `number` | — | Offset within `target` (exclusive) to stop comparing at; defaults to `target.byteLength`. |
 | `sourceStart?` | `number` | — | Offset within this buffer to start comparing from; defaults to `0`. |
 | `sourceEnd?` | `number` | — | Offset within this buffer (exclusive) to stop comparing at; defaults to `this.byteLength`. |
 
-#### `copy(target: Buffer, targetStart?: number, sourceStart?: number, sourceEnd?: number): number`
+**Throws**
 
-Copy bytes from this buffer into `target`, returning the number of bytes copied.
+- `TypeError` — thrown if `target` is not a view.
+- `RangeError` — thrown if an offset or length is not an integer, or if either view's range lies outside its backing store.
+
+#### `copy`
+
+```ts
+copy(target: Buffer | ArrayBufferView, targetStart?: number, sourceStart?: number, sourceEnd?: number): number
+```
+
+Copy bytes from this buffer into `target`, returning the number of bytes copied. A target of wider elements, such as a `Uint16Array`, receives the bytes it spans.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `target` | `Buffer` | — | The buffer to copy into. |
+| `target` | `Buffer` \| `ArrayBufferView` | — | The buffer to copy into. |
 | `targetStart?` | `number` | — | Offset within `target` to start writing at; defaults to `0`. |
 | `sourceStart?` | `number` | — | Offset within this buffer to start copying from; defaults to `0`. |
 | `sourceEnd?` | `number` | — | Offset within this buffer (exclusive) to stop copying at; defaults to `this.byteLength`. |
 
+**Throws**
+
+- `TypeError` — thrown if `target` is not a view.
+- `RangeError` — thrown if an offset is not an integer, is negative, or if `sourceStart` is past the end of this buffer.
+
 #### `copyWithin(target: number, start: number, end?: number): this`
 
-Returns the this object after copying a section of the array identified by start and end
-to the same array starting at position target
+Returns the this object after copying a section of the array identified by start and end to the same array starting at position target
 
 **Parameters**
 
@@ -386,7 +428,7 @@ to the same array starting at position target
 
 Returns an array of key, value pairs for every entry in the array
 
-#### `equals(target: Buffer): boolean`
+#### `equals(target: Buffer | ArrayBufferView): boolean`
 
 Check whether this buffer and `target` have identical contents.
 
@@ -394,7 +436,12 @@ Check whether this buffer and `target` have identical contents.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `target` | `Buffer` | — | The buffer to compare this buffer's contents against. |
+| `target` | `Buffer` \| `ArrayBufferView` | — | The buffer to compare this buffer's contents against. |
+
+**Throws**
+
+- `TypeError` — thrown if `target` is not a view.
+- `RangeError` — thrown if either view's range lies outside its backing store.
 
 #### `every(predicate: (value: number, index: number, array: this) => unknown, thisArg?: any): boolean`
 
@@ -417,7 +464,7 @@ Overloads:
 fill(value: string, encoding?: BufferEncoding): this
 fill(value: string, offset?: number, encoding?: BufferEncoding): this
 fill(value: string, offset?: number, end?: number, encoding?: BufferEncoding): this
-fill(value: Buffer | number | boolean, offset?: number, end?: number): this
+fill(value: Buffer | ArrayBufferView | number | boolean, offset?: number, end?: number): this
 ```
 
 **Parameters**
@@ -430,6 +477,8 @@ fill(value: Buffer | number | boolean, offset?: number, end?: number): this
 **Throws**
 
 - `Error` — thrown if the encoding is not a recognized `BufferEncoding`.
+- `TypeError` — thrown if `value` is not a value that can fill.
+- `RangeError` — thrown if an offset or length is not an integer.
 
 #### `filter`
 
@@ -452,8 +501,7 @@ Returns the elements of an array that meet the condition specified in a callback
 find(predicate: (value: number, index: number, obj: this) => boolean, thisArg?: any): number | undefined
 ```
 
-Returns the value of the first element in the array where predicate is true, and undefined
-otherwise.
+Returns the value of the first element in the array where predicate is true, and undefined otherwise.
 
 **Parameters**
 
@@ -468,8 +516,7 @@ otherwise.
 findIndex(predicate: (value: number, index: number, obj: this) => boolean, thisArg?: any): number
 ```
 
-Returns the index of the first element in the array where predicate is true, and -1
-otherwise.
+Returns the index of the first element in the array where predicate is true, and -1 otherwise.
 
 **Parameters**
 
@@ -488,8 +535,7 @@ findLast<S extends number>(predicate: (
         ) => value is S, thisArg?: any): S | undefined
 ```
 
-Returns the value of the last element in the array where predicate is true, and undefined
-otherwise.
+Returns the value of the last element in the array where predicate is true, and undefined otherwise.
 
 **Parameters**
 
@@ -504,8 +550,7 @@ otherwise.
 findLastIndex(predicate: (value: number, index: number, array: this) => unknown, thisArg?: any): number
 ```
 
-Returns the index of the last element in the array where predicate is true, and -1
-otherwise.
+Returns the index of the last element in the array where predicate is true, and -1 otherwise.
 
 **Parameters**
 
@@ -534,7 +579,7 @@ Overloads:
 ```ts
 includes(value: string, encoding?: BufferEncoding): boolean
 includes(value: string, offset?: number, encoding?: BufferEncoding): boolean
-includes(value: Buffer | number | boolean, offset?: number): boolean
+includes(value: Buffer | ArrayBufferView | number | boolean, offset?: number): boolean
 ```
 
 **Parameters**
@@ -547,6 +592,8 @@ includes(value: Buffer | number | boolean, offset?: number): boolean
 **Throws**
 
 - `Error` — thrown if the encoding is not a recognized `BufferEncoding`.
+- `TypeError` — thrown if `value` is not a string, view, number, or boolean.
+- `RangeError` — thrown if an offset or length is not an integer, or if either view's range lies outside its backing store.
 
 #### `indexOf(value: string, encoding?: BufferEncoding): number`
 
@@ -557,7 +604,7 @@ Overloads:
 ```ts
 indexOf(value: string, encoding?: BufferEncoding): number
 indexOf(value: string, offset?: number, encoding?: BufferEncoding): number
-indexOf(value: Buffer | number | boolean, offset?: number): number
+indexOf(value: Buffer | ArrayBufferView | number | boolean, offset?: number): number
 ```
 
 **Parameters**
@@ -570,6 +617,8 @@ indexOf(value: Buffer | number | boolean, offset?: number): number
 **Throws**
 
 - `Error` — thrown if the encoding is not a recognized `BufferEncoding`.
+- `TypeError` — thrown if `value` is not a string, view, number, or boolean.
+- `RangeError` — thrown if an offset or length is not an integer, or if either view's range lies outside its backing store.
 
 #### `join(separator?: string): string`
 
@@ -594,7 +643,7 @@ Overloads:
 ```ts
 lastIndexOf(value: string, encoding?: BufferEncoding): number
 lastIndexOf(value: string, offset?: number, encoding?: BufferEncoding): number
-lastIndexOf(value: Buffer | number | boolean, offset?: number): number
+lastIndexOf(value: Buffer | ArrayBufferView | number | boolean, offset?: number): number
 ```
 
 **Parameters**
@@ -607,6 +656,8 @@ lastIndexOf(value: Buffer | number | boolean, offset?: number): number
 **Throws**
 
 - `Error` — thrown if the encoding is not a recognized `BufferEncoding`.
+- `TypeError` — thrown if `value` is not a string, view, number, or boolean.
+- `RangeError` — thrown if an offset or length is not an integer, or if either view's range lies outside its backing store.
 
 #### `length: number`
 
@@ -618,8 +669,7 @@ The length of the array.
 map(callbackfn: (value: number, index: number, array: this) => number, thisArg?: any): Uint8Array<ArrayBuffer>
 ```
 
-Calls a defined callback function on each element of an array, and returns an array that
-contains the results.
+Calls a defined callback function on each element of an array, and returns an array that contains the results.
 
 **Parameters**
 
@@ -974,9 +1024,7 @@ Read an unsigned, little-endian, `byteLength`-byte integer at `offset`.
 reduce(callbackfn: (previousValue: number, currentValue: number, currentIndex: number, array: this) => number): number
 ```
 
-Calls the specified callback function for all the elements in an array. The return value of
-the callback function is the accumulated result, and is provided as an argument in the next
-call to the callback function.
+Calls the specified callback function for all the elements in an array. The return value of the callback function is the accumulated result, and is provided as an argument in the next call to the callback function.
 
 **Parameters**
 
@@ -990,9 +1038,7 @@ call to the callback function.
 reduceRight(callbackfn: (previousValue: number, currentValue: number, currentIndex: number, array: this) => number): number
 ```
 
-Calls the specified callback function for all the elements in an array, in descending order.
-The return value of the callback function is the accumulated result, and is provided as an
-argument in the next call to the callback function.
+Calls the specified callback function for all the elements in an array, in descending order. The return value of the callback function is the accumulated result, and is provided as an argument in the next call to the callback function.
 
 **Parameters**
 
@@ -1049,8 +1095,7 @@ Sorts an array.
 
 #### `subarray(begin?: number, end?: number): Uint8Array<TArrayBuffer>`
 
-Gets a new Uint8Array view of the ArrayBuffer store for this array, referencing the elements
-at begin, inclusive, up to end, exclusive.
+Gets a new Uint8Array view of the ArrayBuffer store for this array, referencing the elements at begin, inclusive, up to end, exclusive.
 
 **Parameters**
 
@@ -1065,7 +1110,7 @@ Swap the byte order of each 16-bit group in this buffer in place, and return it.
 
 **Throws**
 
-- `RangeError` — thrown if the buffer's length is not a multiple of 2 bytes.
+- `RangeError` — thrown if the buffer's length is not a multiple of 2 bytes, or if its range lies outside its backing store.
 
 #### `swap32(): this`
 
@@ -1073,7 +1118,7 @@ Swap the byte order of each 32-bit group in this buffer in place, and return it.
 
 **Throws**
 
-- `RangeError` — thrown if the buffer's length is not a multiple of 4 bytes.
+- `RangeError` — thrown if the buffer's length is not a multiple of 4 bytes, or if its range lies outside its backing store.
 
 #### `swap64(): this`
 
@@ -1081,7 +1126,7 @@ Swap the byte order of each 64-bit group in this buffer in place, and return it.
 
 **Throws**
 
-- `RangeError` — thrown if the buffer's length is not a multiple of 8 bytes.
+- `RangeError` — thrown if the buffer's length is not a multiple of 8 bytes, or if its range lies outside its backing store.
 
 #### `toJSON(): number[]`
 
@@ -1127,6 +1172,7 @@ Decode this buffer (or a slice of it) to a string using `encoding`.
 **Throws**
 
 - `Error` — thrown if the encoding is not a recognized `BufferEncoding`.
+- `RangeError` — thrown if an offset or length is not an integer, if this buffer's range lies outside its backing store, or if the decoded string would exceed `Buffer.constants.MAX_STRING_LENGTH`.
 
 #### `valueOf(): this`
 
@@ -1170,7 +1216,9 @@ write(string: string, offset?: number, length?: number, encoding?: BufferEncodin
 
 **Throws**
 
-- `Error` — thrown if the encoding is not a recognized `BufferEncoding`.
+- `Error` — thrown if the encoding is not a recognized `BufferEncoding`, or if `string` is not valid in it, as a hex or base64 string can fail to be.
+- `TypeError` — thrown if `string` is not a string.
+- `RangeError` — thrown if an offset or length is not an integer, or if this buffer's range lies outside its backing store.
 
 #### `writeBigInt64BE(value: bigint, offset?: number): number`
 
@@ -1621,8 +1669,7 @@ type BufferConstructor = typeof buffer.Buffer
 
 #### `constants: { MAX_LENGTH: number; MAX_STRING_LENGTH: number }`
 
-Limits for buffers and strings: `MAX_LENGTH` (largest possible `Buffer`) and `MAX_STRING_LENGTH`
-(largest possible string).
+Limits for buffers and strings: `MAX_LENGTH` (largest possible `Buffer`) and `MAX_STRING_LENGTH` (largest possible string).
 
 ## See also
 

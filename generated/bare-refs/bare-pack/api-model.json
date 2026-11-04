@@ -1,6 +1,6 @@
 {
   "name": "bare-pack",
-  "version": "2.2.2",
+  "version": "3.0.2",
   "description": "Bundle packing for Bare",
   "repoUrl": "https://github.com/holepunchto/bare-pack",
   "npmUrl": "https://www.npmjs.com/package/bare-pack",
@@ -27,10 +27,10 @@
       "kind": "function",
       "static": false,
       "signatures": [
-        "pack(entry: URL, opts: PackOptions, readModule: ReadModuleCallback, listPrefix: ListPrefixCallback | null, writeFile: WriteFileCallback): Promise<Bundle>",
-        "pack(entry: URL, opts: PackOptions, readModule: ReadModuleCallback, listPrefix?: ListPrefixCallback): Promise<Bundle>",
-        "pack(entry: URL, readModule: ReadModuleCallback, listPrefix: ListPrefixCallback | null, writeFile: WriteFileCallback): Promise<Bundle>",
-        "pack(entry: URL, readModule: ReadModuleCallback, listPrefix?: ListPrefixCallback): Promise<Bundle>"
+        "pack(entry: URL, opts: PackOptions, readModule: ReadModuleCallback, listPrefix: ListPrefixCallback | null, resolveModule: ResolveModuleCallback | null, writeFile: WriteFileCallback): Promise<Bundle>",
+        "pack(entry: URL, opts: PackOptions, readModule: ReadModuleCallback, listPrefix?: ListPrefixCallback, resolveModule?: ResolveModuleCallback): Promise<Bundle>",
+        "pack(entry: URL, readModule: ReadModuleCallback, listPrefix: ListPrefixCallback | null, resolveModule: ResolveModuleCallback | null, writeFile: WriteFileCallback): Promise<Bundle>",
+        "pack(entry: URL, readModule: ReadModuleCallback, listPrefix?: ListPrefixCallback, resolveModule?: ResolveModuleCallback): Promise<Bundle>"
       ],
       "description": "Bundle the module graph rooted at `url`, which must be a WHATWG `URL` instance. `readModule` is\ncalled with a `URL` instance for every module to be read and must either return the module\nsource, if it exists, or `null`. `listPrefix` is called with a `URL` instance of every prefix to\nbe listed and must yield `URL` instances that have the specified `URL` as a prefix. If not\nprovided, prefixes won't be bundled. `writeFile` is called for every addon or asset that should\nbe offloaded rather than embedded; see the [Offloading section of the\nREADME](https://github.com/holepunchto/bare-pack#offloading). When `writeFile` is provided,\n`listPrefix` must be passed positionally (or as `null`).",
       "deprecated": null,
@@ -64,6 +64,13 @@
           "description": "Called with a `URL` for every prefix to list; yields the `URL`s that have it\nas a prefix. Pass `null` (or omit) to skip prefix bundling."
         },
         {
+          "name": "resolveModule",
+          "type": "ResolveModuleCallback | null",
+          "optional": false,
+          "default": null,
+          "description": "Called with the `URL` of each resolved module; returns the `URL` to use in\nits place, such as its real path. Defaults to the identity function. See the [Symlinks section of\nthe README](https://github.com/holepunchto/bare-pack#symlinks)."
+        },
+        {
           "name": "writeFile",
           "type": "WriteFileCallback",
           "optional": false,
@@ -84,7 +91,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface PackOptions {\n  concurrency?: number\n  base?: URL | string\n  offload?: boolean | { addons?: boolean; assets?: boolean }\n  defaultType?: number\n  importType?: number\n  artifacts?: boolean\n  aliases?: Record<string, AliasableExtension>\n  resolve?: (entry: Import, parentURL: URL, opts?: ResolveOptions) => Resolver\n  deferUnresolved?: boolean\n  builtinProtocol?: string\n  builtins?: Builtins\n  conditions?: Conditions\n  extensions?: string[]\n  host?: string\n  hosts?: string[]\n  linked?: boolean\n  linkedProtocol?: string\n  matchedConditions?: string[]\n  resolutions?: ResolutionsMap\n}"
+        "interface PackOptions {\n  concurrency?: number\n  base?: URL | string\n  offload?: boolean | { addons?: boolean; assets?: boolean }\n  defaultType?: number\n  importType?: number\n  artifacts?: boolean\n  aliases?: Record<string, AliasableExtension>\n  resolve?: (entry: Import, parentURL: URL, opts?: ResolveOptions) => Resolver\n  deferUnresolved?: boolean\n  mount?: URL | string\n  builtinProtocol?: string\n  builtins?: Builtins\n  conditions?: Conditions\n  defer?: string[]\n  deferredProtocol?: string\n  directories?: boolean\n  engines?: Engines\n  extensions?: string[]\n  imports?: ImportsMap\n  matchedConditions?: string[]\n  resolutions?: ResolutionsMap\n  host?: string\n  hosts?: string[]\n  linked?: boolean\n  linkedProtocol?: string\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -213,6 +220,36 @@
           "members": []
         },
         {
+          "key": "PackOptions.defer",
+          "name": "defer",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "defer: string[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PackOptions.deferredProtocol",
+          "name": "deferredProtocol",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "deferredProtocol: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "PackOptions.deferUnresolved",
           "name": "deferUnresolved",
           "kind": "property",
@@ -220,7 +257,37 @@
           "signatures": [
             "deferUnresolved: boolean"
           ],
-          "description": "Record a specifier that resolves nowhere under `deferredProtocol` rather\nthan throwing, leaving it for whoever names it to resolve when they get\nthere. Only for callers that reach a resolver again, such as a module\nsystem; a tool that only links wants the error.",
+          "description": "Record a specifier that resolves nowhere under `deferredProtocol` rather\nthan throwing, leaving it for whoever names it to resolve when they get\nthere. Only for callers that reach a resolver again, such as a module\nsystem; a tool that only links wants the error.\n\nAn addon resolved for several `hosts` must resolve for each of the native\nones, as WebAssembly hosts are only a fallback. A host that it resolves\nnothing for is unresolved, and is deferred under its own conditions or\nelse fails with `ADDON_NOT_FOUND`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PackOptions.directories",
+          "name": "directories",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "directories: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PackOptions.engines",
+          "name": "engines",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "engines: Engines"
+          ],
+          "description": null,
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -264,6 +331,21 @@
           "static": false,
           "signatures": [
             "hosts: string[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PackOptions.imports",
+          "name": "imports",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "imports: ImportsMap"
           ],
           "description": null,
           "deprecated": null,
@@ -326,6 +408,21 @@
             "matchedConditions: string[]"
           ],
           "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PackOptions.mount",
+          "name": "mount",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "mount: URL | string"
+          ],
+          "description": "The URL the entry is mounted at when it is a bundle, for consumers that\nload it with an explicit mount. The addons and assets it declares resolve\nrelative to this. Defaults to the URL of the entry itself.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -410,6 +507,21 @@
       "members": []
     },
     {
+      "key": "ResolveModuleCallback",
+      "name": "ResolveModuleCallback",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface ResolveModuleCallback {\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": []
+    },
+    {
       "key": "WriteFileCallback",
       "name": "WriteFileCallback",
       "kind": "interface",
@@ -425,6 +537,90 @@
       "members": []
     }
   ],
-  "subpaths": [],
-  "generatedAt": "2026-09-17T14:09:38.362Z"
+  "subpaths": [
+    {
+      "name": "bare-pack/fs",
+      "exports": [
+        {
+          "key": "readModule",
+          "name": "readModule",
+          "kind": "function",
+          "static": false,
+          "signatures": [
+            "readModule(url: URL): Promise<Buffer | null>"
+          ],
+          "description": "A `readModule` callback for `pack()` that reads modules from the file system.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<Buffer | null>",
+            "description": "a promise that resolves to the module source, or `null` if it could not be read."
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "resolveModule",
+          "name": "resolveModule",
+          "kind": "function",
+          "static": false,
+          "signatures": [
+            "resolveModule(url: URL): Promise<URL>"
+          ],
+          "description": "A `resolveModule` callback for `pack()` that resolves `file:` URLs to their real path, preserving\na trailing slash. Other URLs, and URLs that cannot be resolved, are returned as-is.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "Promise<URL>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "listPrefix",
+          "name": "listPrefix",
+          "kind": "function",
+          "static": false,
+          "signatures": [
+            "listPrefix(url: URL): AsyncGenerator<URL>"
+          ],
+          "description": "A `listPrefix` callback for `pack()` that yields `url` if it is a file, or every file nested\nunder it if it is a directory.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "AsyncGenerator<URL>",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    }
+  ],
+  "generatedAt": "2026-11-04T19:54:41.019Z"
 }
