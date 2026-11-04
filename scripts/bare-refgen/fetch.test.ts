@@ -8,7 +8,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coversBaseline } from './fetch';
+import { coversBaseline, hasTsDoc } from './fetch';
 
 test('coversBaseline: identical content covers itself', () => {
   const dts = `export declare function foo(): void`;
@@ -104,4 +104,11 @@ test('coversBaseline: allows typing API the published runtime already implements
   const runtime = `exports.subtle = { digest(algorithm, data) {} }`;
   assert.equal(coversBaseline(baseline, typed, runtime), true);
   assert.equal(coversBaseline(baseline, typed), false);
+});
+
+test('hasTsDoc: a release that ships TSDoc keeps its own .d.ts over the fork branch', () => {
+  assert.equal(hasTsDoc('export declare function foo(): void'), false);
+  assert.equal(hasTsDoc('// a line comment\nexport declare function foo(): void'), false);
+  assert.equal(hasTsDoc('/** Does foo. */\nexport declare function foo(): void'), true);
+  assert.equal(hasTsDoc('declare class A {\n  /** The size. */\n  size: number\n}\nexport = A'), true);
 });

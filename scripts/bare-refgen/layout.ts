@@ -52,6 +52,11 @@ export interface Layout {
    */
   returns?: Record<string, string>;
   /**
+   * Replaces a `package.json` description that says nothing (such as the
+   * package name) in the frontmatter and the auto intro sentence.
+   */
+  description?: string;
+  /**
    * An author-written lead paragraph for the page intro, used verbatim instead
    * of the auto-assembled description sentence (the npm-install fence and the
    * Node parity line are still added). Markdown; may include links.
@@ -62,14 +67,16 @@ export interface Layout {
    * Usage block (`in: 'usage'`) and the extra sections the research dossier
    * carries (`in` is the section's heading). For what the README gets wrong or
    * leaves out. `in: 'intro'` targets the page intro (the lead paragraph and
-   * the install fence). `from` must occur in that block exactly once, or the
+   * the install fence), `in: 'seeAlso'` the See also bullets (the "Builds on"
+   * line included). `from` must occur in that block exactly once, or the
    * render fails: a fix upstream has since made is noticed and dropped, not
    * left silently doing nothing.
    */
   patch?: Array<{ in: string; from: string; to: string }>;
   /**
    * Exact-text edits to one member's rendered block (`member` is its model key
-   * or name, as in `groups`). For docs-page prose that the `.d.ts` TSDoc lacks
+   * or name, as in `groups`, or its `####` heading text without backticks,
+   * which wins, for a member a subpath section repeats). For docs-page prose that the `.d.ts` TSDoc lacks
    * or gets wrong, which `describe` can't supply because it only fills a
    * missing description. Same contract as `patch`: `from` must occur in the
    * block exactly once, so an edit that upstream TSDoc has since overtaken
@@ -133,16 +140,25 @@ export async function loadLayout(name: string): Promise<Layout | null> {
       throw new Error(`${patchFile}: every entry needs exactly one of "in" or "member": ${JSON.stringify(p.from.slice(0, 80))}`);
     }
   }
+  // Per-parameter prose as data too (`<name>.params.json`: member → { param: prose }).
+  // Inline `params` entries win on conflict.
+  const paramsFile = resolve(LAYOUTS_DIR, `${name}.params.json`);
+  const externalParams: Record<string, Record<string, string>> | null = existsSync(paramsFile)
+    ? JSON.parse(await readFile(paramsFile, 'utf8'))
+    : null;
   const membersFile = resolve(LAYOUTS_DIR, `${name}.members.json`);
   const members: Array<{ after: string; body: string }> = existsSync(membersFile)
     ? JSON.parse(await readFile(membersFile, 'utf8'))
     : [];
 
-  if (!base && !external && sections.length === 0 && patches.length === 0 && members.length === 0) return null;
+  if (!base && !external && !externalParams && sections.length === 0 && patches.length === 0 && members.length === 0) {
+    return null;
+  }
   return {
     groups: base?.groups ?? [],
-    params: base?.params,
+    params: externalParams || base?.params ? { ...(externalParams ?? {}), ...(base?.params ?? {}) } : undefined,
     returns: base?.returns,
+    description: base?.description,
     intro: base?.intro,
     patch: [
       ...(base?.patch ?? []),
