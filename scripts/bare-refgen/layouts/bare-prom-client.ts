@@ -17,6 +17,10 @@ const layout: Layout = {
     "It's pure JavaScript, modelled on and API-compatible with the Node.js [`prom-client`](https://github.com/siimon/prom-client) package.",
   ],
   params: {
+    'Pushgateway.constructor': {
+      options:
+        "Extra options, merged directly into the underlying `http`/`https` request — for example `timeout` or a keep-alive `agent`. `requireJobName` (default `true`) controls whether `push()`/`pushAdd()`/`delete()` require a `jobName`; set it to `false` for gateways that don't group by job name, such as the [Gravel Gateway](https://github.com/sinkingpoint/prometheus-gravel-gateway).",
+    },
     'Histogram.zero': {
       labels: 'Object with label keys and values to initialize to zero.',
     },

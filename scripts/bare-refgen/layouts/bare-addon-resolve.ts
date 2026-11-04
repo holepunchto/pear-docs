@@ -17,9 +17,9 @@ import type { Layout } from '../layout';
 const layout: Layout = {
   groups: [],
   seeAlso: [
-    'The resolved addon is the first candidate `resolve` yields that exists as a file on the file system.',
-    'The `resolve.*` step functions are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.10.0`) when declaring the module dependency.',
-    "Addons normally resolve through the [runtime](/bare/reference/bare/runtime) or are bundled by [`bare-pack`](/bare/reference/bare/modules); reach for this module directly only when building tooling on the resolution algorithm itself, such as [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse).",
+    'The resolved addon is the first candidate `resolve` yields that exists as a file on the file system. Native prebuilds come first, then linked addons, then WebAssembly prebuilds.',
+    'The `resolve.*` step functions are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.11.0`) when declaring the module dependency. The [README](https://github.com/holepunchto/bare-addon-resolve#algorithm) lists the steps of each one.',
+    "Addons normally resolve through the [runtime](/bare/reference/bare/runtime) or are bundled by [`bare-pack`](/bare/reference/bare/modules/bare-pack); reach for this module directly only when building tooling on the resolution algorithm itself, such as [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse), which uses it to pick a package's [WebAssembly build](/bare/reference/bare/modules/bare-module-traverse#webassembly-addons).",
   ],
   params: {
     resolve: {

@@ -9,6 +9,7 @@
 import type { Layout } from '../layout';
 
 const layout: Layout = {
+  seeAlso: ['The CLI is installed globally via `npm i -g bare-stow`.'],
   params: {
     stow: {
       entry: 'The entry module to bundle, as a `file:` URL or path string.',
