@@ -4,7 +4,7 @@ description: "Start and manage Bare sidecar processes from Node.js and Electron"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.5.7"
+upstreamVersion: "0.5.15"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -44,22 +44,22 @@ Bare.IPC.on('data', (data) => Bare.IPC.write(data))
 
 ### Sidecar
 
-#### `new Sidecar(entry: string, args?: string[], opts?: SidecarOptions)`
+#### `new Sidecar(entry: string | URL, args?: string[], opts?: SidecarOptions)`
 
 Spawn a bundled Bare runtime running `entry` and return a `Sidecar`. `entry` is the path to the module to run, typically resolved with `require.resolve()`. `args` is an array of additional command line arguments passed to the process. `options` is reserved for future use.
 
 Overloads:
 
 ```ts
-new Sidecar(entry: string, args?: string[], opts?: SidecarOptions)
-new Sidecar(entry: string, opts?: SidecarOptions)
+new Sidecar(entry: string | URL, args?: string[], opts?: SidecarOptions)
+new Sidecar(entry: string | URL, opts?: SidecarOptions)
 ```
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `entry` | `string` | — | Path to the module the sidecar process runs, typically resolved with `require.resolve()`. |
+| `entry` | `string` \| `URL` | — | Path to the module the sidecar process runs, typically resolved with `require.resolve()`. |
 | `args?` | `string[]` | — | Additional command-line arguments passed to the process (default `[]`). |
 | `opts?` | [`SidecarOptions`](#sidecaroptions) | — | Reserved for future use. |
 
@@ -151,6 +151,19 @@ end(data: unknown, cb?: StreamCallback): this
 
 #### `errored: Error | null`
 
+#### `kill(signal?: string | number): boolean`
+
+Send `signal` to the underlying process, such as `'SIGKILL'` to force down a sidecar that
+`destroy()` is still waiting on. The sidecar closes once the process has exited.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `signal?` | `string` \| `number` | — | The signal to send, by name or number (default `'SIGTERM'`). |
+
+**Returns** `boolean` — Whether the signal was sent.
+
 #### `pause(): this`
 
 #### `pipe<S extends Writable>(dest: S, cb?: StreamCallback): S`
@@ -184,6 +197,16 @@ end(data: unknown, cb?: StreamCallback): this
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `encoding` | `BufferEncoding` | — | — |
+
+#### `Sidecar.SidecarStdio`
+
+```ts
+type SidecarStdio = 'pipe' | 'inherit' | 'ignore'
+```
+
+#### `Sidecar.versions: SidecarVersions`
+
+The versions of the components bundled with the sidecar, such as the Bare runtime.
 
 #### `stderr: Pipe | null`
 
@@ -251,6 +274,15 @@ interface SidecarEvents {
 ```ts
 interface SidecarOptions {
   detached?: boolean
+  stdio?: SidecarStdio | [stdin?: SidecarStdio, stdout?: SidecarStdio, stderr?: SidecarStdio]
+}
+```
+
+#### `SidecarVersions`
+
+```ts
+interface SidecarVersions {
+  readonly bare: string
 }
 ```
 
@@ -261,5 +293,5 @@ interface SidecarOptions {
 - The `'close'` event is emitted after the sidecar process has exited and its underlying stream has been destroyed.
 - [`bare-subprocess`](/bare/reference/bare/modules/bare-subprocess) — the lower-level process API.
 - [One core, many platforms](/bare/explanation/bare-on-native) — running a Bare core beside a host.
-- [Bare modules](/bare/reference/modules/bare-modules) — the full `bare-*` catalog.
+- [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
 - [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

@@ -4,7 +4,7 @@ description: "Low-level module graph traversal for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "2.5.9"
+upstreamVersion: "2.7.4"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -102,6 +102,21 @@ traverse.addons(parentURL: URL, artifacts: Artifacts, visited: Set<string>, opts
 | `visited` | `Set<string>` | — | — |
 | `opts?` | [`TraverseOptions`](#traverseoptions) | — | — |
 
+#### `traverse.assertAddonContext`
+
+```ts
+traverse.assertAddonContext(url: URL, scope: string, context: Partial<AddonContext>, addonContexts: Map<string, AddonContext>): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `URL` | — | — |
+| `scope` | `string` | — | — |
+| `context` | `Partial<AddonContext>` | — | — |
+| `addonContexts` | `Map<string, AddonContext>` | — | — |
+
 #### `traverse.assets`
 
 ```ts
@@ -135,7 +150,7 @@ traverse.imports(parentURL: URL, source: string | Buffer, imports: ImportsMap, a
 | `source` | `string` \| `Buffer` | — | — |
 | `imports` | `ImportsMap` | — | — |
 | `artifacts` | [`Artifacts`](#artifacts) | — | — |
-| `lexer` | `{ imports: Import[] exports: Export[] }` | — | — |
+| `lexer` | `{ imports: Import[]; exports: Export[] }` | — | — |
 | `visited` | `Set<string>` | — | — |
 | `opts?` | [`TraverseOptions`](#traverseoptions) | — | — |
 
@@ -194,7 +209,7 @@ traverse.package(url: URL, source: string | Buffer, artifacts: Artifacts, visite
 #### `traverse.preresolved`
 
 ```ts
-traverse.preresolved(url: URL, source: string | Buffer, resolution: ResolutionsMap, artifacts: Artifacts, visited: Set<string>, opts?: TraverseOptions): Traversal
+traverse.preresolved(url: URL, source: string | Buffer, attributes: Record<string, string> | null, resolution: ResolutionsMap, artifacts: Artifacts, visited: Set<string>, opts?: TraverseOptions): Traversal
 ```
 
 **Parameters**
@@ -203,6 +218,7 @@ traverse.preresolved(url: URL, source: string | Buffer, resolution: ResolutionsM
 | --- | --- | --- | --- |
 | `url` | `URL` | — | — |
 | `source` | `string` \| `Buffer` | — | — |
+| `attributes` | `Record<string, string> \| null` | — | — |
 | `resolution` | `ResolutionsMap` | — | — |
 | `artifacts` | [`Artifacts`](#artifacts) | — | — |
 | `visited` | `Set<string>` | — | — |
@@ -252,16 +268,22 @@ interface TraverseOptions {
   aliases?: Record<string, AliasableExtension>
   resolve?: (entry: Import, parentURL: URL, opts?: ResolveOptions) => Resolver
   deferUnresolved?: boolean
+  mount?: URL | string
   builtinProtocol?: string
   builtins?: Builtins
   conditions?: Conditions
+  defer?: string[]
+  deferredProtocol?: string
+  directories?: boolean
+  engines?: Engines
   extensions?: string[]
+  imports?: ImportsMap
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
   host?: string
   hosts?: string[]
   linked?: boolean
   linkedProtocol?: string
-  matchedConditions?: string[]
-  resolutions?: ResolutionsMap
 }
 ```
 
@@ -287,6 +309,29 @@ interface Dependency {
     imports: Import[]
     exports: Export[]
   }
+  wasi?: string
+}
+```
+
+#### `ResolveOptions`
+
+```ts
+interface ResolveOptions {
+  builtinProtocol?: string
+  builtins?: Builtins
+  conditions?: Conditions
+  defer?: string[]
+  deferredProtocol?: string
+  directories?: boolean
+  engines?: Engines
+  extensions?: string[]
+  imports?: ImportsMap
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
+  host?: string
+  hosts?: string[]
+  linked?: boolean
+  linkedProtocol?: string
 }
 ```
 
@@ -302,7 +347,7 @@ interface Dependency {
 | --- | --- | --- | --- |
 | `specifier` | `string` | — | — |
 | `parentURL` | `URL` | — | — |
-| `opts?` | `ResolveOptions` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
 
 #### `addon(specifier: string, parentURL: URL, opts?: ResolveOptions): Resolver`
 
@@ -312,7 +357,7 @@ interface Dependency {
 | --- | --- | --- | --- |
 | `specifier` | `string` | — | — |
 | `parentURL` | `URL` | — | — |
-| `opts?` | `ResolveOptions` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
 
 #### `default(entry: Import, parentURL: URL, opts?: ResolveOptions): Resolver`
 
@@ -324,7 +369,7 @@ The default resolver, which simply forwards to \<https://github.com/holepunchto/
 | --- | --- | --- | --- |
 | `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
 | `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
-| `opts?` | `ResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | Resolve options forwarded to the underlying resolution algorithm. |
 
 **Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
 
@@ -365,13 +410,18 @@ interface BareResolveOptions {
   linked?: boolean
   host?: string
   hosts?: string[]
+  conditions?: Conditions
   builtinProtocol?: string
   builtins?: Builtins
-  conditions?: Conditions
+  defer?: string[]
+  deferredProtocol?: string
+  directories?: boolean
+  engines?: Engines
   extensions?: string[]
-  linkedProtocol?: string
+  imports?: ImportsMap
   matchedConditions?: string[]
   resolutions?: ResolutionsMap
+  linkedProtocol?: string
 }
 ```
 
@@ -381,14 +431,19 @@ interface BareResolveOptions {
 interface NodeResolveOptions {
   host?: string
   hosts?: string[]
+  conditions?: Conditions
   builtinProtocol?: string
   builtins?: Builtins
-  conditions?: Conditions
+  defer?: string[]
+  deferredProtocol?: string
+  directories?: boolean
+  engines?: Engines
   extensions?: string[]
-  linked?: boolean
-  linkedProtocol?: string
+  imports?: ImportsMap
   matchedConditions?: string[]
   resolutions?: ResolutionsMap
+  linked?: boolean
+  linkedProtocol?: string
 }
 ```
 
@@ -404,9 +459,33 @@ interface NodeResolveOptions {
 | --- | --- | --- | --- |
 | `entry` | `Import` | — | The import to resolve, as produced by `bare-module-lexer`. |
 | `parentURL` | `URL` | — | The WHATWG `URL` to resolve `entry` relative to. |
-| `opts?` | `ResolveOptions` | — | Resolve options forwarded to the underlying resolution algorithm. |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | Resolve options forwarded to the underlying resolution algorithm. |
 
 **Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+### Types
+
+#### `default.ResolveOptions`
+
+```ts
+interface ResolveOptions {
+  builtinProtocol?: string
+  builtins?: Builtins
+  conditions?: Conditions
+  defer?: string[]
+  deferredProtocol?: string
+  directories?: boolean
+  engines?: Engines
+  extensions?: string[]
+  imports?: ImportsMap
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
+  host?: string
+  hosts?: string[]
+  linked?: boolean
+  linkedProtocol?: string
+}
+```
 
 ## `bare-module-traverse/resolve/bare`
 
@@ -433,13 +512,18 @@ interface BareResolveOptions {
   linked?: boolean
   host?: string
   hosts?: string[]
+  conditions?: Conditions
   builtinProtocol?: string
   builtins?: Builtins
-  conditions?: Conditions
+  defer?: string[]
+  deferredProtocol?: string
+  directories?: boolean
+  engines?: Engines
   extensions?: string[]
-  linkedProtocol?: string
+  imports?: ImportsMap
   matchedConditions?: string[]
   resolutions?: ResolutionsMap
+  linkedProtocol?: string
 }
 ```
 
@@ -467,20 +551,25 @@ interface BareResolveOptions {
 interface NodeResolveOptions {
   host?: string
   hosts?: string[]
+  conditions?: Conditions
   builtinProtocol?: string
   builtins?: Builtins
-  conditions?: Conditions
+  defer?: string[]
+  deferredProtocol?: string
+  directories?: boolean
+  engines?: Engines
   extensions?: string[]
-  linked?: boolean
-  linkedProtocol?: string
+  imports?: ImportsMap
   matchedConditions?: string[]
   resolutions?: ResolutionsMap
+  linked?: boolean
+  linkedProtocol?: string
 }
 ```
 
 ## See also
 
-- Builds on `bare-addon-resolve`, `bare-mime`, `bare-module-lexer`, and `bare-module-resolve`.
+- Builds on `bare-addon-resolve`, `bare-bundle`, `bare-mime`, `bare-module-lexer`, and `bare-module-resolve`.
 - It's the engine behind [`bare-pack`](/bare/reference/bare/modules) — a low-level building block; use `bare-pack` to produce a bundle, and reach for this directly only when building tooling on top of the graph.
 - The step generators exposed on `traverse` (`traverse.module`, `traverse.package`, `traverse.preresolved`, `traverse.imports`, `traverse.addons`, and `traverse.assets`) are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.2.3`) when declaring the dependency. See the [repository README](https://github.com/holepunchto/bare-module-traverse) for each step generator.
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.

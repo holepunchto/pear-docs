@@ -4,7 +4,7 @@ description: "Low-level module graph traversal for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "2.7.2"
+upstreamVersion: "2.7.4"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -385,6 +385,8 @@ This section covers what a traversal does with these builds. For how Bare loads 
 
 [`bare-addon-resolve`](/bare/reference/bare/modules/bare-addon-resolve) treats a host that starts with `wasi-` as a WebAssembly host. It tries the native prebuilds first, then linked addons, then the `.wasm` file of the WebAssembly hosts, so a WebAssembly build is used only when no native build or linked addon was found. See [`resolve.directory`](/bare/reference/bare/modules/bare-addon-resolve#resolvedirectory).
 
+As of v2.7.4, an addon resolved for several native hosts must resolve for each of them. The `.wasm` build is recorded for every native host that has neither a native build nor a linked addon, so that host does not pick up the native build of another host. Without a `.wasm` build, such a host is deferred under its own conditions when `deferUnresolved` is set, and otherwise the traversal throws `ADDON_NOT_FOUND`, naming the hosts and the candidates it tried. Before v2.7.4, an addon found for any one host satisfied the import, with no error for the hosts left without one.
+
 [`traverse.resolve.bare`](#bare-module-traverseresolve) adds `wasi-wasm32` to its default hosts. When `hosts` is not set, it is `[host, 'wasi-wasm32']`, where `host` is the `host` option, or the host of the running platform when `host` is not set. Pass `hosts` to leave `wasi-wasm32` out. The default resolver and `traverse.resolve.node` do not add it. Before v2.6.0 the default was `[host]`.
 
 ```js
@@ -397,7 +399,7 @@ traverse(entry, { resolve: traverse.resolve.bare }, readModule)
 traverse(entry, { resolve: traverse.resolve.bare, hosts: [Bare.Addon.host] }, readModule)
 ```
 
-The lookup for `.wasm` files is in `bare-addon-resolve` 1.11.0 and later. `bare-module-traverse` 2.7.2 still declares `^1.5.0` for that dependency, so an install that keeps an older `bare-addon-resolve` looks for the `wasi-wasm32` host like a native one, with `.bare` and `.node` files, and a package that has only a `.wasm` build throws `ADDON_NOT_FOUND`.
+The lookup for `.wasm` files is in `bare-addon-resolve` 1.11.0 and later. `bare-module-traverse` declares `^1.11.0` for that dependency from v2.7.3, and `^1.11.1` from v2.7.4. Before v2.7.3 it declared `^1.5.0`, so an install that kept an older `bare-addon-resolve` looked for the `wasi-wasm32` host like a native one, with `.bare` and `.node` files, and a package that had only a `.wasm` build threw `ADDON_NOT_FOUND`.
 
 A host also supplies import conditions, so `wasi-wasm32` adds `wasi` and `wasm32`. With `resolve.bare` and no `hosts`, a package whose `exports` or `imports` has a `wasi` or `wasm32` condition has that branch traversed and recorded next to its `default` branch. Before v2.6.0 only the `default` branch was. Under a `host` attribute only one branch is; see [Conditions under a `host` attribute](#conditions-under-a-host-attribute).
 

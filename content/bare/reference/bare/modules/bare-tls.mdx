@@ -4,7 +4,7 @@ description: "Transport Layer Security (TLS) streams for JavaScript"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "3.1.11"
+upstreamVersion: "3.2.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -71,6 +71,7 @@ Wrap the duplex stream `socket` with TLS.
 
 - `TypeError` — `host` is missing for a client socket while `rejectUnauthorized` is `true`.
 - `RangeError` — an ALPN protocol name is empty or longer than 255 bytes.
+- `TypeError` — `host` is set for a client socket, ends in a numeric label, and is not a canonical dotted-decimal IPv4 address, such as `127.1` or `0x7f.0.0.1`. Added in v3.2.0.
 
 #### `_destroy(err: Error | null, cb: StreamCallback): void`
 
@@ -254,7 +255,7 @@ same as `tls.Socket`, plus any options supported by \<https://github.com/holepun
 #### `createConnection`
 
 ```ts
-createConnection(opts: TLSSocketOptions & { port: number; host?: string }, onconnect?: () => void): TLSSocket
+createConnection(opts: TLSSocketOptions & { port: number; host?: string }, onconnect?: () => void): TLSNetSocket
 ```
 
 Creates a TCP connection and wraps it with TLS. `opts` are passed to both the underlying TCP
@@ -265,7 +266,7 @@ socket and `TLSSocket`. At minimum, `port` must be specified.
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `opts` | `TLSSocketOptions & { port: number; host?: string }` | — | Options passed to both the underlying TCP socket and `TLSSocket`; `port` is required and `host` defaults to `'localhost'`. |
-| `onconnect?` | `() => void` | — | Called when the connection is established. |
+| `onconnect?` | `() => void` | — | Called once the TLS handshake has completed (the socket's `'connect'` event). Before v3.2.0, it was called when the TCP connection opened, before the handshake. |
 
 ### Constants and variables
 
@@ -321,6 +322,20 @@ interface TLSSocketOptions {
 ```
 
 Options for a `TLSSocket`.
+
+#### `TLSNetSocket`
+
+```ts
+interface TLSNetSocket extends TLSSocket {
+  setKeepAlive(enable?: boolean, initialDelay?: number): this
+  setNoDelay(noDelay?: boolean): this
+  setTimeout(ms: number, ontimeout?: () => void): this
+  ref(): void
+  unref(): void
+}
+```
+
+A `TLSSocket` over a `bare-net` socket, as returned by `createConnection()`. `ref()` and `unref()` pass through to the underlying socket. Added in v3.2.0: `setKeepAlive()`, `setNoDelay()`, and `setTimeout()` also pass through and return the TLS socket, and the TLS socket emits `timeout` when the underlying socket does. `setTimeout(ms, ontimeout)` adds `ontimeout` as a one-time `timeout` listener, or removes it when `ms` is `0`.
 
 #### `TLSNetServerEvents`
 

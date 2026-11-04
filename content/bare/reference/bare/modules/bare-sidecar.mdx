@@ -4,7 +4,7 @@ description: "Start and manage Bare sidecar processes from Node.js and Electron"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.5.8"
+upstreamVersion: "0.5.15"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -61,22 +61,22 @@ A stream that is not piped is `null` on the `Sidecar`. The IPC channel is not af
 
 ### Sidecar
 
-#### `new Sidecar(entry: string, args?: string[], opts?: SidecarOptions)`
+#### `new Sidecar(entry: string | URL, args?: string[], opts?: SidecarOptions)`
 
 Spawn a bundled Bare runtime running `entry` and return a `Sidecar`. `entry` is the path to the module to run, typically resolved with `require.resolve()`. `args` is an array of additional command line arguments passed to the process. `opts` controls how the process is spawned, see [`SidecarOptions`](#sidecaroptions).
 
 Overloads:
 
 ```ts
-new Sidecar(entry: string, args?: string[], opts?: SidecarOptions)
-new Sidecar(entry: string, opts?: SidecarOptions)
+new Sidecar(entry: string | URL, args?: string[], opts?: SidecarOptions)
+new Sidecar(entry: string | URL, opts?: SidecarOptions)
 ```
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `entry` | `string` | — | Path to the module the sidecar process runs, typically resolved with `require.resolve()`. |
+| `entry` | `string` \| `URL` | — | Path to the module the sidecar process runs, typically resolved with `require.resolve()`. As of v0.5.9, it can also be a `file:` URL, which is converted to a path. |
 | `args?` | `string[]` | — | Additional command-line arguments passed to the process (default `[]`). |
 | `opts?` | [`SidecarOptions`](#sidecaroptions) | — | Spawn options: `detached`, and, added in v0.5.8, `stdio`. |
 
@@ -140,6 +140,8 @@ new Sidecar(entry: string, opts?: SidecarOptions)
 
 #### `destroy(err?: Error | null): void`
 
+Kill the sidecar process with `SIGTERM`. As of v0.5.10, the stream closes only once the process has exited, so a process that ignores `SIGTERM` keeps it open until [`kill()`](#killsignal-string--number-boolean) forces it down. Before v0.5.10, the stream closed without waiting.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
@@ -167,6 +169,18 @@ end(data: unknown, cb?: StreamCallback): this
 | `cb?` | `StreamCallback` | — | — |
 
 #### `errored: Error | null`
+
+#### `kill(signal?: string | number): boolean`
+
+Send `signal` to the underlying process, such as `'SIGKILL'` to force down a sidecar that `destroy()` is still waiting on. The sidecar closes once the process has exited. Added in v0.5.10.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `signal?` | `string` \| `number` | — | The signal to send, by name or number (default `'SIGTERM'`). |
+
+**Returns** `boolean` — Whether the signal was sent.
 
 #### `pause(): this`
 
@@ -201,6 +215,10 @@ end(data: unknown, cb?: StreamCallback): this
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `encoding` | `BufferEncoding` | — | — |
+
+#### `Sidecar.versions: SidecarVersions`
+
+The versions of the components bundled with the sidecar, such as the Bare runtime. The same object is exported as `bare-sidecar/versions`. Added in v0.5.15.
 
 #### `stderr: Pipe | null`
 
@@ -285,12 +303,23 @@ type SidecarStdio = 'pipe' | 'inherit' | 'ignore'
 
 How one standard stream of the sidecar process is set up. `'pipe'` exposes the stream on the `Sidecar`, and a piped output stream must be read, or the sidecar blocks once the pipe buffer fills. `'inherit'` connects the stream to the matching stream of the host. `'ignore'` discards it. Added in v0.5.8.
 
+#### `SidecarVersions`
+
+```ts
+interface SidecarVersions {
+  readonly bare: string
+}
+```
+
+The versions in [`Sidecar.versions`](#sidecarversions-sidecarversions). `bare` is the version of the bundled Bare runtime.
+
 ## See also
 
 - Builds on `bare-fs`, `bare-module`, `bare-path`, `bare-pipe`, `bare-stream`, `bare-subprocess`, and `bare-url`.
 - The instance extends a duplex stream: writing to it sends data to the sidecar over its IPC channel, data received from the sidecar is emitted as `'data'` events, and destroying the stream kills the sidecar process.
 - The `'close'` event is emitted after the sidecar process has exited and its underlying stream has been destroyed.
-- The sidecar runs the Bare runtime that ships inside the package: v1.34.1 as of v0.5.8, v1.34.0 in v0.5.7.
+- As of v0.5.12, an `EPIPE` or `ECONNRESET` error from the IPC channel, which a process causes by closing its end while it exits, no longer destroys the sidecar with an error. Writes that fail that way, or after the channel is destroyed, call back without an error. v0.5.11 ignored `ECONNRESET` only.
+- The sidecar runs the Bare runtime that ships inside the package: v1.36.2 as of v0.5.15, v1.34.1 in v0.5.8, and v1.34.0 in v0.5.7. Read it at runtime from `Sidecar.versions.bare`.
 - [`bare-subprocess`](/bare/reference/bare/modules/bare-subprocess) — the lower-level process API.
 - [One core, many platforms](/bare/explanation/bare-on-native) — running a Bare core beside a host.
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.

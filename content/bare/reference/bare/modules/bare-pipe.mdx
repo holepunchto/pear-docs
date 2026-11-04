@@ -4,7 +4,7 @@ description: "Native I/O pipes for JavaScript"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "4.3.1"
+upstreamVersion: "4.4.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -20,9 +20,14 @@ npm i bare-pipe
 ```js
 const Pipe = require('bare-pipe')
 
-const stdout = new Pipe(1)
+const [read, write] = Pipe.pipe()
 
-stdout.write('Hello world!\n')
+const reader = new Pipe(read)
+const writer = new Pipe(write)
+
+reader.on('data', (data) => console.log(data.toString()))
+
+writer.end('Hello world!\n')
 ```
 
 ## API
@@ -299,6 +304,21 @@ The current state of the pipe. One of `'open'`, `'opening'`, `'readOnly'`, `'wri
 
 Ref the pipe, preventing the process from exiting.
 
+#### `remoteCredentials(): PipeCredentials`
+
+The operating system's account of the process on the other end of the pipe, read from the
+kernel rather than from anything the peer sent.
+
+Added in v4.4.0. See [Local access control](#local-access-control) for what each platform reports.
+
+**Returns** [`PipeCredentials`](#pipecredentials) — The peer's credentials.
+
+**Throws**
+
+- `PIPE_IS_CLOSED` — the pipe is closed.
+- `PIPE_NOT_CONNECTED` — the pipe is not connected.
+- `ENOTSOCK` — the pipe is not a socket, on Unix.
+
 #### `resume(): this`
 
 #### `setEncoding(encoding: BufferEncoding): void`
@@ -432,6 +452,7 @@ Start listening for connections on `path`. `backlog` defaults to `511`.
 
 - `SERVER_ALREADY_LISTENING` — the server is already listening.
 - `SERVER_IS_CLOSED` — the server has been closed.
+- `INVALID_ARGUMENT` — `ownerOnly` is not a boolean, or was given for an abstract socket.
 
 #### `listenerCount<E extends keyof M>(name: E): number`
 
@@ -572,6 +593,19 @@ interface PipeConnectOptions {
 }
 ```
 
+#### `PipeCredentials`
+
+```ts
+interface PipeCredentials {
+  pid: number | null
+  uid: number | null
+  gid: number | null
+  sid: string | null
+}
+```
+
+The credentials that [`remoteCredentials()`](#remotecredentials-pipecredentials) returns, with `null` for anything the platform cannot report.
+
 #### `PipeEvents`
 
 ```ts
@@ -625,9 +659,12 @@ interface PipeServerEvents {
 ```ts
 interface PipeServerListenOptions {
   backlog?: number
+  ownerOnly?: boolean
   path?: string
 }
 ```
+
+`ownerOnly` restricts the pipe to the current user before any client can connect, and disconnects clients that the restriction alone would admit. It is not supported for an abstract socket. Added in v4.4.0; see [Local access control](#local-access-control).
 
 #### `PipeServerOptions`
 
@@ -745,6 +782,56 @@ class MyTarget {
 `Pipe`, `bare-tcp`'s `Socket`, `bare-dgram`'s `Socket`, and any compatible package implement this protocol natively, so a `bare-tcp` socket can be passed and received via `bare-pipe` IPC without any glue code.
 
 TypeScript users can import the `IPCAcceptable` interface from `bare-pipe` to type the protocol.
+
+## Local access control
+
+Added in v4.4.0.
+
+A server can restrict its pipe to the current user, and either end can ask the operating system who is on the other end.
+
+```js
+const server = Pipe.createServer((pipe) => {
+  const credentials = pipe.remoteCredentials()
+
+  if (/* not valid credentials */) return pipe.destroy()
+
+  pipe.end('hello\n')
+})
+
+server.listen({ path, ownerOnly: true })
+```
+
+What counts as valid credentials is up to the application, such as a `uid` matching the current user on Unix or a `sid` matching it on Windows.
+
+`ownerOnly` applies the restriction before the server listens, and disconnects some clients as soon as they are accepted, without a `connection` event.
+
+On Unix the socket file is made `0600`, without following a symbolic link that replaced it, which on Linux requires Linux 6.6 or later or a mounted `/proc`. A client whose user is neither that of the server nor root is disconnected, which the mode alone admits when the client may bypass it, such as a process with `CAP_DAC_OVERRIDE` on Linux.
+
+On Windows the pipe gets a protected DACL that allows only the current user and `SYSTEM`, any client that opened the pipe before the DACL was applied is disconnected, and so is:
+
+- A remote client.
+- A client whose process runs as a user other than that of the server or `SYSTEM`. The DACL alone admits these when they connect while impersonating the current user.
+- A client running at a lower integrity level than the server, such as an unelevated process seen from an elevated server or a sandboxed low integrity process. The DACL alone admits these, as they run as the same user.
+- A client whose process the server may not query, such as one running as `SYSTEM` seen from an unelevated server, or one that has exited.
+
+An elevated process of the current user is admitted by an unelevated server, as it runs as the same user at a higher integrity level.
+
+Keep the socket in a directory only the current user can write to, so that its path cannot be replaced. An abstract socket has no file to restrict, so `ownerOnly` is rejected for one.
+
+`pipe.remoteCredentials()` returns `{ pid, uid, gid, sid }`, with `null` for anything the platform cannot report. On Linux it reads `SO_PEERCRED`; on macOS and the BSDs `getpeereid()`, plus `LOCAL_PEERPID` on macOS. Read the credentials while the peer is connected: on macOS the process ID is no longer available once the peer has closed its end.
+
+On Windows the process ID comes from the pipe. A remote peer reports no process ID or SID, since its process ID names a process on another machine.
+
+On the server end, the SID is the user of the client process with that ID: the user the process runs as, not one it impersonated while connecting. It does not tell an elevated process from an unelevated one of the same user. The SID is `null`:
+
+- For a client that has exited, once nothing holds its process open. Read the credentials while the client is alive.
+- For a process created after the server accepted the connection, as it has reused the ID of a client that exited.
+- For a client process the server may not query, such as one running as `SYSTEM` seen from an unelevated server.
+- For a server end opened from a handle or received over IPC, as it may have connected at any time.
+
+The check for a reused ID, which `ownerOnly` also relies on, has two gaps. A client that exits and has its ID reused while its connection waits to be accepted goes unnoticed, and so does a reuse after the system clock is set back, as process creation times are read from it.
+
+On the client end, the process ID names the process that created the pipe, which may since have exited and had its ID reused. The SID is instead the owner of the pipe, which the kernel records when the server creates it, and which is the user of the server process, except for an elevated administrator, whose pipes are owned by the `Administrators` group (`S-1-5-32-544`). Only a process holding `SeRestorePrivilege`, such as an elevated administrator, can make another user the owner.
 
 ## See also
 
