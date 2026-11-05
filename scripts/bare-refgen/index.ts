@@ -72,6 +72,19 @@ function parseOnly(): string[] | null {
   return (process.argv[i + 1] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 }
 
+/** `name@version` → `{ name, version }`; a bare name leaves `version` unset (npm `latest`). */
+export function parseSpec(spec: string): { name: string; version?: string } {
+  const at = spec.lastIndexOf('@');
+  return at > 0 ? { name: spec.slice(0, at), version: spec.slice(at + 1) } : { name: spec };
+}
+
+/** The `upstreamVersion` a module's live page is pinned to, or undefined if it has none. */
+async function pinnedVersion(name: string): Promise<string | undefined> {
+  const page = join(CONTENT_DIR, `${name}.mdx`);
+  if (!existsSync(page)) return undefined;
+  return (await readFile(page, 'utf8')).match(/^upstreamVersion:\s*"([^"]+)"/m)?.[1];
+}
+
 function parseTop(): number {
   const i = process.argv.indexOf('--top');
   const n = i === -1 ? NaN : Number(process.argv[i + 1]);
@@ -190,8 +203,9 @@ async function generateOne(
   generatedAt: string,
   write: boolean,
   skipped: string[],
+  version?: string,
 ): Promise<{ orphans: string[]; version: string; description: string | null } | null> {
-  const pkg = await fetchPackage(name);
+  const pkg = await fetchPackage(name, version);
   try {
     if (!pkg.entryDts) {
       console.warn(`  ⚠ ${name}: no .d.ts shipped in the published package — skipping.`);
@@ -251,11 +265,17 @@ async function generateOne(
 
 async function main(): Promise<void> {
   const write = process.argv.includes('--write');
+  const pinned = process.argv.includes('--pinned');
   const only = parseOnly();
   let names: string[];
+  const versionOf = new Map<string, string>();
   if (only) {
-    names = only;
-    console.log(`📘 Generating bare refs for: ${names.join(', ')}\n`);
+    names = only.map((spec) => {
+      const { name, version } = parseSpec(spec);
+      if (version) versionOf.set(name, version);
+      return name;
+    });
+    console.log(`📘 Generating bare refs for: ${only.join(', ')}\n`);
   } else {
     const top = parseTop();
     console.log(`📘 Selecting bare-* modules with type declarations (top ${top} by downloads + allowlist)...\n`);
@@ -265,6 +285,12 @@ async function main(): Promise<void> {
     );
     console.log('');
     names = selection.map((s) => s.name);
+  }
+  if (pinned) {
+    for (const name of names) {
+      const v = versionOf.get(name) ?? (await pinnedVersion(name));
+      if (v) versionOf.set(name, v);
+    }
   }
 
   await mkdir(OUT_DIR, { recursive: true });
@@ -277,7 +303,7 @@ async function main(): Promise<void> {
   try {
     for (const name of names) {
       try {
-        const res = await generateOne(name, generatedAt, write, skipped);
+        const res = await generateOne(name, generatedAt, write, skipped, versionOf.get(name));
         if (res) {
           ok++;
           versions[name] = res.version;

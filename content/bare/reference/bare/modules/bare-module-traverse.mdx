@@ -67,12 +67,7 @@ for await (const dependency of traverse(
 traverse(entry: URL, readModule: (url: URL) => Buffer | string | null, listPrefix?: (url: URL) => Iterable<URL>, probeModule?: (url: URL) => boolean | undefined, resolveModule?: (url: URL) => URL): Iterable<Dependency>
 ```
 
-Traverse the module graph rooted at `entry`, which must be a WHATWG `URL` instance. `readModule`
-is called with a `URL` instance for every module to be read and must either return the module
-source, if it exists, or `null`. `listPrefix` is called with a `URL` instance of every prefix to
-be listed and must yield `URL` instances that have the specified `URL` as a prefix. If not
-provided, prefixes won't be traversed. If `readModule` returns a promise or `listPrefix` returns
-a promise generator, synchronous iteration is not supported.
+Traverse the module graph rooted at `entry`, which must be a WHATWG `URL` instance. `readModule` is called with a `URL` instance for every module to be read and must either return the module source, if it exists, or `null`. `listPrefix` is called with a `URL` instance of every prefix to be listed and must yield `URL` instances that have the specified `URL` as a prefix. If not provided, prefixes won't be traversed. If `readModule` returns a promise or `listPrefix` returns a promise generator, synchronous iteration is not supported.
 
 **Parameters**
 
@@ -84,8 +79,7 @@ a promise generator, synchronous iteration is not supported.
 | `probeModule?` | `(url: URL) => boolean \| undefined` | — | Called with the `URL` of each module to probe for existence; returns a boolean, or `undefined` to fall back to `readModule`. |
 | `resolveModule?` | `(url: URL) => URL` | — | Called with each resolution `URL` to transform; returns the `URL` to use in its place. Defaults to the identity function. |
 
-**Returns** `Iterable<Dependency>` — An iterable of resolved `Dependency` records for the module graph; asynchronous when any
-callback returns a promise.
+**Returns** `Iterable<Dependency>` — An iterable of resolved `Dependency` records for the module graph; asynchronous when any callback returns a promise.
 
 Changed in v2.7.0: the traversal walks queued subgraphs first in, first out, where before it took the most recently queued one first. The same graph now yields its `Dependency` records in a different order. For example, the `package.json` that a module reaches is yielded ahead of the modules it imports, where in v2.6.0 it came after them.
 
@@ -159,7 +153,7 @@ traverse.imports(parentURL: URL, source: string | Buffer, imports: ImportsMap, a
 | `source` | `string` \| `Buffer` | — | — |
 | `imports` | `ImportsMap` | — | — |
 | `artifacts` | [`Artifacts`](#artifacts) | — | — |
-| `lexer` | `{ imports: Import[] exports: Export[] }` | — | — |
+| `lexer` | `{ imports: Import[]; exports: Export[] }` | — | — |
 | `visited` | `Set<string>` | — | — |
 | `opts?` | [`TraverseOptions`](#traverseoptions) | — | — |
 
@@ -385,8 +379,6 @@ This section covers what a traversal does with these builds. For how Bare loads 
 
 [`bare-addon-resolve`](/bare/reference/bare/modules/bare-addon-resolve) treats a host that starts with `wasi-` as a WebAssembly host. It tries the native prebuilds first, then linked addons, then the `.wasm` file of the WebAssembly hosts, so a WebAssembly build is used only when no native build or linked addon was found. See [`resolve.directory`](/bare/reference/bare/modules/bare-addon-resolve#resolvedirectory).
 
-As of v2.7.4, an addon resolved for several native hosts must resolve for each of them. The `.wasm` build is recorded for every native host that has neither a native build nor a linked addon, so that host does not pick up the native build of another host. Without a `.wasm` build, such a host is deferred under its own conditions when `deferUnresolved` is set, and otherwise the traversal throws `ADDON_NOT_FOUND`, naming the hosts and the candidates it tried. Before v2.7.4, an addon found for any one host satisfied the import, with no error for the hosts left without one.
-
 [`traverse.resolve.bare`](#bare-module-traverseresolve) adds `wasi-wasm32` to its default hosts. When `hosts` is not set, it is `[host, 'wasi-wasm32']`, where `host` is the `host` option, or the host of the running platform when `host` is not set. Pass `hosts` to leave `wasi-wasm32` out. The default resolver and `traverse.resolve.node` do not add it. Before v2.6.0 the default was `[host]`.
 
 ```js
@@ -399,7 +391,7 @@ traverse(entry, { resolve: traverse.resolve.bare }, readModule)
 traverse(entry, { resolve: traverse.resolve.bare, hosts: [Bare.Addon.host] }, readModule)
 ```
 
-The lookup for `.wasm` files is in `bare-addon-resolve` 1.11.0 and later. `bare-module-traverse` declares `^1.11.0` for that dependency from v2.7.3, and `^1.11.1` from v2.7.4. Before v2.7.3 it declared `^1.5.0`, so an install that kept an older `bare-addon-resolve` looked for the `wasi-wasm32` host like a native one, with `.bare` and `.node` files, and a package that had only a `.wasm` build threw `ADDON_NOT_FOUND`.
+The lookup for `.wasm` files is in `bare-addon-resolve` 1.11.0 and later. `bare-module-traverse` 2.7.2 still declares `^1.5.0` for that dependency, so an install that keeps an older `bare-addon-resolve` looks for the `wasi-wasm32` host like a native one, with `.bare` and `.node` files, and a package that has only a `.wasm` build throws `ADDON_NOT_FOUND`.
 
 A host also supplies import conditions, so `wasi-wasm32` adds `wasi` and `wasm32`. With `resolve.bare` and no `hosts`, a package whose `exports` or `imports` has a `wasi` or `wasm32` condition has that branch traversed and recorded next to its `default` branch. Before v2.6.0 only the `default` branch was. Under a `host` attribute only one branch is; see [Conditions under a `host` attribute](#conditions-under-a-host-attribute).
 
@@ -480,7 +472,7 @@ The header is parsed only while artifacts are collected. With `artifacts: false`
 | --- | --- | --- | --- |
 | `specifier` | `string` | — | — |
 | `parentURL` | `URL` | — | — |
-| `opts?` | `ResolveOptions` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
 
 #### `addon(specifier: string, parentURL: URL, opts?: ResolveOptions): Resolver`
 
@@ -490,7 +482,7 @@ The header is parsed only while artifacts are collected. With `artifacts: false`
 | --- | --- | --- | --- |
 | `specifier` | `string` | — | — |
 | `parentURL` | `URL` | — | — |
-| `opts?` | `ResolveOptions` | — | — |
+| `opts?` | [`ResolveOptions`](#resolveoptions) | — | — |
 
 #### `default(entry: Import, parentURL: URL, opts?: ResolveOptions): Resolver`
 
@@ -595,6 +587,30 @@ interface NodeResolveOptions {
 | `opts?` | [`ResolveOptions`](#resolveoptions) | — | Resolve options forwarded to the underlying resolution algorithm. |
 
 **Returns** `Resolver` — A `Resolver` that yields the candidate resolutions for `entry`.
+
+### Types
+
+#### `default.ResolveOptions`
+
+```ts
+interface ResolveOptions {
+  builtinProtocol?: string
+  builtins?: Builtins
+  conditions?: Conditions
+  defer?: string[]
+  deferredProtocol?: string
+  directories?: boolean
+  engines?: Engines
+  extensions?: string[]
+  imports?: ImportsMap
+  matchedConditions?: string[]
+  resolutions?: ResolutionsMap
+  host?: string
+  hosts?: string[]
+  linked?: boolean
+  linkedProtocol?: string
+}
+```
 
 ## `bare-module-traverse/resolve/bare`
 

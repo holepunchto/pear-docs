@@ -69,13 +69,44 @@ function houseStyle(text: string): string {
 }
 
 /**
+ * Join soft-wrapped lines, one line per paragraph or list item, so a page
+ * doesn't change when upstream rewraps its TSDoc. Fences, lists, tables,
+ * headings and blank lines are kept.
+ */
+export function reflow(text: string): string {
+  const out: string[] = [];
+  let fence: string | null = null;
+  for (const line of text.split('\n')) {
+    const marker = line.match(/^\s*(`{3,}|~{3,})/)?.[1];
+    if (fence) {
+      out.push(line);
+      if (marker && marker[0] === fence[0] && marker.length >= fence.length) fence = null;
+      continue;
+    }
+    if (marker) {
+      fence = marker;
+      out.push(line);
+      continue;
+    }
+    const prev = out.at(-1);
+    const startsBlock = /^\s*([-*+] |\d+[.)] |#|>|\||$)/.test(line);
+    if (prev !== undefined && prev.trim() !== '' && !startsBlock && !/^\s*(`{3,}|~{3,}|#|\|)/.test(prev)) {
+      out[out.length - 1] = `${prev.trimEnd()} ${line.trim()}`;
+    } else {
+      out.push(line);
+    }
+  }
+  return out.join('\n');
+}
+
+/**
  * Make author prose safe to drop into MDX: escape `{`, `}`, `<` outside inline
  * code (they'd otherwise start a JS expression or JSX element). Code spans are
  * left untouched. No-op for the README (plain Markdown) target.
  */
 function mdxProse(text: string, ctx: Ctx): string {
   if (ctx.target === 'readme') return text;
-  return fixAnchorLinks(text, ctx)
+  return fixAnchorLinks(reflow(text), ctx)
     .split(/(`[^`]*`)/)
     .map((seg, i) => (i % 2 === 1 ? seg : houseStyle(seg).replace(/[{}<]/g, (c) => `\\${c}`)))
     .join('');
@@ -88,9 +119,10 @@ function mdxProse(text: string, ctx: Ctx): string {
  * this generated page (e.g. bare-pipe's TSDoc still links `IPCAcceptable` to
  * `#ipc-handle-passing`, the README's own section anchor, when it's
  * documented here under `#ipcacceptable`). Retargets to the real anchor when
- * the label names a documented type; strips the link (keeps the label)
- * otherwise — a dangling same-page anchor is never an improvement over plain
- * text.
+ * the label names a documented type. Any other link is left to `renderPage`,
+ * which keeps it when a heading on the page has that anchor and strips it
+ * (keeps the label) otherwise — a dangling same-page anchor is never an
+ * improvement over plain text.
  */
 function fixAnchorLinks(text: string, ctx: Ctx): string {
   const knownAnchors = new Set(ctx.typeAnchors.values());
@@ -98,7 +130,8 @@ function fixAnchorLinks(text: string, ctx: Ctx): string {
     if (knownAnchors.has(anchor)) return match;
     const bare = label.replace(/^`|`$/g, '');
     const known = ctx.typeAnchors.get(bare);
-    return known ? `[${label}](#${known})` : label;
+    // anything else stays for renderPage, which drops it only if no heading on the page has that anchor
+    return known ? `[${label}](#${known})` : match;
   });
 }
 
@@ -234,8 +267,8 @@ function headingText(e: BareExport, prefix: string): string {
   // subpath re-export of the same class) would double it. Drop only the
   // redundant component, keeping any outer scope — a subpath name — that
   // isn't already baked into the qualified text.
-  const parts = prefix.split('.').filter(Boolean);
-  const keep = parts.filter((p) => !text.startsWith(`${p}.`));
+  const keep = prefix.split('.').filter(Boolean);
+  if (keep.length && text.startsWith(`${keep.at(-1)}.`)) keep.pop();
   return keep.length ? `${keep.join('.')}.${text}` : text;
 }
 
@@ -290,8 +323,10 @@ function renderSymbol(e: BareExport, ctx: Ctx, syncSibling: BareExport | null, p
 
 /** A class worth expanding into per-member `####` entries (vs. a data shape). */
 function shouldExpandClass(e: BareExport): boolean {
-  return e.members.some(
-    (m) => m.kind === 'method' || m.kind === 'constructor' || (m.static && m.kind === 'function'),
+  // A stream or emitter class stays expanded when only its own properties remain.
+  return (
+    !!e.inheritsBase ||
+    e.members.some((m) => m.kind === 'method' || m.kind === 'constructor' || (m.static && m.kind === 'function'))
   );
 }
 
@@ -375,31 +410,47 @@ function buildEntries(exportsList: BareExport[], ctx: Ctx, defaultScope = ''): E
  * Anchors are page-global, so identical `####` headings across sections collide
  * (e.g. `Stats.isFile`/`Dirent.isFile`, or a main function and its
  * `bare-fs/promises` twin). For each colliding heading, qualify the entries that
- * carry a scope (class name or subpath segment) with `scope.`, leaving the
- * canonical top-level one (empty scope) bare.
+ * carry a scope (class name or subpath segment) with as little of `scope.` as
+ * makes them unique, innermost component first (`Body.json`, not
+ * `body.Body.json`; `errors.TimerError.code` only beside a main-entry
+ * `TimerError.code`), leaving the canonical top-level one (empty scope) bare.
  */
 function dedupeHeadings(entries: Entry[], ctx: Ctx): void {
-  const counts = new Map<string, number>();
-  for (const e of entries) counts.set(e.heading, (counts.get(e.heading) ?? 0) + 1);
-  for (const e of entries) {
-    if (e.scope && (counts.get(e.heading) ?? 0) > 1) {
-      e.mdx = renderSymbol(e.ex, ctx, e.sync, `${e.scope}.`);
-      e.heading = headingText(e.ex, `${e.scope}.`);
+  const level = new Map<Entry, number>();
+  const parts = (e: Entry) => e.scope.split('.').filter(Boolean);
+  const prefixOf = (e: Entry) => {
+    const k = level.get(e) ?? 0;
+    return k ? `${parts(e).slice(-k).join('.')}.` : '';
+  };
+  for (let changed = true; changed; ) {
+    changed = false;
+    const counts = new Map<string, number>();
+    for (const e of entries) counts.set(e.heading, (counts.get(e.heading) ?? 0) + 1);
+    for (const e of entries) {
+      const k = level.get(e) ?? 0;
+      if ((counts.get(e.heading) ?? 0) > 1 && k < parts(e).length) {
+        level.set(e, k + 1);
+        e.heading = headingText(e.ex, prefixOf(e));
+        changed = true;
+      }
     }
   }
+  for (const e of entries) if (level.get(e)) e.mdx = renderSymbol(e.ex, ctx, e.sync, prefixOf(e));
 }
 
 /**
  * Apply the layout's `memberPatch` and `extraMembers` to the rendered entries
- * (docs page only). Each names a member by key or name, as `groups` does, and
- * must resolve to exactly one entry; a patch's `from` must occur in that
+ * (docs page only). Each names a member by its `####` heading text, which
+ * wins when exactly one entry has it (a subpath repeats keys), or else by key
+ * or name, as `groups` does, and must resolve to exactly one entry; a patch's `from` must occur in that
  * entry's block exactly once. A renamed member, or an edit that upstream TSDoc
  * has overtaken, fails the render instead of silently doing nothing.
  */
 function amendEntries(entries: Entry[], ctx: Ctx): void {
   const { model, layout } = ctx;
   const find = (ref: string, what: string): Entry => {
-    const hits = entries.filter((e) => e.key === ref || e.name === ref);
+    const byHeading = entries.filter((e) => e.heading === ref);
+    const hits = byHeading.length === 1 ? byHeading : entries.filter((e) => e.key === ref || e.name === ref);
     if (hits.length !== 1) {
       throw new Error(`${model.name}: layout ${what} "${ref}" matches ${hits.length} members, needs exactly 1 (use the model key)`);
     }
@@ -487,8 +538,8 @@ function renderGroups(groups: RenderedGroup[]): string[] {
 
 // ---- page assembly -------------------------------------------------------
 
-function frontmatter(model: BareModel): string {
-  const desc = (model.description ?? `Reference for ${model.name}, generated from its TypeScript declarations.`)
+function frontmatter(model: BareModel, layout: Layout | null): string {
+  const desc = (layout?.description ?? model.description ?? `Reference for ${model.name}, generated from its TypeScript declarations.`)
     .replace(/"/g, "'")
     .replace(/\s+/g, ' ')
     .trim();
@@ -520,7 +571,8 @@ function intro(model: BareModel, layout: Layout | null): string {
   if (model.native) facts.push('It is a native addon');
   if (model.minBare) facts.push(`requires Bare ${code(model.minBare)}`);
   const factLine = facts.length ? `${facts.join(' and ')}.` : '';
-  const desc = model.description ? `${model.description}.`.replace(/\.\.$/, '.') : '';
+  const description = layout?.description ?? model.description;
+  const desc = description ? `${description}.`.replace(/\.\.$/, '.') : '';
   // An author-written manifest intro replaces the auto description sentence.
   const line = layout?.intro
     ? layout.intro.trim()
@@ -605,6 +657,16 @@ export function renderPage(model: BareModel, layout: Layout | null): { mdx: stri
     heading,
     body: patched(heading, mdxSafeReadmeBlock(body.trim())),
   }));
+  const buildsOn = buildsOnLine(model);
+  const seeAlsoBlock = patched(
+    'seeAlso',
+    [
+      ...(buildsOn ? [buildsOn] : []),
+      ...(layout?.seeAlso ?? []).map((s) => `- ${mdxProse(s, ctx)}`),
+      `- [${FAMILY === 'bare' ? 'Bare' : 'Pear'} modules](${CATALOG_ROUTE}) — the full \`${PREFIX}*\` catalog.`,
+      ...(EXTRA_SEE_ALSO ? [`- ${EXTRA_SEE_ALSO}`] : []),
+    ].join('\n'),
+  );
   (layout?.patch ?? []).forEach((p, i) => {
     if (!applied.has(i)) throw new Error(`${model.name}: layout patch targets "${p.in}", which this page has no block for`);
   });
@@ -627,22 +689,14 @@ export function renderPage(model: BareModel, layout: Layout | null): { mdx: stri
   const stripDanglingAnchors = (text: string) =>
     text.replace(/\[([^\]]+)\]\(#([^)]+)\)/g, (m, label: string, anchor: string) => (realAnchors.has(anchor) ? m : label));
 
-  const parts: string[] = [frontmatter(model), '', stabilityBadge(model.name), '', introBlock, ''];
+  const parts: string[] = [frontmatter(model, layout), '', stabilityBadge(model.name), '', introBlock, ''];
   if (usageBlock) parts.push('## Usage', '', stripDanglingAnchors(usageBlock), '');
 
-  parts.push(...apiLines);
+  parts.push(...stripDanglingAnchors(apiLines.join('\n')).split('\n'));
 
   for (const { heading, body } of extraBlocks) parts.push(`## ${heading}`, '', stripDanglingAnchors(body), '');
 
-  parts.push('## See also', '');
-  const buildsOn = buildsOnLine(model);
-  if (buildsOn) parts.push(buildsOn);
-  for (const s of layout?.seeAlso ?? []) parts.push(`- ${mdxProse(s, ctx)}`);
-  parts.push(
-    `- [${FAMILY === 'bare' ? 'Bare' : 'Pear'} modules](${CATALOG_ROUTE}) — the full \`${PREFIX}*\` catalog.`,
-    ...(EXTRA_SEE_ALSO ? [`- ${EXTRA_SEE_ALSO}`] : []),
-    '',
-  );
+  parts.push('## See also', '', seeAlsoBlock, '');
 
   return { mdx: tidy(parts.join('\n')), orphans };
 }

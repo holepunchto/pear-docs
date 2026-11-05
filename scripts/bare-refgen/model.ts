@@ -64,6 +64,8 @@ export interface BareExport {
   throws: BareThrows[];
   /** Nested members (class/interface members, namespace exports). */
   members: BareExport[];
+  /** Set when members inherited from another package's event or stream base class were left out. */
+  inheritsBase?: true;
 }
 
 /** An additional published entry point, e.g. `bare-fs/promises`. */

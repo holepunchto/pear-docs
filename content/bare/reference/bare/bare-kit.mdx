@@ -1,6 +1,6 @@
 ---
 title: "Bare Kit"
-description: "Reference for bare-kit and react-native-bare-kit: the Worklet API for running an isolated Bare thread inside a native app, and the IPC channel between host and worklet."
+description: "Reference for Bare Kit and its bindings: the Worklet API of react-native-bare-kit, bare-kit-swift, and bare-kit-kotlin for running an isolated Bare thread inside a native app, the IPC channel between host and worklet, and the C library underneath."
 docType: reference
 product: bare
 schemaType: APIReference
@@ -17,76 +17,100 @@ badge text. Four tools, by the size of what changed:
   <VersionGate since="x.y.z">…</…>     gates a block that is not a whole section, for example a single <Callout>.
   --flag  Description  [!version since=x.y.z]    gates one row inside a fenced help block.
 This axis tracks `react-native-bare-kit` specifically (the only canonical typed surface —
-the native iOS/Android `Worklet` bindings ship no .d.ts) and is independent of `bare-cli`
+the Swift and Kotlin bindings and the C library ship no .d.ts) and is independent of `bare-cli`
 and `bare-runtime`.
 
-As of 2026-10-14 (audited against react-native-bare-kit 0.16.0 and bare-kit 2.5.5, the
-latest release of each, with no surface change since the 0.14.0 doc-state), this page documents
-`WorkletEvents` and both `Worklet` constructors. `idle` is badged `0.14.0`, and the
-`start`/`terminate` events that 0.14.0 removed carry an `Until` badge. The iOS and Android
-sections are written by hand from `apple/BareKit/BareKit.h` and the Android `Worklet.java` and
-`IPC.java` in holepunchto/bare-kit, which ship no .d.ts and so have no doc-state and no badges.
-Re-diff those files against this page on each bare-kit release. The `Worklet.started`,
-`.terminated` and `.suspended` getters are in react-native-bare-kit's index.js but not its
-index.d.ts, so they are documented without badges too.
+As of 2026-11-04 (audited against react-native-bare-kit 0.17.1, bare-kit 3.0.1, bare-kit-swift
+2.2.0, and bare-kit-kotlin 0.2.2, the latest release of each), the doc-states are 0.17.1,
+0.17.0, 0.14, 0.10.5, and 0.9.2. 0.17.0 moved the package onto bare-kit 3 and removed the
+`assets` option. 0.17.1 added `exit` and `wait()`, and typed the `started`, `terminated`, and
+`suspended` getters, which index.js had long before, so they carry a "Typed in 0.17.1" label.
+Behavior that 0.17.0 changed without a typings change (the `BareKit` global, `IPC.end()`, the
+app bringing Bare Kit, relative filenames, the static `wakeup()` fix) is gated on 0.17.0 too,
+because 0.17.0 is a doc-state. The 0.9.0 and 0.9.1 doc-states fell out of the five-state
+window, and 0.9.2 is now the oldest, so the IPC section no longer carries `since="0.9.1"` and
+`options` no longer carries `since="0.9.2"`: a marker at or below the oldest state can't hide anything. `start(filename)` with no second
+argument still throws in 0.17.1, so its callout stays.
 
-0.16.0 changed no runtime source: index.js, index.d.ts, the native module in shared/, and
-CMakeLists.txt are identical to 0.15.6. Its one change is that it stopped linking native addons
-(the podspec and Gradle steps and the bare-link dependency). "Linking native addons" covers it
-in prose with no marker, because a `Since` version has to be a doc-state and 0.16.0 is not one.
-Both 0.15.6 and 0.16.0 fetch the bare-kit 2.5.4 prebuilds, and bare-kit 2.5.4 and 2.5.5 both
-embed Bare 1.33.4, which "Bundled Bare version" records. bare-kit 2.5.5 differs from 2.5.4 only
-in doc comments, the version number, and a lint ignore list. bare-kit's main branch is two
-commits past 2.5.5, a bump to Bare 1.33.5 and a reorder of IPC poll teardown in two tests. Leave
-both out until a release carries them. The page has no `upstreamVersion` front matter because it
-sits on a version axis, which scripts/check-upstream-pins.ts skips. */}
+bare-kit 3.0.0 reworked bare-kit as a standalone C library (include/bare-kit.h) and moved the
+bindings out of it: the Objective-C `apple/` and Java `android/` bindings are gone, replaced by
+holepunchto/bare-kit-swift (Sources/BareKit/Worklet.swift and IPC.swift) and
+holepunchto/bare-kit-kotlin (src/commonMain/kotlin/to/holepunch/bare/kit/*.kt plus the Android
+and JVM `Worklet()` factories). The Swift, Kotlin, and C API sections are written by hand from
+those files. None of them has a doc-state, so they carry no badges, and their history is in
+prose. Re-diff them on each release of those repos. react-native-bare-kit 0.17.x does not
+embed Bare Kit: shared/BareKitModule.cc dlopens BareKit.framework or libbare-kit.so, which the
+app brings in through bare-kit-swift or bare-kit-kotlin, usually with
+`bare-stow link --target bare-kit`. bare-stow 0.3.2 pins bare-kit-swift `from: 2.2.0` and
+bare-kit-kotlin v0.2.2, both of which build bare-kit 3.0.1, which fetches Bare 1.36.2 (3.0.0
+fetched 1.36.1). "Bundled Bare version" records this. The page has no `upstreamVersion` front
+matter because it sits on a version axis, which scripts/check-upstream-pins.ts skips. */}
 
-[`bare-kit`](https://github.com/holepunchto/bare-kit) embeds [Bare](/bare/reference/bare/runtime) in native application development. It provides a web-worker-like API for starting and managing isolated Bare threads—called **worklets**—each exposing an IPC channel with bindings for several languages. [`react-native-bare-kit`](https://github.com/holepunchto/react-native-bare-kit) wraps the same API for React Native and Expo. For the architecture this enables, see [One core, many platforms](/bare/explanation/bare-on-native).
+[Bare Kit](https://github.com/holepunchto/bare-kit) embeds [Bare](/bare/reference/bare/runtime) in native applications. It is a C library that runs each JavaScript entry point on a thread of its own, called a **worklet**, with an in-process IPC channel between the host app and the worklet. Bindings for several languages build on it:
+
+- [`react-native-bare-kit`](https://github.com/holepunchto/react-native-bare-kit), for React Native and Expo, is documented under [Worklet](#worklet).
+- [`bare-kit-swift`](https://github.com/holepunchto/bare-kit-swift), for iOS and macOS, is documented under [Swift](#swift).
+- [`bare-kit-kotlin`](https://github.com/holepunchto/bare-kit-kotlin), for Android and the JVM, is documented under [Kotlin](#kotlin).
+
+For the architecture this enables, see [One core, many platforms](/bare/explanation/bare-on-native).
 
 <Callout type="info">
 A *worklet* is an isolated Bare thread managed by the host app. The name avoids confusion with the worker threads of [`bare-worker`](/bare/reference/bare/modules).
 </Callout>
 
+<VersionGate since="0.17.0">
+<Callout type="info">
+From react-native-bare-kit 0.17.0, the package does not include Bare Kit. The app brings Bare Kit itself, through bare-kit-swift on iOS and bare-kit-kotlin on Android, along with the addons and assets of its worklets, so that other code in the app, such as a notification service extension, can share them. See [Linking addons and assets](#linking-addons-and-assets).
+</Callout>
+</VersionGate>
+
 ## Worklet
 
-A worklet runs a Bare entry script on a background thread. Create one, start it with an entry filename and source, and manage its [lifecycle](/bare/reference/bare/runtime#lifecycle).
+The React Native API. A worklet runs a Bare entry script on a background thread. Create one, start it with an entry filename and source, and manage its [lifecycle](/bare/reference/bare/runtime#lifecycle).
 
 ### Constructor
 
 - `new Worklet([options])`— create a worklet.
 - `new Worklet(id[, options])` <Since v="0.10.5" />— create a worklet under a string `id`. When a worklet with an `id` starts, any earlier worklet holding the same `id` is terminated, so at most one live worklet owns an `id`. `id` must be a string.
 
-<VersionGate since="0.9.2">
-`options` is an object with `memoryLimit` (a number, the memory limit of the worklet's JavaScript heap, where `0` takes the default) and `assets` (a string, the directory that assets bundled with the worklet are unpacked into, which the worklet needs both read and write access to; see [Loading a bundle](#loading-a-bundle)). Both are optional, and without `assets` a bundle that references an asset fails at runtime. <Since v="0.9.2" />
+`options` is an object with an optional `memoryLimit`, the memory limit in bytes of each JavaScript heap in the worklet, where `0`, the default, infers the limit from the physical memory of the device.
+
+- <Until v="0.17.0" label="Removed in 0.17.0" /> `options.assets`— earlier versions took a string, the directory that assets bundled with the worklet were unpacked into. From 0.17.0, assets ship with the app as resources instead. See [Loading a bundle](#loading-a-bundle).
+
+<VersionGate since="0.17.0">
+The constructor throws if the app does not include Bare Kit, with an error that names bare-kit-swift and bare-kit-kotlin. On Android, it also throws if it cannot find the application context, which the package records at startup through a content provider, `to.holepunch.bare.kit.react.BareKitProvider`, that its manifest declares. <Since v="0.17.0" />
 </VersionGate>
 
 ### Actions
 
-- `start(filename[, args])`, `start(filename, source[, args])`— start the worklet running `source` as `filename`. `source` is a string or a `Uint8Array`. Without `source`, the worklet reads `filename` itself. `args` is an array of strings that becomes `Bare.argv` inside the worklet as it is, so unlike on a desktop it holds no executable path and no entry path. A worklet can be started once, and starting it again, or starting one that has been terminated, throws.
-- `suspend([linger])`— suspend execution, keeping the process alive for up to `linger` milliseconds before it fully exits. A negative or omitted `linger` takes the platform default of 30 seconds. On iOS the default, and the limit for any `linger`, is the background time the OS grants the app, which is 30 seconds when the OS reports no limit.
+- `start(filename[, args])`, `start(filename, source[, args])`— start the worklet running `source` as `filename`. `source` is a string or a `Uint8Array`. Without `source`, the worklet reads `filename` itself. `args` is an array of strings that becomes `Bare.argv` inside the worklet as it is, so unlike on a desktop it holds no executable path and no entry path. A worklet can be started once, and starting it again, or starting one that has been terminated, throws. <Since v="0.17.0" /> A relative `filename` names a resource of the app, as [Loading a bundle](#loading-a-bundle) describes.
+- `suspend([linger])`— suspend execution, keeping the process alive for up to `linger` milliseconds before it fully exits. A negative or omitted `linger` takes the platform default of 30 seconds. On iOS the default, and the limit for any `linger`, is the background time the OS grants the app.
 - `resume()`— resume a suspended worklet.
 - `wakeup([deadline])`— wake the worklet during suspension. Work may run until `deadline`, after which it suspends again. `deadline` defaults to `0` and follows the same rules as `linger`: a negative value takes the platform default, and on iOS a longer value is shortened to the background time the OS grants.
 - `update([state])`— apply a host app-lifecycle state (React Native's `AppStateStatus`) to the worklet: `'active'` resumes it, `'background'` suspends it, and any other state does nothing. `state` defaults to `AppState.currentState`. React Native already forwards app-state changes to every started worklet, and `start()` applies the current state once the worklet is running, so a worklet started while the app is in the background is suspended straight away. You rarely need to call this yourself.
 - `terminate()`— terminate the worklet and destroy its IPC. Calling it on a terminated worklet does nothing.
+- `wait()` <Since v="0.17.1" />— return a promise that resolves with the exit code of the worklet once it has exited, on its own or after `terminate()`. For a worklet that has already exited, the promise resolves straight away. For a worklet that was never started, it never resolves.
 
 `suspend()`, `resume()`, and `wakeup()` throw if the worklet has not been started or has been terminated, as does `update()` when it ends up resuming or suspending.
 
 <Callout type="warn">
-In react-native-bare-kit 0.15.6 and 0.16.0, `start(filename)` with no second argument throws a `TypeError`, although the type declarations allow it, because an omitted `source` is `undefined`, which the argument check rejects. To start from `filename` alone, pass an empty `args` array: `worklet.start('/app.js', [])`.
+In react-native-bare-kit 0.15.6 through 0.17.1, `start(filename)` with no second argument throws a `TypeError`, although the type declarations allow it, because an omitted `source` is `undefined`, which the argument check rejects. To start from `filename` alone, pass an empty `args` array: `worklet.start('/app.js', [])`.
 </Callout>
 
 <Callout type="info">
 `suspend`, `resume`, `wakeup`, and `update` are also available as **static** methods (`Worklet.suspend()`, etc.), driving every started worklet the host manages at once rather than one instance.
 </Callout>
 
+<VersionGate until="0.17.0">
 <Callout type="warn">
-In react-native-bare-kit 0.15.6 and 0.16.0, the static `Worklet.wakeup()` calls `worklet.deadline(...)`, which doesn't exist, so it throws a `TypeError` when any started worklet has not been terminated. Call `wakeup()` on each worklet instead.
+In react-native-bare-kit 0.15.6 and 0.16.0, the static `Worklet.wakeup()` calls `worklet.deadline(...)`, which doesn't exist, so it throws a `TypeError` when any started worklet has not been terminated. Call `wakeup()` on each worklet instead. 0.17.0 fixed this.
 </Callout>
+</VersionGate>
 
 ### Properties
 
 - `worklet.IPC`— the [IPC](#ipc) channel to the worklet, a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream with a `worklet` property pointing back at it.
-- `worklet.started`, `worklet.terminated`, `worklet.suspended`— booleans for the lifecycle state. These are in the JavaScript but not in the type declarations.
+- `worklet.started`, `worklet.terminated`, `worklet.suspended` <Since v="0.17.1" label="Typed in 0.17.1" />— booleans for the lifecycle state. `started` is `true` once `start()` has succeeded. `suspended` is `true` from `suspend()` until `resume()`. `terminated` is `true` once `terminate()` is called and, from 0.17.1, once the worklet has exited on its own. Earlier versions have the same getters in the JavaScript but not in the type declarations.
 
 ### Events
 
@@ -96,9 +120,10 @@ In react-native-bare-kit 0.15.6 and 0.16.0, the static `Worklet.wakeup()` calls 
 - `wakeup`— `(deadline)`, the worklet woke up during suspension.
 - `idle`— `()`, the worklet has gone idle. <Since v="0.14.0" />
 - `resume`— `()`, the worklet resumed.
+- `exit`— `(code)`, the worklet has exited, on its own or after `terminate()`, with its exit code. When it exits on its own, the IPC first emits the data that the worklet wrote and then ends. <Since v="0.17.1" />
 - <Until v="0.14.0" label="Removed in 0.14.0" /> `start` and `terminate`— earlier versions emitted these as well. Check `worklet.started` and `worklet.terminated` instead.
 
-### React Native
+### Example
 
 ```js
 import { Worklet } from 'react-native-bare-kit'
@@ -107,10 +132,8 @@ import b4a from 'b4a'
 const worklet = new Worklet()
 
 const source = `
-const { IPC } = BareKit
-
-IPC.on('data', (data) => console.log(data.toString()))
-IPC.write(Buffer.from('Hello from Bare!'))
+Bare.IPC.on('data', (data) => console.log(data.toString()))
+Bare.IPC.write(Buffer.from('Hello from Bare!'))
 `
 
 worklet.start('/app.js', source)
@@ -120,160 +143,210 @@ IPC.on('data', (data) => console.log(b4a.toString(data)))
 IPC.write(b4a.from('Hello from React Native!'))
 ```
 
-### iOS
-
-```objc
-#import <BareKit/BareKit.h>
-
-BareWorkletConfiguration *options = [BareWorkletConfiguration defaultWorkletConfiguration];
-options.memoryLimit = 1024 * 1024 * 24; // 24 MiB
-
-BareWorklet *worklet = [[BareWorklet alloc] initWithConfiguration:options];
-
-NSString *source = @"console.log('hello from the worklet')";
-[worklet start:@"/app.js" source:[source dataUsingEncoding:NSUTF8StringEncoding] arguments:@[]];
-```
-
-### Android
-
-```java
-import to.holepunch.bare.kit.Worklet;
-import java.nio.charset.StandardCharsets;
-
-Worklet.Options options = new Worklet.Options()
-  .memoryLimit(24 * 1024 * 1024); // 24 MiB
-
-Worklet worklet = new Worklet(options);
-
-String source = "console.log('hello from the worklet')";
-worklet.start("/app.js", source, StandardCharsets.UTF_8, null);
-```
-
 ## Native bindings
 
-The iOS and Android bindings expose the same worklet through their own classes. Neither has `wakeup()`, `update()`, or events.
+The Swift and Kotlin bindings are thin layers over the [C API](#c-api). Bare Kit calls back on threads of its own, which the bindings turn into async calls, so you can use a worklet and its IPC from any task or coroutine. Unlike react-native-bare-kit, they have no `update()` and no lifecycle events, and their `wakeup()` deadline defaults to `-1`, the platform default, rather than `0`.
 
-### iOS
+### Swift
 
-Declared in [`apple/BareKit/BareKit.h`](https://github.com/holepunchto/bare-kit/blob/main/apple/BareKit/BareKit.h).
+[`bare-kit-swift`](https://github.com/holepunchto/bare-kit-swift) supports iOS 15 and macOS 13 or later, and includes Bare Kit as a framework, `BareKit.framework`, from its own release. Add it with Swift Package Manager and depend on its `BareKit` product. [Linking addons and assets](#linking-addons-and-assets) writes a package that does this for you.
 
-**`BareWorkletConfiguration`**
+```swift
+dependencies: [
+  .package(url: "https://github.com/holepunchto/bare-kit-swift", from: "2.2.0")
+]
 
-- `memoryLimit` (`NSUInteger`)— the memory limit of the worklet's JavaScript heap, where `0` takes the default.
-- `assets` (`NSString`, nullable)— the directory that bundled assets are unpacked into.
-- `+defaultWorkletConfiguration`— a configuration with the defaults.
-
-**`BareWorklet`**
-
-- `-initWithConfiguration:`— create a worklet. The configuration may be `nil`.
-- `+optimizeForMemory:`— a class method that reduces memory use, including by limiting the libuv thread pool to one thread instead of four. The platform is set up when the first worklet starts, so call it before you start one.
-- `-start:arguments:`, `-start:source:arguments:` (`NSData`), `-start:source:encoding:arguments:` (`NSString`)— start from `filename`, or from `source`. Without `source` the worklet reads `filename` itself.
-- `-start:ofType:arguments:`, `-start:ofType:inBundle:arguments:`, `-start:ofType:inDirectory:arguments:`, `-start:ofType:inDirectory:inBundle:arguments:`— look a file up in an app bundle (`NSBundle.mainBundle` unless `inBundle:` is given, inside the `inDirectory:` subdirectory if given) with `pathForResource:ofType:`, then start from that path.
-- `-suspend`, `-suspendWithLinger:`, `-resume`, `-terminate`— the lifecycle methods. `-suspend` uses a linger of `-1`, the platform default.
-- `-push:completion:` and `-push:queue:completion:`, with `NSData` or `NSString` payloads (the `NSString` forms take an `encoding:`)— see [Push](#push).
-
-### Android
-
-Declared in [`Worklet.java`](https://github.com/holepunchto/bare-kit/blob/main/android/src/main/java/to/holepunch/bare/kit/Worklet.java) and [`IPC.java`](https://github.com/holepunchto/bare-kit/blob/main/android/src/main/java/to/holepunch/bare/kit/IPC.java), in the package `to.holepunch.bare.kit`.
-
-**`Worklet.Options`**
-
-- `memoryLimit(int)`— the memory limit of the worklet's JavaScript heap in bytes, where `0` takes the default.
-- `assets(String)`— the directory that bundled assets are unpacked into.
-
-**`Worklet`** implements `Closeable`, and `close()` terminates it.
-
-- `new Worklet(options)`— create a worklet. `options` may be `null`.
-- `start(String filename, String[] arguments)`— start from `filename`, which the worklet reads itself.
-- `start(String filename, ByteBuffer source, String[] arguments)`, `start(String filename, String source, Charset charset, String[] arguments)`, `start(String filename, String source, String charset, String[] arguments)`— start from `source`. `arguments` may be `null`.
-- `start(String filename, InputStream source, String[] arguments)`— start from the contents of a stream. It calls `source.reset()` before it reads the stream, and it is declared to throw `IOException`.
-- `suspend()`, `suspend(int linger)`, `resume()`, `terminate()`— the lifecycle methods. A negative linger, which `suspend()` uses, is 30 seconds.
-- `push(...)`— see [Push](#push).
-
-## Push
-
-Push sends a single request from the host to the worklet and delivers the worklet's reply, for one-off calls where an [IPC](#ipc) stream is more than needed. It is available on iOS and Android, but not in react-native-bare-kit.
-
-In the worklet, handle the `push` event on the `BareKit` global. The listener is passed the payload as a `Buffer` and a `reply(err, payload[, encoding])` function. Call `reply` once, with an error to fail the request or a payload to answer it, because later calls do nothing. A string payload is encoded with `encoding`, and the host receives `String(err)` as the error message. If the worklet has no `push` listener, the request completes with no reply and no error.
-
-```js
-BareKit.on('push', (payload, reply) => {
-  reply(null, 'pong: ' + payload.toString())
-})
+.product(name: "BareKit", package: "bare-kit-swift")
 ```
 
-On the host, pass a payload and receive the reply on a completion handler.
+```swift
+import BareKit
+import Foundation
 
-- **iOS:** `-push:completion:` and `-push:queue:completion:` take an `NSData` payload and deliver an `NSData` reply. The `NSString` forms take an `encoding:`, which they use to encode the payload and to decode the reply, and deliver an `NSString`. The reply is `nil` when the worklet sends none. When the worklet replies with an error, `error` is an `NSError` in the domain `to.holepunch.bare.kit` with the code `-1`, and its localized description is the message from the worklet. The completion runs on `queue`, which is the main queue when you leave it out.
-- **Android:** `push(ByteBuffer payload, PushCallback<ByteBuffer> callback)` and `push(String payload, Charset charset, PushCallback<String> callback)` call back with `apply(reply, exception)` on the `Looper` of the calling thread, and `push(ByteBuffer payload, Looper looper, PushCallback<ByteBuffer> callback)` calls back on the `Looper` you pass. The `reply` is `null` when the worklet sends none, and `exception` is an `Error` that carries the worklet's message when the worklet replies with an error. The `String` forms that take a `Looper` ignore it and call back on the `Looper` of the calling thread. Each `String` form also accepts a charset name in place of the `Charset`. `push(ByteBuffer payload, long timeout, TimeUnit unit)` and `push(String payload, Charset charset, long timeout, TimeUnit unit)` instead block until the reply or the timeout, return `null` if there is no reply or the timeout passes, and throw that `Error` when the worklet replies with an error. They declare `InterruptedException`.
+let worklet = try Worklet(options: .init(memoryLimit: 24 * 1024 * 1024)) // 24 MiB
+let ipc = try IPC(worklet: worklet)
+
+try worklet.start("app.bundle")
+
+try await ipc.write(Data("Hello from Swift".utf8))
+
+for await data in ipc {
+  print(String(decoding: data, as: UTF8.self))
+}
+
+ipc.close()
+
+let code = await worklet.wait()
+```
+
+**`Worklet`**
+
+- `Worklet.Options(memoryLimit:)`— the memory limit in bytes of each JavaScript heap, where `0`, the default, infers the limit from the physical memory of the device.
+- `init(options:) throws`— create a worklet that has not started. It throws `BareKitError.failed(_:)` if Bare Kit cannot create it.
+- `start(_ filename: String, source: Data? = nil, arguments: [String] = []) throws`, `start(_ url: URL, source:arguments:) throws`— start the worklet running `filename`, with `arguments` as `Bare.argv`. The `URL` form passes the path of a file URL and the full string of any other URL. Without `source`, the worklet reads the module at runtime, so it may be a module next to its `node_modules` rather than a bundle. A relative `filename` names a resource of the app bundle, which app extensions share. It throws `BareKitError.failed(_:)` if the worklet cannot start, for example after `teardown()`.
+- `suspend(linger:)`, `resume()`, `wakeup(deadline:)`, `terminate()`— the lifecycle methods. `linger` and `deadline` are `Int32` milliseconds and default to `-1`, the platform default.
+- `wait() async -> Int32`— wait for a started worklet to exit, on its own or after `terminate()`, and return its exit code.
+- `Worklet.optimizeForMemory(_:)`, `Worklet.teardown()`— the class methods for the state that the worklets of a process share. See `bare_worklet_optimize_for_memory()` and `bare_worklet_teardown()` under [C API](#c-api).
+
+Releasing a worklet terminates it, so keep a reference to it for as long as it should run.
+
+**`IPC`**
+
+`IPC` is an `AsyncSequence` of `Data`. Iterating it yields what the worklet writes to `Bare.IPC`, until the worklet ends its side or the IPC is closed. Data is read from the worklet only while you iterate, so a worklet that writes faster than the host iterates waits for room. Only one iterator can wait for data at a time: iteration ends early for an iterator that waits while another one already does, or whose task is cancelled while it waits.
+
+- `init(worklet:) throws`— open the IPC of `worklet`. A worklet has one IPC, and it throws `BareKitError.failed(_:)` if the worklet already has one or has been terminated.
+- `write(_ data: Data) async throws`— write `data` to `Bare.IPC` in the worklet, waiting for room as needed. It throws `BareKitError.closed` if the IPC is ended or closed before all of the data is written, and `BareKitError.peerClosed` if the worklet closes its side first.
+- `end()`— end what the host writes once the pending writes complete. The worklet then reads end-of-stream, while iteration continues. Later writes throw. Ending twice, or after closing, does nothing.
+- `close()`— close the IPC, which ends iteration and makes writes throw. Closing twice does nothing.
+
+**`BareKitError`** has three cases: `failed(Int32)`, a call into Bare Kit that failed with that status; `closed`; and `peerClosed`.
+
+Native addons that [`bare-link`](https://github.com/holepunchto/bare-link) links are loaded by the system linker, so embed them in the app as you would any other framework.
+
+### Kotlin
+
+[`bare-kit-kotlin`](https://github.com/holepunchto/bare-kit-kotlin) supports Android and the JVM on Linux, macOS, and Windows, in the package `to.holepunch.bare.kit`. Add it from JitPack. [Linking addons and assets](#linking-addons-and-assets) writes a Gradle module that does this for you.
+
+```groovy
+repositories {
+  maven { url "https://jitpack.io" }
+}
+
+dependencies {
+  implementation "com.github.holepunchto.bare-kit-kotlin:bare-kit-kotlin:v0.2.2"
+}
+```
+
+```kotlin
+import to.holepunch.bare.kit.Ipc
+import to.holepunch.bare.kit.Worklet
+
+// Inside a coroutine
+val worklet = Worklet(context, Worklet.Options(memoryLimit = 24L * 1024 * 1024)) // 24 MiB
+val ipc = Ipc(worklet)
+
+worklet.start("app.bundle")
+
+ipc.write("Hello from Kotlin".encodeToByteArray())
+
+ipc.data.collect { data -> println(data.decodeToString()) }
+
+ipc.close()
+
+val code = worklet.wait()
+worklet.close()
+```
+
+**`Worklet`** implements `AutoCloseable`.
+
+- `Worklet(context, options)` on Android, `Worklet(options)` on the JVM— create a worklet that has not started. `options` is a `Worklet.Options(memoryLimit)`, the memory limit in bytes of each JavaScript heap as a `Long`, where `0`, the default, infers the limit from the physical memory of the device. On Android, the application context of `context` is handed to the native addons of the worklet under [`bare.android.context.v1`](/bare/reference/bare/embedder-context#bareandroidcontextv1). Both throw `BareKitException.Failed` if Bare Kit cannot create the worklet.
+- `start(filename, source = null, arguments = emptyList())`— start the worklet running `filename`, with `arguments` as `Bare.argv`. `source` is a `ByteArray`. Without it, the worklet reads `filename` at runtime, so it may be a module next to its `node_modules` rather than a bundle. On Android, a relative `filename` names an asset of the app, as [Loading a bundle](#loading-a-bundle) describes. On macOS, it names a resource of the app bundle. On Linux and Windows, pass the path of the bundle or its source. It throws `BareKitException.Failed` if the worklet cannot start, for example after `teardown()`.
+- `suspend(linger = -1)`, `resume()`, `wakeup(deadline = -1)`, `terminate()`— the lifecycle methods, with `linger` and `deadline` in milliseconds, where `-1` is the platform default.
+- `suspend fun wait(): Int`— wait for a started worklet to exit, on its own or after `terminate()`, and return its exit code.
+- `close()`— terminate the worklet if it is still running and release it. Closing twice does nothing. Once closed, `terminate()` does nothing and the other methods throw `IllegalStateException`.
+- `Worklet.optimizeForMemory(enabled)`, `Worklet.teardown()`— the companion functions for the state that the worklets of a process share. See `bare_worklet_optimize_for_memory()` and `bare_worklet_teardown()` under [C API](#c-api).
+
+Closing a worklet terminates it, so keep it open for as long as it should run.
+
+**`Ipc`** implements `AutoCloseable`.
+
+- `Ipc(worklet)`— open the IPC of `worklet`. A worklet has one IPC, and it throws `BareKitException.Failed` if the worklet already has one or has been terminated, and `IllegalStateException` if the worklet is closed.
+- `data`— a `Flow<ByteArray>` of what the worklet writes to `Bare.IPC`, until the worklet ends its side or the IPC is closed. It can be collected only once.
+- `suspend fun write(data: ByteArray)`— write `data` to `Bare.IPC` in the worklet, waiting for room as needed. It throws `BareKitException.Closed` if the IPC is ended or closed before all of the data is written, and `BareKitException.PeerClosed` if the worklet closes its side first.
+- `end()`— end what the host writes once the pending writes complete. The worklet then reads end-of-stream, while `data` keeps collecting. Later writes throw. Ending twice, or after closing, does nothing.
+- `close()`— close the IPC and release it, which ends collection and makes writes throw. Closing twice does nothing.
+
+**`BareKitException`** is a sealed class with three subclasses: `Failed`, whose `status` is the status that a call into Bare Kit failed with; `Closed`; and `PeerClosed`.
+
+On Android, include native addons that [`bare-link`](https://github.com/holepunchto/bare-link) links in the `jniLibs` of the app, where the system linker loads them. On the JVM, the library includes Bare Kit for Linux, macOS, and Windows on arm64 and x64, and extracts it to a temporary file when first used. On other platforms it loads `bare-kit` from `java.library.path` instead.
+
+### Bare Kit 2 bindings
+
+bare-kit 2.x shipped its own Objective-C binding (`BareWorklet`, `BareWorkletConfiguration`, and `BareIPC` in `apple/BareKit/BareKit.h`) and Java binding (`Worklet` and `IPC` in `to.holepunch.bare.kit`), with a polling IPC API. bare-kit 3.0.0 removed both from the repository in favor of bare-kit-swift and bare-kit-kotlin. It also removed **push**, the one-off request from the host that the worklet answered from a `push` listener on the `BareKit` global, along with the `assets` option. Send requests over the [IPC](#ipc) instead, for example with [`bare-rpc`](/bare/reference/bare/modules/bare-rpc).
 
 ## IPC
-<VersionSection since="0.9.1" />
 
-Bare Kit provides an IPC channel between the host app and a worklet. Inside the worklet it is `BareKit.IPC`, the same object as [`Bare.IPC`](/bare/reference/bare/runtime#bareipc). On the host it depends on the binding.
+Bare Kit provides an IPC channel between the host app and a worklet. From bare-kit 3.0.0 the channel is an in-process queue rather than a pipe. Inside the worklet it is [`Bare.IPC`](/bare/reference/bare/runtime#bareipc), a duplex stream. On the host it depends on the binding.
+
+- <Until v="0.17.0" label="Removed in 0.17.0" /> The `BareKit` global— earlier versions also exposed the channel inside the worklet as `BareKit.IPC`, the same object as `Bare.IPC`. Use `Bare.IPC`, which works in every version.
+
+An open IPC keeps the worklet running until both the worklet and the host have ended their side of it, just like a pipe would. Ending a side is a half-close: the other side reads the end of the stream but can keep writing. Inside the worklet, call `Bare.IPC.end()`. While the worklet is suspended, `Bare.IPC` does not keep it running. A write to `Bare.IPC` after the host has closed the channel fails with an error whose code is `IPC_CLOSED`.
 
 **React Native.** `worklet.IPC` is a [`streamx`](https://github.com/mafintosh/streamx) `Duplex` stream, so use it as one: listen for `data`, call `write()`, and `destroy()` it. Writes queue behind a slow worklet instead of being partial. It opens when the worklet starts, so you can write before calling `start()` and the writes wait until the worklet is running. It is destroyed along with the worklet.
 
-**iOS and Android.** `BareIPC` (`-initWithWorklet:`) and `IPC` (`new IPC(worklet)`) offer a polling API and an async API, in both a synchronous and an asynchronous style. Create one after you start the worklet, because the channel comes from the running worklet.
+<VersionGate since="0.17.0">
+`end()` half-closes the host side, so the worklet reads the end of the stream. <Since v="0.17.0" /> From 0.17.1, when the worklet exits on its own, the stream emits what the worklet wrote and then ends, and writes that are pending or come later fail with `IPC has been closed`. <Since v="0.17.1" />
+</VersionGate>
 
-<Callout type="warn">
-On iOS and Android, IPC operations are **non-blocking** regardless of which API you use. They may return partial results—for example writing fewer bytes than requested—and require polling to complete. On iOS the `readable` and `writable` callbacks, and the completions of async reads and writes that have to wait for the channel, run on a dedicated serial queue, so synchronize any state they share. On Android the same callbacks and completions run through the `Looper` of the thread that created the `IPC`.
-</Callout>
+**Swift and Kotlin.** `IPC` and `Ipc` offer async writes, an async sequence or flow of reads, `end()`, and `close()`, as [Swift](#swift) and [Kotlin](#kotlin) describe.
 
-**Polling API** (callback-driven, use when you want event-triggered reads/writes):
-
-- `readable`— callback invoked when data is available to read. On iOS it is a property, and on Android it is set with `readable(callback)`.
-- `writable`— callback invoked when data can be written. On iOS it is a property, and on Android it is set with `writable(callback)`.
-- `read()`— synchronously read available data. It returns `nil` (`null` on Android) when none is available yet, so wait for `readable` before retrying. At end-of-stream, once the worklet has closed its end, it returns empty data. A worklet closes its end of the channel when it exits.
-- `write(data)`— synchronously write data; returns the number of bytes written, which is `0` when the channel cannot take more yet.
-
-**Async API** (completion-based, use when you want a single async operation):
-
-- `read(callback)`— asynchronously read data with a completion callback, which receives the data and an error. At end-of-stream the data is `nil` (`null` on Android).
-- `write(data, callback)`— asynchronously write data with a completion callback, which receives an error if the write failed.
-
-In bare-kit 2.5.5 the `error` that these callbacks receive is always `nil` (`null` on Android).
-
-**Utility:**
-
-- `close()`— close the IPC connection.
-
-Inside the worklet the channel is `BareKit.IPC`, the same object as [`Bare.IPC`](/bare/reference/bare/runtime#bareipc). On the host it is a `BareIPC` (iOS), an `IPC` (Android), or the `IPC` object on the React Native `Worklet`.
+**C.** `bare_ipc_read()` and `bare_ipc_write()` never block, and a poll calls the host back when the channel becomes readable or writable. See the IPC functions under [C API](#c-api).
 
 For typed, schema-generated messaging over this channel instead of raw bytes, layer [`bare-rpc`](/bare/reference/bare/modules) on top—see [Type a native RPC bridge](/bare/how-to/run-on-native/type-a-native-rpc-bridge).
 
 ## C API
 
-The iOS and Android bindings, and the Linux and Windows builds of `libbare-kit`, sit on a C API declared in [`shared/worklet.h`](https://github.com/holepunchto/bare-kit/blob/main/shared/worklet.h) and [`shared/ipc.h`](https://github.com/holepunchto/bare-kit/blob/main/shared/ipc.h). Use it to host worklets from your own C or C++ code. Functions return `0` on success and a negative value on failure, except where noted.
+Bare Kit is a C library declared in [`include/bare-kit.h`](https://github.com/holepunchto/bare-kit/blob/main/include/bare-kit.h). Use it to host worklets from your own C or C++ code. Functions that return an `int` return `0` on success and a negative value on failure, except where noted.
 
 ### Worklet
 
 ```c
-typedef struct bare_worklet_options_s {
+struct bare_worklet_options_s {
+  int version;
   size_t memory_limit;
-  const char *assets;
-} bare_worklet_options_t;
+
+  union {
+    struct {
+      void *jvm;
+      void *context;
+    } android;
+
+    void *reserved[8];
+  } platform;
+};
 ```
 
-`memory_limit` is the memory limit of each JavaScript heap in bytes, applied to each thread individually. By default it is inferred from the physical memory of the device. `assets` is the directory that bundled assets are unpacked into, which the worklet needs read and write access to. By default assets cannot be referenced, and doing so is a runtime error.
+`version` is the version of the struct, `0`. `memory_limit` is the memory limit of each JavaScript heap in bytes, applied to each thread individually, the main thread included. By default it is inferred from the physical memory of the device.
 
-- `bare_worklet_optimize_for_memory(bool enabled)`— trade performance for memory. It must be configured before the first worklet starts.
-- `bare_worklet_alloc(bare_worklet_t **result)`, `bare_worklet_init(bare_worklet_t *worklet, const bare_worklet_options_t *options)`, `bare_worklet_destroy(bare_worklet_t *worklet)`— allocate, initialize and release a worklet. `options` may be `NULL`, and its `assets` string is copied. `bare_worklet_destroy()` releases what the worklet holds, including its IPC descriptors, but does not free the struct that `bare_worklet_alloc()` returned.
-- `bare_worklet_start(bare_worklet_t *worklet, const char *filename, const uv_buf_t *source, int argc, const char *argv[])`— start the worklet on a new thread. `source` may be `NULL`, in which case the worklet reads `filename` itself. The new thread has read `filename`, `source`, and `argv` by the time the call returns, so none of them has to stay valid after it. The call does not wait for the worklet to run the entry script.
-- `bare_worklet_suspend(worklet, int linger)`, `bare_worklet_resume(worklet)`, `bare_worklet_wakeup(worklet, int deadline)`, `bare_worklet_terminate(worklet)`— the lifecycle, equivalent to [`bare_suspend()`, `bare_resume()`, `bare_wakeup()` and `bare_terminate()`](/bare/reference/bare/runtime#suspension) on the worklet's process. A negative `linger` or `deadline` takes the platform default of 30 seconds. On iOS the default, and the limit for any `linger` or `deadline`, is the background time the OS grants the app.
-- `bare_worklet_on_suspend()`, `bare_worklet_on_wakeup()`, `bare_worklet_on_idle()`, `bare_worklet_on_resume()`— `(worklet, cb, data)`, set the listener for the matching event. The listener types are [`bare_suspend_cb`, `bare_wakeup_cb`, `bare_idle_cb` and `bare_resume_cb`](/bare/reference/bare/runtime#listeners).
-- `bare_worklet_get_data(worklet)`, `bare_worklet_set_data(worklet, void *data)`— a pointer of your own to keep on the worklet.
-- `bare_worklet_push(worklet, bare_worklet_push_t *req, const uv_buf_t *payload, bare_worklet_push_cb cb)`— [push](#push) `payload` to the worklet. `req` is yours to allocate, and it and `payload` must stay valid until `cb` runs. `cb` is `void (*)(bare_worklet_push_t *req, const char *error, const uv_buf_t *reply)`, where `error` is `NULL` on success and `reply` is `NULL` when there is no reply. `cb` runs on the worklet's thread, and `error` and `reply` are valid only until it returns. `bare_worklet_push_get_data()` and `bare_worklet_push_set_data()` keep a pointer of your own on `req`. In bare-kit 2.5.5 the Windows build does not export `bare_worklet_push()`, `bare_worklet_push_get_data()`, or `bare_worklet_push_set_data()`, because `win32/worklet.def` does not list them.
+`platform` holds the options of one platform, and only the member of the platform that the worklet runs on is read. On Android, `jvm` is the `JavaVM *`, which addons read under [`bare.android.jvm.v1`](/bare/reference/bare/embedder-context#bareandroidjvmv1). It defaults to the virtual machine that loaded Bare Kit through `JNI_OnLoad()`, so pass it if Bare Kit is loaded by other means. `context` is a JNI reference to an `android.content.Context`, which addons read under [`bare.android.context.v1`](/bare/reference/bare/embedder-context#bareandroidcontextv1). The worklet takes a global reference of its own, so the reference you pass needs to be valid only for the call. A relative filename on Android needs `context`.
+
+- `bare_worklet_optimize_for_memory(bool enabled)`— trade performance for memory. Configure it before the first worklet starts.
+- `bare_worklet_teardown(void)`— tear down the state that the worklets of the process share, a single JavaScript platform. Terminate or destroy every worklet first: the call waits for the ones still tearing down. Call it at most once, after which no worklet can start. A host that runs worklets for as long as it lives does not need to call it.
+- `bare_worklet_create(const bare_worklet_options_t *options, bare_worklet_t **result)`— create a worklet. `options` is copied and may be `NULL`. On Android, the calling thread must be attached to the JVM if `options` gives a `context`.
+- `bare_worklet_destroy(bare_worklet_t *worklet)`— terminate the worklet if it is still running and hand it over to tear itself down. It never blocks. Don't use the worklet afterwards. Its IPC may be destroyed before or after it.
+- `bare_worklet_start(bare_worklet_t *worklet, const char *filename, const void *source, size_t len, int argc, const char *argv[])`— start the worklet on a thread of its own, running `filename` with `argv` as `Bare.argv`. If `source` is `NULL`, the worklet reads `filename` at runtime. The arguments need to be valid only until the call returns. A relative `filename` names a resource of the app, as [Loading a bundle](#loading-a-bundle) describes. It fails after `bare_worklet_teardown()`.
+- `bare_worklet_suspend(worklet, int linger)`, `bare_worklet_resume(worklet)`, `bare_worklet_wakeup(worklet, int deadline)`, `bare_worklet_terminate(worklet)`— the lifecycle, which the worklet observes as the `suspend`, `resume`, and `wakeup` events of `Bare`. They are safe to call from any thread, and do nothing if the worklet has not started or has torn down. A negative `linger` lingers for 30 seconds. On iOS the worklet holds a background task for as long as it lingers, so `linger` is capped by the background time remaining to the app, which a negative `linger` lingers for instead. `deadline` follows the same rules. `bare_worklet_resume()` cancels a suspension that has not yet gone idle. `bare_worklet_terminate()` terminates the worklet as soon as possible.
+- `bare_worklet_on_suspend()`, `bare_worklet_on_wakeup()`, `bare_worklet_on_idle()`, `bare_worklet_on_resume()`, `bare_worklet_on_exit()`— `(worklet, cb, data)`, set the listener for the matching event. Set them before you start the worklet. They are called on the worklet thread as `bare_worklet_suspend_cb` (`int linger, void *data`), `bare_worklet_wakeup_cb` (`int deadline, void *data`), `bare_worklet_idle_cb` (`void *data`), `bare_worklet_resume_cb` (`void *data`), and `bare_worklet_exit_cb` (`int exit_code, void *data`).
+- `bare_worklet_get_data(worklet)`, `bare_worklet_set_data(worklet, void *data)`— a pointer of your own to keep on the worklet, which the worklet does not use.
+
+A worklet exits when its event loop runs out of work, when it calls `Bare.exit()`, or when the host terminates it. Once it has exited and torn down, the exit callback is called exactly once with the exit code, also when the host destroyed a running worklet, so keep its `data` until then and release what the host associated with the worklet there. By then any IPC of the worklet has reached the end of the stream, and the lifecycle functions do nothing.
 
 ### IPC
 
-- `bare_ipc_alloc(bare_ipc_t **result)`, `bare_ipc_init(bare_ipc_t *ipc, bare_worklet_t *worklet)`, `bare_ipc_destroy(bare_ipc_t *ipc)`— open an IPC channel to a started worklet, and close it. `bare_ipc_get_incoming()` and `bare_ipc_get_outgoing()` return its descriptors.
-- `bare_ipc_read(bare_ipc_t *ipc, void **data, size_t *len)`— read up to `BARE_IPC_READ_BUFFER_SIZE` (64 KiB) without blocking. On success it stores a pointer to the data in `*data` and its length in `*len`, which is `0` once the worklet has closed its end. The buffer belongs to `ipc` and is overwritten by the next read.
-- `bare_ipc_write(bare_ipc_t *ipc, const void *data, size_t len)`— write without blocking, and return the number of bytes written, which may be fewer than `len`.
-- `bare_ipc_read()` and `bare_ipc_write()` return `bare_ipc_would_block` (`-1`) when they cannot proceed yet, and `bare_ipc_error` (`-2`) on an error.
-- `bare_ipc_poll_alloc()`, `bare_ipc_poll_init(bare_ipc_poll_t *poll, bare_ipc_t *ipc)`, `bare_ipc_poll_destroy()`, `bare_ipc_poll_start(poll, int events, bare_ipc_poll_cb cb)`, `bare_ipc_poll_stop()`— call `cb(poll, events)` when the channel becomes readable or writable. `events` is `bare_ipc_readable`, `bare_ipc_writable` or both ORed. `bare_ipc_poll_get_ipc()`, `bare_ipc_poll_get_data()` and `bare_ipc_poll_set_data()` return the channel and keep a pointer of your own.
-- Where `cb` runs depends on the platform: a dedicated serial dispatch queue on Apple platforms, the `ALooper` of the thread that called `bare_ipc_poll_init()` on Android, and a thread that the library owns on Linux and Windows.
-- On Windows, `bare_ipc_write()` copies `data` and accepts all of it, or returns `bare_ipc_would_block` while an earlier write is still pending. `bare_ipc_read()` never returns a length of `0` there: after the worklet closes its end it keeps returning `bare_ipc_would_block`, because `win32/ipc.c` does not report the end of the stream yet.
+- `bare_ipc_create(bare_worklet_t *worklet, bare_ipc_t **result)`— create the host end of the IPC of a worklet, which the worklet sees as `Bare.IPC`. It fails if the worklet already has an IPC or has been terminated.
+- `bare_ipc_end(bare_ipc_t *ipc)`— end the host side, a half-close after which `Bare.IPC` reads the end of the stream once drained, while the host keeps reading. Writes fail afterwards. Ending twice, or after closing, does nothing.
+- `bare_ipc_close(bare_ipc_t *ipc)`— close the host end, after which reads return the end of the stream and writes fail. Closing twice does nothing.
+- `bare_ipc_destroy(bare_ipc_t *ipc)`— close and free the IPC. It may be called before or after `bare_worklet_destroy()`, and from a poll callback of the IPC itself.
+- `bare_ipc_read(bare_ipc_t *ipc, void *data, size_t len)`— read up to `len` bytes, which must not be `0`, into `data`. It returns the number of bytes read, `0` at the end of the stream, or `bare_ipc_would_block` (`-1`) when there is nothing to read. `BARE_IPC_READ_BUFFER_SIZE` (64 KiB) is a buffer size to read with.
+- `bare_ipc_write(bare_ipc_t *ipc, const void *data, size_t len)`— write up to `len` bytes from `data`. It returns the number of bytes written, which may be fewer than `len`, `bare_ipc_would_block` when there is no room, or `bare_ipc_error` (`-2`) once the IPC is closed.
+- `bare_ipc_poll_create(bare_ipc_t *ipc, bare_ipc_poll_t **result)`, `bare_ipc_poll_destroy(poll)`— create a poll of the IPC, and stop and free it. If the callback of the poll is running on another thread, `bare_ipc_poll_destroy()` waits for it to return. It may be called from the callback itself.
+- `bare_ipc_poll_start(poll, int events, bare_ipc_poll_cb cb)`, `bare_ipc_poll_stop(poll)`— call `cb(poll, events)` when the IPC becomes readable or writable. `events` is `bare_ipc_readable`, `bare_ipc_writable`, or both ORed. Starting a started poll replaces its events and callback, and starting it with no `events` stops it. Polls are level-triggered, so the callback is called again for as long as the events remain ready.
+- `bare_ipc_poll_get_ipc(poll)`, `bare_ipc_poll_get_data(poll)`, `bare_ipc_poll_set_data(poll, void *data)`— return the IPC of the poll, and keep a pointer of your own on it.
+
+Poll callbacks run on a thread that the IPC owns, not on the thread that started the poll, on every platform. On Android that thread is attached to the JVM. A callback may stop or destroy its poll, or the IPC itself.
+
+### Addons
+
+The native addons of a worklet resolve the symbols of Bare from the host process. This works as is when the host links or loads Bare Kit as a shared library, as bare-kit-swift and bare-kit-kotlin do. Otherwise:
+
+- A host that links Bare Kit statically into an executable must export its symbols, for example with `ENABLE_EXPORTS` and, on Windows, `WINDOWS_EXPORT_ALL_SYMBOLS` in CMake.
+- A host that links Bare Kit statically into a shared library must keep its symbols exported, and on Android must also link with `-z global`. From bare-kit 3.0.1, linking the `bare::kit::exports` CMake target into the library exports the functions of Bare Kit and the symbols of Bare that addons need, and nothing else.
+
+Addons may bind to the wrong symbols if the process already exports libuv, V8, or Node-API, as Node.js and Electron do, or holds more than one copy of Bare Kit.
+
+### Changes from bare-kit 2
+
+bare-kit 3.0.0 replaced the API of `shared/worklet.h` and `shared/ipc.h`. `bare_worklet_create()`, `bare_ipc_create()`, and `bare_ipc_poll_create()` replace the `_alloc()` and `_init()` pairs. `bare_worklet_start()` takes the source as a pointer and a length instead of a `uv_buf_t`. `bare_ipc_read()` copies into a buffer of the caller instead of returning a pointer to one that the IPC owns. The lifecycle callbacks take the value and `data` rather than the Bare listener types. `bare_worklet_on_exit()`, `bare_worklet_teardown()`, `bare_ipc_end()`, and `bare_ipc_close()` are new. The `assets` option, `bare_worklet_push()` and its request functions, and `bare_ipc_get_incoming()` and `bare_ipc_get_outgoing()` are gone.
 
 ## Loading a bundle
 
@@ -289,12 +362,70 @@ worklet.start('/app.bundle', bundle)
 
 See [Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app) for producing the bundle.
 
+<VersionGate since="0.17.0">
+From bare-kit 3.0.0 and react-native-bare-kit 0.17.0, a relative `filename` names a resource of the app, so that a bundle and the assets it references ship with the app: <Since v="0.17.0" />
+
+- On iOS and macOS, it resolves against the resources of the app bundle, which app extensions share.
+- On Android, it resolves against the code cache directory of the app. Before `<name>.bundle` first runs, the resources listed in `<name>.assets`, one `/<path>` per line, are extracted there from `<name>/<path>` in the assets of the APK, and a bundle started without `source` is read from the APK.
+
+For example, these resources in the APK let `app.bundle` reference an asset of a dependency:
+
+```
+app.bundle
+app.assets
+app/node_modules/a/asset.txt
+```
+
+`bare-stow link` writes these resources for you, as [Linking addons and assets](#linking-addons-and-assets) describes.
+
+From 0.17.0, you can also pack a worker and its dependencies into a package with [`bare-stow`](/bare/reference/bare/modules/bare-stow) and its React Native target, [`bare-stow-target-react-native`](https://github.com/holepunchto/bare-stow-target-react-native). The worker exports a function that receives the IPC stream:
+
+```js
+module.exports = function start(ipc) {
+  ipc.on('data', (data) => ipc.write(data))
+}
+```
+
+```sh
+bare-stow pack --target react-native --out ./worker worker.js
+```
+
+Add the package as a dependency of the app and start the worker, which runs in a worklet:
+
+```js
+import worker from 'worker'
+
+const { ipc } = await worker.start()
+
+ipc.on('data', (data) => console.log(b4a.toString(data)))
+ipc.write(b4a.from('Hello from React Native!'))
+```
+
+The package leaves out the addons and assets of the worker, so link them as the next section describes. In an Expo app, list the workers in the `workers` option of [`expo-bare-kit`](https://github.com/holepunchto/expo-bare-kit) instead, which packs them whenever Metro bundles the app.
+</VersionGate>
+
+<VersionGate until="0.17.0">
 If the bundle carries assets and the worklet was created with an `assets` directory, the worklet unpacks the assets into a subdirectory of it, named after a hash of the bundle's id. It does so once, and reuses the directory on later starts.
+</VersionGate>
 
-If the bundle loads native addons, link them into your app as well, as [Linking native addons](#linking-native-addons) describes.
+If the bundle loads native addons, link them into your app as well, as [Linking addons and assets](#linking-addons-and-assets) describes.
 
-## Linking native addons
+## Linking addons and assets
 
+<VersionGate since="0.17.0">
+From 0.17.0, the app brings Bare Kit and the native addons and assets of all of its worklets. Link them once with [`bare-stow`](/bare/reference/bare/modules/bare-stow), passing the entry point of every worklet. It writes a Swift package and a Gradle module, which also depend on bare-kit-swift and bare-kit-kotlin: <Since v="0.17.0" />
+
+```sh
+bare-stow link --target bare-kit --language swift --out ios/BareKitResources worklet.js
+bare-stow link --target bare-kit --language kotlin --language-option package=com.example.addons --out android/bare-kit-resources worklet.js
+```
+
+Add the Swift package and its `bare-stow` folder to the app target, and include the Gradle module in the app. In an Expo app, list the workers in the `workers` option of [`expo-bare-kit`](https://github.com/holepunchto/expo-bare-kit) instead. Without Bare Kit in the app, `new Worklet()` throws.
+
+0.17.0 also stopped building the `ios/addons` and `android/src/main/addons` directories of the package into the app, so addons that you linked there with an earlier version are no longer included.
+</VersionGate>
+
+<VersionGate until="0.17.0">
 react-native-bare-kit does not link the native addons that a worklet loads. Releases from 0.3.1 through 0.15.6 ran `bare-link` themselves, from the podspec on iOS and from a Gradle task before each Android build. Version 0.16.0 removed both steps along with its dependency on `bare-link`, so an app links its own addons.
 
 Run [`bare-link`](https://github.com/holepunchto/bare-link) with the entry point of the worklet, the file that you pack into the bundle. It links the addons that the module graph of that entry point loads, for the hosts that a preset selects:
@@ -327,26 +458,35 @@ These directories are inside `node_modules`, so reinstalling the library clears 
   }
 }
 ```
+</VersionGate>
 
 ## Bundled Bare version
 
-A worklet runs the Bare that the kit embeds, not the Bare installed on your machine. The react-native-bare-kit package contains prebuilt bare-kit libraries for iOS and Android, which its `CMakeLists.txt` fetches from a fixed bare-kit release when the package is published. Versions 0.15.6 and 0.16.0 use the bare-kit 2.5.4 prebuilds, and bare-kit 2.5.4 and 2.5.5 both embed Bare 1.33.4, so a worklet in either version runs Bare 1.33.4. Bare features added after 1.33.4 are not available in a worklet until a bare-kit release embeds a newer Bare and a react-native-bare-kit release uses that bare-kit.
+A worklet runs the Bare that Bare Kit embeds, not the Bare installed on your machine. Bare features added after that version are not available in a worklet until a Bare Kit release embeds a newer Bare.
+
+<VersionGate since="0.17.0">
+From 0.17.0, react-native-bare-kit includes no Bare Kit, so the Bare version depends on the bare-kit-swift and bare-kit-kotlin releases in the app. bare-stow 0.3.2 links bare-kit-swift 2.2.0 or a later 2.x release, and bare-kit-kotlin 0.2.2. bare-kit-swift 2.2.0 and bare-kit-kotlin 0.2.2 build bare-kit 3.0.1, which embeds Bare 1.36.2. bare-kit 3.0.0 embeds Bare 1.36.1.
+</VersionGate>
+
+<VersionGate until="0.17.0">
+The react-native-bare-kit package contains prebuilt bare-kit libraries for iOS and Android, which its `CMakeLists.txt` fetches from a fixed bare-kit release when the package is published. Versions 0.15.6 and 0.16.0 use the bare-kit 2.5.4 prebuilds, and bare-kit 2.5.4 and 2.5.5 both embed Bare 1.33.4, so a worklet in either version runs Bare 1.33.4.
+</VersionGate>
 
 ## Error handling
 
-A worklet runs as a thread inside the host process, so it follows Bare's default handling of uncaught errors: an uncaught exception or unhandled promise rejection in worklet JavaScript is printed to `stderr` and the process is aborted. Because the worklet shares the host's process, this takes the **host** down with it. This is by design.
+A worklet runs as a thread inside the host process, so it follows Bare's default handling of uncaught errors: an uncaught exception or unhandled promise rejection in worklet JavaScript is printed and the process is aborted. Because the worklet shares the host's process, this takes the **host** down with it. This is by design.
 
-To keep a worklet error from aborting the host, register an `uncaughtException` (and/or `unhandledRejection`) listener inside the worklet. Adding a listener overrides the default abort and lets the worklet decide how to respond:
+To keep a worklet error from aborting the host, register an `uncaughtException` and an `unhandledRejection` listener inside the worklet. Adding a listener overrides the default abort and lets the worklet decide how to respond, for example by reporting the error to the host before it exits:
 
 ```js
 Bare.on('uncaughtException', (err) => {
-  // The host no longer aborts. Report the error to the host (for example over
-  // BareKit.IPC) and exit or recover as appropriate.
-  console.error(err)
+  Bare.IPC.write(String(err))
+
+  Bare.exit(1)
 })
 ```
 
-The handler runs inside the worklet, not in the host, so the host cannot catch a worklet exception directly. Surface it yourself, for example by sending a message over IPC from the handler before the worklet exits. See the [`uncaughtException`](/bare/reference/bare/runtime#uncaughtexception-err) and [`unhandledRejection`](/bare/reference/bare/runtime#unhandledrejection-reason-promise) events.
+The handler runs inside the worklet, not in the host, so the host cannot catch a worklet exception directly. Surface it yourself, for example over IPC as above. The host sees the exit code through `wait()` in the Swift and Kotlin bindings, and through `wait()` and the `exit` event from react-native-bare-kit 0.17.1. See the [`uncaughtException`](/bare/reference/bare/runtime#uncaughtexception-err) and [`unhandledRejection`](/bare/reference/bare/runtime#unhandledrejection-reason-promise) events.
 
 ## Logging
 
@@ -357,4 +497,5 @@ The handler runs inside the worklet, not in the host, so the host cannot catch a
 - [One core, many platforms](/bare/explanation/bare-on-native)—the shell/seam/core pattern this enables.
 - [Embed Bare in a React Native app](/bare/how-to/run-on-native/embed-bare-in-react-native)—a step-by-step walkthrough.
 - [Bare runtime API](/bare/reference/bare/runtime)—the `Bare` global and lifecycle the worklet runs.
-- [Bare modules](/bare/reference/bare/modules)—`bare-rpc`, `bare-pack`, and the rest of the userland.
+- [Embedder context](/bare/reference/bare/embedder-context)—the keys that Bare Kit publishes to native addons.
+- [Bare modules](/bare/reference/bare/modules)—`bare-rpc`, `bare-pack`, `bare-stow`, and the rest of the userland.

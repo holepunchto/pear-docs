@@ -94,7 +94,7 @@ resolve.directory(dirname: string, version: string, parentURL: URL, opts?: Resol
 
 Resolve the addon of the package in the directory `dirname`, relative to `parentURL`. It reads the `package.json` in that directory and resolves nothing when there is none, when its `name` is missing or empty, or when `version` is set and the manifest has a different `version`. The addon name is the manifest `name` with a leading `@` removed and every `/` replaced by `__`.
 
-It yields candidates in the order of these steps. A builtin match in step 1 ends the resolution. After that, each native host, one that does not start with `wasi-`, resolves on its own, and the resolution stops once every native host has a candidate the caller reported as existing. Steps 2 and 3 only try the native hosts that have not resolved yet, so a parent `prebuilds` directory is searched only for the hosts that a closer one had nothing for, and a host with no prebuild can still resolve to a linked addon. Step 4 is reached while any native host is still unresolved, or when there are no native hosts:
+It yields candidates in the order of these steps. A builtin match in step 1 ends the resolution. After that, it stops after the first step in which the caller reported a candidate as existing. A step goes through every host before it stops, so several hosts can each resolve to their own prebuild:
 
 1. A builtin, when the name matches an entry of `opts.builtins`: `builtin:<name>@<version>`, or `builtin:<name>` when neither the package nor the entry has a version. An entry with a version matches only a package with that version, or a package with none. `opts.builtinProtocol` sets the protocol.
 2. Native prebuilds: `prebuilds/<host>/<name>@<version>.<ext>` when the package has a version, and `prebuilds/<host>/<name>.<ext>` when the specifier named none, for each host that does not start with `wasi-` and each of `opts.extensions`. For `darwin-arm64`, `darwin-x64`, `ios-arm64-simulator`, and `ios-x64-simulator`, the same names are also tried with `universal` in place of the architecture, such as `darwin-universal`. The `prebuilds` directory is looked up in `dirname` and then in each parent directory.
@@ -102,8 +102,6 @@ It yields candidates in the order of these steps. A builtin match in step 1 ends
 4. WebAssembly prebuilds: the same file names as step 2, for each host that starts with `wasi-`, such as `wasi-wasm32`. They always use the `.wasm` extension, whatever `opts.extensions` is.
 
 Added in v1.11.0: step 4. Before, a `wasi-` host was looked up like a native one, with `opts.extensions`, in the same pass as the native hosts and before any linked addon.
-
-Changed in v1.11.1: hosts resolve on their own. Before, the resolution stopped after the first step in which any candidate existed, so with several native hosts, a host that the step had nothing for got no prebuild from a parent directory, no linked addon, and no WebAssembly fallback.
 
 ```js
 const resolve = require('bare-addon-resolve')
@@ -133,7 +131,7 @@ file:///prebuilds/wasi-wasm32/e@1.2.3.wasm
 file:///prebuilds/wasi-wasm32/e.wasm
 ```
 
-A `for...of` loop reports no candidate as existing, so it lists them all. A caller that drives the generator and passes `true` back for a candidate that exists stops once every native host has resolved, so the WebAssembly candidates are only reached when a native host has neither a prebuild nor a linked addon. See the [Algorithm section of the README](https://github.com/holepunchto/bare-addon-resolve#algorithm) for the full lookup.
+A `for...of` loop reports no candidate as existing, so it lists them all. A caller that drives the generator and passes `true` back for a candidate that exists stops at the step that resolved, so the WebAssembly candidates are only reached when no native prebuild and no linked addon exists. See the [Algorithm section of the README](https://github.com/holepunchto/bare-addon-resolve#algorithm) for the full lookup.
 
 **Parameters**
 

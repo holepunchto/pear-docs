@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { updateSkipped } from './index';
+import { parseSpec, updateSkipped } from './index';
 
 test('updateSkipped: an --only run does not drop unrelated modules from the cache', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'bare-refgen-skipped-'));
@@ -46,4 +46,10 @@ test('updateSkipped: a touched module still gets its own status replaced', async
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('parseSpec: `--only name@version` pins the tarball, a bare name takes latest', () => {
+  assert.deepEqual(parseSpec('bare-fs@4.8.4'), { name: 'bare-fs', version: '4.8.4' });
+  assert.deepEqual(parseSpec('bare-fs'), { name: 'bare-fs' });
+  assert.deepEqual(parseSpec('@scope/pkg@1.0.0'), { name: '@scope/pkg', version: '1.0.0' });
 });
