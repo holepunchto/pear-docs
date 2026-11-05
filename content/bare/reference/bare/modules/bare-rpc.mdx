@@ -1,0 +1,594 @@
+---
+title: "bare-rpc"
+description: "librpc ABI compatible RPC for Bare"
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "1.5.0"
+---
+
+<mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
+
+[`bare-rpc`](https://github.com/holepunchto/bare-rpc) — librpc ABI compatible RPC for Bare.
+
+```sh
+npm i bare-rpc
+```
+
+## Usage
+
+This example wires two peers together over IPC and makes one request:
+
+```js
+import IPC from 'bare-ipc'
+import RPC from 'bare-rpc'
+
+const [a, b] = IPC.open().map((port) => port.connect())
+
+const server = new RPC(a, (req) => req.reply('pong'))
+
+const client = new RPC(b)
+
+const req = client.request(1)
+req.send('ping')
+
+console.log((await req.reply()).toString()) // pong
+
+a.destroy()
+b.destroy()
+```
+
+`new RPC(stream, onrequest, opts)` runs a session over a duplex `stream`, such as a pipe, a socket or an IPC port. `onrequest` is a function that is called with each request and event of the peer, or a `CommandRouter`. `opts` takes `maxFrameSize` and `maxBufferedBytes`, as described under [Untrusted peers](#untrusted-peers).
+
+## API
+
+### RPC
+
+#### `RPC`
+
+```ts
+new RPC(stream: Duplex, onrequest?: ((req: RPCIncomingRequest) => void | Promise<void>) | RPCCommandRouter | null, opts?: RPCOptions)
+```
+
+Create an RPC instance using a duplex `stream`. `onrequest` is an optional callback run when a remote request is received. This is where processing and responding to an RPC request happens. `onrequest` receives a `RPCIncomingRequest` as an argument.
+
+Added in v1.4.0: `opts.maxFrameSize` and the checks described under [Untrusted peers](#untrusted-peers). Added in v1.5.0: `opts.maxBufferedBytes`. `RPC.CommandRouter` was exported before v1.4.0, but only v1.4.0 and later declare its types.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `stream` | `Duplex` | — | The duplex stream to frame RPC messages over, identifying each method by a unique command number — an IPC pipe, a TCP socket, or a [Bare Kit](/bare/reference/bare/bare-kit) worklet channel. |
+| `onrequest?` | `((req: RPCIncomingRequest) => void \| Promise<void>) \| RPCCommandRouter \| null` | — | Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to. Defaults to a no-op. |
+| `opts?` | [`RPCOptions`](#rpcoptions) | — | Options for the connection. The remote end is not trusted to send valid frames. A frame that is too large, cannot be decoded, or breaks the protocol fails the connection, and so does a stream that holds more unread data than `maxBufferedBytes`: `stream` is destroyed with an `RPCError` whose code is `FRAME_TOO_LARGE`, `UNKNOWN_MESSAGE`, `INVALID_MESSAGE` or `STREAM_OVERFLOW`, and every request and stream in flight is rejected or destroyed with it. A frame that refers to a request or stream that has already finished, or that was never known, is ignored. |
+
+#### `event(command: number): RPCOutgoingEvent`
+
+Create an outgoing event for `command`. Events are one-way: unlike `request()` they carry no id and expect no reply, so the remote end receives them as an `RPCIncomingEvent`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `command` | `number` | — | A unique number identifying the event; the remote end differentiates events by it. |
+
+**Returns** `RPCOutgoingEvent` — an `RPCOutgoingEvent`; call `send()` on it to dispatch the one-way event.
+
+#### `idle: boolean`
+
+Whether there are no requests or responses currently in flight. Useful for determining when it is safe to tear down the underlying stream.
+
+#### `request(command: number): RPCOutgoingRequest`
+
+Create a request for `command`. `command` is a unique number that should be used to differentiate different requests on the remote end.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `command` | `number` | — | A unique number identifying the request; the remote end differentiates requests by it. |
+
+**Returns** `RPCOutgoingRequest` — an `RPCOutgoingRequest`; call `send()` on it to dispatch the request and `await reply()` for the response.
+
+#### `RPC.RPCRequestHandler`
+
+```ts
+type RPCRequestHandler = (req: RPCIncomingRequest, data: any) => unknown
+```
+
+### RPCIncomingEvent
+
+#### `new RPCIncomingEvent(rpc: RPC, command: number, data: Buffer)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the event arrived on. |
+| `command` | `number` | — | The command number the event was sent with. |
+| `data` | `Buffer` | — | The payload buffer sent with the event. |
+
+#### `RPCIncomingEvent.command: number`
+
+The command that the request was created with. A command is a unique number.
+
+#### `RPCIncomingEvent.data: Buffer | null`
+
+The data buffer sent with the request.
+
+#### `RPCIncomingEvent.rpc: RPC`
+
+### RPCOutgoingEvent
+
+#### `new RPCOutgoingEvent(rpc: RPC, command: number)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance to send the event on. |
+| `command` | `number` | — | The command number to send. |
+
+#### `RPCOutgoingEvent.command: number`
+
+The command that the request was created with. A command is a unique number.
+
+#### `RPCOutgoingEvent.rpc: RPC`
+
+#### `RPCOutgoingEvent.send(data?: Buffer | string | null, encoding?: BufferEncoding): void`
+
+Send the request with the provided `data`. `data` can be a buffer or a string which will be encoded using `encoding`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data?` | `Buffer` \| `string` \| `null` | — | The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. |
+| `encoding?` | `BufferEncoding` | — | The encoding used when `data` is a string (defaults to `utf8`). |
+
+**Throws**
+
+- `ALREADY_SENT` — the event has already been sent.
+
+#### `RPCOutgoingEvent.sent: boolean`
+
+A boolean for whether the request has been sent.
+
+### RPCIncomingRequest
+
+#### `new RPCIncomingRequest(rpc: RPC, id: number, command: number, data: Buffer)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the request arrived on. |
+| `id` | `number` | — | The request id, used to correlate the reply with the request. |
+| `command` | `number` | — | The command number the request was sent with. |
+| `data` | `Buffer` | — | The payload buffer sent with the request. |
+
+#### `RPCIncomingRequest.command: number`
+
+The command that the request was created with. A command is a unique number.
+
+#### `createRequestStream(opts?: ReadableOptions): RPCIncomingStream`
+
+Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for receiving the request's streamed data.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `ReadableOptions` | — | Options for the returned [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_RECEIVED` — the request has already been received.
+
+#### `createResponseStream(opts?: WritableOptions): RPCOutgoingStream`
+
+Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending the streamed reply to the request.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `WritableOptions` | — | Options for the returned [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_SENT` — a response has already been sent for this request.
+
+#### `RPCIncomingRequest.data: Buffer | null`
+
+The data buffer sent with the request.
+
+#### `RPCIncomingRequest.id: number`
+
+#### `RPCIncomingRequest.received: boolean`
+
+A boolean for whether the request has received a reply.
+
+#### `reply(data?: Buffer | string | null, encoding?: BufferEncoding): void`
+
+Send a reply to the request. `data` may be a buffer or a string encoded using `encoding`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data?` | `Buffer` \| `string` \| `null` | — | The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. |
+| `encoding?` | `BufferEncoding` | — | The encoding used when `data` is a string (defaults to `utf8`). |
+
+**Throws**
+
+- `ALREADY_SENT` — a response has already been sent for this request.
+
+#### `RPCIncomingRequest.rpc: RPC`
+
+#### `RPCIncomingRequest.sent: boolean`
+
+A boolean for whether the request has been sent.
+
+### RPCOutgoingRequest
+
+#### `new RPCOutgoingRequest(rpc: RPC, id: number, command: number)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance to send the request on. |
+| `id` | `number` | — | The request id, used to correlate the reply with the request. |
+| `command` | `number` | — | The command number to send. |
+
+#### `RPCOutgoingRequest.command: number`
+
+The command that the request was created with. A command is a unique number.
+
+#### `createRequestStream(opts?: WritableOptions): RPCOutgoingStream`
+
+Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending data with the request.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `WritableOptions` | — | Options for the returned [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_SENT` — the request has already been sent.
+
+#### `createResponseStream(opts?: ReadableOptions): RPCIncomingStream`
+
+Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for receiving data in reply to the request. If the remote end replies without a stream, the reply arrives as a single chunk, unless it is empty, and the stream then ends.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | `ReadableOptions` | — | Options for the returned [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream. |
+
+**Throws**
+
+- `ALREADY_RECEIVED` — the response has already been received.
+
+#### `RPCOutgoingRequest.id: number`
+
+#### `RPCOutgoingRequest.received: boolean`
+
+A boolean for whether the request has received a reply.
+
+#### `reply(encoding?: BufferEncoding): Promise<Buffer | string | null>`
+
+Await the reply from the remote end to the request. `encoding` can be defined for decoding the response `data` buffer back into a string.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `encoding?` | `BufferEncoding` | — | If given, decodes the reply payload to a string using this encoding; omit to receive the raw `Buffer`. |
+
+**Returns** `Promise<Buffer | string | null>` — a promise that resolves with the remote end's reply payload, or rejects with the channel's teardown error if it closes before a reply arrives. If the remote end replies with a stream, the promise rejects with an error whose code is `UNEXPECTED_STREAM`, the remote end's stream is destroyed, and the connection stays open.
+
+**Throws**
+
+- `ALREADY_RECEIVED` — a reply is already being received for this request.
+
+#### `RPCOutgoingRequest.rpc: RPC`
+
+#### `RPCOutgoingRequest.send(data?: Buffer | string | null, encoding?: BufferEncoding): void`
+
+Send the request with the provided `data`. `data` can be a buffer or a string which will be encoded using `encoding`.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `data?` | `Buffer` \| `string` \| `null` | — | The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. |
+| `encoding?` | `BufferEncoding` | — | The encoding used when `data` is a string (defaults to `utf8`). |
+
+**Throws**
+
+- `ALREADY_SENT` — the request has already been sent.
+
+#### `RPCOutgoingRequest.sent: boolean`
+
+A boolean for whether the request has been sent.
+
+### RPCIncomingStream
+
+#### `RPCIncomingStream`
+
+```ts
+new RPCIncomingStream(rpc: RPC, request: RPCIncomingRequest | RPCOutgoingRequest, type: typeof constants.type.REQUEST | typeof constants.type.RESPONSE, opts?: ReadableOptions)
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the stream belongs to. |
+| `request` | `RPCIncomingRequest` \| `RPCOutgoingRequest` | — | The request the stream carries data for. |
+| `type` | `typeof constants.type.REQUEST` \| `typeof constants.type.RESPONSE` | — | Whether the stream carries the request body (`constants.type.REQUEST`) or the response body (`constants.type.RESPONSE`). |
+| `opts?` | `ReadableOptions` | — | Options for the underlying [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream. |
+
+### RPCOutgoingStream
+
+#### `RPCOutgoingStream`
+
+```ts
+new RPCOutgoingStream(rpc: RPC, request: RPCIncomingRequest | RPCOutgoingRequest, type: typeof constants.type.REQUEST | typeof constants.type.RESPONSE, opts?: WritableOptions)
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rpc` | `RPC` | — | The `RPC` instance the stream belongs to. |
+| `request` | `RPCIncomingRequest` \| `RPCOutgoingRequest` | — | The request the stream carries data for. |
+| `type` | `typeof constants.type.REQUEST` \| `typeof constants.type.RESPONSE` | — | Whether the stream carries the request body (`constants.type.REQUEST`) or the response body (`constants.type.RESPONSE`). |
+| `opts?` | `WritableOptions` | — | Options for the underlying [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream. |
+
+### RPCCommandRouter
+
+#### `new RPCCommandRouter(opts?: RPCCommandRouterOptions)`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `opts?` | [`RPCCommandRouterOptions`](#rpccommandrouteroptions) | — | The default encodings of the commands. |
+
+#### `respond(command: number, onrequest: RPCRequestHandler): void`
+
+Answer requests for `command` with `onrequest`, in place of any handler registered before. Events for `command` are also passed to `onrequest`, but are never answered. A request for a command with no handler is answered with an error whose code is `UNKNOWN_COMMAND`, and an event for such a command is dropped.
+
+Overloads:
+
+```ts
+respond(command: number, onrequest: RPCRequestHandler): void
+respond(command: number, opts: RPCRespondOptions, onrequest: RPCRequestHandler): void
+```
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `command` | `number` | — | The command number to answer. |
+| `onrequest` | `RPCRequestHandler` | — | The handler of the requests. |
+
+### Types
+
+#### `RPCCommandRouterOptions`
+
+```ts
+interface RPCCommandRouterOptions {
+  valueEncoding?: RPCValueEncoding
+}
+```
+
+#### `RPCRespondOptions`
+
+```ts
+interface RPCRespondOptions {
+  valueEncoding?: RPCValueEncoding
+  requestEncoding?: RPCValueEncoding | null
+  responseEncoding?: RPCValueEncoding | null
+}
+```
+
+#### `RPCValueEncoding`
+
+```ts
+interface RPCValueEncoding {
+  preencode(state: unknown, value: unknown): void
+  encode(state: unknown, value: unknown): void
+  decode(state: unknown): unknown
+}
+```
+
+A [`compact-encoding`](https://github.com/holepunchto/compact-encoding) encoding, such as `c.raw`.
+
+#### `RPCOptions`
+
+```ts
+interface RPCOptions {
+  maxFrameSize?: number
+  maxBufferedBytes?: number
+}
+```
+
+## `bare-rpc/errors`
+
+### RPCError
+
+#### `RPCError.ALREADY_RECEIVED(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.ALREADY_SENT(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.CHANNEL_CLOSED(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.FRAME_TOO_LARGE(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.INVALID_MESSAGE(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.STREAM_OVERFLOW(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.UNEXPECTED_STREAM(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.UNKNOWN_COMMAND(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+#### `RPCError.UNKNOWN_MESSAGE(msg: string): RPCError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
+
+## Command routing
+
+A `CommandRouter` sends each request and event to the handler registered for its command. Pass it to `RPC` as `onrequest`:
+
+```js
+const router = new RPC.CommandRouter()
+
+router.respond(1, (req, data) => Buffer.from('pong'))
+router.respond(2, (req, data) => console.log(req.command))
+
+const rpc = new RPC(stream, router)
+```
+
+A handler is called with the request and its data, and returns the data to reply with, unless it has answered the request itself. Events for a command go to the same handler, and its return value is ignored. A request for a command with no handler is rejected with the code `UNKNOWN_COMMAND`. An event for a command with no handler is dropped.
+
+The data is decoded and the reply encoded with a [compact-encoding](https://github.com/holepunchto/compact-encoding), `c.raw` by default. Pass `valueEncoding` to `new CommandRouter()` to change the default, or `valueEncoding`, `requestEncoding` and `responseEncoding` to `respond(command, opts, handler)` for one command.
+
+## Requests and responses
+
+`rpc.request(command)` returns a request. Call `send(data)` on it to send it, and `await reply()` to get its reply. `rpc.event(command)` returns an event, which gets no reply. Call `send(data)` on it to send it. Each can be sent once, and a reply can be read once. Sending again throws an `RPCError` with the code `ALREADY_SENT`, and reading again throws one with the code `ALREADY_RECEIVED`.
+
+Data can be a buffer, or a string that `send(data, encoding)` and `reply(data, encoding)` encode with `encoding`, `utf8` by default. `reply(encoding)` on a request you sent decodes the reply to a string.
+
+A request of the peer is answered once, with `reply()` or `createResponseStream()`. Answering again throws an `RPCError` with the code `ALREADY_SENT`, and `req.sent` tells whether the request has been answered. Events reach `onrequest` as requests without `reply()`. Each request and event of the peer is handled on its own, so a slow async handler does not hold back the others.
+
+If a request handler throws before it answers, the request is rejected with the `message` of the error, and its `code` and `errno` if it has them. If the handler had opened a response stream, the stream is destroyed with the error instead.
+
+When the peer rejects a request, `reply()` rejects with an `Error` with the `message`, `code` and `errno` of the peer.
+
+Without `onrequest`, every request is rejected with the code `UNKNOWN_COMMAND`, and events are dropped.
+
+## Streaming requests and responses
+
+A request can stream its body, its reply, or both:
+
+- `createRequestStream()` returns a `Writable` for the body, and `await reply()` gets a single reply.
+- `send(data)` sends a plain request, and `createResponseStream()` returns a `Readable` for the reply.
+- `createRequestStream()` and `createResponseStream()` together stream both.
+
+On the answering side, `req.createRequestStream()` returns a `Readable` for the body, and `req.createResponseStream()` returns a `Writable` for the reply. This handler echoes the body back:
+
+```js
+const server = new RPC(stream, (req) => {
+  req.createRequestStream().pipe(req.createResponseStream())
+})
+
+const req = client.request(1)
+const outgoing = req.createRequestStream()
+const incoming = req.createResponseStream()
+
+outgoing.end('ping')
+
+for await (const chunk of incoming) console.log(chunk.toString()) // ping
+```
+
+A stream only carries data once both ends have opened it, so data written before then is held back until the peer has opened its end. The handler opens the body when it calls `req.createRequestStream()`. If the peer answers before it opens the body, the body is destroyed, with the error of the reply if it has one.
+
+An incoming stream asks the peer to pause once it buffers its `highWaterMark`, which is 16 KiB by default, and to resume once it is read. While the peer has paused an outgoing stream, its writes are held back. If the peer keeps sending anyway, an incoming stream holds at most `maxBufferedBytes`, 16 MiB by default, before the session fails with an `RPCError` with the code `STREAM_OVERFLOW`.
+
+The body of a request and the reply to a request can each be read once. Calling `createRequestStream()` on a request of the peer again, or `createResponseStream()` or `reply()` on a request you sent again, throws an `RPCError` with the code `ALREADY_RECEIVED`.
+
+## Termination
+
+The session ends with an `RPCError` with the code `CHANNEL_CLOSED` when `stream` closes. It fails with an error instead when:
+
+- `stream` emits an error, with that error.
+- `stream` ends partway through a frame, with the code `INVALID_MESSAGE`.
+- An event handler throws, with that error.
+- The peer sends a bad frame, as described under [Untrusted peers](#untrusted-peers).
+
+Pending replies then reject with the error, and so do later replies. Open streams are destroyed with it, and so are streams created later. Events sent after the end are dropped.
+
+`RPC` does not close `stream` when the session ends cleanly. When it fails for any reason but an error of `stream`, `RPC` destroys `stream` with the error, so the frames still queued in it are not written. To end the session yourself, destroy `stream`. `rpc.idle` tells whether no requests or streams are in flight, so that it is safe to do so.
+
+## Untrusted peers
+
+`RPC` does not trust the peer to send valid frames. If a frame is larger than `maxFrameSize`, cannot be decoded, or breaks the protocol, the session fails with an `RPCError`. The code tells you why:
+
+- `FRAME_TOO_LARGE`: The frame, with its 4-byte length prefix, is larger than `maxFrameSize`, 16 MiB by default. This is checked as soon as the length prefix arrives, before the rest of the frame is read.
+- `UNKNOWN_MESSAGE`: The frame has a message type that `RPC` does not know.
+- `INVALID_MESSAGE`: The frame cannot be decoded, `stream` ends partway through a frame, or the frame is one that a valid peer never sends. Examples are a response or stream message with an id of 0, a stream message with an invalid set of flags, and a new request that reuses the id of a request that is still in flight.
+- `STREAM_OVERFLOW`: An incoming stream holds more than `maxBufferedBytes` of data that has not been read. This only happens when the peer keeps sending after it was asked to pause.
+
+A frame that refers to a request or stream that has already finished, or that was never known, is ignored. The same goes for frames that arrive for a stream that has already ended or been destroyed.
+
+If you read the reply as a stream but the peer replies without one, the reply arrives on the stream as a single chunk, unless it is empty, and the stream then ends. An error reply destroys the stream with the error instead.
+
+If you expect a plain reply but the peer replies with a stream, `reply()` rejects with an `RPCError` with the code `UNEXPECTED_STREAM`. The session destroys the stream toward the peer and stays open.
+
+## See also
+
+- Builds on `bare-stream`.
+- Pairs with [`hyperschema`](https://github.com/holepunchto/hyperschema) and [`compact-encoding`](/p2p/reference/helpers/compact-encoding) to generate typed message codecs.
+- It's pure JavaScript. For the end-to-end pattern with generated types, see [Type a native RPC bridge](/bare/how-to/run-on-native/type-a-native-rpc-bridge).
+- [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
+- [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

@@ -1,0 +1,262 @@
+/**
+ * Detect new upstream module releases and insert draft changelog entries.
+ *
+ * Reads the watch list from scripts/upstream-releases.json and the last-seen
+ * release tag per repo from scripts/upstream-releases-state.json. For every
+ * release published since the recorded tag, a draft entry block is inserted
+ * under the `{/* changelog:insert *\/}` marker in the watched repo's product
+ * changelog — content/<section>/release-overview/index.mdx, where `section`
+ * (pear, bare, or p2p) comes from the watch list — and the state file is
+ * advanced.
+ *
+ * The generated blocks are DRAFTS: upstream release notes are terse and not
+ * migration-oriented, so a human curates the wording, flags Breaking items,
+ * and adds migration links before merge. The upstream-releases workflow
+ * (.github/workflows/upstream-releases.yml) runs this on a schedule and opens
+ * a review PR when anything changed.
+ *
+ * First run for a newly watched repo baselines its latest release without
+ * generating an entry (otherwise adding a repo would dump its entire history).
+ *
+ * Stdlib-only on purpose: CI cannot `npm install` this repo's token-gated
+ * dependencies (see docs-lint.yml), so the workflow installs just `tsx`.
+ *
+ * Usage: npx tsx scripts/check-upstream-releases.ts
+ * Auth:  set GITHUB_TOKEN to lift the anonymous API rate limit (required in CI).
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+const root = path.resolve(import.meta.dirname, '..');
+const CONFIG_PATH = path.join(root, 'scripts/upstream-releases.json');
+const STATE_PATH = path.join(root, 'scripts/upstream-releases-state.json');
+const SECTIONS = ['pear', 'bare', 'p2p'] as const;
+const MARKER = '{/* changelog:insert';
+// How far back to look for the recorded baseline. GitHub's per-page maximum;
+// a busy repo (Bare ships several patches a week) can release more than a
+// handful of times between curated PRs, and a baseline that falls off the
+// fetched page would otherwise drop the releases just after it silently.
+const FETCH_PER_REPO = 100;
+// Draft cap for the rare case where a full page of releases does not contain
+// the baseline (deleted tag, renamed release): draft the newest few and say so.
+const MAX_DRAFTS_WHEN_BASELINE_MISSING = 10;
+const MAX_BODY_LINES = 12;
+
+type Section = (typeof SECTIONS)[number];
+
+interface Watched {
+  repo: string;
+  name: string;
+  section: Section;
+}
+
+function changelogPath(section: Section): string {
+  return path.join(root, 'content', section, 'release-overview/index.mdx');
+}
+
+/** Index just past the marker line, or -1 when the page has no marker. */
+function markerEnd(changelog: string): number {
+  const markerIx = changelog.indexOf(MARKER);
+  return markerIx === -1 ? -1 : changelog.indexOf('\n', markerIx) + 1;
+}
+
+interface Release {
+  tag_name: string;
+  name: string | null;
+  body: string | null;
+  html_url: string;
+  published_at: string;
+  draft: boolean;
+  prerelease: boolean;
+}
+
+function apiHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'pear-docs-changelog-watcher',
+  };
+  if (process.env.GITHUB_TOKEN) {
+    headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  }
+  return headers;
+}
+
+async function api<T>(pathname: string): Promise<T | null> {
+  const res = await fetch(`https://api.github.com${pathname}`, { headers: apiHeaders() });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`GitHub API ${res.status} for ${pathname}: ${await res.text()}`);
+  }
+  return (await res.json()) as T;
+}
+
+/**
+ * Prefer GitHub releases (they carry notes). Several holepunchto repos
+ * (pear, pear-electron, pear-build) publish version tags without creating
+ * releases, so fall back to the tags list — synthesised into note-less
+ * Release records whose drafts link to the compare view instead.
+ */
+async function fetchReleases(repo: string): Promise<Release[]> {
+  const releases =
+    (await api<Release[]>(`/repos/${repo}/releases?per_page=${FETCH_PER_REPO}`)) ?? [];
+  const published = releases.filter((r) => !r.draft);
+  if (published.length > 0) return published;
+
+  const tags =
+    (await api<{ name: string }[]>(`/repos/${repo}/tags?per_page=${FETCH_PER_REPO}`)) ?? [];
+  return tags
+    .filter((t) => /^v?\d/.test(t.name)) // version tags only
+    .map((t) => ({
+      tag_name: t.name,
+      name: t.name,
+      body: null,
+      html_url: `https://github.com/${repo}/releases/tag/${t.name}`,
+      published_at: '',
+      draft: false,
+      prerelease: false,
+    }));
+}
+
+/**
+ * Make upstream release-note lines safe to embed in MDX. Braces and angle
+ * brackets would otherwise be parsed as JSX expressions/elements. These are
+ * drafts—reviewers restore any formatting that matters during curation.
+ */
+function sanitizeMdx(line: string): string {
+  return line
+    .replace(/\{/g, '(')
+    .replace(/\}/g, ')')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/** Pull the bullet lines out of a release body, falling back to plain lines. */
+function bodyBullets(body: string | null): string[] {
+  if (!body) return [];
+  const lines = body.split(/\r?\n/).map((l) => l.trim());
+  let bullets = lines.filter((l) => /^[-*]\s+/.test(l)).map((l) => l.replace(/^[-*]\s+/, ''));
+  if (bullets.length === 0) {
+    bullets = lines.filter((l) => l.length > 0 && !l.startsWith('#'));
+  }
+  return bullets.slice(0, MAX_BODY_LINES).map(sanitizeMdx);
+}
+
+function renderDraftBlock(watched: Watched, releases: Release[]): string {
+  const chunks: string[] = [];
+  for (const release of releases) {
+    const date = release.published_at ? release.published_at.slice(0, 10) : 'undated tag';
+    const bullets = bodyBullets(release.body);
+    chunks.push(
+      [
+        `### ${watched.name} — ${release.tag_name}`,
+        '',
+        `{/* TODO(curate): draft from the ${date} upstream release — reword for readers, flag Breaking items, add migration links. Source: ${release.html_url} */}`,
+        '',
+        ...(bullets.length > 0
+          ? bullets.map((b) => `- ${b}`)
+          : [`- See the [upstream release notes](${release.html_url}).`]),
+      ].join('\n'),
+    );
+  }
+  return chunks.join('\n\n');
+}
+
+async function main() {
+  const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')) as { watched: Watched[] };
+  const state: Record<string, string> = fs.existsSync(STATE_PATH)
+    ? JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'))
+    : {};
+
+  // Fail before touching the network or any file: a bad `section` or a
+  // changelog missing its marker would otherwise surface only after state
+  // had been advanced for the repos processed so far.
+  for (const watched of config.watched) {
+    if (!SECTIONS.includes(watched.section)) {
+      console.error(
+        `✖ ${watched.repo}: section must be one of ${SECTIONS.join(', ')} (got ${JSON.stringify(watched.section)})`,
+      );
+      process.exit(1);
+    }
+  }
+  for (const section of new Set(config.watched.map((w) => w.section))) {
+    const file = changelogPath(section);
+    if (!fs.existsSync(file) || markerEnd(fs.readFileSync(file, 'utf8')) === -1) {
+      console.error(`✖ insertion marker "${MARKER}" not found in ${path.relative(root, file)}`);
+      process.exit(1);
+    }
+  }
+
+  const drafts = new Map<Section, string[]>();
+  const detected: string[] = [];
+
+  for (const watched of config.watched) {
+    const releases = await fetchReleases(watched.repo);
+    if (releases.length === 0) {
+      console.log(`· ${watched.repo}: no releases`);
+      continue;
+    }
+
+    const lastSeen = state[watched.repo];
+    if (!lastSeen) {
+      // First run for this repo: baseline without generating history entries.
+      state[watched.repo] = releases[0].tag_name;
+      console.log(`· ${watched.repo}: baselined at ${releases[0].tag_name}`);
+      continue;
+    }
+
+    const seenIx = releases.findIndex((r) => r.tag_name === lastSeen);
+    // A short page is the repo's whole release history, so a missing baseline
+    // just predates it (e.g. a tag-only version from before the repo started
+    // cutting GitHub releases): everything listed is new. Only a full page can
+    // hide releases between the baseline and the oldest one fetched.
+    const truncated = seenIx === -1 && releases.length >= FETCH_PER_REPO;
+    if (truncated) {
+      console.warn(
+        `⚠ ${watched.repo}: baseline ${lastSeen} not in the latest ${releases.length} releases; drafting the newest ${MAX_DRAFTS_WHEN_BASELINE_MISSING} only — check for gaps`,
+      );
+    }
+    const fresh =
+      seenIx !== -1
+        ? releases.slice(0, seenIx)
+        : truncated
+          ? releases.slice(0, MAX_DRAFTS_WHEN_BASELINE_MISSING)
+          : releases;
+    if (fresh.length === 0) {
+      console.log(`· ${watched.repo}: up to date (${lastSeen})`);
+      continue;
+    }
+
+    drafts.set(watched.section, [
+      ...(drafts.get(watched.section) ?? []),
+      renderDraftBlock(watched, fresh),
+    ]);
+    detected.push(...fresh.map((r) => `${watched.repo}@${r.tag_name}`));
+    state[watched.repo] = releases[0].tag_name;
+    console.log(`✚ ${watched.repo}: ${fresh.map((r) => r.tag_name).join(', ')}`);
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  for (const [section, blocks] of drafts) {
+    const file = changelogPath(section);
+    const changelog = fs.readFileSync(file, 'utf8');
+    const end = markerEnd(changelog);
+    const block = `\n## ${today} — Upstream releases (draft)\n\n${blocks.join('\n\n')}\n`;
+    fs.writeFileSync(file, changelog.slice(0, end) + block + changelog.slice(end));
+  }
+
+  // Persist baselines even when no drafts were generated.
+  fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2) + '\n');
+
+  if (detected.length > 0) {
+    console.log(`\nInserted ${detected.length} draft release entr${detected.length === 1 ? 'y' : 'ies'}:`);
+    for (const d of detected) console.log(`  - ${d}`);
+  } else {
+    console.log('\nNo new releases.');
+  }
+}
+
+main().catch((err) => {
+  console.error('✖', err.message ?? err);
+  process.exit(1);
+});
