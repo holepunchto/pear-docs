@@ -8,7 +8,7 @@ product: pear
 schemaType: TechArticle
 ---
 
-The simplest way to publish and update a Pear app is to let CI do it. The [`pear-ci` GitHub Action](https://github.com/holepunchto/actions/blob/main/pear-ci/action.yml) stages a directory from your repository into a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) on every push, so shipping a new version is just a `git push`. There is no local `pear touch` or `pear stage` to run by hand. You do need one peer that stays online: every run syncs the drive from a peer before it stages, and waits for a peer to download the new release after, so keep [`pear seed`](/pear/reference/pear/cli#pear-seed-link) running on an always-on machine.
+The simplest way to publish and update a Pear app is to let CI do it. The [`pear-ci` GitHub Action](https://github.com/holepunchto/actions/blob/main/pear-ci/action.yml) stages a directory from your repository into a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) on every push, so shipping a new version is just a `git push`. There is no local `pear touch` or `pear stage` to run by hand. You do need one peer that stays online: every run waits for a peer that holds the drive before it stages, and for a peer to download the new release after, so keep [`pear seed`](/pear/reference/pear/cli#pear-seed-link) running on an always-on machine.
 
 This is the goal-oriented recipe. If you need the full-control flow—release lines, provision, and multisig—use [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment) instead. The two are not mutually exclusive: CI is the fast path for development and staging links, while the manual flow gives you production gating.
 
@@ -18,22 +18,22 @@ This is the goal-oriented recipe. If you need the full-control flow—release li
 
 The action wraps the [`pear-ci`](https://www.npmjs.com/package/pear-ci) tool. On each run it:
 
-1. Installs `pear-ci` and fetches the committed `ci/snapshot.json` from the `main` branch.
-2. Joins [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) and syncs the drive from a connected peer up to the lengths recorded in the snapshot.
-3. Mirrors your `target` directory into a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) whose key is **derived deterministically from `primary-key` + `namespace`**, then waits until a connected peer has downloaded every new block.
+1. Installs the latest `pear-ci` from npm and fetches the committed `ci/snapshot.json` from the `main` branch.
+2. Joins [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) and waits until a peer that holds the drive reports each core at the length recorded in the snapshot.
+3. Mirrors your `target` directory into a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) whose key is **derived deterministically from `primary-key` + `namespace`**, then waits until a peer holds every block of the drive, the new release included.
 4. Commits the updated `ci/snapshot.json` back to `main` (or opens a PR if the push is rejected).
 
 Three properties shape how this works in CI:
 
 - **The `pear://` link is stable.** Because the drive key comes from the secret primary key plus the namespace, every run stages to the same link. You set that link once as your app's `upgrade` field and every push updates it.
 - **The snapshot replaces persistent storage.** `ci/snapshot.json` records each core's length, so the next run only syncs what changed instead of re-uploading the whole drive or persisting a full [Corestore](/p2p/reference/helpers/corestore) between jobs.
-- **A peer has to hold the drive.** A fresh runner has no copy of the drive, so it depends on a peer twice: before staging, to sync up to the lengths the snapshot records, and after staging, to take the new release. Neither wait has a time limit, so a run with no peer online waits until the job times out. An always-on seeder fills that role.
+- **A peer has to hold the drive.** A fresh runner has no copy of the drive, so it depends on a peer twice: before staging, to confirm the lengths the snapshot records, and after staging, to take the new release. Neither wait has a time limit, so a run with no peer online waits until the job times out. An always-on seeder fills that role.
 
 ```mermaid skip="diagram"
 flowchart LR
   push["git push to main"] --> action["pear-ci action"]
   action --> snap["fetch ci/snapshot.json"]
-  snap --> pull["sync drive from seeder"]
+  snap --> pull["confirm lengths with seeder"]
   pull --> stage["stage target into Hyperdrive"]
   stage --> sync["wait for seeder to download release"]
   sync --> commit["commit updated snapshot.json"]
@@ -79,9 +79,7 @@ git push origin main
 
 Without this file, the action's **Fetch snapshot from main** step fails with `gh: Not Found (HTTP 404)`.
 
-<Callout type="warning">
-Commit `[]` only once, before the first release. After that, the action keeps the file up to date, so never reset it to `[]`. A run with an empty snapshot against a drive that already has releases writes a second history under the same key: `pear-ci` 0.1.2 logs `[hypercore] conflict detected`, still exits with code 0, and the seeder's view of the drive drops to length 0. `pear-ci` 0.1.2 can't recover from this state.
-</Callout>
+<include>../../../../_snippets/_pear-ci-snapshot-reset-callout.mdx</include>
 
 ## Add the workflow
 
@@ -120,11 +118,9 @@ jobs:
 
 Set `namespace` to your chosen name and `target` to the repo-relative path of the directory you want to publish. The `concurrency` group prevents two runs from racing to commit `ci/snapshot.json` at the same time. The workflow starts with `dry-run: true`, and you switch it to `false` once a seeder is online.
 
-`timeout-minutes` ends a run that waits for a peer that never comes. Without it, GitHub lets the job run for 360 minutes.
+`timeout-minutes` ends a run that waits for a peer that never comes. Without it, GitHub lets the job run for 360 minutes. Set it well over the time your largest release takes to reach the seeder, so the timeout never ends a run while the seeder is still downloading.
 
-<Callout type="warning">
-Set `timeout-minutes` well over the time your largest release takes to upload, and don't cancel a run once it prints `starting stage for key`. If a timeout or a cancel stops a run partway through its upload, the seeder records the release's new length but misses blocks that only the stopped runner had. `pear-ci` 0.1.2 can't recover from this state: later runs fail with `Core <key> length (<n>) is higher than length in snapshot.json`, and a snapshot edited to the new length leaves the run waiting at `waiting synced remote peers` until it times out.
-</Callout>
+<include>../../../../_snippets/_pear-ci-stopped-run-callout.mdx</include>
 
 Commit the workflow and push it to `main`. That push starts the first run.
 
@@ -141,7 +137,7 @@ Read the diff in the Actions log. Look for the files you expect, no surprise add
 The dry run prints the drive key it stages to:
 
 ```text skip="sample-output"
-starting stage for key <drive-key>
+starting stage for key  <drive-key>
 ```
 
 That key is your app's `pear://` link. Set it as the [`upgrade`](/pear/reference/pear/configuration) field so installed builds poll it for updates:
@@ -160,16 +156,20 @@ Before the first real run, start a peer that holds the drive. On a machine that 
 pear seed pear://<drive-key>
 ```
 
-The seeder downloads each release while a run stages it. Every later run, dry runs included, first syncs the drive from it up to the lengths in `ci/snapshot.json`, so keep it running for as long as you publish from CI. For higher availability, seed the link on more than one machine (see [Seeding with `pear seed`](/pear/explanation/availability-and-blind-peering#seeding-with-pear-seed)).
+The seeder downloads each release while a run stages it. Every later run, dry runs included, first waits for it to report the lengths in `ci/snapshot.json`, so keep it running for as long as you publish from CI. For higher availability, seed the link on more than one machine (see [Seeding with `pear seed`](/pear/explanation/availability-and-blind-peering#seeding-with-pear-seed)).
 
-Then set `dry-run: false` in the workflow, commit, and push. In the job log, **Stage** should end with `all remote peers synced`, and **Commit snapshot to main** should commit the updated `ci/snapshot.json`. Every later push to `main` then stages and publishes automatically.
+Then set `dry-run: false` in the workflow, commit, and push. In the job log, **Stage** should end with `all remote peers synced`, and **Commit snapshot to main** should commit the updated `ci/snapshot.json`. Every later push to `main` then stages and publishes automatically, as long as each run's snapshot commit lands on `main`.
 
-If no peer with the drive is online, the log stops at one of these lines until the job times out:
+If no peer with the drive is online, the log stops at one of these lines:
 
-- `syncing <key> to length <n>`: the run is waiting to sync the drive before it stages.
-- `waiting synced remote peers for key <drive-key>`: the run has staged and is waiting for a peer to download the release. It commits nothing.
+- `syncing <key> to length <n>`: the run is waiting for the seeder before it stages. It hasn't written anything yet, so stopping it is safe.
+- `waiting synced remote peers for key <drive-key>`: the run has staged and is waiting for a peer to download the release. It commits nothing, and only this runner holds the release.
 
-Start the seeder, then run the job again.
+In both cases, start the seeder while the run waits. The run carries on once the seeder connects. If the job timed out while no seeder or other peer was online, re-run the most recent run once the seeder is up.
+
+## When the snapshot lands in a pull request
+
+The action commits the snapshot on top of the commit the run checked out. If someone pushes to `main` during the run, or branch protection blocks direct pushes, the direct push fails, and the action opens a `pear-ci/snapshot-<run-id>` pull request instead. Until you merge it, `main` holds an older snapshot than the drive, so every run fails before it stages with `Core <key> length (<n>) is higher than length in snapshot.json`. Merge the pull request before the next run. Merging is a push to `main`, so it starts a run that stages the latest commit.
 
 ## Producing the build to stage
 
