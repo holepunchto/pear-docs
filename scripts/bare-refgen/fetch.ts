@@ -116,18 +116,19 @@ function repoUrlOf(pkg: Pkg): string | null {
     .replace(/\.git$/, '');
 }
 
-// ---- upstream TSDoc PR branch preference ----------------------------------
+// ---- upstream TSDoc PR branch fallback ------------------------------------
 //
-// scripts/bare-refgen/emit-tsdoc.ts splices real TSDoc onto each module's
-// shipped .d.ts and pushes it to an open `holepunchto/<repo>` PR from the
-// user's `lucas-tortora/<repo>` fork, branch `chore/ts-doc` (see
-// docs/plans/bare-refs/handover-2026-08-05.md and the "Descriptions →
-// upstream TSDoc" section of this directory's README). Prefer that content
-// over the published tarball's bare .d.ts when a PR branch exists for this
-// repo — same API surface, richer descriptions. Metadata (version,
-// description, dependencies, …) still comes from the published tarball:
-// these PRs don't ship a release, only prose, so the version number a
-// reader would actually install stays accurate.
+// scripts/bare-refgen/emit-tsdoc.ts splices TSDoc onto each module's shipped
+// .d.ts and commits it on a `chore/ts-doc` branch, pushed to the user's
+// `lucas-tortora/<repo>` fork for an upstream PR (see the "Descriptions →
+// upstream TSDoc" section of this directory's README). Upstream has since
+// merged and released most of those PRs, and the branches were never updated
+// after, so a release's own TSDoc is newer than the branch: bare-subprocess's
+// branch still says `kill(): void` where the release says `boolean`. So the
+// branch is only a fallback, for a `.d.ts` file the tarball ships without any
+// TSDoc (a module whose PR is still open, or a pinned version older than the
+// release that merged it). Metadata (version, description, dependencies, …)
+// always comes from the tarball.
 //
 // The repo name is derived from `package.json`'s own `repository` field, not
 // assumed to match the npm package name — some bare-* packages' repo name
@@ -199,6 +200,14 @@ function declaredNames(sourceText: string): { names: Set<string>; typeNames: Set
   return { names, typeNames };
 }
 
+/** Whether a `.d.ts` carries any TSDoc (a `/** … *\/` block attached to a declaration). */
+export function hasTsDoc(sourceText: string): boolean {
+  const sf = ts.createSourceFile('tsdoc-check.d.ts', sourceText, ts.ScriptTarget.ESNext, true);
+  const visit = (node: ts.Node): boolean =>
+    ts.getJSDocCommentsAndTags(node).length > 0 || (ts.forEachChild(node, visit) ?? false);
+  return ts.forEachChild(sf, visit) ?? false;
+}
+
 /**
  * How `candidate` compares to the published `baseline`: `phantom` if it adds a
  * name that is neither a type nor implemented by `runtime`, `missing` if it
@@ -223,18 +232,15 @@ export function coversBaseline(baseline: string, candidate: string, runtime = ''
 
 /**
  * Overwrite the entry and subpath `.d.ts` files (already extracted from the
- * npm tarball, under `pkgDir`) with the same relative paths' content from the user's
- * `chore/ts-doc` fork branch, when that branch exists for this repo, ships
- * the file, AND doesn't drop any name the published `.d.ts` declares — a PR
- * branch can go stale relative to a package that's since shipped new API
- * surface (confirmed: bare-fetch's fork branch is missing `Response.error`/
- * `json`/`redirect`/`type`, added upstream after the branch was forked).
- * Falls back to the tarball's own content otherwise — most modules don't
- * have an open PR yet, some (e.g. `bare-dgram`) were explicitly excluded
- * from the emit-tsdoc run, and a stale branch must never win over a fresher
- * published one.
+ * npm tarball, under `pkgDir`) with the same relative paths' content from the
+ * user's `chore/ts-doc` fork branch, but only a file the tarball ships without
+ * TSDoc, and only when the branch ships that file AND doesn't drop any name
+ * the published `.d.ts` declares (bare-fetch's branch lacks
+ * `Response.error`/`json`/`redirect`/`type`, added upstream after it was
+ * forked). A file with TSDoc of its own, or with no usable branch, is left as
+ * published: a stale branch must never win over a fresher release.
  */
-async function preferTsDocBranch(
+async function tsDocBranchFallback(
   pkgDir: string,
   pkg: Pkg,
   entryDts: string | null,
@@ -244,9 +250,11 @@ async function preferTsDocBranch(
   if (!repo) return;
   const runtime = await runtimeSource(pkgDir);
   const swap = async (absPath: string): Promise<'ok' | 'missing' | 'phantom' | null> => {
+    const published = await readFile(absPath, 'utf8');
+    if (hasTsDoc(published)) return null;
     const content = await fetchRawFile(`${TSDOC_FORK_OWNER}/${repo}`, TSDOC_BRANCH, relative(pkgDir, absPath));
     if (content === null) return null;
-    const result = coverage(await readFile(absPath, 'utf8'), content, runtime);
+    const result = coverage(published, content, runtime);
     if (result === 'ok') await writeFile(absPath, content);
     return result;
   };
@@ -369,13 +377,14 @@ async function linkBareDeps(pkgDir: string, pkg: Pkg): Promise<void> {
   }
 }
 
-export async function fetchPackage(name: string): Promise<FetchedPackage> {
+/** `version` pins the tarball (`name@version`); omitted, npm `latest`. */
+export async function fetchPackage(name: string, version?: string): Promise<FetchedPackage> {
   const dir = await mkdtemp(join(tmpdir(), `bare-refgen-${name}-`));
   const cleanup = () => rm(dir, { recursive: true, force: true });
   try {
     const { stdout } = await execFile(
       'npm',
-      ['pack', name, '--json', '--pack-destination', dir],
+      ['pack', version ? `${name}@${version}` : name, '--json', '--pack-destination', dir],
       { maxBuffer: 64 * 1024 * 1024 },
     );
     const meta = JSON.parse(stdout) as Array<{ filename: string }>;
@@ -388,7 +397,7 @@ export async function fetchPackage(name: string): Promise<FetchedPackage> {
 
     const entryDts = resolveEntryDts(pkgDir, pkg);
     const subpaths = resolveSubpaths(pkgDir, pkg, pkg.name ?? name);
-    await preferTsDocBranch(pkgDir, pkg, entryDts, subpaths.map((sp) => sp.dts));
+    await tsDocBranchFallback(pkgDir, pkg, entryDts, subpaths.map((sp) => sp.dts));
 
     return {
       name: pkg.name ?? name,

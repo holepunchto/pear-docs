@@ -1,6 +1,6 @@
 {
   "name": "bare-rpc",
-  "version": "1.3.8",
+  "version": "1.5.0",
   "description": "librpc ABI compatible RPC for Bare",
   "repoUrl": "https://github.com/holepunchto/bare-rpc",
   "npmUrl": "https://www.npmjs.com/package/bare-rpc",
@@ -9,8 +9,29 @@
   "dependencies": [
     "bare-stream"
   ],
-  "usage": "```js\nimport RPC from 'bare-rpc'\n\n// On one end\nconst rpc = new RPC(stream, (req) => {\n  if (req.command === 42) {\n    console.log(req.data.toString()) // ping\n    req.reply('pong')\n  }\n})\n\n// On the other end\nconst req = rpc.request(42)\nreq.send('ping')\n\nconst replyBuffer = await req.reply()\nconsole.log(replyBuffer.toString()) // pong\n```",
-  "extraSections": [],
+  "usage": "This example wires two peers together over IPC and makes one request:\n\n```js\nimport IPC from 'bare-ipc'\nimport RPC from 'bare-rpc'\n\nconst [a, b] = IPC.open().map((port) => port.connect())\n\nconst server = new RPC(a, (req) => req.reply('pong'))\n\nconst client = new RPC(b)\n\nconst req = client.request(1)\nreq.send('ping')\n\nconsole.log((await req.reply()).toString()) // pong\n\na.destroy()\nb.destroy()\n```\n\n`new RPC(stream, onrequest, opts)` runs a session over a duplex `stream`, such as a pipe, a socket or an IPC port. `onrequest` is a function that is called with each request and event of the peer, or a `CommandRouter`. `opts` takes `maxFrameSize` and `maxBufferedBytes`, as described under [Untrusted peers](#untrusted-peers).\n\nSee the [`bare-rpc` reference](https://docs.pears.com/reference/bare/modules/bare-rpc) for the full API.",
+  "extraSections": [
+    {
+      "heading": "Command routing",
+      "body": "A `CommandRouter` sends each request and event to the handler registered for its command. Pass it to `RPC` as `onrequest`:\n\n```js\nconst router = new RPC.CommandRouter()\n\nrouter.respond(1, (req, data) => Buffer.from('pong'))\nrouter.respond(2, (req, data) => console.log(req.command))\n\nconst rpc = new RPC(stream, router)\n```\n\nA handler is called with the request and its data, and returns the data to reply with, unless it has answered the request itself. Events for a command go to the same handler, and its return value is ignored. A request for a command with no handler is rejected with the code `UNKNOWN_COMMAND`. An event for a command with no handler is dropped.\n\nThe data is decoded and the reply encoded with a [compact-encoding](https://github.com/holepunchto/compact-encoding), `c.raw` by default. Pass `valueEncoding` to `new CommandRouter()` to change the default, or `valueEncoding`, `requestEncoding` and `responseEncoding` to `respond(command, opts, handler)` for one command."
+    },
+    {
+      "heading": "Requests and responses",
+      "body": "`rpc.request(command)` returns a request. Call `send(data)` on it to send it, and `await reply()` to get its reply. `rpc.event(command)` returns an event, which gets no reply. Call `send(data)` on it to send it. Each can be sent once, and a reply can be read once. Sending again throws an `RPCError` with the code `ALREADY_SENT`, and reading again throws one with the code `ALREADY_RECEIVED`.\n\nData can be a buffer, or a string that `send(data, encoding)` and `reply(data, encoding)` encode with `encoding`, `utf8` by default. `reply(encoding)` on a request you sent decodes the reply to a string.\n\nA request of the peer is answered once, with `reply()` or `createResponseStream()`. Answering again throws an `RPCError` with the code `ALREADY_SENT`, and `req.sent` tells whether the request has been answered. Events reach `onrequest` as requests without `reply()`. Each request and event of the peer is handled on its own, so a slow async handler does not hold back the others.\n\nIf a request handler throws before it answers, the request is rejected with the `message` of the error, and its `code` and `errno` if it has them. If the handler had opened a response stream, the stream is destroyed with the error instead.\n\nWhen the peer rejects a request, `reply()` rejects with an `Error` with the `message`, `code` and `errno` of the peer.\n\nWithout `onrequest`, every request is rejected with the code `UNKNOWN_COMMAND`, and events are dropped."
+    },
+    {
+      "heading": "Streaming requests and responses",
+      "body": "A request can stream its body, its reply, or both:\n\n- `createRequestStream()` returns a `Writable` for the body, and `await reply()` gets a single reply.\n- `send(data)` sends a plain request, and `createResponseStream()` returns a `Readable` for the reply.\n- `createRequestStream()` and `createResponseStream()` together stream both.\n\nOn the answering side, `req.createRequestStream()` returns a `Readable` for the body, and `req.createResponseStream()` returns a `Writable` for the reply. This handler echoes the body back:\n\n```js\nconst server = new RPC(stream, (req) => {\n  req.createRequestStream().pipe(req.createResponseStream())\n})\n\nconst req = client.request(1)\nconst outgoing = req.createRequestStream()\nconst incoming = req.createResponseStream()\n\noutgoing.end('ping')\n\nfor await (const chunk of incoming) console.log(chunk.toString()) // ping\n```\n\nA stream only carries data once both ends have opened it, so data written before then is held back until the peer has opened its end. The handler opens the body when it calls `req.createRequestStream()`. If the peer answers before it opens the body, the body is destroyed, with the error of the reply if it has one.\n\nAn incoming stream asks the peer to pause once it buffers its `highWaterMark`, which is 16 KiB by default, and to resume once it is read. While the peer has paused an outgoing stream, its writes are held back. If the peer keeps sending anyway, an incoming stream holds at most `maxBufferedBytes`, 16 MiB by default, before the session fails with an `RPCError` with the code `STREAM_OVERFLOW`.\n\nThe body of a request and the reply to a request can each be read once. Calling `createRequestStream()` on a request of the peer again, or `createResponseStream()` or `reply()` on a request you sent again, throws an `RPCError` with the code `ALREADY_RECEIVED`."
+    },
+    {
+      "heading": "Termination",
+      "body": "The session ends with an `RPCError` with the code `CHANNEL_CLOSED` when `stream` closes. It fails with an error instead when:\n\n- `stream` emits an error, with that error.\n- `stream` ends partway through a frame, with the code `INVALID_MESSAGE`.\n- An event handler throws, with that error.\n- The peer sends a bad frame, as described under [Untrusted peers](#untrusted-peers).\n\nPending replies then reject with the error, and so do later replies. Open streams are destroyed with it, and so are streams created later. Events sent after the end are dropped.\n\n`RPC` does not close `stream` when the session ends cleanly. When it fails for any reason but an error of `stream`, `RPC` destroys `stream` with the error, so the frames still queued in it are not written. To end the session yourself, destroy `stream`. `rpc.idle` tells whether no requests or streams are in flight, so that it is safe to do so."
+    },
+    {
+      "heading": "Untrusted peers",
+      "body": "`RPC` does not trust the peer to send valid frames. If a frame is larger than `maxFrameSize`, cannot be decoded, or breaks the protocol, the session fails with an `RPCError`. The code tells you why:\n\n- `FRAME_TOO_LARGE`: The frame, with its 4-byte length prefix, is larger than `maxFrameSize`, 16 MiB by default. This is checked as soon as the length prefix arrives, before the rest of the frame is read.\n- `UNKNOWN_MESSAGE`: The frame has a message type that `RPC` does not know.\n- `INVALID_MESSAGE`: The frame cannot be decoded, `stream` ends partway through a frame, or the frame is one that a valid peer never sends. Examples are a response or stream message with an id of 0, a stream message with an invalid set of flags, and a new request that reuses the id of a request that is still in flight.\n- `STREAM_OVERFLOW`: An incoming stream holds more than `maxBufferedBytes` of data that has not been read. This only happens when the peer keeps sending after it was asked to pause.\n\nA frame that refers to a request or stream that has already finished, or that was never known, is ignored. The same goes for frames that arrive for a stream that has already ended or been destroyed.\n\nIf you read the reply as a stream but the peer replies without one, the reply arrives on the stream as a single chunk, unless it is empty, and the stream then ends. An error reply destroys the stream with the error instead.\n\nIf you expect a plain reply but the peer replies with a stream, `reply()` rejects with an `RPCError` with the code `UNEXPECTED_STREAM`. The session destroys the stream toward the peer and stays open."
+    }
+  ],
   "exports": [
     {
       "key": "RPC",
@@ -20,7 +41,7 @@
       "signatures": [
         "interface RPC {\n  readonly idle: boolean\n  event(command: number): RPCOutgoingEvent\n  request(command: number): RPCOutgoingRequest\n}"
       ],
-      "description": "Create an RPC instance using a duplex `stream`. `onrequest` is an optional callback run when a remote request is received. This is where processing and responding to an RPC request happens. `onrequest` receives a `RPCIncomingRequest` as an argument.",
+      "description": "Create an RPC instance using a duplex `stream`. `onrequest` is an optional callback run when a\nremote request is received. This is where processing and responding to an RPC request happens.\n`onrequest` receives a `RPCIncomingRequest` as an argument.",
       "deprecated": null,
       "params": [],
       "returns": null,
@@ -32,7 +53,7 @@
           "kind": "constructor",
           "static": false,
           "signatures": [
-            "new RPC(stream: Duplex, onrequest: (req: RPCIncomingRequest) => void | Promise<void>)"
+            "new RPC(stream: Duplex, onrequest?: ((req: RPCIncomingRequest) => void | Promise<void>) | RPCCommandRouter | null, opts?: RPCOptions)"
           ],
           "description": null,
           "deprecated": null,
@@ -46,10 +67,17 @@
             },
             {
               "name": "onrequest",
-              "type": "(req: RPCIncomingRequest) => void | Promise<void>",
-              "optional": false,
+              "type": "((req: RPCIncomingRequest) => void | Promise<void>) | RPCCommandRouter | null",
+              "optional": true,
               "default": null,
-              "description": "Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to. Defaults to a no-op."
+              "description": "Callback run for each incoming request or event, receiving an\n`RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to, or an\n`RPCCommandRouter` that answers each request with the handler of its command. If it throws, the\nrequest is answered with the error, or, if it has already created a response stream, that\nstream is destroyed with the error. If it has already replied, nothing more is sent. If\nomitted, every request is answered with an error whose code is `UNKNOWN_COMMAND` and every\nevent is dropped."
+            },
+            {
+              "name": "opts",
+              "type": "RPCOptions",
+              "optional": true,
+              "default": null,
+              "description": "Options for the connection.\n\nThe remote end is not trusted to send valid frames. A frame that is too large, cannot be\ndecoded, or breaks the protocol fails the connection, and so does a stream that holds more\nunread data than `maxBufferedBytes`: `stream` is destroyed with an `RPCError` whose code is\n`FRAME_TOO_LARGE`, `UNKNOWN_MESSAGE`, `INVALID_MESSAGE` or `STREAM_OVERFLOW`, and every request\nand stream in flight is rejected or destroyed with it. A frame that refers to a request or stream\nthat has already finished, or that was never known, is ignored."
             }
           ],
           "returns": null,
@@ -72,7 +100,7 @@
               "type": "number",
               "optional": false,
               "default": null,
-              "description": "A unique number identifying the event; the remote end differentiates events by it."
+              "description": "A unique number identifying the event; the remote end differentiates events by\nit."
             }
           ],
           "returns": {
@@ -90,7 +118,7 @@
           "signatures": [
             "idle: boolean"
           ],
-          "description": "Whether there are no requests or responses currently in flight. Useful for determining when it is safe to tear down the underlying stream.",
+          "description": "Whether there are no requests or responses currently in flight. Useful for determining when it\nis safe to tear down the underlying stream.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -113,13 +141,28 @@
               "type": "number",
               "optional": false,
               "default": null,
-              "description": "A unique number identifying the request; the remote end differentiates requests by it."
+              "description": "A unique number identifying the request; the remote end differentiates\nrequests by it."
             }
           ],
           "returns": {
             "type": "RPCOutgoingRequest",
-            "description": "an `RPCOutgoingRequest`; call `send()` on it to dispatch the request and `await reply()` for the response."
+            "description": "an `RPCOutgoingRequest`; call `send()` on it to dispatch the request and `await\nreply()` for the response."
           },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPC.RPCRequestHandler",
+          "name": "RPC.RPCRequestHandler",
+          "kind": "typeAlias",
+          "static": true,
+          "signatures": [
+            "type RPCRequestHandler = (req: RPCIncomingRequest, data: any) => unknown"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
           "throws": [],
           "members": []
         }
@@ -313,7 +356,7 @@
               "type": "Buffer | string | null",
               "optional": true,
               "default": null,
-              "description": "The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data."
+              "description": "The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to\nsend no data."
             },
             {
               "name": "encoding",
@@ -433,7 +476,7 @@
           "signatures": [
             "createRequestStream(opts?: ReadableOptions): RPCIncomingStream"
           ],
-          "description": "Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for receiving the request's streamed data.",
+          "description": "Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for\nreceiving the request's streamed data.",
           "deprecated": null,
           "params": [
             {
@@ -441,7 +484,7 @@
               "type": "ReadableOptions",
               "optional": true,
               "default": null,
-              "description": "Options for the returned [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream."
+              "description": "Options for the returned\n[`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream."
             }
           ],
           "returns": {
@@ -464,7 +507,7 @@
           "signatures": [
             "createResponseStream(opts?: WritableOptions): RPCOutgoingStream"
           ],
-          "description": "Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending the streamed reply to the request.",
+          "description": "Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending\nthe streamed reply to the request.",
           "deprecated": null,
           "params": [
             {
@@ -472,7 +515,7 @@
               "type": "WritableOptions",
               "optional": true,
               "default": null,
-              "description": "Options for the returned [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream."
+              "description": "Options for the returned\n[`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream."
             }
           ],
           "returns": {
@@ -548,7 +591,7 @@
               "type": "Buffer | string | null",
               "optional": true,
               "default": null,
-              "description": "The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data."
+              "description": "The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to\nsend no data."
             },
             {
               "name": "encoding",
@@ -676,7 +719,7 @@
           "signatures": [
             "createRequestStream(opts?: WritableOptions): RPCOutgoingStream"
           ],
-          "description": "Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending data with the request.",
+          "description": "Create a [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream for sending\ndata with the request.",
           "deprecated": null,
           "params": [
             {
@@ -684,7 +727,7 @@
               "type": "WritableOptions",
               "optional": true,
               "default": null,
-              "description": "Options for the returned [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream."
+              "description": "Options for the returned\n[`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream."
             }
           ],
           "returns": {
@@ -707,7 +750,7 @@
           "signatures": [
             "createResponseStream(opts?: ReadableOptions): RPCIncomingStream"
           ],
-          "description": "Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for receiving data in reply to the request.",
+          "description": "Create a [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream for\nreceiving data in reply to the request. If the remote end replies without a stream, the reply\narrives as a single chunk, unless it is empty, and the stream then ends.",
           "deprecated": null,
           "params": [
             {
@@ -715,7 +758,7 @@
               "type": "ReadableOptions",
               "optional": true,
               "default": null,
-              "description": "Options for the returned [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream."
+              "description": "Options for the returned\n[`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream."
             }
           ],
           "returns": {
@@ -768,7 +811,7 @@
           "signatures": [
             "reply(encoding?: BufferEncoding): Promise<Buffer | string | null>"
           ],
-          "description": "Await the reply from the remote end to the request. `encoding` can be defined for decoding the response `data` buffer back into a string.",
+          "description": "Await the reply from the remote end to the request. `encoding` can be defined for decoding the\nresponse `data` buffer back into a string.",
           "deprecated": null,
           "params": [
             {
@@ -776,12 +819,12 @@
               "type": "BufferEncoding",
               "optional": true,
               "default": null,
-              "description": "If given, decodes the reply payload to a string using this encoding; omit to receive the raw `Buffer`."
+              "description": "If given, decodes the reply payload to a string using this encoding; omit to\nreceive the raw `Buffer`."
             }
           ],
           "returns": {
             "type": "Promise<Buffer | string | null>",
-            "description": "a promise that resolves with the remote end's reply payload, or rejects with the channel's teardown error if it closes before a reply arrives."
+            "description": "a promise that resolves with the remote end's reply payload, or rejects with the\nchannel's teardown error if it closes before a reply arrives. If the remote end replies with a\nstream, the promise rejects with an error whose code is `UNEXPECTED_STREAM`, the remote end's\nstream is destroyed, and the connection stays open."
           },
           "throws": [
             {
@@ -822,7 +865,7 @@
               "type": "Buffer | string | null",
               "optional": true,
               "default": null,
-              "description": "The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data."
+              "description": "The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to\nsend no data."
             },
             {
               "name": "encoding",
@@ -905,14 +948,14 @@
               "type": "typeof constants.type.REQUEST | typeof constants.type.RESPONSE",
               "optional": false,
               "default": null,
-              "description": "Whether the stream carries the request body (`constants.type.REQUEST`) or the response body (`constants.type.RESPONSE`)."
+              "description": "Whether the stream carries the request body (`constants.type.REQUEST`) or the\nresponse body (`constants.type.RESPONSE`)."
             },
             {
               "name": "opts",
               "type": "ReadableOptions",
               "optional": true,
               "default": null,
-              "description": "Options for the underlying [`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream."
+              "description": "Options for the underlying\n[`Readable`](https://github.com/mafintosh/streamx#readable-stream) stream."
             }
           ],
           "returns": null,
@@ -965,16 +1008,335 @@
               "type": "typeof constants.type.REQUEST | typeof constants.type.RESPONSE",
               "optional": false,
               "default": null,
-              "description": "Whether the stream carries the request body (`constants.type.REQUEST`) or the response body (`constants.type.RESPONSE`)."
+              "description": "Whether the stream carries the request body (`constants.type.REQUEST`) or the\nresponse body (`constants.type.RESPONSE`)."
             },
             {
               "name": "opts",
               "type": "WritableOptions",
               "optional": true,
               "default": null,
-              "description": "Options for the underlying [`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream."
+              "description": "Options for the underlying\n[`Writable`](https://github.com/mafintosh/streamx#writable-stream) stream."
             }
           ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "RPCCommandRouter",
+      "name": "RPCCommandRouter",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "interface RPCCommandRouter {\n  respond(command: number, onrequest: RPCRequestHandler): void\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "RPCCommandRouter.constructor",
+          "name": "RPCCommandRouter",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new RPCCommandRouter(opts?: RPCCommandRouterOptions)"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "RPCCommandRouterOptions",
+              "optional": true,
+              "default": null,
+              "description": "The default encodings of the commands."
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCCommandRouter.respond",
+          "name": "respond",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "respond(command: number, onrequest: RPCRequestHandler): void",
+            "respond(command: number, opts: RPCRespondOptions, onrequest: RPCRequestHandler): void"
+          ],
+          "description": "Answer requests for `command` with `onrequest`, in place of any handler registered before.\nEvents for `command` are also passed to `onrequest`, but are never answered. A request for a\ncommand with no handler is answered with an error whose code is `UNKNOWN_COMMAND`, and an event\nfor such a command is dropped.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "command",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": "The command number to answer."
+            },
+            {
+              "name": "onrequest",
+              "type": "RPCRequestHandler",
+              "optional": false,
+              "default": null,
+              "description": "The handler of the requests."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "RPCCommandRouterOptions",
+      "name": "RPCCommandRouterOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface RPCCommandRouterOptions {\n  valueEncoding?: RPCValueEncoding\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "RPCCommandRouterOptions.valueEncoding",
+          "name": "valueEncoding",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "valueEncoding: RPCValueEncoding"
+          ],
+          "description": "The encoding of request and response data for commands that set none (defaults to `c.raw`).",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "RPCRespondOptions",
+      "name": "RPCRespondOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface RPCRespondOptions {\n  valueEncoding?: RPCValueEncoding\n  requestEncoding?: RPCValueEncoding | null\n  responseEncoding?: RPCValueEncoding | null\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "RPCRespondOptions.requestEncoding",
+          "name": "requestEncoding",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "requestEncoding: RPCValueEncoding | null"
+          ],
+          "description": "The encoding to decode the request data with, or `null` to pass the raw buffer.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCRespondOptions.responseEncoding",
+          "name": "responseEncoding",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "responseEncoding: RPCValueEncoding | null"
+          ],
+          "description": "The encoding to encode the response data with, or `null` to reply with the value as is.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCRespondOptions.valueEncoding",
+          "name": "valueEncoding",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "valueEncoding: RPCValueEncoding"
+          ],
+          "description": "The encoding of both the request and the response data.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "RPCValueEncoding",
+      "name": "RPCValueEncoding",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface RPCValueEncoding {\n  preencode(state: unknown, value: unknown): void\n  encode(state: unknown, value: unknown): void\n  decode(state: unknown): unknown\n}"
+      ],
+      "description": "A [`compact-encoding`](https://github.com/holepunchto/compact-encoding) encoding, such as `c.raw`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "RPCValueEncoding.decode",
+          "name": "decode",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "decode(state: unknown): unknown"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "state",
+              "type": "unknown",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "unknown",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCValueEncoding.encode",
+          "name": "encode",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "encode(state: unknown, value: unknown): void"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "state",
+              "type": "unknown",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "value",
+              "type": "unknown",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCValueEncoding.preencode",
+          "name": "preencode",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "preencode(state: unknown, value: unknown): void"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "state",
+              "type": "unknown",
+              "optional": false,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "value",
+              "type": "unknown",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "RPCOptions",
+      "name": "RPCOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface RPCOptions {\n  maxFrameSize?: number\n  maxBufferedBytes?: number\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "RPCOptions.maxBufferedBytes",
+          "name": "maxBufferedBytes",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "maxBufferedBytes: number"
+          ],
+          "description": "The most data, in bytes, that one incoming stream may hold before it is read. A remote end that\nkeeps sending past this limit, rather than stop when asked to pause, fails the connection with\n`STREAM_OVERFLOW`. Defaults to 16 MiB.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCOptions.maxFrameSize",
+          "name": "maxFrameSize",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "maxFrameSize: number"
+          ],
+          "description": "The largest frame to accept from the remote end, in bytes, counting the 4-byte length prefix. A\nlarger frame fails the connection with `FRAME_TOO_LARGE` as soon as its length prefix arrives.\nDefaults to 16 MiB.",
+          "deprecated": null,
+          "params": [],
           "returns": null,
           "throws": [],
           "members": []
@@ -1079,6 +1441,136 @@
               "members": []
             },
             {
+              "key": "RPCError.FRAME_TOO_LARGE",
+              "name": "RPCError.FRAME_TOO_LARGE",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "RPCError.FRAME_TOO_LARGE(msg: string): RPCError"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                }
+              ],
+              "returns": {
+                "type": "RPCError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "RPCError.INVALID_MESSAGE",
+              "name": "RPCError.INVALID_MESSAGE",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "RPCError.INVALID_MESSAGE(msg: string): RPCError"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                }
+              ],
+              "returns": {
+                "type": "RPCError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "RPCError.STREAM_OVERFLOW",
+              "name": "RPCError.STREAM_OVERFLOW",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "RPCError.STREAM_OVERFLOW(msg: string): RPCError"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                }
+              ],
+              "returns": {
+                "type": "RPCError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "RPCError.UNEXPECTED_STREAM",
+              "name": "RPCError.UNEXPECTED_STREAM",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "RPCError.UNEXPECTED_STREAM(msg: string): RPCError"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                }
+              ],
+              "returns": {
+                "type": "RPCError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "RPCError.UNKNOWN_COMMAND",
+              "name": "RPCError.UNKNOWN_COMMAND",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "RPCError.UNKNOWN_COMMAND(msg: string): RPCError"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                }
+              ],
+              "returns": {
+                "type": "RPCError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
               "key": "RPCError.UNKNOWN_MESSAGE",
               "name": "RPCError.UNKNOWN_MESSAGE",
               "kind": "method",
@@ -1109,5 +1601,5 @@
       ]
     }
   ],
-  "generatedAt": "2026-08-06T18:23:53.585Z"
+  "generatedAt": "2026-11-05T13:03:40.151Z"
 }

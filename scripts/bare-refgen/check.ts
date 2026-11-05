@@ -59,11 +59,12 @@ function coverageGaps(model: BareModel, mdx: string): string[] {
 }
 
 /** Manifest refs (group members, describe/params/returns/throws keys, memberPatch/extraMembers targets) that match no symbol. */
-function layoutGaps(layout: Layout, ids: Set<string>): string[] {
+function layoutGaps(layout: Layout, ids: Set<string>, headings: Set<string>): string[] {
   const refs = new Set<string>();
   for (const g of layout.groups ?? []) g.members.forEach((m) => refs.add(m));
-  for (const p of layout.memberPatch ?? []) refs.add(p.member);
-  for (const x of layout.extraMembers ?? []) refs.add(x.after);
+  // These two may also name a member by its rendered `####` heading.
+  for (const p of layout.memberPatch ?? []) if (!headings.has(p.member)) refs.add(p.member);
+  for (const x of layout.extraMembers ?? []) if (!headings.has(x.after)) refs.add(x.after);
   Object.keys(layout.describe ?? {}).forEach((k) => refs.add(k));
   Object.keys(layout.throws ?? {}).forEach((k) => refs.add(k));
   Object.keys(layout.params ?? {}).forEach((k) => refs.add(k));
@@ -136,7 +137,8 @@ async function main(): Promise<void> {
     }
     if (layout) {
       const byIdentity = exportsByIdentity(model);
-      for (const ref of layoutGaps(layout, new Set(byIdentity.keys()))) {
+      const headings = new Set([...mdx.matchAll(/^#### `(.+)`$/gm)].map((m) => m[1]));
+      for (const ref of layoutGaps(layout, new Set(byIdentity.keys()), headings)) {
         problems.push({ module: name, kind: 'layout', detail: `manifest ref matches no symbol: ${ref}` });
       }
       for (const ref of paramKeyGaps(layout, byIdentity)) {

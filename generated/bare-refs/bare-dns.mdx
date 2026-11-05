@@ -4,12 +4,12 @@ description: "Domain name resolution for JavaScript"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "2.2.1"
+upstreamVersion: "2.3.1"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-[`bare-dns`](https://github.com/holepunchto/bare-dns) — Domain name resolution for JavaScript. It is a native addon and requires Bare `>=1.7.0`.
+[`bare-dns`](https://github.com/holepunchto/bare-dns) — Domain name resolution for JavaScript. It is a native addon and requires Bare `>=1.33.0`. A Bare older than that refuses to load it with an `UNSUPPORTED_ENGINE` error on every platform, not only Android. v2.2.1 required `>=1.7.0`.
 
 Mirrors the Node.js [`dns`](https://nodejs.org/api/dns.html) module.
 
@@ -26,6 +26,14 @@ dns.lookup('github.com', (err, address, family) => {
   console.log(address, family)
 })
 ```
+
+## Android
+
+Added in v2.3.0. `bare-dns` sends its DNS protocol queries with c-ares. The c-ares documentation says that on Android 8 and newer, the system's DNS servers can only be read through the application's `ConnectivityManager`, and that the application needs the `ACCESS_NETWORK_STATE` permission. The `ConnectivityManager` has to come from the host application, so the addon asks the host for it.
+
+When the addon first loads in the operating system process, it reads two keys from the [embedder context](/bare/reference/bare/embedder-context): [`bare.android.jvm.v1`](/bare/reference/bare/embedder-context#bareandroidjvmv1) and [`bare.android.context.v1`](/bare/reference/bare/embedder-context#bareandroidcontextv1). It calls `getSystemService("connectivity")` on the application context, then passes the JVM and the `ConnectivityManager` to c-ares. The host must publish both keys before the first addon loads. The thread that loads the addon must be attached to the JVM, because the addon calls `GetEnv()` on it and asserts that the call succeeds. As of bare-kit 2.5.5, [Bare Kit](/bare/reference/bare/bare-kit) publishes `bare.android.jvm.v1` but not `bare.android.context.v1`, so an application that embeds Bare through Bare Kit skips this step unless something else publishes that key.
+
+If either key is not published, or the `ConnectivityManager` cannot be obtained, the addon skips this step without an error. c-ares then has no manager, and its documentation says DNS resolution does not work on Android 8 or newer without one when the application targets API level 26 or higher. `dns.lookup()` uses the operating system's `getaddrinfo()` and does not depend on any of this.
 
 ## API
 
@@ -93,9 +101,7 @@ The IP address family: `4` for IPv4 or `6` for IPv6.
 dns.lookup(hostname: string, cb: (err: Error | null, address: string | null, family: IPFamily | 0) => void): void
 ```
 
-Resolve `hostname` into an IP address using the operating system's `getaddrinfo` facility, not
-the DNS protocol directly. With `all: true`, the callback receives every resolved address
-instead of just the first.
+Resolve `hostname` into an IP address using the operating system's `getaddrinfo` facility, not the DNS protocol directly. With `all: true`, the callback receives every resolved address instead of just the first.
 
 **Parameters**
 
@@ -173,6 +179,8 @@ Use the DNS protocol to resolve TXT records for `hostname`, on the global resolv
 
 ### DNSResolver
 
+The module exports this class as `dns.Resolver`, so create one with `new dns.Resolver()`. `DNSResolver` is its name in the type declarations, and `dns.DNSResolver` does not exist.
+
 #### `new DNSResolver(opts?: DNSResolverOptions)`
 
 An independent resolver for DNS queries over the DNS protocol, with its own servers and local address. Each instance keeps its own set of outstanding queries, which `cancel()` aborts and `destroy()` releases.
@@ -185,14 +193,11 @@ An independent resolver for DNS queries over the DNS protocol, with its own serv
 
 #### `DNSResolver.cancel(): void`
 
-Aborts every query outstanding on this resolver. Each pending callback is
-invoked with `ECANCELLED`.
+Aborts every query outstanding on this resolver. Each pending callback is invoked with `ECANCELLED`.
 
 #### `DNSResolver.destroy(): void`
 
-Cancels every query outstanding on this resolver, so that none is left
-without an answer, and releases the resources it holds. A query made after
-this throws.
+Cancels every query outstanding on this resolver, so that none is left without an answer, and releases the resources it holds. A query made after this throws.
 
 #### `DNSResolver.global: DNSResolver`
 
@@ -348,8 +353,7 @@ resolve6(hostname: string, opts: { ttl: true }, cb: Callback<RecordWithTTL[]>): 
 
 #### `resolveTxt(hostname: string, cb: Callback<string[][]>): void`
 
-Use the DNS protocol to resolve TXT records for `hostname`. The callback receives an array of
-records, each itself an array of the strings that make up that record.
+Use the DNS protocol to resolve TXT records for `hostname`. The callback receives an array of records, each itself an array of the strings that make up that record.
 
 **Parameters**
 
@@ -362,9 +366,7 @@ records, each itself an array of the strings that make up that record.
 
 Resolves the pointer records for `ip`.
 
-This queries the reverse zone for the address only. Unlike Node.js, the
-hosts file is not consulted first, so an address that is only named there
-does not resolve.
+This queries the reverse zone for the address only. Unlike Node.js, the hosts file is not consulted first, so an address that is only named there does not resolve.
 
 **Parameters**
 
@@ -392,7 +394,17 @@ does not resolve.
 
 ### DNSError
 
+The module exports this class as `dns.errors`, which is the same class as `require('bare-dns/errors')`.
+
 #### `DNSError.code: string`
+
+#### `DNSError.INVALID_HOSTNAME(msg?: string): DNSError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | — |
 
 #### `DNSError.INVALID_IP_ADDRESS(msg?: string): DNSError`
 
@@ -653,6 +665,8 @@ promises.lookup(hostname: string, opts?: LookupOptions & { all?: false }): Promi
 
 ### DNSPromiseResolver
 
+The module exports this class as `promises.Resolver`, so create one with `new promises.Resolver()`. `DNSPromiseResolver` is its name in the type declarations, and `promises.DNSPromiseResolver` does not exist.
+
 #### `new DNSPromiseResolver(opts?: DNSResolverOptions)`
 
 **Parameters**
@@ -661,20 +675,17 @@ promises.lookup(hostname: string, opts?: LookupOptions & { all?: false }): Promi
 | --- | --- | --- | --- |
 | `opts?` | [`DNSResolverOptions`](#dnsresolveroptions) | — | — |
 
-#### `promises.DNSPromiseResolver.cancel(): void`
+#### `DNSPromiseResolver.cancel(): void`
 
-Aborts every query outstanding on this resolver. Each pending promise is
-rejected with `ECANCELLED`.
+Aborts every query outstanding on this resolver. Each pending promise is rejected with `ECANCELLED`.
 
-#### `promises.DNSPromiseResolver.destroy(): void`
+#### `DNSPromiseResolver.destroy(): void`
 
-Cancels every query outstanding on this resolver, so that none is left
-without an answer, and releases the resources it holds. A query made after
-this rejects.
+Cancels every query outstanding on this resolver, so that none is left without an answer, and releases the resources it holds. A query made after this rejects.
 
 #### `DNSPromiseResolver.global: DNSPromiseResolver`
 
-#### `promises.DNSPromiseResolver.getServers(): string[]`
+#### `DNSPromiseResolver.getServers(): string[]`
 
 #### `resolve(hostname: string, rrtype?: 'A' | 'AAAA' | 'CNAME' | 'NS' | 'PTR'): Promise<string[]>`
 
@@ -823,9 +834,7 @@ resolve6(hostname: string, opts: { ttl: true }): Promise<RecordWithTTL[]>
 
 Resolves the pointer records for `ip`.
 
-This queries the reverse zone for the address only. Unlike Node.js, the
-hosts file is not consulted first, so an address that is only named there
-does not resolve.
+This queries the reverse zone for the address only. Unlike Node.js, the hosts file is not consulted first, so an address that is only named there does not resolve.
 
 **Parameters**
 
@@ -833,7 +842,7 @@ does not resolve.
 | --- | --- | --- | --- |
 | `ip` | `string` | — | — |
 
-#### `promises.DNSPromiseResolver.setLocalAddress(ipv4?: string | null, ipv6?: string | null): void`
+#### `DNSPromiseResolver.setLocalAddress(ipv4?: string | null, ipv6?: string | null): void`
 
 **Parameters**
 
@@ -842,7 +851,7 @@ does not resolve.
 | `ipv4?` | `string` \| `null` | — | — |
 | `ipv6?` | `string` \| `null` | — | — |
 
-#### `promises.DNSPromiseResolver.setServers(servers: string[]): void`
+#### `DNSPromiseResolver.setServers(servers: string[]): void`
 
 **Parameters**
 
@@ -853,6 +862,14 @@ does not resolve.
 ### DNSError
 
 #### `promises.DNSError.code: string`
+
+#### `promises.DNSError.INVALID_HOSTNAME(msg?: string): DNSError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | — |
 
 #### `promises.DNSError.INVALID_IP_ADDRESS(msg?: string): DNSError`
 
@@ -1036,7 +1053,17 @@ constants: {
 
 ### DNSError
 
+`require('bare-dns/errors')` is the `DNSError` class itself, so its static methods are called as `errors.query()`, not `errors.DNSError.query()`. The headings below name them with the class prefix to match the type declarations.
+
 #### `errors.DNSError.code: string`
+
+#### `errors.DNSError.INVALID_HOSTNAME(msg?: string): DNSError`
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg?` | `string` | — | — |
 
 #### `errors.DNSError.INVALID_IP_ADDRESS(msg?: string): DNSError`
 

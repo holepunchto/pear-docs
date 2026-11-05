@@ -4,12 +4,12 @@ description: "The module system that powers Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "7.2.0"
+upstreamVersion: "7.5.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-[`bare-module`](https://github.com/holepunchto/bare-module) — The module system that powers Bare. It is a native addon and requires Bare `>=1.32.0`.
+[`bare-module`](https://github.com/holepunchto/bare-module) — The module system that powers Bare. It is a native addon and requires Bare `>=1.35.0`.
 
 ```sh
 npm i bare-module
@@ -43,7 +43,54 @@ const require = Module.createRequire('file:///directory/', { protocol })
 const foo = require('./foo.js')
 ```
 
-The same machinery backs the `require()` and `import` available to modules as they run; see CommonJS modules and ECMAScript modules for what each exposes.
+The same machinery backs the `require()` and `import` available to modules as they run; see [CommonJS modules](#commonjs-modules) and [ECMAScript modules](#ecmascript-modules) for what each exposes.
+
+### Loading bundles
+
+A `.bundle` loads as a module graph of its own. Pass the bundle as the `source`, either as its bytes or, from v7.4.0, as a `Bundle` that has already been parsed with [`bare-bundle`](/bare/reference/bare/modules/bare-bundle):
+
+```js
+const Module = require('bare-module')
+const Bundle = require('bare-bundle')
+
+const bundle = new Bundle()
+  .write('/foo.js', "module.exports = require('./bar')", { main: true })
+  .write('/bar.js', 'module.exports = __filename')
+
+const foo = Module.loadSync(new URL('file:///app.bundle'), bundle)
+
+foo.exports
+// '/app.bundle/bar.js'
+```
+
+The bundle serves the modules under its mount. The mount is the URL of the bundle followed by `/`, so the bundle in the example serves `file:///app.bundle/foo.js` and `file:///app.bundle/bar.js`. Added in v7.3.0: the `mount` option sets another URL to mount the entry at:
+
+```js
+const foo = Module.loadSync(new URL('file:///app.bundle'), bundle, {
+  mount: 'file:///app/'
+})
+
+foo.exports
+// '/app/bar.js'
+```
+
+`mount` is a `URL` or a string that parses as one, and a `/` is added to the end if it has none. A value that is neither throws a `TypeError`. `Module.load()`, `Module.loadSync()`, and the loader's `link()`, `linkSync()`, `import()`, and `importSync()` apply it. `instantiate()` and `instantiateSync()` take the same options but do not, so a bundle they compile is mounted at its own URL, unless the same loader was already linked with a `mount` for that URL. From Bare 1.35.0, [`Bare.Thread`](/bare/reference/bare/runtime#barethread) forwards its own `mount` option to `Module.loadSync()`.
+
+- A key that starts with `/`, such as `/foo.js`, is placed under the mount. A key that is already an absolute URL, such as `file:///app/foo.js`, stays where it is, so the mount has to cover it.
+- The bundle serves only the modules under its mount. Any other module is read through the protocol, and resolution fails with `MODULE_NOT_FOUND` if the protocol does not have it. This applies to a key outside the bundle, such as `/../bar.js`, and to an absolute key that the mount does not cover. Pass `file:///` as the mount to let a bundle serve any file.
+- Before v7.2.2 a bundle also served a module outside its mount when the protocol did not have it. A bundle whose absolute keys lie outside its own URL therefore loaded in v7.2.1 and fails from v7.2.2 with `MODULE_NOT_FOUND`, unless it is given a `mount` that covers the keys. The bundle's resolutions for such a module were merged into the graph's [`resolutions`](#resolutions-resolutionsmap), and no longer are.
+- `mount` applies to the entry only. A bundle that another module reaches with `require()` or `import` is mounted at its own URL.
+- Two bundles loaded with the same `cache`, the same protocol, and the same mount share modules. The second gets the modules that the first loaded, even if its own copies differ. A `cache` that is read through a different protocol is refused with `CACHE_INCOMPATIBLE`.
+- A bundle can leave an addon out and point its resolutions at a file outside the bundle, such as `/../node_modules/bare-tcp/prebuilds/darwin-arm64/bare-tcp.bare`, which is what [`bare-pack`](/bare/reference/bare/modules/bare-pack) writes with `--offload`. The addon is looked up through the protocol, so its `exists()` must report the file, or loading the bundle fails with `MODULE_NOT_FOUND`.
+
+### Asynchronous protocols
+
+`Module.load()` and `Module.resolve()` await a protocol that answers with promises, so modules can be served from a store that is not synchronous, such as a `Hyperdrive`. Once a graph is linked, `require()` runs synchronously and asks the protocol through its `*Sync` methods, which throw `UNEXPECTED_PROMISE` when the protocol can only answer asynchronously.
+
+From v7.2.2:
+
+- A `require()` or `require.asset()` of a specifier that the graph already looked up while linking is answered from that lookup. A module, package, or asset that was missing throws `MODULE_NOT_FOUND` or `ASSET_NOT_FOUND`, where it threw `UNEXPECTED_PROMISE` before. A specifier built at run time, such as `require('./' + name)`, was never looked up, so it still throws `UNEXPECTED_PROMISE`.
+- A `.bundle` loads through an asynchronous protocol, including one with an offloaded addon and one that a `.mjs` module imports. Before, loading a bundle through one threw `UNEXPECTED_PROMISE`.
 
 ## API
 
@@ -97,8 +144,7 @@ Constants describing module types (`SCRIPT`, `MODULE`, `JSON`, `BUNDLE`, `ADDON`
 
 #### `Module.createRequire(parentURL: string | URL, opts?: CreateRequireOptions): Require`
 
-Create a preconfigured `require()` bound to `parentURL`, so specifiers resolve and load
-relative to it.
+Create a preconfigured `require()` bound to `parentURL`, so specifiers resolve and load relative to it.
 
 **Parameters**
 
@@ -107,24 +153,21 @@ relative to it.
 | `parentURL` | `string` \| `URL` | — | The parent URL that the returned `require()` resolves and loads specifiers relative to. |
 | `opts?` | [`CreateRequireOptions`](#createrequireoptions) | — | Options for the created `require()`, such as its `protocol` and `cache`. |
 
-**Returns** [`Require`](#require) — A `require()` bound to `parentURL`, with `main`, `cache`, `resolve`, `addon`, and
-`asset` attached.
+**Returns** [`Require`](#require) — A `require()` bound to `parentURL`, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.
 
 **Throws**
 
-- `TypeError` — `parentURL` is neither a string nor a WHATWG `URL`, and no `referrer` was
-given.
+- `TypeError` — `parentURL` is neither a string nor a WHATWG `URL`, and no `referrer` was given.
 
 #### `Module.load(url: URL, opts: LoadOptions): Promise<Module>`
 
-Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will
-be passed to the matching `extension` for the `url`.
+Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will be passed to the matching `extension` for the `url`. `source` is a `Buffer`, a string, or, from v7.4.0, a `Bundle` that has already been parsed. A `Bundle` is only accepted for a module that loads as a bundle, such as a `.bundle`. See [Loading bundles](#loading-bundles).
 
 Overloads:
 
 ```ts
 Module.load(url: URL, opts: LoadOptions): Promise<Module>
-Module.load(url: URL, source?: Buffer | string | null, opts?: LoadOptions): Promise<Module>
+Module.load(url: URL, source?: Buffer | Bundle | string | null, opts?: LoadOptions): Promise<Module>
 ```
 
 **Parameters**
@@ -132,27 +175,25 @@ Module.load(url: URL, source?: Buffer | string | null, opts?: LoadOptions): Prom
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `url` | `URL` | — | The WHATWG `URL` of the module to load. |
-| `opts` | [`LoadOptions`](#loadoptions) | — | Load options; may carry a `source` to load directly instead of reading it through the protocol. |
+| `source?` | `Buffer` \| `Bundle` \| `string` \| `null` | — | The source of the module, used instead of reading `url` through the protocol. A parsed `Bundle` is accepted from v7.4.0, for a module that loads as a bundle. It is its own argument, as `opts` does not carry a `source`. |
+| `opts` | [`LoadOptions`](#loadoptions) | — | Load options. |
 
 **Returns** `Promise<Module>` — The loaded `Module`, reusing the cached instance if `url` was already loaded.
 
 **Throws**
 
-- `TYPE_INCOMPATIBLE` — a module is already cached for `url` with a type incompatible with
-the requested `type`.
+- `TYPE_INCOMPATIBLE` — a module is already cached for `url` with a type incompatible with the requested `type`.
+- `TypeError` — `opts.mount` is neither a `URL` nor a string that parses as one. Added in v7.3.0.
 
 #### `Module.loadSync(url: URL, opts: LoadOptions): Module`
 
-As `load()`, but synchronous, for a caller that cannot await one. The protocol is driven
-through its `*Sync` methods and so must answer synchronously. A module with a top-level
-`await` is returned as soon as its evaluation is started rather than once it has finished, as
-there is nothing to wait on it here.
+As `load()`, but synchronous, for a caller that cannot await one. The protocol is driven through its `*Sync` methods and so must answer synchronously. A module with a top-level `await` is returned as soon as its evaluation is started rather than once it has finished, as there is nothing to wait on it here.
 
 Overloads:
 
 ```ts
 Module.loadSync(url: URL, opts: LoadOptions): Module
-Module.loadSync(url: URL, source?: Buffer | string | null, opts?: LoadOptions): Module
+Module.loadSync(url: URL, source?: Buffer | Bundle | string | null, opts?: LoadOptions): Module
 ```
 
 **Parameters**
@@ -160,21 +201,20 @@ Module.loadSync(url: URL, source?: Buffer | string | null, opts?: LoadOptions): 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `url` | `URL` | — | The WHATWG `URL` of the module to load. |
-| `opts` | [`LoadOptions`](#loadoptions) | — | Load options; may carry a `source` to load directly instead of reading it through the protocol. |
+| `source?` | `Buffer` \| `Bundle` \| `string` \| `null` | — | The source of the module, used instead of reading `url` through the protocol. A parsed `Bundle` is accepted from v7.4.0, for a module that loads as a bundle. It is its own argument, as `opts` does not carry a `source`. |
+| `opts` | [`LoadOptions`](#loadoptions) | — | Load options. |
 
 **Returns** `Module` — The loaded `Module`, reusing the cached instance if `url` was already loaded.
 
 **Throws**
 
 - `UNEXPECTED_PROMISE` — the protocol answered asynchronously.
-- `TYPE_INCOMPATIBLE` — a module is already cached for `url` with a type incompatible with
-the requested `type`.
+- `TYPE_INCOMPATIBLE` — a module is already cached for `url` with a type incompatible with the requested `type`.
+- `TypeError` — `opts.mount` is neither a `URL` nor a string that parses as one. Added in v7.3.0.
 
 #### `Module.resolve(specifier: string, parentURL: URL, opts?: ResolveOptions): Promise<URL>`
 
-Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and
-`parentURL` is a WHATWG `URL`. `condition` is an optional import condition, defaulting to
-`'require'`; pass `'asset'` to resolve an asset rather than a module.
+Resolve the module `specifier` relative to the `parentURL`. `specifier` is a string and `parentURL` is a WHATWG `URL`. `condition` is an optional import condition, defaulting to `'require'`; pass `'asset'` to resolve an asset rather than a module.
 
 Overloads:
 
@@ -195,19 +235,14 @@ Module.resolve(specifier: string, parentURL: URL, condition: Condition, opts?: R
 
 **Throws**
 
-- `MODULE_NOT_FOUND` — no module matching `specifier` could be found relative to
-`parentURL`.
-- `ASSET_NOT_FOUND` — the `'asset'` condition was used and no matching asset could be
-found.
-- `ADDON_NOT_FOUND` — the `'addon'` condition was used and no matching addon could be
-found.
-- `TypeError` — `specifier` is not a string, `parentURL` is not a WHATWG `URL`, or
-`condition` is not a known condition.
+- `MODULE_NOT_FOUND` — no module matching `specifier` could be found relative to `parentURL`.
+- `ASSET_NOT_FOUND` — the `'asset'` condition was used and no matching asset could be found.
+- `ADDON_NOT_FOUND` — the `'addon'` condition was used and no matching addon could be found.
+- `TypeError` — `specifier` is not a string, `parentURL` is not a WHATWG `URL`, or `condition` is not a known condition.
 
 #### `Module.resolveSync(specifier: string, parentURL: URL, opts?: ResolveOptions): URL`
 
-As `resolve()`, but synchronous, for a caller that cannot await one. The protocol is driven
-through its `*Sync` methods and so must answer synchronously.
+As `resolve()`, but synchronous, for a caller that cannot await one. The protocol is driven through its `*Sync` methods and so must answer synchronously.
 
 Overloads:
 
@@ -229,22 +264,18 @@ Module.resolveSync(specifier: string, parentURL: URL, condition: Condition, opts
 **Throws**
 
 - `UNEXPECTED_PROMISE` — the protocol answered asynchronously.
-- `MODULE_NOT_FOUND` — no module matching `specifier` could be found relative to
-`parentURL`.
-- `TypeError` — `specifier` is not a string, `parentURL` is not a WHATWG `URL`, or
-`condition` is not a known condition.
+- `MODULE_NOT_FOUND` — no module matching `specifier` could be found relative to `parentURL`.
+- `TypeError` — `specifier` is not a string, `parentURL` is not a WHATWG `URL`, or `condition` is not a known condition.
 
 #### `path: string`
 
 #### `Module.protocol: Protocol`
 
-The `ModuleProtocol` class for resolving, reading and loading modules. See
-[Protocols](https://github.com/holepunchto/bare-module#protocols) for usage.
+The `ModuleProtocol` class for resolving, reading and loading modules. See [Protocols](https://github.com/holepunchto/bare-module#protocols) for usage. From v7.2.1, the default protocol, and the protocol a graph reads through once it has been patched with `loader.patch()`, keep their identity across calls.
 
 #### `resolutions: ResolutionsMap`
 
-The resolutions map of the module graph, with keys being serialized parent URLs and values
-being `"imports"` maps.
+The resolutions map of the module graph, with keys being serialized parent URLs and values being `"imports"` maps.
 
 #### `url: URL`
 
@@ -262,10 +293,11 @@ The WHATWG `URL` identifier of the module.
 
 #### `ModuleLoader.cache: Cache`
 
-The cache of loaded modules that the loader was created with, shared with every module of its
-graph.
+The cache of loaded modules that the loader was created with, shared with every module of its graph.
 
 #### `ModuleLoader.evict(urls: URL | string | Iterable<URL | string>): URL[]`
+
+Forget what the graph knows about the modules at `urls`, so that they are read and resolved again when next asked for. `urls` is a WHATWG `URL`, a string, or any number of either. Returns the URLs that were known. Added in v7.2.0.
 
 **Parameters**
 
@@ -305,6 +337,8 @@ graph.
 instantiate(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Promise<Module[]>
 ```
 
+Compile the modules at `urls` and everything they reach, without evaluating any of them, and return the module records. This is the phase `link()` performs on the way to an entry, for modules the graph already holds and is not entering through, so it answers whether a source can be run at all without any of the consequences of running it. Unlike `link()`, it does not set `main`. A module the graph has already compiled is left as it is, so ask after a `patch()` rather than before one. The result says whether the source compiles, not whether everything it names exists: an unresolved specifier is deferred. Added in v7.2.0.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
@@ -317,6 +351,8 @@ instantiate(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.Lin
 ```ts
 instantiateSync(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Module[]
 ```
+
+The synchronous equivalent of `instantiate()`. It drives the protocol's synchronous methods, which throw an `UNEXPECTED_PROMISE` error when the protocol can only answer asynchronously. Added in v7.2.0.
 
 **Parameters**
 
@@ -358,16 +394,22 @@ The module representing the entry script where the program was launched.
 ```ts
 interface ImportOptions {
   attributes?: Attributes
+  mount?: URL | string
 }
 ```
+
+The same options as [`ModuleLoader.LinkOptions`](#moduleloaderlinkoptions).
 
 #### `ModuleLoader.LinkOptions`
 
 ```ts
 interface LinkOptions {
   attributes?: Attributes
+  mount?: URL | string
 }
 ```
+
+`attributes` are the import attributes, for example the `{ type: 'json' }` in `import foo from 'foo' with { type: 'json' }`. `mount` is the URL to mount the entry at if it is a bundle, defaulting to the URL of the bundle followed by a `/`. The bundle serves only the modules under it, so `file:///` lets it serve any file. Added in v7.3.0. See [Loading bundles](#loading-bundles). `instantiate()` and `instantiateSync()` do not apply `mount`.
 
 #### `ModuleLoader.Options`
 
@@ -380,10 +422,15 @@ interface Options {
   imports?: ImportsMap
   protocol?: Protocol
   resolutions?: ResolutionsMap
+  wasi?: (url: URL) => object
 }
 ```
 
+`wasi` is a function returning the WASI options of a WebAssembly addon, given its URL, for addons not imported with a `wasi` attribute. Without it, they get no capabilities except clocks. The options are versioned, so `version` must be `'preview1'`. A cache is read with a single `wasi`, like a single protocol: reading it from a loader with another `wasi` throws `CACHE_INCOMPATIBLE`. Added in v7.5.0.
+
 #### `ModuleLoader.patch(bundle: Bundle): URL[]`
+
+Make the contents of `bundle` what the graph reads, in front of whatever it read before, and forget what it knew about each key. Returns the URLs the patch covers. A later patch of the same key wins over an earlier one. Forgetting a module is not re-reading it: nothing runs again until something asks for it, and whoever already imported it keeps what it exported. To reach a patched module through an importer the graph still holds, evict that importer too. Added in v7.2.0.
 
 **Parameters**
 
@@ -393,8 +440,7 @@ interface Options {
 
 #### `ModuleLoader.protocol: Protocol`
 
-The `ModuleProtocol` modules are resolved and read through, shared with every module of the
-loader's graph.
+The `ModuleProtocol` modules are resolved and read through, shared with every module of the loader's graph.
 
 ### ModuleProtocol
 
@@ -439,8 +485,7 @@ Create a new protocol that uses this protocol as its context, overriding the giv
 | --- | --- | --- | --- |
 | `methods` | `Partial<ModuleProtocol>` | — | Protocol method overrides for the new protocol. |
 
-**Returns** `ModuleProtocol` — A new `ModuleProtocol` that uses this protocol as its context, with `methods`
-overriding.
+**Returns** `ModuleProtocol` — A new `ModuleProtocol` that uses this protocol as its context, with `methods` overriding.
 
 #### `ModuleProtocol.list(url: URL): Iterable<URL> | AsyncIterable<URL>`
 
@@ -468,8 +513,7 @@ Return whether `value` is a protocol of the same version as this one, whichever 
 | --- | --- | --- | --- |
 | `value` | `unknown` | — | The value to test. |
 
-**Returns** `boolean` — Whether `value` is a protocol of the same version as this one, whichever copy of
-`bare-module` created it.
+**Returns** `boolean` — Whether `value` is a protocol of the same version as this one, whichever copy of `bare-module` created it.
 
 #### `ModuleProtocol.read(url: URL): Buffer | string | null | Promise<Buffer | string | null>`
 
@@ -493,8 +537,7 @@ Return the source code of a URL, represented as a string or buffer.
 
 #### `ModuleProtocol.resolve(url: URL): URL | Promise<URL>`
 
-Resolve a module `URL` to the `URL` that should be linked. The default implementation returns
-`url` unchanged.
+Resolve a module `URL` to the `URL` that should be linked. The default implementation returns `url` unchanged.
 
 **Parameters**
 
@@ -520,11 +563,17 @@ Resolve a module `URL` to the `URL` that should be linked. The default implement
 interface Attributes {
   type?: Lowercase<keyof typeof constants>
   imports?: string
+  host?: string
+  wasi?: string
 }
 ```
 
-Import attributes instructing how a module should be loaded. A `type` that is not one of the
-known strings is turned down rather than passed over.
+Import attributes instructing how a module should be loaded. A `type` that is not one of the known strings is turned down rather than passed over. `host` and `wasi` were added in v7.5.0:
+
+| Attribute | Description |
+| --- | --- |
+| `host` | The host to resolve the addons of the module and its dependencies for, such as `wasi-wasm32`. The conditions of the host may then also be targeted alongside those of the native host, in the order a package lists them. See [WebAssembly addons](#webassembly-addons). |
+| `wasi` | The specifier of a module providing the WASI capabilities of the WebAssembly addons of the module and its dependencies, resolved relative to the parent URL. |
 
 #### `Cache`
 
@@ -547,9 +596,13 @@ interface LoadOptions {
   imports?: ImportsMap
   protocol?: Protocol
   resolutions?: ResolutionsMap
+  wasi?: (url: URL) => object
   attributes?: Attributes
+  mount?: URL | string
 }
 ```
+
+`LoadOptions` carries everything in [`ModuleLoader.Options`](#moduleloaderoptions) and [`ModuleLoader.LinkOptions`](#moduleloaderlinkoptions), so `mount` applies here as it does to the loader. Added in v7.3.0.
 
 #### `ResolveOptions`
 
@@ -563,6 +616,7 @@ interface ResolveOptions {
   imports?: ImportsMap
   protocol?: Protocol
   resolutions?: ResolutionsMap
+  wasi?: (url: URL) => object
 }
 ```
 
@@ -578,6 +632,7 @@ interface CreateRequireOptions {
   imports?: ImportsMap
   protocol?: Protocol
   resolutions?: ResolutionsMap
+  wasi?: (url: URL) => object
 }
 ```
 
@@ -617,8 +672,7 @@ interface Require {
 }
 ```
 
-The function returned by `Module.createRequire()`: resolves and loads modules relative to its
-parent URL, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.
+The function returned by `Module.createRequire()`: resolves and loads modules relative to its parent URL, with `main`, `cache`, `resolve`, `addon`, and `asset` attached.
 
 ## `bare-module/protocol`
 
@@ -665,8 +719,7 @@ Create a new protocol that uses this protocol as its context, overriding the giv
 | --- | --- | --- | --- |
 | `methods` | `Partial<ModuleProtocol>` | — | Protocol method overrides for the new protocol. |
 
-**Returns** `ModuleProtocol` — A new `ModuleProtocol` that uses this protocol as its context, with `methods`
-overriding.
+**Returns** `ModuleProtocol` — A new `ModuleProtocol` that uses this protocol as its context, with `methods` overriding.
 
 #### `protocol.ModuleProtocol.list(url: URL): Iterable<URL> | AsyncIterable<URL>`
 
@@ -694,8 +747,7 @@ Return whether `value` is a protocol of the same version as this one, whichever 
 | --- | --- | --- | --- |
 | `value` | `unknown` | — | The value to test. |
 
-**Returns** `boolean` — Whether `value` is a protocol of the same version as this one, whichever copy of
-`bare-module` created it.
+**Returns** `boolean` — Whether `value` is a protocol of the same version as this one, whichever copy of `bare-module` created it.
 
 #### `protocol.ModuleProtocol.read(url: URL): Buffer | string | null | Promise<Buffer | string | null>`
 
@@ -719,8 +771,7 @@ Return the source code of a URL, represented as a string or buffer.
 
 #### `protocol.ModuleProtocol.resolve(url: URL): URL | Promise<URL>`
 
-Resolve a module `URL` to the `URL` that should be linked. The default implementation returns
-`url` unchanged.
+Resolve a module `URL` to the `URL` that should be linked. The default implementation returns `url` unchanged.
 
 **Parameters**
 
@@ -752,10 +803,11 @@ Resolve a module `URL` to the `URL` that should be linked. The default implement
 
 #### `loader.ModuleLoader.cache: Cache`
 
-The cache of loaded modules that the loader was created with, shared with every module of its
-graph.
+The cache of loaded modules that the loader was created with, shared with every module of its graph.
 
 #### `loader.ModuleLoader.evict(urls: URL | string | Iterable<URL | string>): URL[]`
+
+Forget what the graph knows about the modules at `urls`, so that they are read and resolved again when next asked for. `urls` is a WHATWG `URL`, a string, or any number of either. Returns the URLs that were known. Added in v7.2.0.
 
 **Parameters**
 
@@ -795,6 +847,8 @@ graph.
 instantiate(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Promise<Module[]>
 ```
 
+Compile the modules at `urls` and everything they reach, without evaluating any of them, and return the module records. This is the phase `link()` performs on the way to an entry, for modules the graph already holds and is not entering through, so it answers whether a source can be run at all without any of the consequences of running it. Unlike `link()`, it does not set `main`. A module the graph has already compiled is left as it is, so ask after a `patch()` rather than before one. The result says whether the source compiles, not whether everything it names exists: an unresolved specifier is deferred. Added in v7.2.0.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
@@ -807,6 +861,8 @@ instantiate(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.Lin
 ```ts
 instantiateSync(urls: URL | string | Iterable<URL | string>, opts?: ModuleLoader.LinkOptions): Module[]
 ```
+
+The synchronous equivalent of `instantiate()`. It drives the protocol's synchronous methods, which throw an `UNEXPECTED_PROMISE` error when the protocol can only answer asynchronously. Added in v7.2.0.
 
 **Parameters**
 
@@ -845,6 +901,8 @@ The module representing the entry script where the program was launched.
 
 #### `loader.ModuleLoader.patch(bundle: Bundle): URL[]`
 
+Make the contents of `bundle` what the graph reads, in front of whatever it read before, and forget what it knew about each key. Returns the URLs the patch covers. A later patch of the same key wins over an earlier one. Forgetting a module is not re-reading it: nothing runs again until something asks for it, and whoever already imported it keeps what it exported. To reach a patched module through an importer the graph still holds, evict that importer too. Added in v7.2.0.
+
 **Parameters**
 
 | Parameter | Type | Default | Description |
@@ -853,8 +911,7 @@ The module representing the entry script where the program was launched.
 
 #### `loader.ModuleLoader.protocol: Protocol`
 
-The `ModuleProtocol` modules are resolved and read through, shared with every module of the
-loader's graph.
+The `ModuleProtocol` modules are resolved and read through, shared with every module of the loader's graph.
 
 ### Types
 
@@ -869,24 +926,208 @@ interface Options {
   imports?: ImportsMap
   protocol?: Protocol
   resolutions?: ResolutionsMap
+  wasi?: (url: URL) => object
 }
 ```
+
+`wasi` is a function returning the WASI options of a WebAssembly addon, given its URL, for addons not imported with a `wasi` attribute. Without it, they get no capabilities except clocks. The options are versioned, so `version` must be `'preview1'`. A cache is read with a single `wasi`, like a single protocol: reading it from a loader with another `wasi` throws `CACHE_INCOMPATIBLE`. Added in v7.5.0.
 
 #### `LinkOptions`
 
 ```ts
 interface LinkOptions {
   attributes?: Attributes
+  mount?: URL | string
 }
 ```
+
+`mount` is the URL to mount the entry at if it is a bundle. Added in v7.3.0. See [Loading bundles](#loading-bundles).
 
 #### `ImportOptions`
 
 ```ts
 interface ImportOptions {
   attributes?: Attributes
+  mount?: URL | string
 }
 ```
+
+## CommonJS modules
+
+### `require(specifier[, options])`
+
+Used to import JavaScript or JSON modules and local files. Relative paths such as `./`, `./foo`, `./bar/baz`, and `../foo` are resolved against the directory named by `__dirname`. POSIX-style paths are resolved in an OS-independent fashion, so the same relative paths work on Windows as they do on POSIX systems.
+
+Returns the exported module contents.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier to resolve and load. |
+| `options?` | [`RequireOptions`](#requireoptions) | — | Options for the call; `with.type` selects how the file should be loaded — one of `'script'`, `'module'`, `'json'`, `'bundle'`, `'addon'`, `'binary'`, or `'text'` (see [`Module.constants`](#moduleconstants)). A `type` that is not one of these is turned down rather than passed over, as is a `type` that is not a string. `with.imports` names an `"imports"` map to apply to the module and its dependencies, `with.host` selects the WebAssembly build of their addons, and `with.wasi` names its WASI provider (see [WebAssembly addons](#webassembly-addons)). |
+
+### `require.main`
+
+The module representing the entry script where the program was launched.
+
+### `require.cache`
+
+The registry of loaded modules for this module's graph, keyed by URL `href`.
+
+### `require.resolve(specifier[, parentURL][, options])`
+
+Uses the internal machinery of `require()` to resolve `specifier` relative to the URL `parentURL` and returns the path string.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `specifier` | `string` | — | The module specifier to resolve. |
+| `parentURL?` | `string` \| `URL` | the module's own URL | The URL to resolve `specifier` relative to. When it is passed, the resolutions are recorded for `parentURL` rather than the calling module, which is useful when resolving on behalf of another module. |
+| `options?` | [`RequireOptions`](#requireoptions) | — | Added in v7.2.0. If `with` is passed, the graph of the resolved module is linked, but not evaluated, with the attributes applied, so that its resolutions are recorded in [`module.resolutions`](#resolutions-resolutionsmap). That lets the module be prepared later from its path alone, such as when spawning a thread with an imports map applied: `require.resolve('./worker.js', { with: { imports: './imports.json' } })`. |
+
+### `require.addon([specifier][, parentURL])`
+
+Also used to import modules, but loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
+
+Returns the exported module contents.
+
+A common pattern for writing an addon module is to use `require.addon()` as the JavaScript module's exports:
+
+```js
+module.exports = require.addon()
+```
+
+### `require.addon.host`
+
+The platform and architecture used when resolving addons, following the pattern `<platform>-<arch>[-<environment>]`. The same value as `Bare.Addon.host`.
+
+### `require.addon.resolve([specifier][, parentURL])`
+
+Resolves `specifier` relative to `parentURL` as an addon and returns the path string, using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
+
+### `require.asset(specifier[, parentURL])`
+
+Resolves `specifier` relative to `parentURL` and returns the path of the asset as a string. Can be used to load assets, for example to load `./foo.txt` from the local file system:
+
+```js
+const fs = require('bare-fs')
+const contents = fs.readFileSync(require.asset('./foo.txt'))
+```
+
+## ECMAScript modules
+
+### `import defaultExport, * as name, { export1, export2 as alias2 } from 'specifier' with { type: 'json' }`
+
+The static `import` declaration imports read-only live bindings that are exported by another module. The imported bindings are called _live_ bindings because they are updated by the module that exported the binding, but cannot be re-assigned by the importing module. For more on `import` syntax, see [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import).
+
+The `with` clause takes the same [attributes](#attributes) as the `with` option of `require()`, including `host` and `wasi`:
+
+```js
+import { DatabaseSync } from 'bare-sqlite' with { host: 'wasi-wasm32', wasi: './wasi.js' }
+```
+
+### `import.meta.url`
+
+The string representation of the URL for the current module.
+
+### `import.meta.main`
+
+A boolean representing whether the current module is the entry script where the program was launched.
+
+### `import.meta.cache`
+
+The registry of loaded modules for this module's graph, keyed by URL `href`. The same value as `require.cache` for a CommonJS module of the same graph.
+
+### `import.meta.dirname`
+
+The directory name of the current module.
+
+### `import.meta.filename`
+
+The file name of the current module.
+
+### `import.meta.resolve(specifier[, parentURL][, options])`
+
+A module-relative resolution function that returns the URL string for the module. `specifier` is a string resolved relative to `parentURL`, a WHATWG `URL`. `options` are the same as for [`require.resolve()`](#requireresolvespecifier-parenturl-options), and were added in v7.2.0.
+
+### `import.meta.addon([specifier][, parentURL])`
+
+Also used to import modules, but loads only addon modules. `specifier` is resolved relative to `parentURL` using the [addon resolution](https://github.com/holepunchto/bare-addon-resolve#algorithm) algorithm.
+
+Returns the exported module contents.
+
+### `import.meta.addon.host`
+
+The platform and architecture used when resolving addons, following the pattern `<platform>-<arch>[-<environment>]`. The same value as `Bare.Addon.host`.
+
+### `import.meta.addon.resolve([specifier][, parentURL])`
+
+Resolves `specifier` relative to `parentURL` as an addon and returns the URL string, using the [addon resolution algorithm](https://github.com/holepunchto/bare-addon-resolve#algorithm).
+
+### `import.meta.asset(specifier[, parentURL])`
+
+Resolves `specifier` relative to `parentURL` and returns the URL of the asset as a string.
+
+## WebAssembly addons
+
+Added in v7.5.0, which ships with Bare 1.36.0. An addon package can ship a WebAssembly build, `prebuilds/wasi-wasm32/<name>.wasm`, next to its native prebuilds. The loader runs it through [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi), sandboxed by [`bare-wasi`](/bare/reference/bare/modules/bare-wasi): through WASI, the addon reaches only what its WASI provider grants. It still reaches whatever JavaScript in its realm can, because the ABI hands it the global object.
+
+### Loading an addon as WebAssembly
+
+The `host` attribute asks for the WebAssembly build of the addons of a module and everything it imports. The `wasi` attribute names the WASI provider for them:
+
+```js
+const { DatabaseSync } = require('bare-sqlite', {
+  with: { host: 'wasi-wasm32', wasi: './wasi.js' }
+})
+```
+
+`wasi-wasm32` is the only host the attribute accepts. A package with no `.wasm` build throws `ADDON_NOT_FOUND`. When the specifier is a string literal, write both attributes as string literals too: the import is linked before the module runs, using only the attributes written as literals, so a computed value conflicts with that link, and the call throws `ADDON_HOST_INCOMPATIBLE` or `ADDON_WASI_INCOMPATIBLE`. With a computed specifier, computed attributes work. With `host` set, the `wasi` and `wasm32` conditions of a package's `"exports"` and `"imports"` match alongside those of the native host, in the order the package lists them. Without it, they are tried only as a fallback, after the native conditions.
+
+Without a `host` attribute, the loader uses the native build of an addon when one exists, and falls back to the `.wasm` build when there is no native prebuild or linked addon for the host. A fallback addon gets the provider of a `wasi` attribute on its import, which works without `host`, or else the loader's `wasi` option, which Bare doesn't set. With neither, WASI gives it no capabilities except clocks.
+
+### WASI providers
+
+A WASI provider is a module that exports a function, as `module.exports` or its default export. The loader calls it with the `URL` of each WebAssembly addon and passes what it returns to [`new WASI()`](/bare/reference/bare/modules/bare-wasi#wasi):
+
+```js
+// wasi.js
+const { DirectorySync } = require('bare-directory')
+const { HostDirectory } = require('bare-wasi/host')
+
+module.exports = (url) => ({
+  version: 'preview1',
+  preopens: {
+    '/': new HostDirectory(DirectorySync.open(__dirname + '/data'))
+  }
+})
+```
+
+The `wasi` specifier is resolved relative to the importing module and loaded like any other module. A provider that exports neither a function nor an object whose `default` is a function throws a `TypeError` when the addon is evaluated. A provider function that returns nothing, such as an arrow function with a block body, leaves the addon with the default options. The provider runs as application code, so install what it imports, such as `bare-wasi` and `bare-directory`: the copy of `bare-wasi` that Bare bundles for its loader can't be imported. Options without `version: 'preview1'` throw a `WASIError` with code `INVALID_VERSION`. An addon imported without a `wasi` attribute gets the options from the loader's [`wasi` option](#options), or only clocks through WASI.
+
+The README of v7.5.0 shows a provider that grants randomness with `crypto.getRandomValues()`. Bare has no `crypto` global, so use `randomFillSync()` from [`bare-crypto`](/bare/reference/bare/modules/bare-crypto) instead.
+
+### One context per package
+
+The addons of a package load in one context per loader: the host and WASI provider it is first imported under. Importing it under another throws:
+
+| Error code | Thrown when |
+| --- | --- |
+| `ADDON_HOST_INCOMPATIBLE` | A package's addons are already resolved for the default hosts and it is imported with `host`, or the other way round, or an addon below a `host` import is not WebAssembly. Also thrown, from `require.addon()` and catchable, as `Cannot resolve addon … which is linked in several contexts`, when one package's addons are reached both natively and with `host`, such as `bare-directory` imported with `host` while a provider loads it natively. |
+| `ADDON_WASI_INCOMPATIBLE` | A package's WebAssembly addons already have one WASI provider and it is imported with another. In v7.5.0, a dynamic `import()` with a `wasi` attribute also throws it, naming the same provider. |
+| `UNKNOWN_ADDON_HOST` | A `host` attribute is not `wasi-wasm32`. |
+
+These are thrown by [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse#the-host-and-wasi-import-attributes) while the importing module is linked, before any of its code runs, so a `try` block around a static `require()` doesn't catch them. A `require()` whose specifier the lexer can't read, such as a computed name, is linked when it runs, so these errors are thrown from that call and can be caught, and so are those from a computed attribute next to a string-literal specifier. A `require.resolve()` of the package counts as importing it with the default hosts. An `ADDON_NOT_FOUND` for a missing `.wasm` build is thrown when the module that loads the addon runs, and can be caught around a `require()` or `import()`, but not around a static `import` declaration.
+
+In v7.5.0, a dynamic `import()` doesn't apply its `wasi` attribute. With a string-literal specifier, it throws `ADDON_WASI_INCOMPATIBLE`, naming the same provider. With a computed specifier, the addon loads with the default options. Pass a provider with `require()` or a static `import`.
+
+### After `Bare.Addon.seal()`
+
+Once the process is [sealed](/bare/reference/bare/runtime#bareaddon), a native addon loads only if the process already loaded it, while WebAssembly addons still load. When resolving an addon on a sealed process, the loader skips native builds that `Bare.Addon.loaded()` reports as not loaded, so a package that also ships a `.wasm` build falls back to it, with the capabilities described above. This applies only to addons resolved after the seal. An addon reached through string-literal `require()` or `import()` specifiers from the module that calls `Bare.Addon.seal()`, or from any module linked with it before the seal, was resolved at link time, so its native addon throws `CANNOT_LOAD` even when the module that loads it runs after the seal. A package resolved after the seal that ships no `.wasm` build throws `ADDON_NOT_FOUND`, where Bare 1.35 threw `CANNOT_LOAD`. The provider's own native addons, such as `bare-directory` for a `HostDirectory`, follow the same rules, so load them before calling `Bare.Addon.seal()`, or the import fails. None of this applies inside a bundle: its modules keep the resolutions recorded at pack time, so after the seal a native addon the process hasn't loaded throws `CANNOT_LOAD`, even when the bundle also holds the `.wasm` build.
+
+For a walkthrough, see [Run an addon sandboxed in WebAssembly](/bare/how-to/run-an-addon-sandboxed-in-webassembly). For how the sandbox works and what it doesn't stop, see [WebAssembly addons](/bare/explanation/webassembly-addons).
 
 ## Packages
 
@@ -1136,7 +1377,7 @@ The `"engines"` field defines the engine requirements of the package. During mod
 
 ## See also
 
-- Builds on `bare-bundle`, `bare-module-lexer`, `bare-module-resolve`, `bare-module-traverse`, `bare-path`, `bare-type-stripper`, and `bare-url`.
+- Builds on `bare-bundle`, `bare-module-lexer`, `bare-module-resolve`, `bare-module-traverse`, `bare-path`, `bare-type-stripper`, `bare-url`, and `bare-wasm-abi`.
 - [`bare-module-resolve`](/bare/reference/bare/modules/bare-module-resolve) and [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse) — the resolution and traversal algorithms underneath.
 - [Bare runtime API](/bare/reference/bare/runtime#bareaddon) — `Bare.Addon`, the native-addon loader `require.addon` builds on.
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.

@@ -13,8 +13,15 @@ thin per-module layout manifest (group titles/order only).
 npm run gen:bare-refs                      # top-N most-downloaded bare-* modules with types
 npm run gen:bare-refs -- --top 20          # widen the selection
 npm run gen:bare-refs -- --only bare-fs,bare-os
+npm run gen:bare-refs -- --only bare-fs@4.8.4     # a given version instead of npm latest
+npm run gen:bare-refs -- --only bare-fs,bare-os --pinned   # the version each live page's upstreamVersion names
 npm run gen:bare-refs -- --write           # write into content/ (+ sync the catalog)
 ```
+
+Without a version, the generator packs npm `latest`, which bumps the page's
+`upstreamVersion` when a release has shipped since. To change the generator or
+a layout without moving any pin, regenerate with `--pinned` and diff the pages:
+`--pinned --write` reproduces them, apart from what the change is for.
 
 Selection is `TOP_N` most-downloaded ∪ `ALLOWLIST`, or everything above
 `MIN_DOWNLOADS` — all in `config.ts`. Each run refreshes the version cache
@@ -31,7 +38,7 @@ deterministic intermediate is `generated/bare-refs/<name>/api-model.json`.
 | --- | --- | --- |
 | select | `select.ts` | Ranks the `hasTypes` candidates from `docs/bare-modules-research.json` by npm last-month downloads (falls back to inbound-dep count offline). |
 | fetch | `fetch.ts` | `npm pack`s the published tarball, extracts it, resolves the declaration entry (`exports["."].types` → `types`/`typings` → `index.d.ts`). |
-| extract | `extract.ts` | Walks the `.d.ts` with the TypeScript Compiler API. Enumerates module exports (resolving re-exports and `export =`), renders signatures from the declaration AST, and pulls params/returns/throws/description from JSDoc when present. → `BareModel`. |
+| extract | `extract.ts` | Walks the `.d.ts` with the TypeScript Compiler API. Enumerates module exports (resolving re-exports and `export =`), renders signatures from the declaration AST, and pulls params/returns/throws/description from JSDoc when present. Members a class or interface inherits from an event or stream base class of another package (`EventEmitter`, `EventTarget`, the `bare-stream` classes) are left out: their own pages document them, and which ones the base has depends on the version the run resolved. → `BareModel`. |
 | layout | `layout.ts` + `layouts/<name>.ts` | Optional editorial grouping (see below). |
 | render | `render.ts` | `BareModel` (+ layout) → MDX matching the existing bare page format. |
 | driver | `index.ts` | Ties it together and writes the preview. |
@@ -45,14 +52,30 @@ deterministic intermediate is `generated/bare-refs/<name>/api-model.json`.
 
 ## Descriptions → upstream TSDoc
 
-Bare `.d.ts` carry no JSDoc, so descriptions come from the layout manifest's
-`describe` map (author-written, e.g. transcribed from the README) as an interim
-home. To bootstrap those maps, `npm run bare-refs:transcribe` parses each
-module's README `## API`, matches the prose under every `#### ` heading to an
-extracted symbol, and writes a *suggested* map to
-`generated/bare-refs/<name>/describe.suggested.json` (also flagging README-only
-headings and still-undocumented symbols). Review it and paste the good entries
-into `layouts/<name>.ts` — nothing is applied automatically. `npm run emit:ts-doc` turns those into the real source of truth:
+Descriptions, `@param`, `@returns` and `@throws` come from the TSDoc in the
+published `.d.ts`. Most `bare-*` modules ship it, since upstream merged and
+released the TSDoc PRs that `emit-tsdoc` (below) opened. Paragraphs are
+reflowed on render, one line each, so a page doesn't change when upstream
+rewraps its TSDoc.
+
+`fetch.ts` still knows the `chore/ts-doc` branches of the
+`lucas-tortora/<repo>` forks that those PRs came from, but only as a fallback:
+a `.d.ts` file is replaced by the branch's copy only when the tarball's file
+has no TSDoc at all (a module whose PR is still open, or a version older than
+the release that merged it), and only when the branch drops no published name.
+The branches were not updated after upstream merged them, so they are older
+than the releases. bare-subprocess's branch, for example, still says
+`kill(): void`, where the release says `boolean`.
+
+For a module with no TSDoc, a layout's `describe` map (author-written, for
+example transcribed from the README) is the interim home. To bootstrap those
+maps, `npm run bare-refs:transcribe` parses each module's README `## API`,
+matches the prose under every `#### ` heading to an extracted symbol, and
+writes a *suggested* map to
+`generated/bare-refs/<name>/describe.suggested.json` (also flagging
+README-only headings and still-undocumented symbols). Review it and paste the
+good entries into `layouts/<name>.ts`. Nothing is applied automatically.
+`npm run emit:ts-doc` turns those into upstream TSDoc:
 
 ```sh
 npm run emit:ts-doc                 # all modules
@@ -61,10 +84,10 @@ npm run emit:ts-doc -- --only bare-os
 
 For each module it clones the repo into `../ts-doc-upstream/<name>`, creates a
 `chore/ts-doc` branch, splices a `/** … */` block above each matching
-declaration in the shipped `.d.ts`, and commits. **It never pushes** — review
+declaration in the shipped `.d.ts`, and commits. **It never pushes**: review
 with `git -C ../ts-doc-upstream/<name> show` and open the PR yourself. Once the
-TSDoc is released upstream, the extractor reads it directly and the manifest
-`describe` entries can be deleted.
+TSDoc is released upstream, the extractor reads it directly, and the manifest
+`describe` entries only apply where it has none.
 
 A `interface Foo {}` + `declare class Foo { constructor(...) }` merge — Bare's
 pattern for every stateful export — puts instance members on the interface but
@@ -93,15 +116,16 @@ author-written, never AI. Members are referenced by model key or display name;
 unlisted members fall through to their by-kind group. Fields:
 
 - **`groups`** — ordered `{ title, members[] }` for the API section ("File handles", …).
-- **`describe`** — member → one-line description, used only when the `.d.ts` has none.
+- **`describe`** — member → description, used only when the `.d.ts` has none.
 - **`params`** — member → `{ paramName: description }`; rendered under Parameters and emitted as `@param`. Wins over the `.d.ts` text.
 - **`returns`** — member → Returns prose, used only when the `.d.ts` has no `@returns`.
 - **`throws`** — member → throw bullets the `.d.ts` doesn't yet annotate.
+- **`description`** — replaces a `package.json` description that says nothing (such as the package name), in the frontmatter and the auto intro sentence.
 - **`intro`** — an author lead paragraph, used instead of the auto description sentence.
 - **`seeAlso`** — extra "See also" bullets, prepended to the catalog/runtime links.
 - **`extraSections`** — author `## heading` sections after the API section, such as event tables.
-- **`patch`** — `{ in, from, to }` exact-text fixes to the README-derived blocks (`in: 'usage'` or a README section heading) and to the intro (`in: 'intro'`).
-- **`memberPatch`** — `{ member, from, to }` exact-text edits to one member's rendered block, for docs prose that replaces or extends the `.d.ts` TSDoc. Docs page only.
+- **`patch`** — `{ in, from, to }` exact-text fixes to the README-derived blocks (`in: 'usage'` or a README section heading), to the intro (`in: 'intro'`) and to the See also list (`in: 'seeAlso'`, the "Builds on" line included).
+- **`memberPatch`** — `{ member, from, to }` exact-text edits to one member's rendered block, for docs prose that replaces or extends the `.d.ts` TSDoc. `member` is a key or name, or, for a member a subpath section repeats, its `####` heading text without backticks. Docs page only.
 - **`extraMembers`** — `{ after, body }` blocks for symbols the `.d.ts` doesn't carry, rendered right after the member `after`. Docs page only.
 
 A `patch` or `memberPatch` whose `from` doesn't occur exactly once, or a member
@@ -110,9 +134,15 @@ upstream rewrites the text an edit was written against, the edit gets
 reviewed instead of hiding the new upstream text.
 
 Long Markdown lives next to the manifest as data, so backticks stay unescaped:
-`<name>.describe.json` (`describe`), `<name>.sections.json` (`extraSections`),
-`<name>.patches.json` (`patch` entries with `in`, `memberPatch` entries with
-`member`) and `<name>.members.json` (`extraMembers`).
+`<name>.describe.json` (`describe`), `<name>.params.json` (`params`),
+`<name>.sections.json` (`extraSections`), `<name>.patches.json` (`patch`
+entries with `in`, `memberPatch` entries with `member`) and
+`<name>.members.json` (`extraMembers`). Inline entries in the `.ts` win.
+
+Everything a page says that the `.d.ts` and README don't belongs in one of
+these fields: `gen:bare-refs --write` overwrites the page, so a hand edit to
+`content/` is lost on the next run. To check, regenerate with `--pinned` and
+diff the pages.
 
 See `layouts/bare-os.ts` for a worked example of the common fields, and
 `layouts/bare-bluetooth-android.*` for patches and extra members. With no manifest a

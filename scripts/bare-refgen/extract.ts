@@ -21,8 +21,28 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
 /** Keys TypeScript uses internally that never represent public API. */
 const CONSTRUCTOR_NAME = ts.InternalSymbolName.Constructor; // "__constructor"
 
+/** Event and stream base classes; what they bring is documented on bare-events' and bare-stream's own pages. */
+const BASE_CLASSES = new Set(['EventEmitter', 'EventTarget', 'Readable', 'Writable', 'Duplex', 'Transform', 'PassThrough', 'Stream']);
+
+/** Set per `extractModule` run: whether a file belongs to a vendored dependency, not the package documented. */
+let isExternalFile: (sf: ts.SourceFile) => boolean = () => false;
+
+/** Declared on a base class from another package, so its set depends on the version the run vendored. */
+function isBaseClassMember(d: ts.Declaration): boolean {
+  const parent = d.parent;
+  return (
+    isExternalFile(d.getSourceFile()) &&
+    (ts.isInterfaceDeclaration(parent) || ts.isClassDeclaration(parent)) &&
+    !!parent.name &&
+    BASE_CLASSES.has(parent.name.text)
+  );
+}
+
+const inheritedFromBase = (prop: ts.Symbol) => !!prop.declarations?.length && prop.declarations.every(isBaseClassMember);
+
 export function extractModule(entryDts: string, moduleName?: string): BareExport[] {
   const program = ts.createProgram([entryDts], COMPILER_OPTIONS);
+  isExternalFile = (sf) => program.isSourceFileFromExternalLibrary(sf);
   const checker = program.getTypeChecker();
   const sf = program.getSourceFile(entryDts);
   if (!sf) throw new Error(`could not load ${entryDts}`);
@@ -271,6 +291,7 @@ function interfaceShapeText(checker: ts.TypeChecker, decl: ts.InterfaceDeclarati
   for (const prop of checker.getPropertiesOfType(type)) {
     const name = prop.getName();
     if (name.startsWith('__')) continue; // well-known symbols (Symbol.iterator, …)
+    if (inheritedFromBase(prop)) continue;
     const d = prop.declarations?.[0];
     if (d && (ts.isPropertySignature(d) || ts.isPropertyDeclaration(d) || ts.isMethodSignature(d))) {
       lines.push(`  ${stripKeywords(d.getText()).replace(/[;,]$/, '')}`);
@@ -282,7 +303,13 @@ function interfaceShapeText(checker: ts.TypeChecker, decl: ts.InterfaceDeclarati
   const tp = decl.typeParameters?.length
     ? `<${decl.typeParameters.map((t) => t.getText()).join(', ')}>`
     : '';
-  return [`interface ${decl.name.text}${tp} {`, ...lines, '}'].join('\n');
+  // Names the base class whose members were left out.
+  const bases = (decl.heritageClauses ?? [])
+    .flatMap((h) => h.types)
+    .filter((t) => BASE_CLASSES.has(t.expression.getText()))
+    .map((t) => t.getText());
+  const ext = bases.length ? ` extends ${bases.join(', ')}` : '';
+  return [`interface ${decl.name.text}${tp}${ext} {`, ...lines, '}'].join('\n');
 }
 
 // ---- params / returns / jsdoc -------------------------------------------
@@ -398,8 +425,9 @@ function collectMembers(
   checker: ts.TypeChecker,
   sym: ts.Symbol,
   exclude: Set<ts.Symbol>,
-): MemberRef[] {
+): { refs: MemberRef[]; inheritsBase: boolean } {
   const out: MemberRef[] = [];
+  let inheritsBase = false;
   // Named, not by symbol identity: `checker.getPropertiesOfType` below can
   // hand back a property symbol that isn't reference-equal to the matching
   // entry in `sym.members` even for a member declared directly on `sym`
@@ -425,6 +453,10 @@ function collectMembers(
     for (const prop of checker.getPropertiesOfType(type)) {
       const name = prop.getName();
       if (name.startsWith('__') || seen.has(name)) continue; // well-known symbol, or already collected above
+      if (inheritedFromBase(prop)) {
+        inheritsBase = true;
+        continue;
+      }
       const resolved = resolveAlias(checker, prop);
       if (resolved === sym || exclude.has(resolved)) continue;
       seen.add(name);
@@ -432,7 +464,7 @@ function collectMembers(
     }
   }
 
-  return out;
+  return { refs: out, inheritsBase };
 }
 
 // ---- build ---------------------------------------------------------------
@@ -516,10 +548,13 @@ function buildExport(
   // symbols, so `kind` alone would miss the namespace's exports entirely;
   // `sym.exports` is only populated when such a merge exists.
   let members: BareExport[] = [];
+  let inheritsBase = false;
   const isContainer = kind === 'class' || kind === 'interface' || kind === 'namespace' || !!sym.exports?.size;
   if (isContainer && depth < MAX_DEPTH) {
     const seen = new Set<ts.Symbol>();
-    for (const ref of collectMembers(checker, sym, exclude)) {
+    const collected = collectMembers(checker, sym, exclude);
+    inheritsBase = collected.inheritsBase;
+    for (const ref of collected.refs) {
       if (seen.has(ref.sym)) continue;
       seen.add(ref.sym);
       const child = buildExport(checker, ref.sym, ref.sym, key, depth + 1, ref.isStatic, exclude);
@@ -540,6 +575,7 @@ function buildExport(
     returns,
     throws,
     members,
+    ...(inheritsBase ? { inheritsBase: true as const } : {}),
   };
 }
 

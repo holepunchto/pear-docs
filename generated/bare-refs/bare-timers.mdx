@@ -4,7 +4,7 @@ description: "Native timers for Javascript"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "3.2.3"
+upstreamVersion: "3.2.4"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -129,6 +129,8 @@ interface Timeout {
 
 The handle returned by `setTimeout` and `setInterval`.
 
+`refresh()` resets the delay so that it counts from now, and returns the timeout. It also works on a timeout that has already fired, which then fires again after its delay. Before v3.2.4, refreshing a fired timeout did not re-arm the native timer, so the callback did not run on time. It ran only when the native timer next woke for another timer, or not at all when no other timer was pending and the process exited first.
+
 #### `Immediate`
 
 ```ts
@@ -230,6 +232,10 @@ Options for `bare-timers/promises`' `setImmediate`.
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `msg?` | `string` | — | — |
+
+## Threat model
+
+`bare-timers` is one of the addons Bare compiles into its binary, so every Bare process has it, sealed or not, and it inherits [Bare's threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md). The module's own [threat model](https://github.com/holepunchto/bare-timers/blob/main/docs/threat-model.md), added in v3.2.4, says where it sits in that one. It provides the timers on the event loop, so sealed code can keep the loop alive or starve it, and neither is a bug. The risks it names are precision and lifetime. Fast timers plus `SharedArrayBuffer` give side channels against anything in the same address space, and the answer is an OS sandbox rather than a coarser timer. A timer is a C structure that JavaScript starts and stops, and stopping a timer from inside its own callback, stopping one twice, and tearing down a thread with timers still armed are the shapes to watch. A use after free or a double free of a timer handle, and any other memory bug in the timer bookkeeping that JavaScript can reach, is reportable.
 
 ## See also
 
