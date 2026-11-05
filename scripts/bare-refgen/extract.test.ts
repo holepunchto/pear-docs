@@ -9,8 +9,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { extractModule } from './extract';
-import { renderPage, renderReadmeApi, collapseType } from './render';
+import { renderPage, renderReadmeApi, collapseType, reflow } from './render';
 import type { BareExport, BareModel } from './model';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__');
@@ -383,4 +385,87 @@ test('layout patch can target the intro, lead paragraph and install fence', () =
     patch: [{ in: 'intro', from: 'npm i thing\n```', to: 'npm i thing\n```\n\nNeeds a host app.' }],
   });
   assert.match(mdx, /npm i thing\n```\n\nNeeds a host app\.\n\n## API/);
+});
+
+test('members inherited from an event or stream base class in another package are left out', () => {
+  // Written at run time: the repo ignores node_modules, and the base must resolve from one.
+  const dir = mkdtempSync(join(tmpdir(), 'bare-refgen-base-'));
+  try {
+    const events = join(dir, 'node_modules', 'bare-events');
+    mkdirSync(events, { recursive: true });
+    writeFileSync(join(events, 'package.json'), JSON.stringify({ name: 'bare-events', types: 'index.d.ts' }));
+    writeFileSync(
+      join(events, 'index.d.ts'),
+      'interface EventEmitter<M = {}> { on(name: keyof M): this; emit(name: keyof M): boolean }\n' +
+        'declare class EventEmitter<M = {}> {}\nexport = EventEmitter\n',
+    );
+    writeFileSync(
+      join(dir, 'index.d.ts'),
+      "import EventEmitter from 'bare-events'\n" +
+        'interface ThingEvents { ready: [] }\n' +
+        'interface Thing extends EventEmitter<ThingEvents> { fd: number }\n' +
+        'declare class Thing {}\n' +
+        'export interface Shape extends EventEmitter<ThingEvents> { size: number }\n' +
+        'export { Thing }\n',
+    );
+    const ex = extractModule(join(dir, 'index.d.ts'));
+    const thing = byName(ex, 'Thing')!;
+    assert.deepEqual(names(thing.members), ['fd'], 'own member only');
+    assert.equal(thing.inheritsBase, true);
+    const shape = byName(ex, 'Shape')!;
+    assert.match(shape.signatures[0], /^interface Shape extends EventEmitter<ThingEvents> \{\n  size: number\n\}$/);
+    const { mdx } = renderPage({ ...patchBase, usage: null, extraSections: [], exports: ex }, null);
+    assert.match(mdx, /^#### `fd: number`$/m, 'a property-only stream or emitter class stays expanded');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('reflow joins soft-wrapped lines but keeps lists, fences and paragraphs', () => {
+  const text = 'One sentence\nwrapped.\n\n- item one\n  continued\n- item two\n\n```js\nconst a = 1\nconst b = 2\n```';
+  assert.equal(reflow(text), 'One sentence wrapped.\n\n- item one continued\n- item two\n\n```js\nconst a = 1\nconst b = 2\n```');
+  const { mdx } = renderPage({ ...memberBase, exports: [member('start', 'start', 'function', 'start(): void', 'Start\nscanning.')] }, null);
+  assert.match(mdx, /^Start scanning\.$/m);
+});
+
+test('colliding headings take the least scope that makes them unique', () => {
+  const cls = (name: string): BareExport => ({
+    ...member(name, name, 'class', name, null),
+    members: [member(`${name}.json`, 'json', 'method', 'json(): unknown', null)],
+  });
+  const model: BareModel = {
+    ...memberBase,
+    exports: [cls('Request')],
+    subpaths: [
+      { name: 'thing/body', exports: [cls('Body')] },
+      { name: 'thing/request', exports: [cls('Request')] },
+    ],
+  };
+  const { mdx } = renderPage(model, null);
+  assert.match(mdx, /^#### `Request\.json\(\): unknown`$/m);
+  assert.match(mdx, /^#### `Body\.json\(\): unknown`$/m, 'the class is enough');
+  assert.match(mdx, /^#### `request\.Request\.json\(\): unknown`$/m, 'the subpath only where the class repeats');
+});
+
+test('layout memberPatch can name a member by its heading when a subpath repeats the key', () => {
+  const model: BareModel = {
+    ...memberBase,
+    subpaths: [{ name: 'thing/start', exports: [member('start', 'start', 'function', 'start(): void', 'Start scanning.')] }],
+  };
+  assert.throws(() => renderPage(model, { memberPatch: [{ member: 'start', from: 'Start scanning.', to: 'x' }] }), /matches 2 members/);
+  const { mdx } = renderPage(model, {
+    memberPatch: [{ member: 'start.start(): void', from: 'Start scanning.', to: 'Start the subpath copy.' }],
+  });
+  assert.match(mdx, /^#### `start\(\): void`\n\nStart scanning\./m);
+  assert.match(mdx, /^#### `start\.start\(\): void`\n\nStart the subpath copy\./m);
+});
+
+test('layout description replaces the package.json one, and patch can target See also', () => {
+  const { mdx } = renderPage({ ...memberBase, dependencies: ['bare-events'] }, {
+    description: 'Scans for things',
+    patch: [{ in: 'seeAlso', from: '- Builds on `bare-events`.', to: '- Builds on [`bare-events`](/bare/reference/bare/modules/bare-events).' }],
+  });
+  assert.match(mdx, /^description: "Scans for things"$/m);
+  assert.match(mdx, /— Scans for things\./);
+  assert.match(mdx, /^- Builds on \[`bare-events`\]/m);
 });

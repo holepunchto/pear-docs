@@ -1,10 +1,10 @@
 {
   "name": "bare-module",
-  "version": "7.2.0",
+  "version": "7.5.0",
   "description": "The module system that powers Bare",
   "repoUrl": "https://github.com/holepunchto/bare-module",
   "npmUrl": "https://www.npmjs.com/package/bare-module",
-  "minBare": ">=1.32.0",
+  "minBare": ">=1.35.0",
   "native": true,
   "dependencies": [
     "bare-bundle",
@@ -13,7 +13,8 @@
     "bare-module-traverse",
     "bare-path",
     "bare-type-stripper",
-    "bare-url"
+    "bare-url",
+    "bare-wasm-abi"
   ],
   "usage": "A module is loaded by its WHATWG `URL`. The source may be read through the module's [protocol](#protocols) or passed in directly:\n\n```js\nconst Module = require('bare-module')\n\n// Load a module directly from source, without it existing on disk.\nconst foo = await Module.load(\n  new URL('file:///foo.js'),\n  'module.exports = function add (a, b) { return a + b }'\n)\n\nfoo.exports(2, 3)\n// 5\n```\n\nTo resolve and load specifiers relative to a directory, as `require()` does, create a `require()` bound to a parent URL. The default protocol has no backing store of its own and cannot read from the file system, so pass a [protocol](#protocols) that serves the source:\n\n```js\nconst Module = require('bare-module')\n\nconst require = Module.createRequire('file:///directory/', { protocol })\n\n// Resolves and loads `file:///directory/foo.js`, reading it through `protocol`.\nconst foo = require('./foo.js')\n```\n\nThe same machinery backs the `require()` and `import` available to modules as they run; see [CommonJS modules](#commonjs-modules) and [ECMAScript modules](#ecmascript-modules) for what each exposes.",
   "extraSections": [
@@ -195,7 +196,7 @@
           "static": true,
           "signatures": [
             "Module.load(url: URL, opts: LoadOptions): Promise<Module>",
-            "Module.load(url: URL, source?: Buffer | string | null, opts?: LoadOptions): Promise<Module>"
+            "Module.load(url: URL, source?: Buffer | Bundle | string | null, opts?: LoadOptions): Promise<Module>"
           ],
           "description": "Load a module with the provided `url`. `url` is a WHATWG `URL`. If provided, the `source` will\nbe passed to the matching `extension` for the `url`.",
           "deprecated": null,
@@ -234,7 +235,7 @@
           "static": true,
           "signatures": [
             "Module.loadSync(url: URL, opts: LoadOptions): Module",
-            "Module.loadSync(url: URL, source?: Buffer | string | null, opts?: LoadOptions): Module"
+            "Module.loadSync(url: URL, source?: Buffer | Bundle | string | null, opts?: LoadOptions): Module"
           ],
           "description": "As `load()`, but synchronous, for a caller that cannot await one. The protocol is driven\nthrough its `*Sync` methods and so must answer synchronously. A module with a top-level\n`await` is returned as soon as its evaluation is started rather than once it has finished, as\nthere is nothing to wait on it here.",
           "deprecated": null,
@@ -450,7 +451,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface Attributes {\n  type?: Lowercase<keyof typeof constants>\n  imports?: string\n}"
+        "interface Attributes {\n  type?: Lowercase<keyof typeof constants>\n  imports?: string\n  host?: string\n  wasi?: string\n}"
       ],
       "description": "Import attributes instructing how a module should be loaded. A `type` that is not one of the\nknown strings is turned down rather than passed over.",
       "deprecated": null,
@@ -458,6 +459,21 @@
       "returns": null,
       "throws": [],
       "members": [
+        {
+          "key": "Attributes.host",
+          "name": "host",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "host: string"
+          ],
+          "description": "The host to resolve the addons of the module and its dependencies for, such as `wasi-wasm32`.\nThe conditions of the host may then also be targeted alongside those of the native host, in the\norder a package lists them.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
         {
           "key": "Attributes.imports",
           "name": "imports",
@@ -482,6 +498,21 @@
             "type: Lowercase<keyof typeof constants>"
           ],
           "description": "How the module should be loaded: one of `'script'`, `'module'`, `'json'`, `'bundle'`,\n`'addon'`, `'binary'`, or `'text'`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Attributes.wasi",
+          "name": "wasi",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "wasi: string"
+          ],
+          "description": "The specifier of a module providing the WASI capabilities of the WebAssembly addons of the\nmodule and its dependencies, resolved relative to the parent URL.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -842,7 +873,7 @@
           "kind": "interface",
           "static": true,
           "signatures": [
-            "interface ImportOptions {\n  attributes?: Attributes\n}"
+            "interface ImportOptions {\n  attributes?: Attributes\n  mount?: URL | string\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -864,6 +895,21 @@
               "returns": null,
               "throws": [],
               "members": []
+            },
+            {
+              "key": "ModuleLoader.ImportOptions.mount",
+              "name": "mount",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "mount: URL | string"
+              ],
+              "description": "The URL to mount the entry at if it's a bundle, defaulting to the URL of the bundle followed\nby a `/`. The bundle serves only the modules under it, so `file:///` lets it serve any file.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
             }
           ]
         },
@@ -873,7 +919,7 @@
           "kind": "interface",
           "static": true,
           "signatures": [
-            "interface LinkOptions {\n  attributes?: Attributes\n}"
+            "interface LinkOptions {\n  attributes?: Attributes\n  mount?: URL | string\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -895,6 +941,21 @@
               "returns": null,
               "throws": [],
               "members": []
+            },
+            {
+              "key": "ModuleLoader.LinkOptions.mount",
+              "name": "mount",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "mount: URL | string"
+              ],
+              "description": "The URL to mount the entry at if it's a bundle, defaulting to the URL of the bundle followed\nby a `/`. The bundle serves only the modules under it, so `file:///` lets it serve any file.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
             }
           ]
         },
@@ -904,7 +965,7 @@
           "kind": "interface",
           "static": true,
           "signatures": [
-            "interface Options {\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
+            "interface Options {\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n  wasi?: (url: URL) => object\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -1009,6 +1070,21 @@
               "static": false,
               "signatures": [
                 "resolutions: ResolutionsMap"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "ModuleLoader.Options.wasi",
+              "name": "wasi",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "wasi: (url: URL) => object"
               ],
               "description": null,
               "deprecated": null,
@@ -1374,7 +1450,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface LoadOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n  attributes?: Attributes\n}"
+        "interface LoadOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n  wasi?: (url: URL) => object\n  attributes?: Attributes\n  mount?: URL | string\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -1473,6 +1549,21 @@
           "members": []
         },
         {
+          "key": "LoadOptions.mount",
+          "name": "mount",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "mount: URL | string"
+          ],
+          "description": "The URL to mount the entry at if it's a bundle, defaulting to the URL of the bundle followed\nby a `/`. The bundle serves only the modules under it, so `file:///` lets it serve any file.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "LoadOptions.protocol",
           "name": "protocol",
           "kind": "property",
@@ -1516,6 +1607,21 @@
           "returns": null,
           "throws": [],
           "members": []
+        },
+        {
+          "key": "LoadOptions.wasi",
+          "name": "wasi",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "wasi: (url: URL) => object"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
         }
       ]
     },
@@ -1525,7 +1631,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface ResolveOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
+        "interface ResolveOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n  wasi?: (url: URL) => object\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -1652,6 +1758,21 @@
           "returns": null,
           "throws": [],
           "members": []
+        },
+        {
+          "key": "ResolveOptions.wasi",
+          "name": "wasi",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "wasi: (url: URL) => object"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
         }
       ]
     },
@@ -1661,7 +1782,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface CreateRequireOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
+        "interface CreateRequireOptions {\n  referrer?: Module\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n  wasi?: (url: URL) => object\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -1781,6 +1902,21 @@
           "static": false,
           "signatures": [
             "resolutions: ResolutionsMap"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "CreateRequireOptions.wasi",
+          "name": "wasi",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "wasi: (url: URL) => object"
           ],
           "description": null,
           "deprecated": null,
@@ -2655,7 +2791,7 @@
           "kind": "interface",
           "static": false,
           "signatures": [
-            "interface Options {\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n}"
+            "interface Options {\n  builtins?: Builtins\n  cache?: Cache\n  concurrency?: number\n  defaultType?: number\n  imports?: ImportsMap\n  protocol?: Protocol\n  resolutions?: ResolutionsMap\n  wasi?: (url: URL) => object\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -2767,6 +2903,21 @@
               "returns": null,
               "throws": [],
               "members": []
+            },
+            {
+              "key": "Options.wasi",
+              "name": "wasi",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "wasi: (url: URL) => object"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
             }
           ]
         },
@@ -2776,7 +2927,7 @@
           "kind": "interface",
           "static": false,
           "signatures": [
-            "interface LinkOptions {\n  attributes?: Attributes\n}"
+            "interface LinkOptions {\n  attributes?: Attributes\n  mount?: URL | string\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -2798,6 +2949,21 @@
               "returns": null,
               "throws": [],
               "members": []
+            },
+            {
+              "key": "LinkOptions.mount",
+              "name": "mount",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "mount: URL | string"
+              ],
+              "description": "The URL to mount the entry at if it's a bundle, defaulting to the URL of the bundle followed\nby a `/`. The bundle serves only the modules under it, so `file:///` lets it serve any file.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
             }
           ]
         },
@@ -2807,7 +2973,7 @@
           "kind": "interface",
           "static": false,
           "signatures": [
-            "interface ImportOptions {\n  attributes?: Attributes\n}"
+            "interface ImportOptions {\n  attributes?: Attributes\n  mount?: URL | string\n}"
           ],
           "description": null,
           "deprecated": null,
@@ -2829,11 +2995,26 @@
               "returns": null,
               "throws": [],
               "members": []
+            },
+            {
+              "key": "ImportOptions.mount",
+              "name": "mount",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "mount: URL | string"
+              ],
+              "description": "The URL to mount the entry at if it's a bundle, defaulting to the URL of the bundle followed\nby a `/`. The bundle serves only the modules under it, so `file:///` lets it serve any file.",
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
             }
           ]
         }
       ]
     }
   ],
-  "generatedAt": "2026-09-30T14:06:25.035Z"
+  "generatedAt": "2026-11-04T19:54:41.019Z"
 }

@@ -15,7 +15,10 @@
 import type { Layout } from '../layout';
 
 const layout: Layout = {
+  // package.json's description is just the package name.
+  description: 'Minimal mDNS/DNS-SD service discovery for Bare',
   seeAlso: [
+    'For discovering nearby peers without a shared network (Bluetooth LE instead of mDNS over WiFi), see [nearby-discovery](https://github.com/holepunchto/nearby-discovery). Not yet documented on this site.',
     "Without `iface` set, Android's `addMembership` falls back to the OS default interface, which may not be the WiFi interface, so responses are silently dropped — pass the WiFi IP, for example from `bare-wifi-android`'s `getWifiIP()`.",
     "`Discovery`'s `service` option is given without the DNS prefix/suffix — `'http'` or `'googlecast'`, not `'_http._tcp.local'`.",
   ],
