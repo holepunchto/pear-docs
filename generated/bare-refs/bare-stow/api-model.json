@@ -1,6 +1,6 @@
 {
   "name": "bare-stow",
-  "version": "0.1.7",
+  "version": "0.3.2",
   "description": "Module bundling and harness generation for Bare",
   "repoUrl": "https://github.com/holepunchto/bare-stow",
   "npmUrl": "https://www.npmjs.com/package/bare-stow",
@@ -10,22 +10,38 @@
     "bare-bundle",
     "bare-bundle-id",
     "bare-fs",
-    "bare-module-lexer",
+    "bare-link",
     "bare-module-traverse",
     "bare-pack",
     "bare-path",
-    "bare-stream",
-    "bare-type-stripper"
+    "bare-type-stripper",
+    "bare-unpack"
   ],
-  "usage": "Given an entry module `core.js` that exports a `start` function receiving the IPC stream and an optional `ready` callback. The function may optionally return (or resolve to) a function that runs before the bundle exits:\n\n```js\nmodule.exports = async function start(ipc, ready) {\n  ipc.on('data', (data) => {\n    // Handle messages from the host.\n  })\n\n  // Optionally call `ready()` to signal readiness early. Otherwise it is\n  // signaled automatically when `start()` resolves.\n  ready()\n\n  return async function stop() {\n    // Clean up before the bundle exits.\n  }\n}\n```\n\nThe `ipc` argument is a duplex byte stream. Anything written to it is delivered to the host, and `'data'` events fire when the host writes back.\n\nStow it for the `bare-sidecar` target:\n\n```js\nconst stow = require('bare-stow')\n\nconst entry = new URL('file:///app/core.js')\nconst out = new URL('file:///app/out/index.js')\n\nfor await (const artifact of stow(entry, 'bare-sidecar', out)) {\n  console.log(artifact.url.href)\n}\n```\n\nOr equivalently from the command line:\n\n```console\n$ bare-stow --target bare-sidecar --out ./out/index.js ./core.js\n```\n\nThis writes the harness to `out` and the bundle alongside it. The harness can then be required from the host and booted with `start()`. The harness awaits the worker's `ready` signal before resolving, so by the time `start()` returns the bundle is up:\n\n```js\nconst harness = require('/app/out/index.js')\n\nconst { ipc } = await harness.start()\n\nipc.write(Buffer.from('hello from the host'))\n\nipc.on('exit', (code) => {\n  console.log('bundle exited with', code)\n})\n\n// Request a graceful shutdown.\nipc.destroy()\n```",
+  "usage": "The entry module exports a `start()` function that receives the IPC stream and an optional `ready` callback. It may return a function to run before the bundle exits:\n\n```js\nmodule.exports = async function start(ipc, ready) {\n  ipc.on('data', (data) => {\n    // Handle messages from the host.\n  })\n\n  // Signal readiness early. Otherwise, it's signaled when `start()` resolves.\n  ready()\n\n  return async function stop() {\n    // Clean up before the bundle exits.\n  }\n}\n```\n\nIf a `server` is requested, `start()` instead receives `{ rpc, ipc }`, with `rpc` bound to the IPC stream. Its handlers are registered in `start()`, before the bundle signals ready:\n\n```js\nmodule.exports = function start({ rpc }) {\n  rpc.respond(1, (req, data) => data)\n}\n```\n\nStow it for a target:\n\n```js\nconst stow = require('bare-stow')\n\nconst entry = 'file:///app/core.js'\nconst out = 'file:///app/core-harness/'\n\nfor await (const artifact of stow(entry, 'bare-sidecar', out)) {\n  console.log(artifact.url.href)\n}\n```\n\nOr from the command line:\n\n```console\n$ bare-stow pack --target bare-sidecar --out ./core-harness ./core.js\n```\n\nThis writes a package to `out` with the harness, the bundle, and a manifest declaring the dependencies of the harness. `stow()` yields each file once written, and the bundle along with its `base`, the directory that its modules are named relative to. It's the `base` option if given, and otherwise the closest directory containing every module. Add the package as a dependency of the host and boot the bundle with `start()`, which resolves once the bundle is ready:\n\n```js\nimport * as harness from 'core-harness'\n\nconst { ipc } = await harness.start()\n\nipc.write(Buffer.from('hello from the host'))\n\n// Request a graceful shutdown, which resolves with the exit code.\nconst code = await ipc.terminate()\n```\n\nThe bundle imports `bare-stow-runtime`, and the RPC library if a `server` is requested, so the package containing the entry must depend on them.\n\n`start()` accepts `timeout`, how long to wait in milliseconds for the bundle to signal ready, and `grace`, how long a terminating bundle gets to run `stop()` and exit before it's killed. `timeout` defaults to waiting indefinitely and `grace` to 5 seconds. On Windows, a sidecar is killed along with its host, so `stop()` only runs when the host terminates it.\n\nFor `bare-sidecar` and `bare-worker`, the harness also exports `connect()`, which takes a sidecar or worker that the host started itself, such as one running a development entry with arguments, and resolves like `start()`. It accepts the same options, except those of the sidecar or worker. As the entry doesn't go through `stow()`, it attaches to the IPC itself, as described in <https://github.com/holepunchto/bare-stow-runtime>:\n\n```js\nconst runtime = require('bare-stow-runtime/process')\n\nconst ipc = runtime.attach(Bare.IPC)\n\nipc.run(() => import('./core.js'), ipc)\n```\n\n```js\nconst sidecar = new Sidecar('./dev.js', ['--verbose'], { stdio: 'inherit' })\n\nconst { ipc } = await harness.connect(sidecar)\n```\n\n`stow()` and `link()` read the module graph from disk by default. To read it from elsewhere, such as modules that aren't written to disk, pass `readModule`, `listPrefix`, and `resolveModule`. Generated files are still written to disk. A `readModule` that changes the type of a module also passes `aliases`, as for <https://github.com/holepunchto/bare-pack>, such as `{ '.mjs': '.js' }` to have ES modules converted to CommonJS loaded as such. They're merged over the aliases that `bare-stow` uses for TypeScript.",
   "extraSections": [
     {
+      "heading": "Targets",
+      "body": "- `bare-sidecar` runs the bundle in a separate process using <https://github.com/holepunchto/bare-sidecar>, with the `javascript`, `python`, and `swift` languages on desktop. In JavaScript and Python, `start()` also accepts the options of `bare-sidecar`.\n- `bare-worker` runs the bundle in a thread of a Bare host using <https://github.com/holepunchto/bare-worker>, with the `javascript` language.\n- `bare-kit` runs the bundle in a worklet using <https://github.com/holepunchto/bare-kit>, with the `swift` language on macOS and iOS and the `kotlin` language on Android and the JVM. `start()` also accepts the options of the worklet and returns it alongside `ipc`, and on Android takes the `Context` first. In Kotlin, the worklet is closed once it exits, so it needs no closing of its own, and in Swift it's released with its last reference. Native addons are linked with <https://github.com/holepunchto/bare-link> and declared in the manifest, and assets are written next to the bundle. With the target option `linking` set to `'app'`, both are left to `link()` instead. On the JVM, addons and assets are written next to the bundle as files, which `start()` extracts along with the bundle to a temporary directory, so `linking` must be `'package'`."
+    },
+    {
+      "heading": "Linking",
+      "body": "A target may leave addons and assets to the application, so that bundles sharing them don't each bring a copy. For `bare-kit`, stow each bundle with the target option `linking` set to `'app'`:\n\n```console\n$ bare-stow pack --target bare-kit --target-option linking=app --language swift --out ./ios/Core ./core.js\n```\n\n`link()` then links the addons and assets of all bundles once, into a package the application depends on:\n\n```js\nconst entries = [new URL('file:///app/core.js'), new URL('file:///app/push.js')]\nconst out = new URL('file:///app/ios/BareKitAddons/')\n\nfor await (const artifact of stow.link(entries, 'bare-kit', out, { language: 'swift' })) {\n  console.log(artifact.url.href)\n}\n```\n\nThe language lays out the package and the target adds what loads the addons. For `bare-kit`, that's `bare-kit-swift` or `bare-kit-kotlin`. The assets go in a folder named by `stow.resources`, listed in a file of the same name with the `.assets` extension, which a Swift application copies into its bundle. `link()` takes the same options as `stow()`, except `client` and `base`."
+    },
+    {
+      "heading": "Languages",
+      "body": "The harness is generated in one of these languages, selected with `language` and configured with `languageOptions`:\n\n- `javascript` writes an npm package. The `module` option is either `'esm'`, the default, or `'cjs'`.\n- `kotlin` writes a Gradle module. The `package` option names the package of the generated code and is required. The `platform` option is either `'android'`, the default, for an Android library module, or `'jvm'` for a Kotlin/JVM library module on Linux, macOS, and Windows. The dependencies are published to JitPack (<https://jitpack.io>), so add it to the repositories of the application.\n- `python` writes a Python package.\n- `swift` writes a Swift package.\n\nFor example, with an RPC client and server:\n\n```console\n$ bare-stow pack --target bare-sidecar --language python --client bare-rpc --server bare-rpc --out ./my-core ./core.js\n```\n\n```python\nimport asyncio\n\nimport my_core\n\n\nasync def main():\n    ipc, rpc = await my_core.start(\n        handlers=lambda router: router.on_request(2, lambda req: b\"hello\")\n    )\n\n    await rpc.request(1, b\"ping\")\n    await ipc.terminate()\n\n\nasyncio.run(main())\n```\n\nWith an RPC client, `start()` takes the handlers for the requests and events of the bundle, so that they are registered before the bundle can send any."
+    },
+    {
       "heading": "Protocol",
-      "body": "The harness multiplexes a control channel and a user data channel over the underlying binary duplex stream. The `ipc` returned from `start()` is itself a duplex stream carrying the user data; control frames ride alongside it on the same handle. RPC libraries (such as `bare-rpc`) bind to `ipc` just like a raw stream.\n\nControl frames signal lifecycle events:\n\n| Direction      | Type        | Payload              |\n| :------------- | :---------- | :------------------- |\n| Worker -> Host | `ready`     | -                    |\n| Worker -> Host | `exit`      | `{ code }`           |\n| Worker -> Host | `error`     | `{ message, stack }` |\n| Host -> Worker | `terminate` | -                    |\n\nAn incoming `error` frame destroys the local `ipc` with the carried error, surfacing it as a normal stream `error` event. Other control frames emit a regular event named after the type.\n\nThe `ipc` handle exposes the lifecycle as events and methods on the same duplex:\n\n- `ipc.ready`: A promise that resolves once the worker has signaled ready. Rejects if the worker errors before ready.\n- `ipc.on('exit', code)`: Emitted when the worker signals exit. `code` carries the exit code.\n- `ipc.on('error', err)`: Emitted when the worker reports a fault, or when the underlying transport errors. Either way the `ipc` is destroyed.\n- `ipc.on('close')`: Emitted when the underlying transport closes.\n- `ipc.destroy()`: Standard stream destroy. Sends a `terminate` control frame to the worker and waits for the underlying transport to close.\n- `ipc.terminate()`: Like `destroy()` but resolves with the worker's exit code.\n\nThe framing layer is also exported directly for embedders that bring their own transport:\n\n```js\nconst protocol = require('bare-stow/protocol')\n\nconst ipc = protocol.attach(stream) // Any duplex byte stream\nipc.write(Buffer.from('payload')) // User data\nipc.send('ready') // Control frame\nipc.on('exit', () => {\n  /* ... */\n})\n```\n\nThe host helper layers the lifecycle promise and `terminate` method on top of the protocol:\n\n```js\nconst { wrap } = require('bare-stow/host')\n\nconst ipc = wrap(stream) // Any duplex byte stream\nawait ipc.ready\n```"
+      "body": "The harness and the bundle multiplex a control channel and the user data over a single duplex stream. The `ipc` returned from `start()` is a duplex stream of the user data, so RPC libraries such as `bare-rpc` bind to it like any other stream. Embedders bringing their own transport can use the protocol directly:\n\n- <https://github.com/holepunchto/bare-stow-protocol> implements the framing.\n- <https://github.com/holepunchto/bare-stow-host> implements the host side and documents `ipc`, with <https://github.com/holepunchto/bare-stow-host-kotlin>, <https://github.com/holepunchto/bare-stow-host-python>, and <https://github.com/holepunchto/bare-stow-host-swift> for the other languages.\n- <https://github.com/holepunchto/bare-stow-runtime> implements the bundle side."
+    },
+    {
+      "heading": "Providers",
+      "body": "Languages, targets, and RPC libraries are providers that may live outside `bare-stow`. `stow()` and `link()` accept a provider object in place of a name, and names other than the built-in ones are resolved through `resolveLanguage`, `resolveTarget`, and `resolveRPC`. For example, <https://github.com/holepunchto/bare-stow-target-react-native> is a target for React Native. Targets and RPC libraries generate code for each language they list under `languages`, and providers without an entry for the language of the harness are rejected. Targets may also take options, given as `targetOptions`. The server side of an RPC library is always generated as JavaScript, as the bundle runs in Bare. See `index.d.ts` for the interfaces."
     },
     {
       "heading": "CLI",
-      "body": "#### `bare-stow [flags] <entry>`\n\nStow the module graph rooted at `<entry>`, writing the harness and bundle to the path given by `--out`.\n\n```console\n--version|-v\n--target <name>\n--client <name>\n--server <name>\n--base <path>\n--out|-o <path>\n--builtins <path>\n--imports <path>\n--defer <specifier>\n--host <name>\n--help|-h\n```\n\n##### `--target <name>`\n\nThe target runtime. Required. The built-in `bare-sidecar` and `bare-worker` are resolved directly; any other `<name>` is loaded from its `bare-stow-target-<name>` package, or from `<name>` itself as a full module specifier, resolved from the working directory.\n\n##### `--client <name>` and `--server <name>`\n\nThe RPC library to wire into the harness (`--client`) or the bundle entry shim (`--server`). The built-in `bare-rpc` is resolved directly; any other `<name>` is loaded from its `bare-stow-rpc-<name>` package, or from `<name>` itself as a full module specifier, resolved from the working directory.\n\n##### `--builtins <path>` and `--imports <path>`\n\nPaths to JavaScript or JSON files exporting a list of builtin module names and a map of global import overrides respectively. Forwarded to `bare-pack`.\n\n##### `--defer <specifier>`\n\nA module specifier whose resolution should be deferred. May be passed multiple times.\n\n##### `--host <name>`\n\nA host triple to build for. Must be a subset of the host triples supported by the target. May be passed multiple times. Defaults to all host triples supported by the target."
+      "body": "#### `bare-stow pack [flags] <entry>`\n\nStow the module graph rooted at `<entry>` into the directory given by `--out`.\n\n```console\n--target <name>\n--target-option <key=value>\n--language <name>\n--language-option <key=value>\n--client <name>\n--server <name>\n--base <path>\n--out|-o <path>\n--builtins <path>\n--imports <path>\n--defer <specifier>\n--host <name>\n--help|-h\n```\n\n#### `bare-stow link [flags] <entry...>`\n\nLink the addons and assets of the module graphs rooted at each `<entry>` into the package given by `--out`.\n\n```console\n--target <name>\n--target-option <key=value>\n--language <name>\n--language-option <key=value>\n--server <name>\n--out|-o <path>\n--builtins <path>\n--imports <path>\n--defer <specifier>\n--host <name>\n--help|-h\n```\n\n`--target`, `--language`, `--client`, and `--server` take a built-in name, the name of a `bare-stow-target-<name>`, `bare-stow-language-<name>`, or `bare-stow-rpc-<name>` package, or a module specifier, resolved from the working directory. `--target-option`, `--language-option`, `--defer`, and `--host` may be passed multiple times. `--host` must name hosts the target supports, and defaults to all of them.\n\n`--builtins` and `--imports` are paths to JavaScript or JSON files exporting a list of builtin modules and a map of import overrides, which are forwarded to `bare-pack`."
     }
   ],
   "exports": [
@@ -37,7 +53,7 @@
       "signatures": [
         "stow(entry: URL | string, target: Target | TargetName, out: URL | string, opts?: StowOptions): AsyncGenerator<StowArtifact>"
       ],
-      "description": "Bundle the module graph rooted at `entry` for `target`, writing a harness plus bundle to `out`.",
+      "description": "Bundle the module graph rooted at `entry` for `target`, writing a harness package plus bundle to\n`out`.",
       "deprecated": null,
       "params": [
         {
@@ -52,14 +68,14 @@
           "type": "Target | TargetName",
           "optional": false,
           "default": null,
-          "description": "The bundling target: a `Target` object, or a target name resolved to one (the\nbuilt-in `bare-sidecar` and `bare-worker`, or a `bare-stow-target-<name>` package)."
+          "description": "The bundling target: a `Target` object, or a target name resolved to one (the\nbuilt-in `bare-kit`, `bare-sidecar`, and `bare-worker`, or a `bare-stow-target-<name>` package)."
         },
         {
           "name": "out",
           "type": "URL | string",
           "optional": false,
           "default": null,
-          "description": "The path to write the harness to, as a `file:` URL or path string; the bundle is\nwritten alongside it."
+          "description": "The directory to write the harness package to, as a `file:` URL or path string."
         },
         {
           "name": "opts",
@@ -71,7 +87,7 @@
       ],
       "returns": {
         "type": "AsyncGenerator<StowArtifact>",
-        "description": "An async generator that yields each written artifact's `url` as it is produced — the\nharness first, then the bundle, then any offloaded addon or asset files."
+        "description": "An async generator that yields each written artifact's `url` as it is produced: any\naddons linked into the package, the harness and its type declaration, the RPC client and its type\ndeclaration, the package manifest, the bundle along with its `base`, and then any assets of a\nlinked bundle, any offloaded addon or asset files, and the listing of those files."
       },
       "throws": [
         {
@@ -84,10 +100,63 @@
         },
         {
           "type": null,
-          "condition": "A host in `opts.hosts` is not supported by the resolved target."
+          "condition": "A language option is unknown or invalid, or `out` is not valid as a package."
+        },
+        {
+          "type": null,
+          "condition": "The target or an RPC library does not support the language."
+        },
+        {
+          "type": null,
+          "condition": "A host in `opts.hosts` is not supported by the resolved target in the language."
         }
       ],
       "members": [
+        {
+          "key": "stow.LanguageName",
+          "name": "stow.LanguageName",
+          "kind": "typeAlias",
+          "static": true,
+          "signatures": [
+            "type LanguageName = 'javascript' | 'kotlin' | 'python' | 'swift'"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "stow.LanguageOptions",
+          "name": "stow.LanguageOptions",
+          "kind": "typeAlias",
+          "static": true,
+          "signatures": [
+            "type LanguageOptions = Record<string, unknown>"
+          ],
+          "description": "Options resolved by a language from those given and passed to every provider generating code in\nthat language. A target may pin some of them through `TargetLanguage.options`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "stow.Resolvable",
+          "name": "stow.Resolvable",
+          "kind": "typeAlias",
+          "static": true,
+          "signatures": [
+            "type Resolvable<T> = T | ((context: TargetResolveContext) => T)"
+          ],
+          "description": "A property of a target, or a function resolving it from the language of the harness and the\noptions it resolved, such as hosts that differ between languages.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
         {
           "key": "stow.RPCName",
           "name": "stow.RPCName",
@@ -109,9 +178,607 @@
           "kind": "typeAlias",
           "static": true,
           "signatures": [
-            "type TargetName = 'bare-sidecar' | 'bare-worker'"
+            "type TargetName = 'bare-kit' | 'bare-sidecar' | 'bare-worker'"
           ],
           "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "stow.TargetOptions",
+          "name": "stow.TargetOptions",
+          "kind": "typeAlias",
+          "static": true,
+          "signatures": [
+            "type TargetOptions = Record<string, unknown>"
+          ],
+          "description": "Options resolved by a target from those given.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Generated",
+      "name": "Generated",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Generated {\n  source: string\n  types?: string | null\n  dependencies?: Record<string, unknown>\n}"
+      ],
+      "description": "The source of a generated module, together with its type declaration.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Generated.dependencies",
+          "name": "dependencies",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "dependencies: Record<string, unknown>"
+          ],
+          "description": "The packages the module imports, mapped to what the language's manifest needs to declare them,\nsuch as a version range for `javascript` and `python`, a version for `kotlin`, or `{ url, from, products }` for `swift`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Generated.source",
+          "name": "source",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "source: string"
+          ],
+          "description": "The module's source text.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Generated.types",
+          "name": "types",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "types: string | null"
+          ],
+          "description": "The module's type declaration, written next to it under the name chosen by the language, or\nunset when the module has none.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Language",
+      "name": "Language",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Language {\n  name: string\n  options(given?: LanguageOptions): LanguageOptions\n  layout(out: URL, options: LanguageOptions): Layout\n  sibling(url: URL, name: string): URL\n  types?(url: URL): URL\n  reference(from: URL, to: URL): string\n  manifest(context: ManifestContext): string\n}"
+      ],
+      "description": "A host language, such as `javascript`, describing how generated modules in that language are laid\nout, named, referenced, and declared.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Language.layout",
+          "name": "layout",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "layout(out: URL, options: LanguageOptions): Layout"
+          ],
+          "description": "Lay the generated files out in the package directory `out`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "out",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": "The package directory, as a URL ending in a slash."
+            },
+            {
+              "name": "options",
+              "type": "LanguageOptions",
+              "optional": false,
+              "default": null,
+              "description": "The options resolved by the language, with any pinned by the target applied."
+            }
+          ],
+          "returns": {
+            "type": "Layout",
+            "description": null
+          },
+          "throws": [
+            {
+              "type": null,
+              "condition": "`out` is not valid as a package for the language."
+            }
+          ],
+          "members": []
+        },
+        {
+          "key": "Language.manifest",
+          "name": "manifest",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "manifest(context: ManifestContext): string"
+          ],
+          "description": "Render the manifest named by the layout.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "context",
+              "type": "ManifestContext",
+              "optional": false,
+              "default": null,
+              "description": "The manifest context describing the package to declare."
+            }
+          ],
+          "returns": {
+            "type": "string",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Language.name",
+          "name": "name",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "name: string"
+          ],
+          "description": "The language's name, used to select its entry in a target's or RPC library's `languages`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Language.options",
+          "name": "options",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "options(given?: LanguageOptions): LanguageOptions"
+          ],
+          "description": "Resolve the options for generating code from those given.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "given",
+              "type": "LanguageOptions",
+              "optional": true,
+              "default": null,
+              "description": "The options given through `StowOptions.languageOptions`."
+            }
+          ],
+          "returns": {
+            "type": "LanguageOptions",
+            "description": null
+          },
+          "throws": [
+            {
+              "type": null,
+              "condition": "An option is unknown or has an invalid value."
+            }
+          ],
+          "members": []
+        },
+        {
+          "key": "Language.reference",
+          "name": "reference",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "reference(from: URL, to: URL): string"
+          ],
+          "description": "Render a reference from the module at `from` to the file at `to`, such as a relative specifier.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "from",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": "The referencing module."
+            },
+            {
+              "name": "to",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": "The referenced file."
+            }
+          ],
+          "returns": {
+            "type": "string",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Language.sibling",
+          "name": "sibling",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "sibling(url: URL, name: string): URL"
+          ],
+          "description": "Name a module generated alongside `url`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": "The module the sibling is generated alongside."
+            },
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The name of the sibling, such as `'client'`."
+            }
+          ],
+          "returns": {
+            "type": "URL",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Language.types",
+          "name": "types",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "types(url: URL): URL"
+          ],
+          "description": "Name the type declaration of the module at `url`. Required when the language's generators\nreturn separate type declarations.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "url",
+              "type": "URL",
+              "optional": false,
+              "default": null,
+              "description": "The module to name the type declaration of."
+            }
+          ],
+          "returns": {
+            "type": "URL",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Layout",
+      "name": "Layout",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Layout {\n  harness: URL\n  name: string\n  manifest: URL\n  artifacts?: URL\n  addons?: URL\n  resources?: URL\n  listing?: boolean\n}"
+      ],
+      "description": "Where a language writes the harness package.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Layout.addons",
+          "name": "addons",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "addons: URL"
+          ],
+          "description": "The directory the addons of a linked target are linked into, or unset if unsupported.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Layout.artifacts",
+          "name": "artifacts",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "artifacts: URL"
+          ],
+          "description": "The directory the bundle is written to, or unset to write it next to the harness.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Layout.harness",
+          "name": "harness",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "harness: URL"
+          ],
+          "description": "The harness module.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Layout.listing",
+          "name": "listing",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "listing: boolean"
+          ],
+          "description": "Whether the files written next to the bundle are listed in `<bundle>.files`, one `/<path>` per\nline, for a harness that extracts them along with the bundle.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Layout.manifest",
+          "name": "manifest",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "manifest: URL"
+          ],
+          "description": "The package manifest declaring the dependencies of the generated modules.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Layout.name",
+          "name": "name",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "name: string"
+          ],
+          "description": "The name of the package, written into the manifest.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Layout.resources",
+          "name": "resources",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "resources: URL"
+          ],
+          "description": "The directory the assets of linked bundles are linked into, or unset if unsupported.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "ManifestContext",
+      "name": "ManifestContext",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface ManifestContext {\n  name: string\n  dependencies: Record<string, unknown>\n  options: LanguageOptions\n  hosts: string[]\n  artifacts: string[]\n  addons: string[]\n}"
+      ],
+      "description": "The context passed to a language's `manifest()`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "ManifestContext.addons",
+          "name": "addons",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "addons: string[]"
+          ],
+          "description": "References from the manifest to the resources linked for the addons of a linked target.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ManifestContext.artifacts",
+          "name": "artifacts",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "artifacts: string[]"
+          ],
+          "description": "References from the manifest to the bundle and the files written next to it.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ManifestContext.dependencies",
+          "name": "dependencies",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "dependencies: Record<string, unknown>"
+          ],
+          "description": "The packages the generated modules import, as declared by their generators.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ManifestContext.hosts",
+          "name": "hosts",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "hosts: string[]"
+          ],
+          "description": "The host triples the bundle is packed for.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ManifestContext.name",
+          "name": "name",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "name: string"
+          ],
+          "description": "The package name, as given by the layout.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "ManifestContext.options",
+          "name": "options",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "options: LanguageOptions"
+          ],
+          "description": "The options resolved by the language.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "JavaScriptOptions",
+      "name": "JavaScriptOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface JavaScriptOptions {\n  module: 'esm' | 'cjs'\n}"
+      ],
+      "description": "The options of the built-in `javascript` language.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "JavaScriptOptions.module",
+          "name": "module",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "module: 'esm' | 'cjs'"
+          ],
+          "description": "The module system of the generated code, written as the `type` of the harness package. Either\n`'esm'`, the default, or `'cjs'`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "KotlinOptions",
+      "name": "KotlinOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface KotlinOptions {\n  package: string\n  platform: 'android' | 'jvm'\n}"
+      ],
+      "description": "The options of the built-in `kotlin` language.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "KotlinOptions.package",
+          "name": "package",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "package: string"
+          ],
+          "description": "The package of the generated code, such as `'com.example.core'`, which is also its namespace.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "KotlinOptions.platform",
+          "name": "platform",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "platform: 'android' | 'jvm'"
+          ],
+          "description": "The platform of the module, either `'android'`, the default, or `'jvm'`.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -126,9 +793,9 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface Target {\n  name: string\n  linked: boolean\n  offload: boolean | { addons?: boolean; assets?: boolean }\n  format: 'bundle' | 'bundle.cjs' | 'bundle.mjs' | 'bundle.json'\n  encoding: string | null\n  extension: string\n  module?: 'esm' | 'cjs'\n  hosts: string[]\n  generate(context: TargetContext): Artifact[]\n}"
+        "interface Target {\n  name: string\n  isolation: Resolvable<'process' | 'thread'>\n  linked: Resolvable<boolean>\n  linking?: Resolvable<'package' | 'app'>\n  offload: Resolvable<boolean | { addons?: boolean; assets?: boolean }>\n  format: Resolvable<'bundle' | 'bundle.cjs' | 'bundle.mjs' | 'bundle.json'>\n  encoding: Resolvable<string | null>\n  extension: Resolvable<string>\n  hosts: Resolvable<string[]>\n  languages: Record<string, TargetLanguage>\n  options?(given: TargetOptions): TargetOptions\n}"
       ],
-      "description": "A bundling target, such as `bare-sidecar` or `bare-worker`, describing how to package and boot a\nbundle on a given host runtime.",
+      "description": "A bundling target, such as `bare-sidecar` or `bare-worker`, describing how to package a bundle and\nboot it from a host in each of the languages it supports.",
       "deprecated": null,
       "params": [],
       "returns": null,
@@ -140,7 +807,7 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "encoding: string | null"
+            "encoding: Resolvable<string | null>"
           ],
           "description": "The text encoding used when the bundle format wraps the bundle as a string, or `null` when the\nbundle is written as raw bytes.",
           "deprecated": null,
@@ -155,9 +822,9 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "extension: string"
+            "extension: Resolvable<string>"
           ],
-          "description": "The file extension used for the target's harness artifact.",
+          "description": "The file extension of the bundle, such as `'.bundle'`.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -170,7 +837,7 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "format: 'bundle' | 'bundle.cjs' | 'bundle.mjs' | 'bundle.json'"
+            "format: Resolvable<'bundle' | 'bundle.cjs' | 'bundle.mjs' | 'bundle.json'>"
           ],
           "description": "The encoding format of the written bundle artifact.",
           "deprecated": null,
@@ -180,40 +847,44 @@
           "members": []
         },
         {
-          "key": "Target.generate",
-          "name": "generate",
-          "kind": "method",
-          "static": false,
-          "signatures": [
-            "generate(context: TargetContext): Artifact[]"
-          ],
-          "description": "Generate the harness artifacts for `context`.",
-          "deprecated": null,
-          "params": [
-            {
-              "name": "context",
-              "type": "TargetContext",
-              "optional": false,
-              "default": null,
-              "description": "The target context describing the bundle to embed and the RPC wiring to splice\nin."
-            }
-          ],
-          "returns": {
-            "type": "Artifact[]",
-            "description": null
-          },
-          "throws": [],
-          "members": []
-        },
-        {
           "key": "Target.hosts",
           "name": "hosts",
           "kind": "property",
           "static": false,
           "signatures": [
-            "hosts: string[]"
+            "hosts: Resolvable<string[]>"
           ],
           "description": "The host triples the target supports.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Target.isolation",
+          "name": "isolation",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "isolation: Resolvable<'process' | 'thread'>"
+          ],
+          "description": "Whether the bundle owns its `'process'` or shares one by running in a `'thread'`. Only a bundle\nthat owns its process handles signals.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Target.languages",
+          "name": "languages",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "languages: Record<string, TargetLanguage>"
+          ],
+          "description": "The host languages the target supports, keyed by language name.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -226,9 +897,9 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "linked: boolean"
+            "linked: Resolvable<boolean>"
           ],
-          "description": "Whether the bundle links against its dependencies rather than inlining them.",
+          "description": "Whether the bundle links against its dependencies rather than inlining them. A linked bundle\nalso leaves its assets out, as files that the runtime loads.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -236,14 +907,14 @@
           "members": []
         },
         {
-          "key": "Target.module",
-          "name": "module",
+          "key": "Target.linking",
+          "name": "linking",
           "kind": "property",
           "static": false,
           "signatures": [
-            "module: 'esm' | 'cjs'"
+            "linking: Resolvable<'package' | 'app'>"
           ],
-          "description": "The module system the harness is generated in, `'esm'` or `'cjs'`. When unset, it follows the\noutput path's extension or nearest `package.json` `type`.",
+          "description": "Whether addons and assets are linked into the harness `'package'`, the default, or left to the\n`'app'`, which links them with `stow.link()`.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -271,13 +942,44 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "offload: boolean | { addons?: boolean; assets?: boolean }"
+            "offload: Resolvable<boolean | { addons?: boolean; assets?: boolean }>"
           ],
           "description": "Whether native addons and/or assets are written out as sibling files instead of being inlined\ninto the bundle.",
           "deprecated": null,
           "params": [],
           "returns": null,
           "throws": [],
+          "members": []
+        },
+        {
+          "key": "Target.options",
+          "name": "options",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "options(given: TargetOptions): TargetOptions"
+          ],
+          "description": "Resolve the options of the target from those given. Without it, the target accepts no options.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "given",
+              "type": "TargetOptions",
+              "optional": false,
+              "default": null,
+              "description": "The options given through `StowOptions.targetOptions`."
+            }
+          ],
+          "returns": {
+            "type": "TargetOptions",
+            "description": null
+          },
+          "throws": [
+            {
+              "type": null,
+              "condition": "An option is unknown or has an invalid value."
+            }
+          ],
           "members": []
         }
       ]
@@ -288,23 +990,23 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface TargetContext {\n  bundleSpecifier: string\n  ipc: string\n  rpc: string\n  module: 'esm' | 'cjs'\n  client: RPCClient | null\n}"
+        "interface TargetContext<O extends LanguageOptions = LanguageOptions> {\n  bundle: string\n  client: string | null\n  resources: string | null\n  options: O\n}"
       ],
-      "description": "The context passed to a target's `generate()`, describing the bundle to embed and the RPC wiring\nto splice in.",
+      "description": "The context passed to a target language's `generate()`.",
       "deprecated": null,
       "params": [],
       "returns": null,
       "throws": [],
       "members": [
         {
-          "key": "TargetContext.bundleSpecifier",
-          "name": "bundleSpecifier",
+          "key": "TargetContext.bundle",
+          "name": "bundle",
           "kind": "property",
           "static": false,
           "signatures": [
-            "bundleSpecifier: string"
+            "bundle: string"
           ],
-          "description": "The module specifier the harness uses to load the bundle, relative to the harness itself.",
+          "description": "A reference from the harness to the bundle.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -317,9 +1019,9 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "client: RPCClient | null"
+            "client: string | null"
           ],
-          "description": "The resolved client RPC wiring to splice into the harness, or `null` when no client RPC was\nrequested.",
+          "description": "A reference from the harness to the generated RPC client module, or `null` when no client was\nrequested. The module exposes `attach(ipc, handlers)`, which binds the client to the IPC handle\nonce `handlers` has registered the handlers of the client, and the `Handlers` type.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -327,14 +1029,14 @@
           "members": []
         },
         {
-          "key": "TargetContext.ipc",
-          "name": "ipc",
+          "key": "TargetContext.options",
+          "name": "options",
           "kind": "property",
           "static": false,
           "signatures": [
-            "ipc: string"
+            "options: O"
           ],
-          "description": "The identifier bound to the IPC stream in generated harness code.",
+          "description": "The options resolved by the language, with any pinned by the target applied.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -342,14 +1044,128 @@
           "members": []
         },
         {
-          "key": "TargetContext.module",
-          "name": "module",
+          "key": "TargetContext.resources",
+          "name": "resources",
           "kind": "property",
           "static": false,
           "signatures": [
-            "module: 'esm' | 'cjs'"
+            "resources: string | null"
           ],
-          "description": "The module system the harness is generated in, `'esm'` or `'cjs'`.",
+          "description": "The application resource holding the assets of the bundle, which is then started as\n`<resources>.bundle`, or `null` if the assets are next to the bundle.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "TargetLanguage",
+      "name": "TargetLanguage",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface TargetLanguage<O extends LanguageOptions = LanguageOptions> {\n  options?: Partial<O>\n  generate(context: TargetContext<O>): Generated\n  link?(context: TargetLinkContext<O>): Linked\n}"
+      ],
+      "description": "A target's support for one host language.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "TargetLanguage.generate",
+          "name": "generate",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "generate(context: TargetContext<O>): Generated"
+          ],
+          "description": "Generate the harness for `context`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "context",
+              "type": "TargetContext<O>",
+              "optional": false,
+              "default": null,
+              "description": "The target context describing the bundle and RPC client to reference."
+            }
+          ],
+          "returns": {
+            "type": "Generated",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TargetLanguage.link",
+          "name": "link",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "link(context: TargetLinkContext<O>): Linked"
+          ],
+          "description": "Generate the module of a package of addons for `stow.link()`, which requires it.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "context",
+              "type": "TargetLinkContext<O>",
+              "optional": false,
+              "default": null,
+              "description": "The context describing the options to generate for."
+            }
+          ],
+          "returns": {
+            "type": "Linked",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TargetLanguage.options",
+          "name": "options",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "options: Partial<O>"
+          ],
+          "description": "Options pinned over those the language would otherwise resolve.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "TargetResolveContext",
+      "name": "TargetResolveContext",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface TargetResolveContext<O extends LanguageOptions = LanguageOptions> {\n  language: string\n  options: O\n  targetOptions: TargetOptions\n}"
+      ],
+      "description": "The context passed to the properties of a target that are functions.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "TargetResolveContext.language",
+          "name": "language",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "language: string"
+          ],
+          "description": "The name of the language of the harness.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -357,14 +1173,620 @@
           "members": []
         },
         {
-          "key": "TargetContext.rpc",
-          "name": "rpc",
+          "key": "TargetResolveContext.options",
+          "name": "options",
           "kind": "property",
           "static": false,
           "signatures": [
-            "rpc: string"
+            "options: O"
           ],
-          "description": "The identifier bound to the RPC client/server in generated harness code.",
+          "description": "The options resolved by the language, with any pinned by the target applied.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TargetResolveContext.targetOptions",
+          "name": "targetOptions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "targetOptions: TargetOptions"
+          ],
+          "description": "The options resolved by the target.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "TargetLinkContext",
+      "name": "TargetLinkContext",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface TargetLinkContext<O extends LanguageOptions = LanguageOptions> {\n  options: O\n}"
+      ],
+      "description": "The context passed to a target language's `link()`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "TargetLinkContext.options",
+          "name": "options",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "options: O"
+          ],
+          "description": "The options resolved by the language, with any pinned by the target applied.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "Linked",
+      "name": "Linked",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface Linked {\n  source?: string | null\n  dependencies?: Record<string, unknown>\n}"
+      ],
+      "description": "The module and dependencies of a package of linked addons.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Linked.dependencies",
+          "name": "dependencies",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "dependencies: Record<string, unknown>"
+          ],
+          "description": "The packages that load the addons, declared as for `Generated.dependencies`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Linked.source",
+          "name": "source",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "source: string | null"
+          ],
+          "description": "The module's source text, written in place of the harness, or unset for none.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "LinkOptions",
+      "name": "LinkOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface LinkOptions {\n  resolveRPC?(name: string): RPC\n  concurrency?: number\n  defaultType?: number\n  importType?: number\n  artifacts?: boolean\n  aliases?: Record<string, AliasableExtension>\n  deferUnresolved?: boolean\n  mount?: URL | string\n  builtinProtocol?: string\n  builtins?: Builtins\n  conditions?: Conditions\n  defer?: string[]\n  deferredProtocol?: string\n  directories?: boolean\n  engines?: Engines\n  extensions?: string[]\n  imports?: ImportsMap\n  matchedConditions?: string[]\n  resolutions?: ResolutionsMap\n  host?: string\n  hosts?: string[]\n  linkedProtocol?: string\n  language?: Language | LanguageName\n  languageOptions?: LanguageOptions\n  targetOptions?: TargetOptions\n  server?: RPC | RPCName\n  resolveTarget?(name: string): Target\n  resolveLanguage?(name: string): Language\n  readModule?: (url: URL) => Promise<Uint8Array | string | null>\n  listPrefix?: (url: URL) => AsyncIterable<URL>\n  resolveModule?: (url: URL) => Promise<URL>\n}"
+      ],
+      "description": "Options for `stow.link()`, which shape the graphs as for `stow()`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "LinkOptions.aliases",
+          "name": "aliases",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "aliases: Record<string, AliasableExtension>"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.artifacts",
+          "name": "artifacts",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "artifacts: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.builtinProtocol",
+          "name": "builtinProtocol",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "builtinProtocol: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.builtins",
+          "name": "builtins",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "builtins: Builtins"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.concurrency",
+          "name": "concurrency",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "concurrency: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.conditions",
+          "name": "conditions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "conditions: Conditions"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.defaultType",
+          "name": "defaultType",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "defaultType: number"
+          ],
+          "description": "The type to assume for a module that has no type of its own, such as one\nwith an ambiguous extension or a `data:` URL that no import reaches. See\n`constants` for possible values.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.defer",
+          "name": "defer",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "defer: string[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.deferredProtocol",
+          "name": "deferredProtocol",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "deferredProtocol: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.deferUnresolved",
+          "name": "deferUnresolved",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "deferUnresolved: boolean"
+          ],
+          "description": "Record a specifier that resolves nowhere under `deferredProtocol` rather\nthan throwing, leaving it for whoever names it to resolve when they get\nthere. Only for callers that reach a resolver again, such as a module\nsystem; a tool that only links wants the error.\n\nAn addon resolved for several `hosts` must resolve for each of the native\nones, as WebAssembly hosts are only a fallback. A host that it resolves\nnothing for is unresolved, and is deferred under its own conditions or\nelse fails with `ADDON_NOT_FOUND`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.directories",
+          "name": "directories",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "directories: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.engines",
+          "name": "engines",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "engines: Engines"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.extensions",
+          "name": "extensions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "extensions: string[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.host",
+          "name": "host",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "host: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.hosts",
+          "name": "hosts",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "hosts: string[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.imports",
+          "name": "imports",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "imports: ImportsMap"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.importType",
+          "name": "importType",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "importType: number"
+          ],
+          "description": "The type of the import that led to the entry. A JavaScript `data:` URL\ntakes its type from this: `REQUIRE` means a script and `IMPORT` a module,\nwhile `IMPORT | DYNAMIC` could mean either and so needs a `type`\nattribute.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.language",
+          "name": "language",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "language: Language | LanguageName"
+          ],
+          "description": "The language of the harness (or its name). Defaults to `javascript`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.languageOptions",
+          "name": "languageOptions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "languageOptions: LanguageOptions"
+          ],
+          "description": "The options given to the language, such as `{ module: 'cjs' }` for `javascript`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.linkedProtocol",
+          "name": "linkedProtocol",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "linkedProtocol: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.listPrefix",
+          "name": "listPrefix",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "listPrefix: (url: URL) => AsyncIterable<URL>"
+          ],
+          "description": "List the files under the prefix `url`. Defaults to listing the directory.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.matchedConditions",
+          "name": "matchedConditions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "matchedConditions: string[]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.mount",
+          "name": "mount",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "mount: URL | string"
+          ],
+          "description": "The URL the entry is mounted at when it is a bundle, for consumers that\nload it with an explicit mount. The addons and assets it declares resolve\nrelative to this. Defaults to the URL of the entry itself.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.readModule",
+          "name": "readModule",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "readModule: (url: URL) => Promise<Uint8Array | string | null>"
+          ],
+          "description": "Read the source of the module at `url`, or `null` if there is none, such as to stow modules\nthat aren't written to disk. Defaults to reading the file.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.resolutions",
+          "name": "resolutions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "resolutions: ResolutionsMap"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.resolveLanguage",
+          "name": "resolveLanguage",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "resolveLanguage(name: string): Language"
+          ],
+          "description": "Resolve a language name to a `Language`, overriding the default language resolution.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The language name to resolve to a `Language`."
+            }
+          ],
+          "returns": {
+            "type": "Language",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.resolveModule",
+          "name": "resolveModule",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "resolveModule: (url: URL) => Promise<URL>"
+          ],
+          "description": "Resolve the module at `url`. Defaults to its real path, following symbolic links.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.resolveRPC",
+          "name": "resolveRPC",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "resolveRPC(name: string): RPC"
+          ],
+          "description": "Resolve an RPC name to an `RPC`, for the server bound in the entry shims.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "RPC",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.resolveTarget",
+          "name": "resolveTarget",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "resolveTarget(name: string): Target"
+          ],
+          "description": "Resolve a target name to a `Target`, overriding the default target resolution.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The target name to resolve to a `Target`."
+            }
+          ],
+          "returns": {
+            "type": "Target",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.server",
+          "name": "server",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "server: RPC | RPCName"
+          ],
+          "description": "The RPC library (or its name) to bind in the bundle's entry shim.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "LinkOptions.targetOptions",
+          "name": "targetOptions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "targetOptions: TargetOptions"
+          ],
+          "description": "The options given to the target.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -379,37 +1801,26 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface RPC {\n  name: string\n  generate(context: RPCContext): Artifact[]\n}"
+        "interface RPC {\n  name: string\n  languages: Record<string, RPCLanguage>\n}"
       ],
-      "description": "An RPC library adapter that generates the wiring code spliced into a stowed bundle's harness or\nentry shim.",
+      "description": "An RPC library, describing how to bind it to the IPC handle in each language it supports.",
       "deprecated": null,
       "params": [],
       "returns": null,
       "throws": [],
       "members": [
         {
-          "key": "RPC.generate",
-          "name": "generate",
-          "kind": "method",
+          "key": "RPC.languages",
+          "name": "languages",
+          "kind": "property",
           "static": false,
           "signatures": [
-            "generate(context: RPCContext): Artifact[]"
+            "languages: Record<string, RPCLanguage>"
           ],
-          "description": "Generate the RPC wiring artifacts for `context`.",
+          "description": "The languages the RPC library supports, keyed by language name.",
           "deprecated": null,
-          "params": [
-            {
-              "name": "context",
-              "type": "RPCContext",
-              "optional": false,
-              "default": null,
-              "description": "The RPC context describing the identifiers, module system, and role to\ngenerate wiring for."
-            }
-          ],
-          "returns": {
-            "type": "Artifact[]",
-            "description": null
-          },
+          "params": [],
+          "returns": null,
           "throws": [],
           "members": []
         },
@@ -421,7 +1832,7 @@
           "signatures": [
             "name: string"
           ],
-          "description": "The RPC adapter's name.",
+          "description": "The RPC library's name.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -436,38 +1847,23 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface RPCContext {\n  ipc: string\n  rpc: string\n  module: 'esm' | 'cjs'\n  role: 'client' | 'server'\n}"
+        "interface RPCContext<O extends LanguageOptions = LanguageOptions> {\n  role: 'client' | 'server'\n  options: O\n}"
       ],
-      "description": "The context passed to an RPC adapter's `generate()`.",
+      "description": "The context passed to an RPC language's `generate()`.",
       "deprecated": null,
       "params": [],
       "returns": null,
       "throws": [],
       "members": [
         {
-          "key": "RPCContext.ipc",
-          "name": "ipc",
+          "key": "RPCContext.options",
+          "name": "options",
           "kind": "property",
           "static": false,
           "signatures": [
-            "ipc: string"
+            "options: O"
           ],
-          "description": "The identifier bound to the IPC stream in generated code.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "RPCContext.module",
-          "name": "module",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "module: 'esm' | 'cjs'"
-          ],
-          "description": "The module system the generated code targets, `'esm'` or `'cjs'`.",
+          "description": "The options resolved by the language.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -482,22 +1878,7 @@
           "signatures": [
             "role: 'client' | 'server'"
           ],
-          "description": "Whether the generated wiring is for the `'client'` (harness side) or `'server'` (bundle entry\nshim side).",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "RPCContext.rpc",
-          "name": "rpc",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "rpc: string"
-          ],
-          "description": "The identifier bound to the RPC client/server in generated code.",
+          "description": "Whether the module binds the `'client'` in the harness or the `'server'` in the bundle. The\nserver is always generated as JavaScript with `{ module: 'esm' }`.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -507,92 +1888,42 @@
       ]
     },
     {
-      "key": "RPCClient",
-      "name": "RPCClient",
+      "key": "RPCLanguage",
+      "name": "RPCLanguage",
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface RPCClient {\n  source: string\n  type: string\n}"
+        "interface RPCLanguage<O extends LanguageOptions = LanguageOptions> {\n  generate(context: RPCContext<O>): Generated\n}"
       ],
-      "description": "The resolved client RPC wiring, carrying both the runtime source to splice into the harness and\nthe type declaration to splice into the harness's `.d.ts`.",
+      "description": "An RPC library's support for one language.",
       "deprecated": null,
       "params": [],
       "returns": null,
       "throws": [],
       "members": [
         {
-          "key": "RPCClient.source",
-          "name": "source",
-          "kind": "property",
+          "key": "RPCLanguage.generate",
+          "name": "generate",
+          "kind": "method",
           "static": false,
           "signatures": [
-            "source: string"
+            "generate(context: RPCContext<O>): Generated"
           ],
-          "description": "The generated runtime source for the client RPC wiring.",
+          "description": "Generate a module exposing `attach(ipc, handlers)`, which calls `handlers` to register the\nhandlers of an RPC instance, binds it to the IPC handle, and returns it, and the `Handlers`\ntype. The handlers are registered first so that none of the requests and events of the bundle\narrive before them.",
           "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "RPCClient.type",
-          "name": "type",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "type: string"
+          "params": [
+            {
+              "name": "context",
+              "type": "RPCContext<O>",
+              "optional": false,
+              "default": null,
+              "description": "The RPC context describing the role and language options to generate for."
+            }
           ],
-          "description": "The generated type declaration for the client RPC wiring.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        }
-      ]
-    },
-    {
-      "key": "Artifact",
-      "name": "Artifact",
-      "kind": "interface",
-      "static": false,
-      "signatures": [
-        "interface Artifact {\n  extension?: string\n  source: string\n}"
-      ],
-      "description": "A single generated source artifact, such as a harness or a type declaration.",
-      "deprecated": null,
-      "params": [],
-      "returns": null,
-      "throws": [],
-      "members": [
-        {
-          "key": "Artifact.extension",
-          "name": "extension",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "extension: string"
-          ],
-          "description": "The file extension the artifact should be written with alongside the primary output, or unset\nto write it to the primary output path itself.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "Artifact.source",
-          "name": "source",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "source: string"
-          ],
-          "description": "The artifact's source text.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
+          "returns": {
+            "type": "Generated",
+            "description": null
+          },
           "throws": [],
           "members": []
         }
@@ -604,7 +1935,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface StowOptions {\n  client?: RPC | RPCName\n  server?: RPC | RPCName\n  resolveTarget?(name: string): Target\n  resolveRPC?(name: string): RPC\n  concurrency?: number\n  base?: URL | string\n  defaultType?: number\n  importType?: number\n  artifacts?: boolean\n  deferUnresolved?: boolean\n  mount?: URL | string\n  builtinProtocol?: string\n  builtins?: Builtins\n  conditions?: Conditions\n  defer?: string[]\n  deferredProtocol?: string\n  directories?: boolean\n  engines?: Engines\n  extensions?: string[]\n  imports?: ImportsMap\n  matchedConditions?: string[]\n  resolutions?: ResolutionsMap\n  host?: string\n  hosts?: string[]\n  linkedProtocol?: string\n}"
+        "interface StowOptions {\n  language?: Language | LanguageName\n  languageOptions?: LanguageOptions\n  targetOptions?: TargetOptions\n  client?: RPC | RPCName\n  server?: RPC | RPCName\n  resolveTarget?(name: string): Target\n  resolveRPC?(name: string): RPC\n  resolveLanguage?(name: string): Language\n  readModule?: (url: URL) => Promise<Uint8Array | string | null>\n  listPrefix?: (url: URL) => AsyncIterable<URL>\n  resolveModule?: (url: URL) => Promise<URL>\n  base?: URL | string\n  concurrency?: number\n  defaultType?: number\n  importType?: number\n  artifacts?: boolean\n  aliases?: Record<string, AliasableExtension>\n  deferUnresolved?: boolean\n  mount?: URL | string\n  builtinProtocol?: string\n  builtins?: Builtins\n  conditions?: Conditions\n  defer?: string[]\n  deferredProtocol?: string\n  directories?: boolean\n  engines?: Engines\n  extensions?: string[]\n  imports?: ImportsMap\n  matchedConditions?: string[]\n  resolutions?: ResolutionsMap\n  host?: string\n  hosts?: string[]\n  linkedProtocol?: string\n}"
       ],
       "description": "Options for `stow()`.",
       "deprecated": null,
@@ -612,6 +1943,21 @@
       "returns": null,
       "throws": [],
       "members": [
+        {
+          "key": "StowOptions.aliases",
+          "name": "aliases",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "aliases: Record<string, AliasableExtension>"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
         {
           "key": "StowOptions.artifacts",
           "name": "artifacts",
@@ -680,7 +2026,7 @@
           "signatures": [
             "client: RPC | RPCName"
           ],
-          "description": "The RPC library (or its name) to wire into the harness.",
+          "description": "The RPC library (or its name) to bind in the harness.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -883,6 +2229,36 @@
           "members": []
         },
         {
+          "key": "StowOptions.language",
+          "name": "language",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "language: Language | LanguageName"
+          ],
+          "description": "The language of the harness (or its name). Defaults to `javascript`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "StowOptions.languageOptions",
+          "name": "languageOptions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "languageOptions: LanguageOptions"
+          ],
+          "description": "The options given to the language, such as `{ module: 'cjs' }` for `javascript`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "StowOptions.linkedProtocol",
           "name": "linkedProtocol",
           "kind": "property",
@@ -891,6 +2267,21 @@
             "linkedProtocol: string"
           ],
           "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "StowOptions.listPrefix",
+          "name": "listPrefix",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "listPrefix: (url: URL) => AsyncIterable<URL>"
+          ],
+          "description": "List the files under the prefix `url`. Defaults to listing the directory.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -928,6 +2319,21 @@
           "members": []
         },
         {
+          "key": "StowOptions.readModule",
+          "name": "readModule",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "readModule: (url: URL) => Promise<Uint8Array | string | null>"
+          ],
+          "description": "Read the source of the module at `url`, or `null` if there is none, such as to stow modules\nthat aren't written to disk. Defaults to reading the file.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "StowOptions.resolutions",
           "name": "resolutions",
           "kind": "property",
@@ -936,6 +2342,47 @@
             "resolutions: ResolutionsMap"
           ],
           "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "StowOptions.resolveLanguage",
+          "name": "resolveLanguage",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "resolveLanguage(name: string): Language"
+          ],
+          "description": "Resolve a language name to a `Language`, overriding the default language resolution.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The language name to resolve to a `Language`."
+            }
+          ],
+          "returns": {
+            "type": "Language",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "StowOptions.resolveModule",
+          "name": "resolveModule",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "resolveModule: (url: URL) => Promise<URL>"
+          ],
+          "description": "Resolve the module at `url`. Defaults to its real path, following symbolic links.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -1002,7 +2449,22 @@
           "signatures": [
             "server: RPC | RPCName"
           ],
-          "description": "The RPC library (or its name) to wire into the bundle's entry shim.",
+          "description": "The RPC library (or its name) to bind in the bundle's entry shim.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "StowOptions.targetOptions",
+          "name": "targetOptions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "targetOptions: TargetOptions"
+          ],
+          "description": "The options given to the target.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -1017,7 +2479,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface StowArtifact {\n  url: URL\n}"
+        "interface StowArtifact {\n  url: URL\n  base?: URL\n}"
       ],
       "description": "An artifact written by `stow()`, yielded once its file has been written.",
       "deprecated": null,
@@ -1025,6 +2487,21 @@
       "returns": null,
       "throws": [],
       "members": [
+        {
+          "key": "StowArtifact.base",
+          "name": "base",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "base: URL"
+          ],
+          "description": "For the bundle, the directory that its modules are named relative to: the `base` option, or\nthe closest directory containing every bundled module.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
         {
           "key": "StowArtifact.url",
           "name": "url",
@@ -1043,474 +2520,6 @@
       ]
     }
   ],
-  "subpaths": [
-    {
-      "name": "bare-stow/protocol",
-      "exports": [
-        {
-          "key": "Protocol",
-          "name": "Protocol",
-          "kind": "class",
-          "static": false,
-          "signatures": [
-            "interface Protocol<E extends ProtocolEvents = ProtocolEvents> extends Duplex<E> {\n  send(type: string, payload?: object): Promise<void>\n}"
-          ],
-          "description": null,
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": [
-            {
-              "key": "Protocol.constructor",
-              "name": "Protocol",
-              "kind": "constructor",
-              "static": false,
-              "signatures": [
-                "new Protocol(stream: Duplex)"
-              ],
-              "description": "Attach a `Protocol` to the given underlying duplex byte `stream`.",
-              "deprecated": null,
-              "params": [
-                {
-                  "name": "stream",
-                  "type": "Duplex",
-                  "optional": false,
-                  "default": null,
-                  "description": "The underlying duplex byte stream to multiplex the control and user-data\nchannels over."
-                }
-              ],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "Protocol.send",
-              "name": "send",
-              "kind": "method",
-              "static": false,
-              "signatures": [
-                "send(type: string, payload?: object): Promise<void>"
-              ],
-              "description": "Send a control frame of `type` with an optional JSON-serializable `payload`.",
-              "deprecated": null,
-              "params": [
-                {
-                  "name": "type",
-                  "type": "string",
-                  "optional": false,
-                  "default": null,
-                  "description": "The control frame type, for example `'ready'`, `'exit'`, `'error'`, or\n`'terminate'`."
-                },
-                {
-                  "name": "payload",
-                  "type": "object",
-                  "optional": true,
-                  "default": null,
-                  "description": "An optional JSON-serializable payload carried with the frame."
-                }
-              ],
-              "returns": {
-                "type": "Promise<void>",
-                "description": null
-              },
-              "throws": [],
-              "members": []
-            }
-          ],
-          "inheritsBase": true
-        },
-        {
-          "key": "ProtocolEvents",
-          "name": "ProtocolEvents",
-          "kind": "interface",
-          "static": false,
-          "signatures": [
-            "interface ProtocolEvents {\n  ready: []\n  terminate: []\n  exit: [code: number]\n  data: [data: unknown]\n  end: []\n  readable: []\n  piping: [dest: Writable]\n  close: []\n  error: [err: Error]\n  drain: []\n  finish: []\n  pipe: [src: Readable]\n}"
-          ],
-          "description": "The events emitted by a `Protocol`, in addition to the standard duplex stream events.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": [
-            {
-              "key": "ProtocolEvents.close",
-              "name": "close",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "close: []"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ProtocolEvents.data",
-              "name": "data",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "data: [data: unknown]"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ProtocolEvents.drain",
-              "name": "drain",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "drain: []"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ProtocolEvents.end",
-              "name": "end",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "end: []"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ProtocolEvents.error",
-              "name": "error",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "error: [err: Error]"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ProtocolEvents.exit",
-              "name": "exit",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "exit: [code: number]"
-              ],
-              "description": "Emitted when the worker signals exit, carrying its exit `code`.",
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ProtocolEvents.finish",
-              "name": "finish",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "finish: []"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ProtocolEvents.pipe",
-              "name": "pipe",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "pipe: [src: Readable]"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ProtocolEvents.piping",
-              "name": "piping",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "piping: [dest: Writable]"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ProtocolEvents.readable",
-              "name": "readable",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "readable: []"
-              ],
-              "description": null,
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ProtocolEvents.ready",
-              "name": "ready",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "ready: []"
-              ],
-              "description": "Emitted when the worker signals it is ready.",
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "ProtocolEvents.terminate",
-              "name": "terminate",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "terminate: []"
-              ],
-              "description": "Emitted when a `terminate` control frame is received.",
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            }
-          ]
-        },
-        {
-          "key": "attach",
-          "name": "attach",
-          "kind": "function",
-          "static": false,
-          "signatures": [
-            "attach(stream: Duplex): Protocol"
-          ],
-          "description": "Attach a `Protocol` to `stream`, an underlying duplex byte stream.",
-          "deprecated": null,
-          "params": [
-            {
-              "name": "stream",
-              "type": "Duplex",
-              "optional": false,
-              "default": null,
-              "description": "Any duplex byte stream to attach the protocol to."
-            }
-          ],
-          "returns": {
-            "type": "Protocol",
-            "description": "A `Protocol` multiplexing control and user-data frames over `stream`."
-          },
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "CONTROL",
-          "name": "CONTROL",
-          "kind": "variable",
-          "static": false,
-          "signatures": [
-            "CONTROL: number"
-          ],
-          "description": "The frame type marker identifying a control-channel frame.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "USER",
-          "name": "USER",
-          "kind": "variable",
-          "static": false,
-          "signatures": [
-            "USER: number"
-          ],
-          "description": "The frame type marker identifying a user-data-channel frame.",
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        }
-      ]
-    },
-    {
-      "name": "bare-stow/host",
-      "exports": [
-        {
-          "key": "wrap",
-          "name": "wrap",
-          "kind": "function",
-          "static": false,
-          "signatures": [
-            "wrap(stream: Duplex): IPC"
-          ],
-          "description": "Wrap the host side of a stowed bundle's transport `stream`, returning an `IPC` handle with\nlifecycle helpers layered on top of the `Protocol`.",
-          "deprecated": null,
-          "params": [
-            {
-              "name": "stream",
-              "type": "Duplex",
-              "optional": false,
-              "default": null,
-              "description": "The host side of a stowed bundle's transport (any duplex byte stream)."
-            }
-          ],
-          "returns": {
-            "type": "IPC",
-            "description": "An `IPC` handle wrapping `stream`, with the `ready` promise and `terminate()` layered on\ntop of `Protocol`."
-          },
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "IPC",
-          "name": "IPC",
-          "kind": "class",
-          "static": false,
-          "signatures": [
-            "interface IPC {\n  readonly ready: Promise<void>\n  terminate(): Promise<number | undefined>\n  send(type: string, payload?: object): Promise<void>\n}"
-          ],
-          "description": null,
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": [
-            {
-              "key": "IPC.constructor",
-              "name": "IPC",
-              "kind": "constructor",
-              "static": false,
-              "signatures": [
-                "new IPC(stream: Duplex)"
-              ],
-              "description": "Wrap the host side of a stowed bundle's transport `stream`.",
-              "deprecated": null,
-              "params": [
-                {
-                  "name": "stream",
-                  "type": "Duplex",
-                  "optional": false,
-                  "default": null,
-                  "description": "The host side of a stowed bundle's transport (any duplex byte stream)."
-                }
-              ],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "IPC.ready",
-              "name": "ready",
-              "kind": "property",
-              "static": false,
-              "signatures": [
-                "ready: Promise<void>"
-              ],
-              "description": "A promise that resolves once the worker has signaled ready, and rejects if the worker errors\nbefore then.",
-              "deprecated": null,
-              "params": [],
-              "returns": null,
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "IPC.send",
-              "name": "send",
-              "kind": "method",
-              "static": false,
-              "signatures": [
-                "send(type: string, payload?: object): Promise<void>"
-              ],
-              "description": "Send a control frame of `type` with an optional JSON-serializable `payload`.",
-              "deprecated": null,
-              "params": [
-                {
-                  "name": "type",
-                  "type": "string",
-                  "optional": false,
-                  "default": null,
-                  "description": "The control frame type, for example `'ready'`, `'exit'`, `'error'`, or\n`'terminate'`."
-                },
-                {
-                  "name": "payload",
-                  "type": "object",
-                  "optional": true,
-                  "default": null,
-                  "description": "An optional JSON-serializable payload carried with the frame."
-                }
-              ],
-              "returns": {
-                "type": "Promise<void>",
-                "description": null
-              },
-              "throws": [],
-              "members": []
-            },
-            {
-              "key": "IPC.terminate",
-              "name": "terminate",
-              "kind": "method",
-              "static": false,
-              "signatures": [
-                "terminate(): Promise<number | undefined>"
-              ],
-              "description": "Send a `terminate` control frame to the worker and resolve with its exit code once it exits.",
-              "deprecated": null,
-              "params": [],
-              "returns": {
-                "type": "Promise<number | undefined>",
-                "description": "The worker's exit `code` once it exits."
-              },
-              "throws": [],
-              "members": []
-            }
-          ],
-          "inheritsBase": true
-        }
-      ]
-    }
-  ],
-  "generatedAt": "2026-11-04T19:54:41.019Z"
+  "subpaths": [],
+  "generatedAt": "2026-11-05T13:03:40.151Z"
 }

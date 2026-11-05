@@ -1,6 +1,6 @@
 {
   "name": "bare-pipe",
-  "version": "4.3.1",
+  "version": "4.4.0",
   "description": "Native I/O pipes for JavaScript",
   "repoUrl": "https://github.com/holepunchto/bare-pipe",
   "npmUrl": "https://www.npmjs.com/package/bare-pipe",
@@ -10,11 +10,15 @@
     "bare-events",
     "bare-stream"
   ],
-  "usage": "```js\nconst Pipe = require('bare-pipe')\n\nconst stdout = new Pipe(1)\n\nstdout.write('Hello world!\\n')\n```",
+  "usage": "```js\nconst Pipe = require('bare-pipe')\n\nconst [read, write] = Pipe.pipe()\n\nconst reader = new Pipe(read)\nconst writer = new Pipe(write)\n\nreader.on('data', (data) => console.log(data.toString()))\n\nwriter.end('Hello world!\\n')\n```",
   "extraSections": [
     {
       "heading": "IPC handle passing",
-      "body": "Pipes created with `ipc: true` can transfer libuv handles (named pipes, TCP sockets, UDP sockets) to a peer alongside the byte stream. The peer receives a `'handle'` event for each transferred handle, in arrival order, before the corresponding `'data'` event.\n\nSender:\n\n```js\nconst left = new Pipe(fd, { ipc: true })\nconst socket = tcp.createConnection(port)\n\nsocket.on('connect', () => {\n  left.write(Buffer.from('here'), socket)\n})\n```\n\nReceiver:\n\n```js\nconst right = new Pipe(fd, { ipc: true })\n\nright.on('handle', (type) => {\n  if (type === Pipe.constants.handle.TCP) {\n    const socket = new tcp.Socket()\n    right.accept(socket)\n    socket.on('data', console.log)\n  }\n})\n```\n\n### `IPCAcceptable` protocol\n\nAny object passed to `pipe.accept(target)` or `pipe.write(chunk, handle, ...)` must implement two well-known symbols:\n\n```js\nconst ipcHandle = Symbol.for('bare.ipc.handle')\nconst ipcAccept = Symbol.for('bare.ipc.accept')\n\nclass MyTarget {\n  get [ipcHandle]() {\n    return this._handle // An ArrayBuffer backing a libuv `uv_*_t` struct\n  }\n\n  [ipcAccept]() {\n    // Optional: Called synchronously after the handle has been transferred\n  }\n}\n```\n\n- `Symbol.for('bare.ipc.handle')` (required): A getter returning the underlying libuv handle (typically an `ArrayBuffer` whose first bytes are a `uv_stream_t` / `uv_udp_t`).\n- `Symbol.for('bare.ipc.accept')` (optional): A method invoked synchronously after the handle has been transferred. Use it to initialize per-handle state (e.g. address lookup).\n\n`Pipe`, `bare-tcp`'s `Socket`, and any compatible package implement this protocol natively, so a `bare-tcp` socket can be passed and received via `bare-pipe` IPC without any glue code.\n\nTypeScript users can import the `IPCAcceptable` interface from `bare-pipe` to type the protocol."
+      "body": "Pipes created with `ipc: true` can transfer libuv handles (named pipes, TCP sockets, UDP sockets) to a peer alongside the byte stream. The peer receives a `'handle'` event for each transferred handle, in arrival order, before the corresponding `'data'` event.\n\nHandle passing needs a bidirectional socket on both ends, so the descriptors must come from a socket pair, such as `bare-tcp`'s `socketpair()`. The descriptors from `Pipe.pipe()` are a unidirectional pipe and cannot carry handles.\n\nSender:\n\n```js\nconst left = new Pipe(fd, { ipc: true })\nconst socket = tcp.createConnection(port)\n\nsocket.on('connect', () => {\n  left.write(Buffer.from('here'), socket)\n})\n```\n\nReceiver:\n\n```js\nconst right = new Pipe(fd, { ipc: true })\n\nright.on('handle', (type) => {\n  if (type === Pipe.constants.handle.TCP) {\n    const socket = new tcp.Socket()\n    right.accept(socket)\n    socket.on('data', console.log)\n  }\n})\n```\n\n### `IPCAcceptable` protocol\n\nAny object passed to `pipe.accept(target)` or `pipe.write(chunk, handle, ...)` must implement two well-known symbols:\n\n```js\nconst ipcHandle = Symbol.for('bare.ipc.handle')\nconst ipcAccept = Symbol.for('bare.ipc.accept')\n\nclass MyTarget {\n  get [ipcHandle]() {\n    return this._handle // An ArrayBuffer backing a libuv `uv_*_t` struct\n  }\n\n  [ipcAccept]() {\n    // Optional: Called synchronously after the handle has been transferred\n  }\n}\n```\n\n- `Symbol.for('bare.ipc.handle')` (required): A getter returning the underlying libuv handle (typically an `ArrayBuffer` whose first bytes are a `uv_stream_t` / `uv_udp_t`).\n- `Symbol.for('bare.ipc.accept')` (optional): A method invoked synchronously after the handle has been transferred. Use it to initialize per-handle state (e.g. address lookup).\n\n`Pipe`, `bare-tcp`'s `Socket`, `bare-dgram`'s `Socket`, and any compatible package implement this protocol natively, so a `bare-tcp` socket can be passed and received via `bare-pipe` IPC without any glue code.\n\nTypeScript users can import the `IPCAcceptable` interface from `bare-pipe` to type the protocol."
+    },
+    {
+      "heading": "Local access control",
+      "body": "A server can restrict its pipe to the current user, and either end can ask the operating system who is on the other end.\n\n```js\nconst server = Pipe.createServer((pipe) => {\n  const credentials = pipe.remoteCredentials()\n\n  if (/* not valid credentials */) return pipe.destroy()\n\n  pipe.end('hello\\n')\n})\n\nserver.listen({ path, ownerOnly: true })\n```\n\nWhat counts as valid credentials is up to the application, such as a `uid` matching the current user on Unix or a `sid` matching it on Windows.\n\n`ownerOnly` applies the restriction before the server listens, and disconnects some clients as soon as they are accepted, without a `connection` event.\n\nOn Unix the socket file is made `0600`, without following a symbolic link that replaced it, which on Linux requires Linux 6.6 or later or a mounted `/proc`. A client whose user is neither that of the server nor root is disconnected, which the mode alone admits when the client may bypass it, such as a process with `CAP_DAC_OVERRIDE` on Linux.\n\nOn Windows the pipe gets a protected DACL that allows only the current user and `SYSTEM`, any client that opened the pipe before the DACL was applied is disconnected, and so is:\n\n- A remote client.\n- A client whose process runs as a user other than that of the server or `SYSTEM`. The DACL alone admits these when they connect while impersonating the current user.\n- A client running at a lower integrity level than the server, such as an unelevated process seen from an elevated server or a sandboxed low integrity process. The DACL alone admits these, as they run as the same user.\n- A client whose process the server may not query, such as one running as `SYSTEM` seen from an unelevated server, or one that has exited.\n\nAn elevated process of the current user is admitted by an unelevated server, as it runs as the same user at a higher integrity level.\n\nKeep the socket in a directory only the current user can write to, so that its path cannot be replaced. An abstract socket has no file to restrict, so `ownerOnly` is rejected for one.\n\n`pipe.remoteCredentials()` returns `{ pid, uid, gid, sid }`, with `null` for anything the platform cannot report. On Linux it reads `SO_PEERCRED`; on macOS and the BSDs `getpeereid()`, plus `LOCAL_PEERPID` on macOS. Read the credentials while the peer is connected: on macOS the process ID is no longer available once the peer has closed its end.\n\nOn Windows the process ID comes from the pipe. A remote peer reports no process ID or SID, since its process ID names a process on another machine.\n\nOn the server end, the SID is the user of the client process with that ID: the user the process runs as, not one it impersonated while connecting. It does not tell an elevated process from an unelevated one of the same user. The SID is `null`:\n\n- For a client that has exited, once nothing holds its process open. Read the credentials while the client is alive.\n- For a process created after the server accepted the connection, as it has reused the ID of a client that exited.\n- For a client process the server may not query, such as one running as `SYSTEM` seen from an unelevated server.\n- For a server end opened from a handle or received over IPC, as it may have connected at any time.\n\nThe check for a reused ID, which `ownerOnly` also relies on, has two gaps. A client that exits and has its ID reused while its connection waits to be accepted goes unnoticed, and so does a reuse after the system clock is set back, as process creation times are read from it.\n\nOn the client end, the process ID names the process that created the pipe, which may since have exited and had its ID reused. The SID is instead the owner of the pipe, which the kernel records when the server creates it, and which is the user of the server process, except for an elevated administrator, whose pipes are owned by the `Administrators` group (`S-1-5-32-544`). Only a process holding `SeRestorePrivilege`, such as an elevated administrator, can make another user the owner."
     }
   ],
   "exports": [
@@ -24,7 +28,7 @@
       "kind": "class",
       "static": false,
       "signatures": [
-        "interface Pipe<M extends PipeEvents = PipeEvents> extends Duplex<M> {\n  readonly connecting: boolean\n  readonly pending: boolean\n  readonly readyState: 'open' | 'opening' | 'readOnly' | 'writeOnly' | 'closed'\n  connect(path: string, opts?: PipeConnectOptions, onconnect?: () => void): this\n  open(fd: number, opts?: PipeOpenOptions, onconnect?: () => void): this\n  write(\n    chunk: Buffer | string,\n    encoding: BufferEncoding,\n    handle?: IPCAcceptable,\n    cb?: (err: Error | null) => void\n  ): boolean\n  accept<T extends IPCAcceptable>(target: T): T\n  ref(): this\n  unref(): this\n}"
+        "interface Pipe<M extends PipeEvents = PipeEvents> extends Duplex<M> {\n  readonly connecting: boolean\n  readonly pending: boolean\n  readonly readyState: 'open' | 'opening' | 'readOnly' | 'writeOnly' | 'closed'\n  connect(path: string, opts?: PipeConnectOptions, onconnect?: () => void): this\n  open(fd: number, opts?: PipeOpenOptions, onconnect?: () => void): this\n  write(\n    chunk: Buffer | string,\n    encoding: BufferEncoding,\n    handle?: IPCAcceptable,\n    cb?: (err: Error | null) => void\n  ): boolean\n  accept<T extends IPCAcceptable>(target: T): T\n  remoteCredentials(): PipeCredentials\n  ref(): this\n  unref(): this\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -356,6 +360,37 @@
           "members": []
         },
         {
+          "key": "Pipe.remoteCredentials",
+          "name": "remoteCredentials",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "remoteCredentials(): PipeCredentials"
+          ],
+          "description": "The operating system's account of the process on the other end of the pipe, read from the\nkernel rather than from anything the peer sent.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "PipeCredentials",
+            "description": "The peer's credentials."
+          },
+          "throws": [
+            {
+              "type": "PIPE_IS_CLOSED",
+              "condition": "the pipe is closed."
+            },
+            {
+              "type": "PIPE_NOT_CONNECTED",
+              "condition": "the pipe is not connected."
+            },
+            {
+              "type": "ENOTSOCK",
+              "condition": "the pipe is not a socket, on Unix."
+            }
+          ],
+          "members": []
+        },
+        {
           "key": "Pipe.unref",
           "name": "unref",
           "kind": "method",
@@ -676,6 +711,10 @@
             {
               "type": "SERVER_IS_CLOSED",
               "condition": "the server has been closed."
+            },
+            {
+              "type": "INVALID_ARGUMENT",
+              "condition": "`ownerOnly` is not a boolean, or was given for an abstract socket."
             }
           ],
           "members": []
@@ -803,6 +842,82 @@
             "path: string"
           ],
           "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "PipeCredentials",
+      "name": "PipeCredentials",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface PipeCredentials {\n  pid: number | null\n  uid: number | null\n  gid: number | null\n  sid: string | null\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PipeCredentials.gid",
+          "name": "gid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "gid: number | null"
+          ],
+          "description": "The peer's group ID on Unix; `null` on Windows.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeCredentials.pid",
+          "name": "pid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "pid: number | null"
+          ],
+          "description": "The peer's process ID, or `null` where the platform cannot report it.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeCredentials.sid",
+          "name": "sid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "sid: string | null"
+          ],
+          "description": "The peer's user SID on Windows: the user of the client process on the server end, and the owner\nof the pipe on the client end. `null` on Unix and wherever the peer cannot be identified.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeCredentials.uid",
+          "name": "uid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "uid: number | null"
+          ],
+          "description": "The peer's user ID on Unix; `null` on Windows.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -1181,7 +1296,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface PipeServerListenOptions {\n  backlog?: number\n  path?: string\n}"
+        "interface PipeServerListenOptions {\n  backlog?: number\n  ownerOnly?: boolean\n  path?: string\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -1198,6 +1313,21 @@
             "backlog: number"
           ],
           "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServerListenOptions.ownerOnly",
+          "name": "ownerOnly",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "ownerOnly: boolean"
+          ],
+          "description": "Restrict the pipe to the current user before any client can connect, and disconnect clients\nthat the restriction alone would admit. Not supported for an abstract socket.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -1356,5 +1486,5 @@
       ]
     }
   ],
-  "generatedAt": "2026-11-04T19:54:41.019Z"
+  "generatedAt": "2026-11-05T13:07:07.049Z"
 }

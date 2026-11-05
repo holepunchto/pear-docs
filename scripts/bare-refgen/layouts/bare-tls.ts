@@ -28,7 +28,7 @@ const layout: Layout = {
     },
     createConnection: {
       opts: "Options passed to both the underlying TCP socket and `TLSSocket`; `port` is required and `host` defaults to `'localhost'`.",
-      onconnect: 'Called when the connection is established.',
+      onconnect: "Called once the TLS handshake has completed (the socket's `'connect'` event). Before v3.2.0, it was called when the TCP connection opened, before the handshake.",
     },
     'errors.from': {
       err: 'The error to convert.',
@@ -41,6 +41,7 @@ const layout: Layout = {
     TLSSocket: [
       '`TypeError` — `host` is missing for a client socket while `rejectUnauthorized` is `true`.',
       '`RangeError` — an ALPN protocol name is empty or longer than 255 bytes.',
+      '`TypeError` — `host` is set for a client socket, ends in a numeric label, and is not a canonical dotted-decimal IPv4 address, such as `127.1` or `0x7f.0.0.1`. Added in v3.2.0.',
     ],
   },
 };
