@@ -10,12 +10,12 @@ schemaType: APIReference
 
 The [`pear-ci` GitHub Action](https://github.com/holepunchto/actions/blob/main/pear-ci/action.yml) stages a directory from your repository into a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive) on every run, producing a stable `pear://` link your app can use as its [`upgrade`](/pear/reference/pear/configuration) field. For the task-oriented setup, see [Publish with GitHub Actions](/pear/how-to/operate-an-app/github-actions/publish-with-github-actions).
 
-It is a composite action that installs the [`pear-ci`](https://www.npmjs.com/package/pear-ci) npm tool, fetches the committed snapshot from `main`, stages, and commits the updated snapshot back.
+It is a composite action that installs the [`pear-ci`](https://www.npmjs.com/package/pear-ci) npm tool, fetches the committed snapshot from `main`, stages, and commits the updated snapshot back. Each run needs a peer that holds the drive, as [Peers and timeouts](#peers-and-timeouts) describes.
 
 ## Usage
 
 ```yaml
-- uses: holepunchto/actions/pear-ci@main
+- uses: holepunchto/actions/pear-ci@v1
   with:
     primary-key: ${{ secrets.PEAR_PRIMARY_KEY }}
     namespace: my-app
@@ -52,9 +52,24 @@ The action rejects malformed inputs before staging:
 
 ## Snapshot commits
 
-The action reads `ci/snapshot.json` from `main` before staging and writes it back afterward. The snapshot records each core's length so subsequent runs sync only what changed. When `dry-run` is `true`, no commit is made. If pushing the snapshot directly to `main` fails, the action pushes a `pear-ci/snapshot-<run-id>` branch and opens a PR, exposing its URL via the `pr-url` output.
+The action reads `ci/snapshot.json` from a branch named `main` before staging and writes it back to `main` afterward. The action hard-codes the branch name. The snapshot records each core's length so subsequent runs sync only what changed. When `dry-run` is `true`, no commit is made. If pushing the snapshot directly to `main` fails, the action pushes a `pear-ci/snapshot-<run-id>` branch and opens a PR, exposing its URL via the `pr-url` output.
+
+The file must exist before the first run. Commit it to `main` containing an empty list, `[]`. Without it, the **Fetch snapshot from main** step fails with `gh: Not Found (HTTP 404)`.
 
 Grant the workflow `contents: write` (and `pull-requests: write` if you want the PR fallback) so the snapshot commit can land.
+
+<Callout type="warning">
+Never reset `ci/snapshot.json` to `[]` after the first release. A run with an empty snapshot against a drive that already has releases writes a second history under the same key: `pear-ci` 0.1.2 logs `[hypercore] conflict detected`, still exits with code 0, and the seeder's view of the drive drops to length 0. `pear-ci` 0.1.2 can't recover from this state.
+</Callout>
+
+## Peers and timeouts
+
+A runner starts with no copy of the drive, so each run relies on a peer that holds it, such as an always-on machine running [`pear seed`](/pear/reference/pear/cli#pear-seed-link) on the drive's link. `pear-ci` waits on that peer twice, with no time limit:
+
+- **Before staging**, until it has synced each core up to its length in the snapshot. It logs `syncing <key> to length <n>` for each core, dry runs included. If a peer holds more of a core than the snapshot records, the run fails with `Core <key> length (<n>) is higher than length in snapshot.json`.
+- **After staging**, until a connected peer has downloaded every new block. It logs `waiting synced remote peers for key <drive-key>`, then `all remote peers synced`.
+
+With no peer online, a run waits at one of these lines until the job's [`timeout-minutes`](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idtimeout-minutes) ends it, which defaults to 360 minutes. Set `timeout-minutes` on the job, well over the time your largest release takes to upload. If a timeout or a cancel stops a run partway through its upload, the seeder records the release's new length but misses blocks that only the stopped runner had, and `pear-ci` 0.1.2 can't recover from this state: later runs fail with the same length error, and a snapshot edited to the new length leaves the run waiting at `waiting synced remote peers`.
 
 ## Underlying CLI
 
