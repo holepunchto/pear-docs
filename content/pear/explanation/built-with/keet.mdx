@@ -1,0 +1,40 @@
+---
+title: Keet
+description: How Keet, Holepunch's end-to-end encrypted peer-to-peer chat, maps onto the Pear stack—identity keys, peer relaying, the Bare worker split, and per-OS distribution.
+seoTitle: "Keet: How a Production Chat App Uses Pear"
+docType: explanation
+product: pear
+schemaType: WebPage
+---
+
+[Keet](https://keet.io) is Holepunch's peer-to-peer chat application: end-to-end encrypted messaging, audio and video calls, and direct file transfer with no size limit, between participants who connect to each other directly. It is the application Pear was built to ship, and the largest Pear app in production. It runs on macOS, Windows, and Linux, and on iOS and Android.
+
+Keet's source is not public. This page describes what the docs and Keet's own materials establish about how it is built, and points at the pages that teach the same techniques. Where a detail is not documented, it isn't claimed here.
+
+## What Keet is
+
+- **Identity without accounts.** A user is a 24-word seed phrase, not a phone number or email. Devices are added by scanning a QR code or opening a sync link from a device that is already signed in.
+- **Direct connections.** Messages, calls, and files travel between participants' devices. Keet's materials describe no message storage and no metadata collection on Holepunch's side, because there is no Holepunch server in the path.
+- **One core, several hosts.** The docs describe "Keet's identical experience across phones, laptops, and terminals: one Pear-end, three UIs"—the same peer-to-peer core behind a different shell on each platform.
+
+## How Keet uses the stack
+
+| Layer | What Keet uses | Where to read about it |
+| --- | --- | --- |
+| Identity | Portable identity keys derived from a mnemonic, with a per-device key attested by the root identity. Published as the `keet-identity-key` module. | [Create a portable identity with Keet identity keys](/p2p/how-to/manage-identity/create-a-portable-identity-with-keet-identity-key), [Add Keet identity to a chat app](/p2p/how-to/manage-identity/add-keet-identity-to-a-chat-app) |
+| Connectivity | HyperDHT for finding peers by key and hole-punching through NATs, with Keet's own relaying system on top: other call participants can serve as relays, so connectivity gets stronger as a call grows. | [Connect two peers by key with HyperDHT](/p2p/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht), [Peer-to-peer, demystified](/p2p/explanation/peer-to-peer-demystified) |
+| App shape | The renderer ↔ main ↔ Bare worker split behind a preload bridge—the shape the `hello-pear-electron` template ships. Peer-to-peer code never runs in the renderer. | [Pear desktop application architecture](/pear/explanation/pear-desktop-architecture), [Workers](/pear/explanation/workers) |
+| Distribution | Signed per-OS desktop installers, including a Flathub package; the docs' app-store how-to uses Keet's Flathub manifest as its worked example. Mobile ships through the App Store and Google Play. | [Submit to app stores](/pear/how-to/operate-an-app/build-and-package/submit-to-app-stores), [Build desktop distributables](/pear/how-to/operate-an-app/build-and-package/build-desktop-distributables) |
+| Runtime | Pear Runtime on Bare, so the same JavaScript core runs on every platform Keet supports. | [Runtime and languages](/pear/explanation/runtime-and-languages), [One core, many platforms](/bare/explanation/bare-on-native) |
+
+## What to learn from it
+
+Keet is the proof that the pattern in these docs holds at scale: an end-to-end encrypted, multi-platform, real-time application with calls and large file transfer, and no server that Holepunch runs for it. The design choices worth copying are the ones that fall out of that constraint:
+
+- **Identity is a key, not a row in a database.** Everything that would normally need an accounts service—login, device linking, "who sent this"—becomes signing and verification with a portable key. The [identity how-tos](/p2p/how-to/manage-identity) build exactly this for a chat app.
+- **Connectivity is a property of the group.** Instead of a TURN server Keet turns participants into relays. The [HyperDHT how-to](/p2p/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht) explains the connection model this is built on.
+- **The UI is disposable, the core is not.** Keeping the peer-to-peer core in a Bare worker is what lets one codebase ship as an Electron app and a mobile app. [Workers](/pear/explanation/workers) argues for where that boundary should sit.
+
+## Build something like it
+
+Compare Keet with [PearPass](/pear/explanation/built-with/pearpass), the open-source app in [Built with Pear](/pear/explanation/built-with), to see the same core/host split under a very different product. Then [Getting started](/pear/getting-started) builds a chat app with the same shape: a Bare worker that owns Hyperswarm and an Autobase room, an Electron renderer behind a preload bridge, and a release over the air. The how-tos it points to—[blind peering](/p2p/how-to/blind-peering), [Keet identity](/p2p/how-to/manage-identity/add-keet-identity-to-a-chat-app), and [streaming media](/p2p/how-to/stream-and-share-media)—each add one more of Keet's capabilities to that app.
