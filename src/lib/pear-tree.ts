@@ -101,9 +101,10 @@ export const pearTree: Node[] = [
       {
         type: 'folder',
         name: 'Built with Pear',
+        index: { type: 'page', name: 'Built with Pear', url: '/pear/explanation/built-with' },
         children: [
-          { type: 'page', name: 'Keet', url: 'https://keet.io', external: true },
-          { type: 'page', name: 'PearPass', url: 'https://pass.pears.com', external: true },
+          { type: 'page', name: 'Keet', url: '/pear/explanation/built-with/keet' },
+          { type: 'page', name: 'PearPass', url: '/pear/explanation/built-with/pearpass' },
         ],
       },
     ],
