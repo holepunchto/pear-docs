@@ -13,7 +13,7 @@ repository.
 ## Why this directory exists
 
 `bin.mjs` and `app.js` back the code imports in
-`content/p2p/getting-started/from-a-template/start-from-hello-pear-daemon.mdx`, via
+`content/pear/getting-started/from-a-template/start-from-hello-pear-daemon.mdx`, via
 `file=<rootDir>/examples/getting-started/hello-pear-daemon/…#L…`. Keeping a real copy of the
 repository here means the documented code is the code that actually runs, rather than
 hand-transcribed excerpts that drift silently.

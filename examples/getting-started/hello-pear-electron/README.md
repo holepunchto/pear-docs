@@ -5,7 +5,7 @@ branch **`main`**, at commit `016be67`
 ([tree](https://github.com/holepunchto/hello-pear-electron/tree/016be67941fb8e30cbd22a411d6a3d4ea5f29516)).
 
 `renderer/app.js` and `workers/main.js` back the code imports in
-`content/p2p/getting-started/from-a-template/start-from-hello-pear-electron.mdx`
+`content/pear/getting-started/from-a-template/start-from-hello-pear-electron.mdx`
 (via `file=<rootDir>/examples/getting-started/hello-pear-electron/…#L…`). `workers/main.js` is also
 imported by `content/_snippets/_hello-pear-worker-source-callout.mdx` and
 `content/pear/how-to/operate-an-app/integrate-pear-ota/electron.mdx`.
