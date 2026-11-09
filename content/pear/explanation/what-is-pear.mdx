@@ -1,0 +1,68 @@
+---
+title: What is Pear?
+description: Pear in plain language—what the platform is, what it adds on top of the peer-to-peer building blocks, how an app reaches its users without a server, and what Pear deliberately is not.
+seoTitle: "What is Pear? The Peer-to-Peer App Platform Explained"
+docType: explanation
+product: pear
+schemaType: WebPage
+---
+
+Pear is a platform for building, distributing, and updating applications that run peer-to-peer. A Pear app is an ordinary desktop, mobile, or terminal program—Electron, React Native, or a standalone [Bare](/bare) binary—whose peer-to-peer core finds other users directly, stores data on the user's own device, and fetches its own updates from the people already running it. There is no server to host, scale, or pay for, because there is no server.
+
+This page is the plain-language answer to "what is this, and what does it do for me?". It doesn't tell you how to do anything—[Getting started](/pear/getting-started) does that—and it doesn't list APIs, which is what [Reference](/pear/reference) is for.
+
+## The problem Pear solves
+
+Most "peer-to-peer" is only half true. The data may move between peers, but the app itself still arrives from an app store or a download server, updates still come from a CDN, and discovery still runs through someone's infrastructure. Each of those is a server someone has to keep running and a point where the app can be taken down, altered, or made to phone home.
+
+The peer-to-peer building blocks—[Hypercore](/p2p/reference/building-blocks/hypercore), [Hyperswarm](/p2p/reference/building-blocks/hyperswarm), [Autobase](/p2p/reference/building-blocks/autobase), and the rest, documented on the [P2P tab](/p2p)—solve the data half: append-only logs that replicate between peers, a DHT for finding them, and multi-writer databases on top. They are ordinary JavaScript modules and work in any Node.js or Bare program.
+
+Pear solves the other half. It treats the *application* as just another piece of replicated data. Your build is written into a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive), addressed by a `pear://` link that is really a public key, and seeded by whoever has it—you, your CI, and every user running the app. New versions reach users the same way a new chat message does: a peer notices the drive has grown and pulls the difference.
+
+## What's in the box
+
+Three pieces, which you'll meet in roughly this order:
+
+- **The `pear` CLI**—the operator's tool. [`pear touch`](/pear/reference/pear/cli#pear-touch) mints a link, [`pear stage`](/pear/reference/pear/cli#pear-stage) writes a build into the drive behind it, [`pear seed`](/pear/reference/pear/cli#pear-seed) keeps it available, [`pear provision`](/pear/reference/pear/cli#pear-provision) promotes a staged version to a leaner release drive, and `pear multisig` requires a quorum of signers before production changes. [Release pipeline](/pear/explanation/deployment-releasing-apps-p2p) explains why those steps are separate.
+- **Pear OTA, the [`pear-runtime`](/pear/reference/pear/runtime) library**—the piece that goes *inside* your app. It watches the drive behind the app's `upgrade` link, downloads new versions, tells your UI when one is ready, manages the app's peer-to-peer storage, and spawns Bare workers for your peer-to-peer code. You `npm install` it like any dependency.
+- **The `pear-*` modules**—host integrations and services around the runtime: [`pear-electron`](/pear/reference/modules/pear-modules) for desktop, [`pear-mobile`](/pear/reference/pear/mobile) for React Native and Expo, plus the bridges, aliases, and IPC helpers the [module catalog](/pear/reference/modules/pear-modules) lists.
+
+Pear is built *on* the building blocks and on Bare. It doesn't replace or wrap them; your app imports Hyperswarm directly, and Pear's own distribution runs on the same Hypercore and Hyperdrive you use for your data. [How the stack fits together](/p2p/explanation/how-the-stack-fits-together) draws the layers.
+
+## What a Pear app looks like
+
+The recommended shape, and the one the official [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) template ships, splits an app in two:
+
+- A portable **core** that runs in a Bare worker: the Hyperswarm connections, the Corestore, the Autobase room, and the `pear-runtime` updater. It never touches a DOM or a native view, so it is the same code on every platform.
+- A thin **UI host** that changes per platform: Electron on desktop, a native shell with a Bare worklet on mobile, nothing but a terminal for a CLI. It talks to the core over one IPC stream.
+
+That is why one Pear app can ship on macOS, Windows, Linux, iOS, and Android from one codebase: only the host swaps. [Pear desktop application architecture](/pear/explanation/pear-desktop-architecture), [Pear mobile application architecture](/pear/explanation/pear-mobile-architecture), and [Workers](/pear/explanation/workers) each take one piece of that picture apart.
+
+## How an app reaches its users
+
+Day one, a user installs your app the way they install anything else—a signed installer, an app store, a `pear install` link, or a binary you hand them. Pear doesn't change first install.
+
+From then on, Pear owns updates. The installed app carries its `pear://` upgrade link. Its updater joins the swarm for that link, finds peers that have the drive—your seeder, your CI, other users—and downloads new versions as they appear. When a download is complete the runtime emits an event and your UI decides when to apply it. [Storage and distribution](/pear/explanation/storage-and-distribution) covers where all of this lands on disk and what "keep `pear seed` running" actually means; [Availability and distribution](/pear/explanation/availability-and-blind-peering) covers keeping a drive available when you're offline.
+
+Because a `pear://` link is a key, not an address, nothing about this depends on a domain, a certificate authority, or a company staying in business. Anyone holding the drive can serve it; only holders of the signing keys can change it.
+
+## What Pear is not
+
+- **Not a UI framework.** Pear has no opinion about React, Svelte, Tailwind, or plain HTML. The renderer is yours.
+- **Not a blockchain.** There is no token, no global ledger, and no consensus. Hypercore is a signed append-only log owned by one writer; Autobase merges several of them.
+- **Not a hosting service.** Nothing runs on Holepunch's machines on your behalf. Availability comes from peers you run or your users run.
+- **Not required for peer-to-peer.** The building blocks work without Pear. Reach for Pear when you want to ship and update an app, not just move data.
+
+## How Pear got here
+
+Pear v1 and v2 shipped a single vendor-signed runtime that launched every app with `pear run` and exposed an ambient `Pear` global. It made shipping trivial—no OS signing keys, no native compiling—but one shared runtime binary couldn't be tested against every app, confused OS update mechanisms and antivirus software, and made branding glitchy. Pear v3 removed `pear run` and moved the runtime into an embeddable library, [`pear-runtime`](/pear/reference/pear/runtime), that lives inside your own process. The CLI kept the deployment commands. If you have an older app, [Migrate from pear run to Pear OTA](/pear/how-to/operate-an-app/migration) is the path across; [Runtime and languages](/pear/explanation/runtime-and-languages) has the fuller reasoning.
+
+## Read next
+
+In this order, if Pear is new to you:
+
+1. [How the stack fits together](/p2p/explanation/how-the-stack-fits-together)—the one diagram that places Pear, P2P, and Bare.
+2. [Pear desktop application architecture](/pear/explanation/pear-desktop-architecture)—what a real app's processes and workers look like.
+3. [Release pipeline](/pear/explanation/deployment-releasing-apps-p2p)—how a build becomes a release that your users receive.
+
+Then go build one: [Getting started](/pear/getting-started).
