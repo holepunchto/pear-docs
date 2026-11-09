@@ -5,7 +5,7 @@ branch **`main`**, at commit `972e44a`
 ([tree](https://github.com/holepunchto/hello-pear-react-native/tree/972e44ab06277537ca961d69ef3ce62ee570887e)).
 
 `src/App.tsx` backs the code imports in
-`content/p2p/getting-started/from-a-template/start-from-hello-pear-react-native.mdx` and
+`content/pear/getting-started/from-a-template/start-from-hello-pear-react-native.mdx` and
 `content/pear/how-to/operate-an-app/integrate-pear-ota/mobile.mdx`
 (via `file=<rootDir>/examples/getting-started/hello-pear-react-native/src/App.tsx#L…`).
 
