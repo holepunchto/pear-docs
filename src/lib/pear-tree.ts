@@ -7,13 +7,10 @@ import type { Node } from 'fumadocs-core/page-tree';
  * `bare-tree.ts` and `p2p-tree.ts`; all three split off the single
  * `customTree` that used to live in `custom-tree.ts`. See
  * docs/plans/PEAR-BARE-SPLIT-PITCH.md for the original 2-product split this
- * backs. Pear narrowed further in a follow-up split: the whole
- * `build-a-peer-to-peer-chat`/`from-a-template` Getting Started tutorial
- * moved to `p2p-tree.ts` (it teaches P2P building blocks, not CLI
- * mechanics), leaving Pear's own Getting Started a short "install +
- * ship an existing app" page. Pages tagged `product: shared` live here too
- * — no separate shared directory — with an `external: true` cross-link from
- * bare-tree.ts/p2p-tree.ts where those trees need to reach them.
+ * backs. Pages tagged `product: shared` live
+ * here too — no separate shared directory — with an `external: true`
+ * cross-link from bare-tree.ts/p2p-tree.ts where those trees need to reach
+ * them.
  *
  * Conventions (same as the pre-split tree):
  *   - Order goes simple → complex.
@@ -25,9 +22,73 @@ import type { Node } from 'fumadocs-core/page-tree';
 export const pearTree: Node[] = [
   { type: 'page', name: 'Pear', url: '/' },
   {
-    type: 'page',
+    type: 'folder',
     name: 'Getting Started',
-    url: '/pear/getting-started',
+    index: { type: 'page', name: 'Getting Started', url: '/pear/getting-started' },
+    children: [
+      {
+        type: 'folder',
+        name: 'Build a peer-to-peer chat',
+        children: [
+          {
+            type: 'page',
+            name: 'Build a peer-to-peer chat',
+            url: '/pear/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat',
+          },
+          {
+            type: 'page',
+            name: 'Reshape into a production app',
+            url: '/pear/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app',
+          },
+          {
+            type: 'page',
+            name: 'Ship your app',
+            url: '/pear/getting-started/build-a-peer-to-peer-chat/ship',
+          },
+          {
+            type: 'page',
+            name: 'Deploy over-the-air updates',
+            url: '/pear/getting-started/build-a-peer-to-peer-chat/update',
+          },
+        ],
+      },
+      {
+        type: 'folder',
+        name: 'Start from a template',
+        index: {
+          type: 'page',
+          name: 'Start from a template',
+          url: '/pear/getting-started/from-a-template',
+        },
+        children: [
+          {
+            type: 'page',
+            name: 'Start a desktop app from the hello-pear-electron template',
+            url: '/pear/getting-started/from-a-template/start-from-hello-pear-electron',
+          },
+          {
+            type: 'page',
+            name: 'Start a terminal app from the hello-pear-bare template',
+            url: '/pear/getting-started/from-a-template/start-from-hello-pear-bare',
+          },
+          {
+            type: 'page',
+            name: 'Start a short-lived CLI from the hello-pear-daemon template',
+            url: '/pear/getting-started/from-a-template/start-from-hello-pear-daemon',
+          },
+          {
+            type: 'page',
+            name: 'Start an on-device AI terminal app from the hello-pear-qvac-tui template',
+            url: '/pear/getting-started/from-a-template/start-from-hello-pear-qvac-tui',
+          },
+          {
+            type: 'page',
+            name: 'Start a mobile app from the hello-pear-react-native template',
+            url: '/pear/getting-started/from-a-template/start-from-hello-pear-react-native',
+          },
+        ],
+      },
+    ],
   },
   {
     type: 'folder',
