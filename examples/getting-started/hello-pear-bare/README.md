@@ -5,7 +5,7 @@ branch **`main`**, at commit `b28bf7a`
 ([tree](https://github.com/holepunchto/hello-pear-bare/tree/b28bf7a1285e9f37c047b5809ab7fcd2361ee6f1)).
 
 `bin.mjs` and `app.js` back the code imports in
-`content/p2p/getting-started/from-a-template/start-from-hello-pear-bare.mdx` (via
+`content/pear/getting-started/from-a-template/start-from-hello-pear-bare.mdx` (via
 `file=<rootDir>/examples/getting-started/hello-pear-bare/…#L…`).
 
 Unlike the `hello-pear-electron` snapshot, this is a **complete, runnable app**. It is booted by the

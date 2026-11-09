@@ -7,10 +7,13 @@ import type { Node } from 'fumadocs-core/page-tree';
  * single `customTree` (`custom-tree.ts`, retired in the original 2-product
  * split). P2P was carved out of Bare in a follow-up split: the peer-to-peer
  * building blocks (Hypercore, Hyperswarm, Autobase, Hyperbee, Hyperdrive,
- * HyperDHT), their helpers/tools, their how-tos, and the whole Getting
- * Started tutorial moved here — they're independent `holepunchto` repos,
- * not part of Bare's own codebase, and most of their worked examples build
- * a Pear (Electron) app, not a Bare-standalone one.
+ * HyperDHT), their helpers/tools, and their how-tos moved here — they're
+ * independent `holepunchto` repos, not part of Bare's own codebase. The
+ * chat tutorial and hello-pear-* templates came along at first and have
+ * since gone back to `pear-tree.ts` (they embed pear-runtime and end in a
+ * pear CLI release); P2P's Getting Started is now a single page that
+ * connects and replicates with the building blocks alone and points at
+ * Pear for shipping.
  *
  * Troubleshooting is P2P's own page (content/p2p/how-to/troubleshooting.mdx),
  * not shared — each product now has its own troubleshooting guide, cross-
@@ -21,61 +24,9 @@ import type { Node } from 'fumadocs-core/page-tree';
 export const p2pTree: Node[] = [
   { type: 'page', name: 'P2P', url: '/p2p' },
   {
-    type: 'folder',
+    type: 'page',
     name: 'Getting Started',
-    index: {
-      type: 'page',
-      name: 'Introduction',
-      url: '/p2p/getting-started',
-    },
-    children: [
-      {
-        type: 'folder',
-        name: 'Build a peer-to-peer chat',
-        children: [
-          { type: 'page', name: 'Introduction', url: '/p2p/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat' },
-          { type: 'page', name: 'Reshape into a production app', url: '/p2p/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app' },
-          { type: 'page', name: 'Ship your app', url: '/p2p/getting-started/build-a-peer-to-peer-chat/ship' },
-          { type: 'page', name: 'Deploy over-the-air updates', url: '/p2p/getting-started/build-a-peer-to-peer-chat/update' },
-        ],
-      },
-      {
-        type: 'folder',
-        name: 'Start from a template',
-        index: {
-          type: 'page',
-          name: 'Start from a template',
-          url: '/p2p/getting-started/from-a-template',
-        },
-        children: [
-          {
-            type: 'page',
-            name: 'Start a desktop app from the hello-pear-electron template',
-            url: '/p2p/getting-started/from-a-template/start-from-hello-pear-electron',
-          },
-          {
-            type: 'page',
-            name: 'Start a terminal app from the hello-pear-bare template',
-            url: '/p2p/getting-started/from-a-template/start-from-hello-pear-bare',
-          },
-          {
-            type: 'page',
-            name: 'Start a short-lived CLI from the hello-pear-daemon template',
-            url: '/p2p/getting-started/from-a-template/start-from-hello-pear-daemon',
-          },
-          {
-            type: 'page',
-            name: 'Start an on-device AI terminal app from the hello-pear-qvac-tui template',
-            url: '/p2p/getting-started/from-a-template/start-from-hello-pear-qvac-tui',
-          },
-          {
-            type: 'page',
-            name: 'Start a mobile app from the hello-pear-react-native template',
-            url: '/p2p/getting-started/from-a-template/start-from-hello-pear-react-native',
-          },
-        ],
-      },
-    ],
+    url: '/p2p/getting-started',
   },
   {
     type: 'folder',

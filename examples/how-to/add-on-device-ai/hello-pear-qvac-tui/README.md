@@ -7,7 +7,7 @@ Vendored from [holepunchto/hello-pear-qvac-tui](https://github.com/holepunchto/h
 `bin.mjs`, `app.js`, `lib/inference.js`, and `workers/qvac.js` back the code imports in
 `content/bare/how-to/add-on-device-ai/build-a-local-ai-chat-tui-with-qvac.mdx`, and `bin.mjs`,
 `lib/inference.js`, and `package.json` back the ones in
-`content/p2p/getting-started/from-a-template/start-from-hello-pear-qvac-tui.mdx` (via
+`content/pear/getting-started/from-a-template/start-from-hello-pear-qvac-tui.mdx` (via
 `file=<rootDir>/examples/how-to/add-on-device-ai/hello-pear-qvac-tui/…#L…`). A refresh has to
 re-check the `#L…` ranges in both pages.
 
