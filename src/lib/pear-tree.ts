@@ -40,6 +40,11 @@ export const pearTree: Node[] = [
         children: [
           {
             type: 'page',
+            name: 'What is Pear?',
+            url: '/pear/explanation/what-is-pear',
+          },
+          {
+            type: 'page',
             name: 'How the stack fits together →',
             url: '/p2p/explanation/how-the-stack-fits-together',
             external: true,
