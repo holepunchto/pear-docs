@@ -1,0 +1,229 @@
+---
+title: "Build a CLI executable with pear make"
+description: "Turn a Bare command-line app into a standalone executable for macOS, Linux, and Windows with pear make, so users need no Node.js, Bare, or Pear to run it."
+docType: how-to
+product: pear
+schemaType: TechArticle
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+`pear make` packages a command-line app's JavaScript and its dependencies into one executable per OS and architecture. The executable runs on its own: users don't need Node.js, [Bare](/bare/reference/bare/runtime), or the [Pear CLI](/pear/reference/pear/cli) installed. Use it for CLIs, REPLs, TUIs, and other headless apps written for Bare, such as one started from the [hello-pear-bare template](/p2p/getting-started/from-a-template/start-from-hello-pear-bare).
+
+Under the hood, `pear make` runs [`pear-make`](https://github.com/holepunchto/pear-make), a separate Pear CLI app that calls [`bare-build`](/bare/how-to/run-on-native/bundle-a-bare-app#standalone-executable-with-bare-build) in standalone mode. It builds the executable and nothing else. To ship it over the air, you still assemble a deployment directory and stage it (see [Where to go next](#where-to-go-next)). For an Electron desktop app, follow [Build desktop distributables](/pear/how-to/operate-an-app/build-and-package/build-desktop-distributables) instead.
+
+<Callout type="info">
+Requires **Pear 3.7.0 or newer**—run [`pear versions`](/pear/reference/pear/cli#pear-versions) to check what you're on. Not available on 3.6.x or earlier.
+</Callout>
+
+<include>../../../../_snippets/_install-pear-cli-callout.mdx</include>
+
+## Before you begin
+
+- Pear 3.7.0 or newer.
+- A project written for Bare, with a `package.json`. A Node.js app needs its built-ins swapped for `bare-*` modules first; see [Migrate a Node.js app to Bare](/bare/how-to/migrate-a-nodejs-app-to-bare).
+- Its dependencies installed with `npm install`. `pear make` bundles them from `node_modules`.
+- Network access on the first run, to install `pear-make` from peers.
+
+<Steps>
+
+<Step>
+
+### Point `bin` at your entry point
+
+`pear make` builds the file named in the `bin` field of the `package.json` in the current directory. This guide builds a small greeting CLI:
+
+```json file=<rootDir>/examples/how-to/operate-an-app/build-a-cli-executable/package.json title="package.json" skip="example-import"
+```
+
+```js file=<rootDir>/examples/how-to/operate-an-app/build-a-cli-executable/bin.mjs title="bin.mjs" skip="example-import"
+```
+
+{/* @harness example=build-cli-executable step=copy from=examples/how-to/operate-an-app/build-a-cli-executable/package.json to=package.json */}
+{/* @harness example=build-cli-executable step=copy from=examples/how-to/operate-an-app/build-a-cli-executable/bin.mjs to=bin.mjs */}
+
+The `isDev` check matters once the app is built. Under `bare bin.mjs`, the script path is the second argument, so the app's own arguments start at `Bare.argv[2]`. The built executable has no script path, so they start at `Bare.argv[1]`.
+
+Install the dependencies and run the app with Bare, to confirm it works before you build it:
+
+```sh example=build-cli-executable step=setup
+npm install
+```
+
+```sh example=build-cli-executable step=run process=greet expect="Hello, Ada! (hello-cli v1.0.0)"
+npx bare bin.mjs Ada
+```
+
+`bin` has to be a single path. If yours is an object that maps several command names to files, or you want to build a file that `bin` doesn't name, pass the file as the argument instead, for example `pear make src/cli.js`.
+
+</Step>
+
+<Step>
+
+### Install `pear-make`
+
+Print the `pear-make` version. On the first run this installs it:
+
+```sh skip="needs-pear-3.7"
+pear make -v
+```
+
+`pear make` looks for `pear-make` on your `PATH`. When it is missing, Pear asks before installing it:
+
+```text skip="sample-output"
+⚠️ The pear-make CLI needs to be installed. To confirm type "INSTALL"
+Install pear-make?
+```
+
+Type `INSTALL` in uppercase. Anything else prints `✖ uppercase INSTALL to confirm` and asks again. Pear then runs [`pear install`](/pear/reference/pear/cli#pear-install) for the `pear-make` link, which puts the binary in `~/.local/bin` (`%LOCALAPPDATA%\Programs\` on Windows), and prints the version:
+
+```text skip="sample-output"
+v1.1.0
+Success
+```
+
+The first install downloads several hundred megabytes. After that, `pear-make` keeps itself up to date over the air, so you never reinstall it. Each run starts a short-lived background updater that logs to `updates.log` in `pear-make`'s storage directory (`~/Library/Application Support/pear-make` on macOS). The updater keeps its own copy of the release there, so plan for about 1.6 GB of disk in total (`pear-make` 1.1.0 on macOS).
+
+To install it without the prompt, run the install yourself once:
+
+```sh skip="needs-pear-3.7"
+pear install pear://u3d888539k964t6omfzxdmf1a9c4jx4iiprm8jyt56x91izm78sy
+```
+
+<Callout type="warning">
+If `~/.local/bin` wasn't on your `PATH` before the install, open a new terminal and run [`pear sidecar shutdown`](/pear/reference/pear/cli#pear-sidecar) before you build. The [sidecar](/pear/reference/pear/cli#pear-sidecar) starts `pear-make` with the `PATH` it inherited when it started, so until it restarts, builds fail with `✖ no such file or directory`.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Build for your machine
+
+Run `pear make` from the project root, with a filename and an output directory:
+
+```sh skip="needs-pear-3.7"
+pear make --name hello-cli --path out/make
+```
+
+The output is `pear-make`'s own. The second line is the file it wrote:
+
+```text skip="sample-output"
+pear-make v1.1.0
+/path/to/hello-cli/out/make/hello-cli
+
+Build finished.
+
+Success
+```
+
+<Callout type="warning">
+**Always pass `--name`.** As of `pear-make` 1.1.0, a build without it names the file `app`, not the `name` or `productName` from `package.json`.
+</Callout>
+
+`--path` defaults to the current directory, so without it the executable lands next to your `package.json`. `out/make` keeps builds in one place, matches the hello-pear templates, and is easy to add to `.gitignore`.
+
+The name is turned into a safe filename. Anything other than letters and digits becomes a hyphen and the result is lowercased, so `--name "Hello CLI"` also writes `hello-cli`. Windows builds add `.exe`. If your app updates itself through [Pear OTA](/pear/reference/pear/runtime), keep `--name` the same as `productName || name` in lowercase-and-hyphens form: the updater looks for `by-arch/<host>/app/<name>` in each release, and a mismatch means it never finds the new binary. The [hello-pear-daemon page](/p2p/getting-started/from-a-template/start-from-hello-pear-daemon#customize-for-your-brand) has the full naming rules.
+
+</Step>
+
+<Step>
+
+### Run the executable
+
+```sh skip="needs-pear-3.7"
+./out/make/hello-cli Ada --shout
+```
+
+```text skip="sample-output"
+HELLO, ADA! (hello-cli v1.0.0)
+```
+
+The executable needs nothing else on the machine—no Node.js, Bare, or Pear—so you can copy it to any machine with the same OS and architecture and run it there.
+
+</Step>
+
+<Step>
+
+### Build for other hosts
+
+`--host` builds for an OS and architecture other than your own. It takes a `<platform>-<arch>` id, and the desktop ones are `darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64`, `win32-arm64`, and `win32-x64`. `pear make` takes one host per run, so loop over the ones you ship:
+
+```sh skip="needs-pear-3.7"
+for host in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-arm64 win32-x64; do
+  pear make --host "$host" --name hello-cli --path "out/make/$host"
+done
+```
+
+In PowerShell:
+
+```powershell skip="needs-pear-3.7"
+foreach ($h in 'darwin-arm64','darwin-x64','linux-arm64','linux-x64','win32-arm64','win32-x64') {
+  pear make --host $h --name hello-cli --path "out/make/$h"
+}
+```
+
+Each host gets its own directory: `out/make/linux-x64/hello-cli`, `out/make/win32-x64/hello-cli.exe`, and so on. Give every host its own `--path`, because the macOS and Linux builds share a filename and would overwrite each other in one directory.
+
+Native addons cross-build too. `bare-build` bundles the prebuild for the target host from the package in `node_modules`, and the `bare-*` modules ship prebuilds for every desktop host.
+
+</Step>
+
+</Steps>
+
+## Run it in CI or a script
+
+Without a terminal, `pear make` can't ask before installing `pear-make`, so a missing `pear-make` fails the run:
+
+```text skip="sample-output"
+✖ The pear-make CLI was not found. Please install using: pear install pear://u3d888539k964t6omfzxdmf1a9c4jx4iiprm8jyt56x91izm78sy
+```
+
+Pass `--install` to install `pear-make` without asking, but only on a runner that doesn't have it yet. When a copy is already installed, `pear install` refuses to overwrite it, printing `Refusing to overwrite existing:`, and the run fails. On a runner that keeps its home directory between jobs, install only when it is missing:
+
+```sh skip="needs-pear-3.7"
+command -v pear-make >/dev/null || pear install pear://u3d888539k964t6omfzxdmf1a9c4jx4iiprm8jyt56x91izm78sy
+pear make --no-install --name hello-cli --path out/make
+```
+
+Make sure `~/.local/bin` is on the job's `PATH` before the first `pear` command, because that command starts the sidecar (see the warning in [Install `pear-make`](#install-pear-make)). On GitHub Actions, append it with `echo "$HOME/.local/bin" >> "$GITHUB_PATH"` in an earlier step.
+
+For machine-readable output, pass [`--json`](/pear/reference/pear/cli#json-output). Each piece of `pear-make` output arrives as a `make` object, and the stream ends with a `final` object or, on failure, an `error` object:
+
+```json skip="sample-output"
+{"cmd":"make","tag":"make","data":{"chunk":"pear-make v1.1.0\n"}}
+{"cmd":"make","tag":"make","data":{"chunk":"/path/to/hello-cli/out/make/hello-cli\n\nBuild finished.\n\n"}}
+{"cmd":"make","tag":"final","data":{"success":true}}
+```
+
+In Pear 3.7.0 the objects are written back to back, with no newline between them (they're shown one per line here). `jq` reads them as they are, but tools that split on lines don't. To print the build log:
+
+```sh skip="needs-pear-3.7"
+pear make --json --name hello-cli --path out/make | jq -rj 'select(.tag == "make") | .data.chunk'
+```
+
+A failed build exits with status 1.
+
+## Sign the executable
+
+<Callout type="warning">
+`pear make` doesn't sign for distribution. On macOS the executable carries only an ad-hoc signature (`codesign -dv` reports `Signature=adhoc`), which Gatekeeper blocks when users download it through a browser, and the Windows executable has no Authenticode signature.
+</Callout>
+
+Sign and notarize the executable before you hand it to users. The hello-pear templates' `npm run make` signs with the `MAC_CODESIGN_IDENTITY`, `KEYCHAIN_PROFILE`, and `WINDOWS_CERT_SHA1` variables (see [Build a standalone binary](/p2p/getting-started/from-a-template/start-from-hello-pear-bare#build-a-standalone-binary)). In CI, the [`make-pear-app`](/pear/reference/ci-and-release/github-actions#make-pear-app) action provides the same credentials.
+
+## Troubleshooting
+
+- **`✖ package.json not found in <dir>.`** Run `pear make` from the project root, or pass the entry file as the argument.
+- **`✖ bin field not found in package.json`** Add a `bin` field that points at your entry file, or pass the entry file as the argument.
+- **`✖ no such file or directory`** The sidecar can't find `pear-make` on its `PATH`. This happens when `pear-make` was installed, or its directory added to `PATH`, after the sidecar started, and when `--no-install` is passed with no `pear-make` installed. Check that `command -v pear-make` finds it, then run `pear sidecar shutdown` and build again.
+- **`✖ pear-make failed with exit code <n>`** `pear-make` itself failed, and the lines before this one are its error. `MODULE_NOT_FOUND: Cannot find module 'file:///…'` means the entry file doesn't exist. `Unknown host '<host>'` means `pear-make` doesn't recognize the `--host` id.
+- **`Refusing to overwrite existing:`** You passed `--install` with `pear-make` already installed. Drop `--install`.
+- **The executable is called `app`.** Pass `--name`; see [Build for your machine](#build-for-your-machine).
+
+## Where to go next
+
+- [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment): set the `upgrade` link, then assemble your executables into a deployment directory with [`pear build`](/pear/reference/pear/cli#pear-build), stage, provision, and seed. Users then install with [`pear install pear://<key>`](/pear/reference/pear/cli#pear-install).
+- [Start a terminal app from the hello-pear-bare template](/p2p/getting-started/from-a-template/start-from-hello-pear-bare) and [Start a short-lived CLI from the hello-pear-daemon template](/p2p/getting-started/from-a-template/start-from-hello-pear-daemon): CLI apps that already update themselves over the air.
+- [Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app): what `bare-build` does underneath, and the options `pear make` doesn't expose.
+- [`pear make` reference](/pear/reference/pear/cli?v=3.7#pear-make): every flag and error.

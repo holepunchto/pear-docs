@@ -148,6 +148,11 @@ export const pearTree: Node[] = [
               },
               {
                 type: 'page',
+                name: 'Build a CLI executable with pear make',
+                url: '/pear/how-to/operate-an-app/build-and-package/build-a-cli-executable',
+              },
+              {
+                type: 'page',
                 name: 'Distribute as a binary',
                 url: '/pear/how-to/operate-an-app/build-and-package/distribute-as-binary',
               },
