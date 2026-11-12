@@ -13,7 +13,7 @@ matches its latest git tag). Verified on macOS arm64 with CPython 3.13 by runnin
 test suite against the published packages, the examples below, and a bundle stowed with bare-stow
 0.3.7 (`--target bare-sidecar --language python`) against JS bare-rpc 2.0.0. Python 3.10 to 3.12 and
 the Linux and Windows wheels were not run. Generated hyperschema-python output was compared byte for
-byte with JS hyperschema 1.26.2. On main but unreleased as of the audit: hrpc-python's sync
+byte with JS hyperschema 1.26.2; the mismatches found are listed under hyperschema-python. On main but unreleased as of the audit: hrpc-python's sync
 `_OutgoingStream.destroy` fix (#17). There are no doc-states and no `upstreamVersion` front matter,
 because the page covers several packages; re-diff it on each release of these repositories.
 bare-kit-python is documented in bare-kit.mdx. */}
@@ -101,7 +101,7 @@ When the host closes the IPC, the sidecar calls `Bare.exit()`, unless the entry 
 
 ## bare-stow-host-python
 
-`bare-stow-host` is the Python counterpart of [`bare-stow-host`](/bare/reference/bare/modules/bare-stow#protocol). It multiplexes a control channel and a user data channel over a byte transport to a stowed bundle, and layers readiness, termination, and exit reporting on top. Any object with an async `read()`, which returns `b""` at the end, and an async `write(data)` works, such as a `Sidecar`. The harness that `bare-stow` generates wires them up like this:
+`bare-stow-host` is the Python counterpart of [`bare-stow-host`](/bare/reference/bare/modules/bare-stow#protocol). It multiplexes a control channel and a user data channel over a byte transport to a stowed bundle, and layers readiness, termination, and exit reporting on top. Any object with an async `read()`, which returns `b""` at the end, and an async `write(data)` works, such as a `Sidecar`. The harness that `bare-stow` generates wires them up much like this, and also passes `timeout` and `grace` to `wrap()`:
 
 ```python
 import asyncio
@@ -117,6 +117,7 @@ async def main():
     async def watch():
         await sidecar.wait()
         ipc.exited(sidecar.exit_code, sidecar.signal_code)
+        await sidecar.close()
 
     watcher = asyncio.create_task(watch())
 
@@ -149,10 +150,10 @@ def wrap(transport, **opts) -> IPC: ...
 
 Constructing an `IPC` starts reading the transport, and sends the worker a `configure` control frame carrying `grace` in milliseconds. `IPC` is itself a transport for [`bare-rpc`](#bare-rpc-python), as `RPC(ipc, handler=router)`.
 
-- `ready`— an `asyncio.Future` that resolves when the worker signals readiness. It raises `WorkerError` if, before then, the worker reports an error, exits, closes its side, or times out. The worker is then terminated, as it is when `ready` is cancelled.
-- `async def read() -> bytes`— the next chunk of user data from the worker, or `b""` once the transport has ended. After the worker fails, the next call raises the `WorkerError` that failed it.
+- `ready`— an `asyncio.Future` that resolves when the worker signals readiness. It raises `WorkerError` if, before then, the worker reports an error, exits, or times out. The worker is then terminated, as it is when `ready` is cancelled. If the transport ends first without an `exit` frame, the timeout is cancelled and `ready` waits for `exited()`, then raises its `WORKER_EXITED` or `WORKER_KILLED` error.
+- `async def read() -> bytes`— the next chunk of user data from the worker, or `b""` once the transport has ended. Once the worker fails, the chunks already received are returned first, and then every call raises the `WorkerError` that failed it.
 - `async for data in ipc`— iterate over `read()` until it returns `b""`.
-- `async def write(data)`— send `data` to the worker as user data. Writes are made one at a time. It raises `WorkerError` with the code `WORKER_CLOSED` if the transport is closed, reset, or broken, and with the code `TRANSPORT_ERROR` if it fails another way.
+- `async def write(data)`— send `data` to the worker as user data. Writes are made one at a time. If the `write()` of the transport raises `BrokenPipeError`, `ConnectionResetError`, or `ConnectionAbortedError`, or raises anything once the transport has ended, the worker has exited, or termination has begun, it raises `WorkerError` with the code `WORKER_CLOSED`. If it raises another way, it raises `WorkerError` with the code `TRANSPORT_ERROR`. A transport that drops writes instead, as a `Sidecar` does once it's closing or its peer has gone, raises nothing.
 - `def terminate() -> asyncio.Future`— ask the worker to exit, as `close()` does, and return a future that resolves to `exit_code`.
 - `def close() -> asyncio.Future`— if the transport is open, send the worker a `terminate` control frame, wait for the transport to close, and call `kill` if that takes longer than `grace`. It returns a future that resolves once the transport has closed. Repeated calls wait for the same termination.
 - `async def wait()`— wait for the transport to close and return `exit_code`.
@@ -176,7 +177,7 @@ class WorkerError(Exception):
 | `WORKER_ERROR` | The worker sent an `error` control frame. `message` and `stack` are the ones it sent. |
 | `WORKER_EXITED` | The worker sent an `exit` control frame before signaling readiness, or `exited()` reported an exit without a signal. |
 | `WORKER_KILLED` | `exited()` reported an exit with a signal. `signal_code` is set. |
-| `WORKER_CLOSED` | The transport closed before the worker signaled readiness, or was reset or broken. |
+| `WORKER_CLOSED` | The host asked the worker to terminate before it signaled readiness, and the transport closed without an `exit` frame. `write()` also raises it, as described above. A transport that ends on its own before readiness is a crash instead, reported as `WORKER_EXITED` or `WORKER_KILLED`. |
 | `WORKER_TIMEOUT` | `timeout` passed before the worker signaled readiness. |
 | `TRANSPORT_ERROR` | The transport failed another way. The exception is chained as `__cause__`. |
 
@@ -227,7 +228,7 @@ Pass either `handler`, or `on_request` and `on_event`, which may each be sync or
 - `async def event(command: int, data: bytes | None = None) -> None`— queue an event. After the session has ended, the event is dropped.
 - `async def close() -> None`— end the session. Pending requests and streams fail with `RPCError` with the code `CHANNEL_CLOSED`, queued frames are written, and the transport is closed. Called from a handler, the task of the handler is cancelled once it returns. Calling it again does nothing.
 - `async def wait() -> None`— wait for the session to end. It returns if the session ended cleanly, after `close()` or the end of the transport, and raises the error the session failed with otherwise.
-- `async with RPC(...) as rpc`— call `close()` on exit.
+- `async with RPC(...) as rpc`— call `close()` on exit. As `close()` closes the transport, leaving the block also ends the worker: an `IPC` sends it a `terminate` control frame, and a `Sidecar` sends the process `SIGTERM`.
 
 The session fails when the transport raises, an event handler raises, or the peer sends a bad frame. Pending requests and streams then fail with the error, queued frames are dropped, and the transport is closed. A frame for a request or stream that has already finished, or that was never known, is ignored.
 
@@ -321,7 +322,7 @@ class UnknownMessageTypeError(ValueError): ...
 | `ALREADY_SENT` | A request was answered twice. |
 | `UNEXPECTED_STREAM` | `request()` got a streamed reply. |
 | `TIMEOUT` | `request()` got no reply within `timeout`. |
-| `CANCELLED` | The request was cancelled. |
+| `CANCELLED` | A request was cancelled. The cancelled caller gets `asyncio.CancelledError`, and the streams of the request fail with this code. |
 | `FRAME_TOO_LARGE` | The peer sent a frame larger than `max_frame_size`. It's raised as soon as the length prefix arrives. |
 | `UNKNOWN_MESSAGE` | The peer sent a message of an unknown type. |
 | `INVALID_MESSAGE` | The peer sent a frame that can't be decoded, the transport ended partway through a frame, or the frame is one that a valid peer never sends, such as a response without a request id or a request that reuses the id of one still in flight. |
@@ -341,7 +342,7 @@ The frame codec is exported for tooling and tests. It doesn't apply the checks t
 
 ## compact-encoding-python
 
-`compact-encoding` encodes values with the same bytes as the JavaScript [`compact-encoding`](/p2p/reference/helpers/compact-encoding). Import it under a name of its own, as `from compact_encoding import *` shadows the builtins `bool`, `int`, and `json`:
+`compact-encoding` encodes values with the same bytes as the JavaScript [`compact-encoding`](/p2p/reference/helpers/compact-encoding). Import it under a name of its own, as `from compact_encoding import *` shadows the builtins `bool` and `int`, and the `json` module:
 
 ```python
 import compact_encoding as cenc
@@ -393,7 +394,7 @@ Codec factories:
 - `frame(codec)`— a `uint` byte length followed by the value. Decoding skips to the end of the frame, and doesn't check the length against the buffer.
 - `fixed(n)`— exactly `n` bytes, without a length. Encoding raises `ValueError` for any other length.
 
-The JavaScript codecs that aren't listed, such as `uint64`, `int8` to `int64`, `bigint`, `raw`, and `any`, aren't ported.
+The JavaScript codecs that aren't listed, such as `uint64`, `int8`, `int16`, `int32`, `int64`, `bigint`, `raw`, and `any`, aren't ported.
 
 ### Errors
 
@@ -458,6 +459,8 @@ async with HRPC(transport, schema.resolve) as client:
 `hrpc-python` exports a subclass of the `hrpc` builder, so `from()`, `namespace()`, `register()`, and `toJSON()` work as they do in JavaScript. It overrides one method:
 
 - `HRPC.toDisk(hrpc, dir = hrpc.hrpcDir)`— write `hrpc.json` and `hrpc.py` to `dir`. It generates the code first, so nothing is written if generation fails. It doesn't write `schema.py`, which `hyperschema-python` writes.
+
+`schema` and `hrpc` are also the names of unrelated packages on PyPI, so `import schema` and `from hrpc import HRPC` load the generated modules only if their directory comes before any installed copies on `sys.path`.
 
 `toCode()` isn't overridden and still returns JavaScript. Command ids start at 0, unless the builder is given an `offset`.
 
@@ -537,7 +540,7 @@ c.decode(greeting, data)  # {'name': 'Ada', 'times': 2}
 - `schema.toCode()`— return the Python source.
 - `Hyperschema.toDisk(schema, dir = schema.dir)`— write `schema.json` and `schema.py` to `dir`. It generates the code first, so nothing is written if generation fails.
 
-Generation fails with an error whose `code` is `UNSUPPORTED_TYPE` for external types, `uint64`, the bit-sized `uint1` to `uint7`, other unknown primitives, and a compact struct with more than 56 optional fields.
+Generation supports the primitives `uint`, `uint8`, `uint16`, `uint24`, `uint32`, `uint40`, `uint48`, `uint56`, `int`, `int24`, `int40`, `int48`, `int56`, `float32`, `float64`, `string`, `buffer`, `fixed32`, `fixed64`, and `json`, and `bool` only as a field of a struct. It fails with an error whose `code` is `UNSUPPORTED_TYPE` for any other primitive, such as `uint64`, `int8`, `int16`, `int32`, `int64`, `utf8`, `ascii`, `hex`, `fixed8`, `date`, `raw`, `lexint`, or the bigint and IP types, for `bool` as an array or record type, for external types, and for a compact struct with more than 56 optional fields.
 
 ### Generated module
 
@@ -550,13 +553,15 @@ Generation fails with an error whose `code` is `UNSUPPORTED_TYPE` for external t
 | Struct | A `dict` of its fields. A missing required field raises `KeyError`. An optional scalar or enum field counts as absent when falsy, so `0`, `""`, and `False` aren't sent. Decoding returns every field, with an absent one as `None`, `False` for `bool` fields, or `0` for numbers, numeric enums, and fixed-size buffers. |
 | Enum | The number of the variant, starting at 1 unless the enum has an `offset`, or the string with `strings: true`. An unknown string raises `KeyError`. |
 | Array, record | A `list` or a `dict`. |
-| Versioned type | A `dict` that must include `version`. A version newer than the schema raises `ValueError`. |
+| Versioned type | A `dict` that must include `version`. A version newer than the schema raises `ValueError`. Decoding returns the `dict` of the version without `version`, which JavaScript sets, so add it back before encoding a decoded value again. The `map` function of a version isn't applied. |
 | Alias | The value of its target type. |
 
 The generated codecs match the bytes of JavaScript Hyperschema, with these exceptions:
 
-- **Versioned types.** From `hyperschema` 1.25.0, a versioned type registered in code frames each version by default, which the generated Python doesn't do. Register it with `framed: false`, or keep a schema created before 1.25.0, for the encodings to match. See [Versioned type](/p2p/reference/helpers/hyperschema#versioned-type).
-- **Inline and constant fields.** A field with `inline: true` is generated as an ordinary nested field, and a field with `constant` as a required field that's written, so neither matches the JavaScript encoding.
+- **Versioned types.** From `hyperschema` 1.25.0, a versioned type registered in code frames each version that isn't a compact struct by default, which the generated Python doesn't do. Register it with `framed: false`, or keep a schema created before 1.25.0, for the encodings to match. See [Versioned type](/p2p/reference/helpers/hyperschema#versioned-type).
+- **`bool` arrays.** A `bool` field with `array: true` is generated as a single flag. It's encoded as one bit, without the array, and decodes as one `bool`, so the array is lost without an error.
+- **Inline fields.** A field with `inline: true` is generated as an ordinary nested field, which doesn't match the JavaScript encoding.
+- **Constant fields.** Fields with `constant` aren't supported. Before the first optional field, one is generated as a required field that's written, which JavaScript leaves out. After it, one decodes as absent rather than as the constant, and a `dict` that includes it encodes bytes that don't decode correctly.
 
 ## See also
 

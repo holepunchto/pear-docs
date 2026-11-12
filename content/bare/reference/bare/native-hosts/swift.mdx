@@ -12,8 +12,9 @@ v3.0.0, compact-encoding-swift v1.0.1, and the npm releases hyperschema-swift 1.
 1.0.0. Verified on macOS arm64 with Swift 6.4 by running each package's test suite and the examples
 below, including bare-rpc-swift over a sidecar against JS bare-rpc 2.0.0 and bare-stow-host-swift
 with a real worker in a sidecar. Generated hyperschema-swift output was compared byte for byte with
-JS hyperschema 1.26.2. Linux and iOS were not run. hrpc-swift 1.0.0 emits code for the bare-rpc-swift
-1.x delegate API, and its generated Package.swift (macOS 11) doesn't resolve as emitted; main (unreleased
+JS hyperschema 1.26.2; the mismatches found are listed under hyperschema-swift. Linux and iOS were not
+run. hrpc-swift 1.0.0 emits code for the bare-rpc-swift 1.x delegate API, and its generated Package.swift
+(macOS 11) doesn't build as emitted; main (unreleased
 as of the audit) targets the bare-rpc-swift 2.x API. Re-check the hrpc-swift section on its next
 release. There are no doc-states and no `upstreamVersion` front matter, because the page covers several
 packages; re-diff it on each release of these repositories. bare-kit-swift is documented in bare-kit.mdx. */}
@@ -105,7 +106,7 @@ public final class Sidecar: AsyncSequence, @unchecked Sendable {
 }
 ```
 
-- `Sidecar.spawn(_:arguments:stdio:bare:)`— start `entry` in a sidecar, resolving a relative path against the current working directory, and return once it has connected. Inside it, `Bare.argv` is the path of Bare, the resolved path of `entry`, and then `arguments`. `stdio` sets the standard input, output, and error of the process. `bare` is the URL of a Bare executable to use instead of the included one, which must be a sidecar build of Bare. The child inherits the environment of the host. It throws `SidecarError.noExecutable` if there's no Bare for the platform, `SidecarError.exitedBeforeConnecting(_:)` if the process exits before connecting, and the error of `Process.run()` if the process can't start.
+- `Sidecar.spawn(_:arguments:stdio:bare:)`— start `entry` in a sidecar, resolving a relative path against the current working directory, and return once it has connected. Inside it, `Bare.argv` is the path of Bare, the resolved path of `entry`, and then `arguments`. `stdio` sets the standard input, output, and error of the process. `bare` is the URL of a Bare executable to use instead of the included one, which must be a sidecar build of Bare. The child inherits the environment of the host. It throws `SidecarError.noExecutable` if there's no Bare for the platform, `SidecarError.exitedBeforeConnecting(_:)` if the process exits before connecting, a `POSIXError` if it can't create the IPC socket before starting the process, such as `ENAMETOOLONG` for a temporary directory with a long path, and the error of `Process.run()` if the process can't start.
 - `for try await data in sidecar`— iterate over the data that the sidecar writes to `Bare.IPC`, in chunks of any size. Iteration ends once the process has exited, after the end of the IPC, and throws a `POSIXError` if reading fails another way. Iterate from one task at a time.
 - `write(_ data: Data) async`— write `data` to `Bare.IPC` in the sidecar, returning once it's sent. It doesn't throw: once the sidecar has closed its end, data is dropped.
 - `wait() async -> Termination`— wait for the process to exit.
@@ -179,7 +180,7 @@ public final class IPC: AsyncSequence, @unchecked Sendable {
 
 Constructing an `IPC` starts reading the transport at once, and queues a `configure` control frame carrying `grace` in milliseconds as the first frame the worker receives. Writes are made one at a time, in order.
 
-- `ready() async throws`— wait until the worker signals readiness. It throws `WorkerError` if, before then, the worker reports an error, exits, closes its side, or times out. The worker is then terminated, as it is when the waiting task is cancelled, which throws `CancellationError`. Several tasks may wait at once.
+- `ready() async throws`— wait until the worker signals readiness. It throws `WorkerError` if, before then, the worker reports an error, exits, or times out. The worker is then terminated, as it is when the waiting task is cancelled, which throws `CancellationError`. If the transport ends first without an `exit` frame, the timeout stops and `ready()` waits for `exited(code:signal:)`, then throws its `WORKER_EXITED` or `WORKER_KILLED` error. Several tasks may wait at once.
 - `for try await data in ipc`— iterate over the user data that the worker writes. Iteration ends when the worker has exited or been asked to terminate, and throws the `WorkerError` that failed the handle otherwise. Iterate from one task at a time: when the `IPC` is the transport of an `RPC`, observe failures through `RPC.wait()` rather than iterating as well.
 - `write(_ data: Data) async throws`— send `data` to the worker as user data. It throws `WorkerError` with the code `WORKER_CLOSED` if the transport fails with `EPIPE`, `ECONNRESET`, or `ECONNABORTED`, or fails after the handle has ended, and with the code `TRANSPORT_ERROR` if it fails another way, which starts the grace period before `kill`.
 - `terminate() async -> Int32?`— ask the worker to exit, as `close()` does, and return `exitCode`.
@@ -228,7 +229,7 @@ public struct WorkerError: Error, Equatable, CustomStringConvertible, Sendable {
 | `WORKER_ERROR` | The worker sent an `error` control frame. `message` and `stack` are the ones it sent. |
 | `WORKER_EXITED` | The worker sent an `exit` control frame before signaling readiness, or `exited(code:signal:)` reported an exit without a signal. `exitCode` is the code it reported. |
 | `WORKER_KILLED` | `exited(code:signal:)` reported an exit with a signal. `exitCode` and `signal` are the ones it reported. |
-| `WORKER_CLOSED` | The transport closed before the worker signaled readiness, or a write found it closed. |
+| `WORKER_CLOSED` | The host terminated the worker with `close()` or `terminate()`, or by cancelling `ready()`, before it signaled readiness. A write also throws it if the transport fails with `EPIPE`, `ECONNRESET`, or `ECONNABORTED`, or after the handle has ended. A transport that ends on its own before readiness is a crash instead, reported as `WORKER_EXITED` or `WORKER_KILLED`. |
 | `WORKER_TIMEOUT` | `timeout` passed before the worker signaled readiness. |
 | `TRANSPORT_ERROR` | The transport failed another way. `write(_:)` throws it at once, and the handle fails with it if the worker doesn't exit within `grace`. `underlyingError` is the error of the transport. |
 
@@ -308,7 +309,7 @@ Constructing an `RPC` starts reading `transport` at once. `onRequest` and `onEve
 
 `createRequestStream(command:)` and `streamRequest(command:)` are synchronous, so call them with `try await` from outside the actor. Request ids start at 1 and aren't reused.
 
-The session fails when the transport ends partway through a frame or throws, an event handler throws, or the peer sends a bad frame. Pending and later requests then throw the error, streams fail with it, running handlers are cancelled, and queued frames are dropped. A frame for a request or stream that has already finished, or that was never known, is ignored.
+The session fails when the transport ends partway through a frame, throws while reading, or throws from `write(_:)`, an event handler throws, or the peer sends a bad frame. Pending and later requests then throw the error, streams fail with it, running handlers are cancelled, and queued frames are dropped. A frame for a request or stream that has already finished, or that was never known, is ignored.
 
 ### `Transport` and `AnyTransport`
 
@@ -605,8 +606,11 @@ The generated types have no conformances such as `Codable`, `Equatable`, or `Sen
 
 The generated codecs match the bytes of JavaScript Hyperschema, with these exceptions:
 
-- **Versioned types.** From `hyperschema` 1.25.0, a versioned type registered in code frames each version by default, which the generated Swift doesn't do. Register it with `framed: false`, or keep a schema created before 1.25.0, for the encodings to match. See [Versioned type](/p2p/reference/helpers/hyperschema#versioned-type).
-- **`bool` arrays and constant fields.** A `bool` field with `array: true` is generated as a single `Bool`, and a field with `constant` as a required field that's written, so neither matches the JavaScript encoding.
+- **Versioned types.** From `hyperschema` 1.25.0, a versioned type registered in code frames each version that isn't a compact struct by default, which the generated Swift doesn't do. Register it with `framed: false`, or keep a schema created before 1.25.0, for the encodings to match. See [Versioned type](/p2p/reference/helpers/hyperschema#versioned-type).
+- **Flags of compact structs.** JavaScript writes the flags of a compact struct as the smallest fixed-size unsigned integer that holds them, while the generated Swift always writes a `uint`. The bytes differ for a compact struct with 9 or more optional and `bool` fields, and with 8 when the flags are `0xfd` or more.
+- **`bool` arrays.** An optional `bool` field with `array: true` is generated as a single `Bool` flag, so the array is lost. A required one generates code that doesn't compile.
+- **Constant fields.** A field with `constant` is generated as a required field that's written, which JavaScript leaves out.
+- **Older data.** JavaScript reads the flags of a struct only if bytes remain, so it decodes data written before the struct gained optional fields. The generated Swift always reads them, and throws `DecodingError.outOfBounds` instead.
 
 ## hrpc-swift
 
@@ -617,11 +621,12 @@ const SwiftHyperschema = require('hyperschema-swift')
 const SwiftHRPC = require('hrpc-swift')
 
 const schema = SwiftHyperschema.from(null)
-schema.namespace('chat').register({
+const ns = schema.namespace('chat')
+ns.register({
   name: 'send-message-request',
   fields: [{ name: 'text', type: 'string', required: true }]
 })
-schema.namespace('chat').register({
+ns.register({
   name: 'send-message-response',
   fields: [{ name: 'id', type: 'uint', required: true }]
 })
@@ -641,7 +646,9 @@ SwiftHRPC.toDisk(hrpc, './out/hrpc')
 
 hrpc-swift 1.0.0 generates code for the delegate API of **bare-rpc-swift 1.x**, which bare-rpc-swift 2.0.0 replaced with the [`Transport` and `Handler` API](#bare-rpc-swift) above. The generated code doesn't compile against bare-rpc-swift 2.0.0 or later.
 
-The generated `Package.swift` declares macOS 11 and iOS 14 and depends on bare-rpc-swift `from: "1.0.0"`, which now resolves to bare-rpc-swift 1.1.1 and compact-encoding-swift 1.0.1, both of which need macOS 13 and iOS 15. Raise the platforms of the generated package for it to resolve. With bare-rpc-swift 1.1.0 or later, an empty payload arrives as empty `Data`, so a Swift server fails to decode a call without arguments: a request and response command rejects it with the code `HANDLER_ERROR`, and a streamed response with `DECODE_ERROR`. Every command shape, including calls without arguments, works with bare-rpc-swift 1.0.1 and compact-encoding-swift 1.0.0, pinned with `exact:`.
+The generated `Package.swift` declares macOS 11 and iOS 14 and depends on bare-rpc-swift `from: "1.0.0"`, which now resolves to bare-rpc-swift 1.1.1 and compact-encoding-swift 1.0.1. Those, and the `Schema` package that hyperschema-swift 1.0.1 generates, need macOS 13 and iOS 15, so the generated package doesn't build until you raise its platforms to macOS 13 and iOS 15.
+
+With bare-rpc-swift 1.1.0 or later, an empty payload arrives as empty `Data`, so a Swift server fails to decode a call without arguments. A request and response command rejects it with the code `HANDLER_ERROR`, and a streamed response with `DECODE_ERROR`. A send command never reaches its handler, and the decoding error goes to the `rpc(_:didFailWith:)` of the delegate. Every command shape, including calls without arguments, works with bare-rpc-swift 1.0.1 and compact-encoding-swift 1.0.0, pinned with `exact:` in the app.
 
 ### Generator
 
@@ -695,6 +702,8 @@ A request that the server can't answer is rejected with one of these codes:
 | `NO_HANDLER` | The command has no handler. |
 | `HANDLER_ERROR` | The handler threw, or the request couldn't be decoded. A streamed handler that throws destroys its streams with this code. |
 | `DECODE_ERROR` | The request of a streamed response couldn't be decoded. |
+| `STREAM_ERROR` | The response stream of a streamed response is already open, with the message `Stream already open`. |
+| `PROTOCOL_ERROR` | A command that streams its request arrived without a request stream. If a command that streams both can't open its response stream, its request stream is destroyed with this code. |
 | `UNKNOWN_COMMAND` | The command id is unknown. |
 
 A client gets `MISSING_RESPONSE` if a reply has no payload, and a `body` that throws destroys its streams with the code `STREAM_ERROR`. Events without a handler are dropped.

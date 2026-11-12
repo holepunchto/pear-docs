@@ -11,7 +11,7 @@ schemaType: APIReference
 v0.3.0. Every public symbol is listed; the `api/*.api` dumps in each repository (checked by
 `./gradlew checkKotlinAbi`) are the completeness checklist when re-auditing. The JVM behavior was
 verified by running consumers against the JitPack artifacts, and by booting a bare-stow bundle in a
-bare-kit-kotlin v0.2.2 worklet on the JVM. The Android and JS variants were not run. There are no
+bare-kit-kotlin worklet on the JVM (v0.2.3, the release that resolved on 2026-11-12). The Android and JS variants were not run. There are no
 doc-states and no `upstreamVersion` front matter, because the page covers several packages; re-diff
 it on each release of these repositories. bare-kit-kotlin itself is documented in bare-kit.mdx. */}
 
@@ -77,7 +77,12 @@ worklet.start(bundlePath)
 
 val ipc = Ipc(transport.data, transport::write, kill = { worklet.terminate() })
 
-CoroutineScope(Dispatchers.Default).launch { ipc.exited(worklet.wait()) }
+CoroutineScope(Dispatchers.Default).launch {
+  ipc.exited(worklet.wait())
+
+  transport.close()
+  worklet.close()
+}
 
 ipc.ready()
 ipc.write("hello".encodeToByteArray())
@@ -109,8 +114,8 @@ Constructing an `Ipc` starts reading `data` at once, in a coroutine scope of its
 
 - `data: Flow<ByteArray>`— the user data that the worker writes. It completes when the transport ends cleanly, and throws the `WorkerError` that failed the handle otherwise. It can be collected only once: a second collection throws `IllegalStateException`.
 - `exitCode: Int?`— the code that the worker sent in its `exit` control frame, or `null`. An exit reported with `exited()` doesn't set it.
-- `suspend fun ready()`— suspend until the worker signals readiness. It throws `WorkerError` if, before then, the worker reports an error, exits, closes its side, or times out, or the transport fails and the worker doesn't exit within `grace`. The worker is then terminated, as it is when the calling coroutine is cancelled while it waits. Once the worker is ready, later calls return at once.
-- `suspend fun write(data: ByteArray)`— send `data` to the worker as user data, suspending until the transport has written it. It throws `WorkerError` with the code `WORKER_CLOSED` once the handle has ended, and with the code `TRANSPORT_ERROR` if the transport fails to write, which starts the grace period before `kill`.
+- `suspend fun ready()`— suspend until the worker signals readiness. It throws `WorkerError` if, before then, the worker reports an error, exits, or times out, or the transport fails and the worker doesn't exit within `grace`. The worker is then terminated, as it is when the calling coroutine is cancelled while it waits. If the transport ends first without an `exit` frame, the timeout stops and `ready()` waits for `exited()`, then throws its `WORKER_EXITED` or `WORKER_KILLED` error. Once the worker is ready, later calls return at once.
+- `suspend fun write(data: ByteArray)`— send `data` to the worker as user data, suspending until the transport has written it. It throws `WorkerError` with the code `WORKER_CLOSED` once the handle has ended, or if the transport fails to write after it has ended, the worker has exited, or termination has begun. If the transport fails to write otherwise, it throws `WorkerError` with the code `TRANSPORT_ERROR`, which starts the grace period before `kill` unless a failure is already pending.
 - `suspend fun terminate(): Int?`— ask the worker to exit, as `close()` does, and return `exitCode`.
 - `suspend fun close()`— if the transport is open, send the worker a `terminate` control frame behind the pending writes, wait for the transport to end, and call `kill` if that takes longer than `grace`. Concurrent and repeated calls wait for the same termination. It never throws.
 - `suspend fun wait(): Int?`— suspend until the transport has ended and return `exitCode`. It never throws, so it returns `null` after a crash.
@@ -147,9 +152,9 @@ public class WorkerError : Exception {
 | `WORKER_ERROR` | The worker sent an `error` control frame. `message` and `stack` are the ones it sent. |
 | `WORKER_EXITED` | The worker sent an `exit` control frame before signaling readiness, or `exited()` reported an exit without a signal. `exitCode` is the code it reported. |
 | `WORKER_KILLED` | `exited()` reported an exit with a signal. `exitCode` and `signal` are the ones it reported. |
-| `WORKER_CLOSED` | The transport ended before the worker signaled readiness, or `write()` was called after the handle ended. |
+| `WORKER_CLOSED` | The host asked the worker to terminate before it signaled readiness, and the transport ended without an `exit` frame. `write()` also throws it, as described above. A transport that ends on its own before readiness is a crash instead, reported as `WORKER_EXITED` or `WORKER_KILLED`. |
 | `WORKER_TIMEOUT` | `timeout` passed before the worker signaled readiness. |
-| `TRANSPORT_ERROR` | Reading or writing the transport threw. `write()` throws it at once, and the handle fails with it if the worker doesn't exit within `grace`. `cause` is the exception. |
+| `TRANSPORT_ERROR` | Reading or writing the transport threw. `write()` throws it at once, unless the transport has ended, the worker has exited, or termination has begun, when it throws `WORKER_CLOSED`. The handle fails with it if the worker doesn't exit within `grace`. `cause` is the exception. |
 
 When a crash follows a transport failure, the `WORKER_EXITED` or `WORKER_KILLED` error carries the `TRANSPORT_ERROR` as its `cause`.
 
@@ -160,7 +165,7 @@ Every frame is a 4-byte little-endian length followed by that many bytes: a 1-by
 - `Frame.CONTROL: Byte`, `Frame.USER: Byte`— the tags, `0x00` and `0x01`.
 - `Frame.encode(tag: Byte, payload: ByteArray): ByteArray`— encode a frame.
 - `Frame.control(type: String, fields: Map<String, Int> = emptyMap()): ByteArray`— encode a control frame whose payload is `{"type": type, ...fields}`. Only `Int` field values are supported.
-- `FrameDecoder()`, `FrameDecoder.feed(data: ByteArray): List<Pair<Byte, ByteArray>>`— an incremental decoder, which buffers partial frames across calls and returns the `(tag, payload)` pairs that `data` completes. Frames with an unknown tag are returned as they are, and empty frames are skipped. It has no maximum frame size, but throws for a length of 2<sup>31</sup> or more, and it isn't thread-safe.
+- `FrameDecoder()`, `FrameDecoder.feed(data: ByteArray): List<Pair<Byte, ByteArray>>`— an incremental decoder, which buffers partial frames across calls and returns the `(tag, payload)` pairs that `data` completes. Frames with an unknown tag are returned as they are, and empty frames are skipped. It has no maximum frame size and isn't thread-safe. It reads the length as a signed `Int` and doesn't check it, so a length of 2<sup>31</sup> or more can throw, hang the call, or desynchronize the decoder.
 - `decodeControl(payload: ByteArray): JsonObject?`— parse the payload of a control frame, returning `null` if it isn't a JSON object. `JsonObject` comes from `kotlinx-serialization-json`, which the package depends on as an implementation detail, so add `org.jetbrains.kotlinx:kotlinx-serialization-json` to the project to call it.
 
 `Ipc` handles the `ready`, `exit`, and `error` control frames and ignores any other.
@@ -218,7 +223,7 @@ Constructing an `Rpc` starts collecting `transport.data` at once, in `scope`. Wi
 - `suspend fun request(command: ULong, body: Flow<ByteArray>): ByteArray`— send a request whose body is streamed from `body` once the peer accepts the stream, and suspend until the reply arrives. The body keeps streaming after the reply unless the peer stops reading or the session ends. A reply that arrives before the peer accepts the stream skips the body. If `body` throws, the stream is closed with the error, and the call rethrows it if the reply hasn't arrived.
 - `fun requestFlow(command: ULong, data: ByteArray): Flow<ByteArray>`, `fun requestFlow(command: ULong, body: Flow<ByteArray>): Flow<ByteArray>`— a cold flow that sends a new request each time it's collected and emits each chunk of a streamed reply. A reply that isn't streamed is emitted as one chunk, or not at all if it's empty. It throws `RemoteException` if the peer replies with an error or closes the stream with one.
 - `suspend fun event(command: ULong, data: ByteArray)`— send an event and suspend until it's written. After the session has ended, the event is dropped.
-- `suspend fun close()`— end the session with `ConnectionClosedException`, unless it already failed. It stops reading, cancels running handlers and outgoing bodies, writes the frames already queued unless the session failed, closes the transport, and waits for all of that, except when called from a handler of this `Rpc`, in which case it returns at once. Calling it again does nothing.
+- `suspend fun close()`— end the session with `ConnectionClosedException`, unless it already failed. It stops reading, cancels running handlers and outgoing bodies, writes the frames already queued unless the session failed, closes the transport, and waits for all of that, except when called from a handler or a streamed body of this `Rpc`, in which case it returns at once. Calling it again does nothing.
 - `suspend fun wait()`— suspend until the session has ended and the transport is closed. It returns normally if the session ended with `ConnectionClosedException`, after `close()` or the end of `transport.data`, and throws the error the session failed with otherwise.
 
 After the session ends, pending and later requests throw the error it ended with.
@@ -351,7 +356,7 @@ public object Messages {
 }
 ```
 
-- `Messages.encode(message)`— encode one frame, with its 4-byte little-endian length prefix. A `Request` with an `id` of 0 is an event. The data of a request that opens a stream, and of a response that carries an error, isn't written. It throws `IllegalArgumentException` for a `Stream` whose flags include the error flag but whose `error` is `null`.
+- `Messages.encode(message)`— encode one frame, with its 4-byte little-endian length prefix. A `Request` with an `id` of 0 is an event. The data of a request or response that opens a stream, and of a response that carries an error, isn't written. A `Stream` has its data written only when its flags include the data flag and not the error flag. It throws `IllegalArgumentException` for a `Stream` whose flags include the error flag but whose `error` is `null`.
 - `Messages.decode(bytes)`— decode the frame at the start of `bytes`. `bytesRead` includes the length prefix, and any bytes after the frame are ignored. It throws `MalformedFrameException` if the frame is truncated or can't be decoded, and `UnknownMessageException` for an unknown type.
 
 `Request`, `Response`, and `Stream` compare `data` by content in `equals()`. `Cancel` and `RemoteError` are data classes.
@@ -444,7 +449,7 @@ The codecs are stateless top-level values, safe to share across threads.
 
 ### `DecodingException`
 
-`DecodingException` is the only subclass of the sealed `CompactEncodingException`, which extends `Exception`. It's thrown when the input ends before the value does, with a message such as `uint32 needs 4 bytes, 2 remain` or `buffer count 5 exceeds the 1 byte remaining`. Encoding never throws a `CompactEncodingException`.
+`DecodingException` is the only subclass of the sealed `CompactEncodingException`, which extends `Exception`. Its constructor, `DecodingException(message: String)`, is public, so a custom `Codec` can throw it. The codecs throw it when the input ends before the value does, with a message such as `uint32 needs 4 bytes, 2 remain` or `buffer count 5 exceeds the 1 byte remaining`. Encoding never throws a `CompactEncodingException`.
 
 ## See also
 
