@@ -1,0 +1,568 @@
+---
+title: "Python packages"
+description: "Reference for the Python packages that let a desktop host run and drive Bare: bare-sidecar to start Bare in a child process, bare-stow-host for the lifecycle of a stowed bundle, bare-rpc and compact-encoding for the wire protocols, and the hrpc-python and hyperschema-python code generators."
+docType: reference
+product: bare
+schemaType: APIReference
+---
+
+{/* Maintainer note: hand-maintained from the source of each package at its latest release, audited
+2026-11-12 against the PyPI releases bare-sidecar 0.1.3, bare-stow-host 0.2.1, bare-rpc 0.3.0, and
+compact-encoding 0.1.1, and the npm releases hrpc-python 0.1.1 and hyperschema-python 0.1.0 (each
+matches its latest git tag). Verified on macOS arm64 with CPython 3.13 by running each package's
+test suite against the published packages, the examples below, and a bundle stowed with bare-stow
+0.3.7 (`--target bare-sidecar --language python`) against JS bare-rpc 2.0.0. Python 3.10 to 3.12 and
+the Linux and Windows wheels were not run. Generated hyperschema-python output was compared byte for
+byte with JS hyperschema 1.26.2. On main but unreleased as of the audit: hrpc-python's sync
+`_OutgoingStream.destroy` fix (#17). There are no doc-states and no `upstreamVersion` front matter,
+because the page covers several packages; re-diff it on each release of these repositories.
+bare-kit-python is documented in bare-kit.mdx. */}
+
+The Python packages below run in a desktop host and talk to JavaScript running in Bare. They're all built on `asyncio`.
+
+- [`bare-sidecar`](#bare-sidecar-python) starts Bare in a child process, with an IPC channel to it.
+- [`bare-stow-host`](#bare-stow-host-python) drives the lifecycle of a bundle stowed with [`bare-stow`](/bare/reference/bare/modules/bare-stow): readiness, termination, and exit reporting.
+- [`bare-rpc`](#bare-rpc-python) speaks the [`bare-rpc`](/bare/reference/bare/modules/bare-rpc) protocol over any byte transport.
+- [`compact-encoding`](#compact-encoding-python) encodes values in the [compact-encoding](/p2p/reference/helpers/compact-encoding) wire format.
+- [`hrpc-python`](#hrpc-python) and [`hyperschema-python`](#hyperschema-python) generate Python from an [HRPC](/p2p/reference/helpers/hrpc) and a [Hyperschema](/p2p/reference/helpers/hyperschema) definition.
+
+The harnesses that `bare-stow` generates for the `python` language with the `bare-sidecar` target depend on the first three. For the same packages in other languages, see [Swift packages](/bare/reference/bare/native-hosts/swift) and [Kotlin packages](/bare/reference/bare/native-hosts/kotlin).
+
+| Package | Version | Install | Import |
+| --- | --- | --- | --- |
+| [bare-sidecar-python](https://github.com/holepunchto/bare-sidecar-python) | 0.1.3 | `pip install bare-sidecar` | `bare_sidecar` |
+| [bare-stow-host-python](https://github.com/holepunchto/bare-stow-host-python) | 0.2.1 | `pip install bare-stow-host` | `bare_stow_host` |
+| [bare-rpc-python](https://github.com/holepunchto/bare-rpc-python) | 0.3.0 | `pip install bare-rpc` | `bare_rpc` |
+| [compact-encoding-python](https://github.com/holepunchto/compact-encoding-python) | 0.1.1 | `pip install compact-encoding` | `compact_encoding` |
+| [hrpc-python](https://github.com/holepunchto/hrpc-python) | 0.1.1 | `npm install hrpc-python` | Node.js |
+| [hyperschema-python](https://github.com/holepunchto/hyperschema-python) | 0.1.0 | `npm install hyperschema-python` | Node.js |
+
+The PyPI packages need Python 3.10 or later. `bare-rpc` depends on `compact-encoding` `~=0.1.0`, and the others have no dependencies. The code generators are npm packages that run in Node.js: the PyPI projects named `hrpc` and `hyperschema` are unrelated to them.
+
+`RPC` and `IPC` start tasks when they're constructed, so create them inside a running event loop. Outside one, they raise `RuntimeError`. None of the classes is thread-safe.
+
+## bare-sidecar-python
+
+`bare-sidecar` starts a Bare entry point in a child process, a **sidecar**, and connects to it over IPC. Inside the sidecar, the IPC is [`Bare.IPC`](/bare/reference/bare/runtime#bareipc). It's the Python counterpart of [`bare-sidecar`](/bare/reference/bare/modules/bare-sidecar) for Node.js and Electron.
+
+```js
+// echo.js
+Bare.IPC.on('data', (data) => Bare.IPC.write(data))
+```
+
+```python
+import asyncio
+
+from bare_sidecar import spawn
+
+
+async def main():
+    async with await spawn("echo.js") as sidecar:
+        await sidecar.write(b"Hello world")
+        print(await sidecar.read())  # b'Hello world'
+
+
+asyncio.run(main())
+```
+
+The wheels include a build of Bare made for sidecars, Bare 1.36.2 in 0.1.3, for these platforms:
+
+| Platform | Wheel |
+| --- | --- |
+| macOS 13 or later on arm64 and x64 | `macosx_13_0_arm64`, `macosx_13_0_x86_64` |
+| Linux with glibc 2.34 or later on x64 and arm64 | `manylinux_2_34_x86_64`, `manylinux_2_34_aarch64` |
+| Windows on x64 and arm64 | `win_amd64`, `win_arm64` |
+
+On other versions of these systems, such as Linux with musl or an older glibc, pip installs the source distribution, which has no Bare build, so `spawn()` raises `FileNotFoundError`. On other systems and architectures, installing fails.
+
+### Functions
+
+- `async def spawn(entry, *args, stdio="inherit", bare=None) -> Sidecar`— start `entry` in a sidecar, resolving a relative path against the current working directory. Inside it, `Bare.argv` is the path of Bare, the resolved path of `entry`, and then `args`. `stdio` is `"inherit"`, `"pipe"`, or `"ignore"`, or a sequence of one mode for each of stdin, stdout, and stderr. `bare` is the path of a Bare executable to use instead of the included one. It must be a sidecar build of Bare, as a stock `bare` has no `Bare.IPC`. The child inherits the environment and the working directory of the host. An entry that can't be loaded or throws doesn't make `spawn()` raise: the sidecar starts and then aborts.
+- `def executable() -> pathlib.Path`— the path of the included Bare for the running platform. It raises `OSError` on an unsupported platform, and `FileNotFoundError` if the package was installed without a Bare build.
+- `versions`— a read-only mapping of the versions of the included build, such as `{"bare": "1.36.2"}`, keyed like `Bare.versions`.
+
+### `Sidecar`
+
+`spawn()` returns a `Sidecar`. It's also an async context manager, which calls `close()` on exit.
+
+- `async def read(n=65536) -> bytes`— read data that the sidecar writes to `Bare.IPC`. At the end of the IPC, it waits for the process to exit and returns `b""`, so an entry that ends the IPC but keeps running holds it until it exits.
+- `async for data in sidecar`— iterate over `read()` until it returns `b""`.
+- `async def write(data)`— write `data` to `Bare.IPC` in the sidecar and wait for it to drain. Once the IPC is closed, writes are dropped.
+- `async def wait()`— wait for the process to exit and return `returncode`.
+- `async def close()`— close the IPC, terminate the process if it's still running, and wait for it to exit. As the process is terminated at once, exiting the context manager ends even a healthy sidecar with `SIGTERM`.
+- `def terminate()`, `def kill()`, `def send_signal(sig)`— send `SIGTERM`, `SIGKILL`, or `sig` to the process. On Windows, `terminate()` and `kill()` end the process with `TerminateProcess`. Signaling a process that has exited does nothing.
+- `pid`— the process id.
+- `returncode`— the exit code, negated if a signal ended the process, or `None` while it runs.
+- `exit_code`— the exit code, or `None` while the process runs or if a signal ended it.
+- `signal_code`— the name of the signal that ended the process, such as `"SIGTERM"`, or `None`.
+- `stdin`, `stdout`, `stderr`— the `asyncio` streams of the process for streams spawned with `"pipe"`, and `None` otherwise.
+
+When the host closes the IPC, the sidecar calls `Bare.exit()`, unless the entry listens for the `close` event of `Bare.IPC`. An uncaught exception in the entry aborts the sidecar.
+
+## bare-stow-host-python
+
+`bare-stow-host` is the Python counterpart of [`bare-stow-host`](/bare/reference/bare/modules/bare-stow#protocol). It multiplexes a control channel and a user data channel over a byte transport to a stowed bundle, and layers readiness, termination, and exit reporting on top. Any object with an async `read()`, which returns `b""` at the end, and an async `write(data)` works, such as a `Sidecar`. The harness that `bare-stow` generates wires them up like this:
+
+```python
+import asyncio
+
+from bare_sidecar import spawn
+from bare_stow_host import wrap
+
+
+async def main():
+    sidecar = await spawn("index.bundle")
+    ipc = wrap(sidecar, kill=sidecar.kill)
+
+    async def watch():
+        await sidecar.wait()
+        ipc.exited(sidecar.exit_code, sidecar.signal_code)
+
+    watcher = asyncio.create_task(watch())
+
+    await ipc.ready
+    await ipc.write(b"hello")
+
+    code = await ipc.terminate()
+    await watcher
+
+
+asyncio.run(main())
+```
+
+Whoever creates the `IPC` must report the exit of the worker with `exited()`, as above.
+
+### `IPC`
+
+```python
+class IPC:
+    def __init__(self, transport, *, kill=None, timeout=None, grace=DEFAULT_GRACE): ...
+
+def wrap(transport, **opts) -> IPC: ...
+```
+
+- `transport`— the byte transport to the worker. It also needs a `close()` method if `kill` isn't given.
+- `kill`— a callable without arguments, which may return an awaitable, that stops the worker without waiting. It's called when a terminating worker doesn't exit within `grace`, and when the transport fails and the worker doesn't exit within `grace`. Defaults to `transport.close`.
+- `timeout`— how many seconds from construction the worker gets to signal readiness. `None`, the default, waits indefinitely.
+- `grace`— how many seconds a terminating or failed worker gets to exit before it's killed. Defaults to `DEFAULT_GRACE`, `5.0`.
+- `wrap(transport, **opts)`— the same as `IPC(transport, **opts)`.
+
+Constructing an `IPC` starts reading the transport, and sends the worker a `configure` control frame carrying `grace` in milliseconds. `IPC` is itself a transport for [`bare-rpc`](#bare-rpc-python), as `RPC(ipc, handler=router)`.
+
+- `ready`— an `asyncio.Future` that resolves when the worker signals readiness. It raises `WorkerError` if, before then, the worker reports an error, exits, closes its side, or times out. The worker is then terminated, as it is when `ready` is cancelled.
+- `async def read() -> bytes`— the next chunk of user data from the worker, or `b""` once the transport has ended. After the worker fails, the next call raises the `WorkerError` that failed it.
+- `async for data in ipc`— iterate over `read()` until it returns `b""`.
+- `async def write(data)`— send `data` to the worker as user data. Writes are made one at a time. It raises `WorkerError` with the code `WORKER_CLOSED` if the transport is closed, reset, or broken, and with the code `TRANSPORT_ERROR` if it fails another way.
+- `def terminate() -> asyncio.Future`— ask the worker to exit, as `close()` does, and return a future that resolves to `exit_code`.
+- `def close() -> asyncio.Future`— if the transport is open, send the worker a `terminate` control frame, wait for the transport to close, and call `kill` if that takes longer than `grace`. It returns a future that resolves once the transport has closed. Repeated calls wait for the same termination.
+- `async def wait()`— wait for the transport to close and return `exit_code`.
+- `def exited(code, signal=None)`— report the exit of the worker process, with `signal` as a name such as `"SIGKILL"`. If the worker exited without sending an `exit` control frame and without being asked to terminate, the handle fails with a `WorkerError` whose code is `WORKER_KILLED` if `signal` isn't `None`, and `WORKER_EXITED` otherwise. It's ignored in every other case.
+- `exit_code`— the code that the worker sent in its `exit` control frame, or `None`.
+- `async with ipc`— call `close()` on exit.
+
+A transport that ends without an `exit` frame and without a `terminate` from the host counts as a crash: `read()` stays pending until `exited()` reports how the worker exited, and then raises. A transport that fails waits `grace` seconds for `exited()`, and otherwise calls `kill` and fails with `TRANSPORT_ERROR`.
+
+### `WorkerError`
+
+```python
+class WorkerError(Exception):
+    def __init__(self, message, *, code=None, stack=None, exit_code=None, signal_code=None): ...
+```
+
+`WorkerError` has the attributes `message`, `code`, `stack`, `exit_code`, and `signal_code`.
+
+| `code` | Raised when |
+| --- | --- |
+| `WORKER_ERROR` | The worker sent an `error` control frame. `message` and `stack` are the ones it sent. |
+| `WORKER_EXITED` | The worker sent an `exit` control frame before signaling readiness, or `exited()` reported an exit without a signal. |
+| `WORKER_KILLED` | `exited()` reported an exit with a signal. `signal_code` is set. |
+| `WORKER_CLOSED` | The transport closed before the worker signaled readiness, or was reset or broken. |
+| `WORKER_TIMEOUT` | `timeout` passed before the worker signaled readiness. |
+| `TRANSPORT_ERROR` | The transport failed another way. The exception is chained as `__cause__`. |
+
+### Constants
+
+- `CONTROL`, `USER`— the frame tags, `0x00` and `0x01`. Every frame is a 4-byte little-endian length followed by that many bytes: the tag and the payload. The payload of a control frame is a UTF-8 JSON object carrying its `type`.
+- `DEFAULT_GRACE`— `5.0` seconds.
+
+## bare-rpc-python
+
+`bare-rpc` is a Python implementation of the [`bare-rpc`](/bare/reference/bare/modules/bare-rpc) protocol on `asyncio`. Each side of a session can send requests, which get a reply, and events, which don't, identified by a numeric command. Requests and replies can stream their bodies, with flow control.
+
+```python
+from bare_rpc import RPC, CommandRouter
+
+# Inside a coroutine, with `ipc` from bare-stow-host or a Sidecar from bare-sidecar
+router = CommandRouter()
+router.on_request(1, lambda req: b"pong: " + req.data)
+router.on_event(2, lambda event: print(event.data))
+
+async with RPC(ipc, handler=router) as rpc:
+    reply = await rpc.request(1, b"ping")
+```
+
+### `RPC`
+
+```python
+class RPC:
+    def __init__(
+        self,
+        transport: Transport,
+        *,
+        handler: Handler | None = None,
+        on_request: Callable[[IncomingRequest], Awaitable[None] | None] | None = None,
+        on_event: Callable[[IncomingEvent], Awaitable[None] | None] | None = None,
+        on_error: Callable[[Exception], Awaitable[None] | None] | None = None,
+        max_frame_size: int = 16 * 1024 * 1024,
+        max_buffered_bytes: int = 16 * 1024 * 1024,
+    ) -> None: ...
+```
+
+Pass either `handler`, or `on_request` and `on_event`, which may each be sync or async. Without a request handler, every request is rejected with the code `UNKNOWN_COMMAND`, and without an event handler, events are dropped. Each request and event is handled in a task of its own. `on_error` is called with the error that fails the session. `max_frame_size` is the largest frame accepted from the peer, including its 4-byte length prefix, and `max_buffered_bytes` is how much of one incoming stream may be buffered without being read. It raises `ValueError` if a size isn't positive, or if `handler` is passed with `on_request` or `on_event`.
+
+- `async def request(command: int, data: bytes | None = None, *, timeout: float | None = None) -> bytes`— send a request and return the payload of the reply, which is `b""` if it's empty. It raises `RPCRemoteError` if the peer replies with an error, and `RPCError` with the code `UNEXPECTED_STREAM` if the peer replies with a stream, in which case the session stays open. With `timeout`, it cancels the request after that many seconds and raises `RPCError` with the code `TIMEOUT`.
+- `async def request_with_response_stream(command: int, data: bytes | None = None) -> IncomingStream`— send a request and return the stream of the reply, once the peer opens it. A reply that isn't streamed is read from the stream as one chunk, or not at all if it's empty.
+- `async def stream_request(command: int) -> tuple[OutgoingStream, asyncio.Future[bytes]]`— open a request whose body you write to the stream, and get a future of the reply. If the peer replies before opening the stream, later writes are dropped.
+- `async def create_bidirectional_stream(command: int) -> tuple[OutgoingStream, IncomingStream]`— open a request whose body and reply are both streamed. It returns once the peer opens the stream of the reply.
+- `async def event(command: int, data: bytes | None = None) -> None`— queue an event. After the session has ended, the event is dropped.
+- `async def close() -> None`— end the session. Pending requests and streams fail with `RPCError` with the code `CHANNEL_CLOSED`, queued frames are written, and the transport is closed. Called from a handler, the task of the handler is cancelled once it returns. Calling it again does nothing.
+- `async def wait() -> None`— wait for the session to end. It returns if the session ended cleanly, after `close()` or the end of the transport, and raises the error the session failed with otherwise.
+- `async with RPC(...) as rpc`— call `close()` on exit.
+
+The session fails when the transport raises, an event handler raises, or the peer sends a bad frame. Pending requests and streams then fail with the error, queued frames are dropped, and the transport is closed. A frame for a request or stream that has already finished, or that was never known, is ignored.
+
+### `Handler` and `CommandRouter`
+
+```python
+class Handler(Protocol):
+    def handle_request(self, request: IncomingRequest) -> Awaitable[None] | None: ...
+    def handle_event(self, event: IncomingEvent) -> Awaitable[None] | None: ...
+
+class CommandRouter(Handler):
+    def on_request(self, command: int, handler: Callable[[IncomingRequest], bytes | None | Awaitable[bytes | None]]) -> None: ...
+    def on_event(self, command: int, handler: Callable[[IncomingEvent], Awaitable[None] | None]) -> None: ...
+```
+
+- `Handler.handle_request(request)`— answer a request. By default, it rejects it with the code `UNKNOWN_COMMAND`. If it raises before answering, the request is rejected with the exception, and if it raises after opening a response stream, the stream is destroyed with it.
+- `Handler.handle_event(event)`— handle an event. By default, it drops it. **An exception fails the session.**
+- `CommandRouter.on_request(command, handler)`— register the handler of a request command, replacing any earlier one. Unless the handler answers the request itself, its return value is the reply, and `None` sends an empty one. A request for a command without a handler is rejected with the code `UNKNOWN_COMMAND`.
+- `CommandRouter.on_event(command, handler)`— register the handler of an event command. An event for a command without a handler is dropped.
+
+A subclass of `Handler` may define only one of the two methods.
+
+### `IncomingRequest` and `IncomingEvent`
+
+`IncomingRequest` is a request from the peer:
+
+- `id`, `command`, `data`— the request id, the command, and the payload, which is `None` when the request streams its body.
+- `request_stream`— the `IncomingStream` of the body, or `None`. Accessing it the first time accepts the stream.
+- `sent`— whether the request has been answered.
+- `cancellation_error`— the `RPCRemoteError` that the peer cancelled the request with, or `None`. When the peer cancels, the task of the handler is cancelled with `asyncio.CancelledError`.
+- `async def reply(data: bytes | None = None)`— reply with `data`.
+- `async def reject(error: Exception)`— reply with an error. An `RPCRemoteError` is sent with its fields, and another exception with `str(error)` and its `code` and `errno` attributes, if any.
+- `async def create_response_stream() -> OutgoingStream`— answer by streaming the reply.
+
+Answering twice raises `RPCError` with the code `ALREADY_SENT`. Once the peer has cancelled the request, answers send nothing.
+
+`IncomingEvent` has `command` and `data`.
+
+### `IncomingStream` and `OutgoingStream`
+
+`IncomingStream` reads a stream from the peer:
+
+- `async def read() -> bytes | None`— the next chunk, or `None` once the peer has ended the stream. It raises `RPCRemoteError` if the peer closes or destroys the stream with an error, and `RuntimeError` if another `read()` is already waiting.
+- `async for chunk in stream`— iterate until the end of the stream.
+- `def destroy(error: RPCRemoteError | None = None)`— stop reading and tell the peer to stop sending, with an error if given.
+
+The stream asks the peer to pause once 16 KiB is buffered, and to resume once it drains below that. A stream that buffers more than `max_buffered_bytes` fails the session with the code `STREAM_OVERFLOW`.
+
+`OutgoingStream` writes a stream to the peer:
+
+- `async def write(data: bytes)`— write a chunk once the peer has opened the stream, waiting while the peer has paused it and until the chunk is written. After `end()`, writes are dropped. After `destroy()`, or once the peer destroys the stream, they raise `RuntimeError`.
+- `async def end()`— end the stream once the peer has opened it.
+- `def destroy(error: RPCRemoteError | None = None)`— close the stream, with an error if given.
+
+### Transports
+
+```python
+class Transport(Protocol):
+    async def read(self) -> bytes: ...
+    async def write(self, data: bytes) -> None: ...
+    def close(self) -> Awaitable[None] | None: ...
+
+class StreamTransport:
+    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None: ...
+```
+
+- `Transport`— what `RPC` reads from and writes to. `read()` returns `b""` once the transport has ended. A bare-sidecar `Sidecar` and a bare-stow-host `IPC` are transports.
+- `StreamTransport(reader, writer)`— a transport over a pair of `asyncio` streams, for example from `asyncio.open_connection()`. `write()` drains after writing, and `close()` closes the writer and waits for it.
+
+### Cancellation
+
+Cancelling the task that awaits `request()`, or passing a `timeout`, cancels the request: the peer is sent a cancel message with the code `CANCELLED` or `TIMEOUT`. Cancellation needs a peer that supports it. A JavaScript peer needs `bare-rpc` 2.0.0 or later, and an older one fails its session with `UNKNOWN_MESSAGE` when it receives a cancel, which ends the session for both sides. Requests, replies, events, and streams are compatible with older peers.
+
+### Errors
+
+```python
+class RPCError(RuntimeError):
+    def __init__(self, message: str, code: str) -> None: ...
+
+class RPCRemoteError(RPCError):
+    def __init__(self, message: str, code: str, errno: int = 0) -> None: ...
+
+class UnknownMessageTypeError(ValueError): ...
+```
+
+`RPCError` has `message` and `code`. `RPCRemoteError` is an error that the peer sent, or that a handler raises to send a structured error, and adds `errno`. Two `RPCRemoteError`s are equal when their fields are. `UnknownMessageTypeError` is raised by `decode_frame()`.
+
+| Code | Raised when |
+| --- | --- |
+| `CHANNEL_CLOSED` | The session or its transport closed. |
+| `ALREADY_SENT` | A request was answered twice. |
+| `UNEXPECTED_STREAM` | `request()` got a streamed reply. |
+| `TIMEOUT` | `request()` got no reply within `timeout`. |
+| `CANCELLED` | The request was cancelled. |
+| `FRAME_TOO_LARGE` | The peer sent a frame larger than `max_frame_size`. It's raised as soon as the length prefix arrives. |
+| `UNKNOWN_MESSAGE` | The peer sent a message of an unknown type. |
+| `INVALID_MESSAGE` | The peer sent a frame that can't be decoded, the transport ended partway through a frame, or the frame is one that a valid peer never sends, such as a response without a request id or a request that reuses the id of one still in flight. |
+| `STREAM_OVERFLOW` | An incoming stream buffered more than `max_buffered_bytes`. |
+| `UNKNOWN_COMMAND` | A request had no handler. |
+
+### Frame codec
+
+The frame codec is exported for tooling and tests. It doesn't apply the checks that `RPC` applies to a session. Every encoder returns a whole frame, including its 4-byte little-endian length prefix.
+
+- `Type`— an `IntEnum` of the message types: `REQUEST` (1, an event when the id is 0), `RESPONSE` (2), `STREAM` (3), and `CANCEL` (4).
+- `StreamFlag`— an `IntFlag` of the stream flags: `OPEN` (`0x1`), `CLOSE` (`0x2`), `PAUSE` (`0x4`), `RESUME` (`0x8`), `DATA` (`0x10`), `END` (`0x20`), `DESTROY` (`0x40`), `ERROR` (`0x80`), `REQUEST` (`0x100`), and `RESPONSE` (`0x200`).
+- `RequestMessage(id, command, stream, data)`, `ResponseMessage(id, stream, data, error)`, `StreamMessage(id, flags, data, error)`, `CancelMessage(id, error)`— frozen dataclasses of the decoded messages. `DecodedMessage` is their union.
+- `encode_request(id, command, *, stream=0, data=None)`, `encode_event(command, data=None)`, `encode_response(id, *, stream=0, data=None)`, `encode_error_response(id, message, code, errno=0)`, `encode_cancel(id, error)`— encode a message.
+- `encode_stream(id, flags, *, data=None, error=None)`— encode a stream message. It raises `ValueError` if `flags` includes `ERROR` without an `error`.
+- `decode_frame(frame: bytes) -> DecodedMessage`— decode a frame. It raises `compact_encoding.OutOfBounds` if the frame is truncated, `UnknownMessageTypeError` for an unknown type, and `ValueError` for an invalid error flag in a response.
+
+## compact-encoding-python
+
+`compact-encoding` encodes values with the same bytes as the JavaScript [`compact-encoding`](/p2p/reference/helpers/compact-encoding). Import it under a name of its own, as `from compact_encoding import *` shadows the builtins `bool`, `int`, and `json`:
+
+```python
+import compact_encoding as cenc
+
+data = cenc.encode(cenc.uint, 300)  # b'\xfd,\x01'
+cenc.decode(cenc.uint, data)  # 300
+
+point = cenc.array(cenc.int)
+cenc.decode(point, cenc.encode(point, [-1, 2]))  # [-1, 2]
+
+state = cenc.State()
+cenc.uint.preencode(state, 42)
+cenc.utf8.preencode(state, "hi")
+state.allocate()
+cenc.uint.encode(state, 42)
+cenc.utf8.encode(state, "hi")
+bytes(state.buffer)  # b'*\x02hi'
+```
+
+### Functions and types
+
+- `encode(codec, value) -> bytes`— preencode, allocate, and encode `value`.
+- `decode(codec, data)`— decode one value from the start of `data`. Bytes after the value are ignored.
+- `State(data=None)`— the position in a buffer, with the attributes `start`, `end`, and `buffer`. Without `data`, the buffer is empty. With it, `end` is `len(data)` and `buffer` is `data`, which isn't copied.
+- `State.remaining`— `end - start`.
+- `State.allocate()`— replace `buffer` with a `bytearray` of `end` zeroed bytes.
+- `State.rewind()`— set `start` to 0.
+- `Codec`— a `typing.Protocol` with `preencode(state, value)`, which adds the encoded size of `value` to `state.end`, `encode(state, value)`, which writes `value` at `state.start` and advances it, and `decode(state)`, which reads a value at `state.start` and advances it. Every codec implements it.
+
+### Codecs
+
+| Codec | Python type | Encoding |
+| --- | --- | --- |
+| `uint` | `int` | 1 byte up to `0xfc`, and otherwise a prefix byte, `fd`, `fe`, or `ff`, followed by 2, 4, or 8 little-endian bytes. The range is 0 to 2<sup>53</sup> − 1. |
+| `int` | `int` | Zigzag-encoded, then written as a `uint`. The range is −2<sup>52</sup> to 2<sup>52</sup> − 1. |
+| `uint8`, `uint16`, `uint24`, `uint32`, `uint40`, `uint48`, `uint56` | `int` | That many bits, little-endian. `uint56` is limited to 2<sup>53</sup> − 1, like `uint`. |
+| `int24`, `int40`, `int48`, `int56` | `int` | Zigzag-encoded, then written as the `uint` of the same size. |
+| `float32`, `float64` | `float` | IEEE 754, little-endian. |
+| `bool` | `bool` | 1 byte, `01` for `True` and `00` for `False`. Any byte other than `01` decodes as `False`. |
+| `buffer` | `bytes` | A `uint` length followed by the bytes. It encodes any bytes-like value. |
+| `utf8`, `string` | `str` | A `uint` byte count followed by the UTF-8 bytes. Invalid UTF-8 decodes as U+FFFD rather than raising. `string` is the same codec. |
+| `json` | any | `utf8` of compact JSON. |
+| `fixed32`, `fixed64` | `bytes` | Exactly 32 or 64 bytes. |
+
+Codec factories:
+
+- `array(codec)`— a `uint` count followed by the items. It encodes any sized iterable and decodes to a `list`. Decoding raises `CompactError` if the count is over `0x100000`.
+- `record(key_codec, value_codec)`— a `uint` count followed by the key-value pairs. It encodes a mapping and decodes to a `dict`.
+- `frame(codec)`— a `uint` byte length followed by the value. Decoding skips to the end of the frame, and doesn't check the length against the buffer.
+- `fixed(n)`— exactly `n` bytes, without a length. Encoding raises `ValueError` for any other length.
+
+The JavaScript codecs that aren't listed, such as `uint64`, `int8` to `int64`, `bigint`, `raw`, and `any`, aren't ported.
+
+### Errors
+
+- `CompactError`— the base class of decoding errors.
+- `OutOfBounds`— a subclass of `CompactError`, raised when the input ends before the value does.
+
+Encoding a value out of range raises `ValueError`, and so does decoding a `uint` over 2<sup>53</sup> − 1. Values of the wrong type can raise `TypeError` or `struct.error`.
+
+## hrpc-python
+
+`hrpc-python` generates a Python client and server for the commands of an [HRPC](/p2p/reference/helpers/hrpc) definition, on top of [`bare-rpc`](#bare-rpc-python). It's an npm package that extends the `hrpc` builder, and it runs in Node.js with [`hyperschema-python`](#hyperschema-python), which generates the types:
+
+```sh
+npm install hrpc-python hyperschema-python
+pip install bare-rpc
+```
+
+```js
+const Hyperschema = require('hyperschema-python')
+const HRPC = require('hrpc-python')
+
+const schema = Hyperschema.from('./spec/hyperschema')
+schema.namespace('example').register({
+  name: 'greeting',
+  fields: [
+    { name: 'name', type: 'string', required: true },
+    { name: 'times', type: 'uint' }
+  ]
+})
+Hyperschema.toDisk(schema, './spec/hyperschema')
+Hyperschema.toDisk(schema, './spec/python') // schema.json and schema.py
+
+const hrpc = HRPC.from('./spec/hyperschema', './spec/python')
+hrpc.namespace('example').register({
+  name: 'greet',
+  request: { name: '@example/greeting' },
+  response: { name: 'string' }
+})
+HRPC.toDisk(hrpc, './spec/python') // hrpc.json and hrpc.py
+```
+
+```python
+import schema
+from hrpc import HRPC
+
+# Inside a coroutine, with `transport` and `peer` the two ends of a bare-rpc transport
+server = HRPC(peer, schema.resolve)
+
+
+async def greet(request):
+    return " ".join(["Hello " + request["name"]] * request["times"])
+
+
+server.on_greet(greet)
+
+async with HRPC(transport, schema.resolve) as client:
+    await client.greet({"name": "Ada", "times": 2})  # 'Hello Ada Hello Ada'
+```
+
+### Generator
+
+`hrpc-python` exports a subclass of the `hrpc` builder, so `from()`, `namespace()`, `register()`, and `toJSON()` work as they do in JavaScript. It overrides one method:
+
+- `HRPC.toDisk(hrpc, dir = hrpc.hrpcDir)`— write `hrpc.json` and `hrpc.py` to `dir`. It generates the code first, so nothing is written if generation fails. It doesn't write `schema.py`, which `hyperschema-python` writes.
+
+`toCode()` isn't overridden and still returns JavaScript. Command ids start at 0, unless the builder is given an `offset`.
+
+Generation fails with an error whose `code` is one of these:
+
+| `code` | Raised when |
+| --- | --- |
+| `INVALID_HANDLER_NAME` | A command name isn't of the form `@namespace/name` in lowercase letters, digits, and `-`. |
+| `RESERVED_KEYWORD` | The name of a command is a Python keyword. |
+| `DUPLICATE_METHOD_NAME` | Two commands have the same method name, a method name is `close`, or one collides with the `on_` method of another. |
+| `MISSING_RESPONSE` | A command has no response and isn't a send. |
+| `STREAM_WITHOUT_RESPONSE` | A command streams its request and has no response. |
+| `UNSUPPORTED_TYPE` | A type is neither a namespaced schema type nor one of `uint`, `uint32`, `int`, `string`, and `buffer`. |
+
+### Generated module
+
+`hrpc.py` imports `compact_encoding` and `bare_rpc`, and defines the `HRPC` class, along with the stream classes it returns when a command streams:
+
+- `HRPC(transport, resolve)`— one end of a session over `transport`, a [`bare-rpc` transport](#transports). `resolve` looks up the codec of a schema type by name, so pass `resolve` from the `schema.py` that `hyperschema-python` writes. It's left out when every type of every command is a primitive.
+- `async def close()`— close the session.
+- `async with HRPC(...) as rpc`— call `close()` on exit.
+
+Each command gets a method named after it, without the namespace and with `-` replaced by `_`, and an `on_` method that registers its handler. For example, `@example/echo-ticks` becomes `echo_ticks()` and `on_echo_ticks()`. Values are encoded and decoded with the codec of their type, so a struct is a `dict`.
+
+| Command | Client method | Handler |
+| --- | --- | --- |
+| Request and response | `async def m(request=None)` returns the response | `async def h(request)` returns the response |
+| Send (`request.send: true`) | `async def m(request=None)` returns `None` | `async def h(request)` |
+| Streamed response | `async def m(request=None)` returns an incoming stream | `async def h(request, outgoing)` |
+| Streamed request | `async def m()` returns an outgoing stream and an awaitable of the response | `async def h(incoming)` returns the response |
+| Streamed request and response | `async def m()` returns an outgoing and an incoming stream | `async def h(incoming, outgoing)` |
+
+An outgoing stream has `async write(value)`, `async end()`, and `async destroy(error=None)`. An incoming stream has `async read()`, which returns `None` at the end, and supports `async for`. The awaitable of a streamed request is a coroutine, so await it once.
+
+Handlers must be `async def`. A handler of a streamed response that raises destroys the stream with the code `HANDLER_ERROR`, and a handler of a streamed request that raises rejects the request with it. A streamed command without a handler is rejected with the code `NO_HANDLER`, and the request of a streamed response that can't be decoded with `DECODE_ERROR`. A request and response command without a handler gets no reply, so register a handler for each of them. A handler that returns `None` sends an empty reply, which the client fails to decode.
+
+In 0.1.1, the `destroy()` method of an outgoing stream awaits `bare-rpc`'s `destroy()`, which is synchronous from `bare-rpc` 0.2.0. With current `bare-rpc`, it sends the error to the peer and then raises `TypeError`. For the same reason, when the handler of a streamed request and response raises, its response stream is destroyed but its request stream isn't.
+
+The generated client has no timeout or cancellation of its own, but cancelling the task that awaits a call cancels its request. The JavaScript `hrpc` 4.3.1 runs on `bare-rpc` 1.x, which doesn't support cancellation, so cancelling a call to a JavaScript HRPC server ends the session.
+
+## hyperschema-python
+
+`hyperschema-python` generates Python codecs for the types of a [Hyperschema](/p2p/reference/helpers/hyperschema) definition, on top of [`compact-encoding`](#compact-encoding-python). It's an npm package that extends the `hyperschema` builder, and it runs in Node.js:
+
+```sh
+npm install hyperschema-python
+pip install compact-encoding
+```
+
+```js
+const Hyperschema = require('hyperschema-python')
+
+const schema = Hyperschema.from('./spec/python')
+schema.namespace('example').register({
+  name: 'greeting',
+  fields: [
+    { name: 'name', type: 'string', required: true },
+    { name: 'times', type: 'uint' }
+  ]
+})
+Hyperschema.toDisk(schema, './spec/python') // schema.json and schema.py
+```
+
+```python
+import compact_encoding as c
+import schema
+
+greeting = schema.resolve("@example/greeting")
+data = c.encode(greeting, {"name": "Ada", "times": 2})  # b'\x03Ada\x01\x02'
+c.decode(greeting, data)  # {'name': 'Ada', 'times': 2}
+```
+
+### Generator
+
+`hyperschema-python` exports a subclass of the `hyperschema` builder, so `from()`, `namespace()`, `register()`, `resolve()`, and `toJSON()` work as they do in JavaScript. Build the schema with this class rather than with `hyperschema` itself, as `toDisk()` calls the `toCode()` of the schema it's given.
+
+- `schema.toCode()`— return the Python source.
+- `Hyperschema.toDisk(schema, dir = schema.dir)`— write `schema.json` and `schema.py` to `dir`. It generates the code first, so nothing is written if generation fails.
+
+Generation fails with an error whose `code` is `UNSUPPORTED_TYPE` for external types, `uint64`, the bit-sized `uint1` to `uint7`, other unknown primitives, and a compact struct with more than 56 optional fields.
+
+### Generated module
+
+`schema.py` imports `compact_encoding` and defines a codec for each type, and one function:
+
+- `resolve(name)`— return the codec of the type named `name`, such as `@example/greeting`. It raises `KeyError` for an unknown name, and for the name of an alias.
+
+| Schema type | Python value |
+| --- | --- |
+| Struct | A `dict` of its fields. A missing required field raises `KeyError`. An optional scalar or enum field counts as absent when falsy, so `0`, `""`, and `False` aren't sent. Decoding returns every field, with an absent one as `None`, `False` for `bool` fields, or `0` for numbers, numeric enums, and fixed-size buffers. |
+| Enum | The number of the variant, starting at 1 unless the enum has an `offset`, or the string with `strings: true`. An unknown string raises `KeyError`. |
+| Array, record | A `list` or a `dict`. |
+| Versioned type | A `dict` that must include `version`. A version newer than the schema raises `ValueError`. |
+| Alias | The value of its target type. |
+
+The generated codecs match the bytes of JavaScript Hyperschema, with these exceptions:
+
+- **Versioned types.** From `hyperschema` 1.25.0, a versioned type registered in code frames each version by default, which the generated Python doesn't do. Register it with `framed: false`, or keep a schema created before 1.25.0, for the encodings to match. See [Versioned type](/p2p/reference/helpers/hyperschema#versioned-type).
+- **Inline and constant fields.** A field with `inline: true` is generated as an ordinary nested field, and a field with `constant` as a required field that's written, so neither matches the JavaScript encoding.
+
+## See also
+
+- [Bare Kit](/bare/reference/bare/bare-kit)—embed Bare in a native app instead of running a sidecar.
+- [`bare-stow`](/bare/reference/bare/modules/bare-stow)—generate a Python harness for a bundle.
+- [`bare-sidecar`](/bare/reference/bare/modules/bare-sidecar) and [`bare-rpc`](/bare/reference/bare/modules/bare-rpc)—the JavaScript counterparts.
+- [HRPC](/p2p/reference/helpers/hrpc) and [Hyperschema](/p2p/reference/helpers/hyperschema)—the definitions the generators read.
+- [Structured RPC and schema-first design](/bare/explanation/rpc-and-schemas)—when to reach for bare-rpc rather than HRPC.
+- [Swift packages](/bare/reference/bare/native-hosts/swift) and [Kotlin packages](/bare/reference/bare/native-hosts/kotlin).

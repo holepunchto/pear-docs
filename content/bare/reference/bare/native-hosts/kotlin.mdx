@@ -1,0 +1,455 @@
+---
+title: "Kotlin packages"
+description: "Reference for the Kotlin packages that let an Android or JVM host drive Bare: bare-stow-host-kotlin for the lifecycle of a stowed bundle, bare-rpc-kotlin for bare-rpc sessions over any byte transport, and compact-encoding-kotlin for the compact-encoding wire format."
+docType: reference
+product: bare
+schemaType: APIReference
+---
+
+{/* Maintainer note: hand-maintained from the source of each repository at its latest tag, audited
+2026-11-12 against bare-stow-host-kotlin v0.2.2, bare-rpc-kotlin v0.6.0, and compact-encoding-kotlin
+v0.3.0. Every public symbol is listed; the `api/*.api` dumps in each repository (checked by
+`./gradlew checkKotlinAbi`) are the completeness checklist when re-auditing. The JVM behavior was
+verified by running consumers against the JitPack artifacts, and by booting a bare-stow bundle in a
+bare-kit-kotlin v0.2.2 worklet on the JVM. The Android and JS variants were not run. There are no
+doc-states and no `upstreamVersion` front matter, because the page covers several packages; re-diff
+it on each release of these repositories. bare-kit-kotlin itself is documented in bare-kit.mdx. */}
+
+The Kotlin packages below run in an Android or JVM host and talk to JavaScript running in Bare, usually in a worklet of [`bare-kit-kotlin`](/bare/reference/bare/bare-kit#kotlin):
+
+- [`bare-stow-host-kotlin`](#bare-stow-host-kotlin) drives the lifecycle of a bundle stowed with [`bare-stow`](/bare/reference/bare/modules/bare-stow): readiness, termination, and exit reporting.
+- [`bare-rpc-kotlin`](#bare-rpc-kotlin) speaks the [`bare-rpc`](/bare/reference/bare/modules/bare-rpc) protocol over any byte transport.
+- [`compact-encoding-kotlin`](#compact-encoding-kotlin) encodes values in the [compact-encoding](/p2p/reference/helpers/compact-encoding) wire format.
+
+The harnesses that `bare-stow` generates for the `kotlin` language depend on bare-kit-kotlin, bare-stow-host-kotlin, and, with an RPC client, bare-rpc-kotlin. There is no Kotlin sidecar, and no HRPC or Hyperschema code generator for Kotlin. For the same packages in other languages, see [Swift packages](/bare/reference/bare/native-hosts/swift) and [Python packages](/bare/reference/bare/native-hosts/python).
+
+| Package | Version | Kotlin package | Targets |
+| --- | --- | --- | --- |
+| [bare-stow-host-kotlin](https://github.com/holepunchto/bare-stow-host-kotlin) | 0.2.2 | `to.holepunch.bare.stow.host` | Android, JVM |
+| [bare-rpc-kotlin](https://github.com/holepunchto/bare-rpc-kotlin) | 0.6.0 | `to.holepunch.bare.rpc` | Android, JVM, JS (Node.js) |
+| [compact-encoding-kotlin](https://github.com/holepunchto/compact-encoding-kotlin) | 0.3.0 | `to.holepunch.compactEncoding` | Android, JVM, JS (Node.js) |
+
+## Installation
+
+The packages are published to JitPack only. The coordinates are `com.github.holepunchto.<repository>:<repository>:<tag>`, where the tag keeps its leading `v`, and Gradle picks the Android or JVM variant from them:
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+  repositories {
+    mavenCentral()
+    maven("https://jitpack.io")
+  }
+}
+```
+
+```kotlin
+// build.gradle.kts
+dependencies {
+  implementation("com.github.holepunchto.bare-stow-host-kotlin:bare-stow-host-kotlin:v0.2.2")
+  implementation("com.github.holepunchto.bare-rpc-kotlin:bare-rpc-kotlin:v0.6.0")
+  implementation("com.github.holepunchto.compact-encoding-kotlin:compact-encoding-kotlin:v0.3.0")
+}
+```
+
+- **Kotlin**— the packages are built with Kotlin 2.4, so the consuming project needs Kotlin 2.3.0 or later. Older compilers reject the metadata.
+- **JVM and Android**— the bytecode targets Java 11. The Android variants need `minSdk` 29.
+- **Dependencies**— bare-stow-host-kotlin and bare-rpc-kotlin expose `kotlinx-coroutines-core` 1.11.0 as an API dependency. compact-encoding-kotlin depends on the standard library only.
+- **Java**— the APIs are meant for Kotlin. Members that take or return `ULong` or `Duration` compile to mangled names on the JVM, so Java code can't call them by name.
+
+## bare-stow-host-kotlin
+
+`bare-stow-host-kotlin` is the Kotlin counterpart of [`bare-stow-host`](/bare/reference/bare/modules/bare-stow#protocol). It multiplexes a control channel and a user data channel over a byte transport to a stowed bundle, and layers readiness, termination, and exit reporting on top. Any transport with a `Flow<ByteArray>` to read and a suspending function to write works, such as the IPC of a bare-kit-kotlin worklet:
+
+```kotlin
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import to.holepunch.bare.kit.Ipc as WorkletIpc
+import to.holepunch.bare.kit.Worklet
+import to.holepunch.bare.stow.host.Ipc
+
+// Inside a coroutine
+val worklet = Worklet(Worklet.Options()) // Worklet(context, options) on Android
+val transport = WorkletIpc(worklet)
+
+worklet.start(bundlePath)
+
+val ipc = Ipc(transport.data, transport::write, kill = { worklet.terminate() })
+
+CoroutineScope(Dispatchers.Default).launch { ipc.exited(worklet.wait()) }
+
+ipc.ready()
+ipc.write("hello".encodeToByteArray())
+
+val code = ipc.terminate()
+```
+
+Whoever creates the `Ipc` must report the exit of the worker with `exited()`, as above.
+
+### `Ipc`
+
+```kotlin
+public class Ipc(
+  data: Flow<ByteArray>,
+  write: suspend (ByteArray) -> Unit,
+  kill: () -> Unit,
+  timeout: Duration? = null,
+  grace: Duration = DEFAULT_GRACE,
+)
+```
+
+- `data`— the bytes that the worker writes.
+- `write`— writes bytes to the worker. Calls are made one at a time, in order.
+- `kill`— stops the worker without waiting. It's called, on a thread of `Dispatchers.Default`, when a terminating worker doesn't exit within `grace`, and when the transport fails and the worker doesn't exit within `grace`.
+- `timeout`— how long from construction the worker gets to signal readiness. `null`, the default, waits indefinitely.
+- `grace`— how long a terminating or failed worker gets to exit before it's killed. Defaults to `DEFAULT_GRACE`, 5 seconds.
+
+Constructing an `Ipc` starts reading `data` at once, in a coroutine scope of its own on `Dispatchers.Default`, and queues a `configure` control frame carrying `grace` in milliseconds as the first frame the worker receives.
+
+- `data: Flow<ByteArray>`— the user data that the worker writes. It completes when the transport ends cleanly, and throws the `WorkerError` that failed the handle otherwise. It can be collected only once: a second collection throws `IllegalStateException`.
+- `exitCode: Int?`— the code that the worker sent in its `exit` control frame, or `null`. An exit reported with `exited()` doesn't set it.
+- `suspend fun ready()`— suspend until the worker signals readiness. It throws `WorkerError` if, before then, the worker reports an error, exits, closes its side, or times out, or the transport fails and the worker doesn't exit within `grace`. The worker is then terminated, as it is when the calling coroutine is cancelled while it waits. Once the worker is ready, later calls return at once.
+- `suspend fun write(data: ByteArray)`— send `data` to the worker as user data, suspending until the transport has written it. It throws `WorkerError` with the code `WORKER_CLOSED` once the handle has ended, and with the code `TRANSPORT_ERROR` if the transport fails to write, which starts the grace period before `kill`.
+- `suspend fun terminate(): Int?`— ask the worker to exit, as `close()` does, and return `exitCode`.
+- `suspend fun close()`— if the transport is open, send the worker a `terminate` control frame behind the pending writes, wait for the transport to end, and call `kill` if that takes longer than `grace`. Concurrent and repeated calls wait for the same termination. It never throws.
+- `suspend fun wait(): Int?`— suspend until the transport has ended and return `exitCode`. It never throws, so it returns `null` after a crash.
+- `fun exited(code: Int?, signal: Int? = null)`— report the exit of the worker as the platform observed it, for example the result of `worklet.wait()`. If the worker exited without sending an `exit` control frame and without being asked to terminate, the handle fails with a `WorkerError` whose code is `WORKER_KILLED` if `signal` isn't `null`, and `WORKER_EXITED` otherwise. It's ignored in every other case.
+- `Ipc.DEFAULT_GRACE: Duration`— 5 seconds.
+
+A worker normally sends an `error` control frame before its `exit` frame when it fails, and the handle fails with that error. A transport that ends without an `exit` frame and without a `terminate` from the host counts as a crash: `data` doesn't complete and `wait()` doesn't return until `exited()` reports how the worker exited. The first failure wins. It settles a pending `ready()`, ends `data` with the error, and terminates the worker if the transport is still open.
+
+### `WorkerError`
+
+`WorkerError` extends `Exception` and describes why a worker failed.
+
+```kotlin
+public class WorkerError : Exception {
+  public constructor(message: String, stack: String? = null, exitCode: Int? = null, signal: Int? = null)
+  public constructor(
+    message: String,
+    stack: String? = null,
+    exitCode: Int? = null,
+    signal: Int? = null,
+    code: String = "WORKER_ERROR",
+    cause: Throwable? = null,
+  )
+
+  public val code: String
+  public val stack: String?
+  public val exitCode: Int?
+  public val signal: Int?
+}
+```
+
+| `code` | Raised when |
+| --- | --- |
+| `WORKER_ERROR` | The worker sent an `error` control frame. `message` and `stack` are the ones it sent. |
+| `WORKER_EXITED` | The worker sent an `exit` control frame before signaling readiness, or `exited()` reported an exit without a signal. `exitCode` is the code it reported. |
+| `WORKER_KILLED` | `exited()` reported an exit with a signal. `exitCode` and `signal` are the ones it reported. |
+| `WORKER_CLOSED` | The transport ended before the worker signaled readiness, or `write()` was called after the handle ended. |
+| `WORKER_TIMEOUT` | `timeout` passed before the worker signaled readiness. |
+| `TRANSPORT_ERROR` | Reading or writing the transport threw. `write()` throws it at once, and the handle fails with it if the worker doesn't exit within `grace`. `cause` is the exception. |
+
+When a crash follows a transport failure, the `WORKER_EXITED` or `WORKER_KILLED` error carries the `TRANSPORT_ERROR` as its `cause`.
+
+### `Frame` and `FrameDecoder`
+
+Every frame is a 4-byte little-endian length followed by that many bytes: a 1-byte tag and the payload. The tag is `0x00` for a control frame, whose payload is a UTF-8 JSON object carrying its `type`, and `0x01` for user data. These helpers implement the framing for embedders that bring their own transport:
+
+- `Frame.CONTROL: Byte`, `Frame.USER: Byte`— the tags, `0x00` and `0x01`.
+- `Frame.encode(tag: Byte, payload: ByteArray): ByteArray`— encode a frame.
+- `Frame.control(type: String, fields: Map<String, Int> = emptyMap()): ByteArray`— encode a control frame whose payload is `{"type": type, ...fields}`. Only `Int` field values are supported.
+- `FrameDecoder()`, `FrameDecoder.feed(data: ByteArray): List<Pair<Byte, ByteArray>>`— an incremental decoder, which buffers partial frames across calls and returns the `(tag, payload)` pairs that `data` completes. Frames with an unknown tag are returned as they are, and empty frames are skipped. It has no maximum frame size, but throws for a length of 2<sup>31</sup> or more, and it isn't thread-safe.
+- `decodeControl(payload: ByteArray): JsonObject?`— parse the payload of a control frame, returning `null` if it isn't a JSON object. `JsonObject` comes from `kotlinx-serialization-json`, which the package depends on as an implementation detail, so add `org.jetbrains.kotlinx:kotlinx-serialization-json` to the project to call it.
+
+`Ipc` handles the `ready`, `exit`, and `error` control frames and ignores any other.
+
+## bare-rpc-kotlin
+
+`bare-rpc-kotlin` is a Kotlin implementation of the [`bare-rpc`](/bare/reference/bare/modules/bare-rpc) protocol, built on coroutines. Each side of a session can send requests, which get a reply, and events, which don't, identified by a numeric command. Requests and replies can stream their bodies, with flow control.
+
+```kotlin
+import to.holepunch.bare.rpc.CommandRouter
+import to.holepunch.bare.rpc.Reply
+import to.holepunch.bare.rpc.Rpc
+import to.holepunch.bare.rpc.Transport
+
+// Inside a coroutine, with `ipc` from bare-stow-host-kotlin or bare-kit-kotlin,
+// and `scope` the CoroutineScope that the session runs in
+val router = CommandRouter()
+
+router.onRequest(1u) { req -> Reply.Data("pong: ${req.data.decodeToString()}".encodeToByteArray()) }
+router.onEvent(2u) { event -> println(event.data.decodeToString()) }
+
+val rpc = Rpc(Transport(ipc.data, ipc::write, ipc::close), scope, router)
+
+val reply = rpc.request(1u, "ping".encodeToByteArray())
+
+rpc.close()
+```
+
+The session runs as a child of `scope`, so a `coroutineScope {}` or `runBlocking {}` passed as `scope` doesn't return until the session ends. Call `close()` when you're done with it.
+
+### `Rpc`
+
+```kotlin
+public class Rpc(
+  transport: Transport,
+  scope: CoroutineScope,
+  handler: Handler,
+  maxFrameSize: Int = 16 * 1024 * 1024,
+  maxBufferedBytes: Int = 16 * 1024 * 1024,
+)
+
+public constructor(
+  transport: Transport,
+  scope: CoroutineScope,
+  onRequest: suspend (IncomingRequest) -> Reply = { /* rejects with UNKNOWN_COMMAND */ },
+  onEvent: suspend (IncomingEvent) -> Unit = {},
+  maxFrameSize: Int = 16 * 1024 * 1024,
+  maxBufferedBytes: Int = 16 * 1024 * 1024,
+)
+```
+
+Constructing an `Rpc` starts collecting `transport.data` at once, in `scope`. Without a handler, `Rpc(transport, scope)` rejects every request with the code `UNKNOWN_COMMAND` and drops every event. `maxFrameSize` is the largest frame accepted from the peer, including its 4-byte length prefix, and `maxBufferedBytes` is how much of one incoming stream may be buffered without being collected. Both throw `IllegalArgumentException` if not positive.
+
+- `suspend fun request(command: ULong, data: ByteArray): ByteArray`— send a request and suspend until the reply arrives. It throws `RemoteException` if the peer replies with an error, and `UnexpectedStreamException` if the peer replies with a stream, in which case the session stays open. If the calling coroutine is already cancelled, nothing is sent.
+- `suspend fun request(command: ULong, body: Flow<ByteArray>): ByteArray`— send a request whose body is streamed from `body` once the peer accepts the stream, and suspend until the reply arrives. The body keeps streaming after the reply unless the peer stops reading or the session ends. A reply that arrives before the peer accepts the stream skips the body. If `body` throws, the stream is closed with the error, and the call rethrows it if the reply hasn't arrived.
+- `fun requestFlow(command: ULong, data: ByteArray): Flow<ByteArray>`, `fun requestFlow(command: ULong, body: Flow<ByteArray>): Flow<ByteArray>`— a cold flow that sends a new request each time it's collected and emits each chunk of a streamed reply. A reply that isn't streamed is emitted as one chunk, or not at all if it's empty. It throws `RemoteException` if the peer replies with an error or closes the stream with one.
+- `suspend fun event(command: ULong, data: ByteArray)`— send an event and suspend until it's written. After the session has ended, the event is dropped.
+- `suspend fun close()`— end the session with `ConnectionClosedException`, unless it already failed. It stops reading, cancels running handlers and outgoing bodies, writes the frames already queued unless the session failed, closes the transport, and waits for all of that, except when called from a handler of this `Rpc`, in which case it returns at once. Calling it again does nothing.
+- `suspend fun wait()`— suspend until the session has ended and the transport is closed. It returns normally if the session ended with `ConnectionClosedException`, after `close()` or the end of `transport.data`, and throws the error the session failed with otherwise.
+
+After the session ends, pending and later requests throw the error it ended with.
+
+### `Transport`
+
+```kotlin
+public interface Transport {
+  public val data: Flow<ByteArray>
+  public suspend fun write(data: ByteArray)
+  public suspend fun close()
+}
+
+public fun Transport(
+  data: Flow<ByteArray>,
+  write: suspend (ByteArray) -> Unit,
+  close: suspend () -> Unit,
+): Transport
+```
+
+- `data`— the bytes from the peer, in chunks of any size. The `Rpc` collects it once. Its end ends the session cleanly, and an exception fails the session.
+- `write(data)`— write one whole frame. Calls are made one at a time and never cancelled once started, so it may suspend for backpressure, but it mustn't wait for `data` to be collected. An exception fails the session.
+- `close()`— called once when the session ends. Exceptions are ignored.
+- `Transport(data, write, close)`— build a transport from its parts, for example `Transport(ipc.data, ipc::write, ipc::close)`.
+
+### `Handler` and `CommandRouter`
+
+```kotlin
+public interface Handler {
+  public suspend fun handle(request: IncomingRequest): Reply
+  public suspend fun handle(event: IncomingEvent)
+}
+
+public class CommandRouter : Handler {
+  public fun onRequest(command: ULong, handler: suspend (IncomingRequest) -> Reply)
+  public fun onEvent(command: ULong, handler: suspend (IncomingEvent) -> Unit)
+}
+```
+
+- `Handler.handle(request)`— return the reply to a request. By default, it throws `RemoteException` with the code `UNKNOWN_COMMAND`. An exception becomes an error reply: a `RemoteException` is sent with its `message`, `code`, and `errno`, and any other exception with its `message`, an empty code, and `errno` 0.
+- `Handler.handle(event)`— handle an event. By default, it drops it. **An exception fails the session.**
+- `CommandRouter.onRequest(command, handler)`, `CommandRouter.onEvent(command, handler)`— register the handler of a command, replacing any earlier one. A request for a command without a handler gets an error reply with the code `UNKNOWN_COMMAND`, and an event for one is dropped. Registration isn't synchronized, so register every handler before creating the `Rpc`.
+
+Each handler runs in a coroutine of its own, so a slow handler doesn't hold up others, and handlers can send requests to the peer of their own session.
+
+### `Reply`
+
+```kotlin
+public sealed interface Reply {
+  public class Data(public val data: ByteArray) : Reply
+  public class Stream(public val body: Flow<ByteArray>) : Reply
+}
+```
+
+- `Reply.Data(data)`— reply with `data` at once.
+- `Reply.Stream(body)`— reply with a stream, which sends each element of `body` once the peer accepts it. Completing `body` ends the stream, and an exception closes it with an error, sent like the exception of a handler.
+
+### `IncomingRequest` and `IncomingEvent`
+
+```kotlin
+public class IncomingRequest internal constructor(
+  public val command: ULong,
+  public val data: ByteArray,
+  public val body: Flow<ByteArray>?,
+)
+
+public class IncomingEvent internal constructor(
+  public val command: ULong,
+  public val data: ByteArray,
+)
+```
+
+- `command`— the command of the request or event.
+- `data`— the payload. It's empty when the request streams its body.
+- `body`— the streamed body of the request, or `null` if the peer didn't open a request stream. Collecting it accepts the stream. It can be collected only once, and a second collection throws `AlreadyReceivedException`. Collection that starts after the reply has been sent ends empty, and stopping before the end tells the peer to stop sending.
+
+Only the library constructs these classes.
+
+### Cancellation
+
+Cancelling the coroutine that waits for `request()`, or the collector of `requestFlow()` before the reply ends, cancels the request: the peer is sent a cancel message and the caller rethrows its own cancellation. The cancel carries the code `TIMEOUT` and the message `Request timed out` when the cancellation comes from `withTimeout`, and the code `CANCELLED` and the message `Request was cancelled` otherwise. Cancelling a request whose reply has arrived does nothing, and a request body that's still streaming carries on.
+
+On the answering side, the coroutine of the handler is cancelled with a `RequestCancelledException` carrying the `message`, `code`, and `errno` that the peer sent. The body of the request ends with a `RemoteException`, a `Reply.Stream` stops, and whatever the handler returns is dropped.
+
+Cancellation needs a peer that supports it. A JavaScript peer needs `bare-rpc` 2.0.0 or later, and an older one fails its session with `UNKNOWN_MESSAGE` when it receives a cancel. Requests, replies, events, and streams are compatible with older peers.
+
+### Flow control
+
+An incoming stream, whether the body of a request or a streamed reply, asks the peer to pause once 16 KiB of it is buffered without being collected, and to resume once it drains below that. This mark is fixed. An outgoing body waits while the peer has paused it. A stream that buffers more than `maxBufferedBytes` fails the session with `StreamOverflowException`.
+
+### Errors
+
+Every error that the library raises is an `RpcException`, a sealed subclass of `Exception`, except `RequestCancelledException`, which is a `CancellationException`. Only `RemoteException` has a public constructor, so that handlers can throw it to send a structured error.
+
+| Exception | Raised when |
+| --- | --- |
+| `RemoteException(message: String, code: String, errno: Long)` | The peer replied with an error, or closed or destroyed a stream with one. |
+| `UnexpectedStreamException` | `request()` got a streamed reply. |
+| `AlreadyReceivedException` | `IncomingRequest.body` was collected a second time. |
+| `ConnectionClosedException` | A request was pending or sent after `close()` or the end of `transport.data`. |
+| `FrameTooLargeException` | The peer sent a frame larger than `maxFrameSize`. It has `size: Long` and `limit: Int`. It's raised as soon as the length prefix arrives. |
+| `UnknownMessageException` | The peer sent a message of an unknown type. It has `type: ULong`. |
+| `MalformedFrameException` | The peer sent a frame that can't be decoded, the transport ended partway through a frame, or the frame is one that a valid peer never sends, such as a response without a request id or a request that reuses the id of one still in flight. |
+| `StreamOverflowException` | An incoming stream buffered more than `maxBufferedBytes`. |
+| `RequestCancelledException` | The peer cancelled the request that the handler answers. It has `code: String` and `errno: Long`. |
+
+`FrameTooLargeException`, `UnknownMessageException`, `MalformedFrameException`, and `StreamOverflowException` fail the session, as do an exception from an event handler or from the transport. A frame for a request or stream that has already finished, or that was never known, is ignored.
+
+### Wire codec
+
+The frame codec is public, for tooling and tests. It doesn't apply the checks that `Rpc` applies to a session.
+
+```kotlin
+public sealed interface Message {
+  public val id: ULong
+
+  public class Request(override val id: ULong, public val command: ULong, public val stream: ULong, public val data: ByteArray?) : Message
+  public class Response(override val id: ULong, public val stream: ULong, public val data: ByteArray?, public val error: RemoteError?) : Message
+  public class Stream(override val id: ULong, public val flags: ULong, public val data: ByteArray?, public val error: RemoteError?) : Message
+  public data class Cancel(override val id: ULong, public val error: RemoteError) : Message
+}
+
+public data class RemoteError(val message: String, val code: String, val errno: Long)
+
+public class Decoded(public val message: Message, public val bytesRead: Int)
+
+public object Messages {
+  public fun encode(message: Message): ByteArray
+  public fun decode(bytes: ByteArray): Decoded
+}
+```
+
+- `Messages.encode(message)`— encode one frame, with its 4-byte little-endian length prefix. A `Request` with an `id` of 0 is an event. The data of a request that opens a stream, and of a response that carries an error, isn't written. It throws `IllegalArgumentException` for a `Stream` whose flags include the error flag but whose `error` is `null`.
+- `Messages.decode(bytes)`— decode the frame at the start of `bytes`. `bytesRead` includes the length prefix, and any bytes after the frame are ignored. It throws `MalformedFrameException` if the frame is truncated or can't be decoded, and `UnknownMessageException` for an unknown type.
+
+`Request`, `Response`, and `Stream` compare `data` by content in `equals()`. `Cancel` and `RemoteError` are data classes.
+
+## compact-encoding-kotlin
+
+`compact-encoding-kotlin` encodes values with the same bytes as the JavaScript [`compact-encoding`](/p2p/reference/helpers/compact-encoding). It ports eight of its codecs, with no combinators such as `array()` or `frame()`, so compose other types by writing a `Codec`:
+
+```kotlin
+import to.holepunch.compactEncoding.Codec
+import to.holepunch.compactEncoding.State
+import to.holepunch.compactEncoding.decode
+import to.holepunch.compactEncoding.encode
+import to.holepunch.compactEncoding.uint
+import to.holepunch.compactEncoding.utf8
+
+data class Greeting(val name: String, val count: ULong)
+
+val greeting =
+  object : Codec<Greeting> {
+    override fun preencode(state: State, value: Greeting) {
+      utf8.preencode(state, value.name)
+      uint.preencode(state, value.count)
+    }
+
+    override fun encode(state: State, value: Greeting) {
+      utf8.encode(state, value.name)
+      uint.encode(state, value.count)
+    }
+
+    override fun decode(state: State) = Greeting(utf8.decode(state), uint.decode(state))
+  }
+
+val bytes = encode(greeting, Greeting("hello", 42uL)) // 05 68 65 6c 6c 6f 2a
+val value = decode(greeting, bytes)
+```
+
+### `Codec`
+
+```kotlin
+public interface Codec<T> {
+  public fun preencode(state: State, value: T)
+  public fun encode(state: State, value: T)
+  public fun decode(state: State): T
+}
+```
+
+- `preencode(state, value)`— add the encoded size of `value` to `state.end`, without writing anything.
+- `encode(state, value)`— write `value` at `state.start` and advance `start`. The buffer must have been sized with `preencode()` and `allocate()`. There's no bounds check, so on the JVM, writing past the buffer throws `IndexOutOfBoundsException`.
+- `decode(state)`— read a value at `state.start` and advance `start`. It throws `DecodingException` if the bytes run out.
+
+### `State`
+
+```kotlin
+public class State(public var buffer: ByteArray = ByteArray(0)) {
+  public var start: Int
+  public var end: Int
+  public val remaining: Int
+  public fun allocate()
+  public fun rewind()
+}
+```
+
+- `buffer`— the bytes encoded into or decoded from.
+- `start`— the position of the next read or write, initially 0.
+- `end`— the end of the bytes, initially `buffer.size`. While preencoding, it accumulates the encoded size.
+- `remaining`— `end - start`.
+- `allocate()`— replace `buffer` with `end` zeroed bytes. It doesn't reset `start`.
+- `rewind()`— set `start` to 0.
+
+### Functions
+
+- `encode(codec: Codec<T>, value: T): ByteArray`— preencode, allocate, and encode `value`, returning exactly the encoded bytes.
+- `decode(codec: Codec<T>, bytes: ByteArray): T`— decode one value from the start of `bytes`. Bytes after the value are ignored. To read several values, or to check for leftovers, decode from a `State` and check `remaining`.
+
+### Codecs
+
+The codecs are stateless top-level values, safe to share across threads.
+
+| Codec | Type | Encoding |
+| --- | --- | --- |
+| `bool` | `Codec<Boolean>` | 1 byte, `01` for `true` and `00` for `false`. Any byte other than `01` decodes as `false`. |
+| `uint16` | `Codec<UShort>` | 2 bytes, little-endian. |
+| `uint32` | `Codec<UInt>` | 4 bytes, little-endian. |
+| `uint64` | `Codec<ULong>` | 8 bytes, little-endian. |
+| `uint` | `Codec<ULong>` | 1 byte up to `0xfc`, and otherwise a prefix byte, `fd`, `fe`, or `ff`, followed by a `uint16`, `uint32`, or `uint64`. It encodes the shortest form and accepts longer ones. |
+| `int` | `Codec<Long>` | Zigzag-encoded, then written as a `uint`. |
+| `buffer` | `Codec<ByteArray>` | A `uint` length followed by the bytes. Decoding copies them. |
+| `utf8` | `Codec<String>` | A `uint` byte count followed by the UTF-8 bytes. An unpaired surrogate encodes as U+FFFD, and an invalid sequence decodes as U+FFFD rather than throwing. |
+
+### `DecodingException`
+
+`DecodingException` is the only subclass of the sealed `CompactEncodingException`, which extends `Exception`. It's thrown when the input ends before the value does, with a message such as `uint32 needs 4 bytes, 2 remain` or `buffer count 5 exceeds the 1 byte remaining`. Encoding never throws a `CompactEncodingException`.
+
+## See also
+
+- [Bare Kit](/bare/reference/bare/bare-kit#kotlin)—the worklet and IPC of bare-kit-kotlin.
+- [`bare-stow`](/bare/reference/bare/modules/bare-stow)—generate a Kotlin harness for a bundle.
+- [`bare-rpc`](/bare/reference/bare/modules/bare-rpc)—the JavaScript side of the protocol.
+- [Structured RPC and schema-first design](/bare/explanation/rpc-and-schemas)—when to reach for bare-rpc rather than HRPC.
+- [Swift packages](/bare/reference/bare/native-hosts/swift) and [Python packages](/bare/reference/bare/native-hosts/python).
