@@ -149,3 +149,13 @@ Captured on `holepunchto/pear` `main` at `056afaf` (`3.7.0-rc.0` plus the nine c
 5. **Network status words were not reproduced live.** Pointing the sidecar at a dead bootstrap node, and killing the testnet mid-seed, both left `dht.online` true: `joining` is only visible before the bootstrap query finishes, and `online`/`degraded` need real traffic loss to flip. The words in the reference come from `cmd/seed.js` and `dht-rpc`'s `health.js`. Capture `unstable` and `unreachable` on the tag with the machine's network actually down.
 6. `pear sidecar inspect` on `main` prints `✖ Unexpected argument  'inspect'` and the `pear sidecar` help, exit 1. `Seeding:` for a verlink argument and for a quoted link both print `pear://<key>`.
 7. The `--menu` captures were taken through a pty and rendered to PNG from the screen buffer. Recapture on the tag if the groups or help text change.
+
+## Findings from the 2026-11-12 tag review
+
+`v3.7.0` was tagged on 2026-11-11 (`2a67b71`) with a `CHANGELOG.md` entry and no GitHub release. The stage channel serves 3.7.0 and the production channel still serves 3.6.0, so the draft stays "Unreleased".
+
+1. **#1260 (content to blobs) is in the tag.** `pear info` has no `Content Key:` row, and `Blobs Key:` shows the key. `pear seed` labels it `Blobs Key:` (`... blobs key` under `--no-tty`), still after `Discovery Key:`. `pear gc cores` prints `Cleared core  ~` and `Cleared blobs ~`. The `blind-peer request --core-only` and `gc cores` help say "blobs core". `--json` `stats.contentKey` is unchanged. Documented in `cli.mdx`, the Release Overview, and `availability-and-blind-peering.mdx`.
+2. **#1259 (`pear make`) is in the tag.** `pear make [entry]` runs the `pear-make` CLI through the sidecar. It installs `pear-make` after a typed `INSTALL`, fails with `ERR_NOT_FOUND` without a terminal or under `--json`, and wraps a non-zero exit in `ERR_OPERATION_FAILED`. Documented from the source in `cmd/make.js` and `subsystems/sidecar/ops/make.js`; it was not run live. The Ship group lists it.
+3. **#1261 is not in the tag.** `pear dump` still shows `[dir]`, so the `--list` note stands.
+4. **Not recaptured.** The two menu screenshots (`pear-menu-find-command.png`, `pear-menu-group-help.png`) predate `make` in the Ship group. Recapture them from a 3.7.0 binary.
+5. **Pins.** `scripts/upstream-releases-state.json` is `v3.7.0`, and the `pear-cli` pin is `be04ef7`, the last `cmd/index.js` commit reachable from the tag.
