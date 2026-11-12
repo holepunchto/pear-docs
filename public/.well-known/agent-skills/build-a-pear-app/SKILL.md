@@ -18,7 +18,8 @@ A Pear app is one of two shapes, both built around embedding the
   way. See the `hello-pear-bare` template, the `hello-pear-daemon` sibling
   for short-lived CLI commands that shouldn't block on an update check, or
   `hello-pear-qvac-tui` for a terminal app that runs a language model on the
-  user's machine.
+  user's machine. From Pear 3.7.0, `pear make --name <name>` builds the
+  binary: https://docs.pears.com/pear/how-to/operate-an-app/build-and-package/build-a-cli-executable
 
 In `package.json`, `pear-runtime` reads the top-level `version` field (bump
 it before every OTA update) and `upgrade` (a `pear://` link to the seeded
