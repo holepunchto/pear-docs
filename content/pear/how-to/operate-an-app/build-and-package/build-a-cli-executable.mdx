@@ -75,14 +75,14 @@ pear make -v
 Install pear-make?
 ```
 
-Type `INSTALL` in uppercase. Anything else prints `✖ uppercase INSTALL to confirm` and asks again. Pear then runs [`pear install`](/pear/reference/pear/cli#pear-install) for the `pear-make` link, which puts the binary in `~/.local/bin` (`%LOCALAPPDATA%\Programs\` on Windows), and prints the version:
+Type `INSTALL` in uppercase. Anything else prints `✖ uppercase INSTALL to confirm` and asks again. Pear then runs [`pear install`](/pear/reference/pear/cli#pear-install) for the `pear-make` link, which puts the binary in `~/.local/bin` (`%LOCALAPPDATA%\Programs\pear-make\` on Windows), and prints the version:
 
 ```text skip="sample-output"
 v1.1.0
 Success
 ```
 
-The first install downloads several hundred megabytes. After that, `pear-make` keeps itself up to date over the air, so you never reinstall it. Each run starts a short-lived background updater that logs to `updates.log` in `pear-make`'s storage directory (`~/Library/Application Support/pear-make` on macOS). The updater keeps its own copy of the release there, so plan for about 1.6 GB of disk in total (`pear-make` 1.1.0 on macOS).
+The first install downloads about 900 MB. After that, `pear-make` keeps itself up to date over the air, so you never reinstall it. Each run starts a short-lived background updater that logs to `updates.log` in `pear-make`'s storage directory (`~/Library/Application Support/pear-make` on macOS). The updater keeps its own copy of the release there, so plan for about 1.6 GB of disk in total (`pear-make` 1.1.0 on macOS).
 
 To install it without the prompt, run the install yourself once:
 
@@ -91,7 +91,7 @@ pear install pear://u3d888539k964t6omfzxdmf1a9c4jx4iiprm8jyt56x91izm78sy
 ```
 
 <Callout type="warning">
-If `~/.local/bin` wasn't on your `PATH` before the install, open a new terminal and run [`pear sidecar shutdown`](/pear/reference/pear/cli#pear-sidecar) before you build. The [sidecar](/pear/reference/pear/cli#pear-sidecar) starts `pear-make` with the `PATH` it inherited when it started, so until it restarts, builds fail with `✖ no such file or directory`.
+If the install directory (`~/.local/bin`, or `%LOCALAPPDATA%\Programs\pear-make` on Windows) wasn't on your `PATH` before the install, open a new terminal and run [`pear sidecar shutdown`](/pear/reference/pear/cli#pear-sidecar) before you build. The [sidecar](/pear/reference/pear/cli#pear-sidecar) starts `pear-make` with the `PATH` it inherited when it started, so until it restarts, builds fail with `✖ no such file or directory`. Shutting it down also stops any `pear seed` running on this machine. An idle sidecar exits on its own about a minute after its last command finishes.
 </Callout>
 
 </Step>
@@ -121,9 +121,9 @@ Success
 **Always pass `--name`.** As of `pear-make` 1.1.0, a build without it names the file `app`, not the `name` or `productName` from `package.json`.
 </Callout>
 
-`--path` defaults to the current directory, so without it the executable lands next to your `package.json`. `out/make` keeps builds in one place, matches the hello-pear templates, and is easy to add to `.gitignore`.
+`--path` defaults to the current directory, so without it the executable lands next to your `package.json`. `out/make` keeps builds in one place, matches the hello-pear-bare and hello-pear-qvac-tui templates, and is easy to add to `.gitignore`.
 
-The name is turned into a safe filename. Anything other than letters and digits becomes a hyphen and the result is lowercased, so `--name "Hello CLI"` also writes `hello-cli`. Windows builds add `.exe`. If your app updates itself through [Pear OTA](/pear/reference/pear/runtime), keep `--name` the same as `productName || name` in lowercase-and-hyphens form: the updater looks for `by-arch/<host>/app/<name>` in each release, and a mismatch means it never finds the new binary. The [hello-pear-daemon page](/p2p/getting-started/from-a-template/start-from-hello-pear-daemon#customize-for-your-brand) has the full naming rules.
+The name is turned into a safe filename: every run of characters other than letters and digits becomes a hyphen, a hyphen goes before a capital that follows a lowercase letter or digit, and the result is lowercased. So `--name "Hello CLI"` also writes `hello-cli`, and `--name PearChat` writes `pear-chat`. Windows builds add `.exe`. If your app updates itself through [Pear OTA](/pear/reference/pear/runtime), the updater looks for `by-arch/<host>/app/<name>` in each release, using `productName || name` from `package.json` exactly as written. Use lowercase letters, digits, and hyphens for `name` and any `productName`, and pass the same value to `--name`, or the updater never finds the new binary. The [hello-pear-daemon page](/p2p/getting-started/from-a-template/start-from-hello-pear-daemon#customize-for-your-brand) has the full naming rules.
 
 </Step>
 
@@ -139,7 +139,7 @@ The name is turned into a safe filename. Anything other than letters and digits 
 HELLO, ADA! (hello-cli v1.0.0)
 ```
 
-The executable needs nothing else on the machine—no Node.js, Bare, or Pear—so you can copy it to any machine with the same OS and architecture and run it there.
+The executable needs nothing else on the machine—no Node.js, Bare, or Pear—so you can copy it to another machine with the same OS and architecture and run it there. Sign it before you hand it to other people; see [Sign the executable](#sign-the-executable).
 
 </Step>
 
@@ -165,6 +165,10 @@ foreach ($h in 'darwin-arm64','darwin-x64','linux-arm64','linux-x64','win32-arm6
 
 Each host gets its own directory: `out/make/linux-x64/hello-cli`, `out/make/win32-x64/hello-cli.exe`, and so on. Give every host its own `--path`, because the macOS and Linux builds share a filename and would overwrite each other in one directory.
 
+<Callout type="warning">
+Build the `darwin-*` hosts on a Mac. `bare-build` adds the ad-hoc signature only when it runs on macOS, so a macOS executable built on Linux or Windows has no signature at all, and macOS on Apple silicon refuses to run an unsigned `darwin-arm64` executable. If you cross-build anyway, sign the file on a Mac before you ship it, at least with `codesign --sign - <file>`.
+</Callout>
+
 Native addons cross-build too. `bare-build` bundles the prebuild for the target host from the package in `node_modules`, and the `bare-*` modules ship prebuilds for every desktop host.
 
 </Step>
@@ -179,14 +183,23 @@ Without a terminal, `pear make` can't ask before installing `pear-make`, so a mi
 ✖ The pear-make CLI was not found. Please install using: pear install pear://u3d888539k964t6omfzxdmf1a9c4jx4iiprm8jyt56x91izm78sy
 ```
 
-Pass `--install` to install `pear-make` without asking, but only on a runner that doesn't have it yet. When a copy is already installed, `pear install` refuses to overwrite it, printing `Refusing to overwrite existing:`, and the run fails. On a runner that keeps its home directory between jobs, install only when it is missing:
+Pass `--install` to install `pear-make` without asking, but only on a runner that doesn't have it yet. When a copy is already installed, `pear install` refuses to overwrite it, printing `Refusing to overwrite existing:` (`Already installed:` on Windows), and `pear make` exits with status 1. Don't combine `--install` with `--json` either: in Pear 3.7.0 the install's progress lines go into the JSON stream as plain text.
+
+On a runner that keeps its home directory between jobs, install `pear-make` only when it is missing. In a bash step:
 
 ```sh skip="needs-pear-3.7"
 command -v pear-make >/dev/null || pear install pear://u3d888539k964t6omfzxdmf1a9c4jx4iiprm8jyt56x91izm78sy
 pear make --no-install --name hello-cli --path out/make
 ```
 
-Make sure `~/.local/bin` is on the job's `PATH` before the first `pear` command, because that command starts the sidecar (see the warning in [Install `pear-make`](#install-pear-make)). On GitHub Actions, append it with `echo "$HOME/.local/bin" >> "$GITHUB_PATH"` in an earlier step.
+In PowerShell, the default shell on Windows runners:
+
+```powershell skip="needs-pear-3.7"
+if (-not (Get-Command pear-make -ErrorAction SilentlyContinue)) { pear install pear://u3d888539k964t6omfzxdmf1a9c4jx4iiprm8jyt56x91izm78sy }
+pear make --no-install --name hello-cli --path out/make
+```
+
+Put the install directory on the job's `PATH` before the first `pear` command, because that command starts the sidecar (see the warning in [Install `pear-make`](#install-pear-make)). It is `~/.local/bin` on macOS and Linux, and `%LOCALAPPDATA%\Programs\pear-make` on Windows, where `pear install` adds it only to the user `PATH` in the registry, which a running job doesn't read. On GitHub Actions, append it in an earlier step: `echo "$HOME/.local/bin" >> "$GITHUB_PATH"` in bash, or `"$env:LOCALAPPDATA\Programs\pear-make" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append` in PowerShell.
 
 For machine-readable output, pass [`--json`](/pear/reference/pear/cli#json-output). Each piece of `pear-make` output arrives as a `make` object, and the stream ends with a `final` object or, on failure, an `error` object:
 
@@ -199,26 +212,27 @@ For machine-readable output, pass [`--json`](/pear/reference/pear/cli#json-outpu
 In Pear 3.7.0 the objects are written back to back, with no newline between them (they're shown one per line here). `jq` reads them as they are, but tools that split on lines don't. To print the build log:
 
 ```sh skip="needs-pear-3.7"
-pear make --json --name hello-cli --path out/make | jq -rj 'select(.tag == "make") | .data.chunk'
+set -o pipefail
+pear make --json --name hello-cli --path out/make | jq -rj 'if .tag == "make" then .data.chunk elif .tag == "error" then .data.message + "\n" else empty end'
 ```
 
-A failed build exits with status 1.
+A failed build exits with status 1. `set -o pipefail` keeps that status through the pipe, which the default `run` shell on GitHub Actions doesn't do, and the filter also prints the message of an `error` object, such as the `ENOENT` one Pear emits when it can't start `pear-make`.
 
 ## Sign the executable
 
 <Callout type="warning">
-`pear make` doesn't sign for distribution. On macOS the executable carries only an ad-hoc signature (`codesign -dv` reports `Signature=adhoc`), which Gatekeeper blocks when users download it through a browser, and the Windows executable has no Authenticode signature.
+`pear make` doesn't sign for distribution. A macOS executable built on a Mac carries only an ad-hoc signature (`codesign -dv` reports `Signature=adhoc`), which Gatekeeper blocks when users download it through a browser, and one built on Linux or Windows has no signature at all. The Windows executable has no Authenticode signature.
 </Callout>
 
-Sign and notarize the executable before you hand it to users. The hello-pear templates' `npm run make` signs with the `MAC_CODESIGN_IDENTITY`, `KEYCHAIN_PROFILE`, and `WINDOWS_CERT_SHA1` variables (see [Build a standalone binary](/p2p/getting-started/from-a-template/start-from-hello-pear-bare#build-a-standalone-binary)). In CI, the [`make-pear-app`](/pear/reference/ci-and-release/github-actions#make-pear-app) action provides the same credentials.
+Sign and notarize the executable before you hand it to users. `pear make` has no signing options, so either sign the file it wrote with your platform's tools, or build with [`bare-build --standalone`](/bare/how-to/run-on-native/bundle-a-bare-app#standalone-executable-with-bare-build) directly and use its signing flags. The `npm run make` of the hello-pear-bare and hello-pear-qvac-tui templates takes the second route, with the `MAC_CODESIGN_IDENTITY`, `KEYCHAIN_PROFILE`, and `WINDOWS_CERT_SHA1` variables (see [Build a standalone binary](/p2p/getting-started/from-a-template/start-from-hello-pear-bare#build-a-standalone-binary)). To notarize a macOS executable you sign yourself, sign it with the hardened runtime (`codesign --options runtime`) and the `com.apple.security.cs.allow-jit` and `com.apple.security.cs.allow-unsigned-executable-memory` entitlements, the ones `bare-build` adds when it signs with the hardened runtime. In CI, the [`make-pear-app`](/pear/reference/ci-and-release/github-actions#make-pear-app) action provides the same credentials.
 
 ## Troubleshooting
 
 - **`✖ package.json not found in <dir>.`** Run `pear make` from the project root, or pass the entry file as the argument.
 - **`✖ bin field not found in package.json`** Add a `bin` field that points at your entry file, or pass the entry file as the argument.
-- **`✖ no such file or directory`** The sidecar can't find `pear-make` on its `PATH`. This happens when `pear-make` was installed, or its directory added to `PATH`, after the sidecar started, and when `--no-install` is passed with no `pear-make` installed. Check that `command -v pear-make` finds it, then run `pear sidecar shutdown` and build again.
+- **`✖ no such file or directory`** The sidecar can't find `pear-make` on its `PATH`. This happens when `pear-make` was installed, or its directory added to `PATH`, after the sidecar started, and when `--no-install` is passed with no `pear-make` installed. Check that `command -v pear-make` (`Get-Command pear-make` in PowerShell) finds it, then run `pear sidecar shutdown`, which also stops any running `pear seed`, and build again.
 - **`✖ pear-make failed with exit code <n>`** `pear-make` itself failed, and the lines before this one are its error. `MODULE_NOT_FOUND: Cannot find module 'file:///…'` means the entry file doesn't exist. `Unknown host '<host>'` means `pear-make` doesn't recognize the `--host` id.
-- **`Refusing to overwrite existing:`** You passed `--install` with `pear-make` already installed. Drop `--install`.
+- **`Refusing to overwrite existing:`** (`Already installed:` on Windows) You passed `--install` with `pear-make` already installed. Drop `--install`.
 - **The executable is called `app`.** Pass `--name`; see [Build for your machine](#build-for-your-machine).
 
 ## Where to go next
