@@ -30,7 +30,7 @@ Inside the worklet:
 
 | Bare Kit 2 | Bare Kit 3 |
 | --- | --- |
-| `BareKit.IPC` | [`Bare.IPC`](/bare/reference/bare/runtime#bareipc), the same duplex stream, which also works on Bare Kit 2 |
+| `BareKit.IPC` | [`Bare.IPC`](/bare/reference/bare/runtime#bareipc), a duplex stream with the same API, which also works on Bare Kit 2 |
 | `BareKit.on('push', …)` answers a push from a native host | Requests over `Bare.IPC`, for example with [`bare-rpc`](/bare/reference/bare/modules/bare-rpc) |
 | The IPC is a pipe | The IPC is an in-process queue. Ending a side is a half-close, and an open IPC keeps the worklet running until both sides have ended it. |
 
@@ -75,10 +75,10 @@ Bare Kit runs Bare as a **worklet**, a thread inside your app's process. A **sid
 
 ### Upgrade the packages
 
-In a React Native app, upgrade react-native-bare-kit and add [`bare-stow`](/bare/reference/bare/modules/bare-stow), which links Bare Kit into the app in the next step. If you linked addons with `bare-link` before, remove it:
+In a React Native app, upgrade react-native-bare-kit and add [`bare-stow`](/bare/reference/bare/modules/bare-stow), which links Bare Kit into the app in the next step. Also add `bare-stow-runtime`: `bare-stow` wraps each worklet entry in code that imports it, so `bare-stow link` fails with `Cannot find module 'bare-stow-runtime'` without it. If you linked addons with `bare-link` before, remove it:
 
 ```sh skip="install-instruction"
-npm i react-native-bare-kit@^0.17.1
+npm i react-native-bare-kit@^0.17.1 bare-stow-runtime
 npm i -D bare-stow
 npm uninstall bare-link
 ```
@@ -113,6 +113,8 @@ pip install bare-kit
 
 bare-kit-swift 2.3.0, bare-kit-kotlin 0.2.3 and bare-kit-python 0.2.1 build Bare Kit 3.1.0, which embeds Bare 1.37.1. Their version numbers don't follow Bare Kit's. See [Bundled Bare version](/bare/reference/bare/bare-kit#bundled-bare-version).
 
+Bare 1.37 builds V8 with pointer compression on 64-bit platforms. JavaScript objects take less memory, but every worklet in the app's process shares one V8 heap reservation of about 4 GiB. When their heaps together exceed it, the whole app aborts with `Fatal JavaScript out of memory`, even if each worklet stays under its own `memoryLimit`.
+
 </Step>
 
 <Step>
@@ -126,7 +128,7 @@ npx bare-stow link --target bare-kit --language swift --out ios/BareKitResources
 npx bare-stow link --target bare-kit --language kotlin --language-option package=com.example.addons --out android/bare-kit-resources worklet.js
 ```
 
-Add the Swift package and its `bare-stow` folder to the app target in Xcode, and include the Gradle module in the Android app. Delete any `postinstall` script that ran `bare-link` into `node_modules/react-native-bare-kit`, because 0.17.0 no longer builds those directories into the app. Run `bare-stow link` again whenever a worklet's dependencies change. In an Expo app, list the workers in the `workers` option of expo-bare-kit instead.
+Add the Swift package to the app target in Xcode, together with its `bare-stow` folder if `bare-stow link` wrote one, which it does only when a worklet references assets. Include the Gradle module in the Android app. bare-kit-kotlin is published on JitPack and needs Kotlin 2.4 or later and Android 10 (API level 29) or later, so add `maven { url "https://jitpack.io" }` to the app's repositories and raise `kotlinVersion` and `minSdkVersion` if they're lower. Delete any `postinstall` script that ran `bare-link` into `node_modules/react-native-bare-kit`, because 0.17.0 no longer builds those directories into the app. Run `bare-stow link` again whenever a worklet's dependencies change. In an Expo app, list the workers in the `workers` option of expo-bare-kit instead.
 
 If you skip this step, `new Worklet()` throws:
 
@@ -142,7 +144,7 @@ A Swift or Kotlin app without React Native can link the addons of its worklets w
 
 ### Replace the `BareKit` global
 
-In every worklet, change `BareKit.IPC` to `Bare.IPC`. It's the same stream, so nothing else in the code changes:
+In every worklet, change `BareKit.IPC` to `Bare.IPC`. It has the same API, so nothing else in the code changes. A worker packed with `bare-stow pack`, as in the next step, takes its stream as an argument instead:
 
 ```js skip="snippet-illustration"
 // Before
@@ -175,11 +177,15 @@ const worklet = new Worklet()
 worklet.start('/app.bundle', bundle)
 ```
 
-A worklet whose bundle references assets needs them shipped as resources of the app instead. Let [`bare-stow`](/bare/reference/bare/modules/bare-stow) lay them out. Pack the worklet into a package with `bare-stow pack --target react-native`, where the entry exports a function that receives the IPC stream, and start it through that package:
+A worklet whose bundle references assets needs them shipped as resources of the app instead. Let [`bare-stow`](/bare/reference/bare/modules/bare-stow) lay them out. Pack the worklet into a package with `bare-stow pack --target react-native`, where the entry exports a function that receives the IPC stream, rather than using `Bare.IPC`. The `react-native` target comes from a package of its own. Add the generated package as a dependency of the app, and pass the same entry to `bare-stow link` in [step 2](#link-bare-kit-addons-and-assets):
 
 ```sh skip="manual-walkthrough"
+npm i -D bare-stow-target-react-native
 npx bare-stow pack --target react-native --out ./worker worker.js
+npm i ./worker
 ```
+
+Then start the worklet through that package:
 
 ```js skip="snippet-illustration"
 import worker from 'worker'
@@ -288,7 +294,7 @@ Alternatively, in Xcode, add the **Extended Virtual Addressing** capability unde
 Failed to reserve virtual memory for process-wide V8 pointer compression cage
 ```
 
-This can reach an app before you migrate. bare-stow 0.3.2 through 0.3.6 wrote `from: "2.2.0"` for bare-kit-swift, which Swift Package Manager resolves to any 2.x release, so the next package update of an app linked with them brings in bare-kit-swift 2.3.0, and with it Bare 1.37.1. Add the entitlement before you update packages, or pin bare-kit-swift to `2.2.0` exactly until you do. See [iOS entitlement](/bare/reference/bare/bare-kit#ios-entitlement) for why V8 needs it, and for what's known about app extensions.
+This can reach an app before you migrate. bare-stow 0.2.0 through 0.3.6 wrote a `from:` requirement for bare-kit-swift, `from: "2.0.0"` in 0.2.0 and `from: "2.2.0"` after it, which Swift Package Manager resolves to any later 2.x release, so the next package update of an app linked with them brings in bare-kit-swift 2.3.0, and with it Bare 1.37.1. Add the entitlement before you update packages, or pin bare-kit-swift to `2.2.0` exactly until you do. See [iOS entitlement](/bare/reference/bare/bare-kit#ios-entitlement) for why V8 needs it, and for what's known about app extensions.
 
 </Step>
 
@@ -313,7 +319,7 @@ If you rely on WebAssembly builds on iOS, keep the native build linked where spe
 
 Run the app on a device. Then check that each worklet exits when you expect it to, and with the code you expect:
 
-- In React Native 0.17.1, listen for the `exit` event, or `await worklet.wait()`.
+- In react-native-bare-kit 0.17.1 or later, listen for the `exit` event, or `await worklet.wait()`.
 - In Swift, Kotlin and Python, `await` `wait()`.
 
 An open IPC now keeps a worklet running until both sides have ended it, so end the host side with `IPC.end()`, or `end()` in a native binding, once you have nothing more to send. An uncaught error in the worklet still aborts the whole app, so report errors over the IPC as [Error handling](/bare/reference/bare/bare-kit#error-handling) describes.
@@ -327,6 +333,9 @@ An open IPC now keeps a worklet running until both sides have ended it, so end t
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | `new Worklet()` throws `Bare Kit is not available, so make sure the application includes bare-kit-swift or bare-kit-kotlin` | react-native-bare-kit 0.17 found no Bare Kit in the app | Run `bare-stow link --target bare-kit` and add its output to the app. See [step 2](#link-bare-kit-addons-and-assets). |
+| `bare-stow link` or `bare-stow pack` fails with `Cannot find module 'bare-stow-runtime'` | The app doesn't depend on `bare-stow-runtime`, which the code bare-stow wraps around each entry imports | `npm i bare-stow-runtime` |
+| `bare-stow pack` fails with `Cannot resolve 'react-native'` | The `react-native` target is a separate package | `npm i -D bare-stow-target-react-native` |
+| The Android build can't resolve `com.github.holepunchto.bare-kit-kotlin` | JitPack isn't among the app's repositories | Add `maven { url "https://jitpack.io" }` to the repositories |
 | `ReferenceError: BareKit is not defined` in the worklet | Bare Kit 3 removed the `BareKit` global | Use `Bare.IPC` |
 | The app aborts on an iOS device with `Failed to reserve virtual memory for process-wide V8 pointer compression cage` | The app isn't signed with the extended virtual addressing entitlement | [Add the entitlement](#add-the-ios-entitlement) |
 | An addon fails to load after the upgrade | It was linked with `bare-link` into a directory that 0.17 no longer builds | Link it with `bare-stow link` |

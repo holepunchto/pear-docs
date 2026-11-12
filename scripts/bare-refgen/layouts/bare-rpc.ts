@@ -43,7 +43,7 @@ const layout: Layout = {
       stream:
         'The duplex stream to frame RPC messages over, identifying each method by a unique command number — an IPC pipe, a TCP socket, or a [Bare Kit](/bare/reference/bare/bare-kit) worklet channel.',
       onrequest:
-        'Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to. Defaults to a no-op.',
+        'Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to, or an `RPCCommandRouter`. If omitted or `null`, an empty `RPCCommandRouter` handles them: every request is answered with an error whose code is `UNKNOWN_COMMAND`, and every event is dropped. Before v1.5.0, the default was a no-op that left requests unanswered.',
     },
     'RPC.request': {
       command:
@@ -61,7 +61,10 @@ const layout: Layout = {
     },
     'RPCOutgoingRequest.createRequestStream': writableOpts,
     'RPCOutgoingRequest.createResponseStream': readableOpts,
-    'RPCIncomingRequest.reply': sendParams,
+    'RPCIncomingRequest.reply': {
+      ...sendParams,
+      data: 'The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. Once the remote end has cancelled the request, nothing is sent.',
+    },
     'RPCIncomingRequest.createRequestStream': readableOpts,
     'RPCIncomingRequest.createResponseStream': writableOpts,
     'RPCOutgoingEvent.send': sendParams,

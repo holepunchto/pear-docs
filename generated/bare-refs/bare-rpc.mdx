@@ -38,7 +38,7 @@ a.destroy()
 b.destroy()
 ```
 
-`new RPC(stream, onrequest, opts)` runs a session over a duplex `stream`, such as a pipe, a socket or an IPC port. `onrequest` is a function that is called with each request and event of the peer, or a `CommandRouter`. `opts` takes `maxFrameSize` and `maxBufferedBytes`, as described under [Untrusted peers](#untrusted-peers).
+`new RPC(stream, onrequest, opts)` runs a session over a duplex `stream`, such as a pipe, a socket or an IPC port. `onrequest` is a function that is called with each request and event of the peer, or a `CommandRouter`. `opts` takes `maxFrameSize` and `maxBufferedBytes`, as described under [Untrusted peers](#untrusted-peers), and from v2.0.0 `AbortController`, as described under [Cancellation](#cancellation).
 
 ## API
 
@@ -59,7 +59,7 @@ Added in v1.4.0: `opts.maxFrameSize` and the checks described under [Untrusted p
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `stream` | `Duplex` | — | The duplex stream to frame RPC messages over, identifying each method by a unique command number — an IPC pipe, a TCP socket, or a [Bare Kit](/bare/reference/bare/bare-kit) worklet channel. |
-| `onrequest?` | `((req: RPCIncomingRequest) => void \| Promise<void>) \| RPCCommandRouter \| null` | — | Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to. Defaults to a no-op. |
+| `onrequest?` | `((req: RPCIncomingRequest) => void \| Promise<void>) \| RPCCommandRouter \| null` | — | Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to, or an `RPCCommandRouter`. If omitted or `null`, an empty `RPCCommandRouter` handles them: every request is answered with an error whose code is `UNKNOWN_COMMAND`, and every event is dropped. Before v1.5.0, the default was a no-op that left requests unanswered. |
 | `opts?` | [`RPCOptions`](#rpcoptions) | — | Options for the connection. The remote end is not trusted to send valid frames. A frame that is too large, cannot be decoded, or breaks the protocol fails the connection, and so does a stream that holds more unread data than `maxBufferedBytes`: `stream` is destroyed with an `RPCError` whose code is `FRAME_TOO_LARGE`, `UNKNOWN_MESSAGE`, `INVALID_MESSAGE` or `STREAM_OVERFLOW`, and every request and stream in flight is rejected or destroyed with it. A frame that refers to a request or stream that has already finished, or that was never known, is ignored. |
 
 #### `event(command: number): RPCOutgoingEvent`
@@ -222,7 +222,7 @@ Send a reply to the request. `data` may be a buffer or a string encoded using `e
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `data?` | `Buffer` \| `string` \| `null` | — | The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. |
+| `data?` | `Buffer` \| `string` \| `null` | — | The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. Once the remote end has cancelled the request, nothing is sent. |
 | `encoding?` | `BufferEncoding` | — | The encoding used when `data` is a string (defaults to `utf8`). |
 
 **Throws**
