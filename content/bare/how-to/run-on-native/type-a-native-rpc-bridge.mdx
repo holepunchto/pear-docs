@@ -10,7 +10,7 @@ import { Steps, Step } from 'fumadocs-ui/components/steps'
 
 Once a [worklet](/bare/how-to/run-on-native/embed-bare-in-react-native) is exchanging bytes with its host, the next problem is structure: framing messages and parsing them by hand on both sides is error-prone, and the two sides drift apart over time. This guide puts a [typed RPC seam](/bare/explanation/bare-on-native#the-typed-rpc-seam) on the channel—methods generated from a single schema—as described in [One core, many platforms](/bare/explanation/bare-on-native).
 
-The pieces: [`hyperschema`](/p2p/reference/helpers/hyperschema) defines the data structures and generates [`compact-encoding`](/p2p/reference/helpers/compact-encoding) codecs; [`bare-rpc`](/bare/reference/bare/modules) frames requests and replies over the IPC stream.
+The pieces: [`hyperschema`](/p2p/reference/helpers/hyperschema) defines the data structures and generates [`compact-encoding`](/p2p/reference/helpers/compact-encoding) codecs; [`bare-rpc`](/bare/reference/bare/modules/bare-rpc) frames requests and replies over the IPC stream.
 
 <Callout type="info">
 This guide shows the `bare-rpc` + `hyperschema` primitives directly, which is what you need when the far side is written in a language [HRPC](/p2p/reference/helpers/hrpc) has no generator for yet—Kotlin today. Before following it, check whether HRPC already covers your case, because it usually does:
@@ -75,7 +75,7 @@ To generate wire-compatible Swift types for an iOS shell, run the Swift toolchai
 
 ### Frame calls with bare-rpc
 
-Give each method a unique command number. In the worklet (the core), construct an `RPC` over the `BareKit.IPC` stream and handle incoming requests:
+Give each method a unique command number. In the worklet (the core), construct an `RPC` over the [`Bare.IPC`](/bare/reference/bare/runtime#bareipc) stream and handle incoming requests:
 
 ```js skip="snippet-illustration"
 // inside the worklet
@@ -85,7 +85,7 @@ import { resolveStruct } from './schema'
 
 const SEND_MESSAGE = 1
 const message = resolveStruct('@app/message', 1)
-const { IPC } = BareKit
+const IPC = Bare.IPC
 
 const rpc = new RPC(IPC, (req) => {
   if (req.command === SEND_MESSAGE) {
@@ -125,10 +125,14 @@ For more than request/response, `bare-rpc` exposes streams on a request—`req.c
 ```js skip="snippet-illustration"
 const req = rpc.request(SUBSCRIBE)
 const updates = req.createResponseStream()
+req.send()
+
 for await (const chunk of updates) {
   // handle each streamed update
 }
 ```
+
+From bare-rpc 2.0.0, breaking out of that loop before the reply ends cancels the request, and a cancel is a message that a bare-rpc 1.x peer rejects by failing the whole session with `UNKNOWN_MESSAGE`. Keep both ends on a release with cancellation: `bare-rpc` 2.0.0 in the worklet, and in the shell `bare-rpc-swift` 3.0.0, `bare-rpc-kotlin` 0.6.0, or `bare-rpc-python` 0.3.0 or later. See [Changes in v2.0.0](/bare/reference/bare/modules/bare-rpc#changes-in-v200).
 
 </Step>
 
