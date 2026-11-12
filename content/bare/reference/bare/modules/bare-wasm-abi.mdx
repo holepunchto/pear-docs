@@ -4,17 +4,17 @@ description: "Reference for bare-wasm-abi: runs Bare addons compiled to wasm32-w
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.1.1"
+upstreamVersion: "0.1.2"
 ---
 
 <mark style={{ backgroundColor: '#8484ff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>experimental</mark>
 
 [`bare-wasm-abi`](https://github.com/holepunchto/bare-wasm-abi) runs Bare addons compiled to `wasm32-wasip1`. A native addon calls the [libjs](https://github.com/holepunchto/libjs) C API to create and read JavaScript values. A WebAssembly build of the same addon imports those functions instead, and `bare-wasm-abi` implements them in JavaScript. The addon reaches no further than JavaScript in the same realm and the WASI capabilities it is given through [`bare-wasi`](/bare/reference/bare/modules/bare-wasi).
 
-From Bare 1.36.0, the module system ([`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) 7.5.0) depends on this package and calls it for every `.wasm` addon it loads, so applications don't call it themselves. Use it directly to instantiate an addon outside the module system.
+From Bare 1.36.0, the module system ([`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) 7.5.0) depends on this package and calls it for every `.wasm` addon it loads, so applications don't call it themselves. Bare 1.37.1 bundles 0.1.2. Use it directly to instantiate an addon outside the module system.
 
 <Callout type="info">
-This package has no type declarations, so this page is written from the README and source of 0.1.1.
+This package has no type declarations, so this page is written from the README, source, and threat model of 0.1.2.
 </Callout>
 
 ```sh
@@ -85,11 +85,24 @@ Some libjs functions are left out by design. An addon that imports one fails to 
 | Garbage collection tracking, heap statistics, and `js_get_error_location` | Engine introspection |
 | `js_get_typed_callback_info` | Typed functions always fall back to their untyped callback |
 
-A function can also be missing without being excluded, in which case the error lists it with no reason. In 0.1.1 this is the case for `js_add_teardown_callback`, `js_remove_teardown_callback`, `js_add_deferred_teardown_callback`, `js_finish_deferred_teardown_callback`, `js_create_delegate`, `js_get_promise_state`, `js_get_promise_result`, `js_get_object_type`, `js_is_map_iterator`, and `js_is_set_iterator`. The WebAssembly builds of `bare-svg` 1.1.1 and `bare-heif` 1.2.1 import `js_add_teardown_callback`, so they fail to instantiate.
+A function can also be missing without being excluded, in which case the error lists it with no reason. In 0.1.2 this is the case for `js_add_deferred_teardown_callback`, `js_finish_deferred_teardown_callback`, `js_create_delegate`, `js_get_promise_state`, `js_get_promise_result`, `js_get_object_type`, `js_is_map_iterator`, and `js_is_set_iterator`. Version 0.1.1 also lacked `js_add_teardown_callback` and `js_remove_teardown_callback`, so the WebAssembly builds of `bare-svg` 1.1.1 and `bare-heif` 1.2.1, which import `js_add_teardown_callback`, failed to instantiate with it. They instantiate with 0.1.2.
+
+## Teardown callbacks
+
+Added in 0.1.2. An addon can register a callback with `js_add_teardown_callback()` and take it back with `js_remove_teardown_callback()`, passing the same function and data. The callbacks run when `Bare` emits `exit`, last registered first. Only these synchronous callbacks are supported. The deferred variants, `js_add_deferred_teardown_callback()` and `js_finish_deferred_teardown_callback()`, are still missing.
 
 ## Isolation
 
-The addon sees JavaScript only through the ABI functions, which copy strings and buffers in and out of its linear memory. A trap inside the addon, such as an out-of-bounds access, throws a `RuntimeError` and poisons only that addon's instance: every later call into it throws `Error: WebAssembly addon has crashed`, with the trap as its `cause`. Other addons and the JavaScript that called it keep running.
+The addon sees JavaScript only through the ABI functions, which copy strings and buffers in and out of its linear memory. A trap inside the addon, such as an out-of-bounds access, throws a `RuntimeError` and poisons only that addon's instance: every later call into it throws `Error: WebAssembly addon has crashed`, with the trap as its `cause`, and its finalizers and teardown callbacks no longer run. Other addons and the JavaScript that called it keep running.
+
+## Threat model
+
+`bare-wasm-abi` is meant for trusted addons that process untrusted input, not for untrusted addons. Its [threat model](https://github.com/holepunchto/bare-wasm-abi/blob/main/docs/threat-model.md), added in 0.1.2, promises that a memory bug in an addon lands in the addon's own linear memory and nowhere else in the process, and that the ABI adds no power that JavaScript in the same realm doesn't already have. It doesn't promise more, because the ABI is libjs, and libjs hands the addon the realm: an addon reaches everything JavaScript in that realm can, `Bare.Addon` included, and an attacker who takes over an addon through its input holds the realm too. For embedders, it means:
+
+- Load only addons you would load as JavaScript modules.
+- Call [`Bare.Addon.seal()`](/bare/reference/bare/runtime#bareaddon) before loading anything else, so a compromised addon can't load native code.
+- Grant the fewest WASI capabilities you can. An addon that only processes input usually needs none.
+- Budget CPU and memory yourself. Nothing stops an addon from running forever or growing its memory to 4 GiB, so run one that takes hostile input where you can stop it, such as in a thread or a process of its own.
 
 ## See also
 

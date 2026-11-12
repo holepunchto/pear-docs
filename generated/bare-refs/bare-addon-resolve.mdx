@@ -4,7 +4,7 @@ description: "Low-level addon resolution algorithm for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "1.11.1"
+upstreamVersion: "1.12.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -97,7 +97,7 @@ Resolve the addon of the package in the directory `dirname`, relative to `parent
 It yields candidates in the order of these steps. A builtin match in step 1 ends the resolution. After that, it stops after the first step in which the caller reported a candidate as existing. A step goes through every host before it stops, so several hosts can each resolve to their own prebuild:
 
 1. A builtin, when the name matches an entry of `opts.builtins`: `builtin:<name>@<version>`, or `builtin:<name>` when neither the package nor the entry has a version. An entry with a version matches only a package with that version, or a package with none. `opts.builtinProtocol` sets the protocol.
-2. Native prebuilds: `prebuilds/<host>/<name>@<version>.<ext>` when the package has a version, and `prebuilds/<host>/<name>.<ext>` when the specifier named none, for each host that does not start with `wasi-` and each of `opts.extensions`. For `darwin-arm64`, `darwin-x64`, `ios-arm64-simulator`, and `ios-x64-simulator`, the same names are also tried with `universal` in place of the architecture, such as `darwin-universal`. The `prebuilds` directory is looked up in `dirname` and then in each parent directory.
+2. Native prebuilds: `prebuilds/<host>/<name>@<version>.<ext>` when the package has a version, and `prebuilds/<host>/<name>.<ext>` when the specifier named none, for each host that does not start with `wasi-` and each of `opts.extensions`. For `darwin-arm64`, `darwin-x64`, `ios-arm64-simulator`, `ios-x64-simulator`, `watchos-arm64`, `watchos-arm64-32`, `watchos-arm64-simulator`, and `watchos-x64-simulator`, the same names are also tried with `universal` in place of the architecture, such as `darwin-universal` or `watchos-universal-simulator`. Added in v1.12.0: the `watchos` hosts. The `prebuilds` directory is looked up in `dirname` and then in each parent directory.
 3. A linked addon, as [`resolve.linked`](#resolvelinkedname-string-version-string-opts-resolveoptions-resolver) yields them, unless `opts.linked` is `false`.
 4. WebAssembly prebuilds: the same file names as step 2, for each host that starts with `wasi-`, such as `wasi-wasm32`. They always use the `.wasm` extension, whatever `opts.extensions` is.
 
@@ -160,7 +160,7 @@ Resolve `filename` as a file addon candidate relative to `parentURL`, trying eac
 
 #### `resolve.linked(name: string, version?: string, opts?: ResolveOptions): Resolver`
 
-Resolve `name` to a `linked:` specifier, for runtimes that link addons ahead of time by platform (for example iOS or Android) rather than resolving a prebuild at runtime.
+Resolve `name` to a `linked:` specifier, for runtimes that link addons ahead of time by platform (for example iOS or Android) rather than resolving a prebuild at runtime. For the `darwin`, `ios`, and `watchos` platforms it yields `<name>.framework/<name>`, and on `darwin` also `lib<name>.dylib`. For `linux` and `android` it yields `lib<name>.so`, and for `win32` `<name>.dll`. When `version` is set, the same names with the version come first, such as `<name>.<version>.framework/<name>.<version>`. Added in v1.12.0: the `watchos` platform, which yielded nothing before.
 
 **Parameters**
 
@@ -270,7 +270,7 @@ interface ResolveOptions {
 }
 ```
 
-`hosts` lists the `<platform>-<arch>[-<environment>]` combinations to look for prebuilds under, such as `Bare.Addon.host` in Bare. `host` is shorthand for a list of one. Added in v1.11.0: a host that starts with `wasi-` is a WebAssembly host. It is looked up after the native hosts and linked addons, as `.wasm` files whatever `extensions` is. See [`resolve.directory`](#resolvedirectory).
+`hosts` lists the `<platform>-<arch>[-<environment>]` combinations to look for prebuilds under, such as `Bare.Addon.host` in Bare. `host` is shorthand for a list of one. Added in v1.11.0: a host that starts with `wasi-` is a WebAssembly host. It is looked up after the native hosts and linked addons, as `.wasm` files whatever `extensions` is. See [`resolve.directory`](#resolvedirectory). Changed in v1.12.0: a host is split into conditions with [`bare-host-parser`](https://github.com/holepunchto/bare-host-parser), so an architecture that contains a `-` stays whole, such as `arm64-32` in `watchos-arm64-32`. A host it doesn't recognize is still split at every `-`.
 
 ## `bare-addon-resolve/errors`
 
@@ -300,9 +300,9 @@ interface ResolveOptions {
 
 ## See also
 
-- Builds on `bare-module-resolve` and `bare-semver`.
+- Builds on `bare-host-parser`, `bare-module-resolve`, and `bare-semver`.
 - The resolved addon is the first candidate `resolve` yields that exists as a file on the file system. Native prebuilds come first, then linked addons, then WebAssembly prebuilds.
-- The `resolve.*` step functions are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.11.0`) when declaring the module dependency. The [README](https://github.com/holepunchto/bare-addon-resolve#algorithm) lists the steps of each one.
+- The `resolve.*` step functions are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.12.0`) when declaring the module dependency. The [README](https://github.com/holepunchto/bare-addon-resolve#algorithm) lists the steps of each one.
 - Addons normally resolve through the [runtime](/bare/reference/bare/runtime) or are bundled by [`bare-pack`](/bare/reference/bare/modules/bare-pack); reach for this module directly only when building tooling on the resolution algorithm itself, such as [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse), which uses it to pick a package's [WebAssembly build](/bare/reference/bare/modules/bare-module-traverse#webassembly-addons).
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
 - [Bare runtime API](/bare/reference/bare/runtime) — the runtime these modules extend.

@@ -48,6 +48,7 @@ const layout: Layout = {
     'RPC.request': {
       command:
         'A unique number identifying the request; the remote end differentiates requests by it.',
+      opts: 'Options for cancelling the request: `signal`, an `AbortSignal` that cancels it with its reason when it aborts, and `timeout`, the milliseconds after it is sent to cancel it with an `RPCError` with the code `TIMEOUT`. Added in v2.0.0. See [Cancellation](#cancellation).',
     },
     'RPC.event': {
       command:
@@ -102,7 +103,7 @@ const layout: Layout = {
       'an `RPCOutgoingRequest`; call `send()` on it to dispatch the request and `await reply()` for the response.',
     'RPC.event': 'an `RPCOutgoingEvent`; call `send()` on it to dispatch the one-way event.',
     'RPCOutgoingRequest.reply':
-      "a promise that resolves with the remote end's reply payload, or rejects with the channel's teardown error if it closes before a reply arrives.",
+      "a promise that resolves with the remote end's reply payload, or rejects with the channel's teardown error if it closes before a reply arrives, or with the reason the request was cancelled with.",
   },
   throws: {
     'RPCOutgoingRequest.send': ['`ALREADY_SENT` — the request has already been sent.'],
