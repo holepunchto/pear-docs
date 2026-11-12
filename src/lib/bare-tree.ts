@@ -110,6 +110,11 @@ export const bareTree: Node[] = [
             name: 'Handle app suspension',
             url: '/bare/how-to/run-on-native/handle-app-suspension',
           },
+          {
+            type: 'page',
+            name: 'Migrate to Bare Kit 3',
+            url: '/bare/how-to/run-on-native/migrate-to-bare-kit-3',
+          },
         ],
       },
       {
