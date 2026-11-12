@@ -306,7 +306,7 @@ A failed build emits no `final`. Under `--json` it prints one `error` object (`{
 
 <Since v="3.7.0" /> Build a standalone executable of a Pear CLI app.
 
-`pear make` hands the build to the [`pear-make`](https://github.com/holepunchto/pear-make) CLI, a separate Pear app that packages the JavaScript at `[entry]` into a single binary for one host. The sidecar runs `pear-make` with your arguments and prints what it writes to stdout and stderr, so the build output is `pear-make`'s own. To assemble a desktop app's deployment directory instead, use [`pear build`](#pear-build).
+`pear make` hands the build to the [`pear-make`](https://github.com/holepunchto/pear-make) CLI, a separate Pear app that packages the JavaScript at `[entry]` into a single binary for one host. The sidecar runs `pear-make` with your arguments and writes what it prints on stdout and stderr to Pear's own stdout, so the build output is `pear-make`'s own. To assemble a desktop app's deployment directory instead, use [`pear build`](#pear-build).
 
 ```text
   [entry]           Entry point of the app
@@ -319,19 +319,20 @@ A failed build emits no `final`. Under `--json` it prints one `error` object (`{
   --help|-h         Show help
 ```
 
-`[entry]` is resolved from the current directory. Leave it out and Pear reads the `bin` field of the `package.json` in the current directory. With no `package.json` the command fails with `package.json not found in <dir>.`, and with no `bin` field it fails with `bin field not found in package.json`. `--version` needs no entry and prints the version of `pear-make`, not of Pear. The hosts `pear-make` builds for are `darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64`, `win32-arm64`, and `win32-x64`.
+`[entry]` is resolved from the current directory. Leave it out and Pear reads the `bin` field of the `package.json` in the current directory, which has to be a single path, because an object `bin` is not handled. With no `package.json` the command fails with `package.json not found in <dir>.`, and with no `bin` field it fails with `bin field not found in package.json`. `--version` needs no entry and prints the version of `pear-make`, not of Pear, but it still runs the install check below first. Pear passes `--host` and `--name` to `pear-make` without checking them. `--host` takes a `<platform>-<arch>` id such as `darwin-arm64` or `linux-x64`, and an unknown id fails inside `pear-make`. `pear-make` fills in the `--name` default from the `package.json` in the current directory.
 
-**The first run installs `pear-make`.** `pear make` looks for `pear-make` on the `PATH` (`pear-make.exe` on Windows). If it is missing, a terminal asks you to type `INSTALL`, and Pear then runs [`pear install`](#pear-install) for the `pear-make` link. With no terminal, or with `--json`, it cannot ask, so it fails with `The pear-make CLI was not found. Please install using: pear install pear://u3d888539k964t6omfzxdmf1a9c4jx4iiprm8jyt56x91izm78sy`. Pass `--install` to install without the prompt, which also installs when `pear-make` is already on the `PATH`, or run that `pear install` command once by hand. `--no-install` skips the check altogether, so a missing `pear-make` then fails when Pear tries to start it. `pear-make` updates itself over the air, so you do not reinstall it for new releases.
+**The first run installs `pear-make`.** `pear make` looks for `pear-make` on the `PATH` (`pear-make.exe` on Windows). If it is missing, a terminal asks you to type `INSTALL`, and Pear then runs [`pear install`](#pear-install) for the `pear-make` link. When stdin is not a terminal, or with `--json`, it cannot ask, so it fails with `The pear-make CLI was not found. Please install using: pear install pear://u3d888539k964t6omfzxdmf1a9c4jx4iiprm8jyt56x91izm78sy`. Run that `pear install` command once by hand, or pass `--install` to install without the prompt. `--install` does not reinstall over an existing copy at the default location, because `pear install` refuses to overwrite it, so pass it only when `pear-make` is missing. `--no-install` skips the check altogether, so a missing `pear-make` then fails when Pear tries to start it, without the install hint above. `pear-make` updates itself over the air, so you do not reinstall it for new releases.
 
-If `pear-make` exits with a non-zero code, `pear make` fails with `ERR_OPERATION_FAILED`, `pear-make failed with exit code <n>`.
+If `pear-make` exits with a non-zero code, `pear make` fails with `ERR_OPERATION_FAILED`, `pear-make failed with exit code <n>`, and exits with status 1.
 
-With [`--json`](#json-output), every chunk `pear-make` writes arrives as one `make` object, and `data.chunk` holds the text as written:
+With [`--json`](#json-output), every chunk `pear-make` writes arrives as one `make` object, and `data.chunk` holds the text as written. A run that succeeds ends with a `final` object:
 
 ```json
 {"cmd":"make","tag":"make","data":{"chunk":"<text pear-make wrote>"}}
+{"cmd":"make","tag":"final","data":{"success":true}}
 ```
 
-The non-zero exit above arrives as an `error` object in that stream.
+A run that fails prints an `error` object instead, `{"cmd":"make","tag":"error","data":{"success":false,"code","message"}}`, and no `final`. In 3.7.0 `pear make` writes the `make` and `final` objects without a trailing newline, so a parser has to split objects that run together on one line.
 
 ### `pear stage <link> [dir]`
 
@@ -647,6 +648,8 @@ Install a Pear application—or the Pear platform itself—from a `pear://` link
 - `--to <dir>` overrides all of the above, except a Windows application install, which always goes through MSIX regardless.
 
 These are user-level locations, not system ones—no `sudo`, and nothing is written to `/Applications`.
+
+<Since v="3.7.0" /> Set the `PEAR_INSTALL_NO_PATH` environment variable to `1` to make `pear install` leave your `PATH` alone. Pear 3.7.0 ships `pear-install` v1.5.0, which added it.
 </Callout>
 
 ```text
@@ -713,7 +716,8 @@ Manage blind peers.
 ```text
   --trusted-peer <peer>   Trusted peer key to allow requests from (start; repeatable)
   --peer <peer>           Peer key to request from (request)
-  --core-only             Request only the db core instead of also the blobs core (request)
+  --core-only             Request only the db core instead of also the content core (request)   [!version until=3.7.0]
+  --core-only             Request only the db core instead of also the blobs core (request)   [!version since=3.7.0]
   --json                  Newline delimited JSON output
   --help|-h               Show help
 ```
@@ -875,7 +879,7 @@ The three `blobs.*` rows appear only once the drive's blobs core is open.
   Upgrade:       pear://rbo766j9chy3fwg4id785ixhdt51w3rjwzmhp5ycgfmerq7wkrny
 ```
 
-`Info:` is `pear://<key>` for the link you passed, without a verlink's version or a path. `Verlink:` is its versioned form for this machine's current state, and `App:` is `<name>@<version>`, or just the name when the manifest has no version. `Product Name:` and `Upgrade:` are left out when the manifest does not set them, and the `Blobs *` rows appear only once the drive's blobs core is open. The `Content Key:` row that sat under `Discovery Key:` is gone, because `Blobs Key:` shows the same key. While it fetches, a terminal shows `loading...` under `Info:`. With `--multisig`, or by default for a link with more than one signer, the quorum prints as `Multisig Quorum: <n> / <m>` followed by `Public Signing Keys:` and one key per line. Before 3.7.0 it was a `multisig` table with `quorum:` and `public signing keys:` rows.
+`Info:` is `pear://<key>` for the link you passed, without a verlink's version or a path. `Verlink:` is its versioned form for this machine's current state, and `App:` is `<name>@<version>`, or just the name when the manifest has no version. `Product Name:` and `Upgrade:` are left out when the manifest does not set them, and the `Blobs *` rows appear only once the drive's blobs core is open. `Blobs Key:` is the key of the blobs core. On 3.6.0 it was the `content` row of the `keys` table. While it fetches, a terminal shows `loading...` under `Info:`. With `--multisig`, or by default for a link with more than one signer, the quorum prints as `Multisig Quorum: <n> / <m>` followed by `Public Signing Keys:` and one key per line. Before 3.7.0 it was a `multisig` table with `quorum:` and `public signing keys:` rows.
 
 **`Targets:`** lists one line per `by-arch/<platform>-<arch>` folder in the drive, with the folder's size. The size is the sum of the byte lengths of the folder's files. `pear info` takes them from the drive's metadata and, for files that `pear stage` stored with a block map, from that map in the blobs core. It does not download the files' contents to report it. It is how you read which platforms a release carries and how large each one is from the link alone, with no access to the machine that built it. The line is omitted when the drive has no `by-arch/` folder.
 
@@ -1203,12 +1207,14 @@ Clear <link|name> cores? clear
 ✖ uppercase CLEAR to confirm
 
 Clear <link|name> cores? CLEAR
-Cleared core  ~ pear://<key>
-Cleared blobs ~ pear://<key>
+Cleared core ~ pear://<key>   [!version until=3.7.0]
+Cleared content core ~ pear://<key>   [!version until=3.7.0]
+Cleared core  ~ pear://<key>   [!version since=3.7.0]
+Cleared blobs ~ pear://<key>   [!version since=3.7.0]
 ✔ Success
 ```
 
-On 3.6.0 and earlier the two lines read `Cleared core ~ pear://<key>` and `Cleared content core ~ pear://<key>`. Only the literal uppercase `CLEAR` is accepted. Anything else prints `✖ uppercase CLEAR to confirm` and **asks again**—the prompt loops until it gets `CLEAR`, and there is no wrong answer that makes it give up. One prompt covers the whole invocation, however many cores the argument resolved to. Pass `--force` (`-f`) to skip it.
+Only the literal uppercase `CLEAR` is accepted. Anything else prints `✖ uppercase CLEAR to confirm` and **asks again**—the prompt loops until it gets `CLEAR`, and there is no wrong answer that makes it give up. One prompt covers the whole invocation, however many cores the argument resolved to. Pass `--force` (`-f`) to skip it.
 
 <Callout type="warn">
 **This breaks unattended scripts, and it does not break them by failing.** On 3.2.0 and earlier a writable core was silently skipped, so `pear gc cores <link>` never blocked. From 3.3.0 it prompts—and because empty input re-prompts rather than aborting, a piped or redirected stdin sends it into an **infinite loop** instead of an error you could catch. `--force` is mandatory for automation; under it, writable cores are *cleared* rather than skipped.
