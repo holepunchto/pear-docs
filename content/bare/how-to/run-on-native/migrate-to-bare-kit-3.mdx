@@ -136,6 +136,8 @@ If you skip this step, `new Worklet()` throws:
 Bare Kit is not available, so make sure the application includes bare-kit-swift or bare-kit-kotlin (…)
 ```
 
+Bare Kit 3 also no longer builds in `bare-crypto`, `bare-os`, `bare-pipe` and `bare-ipc`, which Bare Kit 2 did. A worklet that uses them needs them linked like any other addon, which `bare-stow link` does for every addon its entry reaches.
+
 A Swift or Kotlin app without React Native can link the addons of its worklets with the same commands. See [Linking addons and assets](/bare/reference/bare/bare-kit#linking-addons-and-assets).
 
 </Step>
@@ -302,14 +304,9 @@ This can reach an app before you migrate. bare-stow 0.2.0 through 0.3.6 wrote a 
 
 ### Check WebAssembly on iOS
 
-Bare Kit 3.1.0 is the first Bare Kit release whose Bare runs WebAssembly on iOS, which Bare does from 1.37.0. V8 can't compile code at runtime there, so it runs WebAssembly in DrumBrake, its interpreter, which is slower than the compiled code other platforms get. The V8 build for the x64 iOS simulator, on Intel Macs, leaves WebAssembly out, so none of this applies there.
+From Bare Kit 3.1.0, a worklet on iOS has a `WebAssembly` global, so the exports of [`bare-wasm`](/bare/reference/bare/modules/bare-wasm) no longer throw `WEBASSEMBLY_UNAVAILABLE` there. The x64 iOS simulator still has none. If a worklet skipped WebAssembly on iOS before, test that path on a device now. V8 interprets WebAssembly on iOS, which is slower than the compiled code other platforms run, so keep a native build linked where speed matters.
 
-Two things change on iOS:
-
-- The `WebAssembly` global now exists, where before it was missing. The exports of [`bare-wasm`](/bare/reference/bare/modules/bare-wasm), which threw `WEBASSEMBLY_UNAVAILABLE` without it, now work.
-- A worklet that resolves its modules at runtime can fall back to the [WebAssembly build](/bare/explanation/webassembly-addons) of an addon package that has no native build for iOS. A bundle falls back only if it was packed with `wasi-wasm32` among its hosts, or imports the package `with: { host: 'wasi-wasm32' }`. The `ios` and `mobile` presets of [`bare-pack`](/bare/reference/bare/modules/bare-pack) leave that host out, and the `bare-kit` and `react-native` targets of `bare-stow` don't accept it, so a bundled worklet that depends on such a package still fails when it's packed.
-
-If you rely on WebAssembly builds on iOS, keep the native build linked where speed matters. A WebAssembly addon still runs sandboxed through WASI, which limits its files and system calls to what you grant. The sandbox contains a buggy addon, but it isn't a boundary for untrusted code, which can still reach whatever your JavaScript can.
+A bundled worklet doesn't fall back to the WebAssembly build of an addon unless it was packed with `wasi-wasm32` among its hosts, which the `ios` and `mobile` presets of [`bare-pack`](/bare/reference/bare/modules/bare-pack) leave out and the `bare-kit` and `react-native` targets of `bare-stow` reject. See [WebAssembly addons](/bare/explanation/webassembly-addons) for how that fallback and its WASI sandbox work.
 
 </Step>
 
@@ -322,7 +319,7 @@ Run the app on a device. Then check that each worklet exits when you expect it t
 - In react-native-bare-kit 0.17.1 or later, listen for the `exit` event, or `await worklet.wait()`.
 - In Swift, Kotlin and Python, `await` `wait()`.
 
-An open IPC now keeps a worklet running until both sides have ended it, so end the host side with `IPC.end()`, or `end()` in a native binding, once you have nothing more to send. An uncaught error in the worklet still aborts the whole app, so report errors over the IPC as [Error handling](/bare/reference/bare/bare-kit#error-handling) describes.
+An open IPC keeps a worklet running until both sides have ended it, so end the host side with `IPC.end()`, or `end()` in a native binding, once you have nothing more to send. An uncaught error in the worklet still aborts the whole app, so report errors over the IPC as [Error handling](/bare/reference/bare/bare-kit#error-handling) describes.
 
 </Step>
 
@@ -338,7 +335,7 @@ An open IPC now keeps a worklet running until both sides have ended it, so end t
 | The Android build can't resolve `com.github.holepunchto.bare-kit-kotlin` | JitPack isn't among the app's repositories | Add `maven { url "https://jitpack.io" }` to the repositories |
 | `ReferenceError: BareKit is not defined` in the worklet | Bare Kit 3 removed the `BareKit` global | Use `Bare.IPC` |
 | The app aborts on an iOS device with `Failed to reserve virtual memory for process-wide V8 pointer compression cage` | The app isn't signed with the extended virtual addressing entitlement | [Add the entitlement](#add-the-ios-entitlement) |
-| An addon fails to load after the upgrade | It was linked with `bare-link` into a directory that 0.17 no longer builds | Link it with `bare-stow link` |
+| An addon fails to load after the upgrade | It was linked with `bare-link` into a directory that 0.17 no longer builds, or it's one of the addons Bare Kit 2 built in, such as `bare-crypto` or `bare-os` | Link it with `bare-stow link` |
 | A worklet doesn't exit | Its IPC is still open on the host side | Call `end()` or `close()` on the host side of the IPC |
 
 ## See also
