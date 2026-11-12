@@ -163,7 +163,7 @@ If a native host used push to send the worklet one-off requests, which the workl
 
 ### Replace the `assets` option
 
-Remove `assets` from the options of the worklet. Start the worklet with a relative filename instead, which names a resource of the app that ships with it, along with the assets the bundle references:
+Remove `assets` from the options of the worklet. A worklet whose bundle has no assets needs nothing else, and keeps starting from inline source:
 
 ```js skip="snippet-illustration"
 // Before (react-native-bare-kit 0.16)
@@ -172,12 +172,22 @@ worklet.start('/app.bundle', bundle)
 
 // After (react-native-bare-kit 0.17)
 const worklet = new Worklet()
-worklet.start('app.bundle', [])
+worklet.start('/app.bundle', bundle)
 ```
 
-Pass the empty arguments array. In 0.17.1, `start(filename)` with nothing after the filename throws a `TypeError`, although the type declarations allow it.
+A worklet whose bundle references assets needs them shipped as resources of the app instead. Let [`bare-stow`](/bare/reference/bare/modules/bare-stow) lay them out. Pack the worklet into a package with `bare-stow pack --target react-native`, where the entry exports a function that receives the IPC stream, and start it through that package:
 
-On iOS and macOS, the filename resolves against the resources of the app bundle. On Android, it resolves against the code cache directory of the app. Before `app.bundle` first runs, the files listed in `app.assets` are extracted there from the APK. `bare-stow link` writes these resources for you. You can still start from inline source by passing it as the second argument. See [Loading a bundle](/bare/reference/bare/bare-kit#loading-a-bundle).
+```sh skip="manual-walkthrough"
+npx bare-stow pack --target react-native --out ./worker worker.js
+```
+
+```js skip="snippet-illustration"
+import worker from 'worker'
+
+const { ipc } = await worker.start()
+```
+
+The package starts the bundle as `bare-stow.bundle`, a relative filename, with the bundle as its source. Bare Kit then finds the assets in the `bare-stow` resources that `bare-stow link` writes from the same entry. On iOS they're resources of the app bundle. On Android, the files that `bare-stow.assets` lists are extracted from the APK before the bundle first runs. See [Loading a bundle](/bare/reference/bare/bare-kit#loading-a-bundle).
 
 </Step>
 
@@ -221,6 +231,8 @@ for await data in ipc {
   print(String(decoding: data, as: UTF8.self))
 }
 
+ipc.close()
+
 let code = await worklet.wait()
 ```
 
@@ -239,6 +251,8 @@ ipc.write("Hello from Kotlin".encodeToByteArray())
 
 ipc.data.collect { data -> println(data.decodeToString()) }
 
+ipc.close()
+
 val code = worklet.wait()
 worklet.close()
 ```
@@ -253,7 +267,7 @@ async with await start(Path(__file__).parent / "app.bundle") as worklet:
         print(data.decode())
 ```
 
-Keep a reference to the worklet for as long as it should run. Releasing it in Swift, or closing it in Kotlin and Python, terminates it. A C or C++ host follows [Changes from bare-kit 2](/bare/reference/bare/bare-kit#changes-from-bare-kit-2) instead.
+The read loops end once the worklet ends its side of the IPC, for example with `Bare.IPC.end()`. An open IPC keeps the worklet running, so close the host side, as `ipc.close()` does, before you wait for the exit code. Keep a reference to the worklet for as long as it should run. Releasing it in Swift, or closing it in Kotlin and Python, terminates it. A C or C++ host follows [Changes from bare-kit 2](/bare/reference/bare/bare-kit#changes-from-bare-kit-2) instead.
 
 </Step>
 
@@ -274,7 +288,7 @@ Alternatively, in Xcode, add the **Extended Virtual Addressing** capability unde
 Failed to reserve virtual memory for process-wide V8 pointer compression cage
 ```
 
-See [iOS entitlement](/bare/reference/bare/bare-kit#ios-entitlement) for why V8 needs it, and for what's known about app extensions.
+This can reach an app before you migrate. bare-stow 0.3.2 through 0.3.6 wrote `from: "2.2.0"` for bare-kit-swift, which Swift Package Manager resolves to any 2.x release, so the next package update of an app linked with them brings in bare-kit-swift 2.3.0, and with it Bare 1.37.1. Add the entitlement before you update packages, or pin bare-kit-swift to `2.2.0` exactly until you do. See [iOS entitlement](/bare/reference/bare/bare-kit#ios-entitlement) for why V8 needs it, and for what's known about app extensions.
 
 </Step>
 
@@ -282,14 +296,14 @@ See [iOS entitlement](/bare/reference/bare/bare-kit#ios-entitlement) for why V8 
 
 ### Check WebAssembly on iOS
 
-Bare Kit 3.1.0 embeds Bare 1.37.1, which runs WebAssembly on iOS for the first time. V8 can't compile code at runtime there, so it runs WebAssembly in DrumBrake, its interpreter, which is slower than the compiled code other platforms get.
+Bare Kit 3.1.0 is the first Bare Kit release whose Bare runs WebAssembly on iOS, which Bare does from 1.37.0. V8 can't compile code at runtime there, so it runs WebAssembly in DrumBrake, its interpreter, which is slower than the compiled code other platforms get. The V8 build for the x64 iOS simulator, on Intel Macs, leaves WebAssembly out, so none of this applies there.
 
 Two things change on iOS:
 
-- [`bare-wasm`](/bare/reference/bare/modules/bare-wasm) and the `WebAssembly` global now work, where they threw `WEBASSEMBLY_UNAVAILABLE` before.
-- An addon package with no native build for iOS falls back to its [WebAssembly build](/bare/explanation/webassembly-addons) instead of failing to load.
+- The `WebAssembly` global now exists, where before it was missing. The exports of [`bare-wasm`](/bare/reference/bare/modules/bare-wasm), which threw `WEBASSEMBLY_UNAVAILABLE` without it, now work.
+- A worklet that resolves its modules at runtime can fall back to the [WebAssembly build](/bare/explanation/webassembly-addons) of an addon package that has no native build for iOS. A bundle falls back only if it was packed with `wasi-wasm32` among its hosts, or imports the package `with: { host: 'wasi-wasm32' }`. The `ios` and `mobile` presets of [`bare-pack`](/bare/reference/bare/modules/bare-pack) leave that host out, and the `bare-kit` and `react-native` targets of `bare-stow` don't accept it, so a bundled worklet that depends on such a package still fails when it's packed.
 
-Check whether the addons of your worklets now resolve to WebAssembly on iOS, and keep the native build linked where speed matters. A WebAssembly addon still runs sandboxed through WASI, which limits its files and system calls to what you grant. The sandbox contains a buggy addon, but it isn't a boundary for untrusted code, which can still reach whatever your JavaScript can.
+If you rely on WebAssembly builds on iOS, keep the native build linked where speed matters. A WebAssembly addon still runs sandboxed through WASI, which limits its files and system calls to what you grant. The sandbox contains a buggy addon, but it isn't a boundary for untrusted code, which can still reach whatever your JavaScript can.
 
 </Step>
 
