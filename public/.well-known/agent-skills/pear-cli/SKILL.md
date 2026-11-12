@@ -1,6 +1,6 @@
 ---
 name: pear-cli
-description: Use when you need the Pear v3 CLI command surface — pear touch, pear build, pear make, pear stage, pear provision, pear multisig, pear seed, pear install, pear info — or the production release flow that replaced the single-key pear release command.
+description: Use when you need the Pear v3 CLI command surface — pear touch, pear build, pear make (from 3.7.0), pear stage, pear provision, pear multisig, pear seed, pear install, pear info — or the production release flow that replaced the single-key pear release command.
 ---
 
 # Pear CLI
@@ -22,9 +22,9 @@ Key concepts:
 - `pear blind-peer start|request`, `pear blind-relay start`, and the global `--relay <key>` flag — run a blind peer or relay, or route connections through one.
 - `pear identity seed|blind-relay|blind-peer|blind-peer-client` — print one of this machine's network keys, for another machine to pass to `pear seed --until-sync`, `--relay`, `pear seed --blind-peer`, or `pear blind-peer start --trusted-peer`. Replaced `pear blind-peer identity` in 3.5.0.
 - Link arguments may be wrapped in one matching pair of single or double quotes from 3.6.0, so `pear stage $(npm pkg get upgrade)` works (`npm pkg get` prints a quoted JSON string), and `npm pkg set upgrade=$(pear touch)` stores a new link; earlier releases reject a quoted link with `A valid pear link must be specified.`
-- From 3.6.0 the human-readable output of `pear build`, `cores`, `dump`, `gc`, `info`, `provision`, `stage`, and `versions` wraps pear links in green ANSI codes on macOS and Linux, even when piped and with `NO_COLOR` set. Script against `--json`, which carries no color.
+- From 3.6.0 the human-readable output of `pear build`, `cores`, `dump`, `gc`, `info`, `provision`, `stage`, and `versions` wraps pear links in green ANSI codes on macOS and Linux, even when piped and with `NO_COLOR` set. From 3.7.0 `pear info` is the exception: it colors its output only when stdin is a terminal. Script against `--json`, which carries no color.
 - An unknown argument fails with `Unexpected argument  '<value>'` (two spaces before the quote) from 3.6.0, and with `Unrecognized Argument at index <n> with value <value>` before.
-- `pear sidecar inspect` was removed in 3.7.0 with no replacement; it now fails with `Unexpected argument  'inspect'`. `pear dump <link>` takes only a `pear://` link or verlink; a `file:` URL or local directory path fails with `A valid pear link must be specified.` (it already did on 3.6.0, whose help text said otherwise).
+- `pear sidecar inspect` was removed in 3.7.0 with no replacement; it now fails with `Unexpected argument  'inspect'`. `pear dump <link>` takes only a `pear://` link or verlink; a `file:` URL or local directory path fails with `A valid pear link must be specified.` (it already did on 3.6.0, whose help text said otherwise, though 3.6.0 checked `<dir>` first, so a non-empty `<dir>` without `--force` failed with `Dir is not empty. To overwrite: --force`).
 - From 3.7.0 `pear --menu` groups commands into Ship, Install & inspect, Release, Network, and a collapsed Platform group.
 - There is no `pear dev` command, and `pear run` no longer launches an app — apps now embed the `pear-runtime` (Pear OTA) library directly instead of being launched by the CLI.
 
