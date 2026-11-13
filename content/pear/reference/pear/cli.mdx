@@ -15,7 +15,7 @@ The Command Line Interface is the primary interface for Pear Development.
 <include>../../../_snippets/_interactive-menu-callout.mdx</include>
 
 <Callout type="info">
-This page tracks **Pear 3.6.0**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/pear/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
+This page tracks **Pear 3.7.0**. Several commands were removed in v3—most notably `pear run`, which is replaced by embedding the **[Pear OTA](/pear/reference/pear/runtime)** (`pear-runtime`) library. Removed commands are kept below with a badge and migration guidance.
 
 Anything a release adds or removes carries an inline badge—<Since v="3.1.0" /> or <Until v="3.1.0" />—so you can tell whether your build has it. Run `pear versions` to check what you are on, and see the [Release Overview](/pear/release-overview) for the full history.
 </Callout>
@@ -45,6 +45,8 @@ brew install pear
 ```sh
 npx pear
 ```
+
+`npx pear-install` works too and installs the same Pear.
 </Tab>
 <Tab value="docker">
 ```sh
@@ -54,6 +56,8 @@ docker run -it --rm tetherto/pear
 </Tabs>
 
 This bootstraps Pear onto the system. The `curl`/`irm` installers fetch a `checksums.sha256` manifest alongside the platform binary and verify its SHA-256 before moving it into place, so a corrupted or tampered download is rejected rather than installed. Complete the setup by following the `PATH` instructions the installer prints, then run `pear` directly. To install it through Homebrew instead, use `brew install pear`. Homebrew core's `pear` formula installs the same npm launcher as `npm i -g pear`, so it pulls in Node.js; the first `pear` run then downloads the platform binary, as `npx pear` does. That binary updates itself over the air, so `brew upgrade pear` only refreshes the launcher—it isn't how you upgrade Pear. To install it globally through npm instead, use `npm i -g pear`—and every `pear <cmd>` also works as `npx pear <cmd>`, which is handy for running commands from a directory other than the one you installed into. npm and Node.js are only the delivery mechanism: after install, `pear` runs on [Bare](/bare/reference/bare/runtime), not Node.
+
+Both `npx` forms install the same Pear. `npx pear` runs the npm launcher, which downloads the platform binary on its first run and from then on forwards its arguments to it, so on a machine without Pear, `npx pear <command>` installs Pear and exits without running `<command>`. `npx pear-install` is the standalone installer behind [`pear install`](#pear-install): given no link it installs the Pear platform, and given a `pear://` link it installs that application.
 
 The [`tetherto/pear`](https://hub.docker.com/r/tetherto/pear) Docker image runs Pear inside Ubuntu 24.04 with `pear` and `pear-install` ready to go—a low-risk way to try out Pear apps without installing anything on the host.
 
@@ -69,6 +73,8 @@ Run `npx pear` to move onto the v3 platform. From v3 on, the CLI is a standalone
 <Since v="3.2.0" /> Run `pear --menu` for an interactive, terminal-driven menu that walks through the available commands instead of remembering flags—handy when exploring the CLI for the first time. It requires an interactive terminal (TTY); running it from a script or a non-interactive shell exits immediately with `pear --menu requires an interactive terminal`. See [Browse commands with the interactive menu](/pear/how-to/browse-commands-with-the-interactive-menu) for a walkthrough.
 
 <Since v="3.3.0" /> Every argument and flag now carries a per-field hint covering its constraints, its interactions with other flags, and how it fails. The menu surfaces those hints as you move through a command's fields; `pear help <command>` does not show them.
+
+<Since v="3.7.0" /> The command list is grouped by workflow: **Ship** (`touch`, `stage`, `seed`, `build`, `make`), **Install & inspect** (`info`, `changelog`, `dump`, `install`), **Release** (`provision` and `multisig`), **Network** (`blind-relay`, `blind-peer`, `identity`), and **Platform** (`sidecar`, `cores`, `gc`, `data`, `versions`, `help`), which starts collapsed. Each group has a help panel, and a filter keeps the headers of the groups it matches. See [Find a command](/pear/how-to/browse-commands-with-the-interactive-menu#find-a-command).
 
 ## Next-step hints
 <VersionSection since="3.3.0" />
@@ -95,7 +101,7 @@ In both cases the same `pear seed` command now appears in the hint block below t
 
 Most commands accept `--json`—use it for anything that parses a command's result. The default, human-readable output is meant for a person at a terminal and can change wording or formatting between releases; the JSON shape is the stable contract to script against.
 
-<Since v="3.6.0" /> The human-readable output of [`pear build`](#pear-build), [`pear cores`](#pear-cores), [`pear dump`](#pear-dump), [`pear gc`](#pear-gc), [`pear info`](#pear-info), [`pear provision`](#pear-provision), [`pear stage`](#pear-stage), and [`pear versions`](#pear-versions) prints pear links in green, and some counts, sizes, and completion messages too. On macOS and Linux the color is ANSI escape codes around the text. Pear writes them when output is piped or redirected, and `NO_COLOR` does not turn them off, so a script that cuts a link out of that text has to strip them. Windows prints no color codes, and neither does `--json` output.
+<Since v="3.6.0" /> The human-readable output of [`pear build`](#pear-build), [`pear cores`](#pear-cores), [`pear dump`](#pear-dump), [`pear gc`](#pear-gc), [`pear info`](#pear-info), [`pear provision`](#pear-provision), [`pear stage`](#pear-stage), and [`pear versions`](#pear-versions) prints pear links in green, and some counts, sizes, and completion messages too. On macOS and Linux the color is ANSI escape codes around the text. Pear writes them when output is piped or redirected, and `NO_COLOR` does not turn them off, so a script that cuts a link out of that text has to strip them. Windows prints no color codes, and neither does `--json` output. <Since v="3.7.0" /> `pear info` is the exception: it colors its output, and redraws a `loading...` status line, only when stdin is a terminal, so a CI job or a script with stdin redirected gets plain text.
 
 `--json` output is newline-delimited JSON (NDJSON): one object per line, each shaped `{"cmd", "tag", "data"}`. Intermediate tags are command-specific—[`pear changelog --json`](#pear-changelog) tags each release `"changelog"`, and [`pear build --json`](#pear-build) <Since v="3.6.0" /> tags the app `"building"` and each artifact it places `"executable"`, for example—so filter on `tag` rather than assuming a fixed number of lines.
 
@@ -293,6 +299,41 @@ With [`--json`](#json-output) the same events arrive as one object per line:
 
 A failed build emits no `final`. Under `--json` it prints one `error` object (`{"cmd":"build","tag":"error","data":{"success":false,"code","message"}}`) to stdout and the process exits with status 1; a failure after the manifest has been read leaves the `building` line ahead of it. A missing artifact path reports `ERR_NOT_FOUND` (`<path> does not exist`), and an artifact not named after `productName`, `name`, or a `bin` entry reports `ERR_INVALID_APP_NAME` (`expected PearChat but got Other.msix for win32-x64`). Both print the message alone, with no usage text. On 3.5.0 and earlier they carried a full stack trace instead.
 
+### `pear make [entry] [flags]`
+<VersionSection since="3.7.0" />
+
+<a name="pear-make"></a>
+
+<Since v="3.7.0" /> Build a standalone executable of a Pear CLI app.
+
+`pear make` hands the build to the [`pear-make`](https://github.com/holepunchto/pear-make) CLI, a separate Pear app that packages the JavaScript at `[entry]` into a single binary for one host. The sidecar runs `pear-make` with your arguments and writes what it prints on stdout and stderr to Pear's own stdout, so the build output is `pear-make`'s own. To assemble a desktop app's deployment directory instead, use [`pear build`](#pear-build).
+
+```text
+  [entry]           Entry point of the app
+  --host <host>     Host to target (default: the current host)
+  --path <dir>      Output directory (default: the current directory)
+  --name <name>     Output file name (default: productName, name, or App from package.json)
+  --no-install      Skip pear-make CLI installation
+  --version|-v      Show version
+  --json            Newline delimited JSON output
+  --help|-h         Show help
+```
+
+`[entry]` is resolved from the current directory. Leave it out and Pear reads the `bin` field of the `package.json` in the current directory, which has to be a single path, because an object `bin` is not handled. With no `package.json` the command fails with `package.json not found in <dir>.`, and with no `bin` field it fails with `bin field not found in package.json`. `--version` needs no entry and prints the version of `pear-make`, not of Pear, but it still runs the install check below first. Pear passes `--host` and `--name` to `pear-make` without checking them. `--host` takes a `<platform>-<arch>` id such as `darwin-arm64` or `linux-x64`, and an unknown id fails inside `pear-make`. `pear-make` fills in the `--name` default from the `package.json` in the current directory.
+
+**The first run installs `pear-make`.** `pear make` looks for `pear-make` on the `PATH` (`pear-make.exe` on Windows). If it is missing, a terminal asks you to type `INSTALL`, and Pear then runs [`pear install`](#pear-install) for the `pear-make` link. When stdin is not a terminal, or with `--json`, it cannot ask, so it fails with `The pear-make CLI was not found. Please install using: pear install pear://u3d888539k964t6omfzxdmf1a9c4jx4iiprm8jyt56x91izm78sy`. Run that `pear install` command once by hand, or pass `--install` to install without the prompt. `--install` does not reinstall over an existing copy at the default location, because `pear install` refuses to overwrite it, so pass it only when `pear-make` is missing. `--no-install` skips the check altogether, so a missing `pear-make` then fails when Pear tries to start it, without the install hint above. `pear-make` updates itself over the air, so you do not reinstall it for new releases.
+
+If `pear-make` exits with a non-zero code, `pear make` fails with `ERR_OPERATION_FAILED`, `pear-make failed with exit code <n>`, and exits with status 1.
+
+With [`--json`](#json-output), every chunk `pear-make` writes arrives as one `make` object, and `data.chunk` holds the text as written. A run that succeeds ends with a `final` object:
+
+```json
+{"cmd":"make","tag":"make","data":{"chunk":"<text pear-make wrote>"}}
+{"cmd":"make","tag":"final","data":{"success":true}}
+```
+
+A run that fails prints an `error` object instead, `{"cmd":"make","tag":"error","data":{"success":false,"code","message"}}`, and no `final`. In 3.7.0 `pear make` writes the `make` and `final` objects without a trailing newline, so a parser has to split objects that run together on one line.
+
 ### `pear stage <link> [dir]`
 
 <a name="pear-stage"></a>
@@ -463,7 +504,7 @@ A seeder downloads every block of the drive, metadata and file contents, and kee
   --help|-h                         Show help
 ```
 
-`<link>` accepts a versioned verlink, but only its key is used—`pear seed` always replicates the full, latest history and is never pinned to that version. `--stats-interval` defaults to 500 milliseconds with the live UI on, or 3000 milliseconds under `--no-tty`.
+`<link>` accepts a versioned verlink, but only its key is used—`pear seed` always replicates the full, latest history and is never pinned to that version. `--stats-interval` defaults to 500 milliseconds with the live UI on, or 3000 milliseconds under `--no-tty`. <Since v="3.7.0" /> The `Seeding:` row, and the `... seeding` line under `--no-tty`, show the link's origin, `pear://<key>`, instead of the argument as typed, so a verlink's version, a path, and any quotes around the link no longer appear in it. On 3.6.0 and earlier both echoed the argument as typed.
 
 <Since v="3.2.0" /> `--until-sync <key>` takes a peer's public key (z32) and exits automatically once every specified peer has fully synced—pass the flag multiple times to wait for more than one peer. Useful for scripting a seed session that should end on its own instead of running indefinitely. The key to pass is the one printed after each peer join or peer sync line in the log below the stats table—or, for the machine you are on, what [`pear identity seed`](#pear-identity) prints <Since v="3.5.0" />.
 
@@ -488,7 +529,7 @@ Network:       [ Peers 0 ]  [ ⬆ 0B - 0B/s ]  [ ⬇ 0B - 0B/s ]
 ```
 </VersionGate>
 
-<VersionGate since="3.6.0">
+<VersionGate since="3.6.0" until="3.7.0">
 ```text
 Seeding:       pear://q9bhn175f34ahxnriujd68ykiww3syzmdf9w4humxoxqeshjhy6o
 Verlink:       pear://0.3.q9bhn175f34ahxnriujd68ykiww3syzmdf9w4humxoxqeshjhy6o
@@ -506,6 +547,29 @@ Network:       [ Peers 0 ]  [ ⬆ 0B - 0B/s ]  [ ⬇ 0B - 0B/s ]
 ──────────────────────────────────────────────────────
 ^_^ announced
 ```
+</VersionGate>
+
+<VersionGate since="3.7.0">
+
+```text
+Seeding:       pear://wicqfosa974ndcjwou44cgnu65xp8r6mqge79oks9s5qbn9dgzso
+Verlink:       pear://0.5.wicqfosa974ndcjwou44cgnu65xp8r6mqge79oks9s5qbn9dgzso
+App:           pear-chat@1.0.1
+Drive Length:  5  [100%]
+Blobs Length:  16 [100%]
+Blobs Size:    13.6MB
+Discovery Key: 853cuim6kffeb66m7soppig4fy6b7e341gksnds6g7tgwtsup3yo
+Blobs Key:     gnafapnprdoacsu7grkymosy33gjufu34upth6tpoyxq4krmc6qo
+Firewalled:    true
+NAT Type:      consistent
+Whoami:        ebp43cxgn3orgra7x98whctzmot8tdpaufiqc7cmux6przinu8xy
+Uptime:        7s
+Network:       [ Peers 1 ]  [ ⬆ 0B - 0B/s ]  [ ⬇ 0B - 0B/s ]
+──────────────────────────────────────────────────────
+^_^ announced
+```
+
+From 3.7.0 the `Content Key:` row is `Blobs Key:`, and under `--no-tty` the `... content key` line is `... blobs key`. The [`--json`](#json-output) `stats` field is still `contentKey`.
 </VersionGate>
 
 <VersionGate since="3.5.0">
@@ -544,6 +608,32 @@ The request asks the blind peer to **announce** the drive, but that only sticks 
 <Since v="3.6.0" /> The terminal stats table gains an `Uptime:` row between `Whoami:` and `Network:`. It shows how long this seed session has been running, as `45s`, `3m 12s`, `1h 0m 5s`, or `2d 3h 4m 5s`. Under `--no-tty` there is no row of its own. The network line ends with the uptime instead, as in `--- network 0 peers, upload 0B - 0B/s, download 0B - 0B/s, uptime 3m 12s`. The [`--json`](#json-output) `stats` data gains an `uptime` field, in milliseconds since the session started. On 3.5.0 and earlier none of these exist.
 </Callout>
 
+<a name="pear-seed-network-status"></a>
+
+<Callout type="info">
+<Since v="3.7.0" /> When the DHT is not healthy, the `Network:` row (under `--no-tty`, the network line) shows a status word in place of the peer and transfer counts:
+
+| Word | Meaning |
+| --- | --- |
+| `joining` | The node has not finished bootstrapping into the DHT |
+| `unstable` | The DHT reports degraded connectivity |
+| `unreachable` | The DHT reports the node offline |
+
+The words come from three booleans, and `joining` takes precedence over `unstable`, which takes precedence over `unreachable`. The [`--json`](#json-output) `stats` data gains them as `dht`: `{ "bootstrapped": true, "degraded": false, "online": true }`. A healthy node prints the counts as before. Under `--no-tty` the status word replaces everything after the `---` prefix, including the `network` label and the `uptime` suffix, so the line reads `--- joining`. On 3.6.0 and earlier the row always shows the counts.
+</Callout>
+
+<a name="pear-seed-sidecar-loss"></a>
+
+<Callout type="info">
+<Since v="3.7.0" /> `pear seed` exits with code `1` when its connection to the sidecar closes, for example after [`pear sidecar shutdown`](#pear-sidecar) or a sidecar crash. The live view prints `x-x sidecar lost`, `--no-tty` prints `x-x sidecar disconnected`, and [`--json`](#json-output) emits an `error` object:
+
+```json
+{"cmd":"seed","tag":"error","data":{"success":false,"code":"ERR_CONNECTION","message":"sidecar disconnected"}}
+```
+
+A process supervisor such as systemd or launchd can restart the seeder on that exit. On 3.6.0 and earlier the command keeps running with the last stats frozen on screen and no error, so the seeder looks alive but serves nothing.
+</Callout>
+
 ### `pear install <link>`
 <a name="pear-install"></a>
 
@@ -559,6 +649,8 @@ Install a Pear application—or the Pear platform itself—from a `pear://` link
 - `--to <dir>` overrides all of the above, except a Windows application install, which always goes through MSIX regardless.
 
 These are user-level locations, not system ones—no `sudo`, and nothing is written to `/Applications`.
+
+<Since v="3.7.0" /> Set the `PEAR_INSTALL_NO_PATH` environment variable to `1` to make `pear install` leave your `PATH` alone. Pear 3.7.0 ships `pear-install` v1.5.0, which added it.
 </Callout>
 
 ```text
@@ -625,7 +717,8 @@ Manage blind peers.
 ```text
   --trusted-peer <peer>   Trusted peer key to allow requests from (start; repeatable)
   --peer <peer>           Peer key to request from (request)
-  --core-only             Request only the db core instead of also the content core (request)
+  --core-only             Request only the db core instead of also the content core (request)   [!version until=3.7.0]
+  --core-only             Request only the db core instead of also the blobs core (request)   [!version since=3.7.0]
   --json                  Newline delimited JSON output
   --help|-h               Show help
 ```
@@ -719,7 +812,7 @@ Read project information. `[dir]` currently has no effect—`pear info` never re
 
 Supply a link to view application information.
 
-Supply no argument to view platform information.
+Supply no argument to view platform information. <Since v="3.7.0" /> That output also lists the `Targets:` of the Pear platform drive itself.
 
 ```text
   --metadata       Print the project metadata
@@ -732,7 +825,8 @@ Supply no argument to view platform information.
 
 `--key`, `--metadata`, and `--multisig` select sections: name any of them and only those print, in the order key, metadata, multisig. `--manifest` is not a selector—it prints the manifest and stops, so pairing it with `--metadata` or `--multisig` yields the manifest alone, and pairing it with `--key` still prints the key above it.
 
-The default output prints the link, a `keys` table, and an `info` table. <Since v="3.6.0" /> The `info` table gains a `writable` row between `productName` and `length`:
+<VersionGate until="3.7.0">
+<Until v="3.7.0" /> Before 3.7.0, the default output prints the link, a `keys` table, and an `info` table. <Since v="3.6.0" /> The `info` table gains a `writable` row between `productName` and `length`:
 
 ```text
  info              value
@@ -752,27 +846,88 @@ The default output prints the link, a `keys` table, and an `info` table. <Since 
 ```
 
 The three `blobs.*` rows appear only once the drive's blobs core is open.
+</VersionGate>
+
+<VersionGate since="3.7.0">
+<a name="pear-info-targets"></a>
+
+<Since v="3.7.0" /> The default output is a list of labeled rows in place of the `keys` and `info` tables. This is `pear info` on a staged, multi-architecture app that this machine does not own:
+
+```text
+  Info:          pear://wicqfosa974ndcjwou44cgnu65xp8r6mqge79oks9s5qbn9dgzso
+  Verlink:       pear://0.5.wicqfosa974ndcjwou44cgnu65xp8r6mqge79oks9s5qbn9dgzso
+  App:           pear-chat@1.0.1
+  Product Name:  PearChat
+  Writable:      false
+
+  Targets:
+    darwin-arm64 (6.3MB)
+    linux-x64 (4.2MB)
+    win32-x64 (3.1MB)
+
+  Drive Key:     wicqfosa974ndcjwou44cgnu65xp8r6mqge79oks9s5qbn9dgzso
+  Drive Fork:    0
+  Drive Length:  5
+  Drive Size:    777B
+
+  Blobs Key:     gnafapnprdoacsu7grkymosy33gjufu34upth6tpoyxq4krmc6qo
+  Blobs Fork:    0
+  Blobs Length:  16
+  Blobs Size:    13.6MB
+
+  Discovery Key: 853cuim6kffeb66m7soppig4fy6b7e341gksnds6g7tgwtsup3yo
+
+  Upgrade:       pear://9sh1w4pzuwgz4yd5s15dzkjw61xzge8kwgtfng97mdx4b5qsc56y
+✔ Success
+```
+
+`Info:` is `pear://<key>` for the link you passed, without a verlink's version or a path. `Verlink:` is its versioned form for this machine's current state, and `App:` is `<name>@<version>`, or just the name when the manifest has no version. `Product Name:` and `Upgrade:` are left out when the manifest does not set them, and the `Blobs *` rows appear only once the drive's blobs core is open. `Blobs Key:` is the key of the blobs core. On 3.6.0 it was the `content` row of the `keys` table. While it fetches, a terminal shows `loading...` under `Info:`. With `--multisig`, or by default for a link with more than one signer, the quorum prints as `Multisig Quorum: <n> / <m>` followed by `Public Signing Keys:` and one key per line. Before 3.7.0 it was a `multisig` table with `quorum:` and `public signing keys:` rows.
+
+**`Targets:`** lists one line per `by-arch/<platform>-<arch>` folder in the drive, with the folder's size. The size is the sum of the byte lengths of the folder's files. `pear info` takes them from the drive's metadata and, for files that `pear stage` stored with a block map, from that map in the blobs core. It does not download the files' contents to report it. It is how you read which platforms a release carries and how large each one is from the link alone, with no access to the machine that built it. The line is omitted when the drive has no `by-arch/` folder.
+
+<Callout type="warn">
+The new layout breaks a script that parses the old `keys` and `info` tables. Read [`--json`](#json-output) instead: `retrieving` carries `link` in place of `z32`, and the `info` object gains `targets` and `blobs.key`.
+</Callout>
+</VersionGate>
 
 With [`--json`](#json-output), a link that has data arrives as tagged objects before the closing `final`:
 
 | Tag | `data` |
 | --- | --- |
-| `retrieving` | `z32`, `onlyShowKey` |
+| `retrieving` | `link` <Since v="3.7.0" /> (`z32` <Until v="3.7.0" />), `onlyShowKey` |
 | `keys` | `project`, `content`, `discovery` |
-| `info` | `link`, `verlink`, `name`, `version`, `productName`, `upgrade`, `writable` <Since v="3.6.0" />, `length`, `byteLength`, `blobs`, `fork` |
+| `info` | `link`, `verlink`, `name`, `version`, `productName`, `upgrade`, `writable` <Since v="3.6.0" />, `length`, `byteLength`, `blobs`, `fork`, `targets` <Since v="3.7.0" /> |
 
-Filter on `"tag": "info"` for the manifest values and `"tag": "keys"` for the key triplet, rather than relying on ordering. `verlink` is the versioned `pear://<fork>.<length>.<key>` form and was added in 3.1.0. `length`, `fork`, and `byteLength` are the block count, fork id, and size of the project's metadata core as this machine holds it, and `blobs` is `{ length, fork, byteLength }` for its blobs core, or `null` while that core is not open. `verlink` is built from the same local numbers, so passing a versioned link still reports this machine's current state. The `info` object of a staged project looks like this:
+Filter on `"tag": "info"` for the manifest values and `"tag": "keys"` for the key triplet, rather than relying on ordering. `verlink` is the versioned `pear://<fork>.<length>.<key>` form and was added in 3.1.0. `length`, `fork`, and `byteLength` are the block count, fork id, and size of the project's metadata core as this machine holds it, and `blobs` is `{ length, fork, byteLength }` for its blobs core, or `null` while that core is not open. <Since v="3.7.0" /> `blobs` also carries `key`, the z32 key of the blobs core, and `retrieving.link` is the `pear://<key>` link where `z32` was the bare key. <Since v="3.7.0" /> `targets` is `[{ platform, size }]`, one entry per `by-arch/` folder with `size` in bytes, and an empty array when the drive has none. `verlink` is built from the same local numbers, so passing a versioned link still reports this machine's current state. The `info` object of a staged project looks like this:
+
+<VersionGate until="3.7.0">
 
 ```json
 {"cmd":"info","tag":"info","data":{"link":"pear://9mk396rygkm8t6ouy5nf5mimoysc1c7gixffzcabrrgxuya9k3ay","verlink":"pear://0.7.9mk396rygkm8t6ouy5nf5mimoysc1c7gixffzcabrrgxuya9k3ay","name":"pear-chat","version":"1.0.1","productName":"PearChat","upgrade":"pear://13id1dkg7k8wifk64tsnyrbh8h4hzc19rozrghc8ucd54fwx1hfo","writable":true,"length":7,"byteLength":1192,"blobs":{"length":12,"fork":0,"byteLength":262},"fork":0}}
 ```
+</VersionGate>
+
+<VersionGate since="3.7.0">
+
+```json
+{"cmd":"info","tag":"info","data":{"link":"pear://wicqfosa974ndcjwou44cgnu65xp8r6mqge79oks9s5qbn9dgzso","verlink":"pear://0.5.wicqfosa974ndcjwou44cgnu65xp8r6mqge79oks9s5qbn9dgzso","name":"pear-chat","version":"1.0.1","productName":"PearChat","upgrade":"pear://9sh1w4pzuwgz4yd5s15dzkjw61xzge8kwgtfng97mdx4b5qsc56y","writable":false,"length":5,"byteLength":777,"blobs":{"key":"gnafapnprdoacsu7grkymosy33gjufu34upth6tpoyxq4krmc6qo","length":16,"fork":0,"byteLength":13631715},"fork":0,"targets":[{"platform":"darwin-arm64","size":6291456},{"platform":"linux-x64","size":4194304},{"platform":"win32-x64","size":3145728}]}}
+```
+
+To list the platforms a link carries, select the `info` line. Every line of the stream is its own JSON document, so a filter that does not select on `tag` also runs on the other lines:
+
+```sh
+pear info --json <link> | jq -r 'select(.tag == "info") | .data.targets[].platform'
+```
+</VersionGate>
 
 Three more tags appear in particular cases. A project whose core has more than one signer adds a `multisig` object (`quorum`, `publicKeys`, `only`) after `info`. `--manifest` adds a `manifest` object (`manifest`) in place of `keys` and `info`. A link with nothing on this machine yet—one you just created with [`pear touch`](#pear-touch) and have not staged, for example—emits an `empty` object with no `data` in their place, and the default output prints `[ Empty ]`.
+
+`pear info` joins the swarm to fetch a link's metadata. On a machine that has never held the link, the first run can print `[ Empty ]` after a wait of several seconds while the metadata syncs in the background, and a second run reads it locally. If a second run still prints `[ Empty ]`, no reachable peer has the link.
 
 <VersionGate since="3.6.0">
 <a name="pear-info-writable"></a>
 
-<Since v="3.6.0" /> `writable` is `true` when this machine's corestore holds the key pair for the project's drive, which is what lets it stage to that link, and `false` for a link this machine only reads. It is a local lookup. It does not check that the link is seeded or reachable, so `true` is not a promise that a stage will succeed. It is reported only in the `info` object, so an `empty` link has none.
+<Since v="3.6.0" /> `writable`, shown as the `Writable:` row from 3.7.0 and as the `writable` table row before it, is `true` when this machine's corestore holds the key pair for the project's drive, which is what lets it stage to that link, and `false` for a link this machine only reads. It is a local lookup. It does not check that the link is seeded or reachable, so `true` is not a promise that a stage will succeed. It is reported only in the `info` object, so an `empty` link has none.
 
 `writable` describes **stage** and **provision** links, which are machine-bound. A multisig production link is written by a quorum of signers rather than by one key pair on one machine, so `false` there does not mean write access is lost. To read it in a script, see [Preflight a release before staging](/pear/how-to/operate-an-app/manual-deployment/preflight-a-release#2-check-that-this-machine-can-write).
 </VersionGate>
@@ -788,8 +943,10 @@ Three more tags appear in particular cases. A project whose core has more than o
 Synchronize files from a link to a directory.
 
 <Callout type="info">
-To dump to stdout, use `-` in place of `<dir>`. <Since v="3.2.0" /> `<dir>` itself is now optional—handy with `--list`, which already sets it to `-` for you. On 3.1.0 and earlier, `<dir>` was required even when `--list` overrode it.
+To dump to stdout, use `-` in place of `<dir>`. <Since v="3.2.0" /> With `--list` you can leave `<dir>` out, because `--list` sets it to `-` for you. Without `--list` it is still required, even though the help shows it as `[dir]`. On 3.1.0 and earlier, `<dir>` was required even when `--list` overrode it.
 </Callout>
+
+<Since v="3.7.0" /> `<link>` must be a `pear://` link or a verlink. A `file:` URL or a local directory path fails with `✖ A valid pear link must be specified.` Before 3.7.0 the help text for `<link>` read `May be file:, pear: or dir`, but the link check already rejected a local source with that same error. The one exception was a non-empty `<dir>` without `--force`: 3.6.0 checked `<dir>` first and failed with `Dir is not empty. To overwrite: --force`. 3.7.0 checks the link first, and removes that help text and the unreachable local-source code behind it, so no working behavior changes.
 
 `<link>` can contain a path portion to dump a subset of the files for the Pear application. For example, to dump only the `CHANGELOG.md` from an application into a `dump-dir` directory run:
 
@@ -911,12 +1068,16 @@ Running `pear sidecar` shuts down any existing sidecar and takes over as the new
 | Command | Description |
 | --- | --- |
 | `shutdown` | Shut down the running sidecar |
-| `inspect` | Enable the running sidecar inspector |
+| `inspect` <Until v="3.7.0" /> | Enable the running sidecar inspector |
 
 ```text
   --log-level <level>   Verbosity to log at — 0=off, 1=error, 2=info, or 3=trace
   --help|-h             Show help
 ```
+
+<Callout type="warn">
+<Until v="3.7.0" label="Removed in 3.7.0" /> `pear sidecar inspect` is gone, along with the `bare-inspector` and `pear-inspect` dependencies it used to open the sidecar for remote debugging. There is no replacement. On 3.7.0 it fails like any unknown subcommand, with `✖ Unexpected argument  'inspect'` followed by the `pear sidecar` help. On 3.6.0 and earlier it printed an inspector key that had to be kept secret.
+</Callout>
 
 <VersionGate until="3.1.0">
 <Callout type="info">
@@ -964,7 +1125,7 @@ Entries above the active `--log-level` are dropped from both the file and the te
   --help|-h   Show help
 ```
 
-Each subcommand prints one z32 key and nothing else. Run without a subcommand, `pear identity` prints its own help rather than defaulting to a key.
+Each subcommand prints one z32 key on stdout and nothing else there. Without `--json`, a hint follows on stderr. Run without a subcommand, `pear identity` prints its own help rather than defaulting to a key.
 
 | Subcommand | The key | Pass it to |
 | --- | --- | --- |
@@ -998,7 +1159,7 @@ Perform garbage collection and remove unused resources.
 | sidecars <Until v="3.2.0" />  |  Clear running sidecars                       |
 | cores `<link\|name>`     |  Clear the cores belonging to this link or app name   |
 
-A core is a single append-only log in Pear's local corestore. `pear gc cores` deletes the blocks one core has stored on disk, freeing that space; the core itself stays in the corestore. It clears the link's metadata core first, then that core's content core if the first one cleared.
+A core is a single append-only log in Pear's local corestore. `pear gc cores` deletes the blocks one core has stored on disk, freeing that space; the core itself stays in the corestore. It clears the link's metadata core first, then that drive's blobs core if the first one cleared. Before 3.7.0 the output and the help called the blobs core the content core.
 
 <Callout type="info">
 <Until v="3.2.0" /> `pear gc sidecars` is removed in 3.2.0, with no direct replacement. On 3.1.0 and earlier it clears any running sidecar process.
@@ -1048,8 +1209,10 @@ Clear <link|name> cores? clear
 ✖ uppercase CLEAR to confirm
 
 Clear <link|name> cores? CLEAR
-Cleared core ~ pear://<key>
-Cleared content core ~ pear://<key>
+Cleared core ~ pear://<key>   [!version until=3.7.0]
+Cleared content core ~ pear://<key>   [!version until=3.7.0]
+Cleared core  ~ pear://<key>   [!version since=3.7.0]
+Cleared blobs ~ pear://<key>   [!version since=3.7.0]
 ✔ Success
 ```
 
@@ -1060,7 +1223,7 @@ Only the literal uppercase `CLEAR` is accepted. Anything else prints `✖ upperc
 </Callout>
 </Callout>
 
-Answering the prompt with `CLEAR` has the same effect as `--force`: the writable cores are cleared, not skipped. A core the local corestore has never seen is skipped rather than treated as an error, and the output says which—`Skipped clearing core ~ <link>. The core is writable or does not exist in the corestore`. Writability is checked per link, on the metadata core, so a writable *content* core under a non-writable metadata core is skipped without ever raising the prompt.
+Answering the prompt with `CLEAR` has the same effect as `--force`: the writable cores are cleared, not skipped. A core the local corestore has never seen is skipped rather than treated as an error, and the output says which—`Skipped clearing core ~ <link>. The core is writable or does not exist in the corestore`. Writability is checked per link, on the metadata core, so a writable *blobs* core under a non-writable metadata core is skipped without ever raising the prompt.
 
 ### `pear versions`
 
