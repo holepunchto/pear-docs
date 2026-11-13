@@ -31,14 +31,29 @@ when a release changes them. The C API reference under Embedding is written by h
 run `npm run check:bare-c-api`. It lists the functions and types the headers declare that no
 page documents, and the `bare_*` names the docs use that the headers no longer declare. It
 exits 0 unless passed `--strict`, and takes `--ref <tag>` to read the headers at a particular
-release. Both lists are empty as of Bare 1.36.0. The embedder context page is covered by the
+release. Both lists are empty as of Bare 1.37.1. The embedder context page is covered by the
 same check. Since 1.35.0 the README holds no API reference. Re-read its Embedding, Attaching,
-Context, Suspension, Building, and Platform support sections when it changes: as of 2026-10-22
-this page was audited against v1.36.0, whose README is unchanged from v1.35.1. What the README no longer says, or never said, lives
+Context, Suspension, Building, and Platform support sections when it changes: as of 2026-11-12
+this page was audited against v1.37.1, whose README and threat model are unchanged from v1.35.1. What the README no longer says, or never said, lives
 elsewhere: usage and flags on the CLI page, architecture on Inside Bare, the module list in the
 Bare modules catalog.
 
-As of 2026-10-22 the doc-state window is 1.28.2 to 1.36.0 (a rolling 5 doc-states, so 1.27.0
+As of 2026-11-12 the doc-state window is 1.32.0 to 1.37.1 (a rolling 5 doc-states). 1.37.0 and
+1.37.1 are doc-states of their own, because each widens the `Bare.platform` and `Bare.arch`
+unions: `freertos`, `riscv32` and `armv8m` in 1.37.0 (holepunchto/bare#265), `watchos` and
+`arm64-32` in 1.37.1 (#273). Both carry a Since badge. Their entry pushed 1.31.0 and 1.28.2 out
+of the window, so the 1.31.0 and 1.32.0 markers on `Addon` and `Thread` became prose ("added in
+Bare 1.31.0"), since check:docs-versions rejects a marker at or below the oldest doc-state.
+Outside the typings, 1.37.0 moves V8 from 14.8 to 15.7 with the DrumBrake WebAssembly
+interpreter, so WebAssembly also runs on iOS, which is jitless; the iOS prebuilds then need the
+extended virtual addressing entitlement (chromium-prebuilds README, "V8"). 1.37.0 also fixes a
+lifecycle transition dropped when the loop runs out of work, after which the transition
+functions do nothing (#267, src/runtime.c `closed`), and links `bare-sleep` as a builtin addon.
+1.37.1 resolves the conditions of an addon with `bare-host-parser` (#274), because a host such
+as `watchos-arm64-32` cannot be split on hyphens. Its lockfile has bare-module 7.5.1,
+bare-addon-resolve 1.12.0, bare-wasm-abi 0.1.2 and bare-wasi 0.1.3.
+
+As of 2026-10-22 the doc-state window was 1.28.2 to 1.36.0 (1.27.0
 dropped out when 1.36.0 entered, as 1.23.5 did for 1.35.0). 1.36.0's printed delta is
 `~ Thread.constructor (newly deprecated)`, the callback forms (holepunchto/bare#252), badged
 `Deprecated in 1.36.0`, plus `~ Bare` and `~ Bare.IPC` from moving the `IPC` typing into the
@@ -89,7 +104,7 @@ merge, so that part is not a real surface change. BUT the same commit (holepunch
 "Add `new Addon(url)` and deprecate existing addon APIs") also added a genuine new `Addon`
 constructor and deprecated four existing members — `Addon.cache`/`.load()`/`.resolve()`,
 `Thread.create()` — which IS a real, marker-worthy change and is reflected in the
-`## Bare.Addon` / `## Bare.Thread` sections below with `<Since v="1.31.0" />`. The first pass at
+`## Bare.Addon` / `## Bare.Thread` sections below ("added in Bare 1.31.0"). The first pass at
 that delta wrongly lumped the whole block in with the cosmetic rename; the giveaway missed on
 first read was that `Addon.constructor` had no `-` counterpart, that is it wasn't a rename at
 all. `scripts/bare-model-surface.ts`'s fingerprint was also blind to `deprecated` status at the
@@ -111,7 +126,7 @@ typings are not. It is deprecated, so it is left that way. */}
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
 
-The core JavaScript API of [Bare](/bare/explanation/bare-runtime) is exposed through the global `Bare` namespace. This page documents that surface as of Bare 1.36.0. For the command-line runner, see the [`bare` CLI](/bare/reference/bare/cli). Bare provides no standard library beyond this namespace; the collection of external `bare-*` modules built for it is in [Bare modules](/bare/reference/bare/modules).
+The core JavaScript API of [Bare](/bare/explanation/bare-runtime) is exposed through the global `Bare` namespace. This page documents that surface as of Bare 1.37.1. For the command-line runner, see the [`bare` CLI](/bare/reference/bare/cli). Bare provides no standard library beyond this namespace; the collection of external `bare-*` modules built for it is in [Bare modules](/bare/reference/bare/modules).
 
 Upstream documents the namespace as TSDoc comments in [`src/bare.d.ts`](https://github.com/holepunchto/bare/blob/main/src/bare.d.ts). Before Bare 1.35.0 this documentation was in the README. The npm [`bare`](https://www.npmjs.com/package/bare) package exports the `Bare` namespace, with `Addon` and `Thread` as named exports for ESM, and ships that file as `index.d.ts`. `bare@1.35.0` was published without it, although its `package.json` points to it, so TypeScript finds no typings for that version. `bare@1.35.1` ships it. The declarations import `Duplex` from [`bare-stream`](/bare/reference/bare/modules/bare-stream) for the type of [`Bare.IPC`](#bareipc), and `bare` lists `bare-stream` as an optional peer dependency from 1.35.0.
 
@@ -119,11 +134,13 @@ Upstream documents the namespace as TSDoc comments in [`src/bare.d.ts`](https://
 
 #### `Bare.platform`
 
-The operating system Bare was compiled for. One of `android`, `darwin`, `ios`, `linux`, `win32`.
+The operating system Bare was compiled for. One of `android`, `darwin`, `freertos` <Since v="1.37.0" />, `ios`, `linux`, `watchos` <Since v="1.37.1" />, `win32`.
 
 #### `Bare.arch`
 
-The processor architecture Bare was compiled for. One of `arm`, `arm64`, `ia32`, `mips`, `mipsel`, `riscv64`, `x64`.
+The processor architecture Bare was compiled for. One of `arm`, `arm64`, `arm64-32` <Since v="1.37.1" />, `armv8m` <Since v="1.37.0" />, `ia32`, `mips`, `mipsel`, `riscv32` <Since v="1.37.0" />, `riscv64`, `x64`.
+
+None of the platforms and architectures added in 1.37 is in the [platform support](#supported-platforms) table. `arm64-32` is the architecture of Apple Watch, and contains a hyphen, so a host such as `watchos-arm64-32` cannot be split on hyphens into its parts. From Bare 1.37.1, addon resolution parses the host with [`bare-host-parser`](https://github.com/holepunchto/bare-host-parser) instead.
 
 #### `Bare.argv`
 
@@ -139,7 +156,7 @@ The code returned once the process exits. If the process exits via `Bare.exit()`
 
 #### `Bare.version`
 
-The Bare version string, with a leading `v`, such as `v1.35.1`.
+The Bare version string, with a leading `v`, such as `v1.37.1`.
 
 #### `Bare.versions`
 
@@ -147,8 +164,10 @@ An object of version strings for Bare and its dependencies, keyed by library nam
 
 ```js
 Bare.versions
-// { bare: '1.35.1', uv: '1.53.0', v8: '14.8.178.31' }
+// { bare: '1.37.1', uv: '1.53.0', v8: '15.7.112.12' }
 ```
+
+From Bare 1.37.0, V8 is version 15.7, up from 14.8, and includes DrumBrake, the WebAssembly interpreter of V8. On iOS, where V8 runs without a JIT, WebAssembly now runs in that interpreter, where earlier versions had no `WebAssembly` global. It is slower there than on platforms that compile it. The V8 build for the x64 iOS simulator leaves WebAssembly out, so that target still has no `WebAssembly` global. Android builds don't include DrumBrake.
 
 ## Lifecycle methods
 
@@ -248,14 +267,14 @@ Loads native addons—typically C/C++ shared libraries.
 This is an advanced API most users never touch directly; native addons are normally loaded for you by the modules that need them.
 </Callout>
 
-- `new Addon(url)` <Since v="1.31.0" /> — load a static or dynamic addon from a `url` whose protocol is `builtin:`, `linked:`, or `file:`. If `url` is not a static addon, Bare looks for a matching dynamic object library instead. Returns an `addon` whose `addon.url` is the WHATWG `URL` identifier of the addon and whose `addon.exports` are its exports. Throws an `AddonError` whose `code` is `UNKNOWN_PROTOCOL` for any other protocol, or `CANNOT_LOAD` if loading fails, which includes loading a dynamic addon that the process has not already loaded once it is sealed.
+- `new Addon(url)`— added in Bare 1.31.0. Load a static or dynamic addon from a `url` whose protocol is `builtin:`, `linked:`, or `file:`. If `url` is not a static addon, Bare looks for a matching dynamic object library instead. Returns an `addon` whose `addon.url` is the WHATWG `URL` identifier of the addon and whose `addon.exports` are its exports. Throws an `AddonError` whose `code` is `UNKNOWN_PROTOCOL` for any other protocol, or `CANNOT_LOAD` if loading fails, which includes loading a dynamic addon that the process has not already loaded once it is sealed.
 - `Addon.host`— the target triplet identifying the current addon host.
-- `Addon.seal()` <Since v="1.32.0" /> — freeze addon loading. Once sealed, no further dynamic addon can be loaded by the current thread or any other thread of the process, now or in the future; loading one throws. An addon that the process has already loaded can still be loaded after the seal, and `Addon.loaded()` reports whether it has. Statically linked addons are compiled in and remain available. This is one-way for the lifetime of the process, and applies to this process alone—intended for embedders that load a fixed set of trusted addons up front and then want to block any further native code, for example when building a sandbox. Embedders running several Bare processes within the same operating system process can seal each of them independently, and sealing one has no effect on the addons the others can load. Addons are owned by the process that loaded them and are unloaded when it is torn down. From Bare 1.33.0, sealing also freezes the [embedder context](/bare/reference/bare/embedder-context) registry, after which no further handles can be published. See the [threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md) for what sealing does and doesn't guarantee.
-- `Addon.sealed` <Since v="1.32.0" /> — whether `Addon.seal()` has been called.
+- `Addon.seal()`— added in Bare 1.32.0. Freeze addon loading. Once sealed, no further dynamic addon can be loaded by the current thread or any other thread of the process, now or in the future; loading one throws. An addon that the process has already loaded can still be loaded after the seal, and `Addon.loaded()` reports whether it has. Statically linked addons are compiled in and remain available. This is one-way for the lifetime of the process, and applies to this process alone—intended for embedders that load a fixed set of trusted addons up front and then want to block any further native code, for example when building a sandbox. Embedders running several Bare processes within the same operating system process can seal each of them independently, and sealing one has no effect on the addons the others can load. Addons are owned by the process that loaded them and are unloaded when it is torn down. From Bare 1.33.0, sealing also freezes the [embedder context](/bare/reference/bare/embedder-context) registry, after which no further handles can be published. See the [threat model](https://github.com/holepunchto/bare/blob/main/docs/threat-model.md) for what sealing does and doesn't guarantee.
+- `Addon.sealed`— added in Bare 1.32.0. Whether `Addon.seal()` has been called.
 - `Addon.loaded(url)` <Since v="1.35.0" /> — whether the current process has already loaded the dynamic addon identified by `url`, a `URL` with the `file:` or `linked:` protocol. It loads nothing. Any other protocol, including `builtin:`, gives `false`. The answer covers every thread of the process, and it stays `true` after `Addon.seal()`. On a sealed process, `new Addon(url)` for a dynamic addon succeeds only if `Addon.loaded(url)` is `true`.
-- <Until v="1.31.0" label="Deprecated in 1.31.0" /> `Addon.cache`, `Addon.load(url)`, `Addon.resolve(specifier, parentURL[, options])`— superseded by `new Addon(url)`. Still work, but new code should use the constructor.
+- `Addon.cache`, `Addon.load(url)`, `Addon.resolve(specifier, parentURL[, options])`— deprecated in Bare 1.31.0, superseded by `new Addon(url)`. Still work, but new code should use the constructor.
 
-`Bare.Addon` loads native code only. From Bare 1.36.0, which ships [`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) 7.5.0, the module system can also load the WebAssembly build of an addon, `prebuilds/wasi-wasm32/<name>.wasm`. It runs that build through [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi) rather than `Bare.Addon`, sandboxed through WASI, when an import asks for it with `with: { host: 'wasi-wasm32' }` or when the package has no native build for `Addon.host`. Sealing does not stop WebAssembly addons. On a sealed process, the module system skips native builds that `Addon.loaded()` reports as not loaded when it resolves an addon, so for an addon resolved after the seal, a package that also ships a `.wasm` build loads that build instead. Inside a bundle, which keeps the resolutions recorded at pack time, it doesn't fall back, and the native addon throws `CANNOT_LOAD`. If the package ships no `.wasm` build, the import throws `ADDON_NOT_FOUND`, where Bare 1.35 threw `CANNOT_LOAD`. WASI limits only the system calls of a WebAssembly addon: it still reaches the JavaScript global object, including `Bare.Addon`: before the seal it can load native addons, and after it, it can get back any native addon the process already loaded.
+`Bare.Addon` loads native code only. From Bare 1.36.0, which ships [`bare-module`](/bare/reference/bare/modules/bare-module#webassembly-addons) 7.5.0, the module system can also load the WebAssembly build of an addon, `prebuilds/wasi-wasm32/<name>.wasm`. It runs that build through [`bare-wasm-abi`](/bare/reference/bare/modules/bare-wasm-abi) rather than `Bare.Addon`, sandboxed through WASI, when an import asks for it with `with: { host: 'wasi-wasm32' }` or when the package has no native build for `Addon.host`. Sealing does not stop WebAssembly addons. On a sealed process, the module system skips native builds that `Addon.loaded()` reports as not loaded when it resolves an addon, so for an addon resolved after the seal, a package that also ships a `.wasm` build loads that build instead. Inside a bundle, which keeps the resolutions recorded at pack time, it doesn't fall back, and the native addon throws `CANNOT_LOAD`. If the package ships no `.wasm` build, the import throws `ADDON_NOT_FOUND`, where Bare 1.35 threw `CANNOT_LOAD`. WASI limits only the system calls of a WebAssembly addon: it still reaches the JavaScript global object, including `Bare.Addon`: before the seal it can load native addons, and after it, it can get back any native addon the process already loaded. Before Bare 1.37.0, WebAssembly addons could not run on iOS, which had no `WebAssembly` global. From 1.37.0 they run there in the DrumBrake interpreter, more slowly than a native build, except on the x64 simulator, which still has no WebAssembly.
 
 ## `Bare.Thread`
 
@@ -267,9 +286,9 @@ This is an advanced API most users never touch directly.
 
 - `Thread.isMainThread`— `true` on the main thread.
 - `Thread.self`— the current thread as a `ThreadProxy`, or `null` on the main thread. `Thread.self.data` is the data passed on creation, or `null` if none was passed.
-- `new Thread(filename, source[, options])` <Since v="1.32.0" /> — start a thread that runs `source`, a string or Buffer. `filename` names the source and does not say where to read it from. From 1.36.0, it is the only form that is not deprecated.
+- `new Thread(filename, source[, options])`— added in Bare 1.32.0. Start a thread that runs `source`, a string or Buffer. `filename` names the source and does not say where to read it from. From 1.36.0, it is the only form that is not deprecated.
 - <Until v="1.36.0" label="Deprecated in 1.36.0" /> `new Thread([filename][, options][, callback])`, `new Thread(callback)`, `new Thread(filename, callback)` — start a thread that runs the source in `options.source` or, if `callback` is given, the body of `callback`, which is invoked on the new thread with `Thread.self.data` as its argument. `filename` defaults to `<thread>`. The plain-callback form has no `filename` and was added in 1.32.0. Still work, but new code should pass the source, or use [`bare-thread`](https://github.com/holepunchto/bare-thread), which also bundles the modules a thread imports.
-- <Until v="1.31.0" label="Deprecated in 1.31.0" /> `Thread.create(...)`— equivalent to `new Thread(...)`. Still works, but new code should use the constructor.
+- `Thread.create(...)`— deprecated in Bare 1.31.0. Equivalent to `new Thread(...)`. Still works, but new code should use the constructor.
 - `thread.joined`— whether the thread has been joined with the current thread.
 - `thread.join()`— block and wait for the thread to exit.
 - `thread.suspend([linger])`, `thread.wakeup([deadline])`, `thread.resume()`— suspend, wake, or resume the thread. Each is equivalent to calling `Bare.suspend()`, `Bare.wakeup()`, or `Bare.resume()` from within the thread. <Since v="1.36.0" /> The same `RangeError` applies to `linger` and `deadline`.
@@ -284,7 +303,7 @@ The options object takes:
 | `encoding` | `'utf8'` | The encoding of the source if it is a string. |
 | `stackSize` | `0` | The stack size of the thread in bytes. `0` takes the default. |
 | `mount` <Since v="1.35.0" /> | `filename` followed by `/` | The URL to mount the thread's bundle at, as a `URL` or a string that parses as one. The bundle serves only the modules under it, so `file:///` lets it serve any file. `null` and `undefined` take the default, and any other value throws a `TypeError`. See [Starting a thread from a bundle](#starting-a-thread-from-a-bundle). |
-| `source` <Until v="1.32.0" label="Deprecated in 1.32.0" /> | | The source to run. Pass it after `filename` instead. |
+| `source` | | Deprecated in Bare 1.32.0. The source to run. Pass it after `filename` instead. |
 
 A thread is loaded through a protocol that reaches nothing, so it runs only the source it was given. `filename` names that source rather than locating it, and a thread does not inherit the module protocol of the thread that spawned it. Anything else the thread needs, including the modules it imports, must travel with it as `source` or `data`. Reading a module graph off disk and handing it over is the spawner's job, so that a thread never reaches further than the code that started it. A thread given a `filename` but no source or callback has nothing to run, because it cannot read the file. It throws `MODULE_NOT_FOUND` on startup, which nothing catches, so the process aborts. From Bare 1.35.0, the one thing that protocol answers is that the native addons a bundle declares exist, as described below.
 
@@ -517,6 +536,8 @@ bare_resume(bare_t *bare);
 
 Resumes the process as soon as possible. If the process is not yet idle after being suspended, the suspension is cancelled.
 
+From Bare 1.37.0, a transition that another thread requests just as the loop runs out of work is still carried out, where earlier versions could drop it. Once the loop has run out of work with no transition pending, and the process has begun to exit, these functions and `bare_terminate()` do nothing and return `0`. The same goes for the lifecycle methods of a [`Bare.Thread`](#barethread) that is exiting.
+
 #### Sealing, context and attaching
 
 ```c
@@ -566,11 +587,13 @@ The listener types are `bare_before_exit_cb`, `bare_exit_cb`, `bare_suspend_cb`,
 
 | Header | Provides |
 | ------ | -------- |
-| `bare/version.h` | `BARE_VERSION_MAJOR`, `BARE_VERSION_MINOR`, `BARE_VERSION_PATCH`, and `BARE_VERSION`, the version of the header as a string such as `"1.35.1"`. |
-| `bare/target.h` | `BARE_PLATFORM` (`"ios"`, `"darwin"`, `"android"`, `"linux"`, `"win32"` or, from 1.35.0, `"wasi"`), `BARE_ARCH` (`"arm64"`, `"arm"`, `"x64"`, `"ia32"`, `"riscv64"`, `"mips"`, `"mipsel"` or, from 1.35.0, `"wasm32"`), `BARE_LIBC` (`"gnu"`, `"musl"` or `"bionic"`, on Linux and Android only), `BARE_SIMULATOR`, and the combined `BARE_TARGET`, equal to `BARE_HOST`. Each platform and architecture also has a matching flag, such as `BARE_PLATFORM_LINUX` or `BARE_ARCH_X64`. |
+| `bare/version.h` | `BARE_VERSION_MAJOR`, `BARE_VERSION_MINOR`, `BARE_VERSION_PATCH`, and `BARE_VERSION`, the version of the header as a string such as `"1.37.1"`. |
+| `bare/target.h` | `BARE_PLATFORM` (`"ios"`, `"darwin"`, `"android"`, `"linux"`, `"win32"`, from 1.35.0 `"wasi"`, from 1.37.0 `"freertos"`, or from 1.37.1 `"watchos"`), `BARE_ARCH` (`"arm64"`, `"arm"`, `"x64"`, `"ia32"`, `"riscv64"`, `"mips"`, `"mipsel"`, from 1.35.0 `"wasm32"`, from 1.37.0 `"riscv32"` or `"armv8m"`, or from 1.37.1 `"arm64-32"`), `BARE_LIBC` (`"gnu"`, `"musl"` or `"bionic"`, on Linux and Android only), `BARE_SIMULATOR`, and the combined `BARE_TARGET`, equal to `BARE_HOST`. Each platform and architecture also has a matching flag, such as `BARE_PLATFORM_LINUX` or `BARE_ARCH_X64`. |
 | `bare/module.h` | The native addon API below. |
 
 From Bare 1.35.0, `bare/target.h` also recognizes a compiler that targets WebAssembly under WASI, which it detects with `__wasi__` and `__wasm32__`. It sets `BARE_PLATFORM` to `"wasi"` and `BARE_ARCH` to `"wasm32"`, and defines the flags `BARE_PLATFORM_WASI` and `BARE_ARCH_WASM32`. The [platform support](#supported-platforms) table has no WebAssembly target, and the `Bare.platform` and `Bare.arch` types in `bare.d.ts` do not list these values.
+
+From Bare 1.37.0, it recognizes FreeRTOS by `__FREERTOS__`, 32-bit RISC-V by `__riscv` with `__riscv_xlen` of 32, and Armv8-M Mainline with a hardware floating-point calling convention, which sets `BARE_ARCH_ARMV8M`. Any other M-profile Arm target is an error. From Bare 1.37.1, it recognizes watchOS by `TARGET_OS_WATCH`, which sets `BARE_PLATFORM_WATCHOS`, and the `arm64_32` architecture of Apple Watch by `__ARM64_ARCH_8_32__`, which sets `BARE_ARCH_ARM64_32`. These targets are not in the platform support table either.
 
 `bare/module.h` is how a native addon registers itself, which is the C side of [`Bare.Addon`](#bareaddon):
 
@@ -656,6 +679,10 @@ Bare sorts the platforms it targets into two tiers. **Tier 1** targets have preb
 | Windows | `arm64` | Windows 11 | 1 | |
 
 Bare is developed primarily on Apple hardware, with Linux and Windows systems running as virtual machines.
+
+From Bare 1.37.0, an iOS app that embeds Bare must be signed with the [`com.apple.developer.kernel.extended-virtual-addressing`](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.kernel.extended-virtual-addressing) entitlement. V8 reserves a large region of virtual memory when it starts, for pointer compression and for the heap of its C++ garbage collector, and on iOS that is more than the default address space of an app. Without the entitlement, the app aborts on a device with `Failed to reserve virtual memory for process-wide V8 pointer compression cage`. See [Bare Kit](/bare/reference/bare/bare-kit#ios-entitlement) for how to add it.
+
+From Bare 1.37.0, V8 is built with pointer compression on every 64-bit platform. JavaScript heaps take less memory, but all of them in one operating system process share a single reservation of about 4 GiB: every [`Bare.Thread`](#barethread), Bare Kit worklet, and Bare process that an embedder runs there. Once their heaps together outgrow it, the whole process aborts with `Fatal JavaScript out of memory`, even if each heap is within its own limit.
 
 The macOS and iOS minimums rose in Bare 1.34.1, from 12.0 and 14.0. A project that ships to macOS 12 or iOS 14 stays on Bare 1.34.0 or earlier. The table follows [Bare's README](https://github.com/holepunchto/bare#platform-support), which is the authority if the two ever differ.
 

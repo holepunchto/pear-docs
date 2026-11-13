@@ -18,11 +18,14 @@ You'll need an existing React Native or Expo project to add this to.
 
 ### Install the kit
 
+Install react-native-bare-kit, and [`bare-stow`](/bare/reference/bare/modules/bare-stow) to link Bare Kit into the app. `bare-stow` wraps the worklet entry in code that imports `bare-stow-runtime`, so install that too:
+
 ```sh skip="install-instruction"
-npm i react-native-bare-kit b4a
+npm i react-native-bare-kit b4a bare-stow-runtime
+npm i -D bare-stow
 ```
 
-For Expo, follow the [`bare-expo`](https://github.com/holepunchto/bare-expo) example, which shows the config-plugin setup; the worklet code below is identical.
+From 0.17.0, react-native-bare-kit doesn't include Bare Kit itself, so the app links it in the next steps. For Expo, use the config plugin of [`expo-bare-kit`](https://github.com/holepunchto/expo-bare-kit) 0.3.0 or later, which links Bare Kit and the workers you list in its `workers` option. The worklet code below is identical. Upgrading an app from 0.16 or earlier? See [Migrate to Bare Kit 3](/bare/how-to/run-on-native/migrate-to-bare-kit-3).
 
 </Step>
 
@@ -30,11 +33,11 @@ For Expo, follow the [`bare-expo`](https://github.com/holepunchto/bare-expo) exa
 
 ### Write the Bare core
 
-The worklet entry script runs on its own thread. It reaches the host through the `BareKit.IPC` channel—an instance of [`Bare.IPC`](/bare/reference/bare/runtime#bareipc). Here it echoes back whatever it receives:
+The worklet entry script runs on its own thread. It reaches the host through [`Bare.IPC`](/bare/reference/bare/runtime#bareipc), a duplex stream. Here it echoes back whatever it receives:
 
 ```js skip="snippet-illustration"
 // app.js—runs inside the worklet
-const { IPC } = BareKit
+const IPC = Bare.IPC
 
 IPC.on('data', (data) => {
   const message = data.toString()
@@ -44,7 +47,22 @@ IPC.on('data', (data) => {
 
 This is ordinary Bare code: it can `require` any [`bare-*` module](/bare/reference/bare/modules) and open a [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) or [Corestore](/p2p/reference/helpers/corestore) just as it would on the desktop.
 
-If the core loads modules with [native addons](/bare/explanation/native-addons), link those addons into the app yourself. `react-native-bare-kit` 0.16.0 and later doesn't link them for you. [Linking addons and assets](/bare/reference/bare/bare-kit#linking-addons-and-assets) gives the `bare-link` commands and a `postinstall` script that runs them.
+</Step>
+
+<Step>
+
+### Link Bare Kit into the app
+
+Pass the worklet's entry point to `bare-stow link`. It writes a Swift package and a Gradle module that bring in Bare Kit, through [`bare-kit-swift`](https://github.com/holepunchto/bare-kit-swift) and [`bare-kit-kotlin`](https://github.com/holepunchto/bare-kit-kotlin), along with any [native addons](/bare/explanation/native-addons) and assets that the core loads:
+
+```sh skip="manual-walkthrough"
+npx bare-stow link --target bare-kit --language swift --out ios/BareKitResources app.js
+npx bare-stow link --target bare-kit --language kotlin --language-option package=com.example.addons --out android/bare-kit-resources app.js
+```
+
+Add the Swift package to the app target in Xcode, together with its `bare-stow` folder if the core references assets. Include the Gradle module in the Android app. bare-kit-kotlin is published on JitPack and needs Kotlin 2.4 or later and Android 10 (API level 29) or later, so add `maven { url "https://jitpack.io" }` to the app's repositories and raise `kotlinVersion` and `minSdkVersion` if they're lower. Run the commands again whenever the core's dependencies change. Without Bare Kit in the app, `new Worklet()` throws. See [Linking addons and assets](/bare/reference/bare/bare-kit#linking-addons-and-assets).
+
+On iOS, also sign the app with the `com.apple.developer.kernel.extended-virtual-addressing` entitlement, which Bare Kit 3.1.0 and later need on a device. See [iOS entitlement](/bare/reference/bare/bare-kit#ios-entitlement).
 
 </Step>
 
@@ -59,7 +77,7 @@ import { Worklet } from 'react-native-bare-kit'
 import b4a from 'b4a'
 
 const source = `
-const { IPC } = BareKit
+const IPC = Bare.IPC
 IPC.on('data', (data) => IPC.write(Buffer.from('echo: ' + data.toString())))
 `
 

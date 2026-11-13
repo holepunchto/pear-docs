@@ -10,7 +10,7 @@ const layout: Layout = {
     'Realm.evaluate': {
       code: 'The JavaScript source to evaluate.',
       options:
-        "Options. `filename` is the script name used in stack traces (default `'<anonymous>'`); `offset` shifts the reported line numbers (default `0`).",
+        "Options. `filename` is the script name used in stack traces (default `'<anonymous>'`); `offset` shifts the reported line numbers (default `0`). Fixed in v2.1.1: the script name in stack traces ended in a NUL character, as in `x.js\\u0000:1:7`.",
     },
   },
   returns: {

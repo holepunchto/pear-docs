@@ -18,7 +18,7 @@ const layout: Layout = {
   groups: [],
   seeAlso: [
     'The resolved addon is the first candidate `resolve` yields that exists as a file on the file system. Native prebuilds come first, then linked addons, then WebAssembly prebuilds.',
-    'The `resolve.*` step functions are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.11.0`) when declaring the module dependency. The [README](https://github.com/holepunchto/bare-addon-resolve#algorithm) lists the steps of each one.',
+    'The `resolve.*` step functions are subject to change between minor releases; if using them directly, specify a tilde range (for example `~1.12.0`) when declaring the module dependency. The [README](https://github.com/holepunchto/bare-addon-resolve#algorithm) lists the steps of each one.',
     "Addons normally resolve through the [runtime](/bare/reference/bare/runtime) or are bundled by [`bare-pack`](/bare/reference/bare/modules/bare-pack); reach for this module directly only when building tooling on the resolution algorithm itself, such as [`bare-module-traverse`](/bare/reference/bare/modules/bare-module-traverse), which uses it to pick a package's [WebAssembly build](/bare/reference/bare/modules/bare-module-traverse#webassembly-addons).",
   ],
   params: {
@@ -85,7 +85,7 @@ const layout: Layout = {
     'resolve.file': 'Resolve `filename` as a file addon candidate relative to `parentURL`, trying each of `opts.extensions` in turn.',
     'resolve.directory': 'Resolve `dirname` as a prebuilds directory addon candidate relative to `parentURL`.',
     'resolve.linked':
-      "Resolve `name` to a `linked:` specifier, for runtimes that link addons ahead of time by platform (for example iOS or Android) rather than resolving a prebuild at runtime.",
+      "Resolve `name` to a `linked:` specifier, for runtimes that link addons ahead of time by platform (for example iOS or Android) rather than resolving a prebuild at runtime. For the `darwin`, `ios`, and `watchos` platforms it yields `<name>.framework/<name>`, and on `darwin` also `lib<name>.dylib`. For `linux` and `android` it yields `lib<name>.so`, and for `win32` `<name>.dll`. When `version` is set, the same names with the version come first, such as `<name>.<version>.framework/<name>.<version>`. Added in v1.12.0: the `watchos` platform, which yielded nothing before.",
     'resolve.constants': 'The generator status codes yielded by each resolution step: `UNRESOLVED`, `YIELDED`, and `RESOLVED`.',
     'resolve.Resolver': 'The shared generator type every `resolve.*` step function returns.',
   },

@@ -17,6 +17,9 @@ import type { Layout } from '../layout';
 
 const layout: Layout = {
   groups: [],
+  seeAlso: [
+    "Without a `ca` option, peer certificates are verified against the Mozilla root certificates built into the addon, taken from curl's CA bundle: `cacert-2026-11-05.pem` as of v3.2.1, and `cacert-2026-10-20.pem` in v3.2.0.",
+  ],
   params: {
     TLSSocket: {
       socket: 'The duplex stream to wrap; it handles transport while the TLS socket handles encryption and decryption.',

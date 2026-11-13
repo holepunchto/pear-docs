@@ -1,6 +1,6 @@
 {
   "name": "bare-rpc",
-  "version": "1.5.0",
+  "version": "2.0.0",
   "description": "librpc ABI compatible RPC for Bare",
   "repoUrl": "https://github.com/holepunchto/bare-rpc",
   "npmUrl": "https://www.npmjs.com/package/bare-rpc",
@@ -24,12 +24,16 @@
       "body": "A request can stream its body, its reply, or both:\n\n- `createRequestStream()` returns a `Writable` for the body, and `await reply()` gets a single reply.\n- `send(data)` sends a plain request, and `createResponseStream()` returns a `Readable` for the reply.\n- `createRequestStream()` and `createResponseStream()` together stream both.\n\nOn the answering side, `req.createRequestStream()` returns a `Readable` for the body, and `req.createResponseStream()` returns a `Writable` for the reply. This handler echoes the body back:\n\n```js\nconst server = new RPC(stream, (req) => {\n  req.createRequestStream().pipe(req.createResponseStream())\n})\n\nconst req = client.request(1)\nconst outgoing = req.createRequestStream()\nconst incoming = req.createResponseStream()\n\noutgoing.end('ping')\n\nfor await (const chunk of incoming) console.log(chunk.toString()) // ping\n```\n\nA stream only carries data once both ends have opened it, so data written before then is held back until the peer has opened its end. The handler opens the body when it calls `req.createRequestStream()`. If the peer answers before it opens the body, the body is destroyed, with the error of the reply if it has one.\n\nAn incoming stream asks the peer to pause once it buffers its `highWaterMark`, which is 16 KiB by default, and to resume once it is read. While the peer has paused an outgoing stream, its writes are held back. If the peer keeps sending anyway, an incoming stream holds at most `maxBufferedBytes`, 16 MiB by default, before the session fails with an `RPCError` with the code `STREAM_OVERFLOW`.\n\nThe body of a request and the reply to a request can each be read once. Calling `createRequestStream()` on a request of the peer again, or `createResponseStream()` or `reply()` on a request you sent again, throws an `RPCError` with the code `ALREADY_RECEIVED`."
     },
     {
+      "heading": "Cancellation",
+      "body": "A request you sent can be cancelled with `req.cancel(reason)`. Its reply rejects with `reason`, its streams are destroyed with it, and the peer is told to stop handling the request. `reason` defaults to an `RPCError` with the code `CANCELLED`. Cancelling a request that has finished does nothing, and cancelling one that has not been sent yet keeps it from being sent. A request has finished once its answer has arrived: a reply, an error, or the end of a streamed reply, whether it ends cleanly or with an error. A request stream that is still open then stays open, so destroy it to stop it. Destroying the response stream before the answer has arrived cancels the request, with the error it was destroyed with if there is one.\n\nThe peer receives the `message`, `code` and `errno` of `reason`. If `reason` has no `code`, the peer receives the code `TIMEOUT` when `reason` is a `TimeoutError`, such as the reason of a signal from `AbortSignal.timeout()`, and `CANCELLED` otherwise. This only changes what the peer receives; the reply still rejects with `reason` as is.\n\n`rpc.request(command, opts)` can also cancel the request for you:\n\n- `signal`: An `AbortSignal` that cancels the request with its reason when it aborts.\n- `timeout`: Milliseconds after the request is sent to cancel it with an `RPCError` with the code `TIMEOUT`.\n\n```js\nconst req = rpc.request(1, { timeout: 5000 })\nreq.send('ping')\n\nawait req.reply() // Rejects with the code TIMEOUT if no reply arrives within 5 seconds\n```\n\nOn the answering side, `req.signal` is an `AbortSignal` that aborts when the peer cancels the request, with the `message`, `code` and `errno` it cancelled with. It also aborts when the session ends while the handler still runs, with the error it ended with, even if the handler has already replied. Events have a `signal` too, which only aborts when the session ends. Once the peer has cancelled the request, its streams are destroyed with that error, `reply()` sends nothing, and an error thrown by the handler is not sent either.\n\n`RPC` does not create signals on its own. Pass an `AbortController` class as the `AbortController` option, such as the one from [`bare-abort-controller`](https://github.com/holepunchto/bare-abort-controller). Without it, `req.signal` is `null`.\n\n```js\nconst AbortController = require('bare-abort-controller')\n\nconst rpc = new RPC(stream, router, { AbortController })\n\nrouter.respond(1, async (req, data) => {\n  return await search(data, { signal: req.signal })\n})\n```\n\nCancelling a request needs a peer that supports it. A peer without support fails the session with the code `UNKNOWN_MESSAGE` when it receives a cancel."
+    },
+    {
       "heading": "Termination",
-      "body": "The session ends with an `RPCError` with the code `CHANNEL_CLOSED` when `stream` closes. It fails with an error instead when:\n\n- `stream` emits an error, with that error.\n- `stream` ends partway through a frame, with the code `INVALID_MESSAGE`.\n- An event handler throws, with that error.\n- The peer sends a bad frame, as described under [Untrusted peers](#untrusted-peers).\n\nPending replies then reject with the error, and so do later replies. Open streams are destroyed with it, and so are streams created later. Events sent after the end are dropped.\n\n`RPC` does not close `stream` when the session ends cleanly. When it fails for any reason but an error of `stream`, `RPC` destroys `stream` with the error, so the frames still queued in it are not written. To end the session yourself, destroy `stream`. `rpc.idle` tells whether no requests or streams are in flight, so that it is safe to do so."
+      "body": "The session ends with an `RPCError` with the code `CHANNEL_CLOSED` when `stream` closes. It fails with an error instead when:\n\n- `stream` emits an error, with that error.\n- `stream` ends partway through a frame, with the code `INVALID_MESSAGE`.\n- An event handler throws, with that error.\n- The peer sends a bad frame, as described under [Untrusted peers](#untrusted-peers).\n\nPending replies then reject with the error, and so do later replies. Open streams are destroyed with it, and so are streams created later. The signals of requests and events still being handled abort with it. Events sent after the end are dropped.\n\n`RPC` does not close `stream` when the session ends cleanly. When it fails for any reason but an error of `stream`, `RPC` destroys `stream` with the error, so the frames still queued in it are not written. To end the session yourself, destroy `stream`. `rpc.idle` tells whether no requests or streams are in flight, so that it is safe to do so."
     },
     {
       "heading": "Untrusted peers",
-      "body": "`RPC` does not trust the peer to send valid frames. If a frame is larger than `maxFrameSize`, cannot be decoded, or breaks the protocol, the session fails with an `RPCError`. The code tells you why:\n\n- `FRAME_TOO_LARGE`: The frame, with its 4-byte length prefix, is larger than `maxFrameSize`, 16 MiB by default. This is checked as soon as the length prefix arrives, before the rest of the frame is read.\n- `UNKNOWN_MESSAGE`: The frame has a message type that `RPC` does not know.\n- `INVALID_MESSAGE`: The frame cannot be decoded, `stream` ends partway through a frame, or the frame is one that a valid peer never sends. Examples are a response or stream message with an id of 0, a stream message with an invalid set of flags, and a new request that reuses the id of a request that is still in flight.\n- `STREAM_OVERFLOW`: An incoming stream holds more than `maxBufferedBytes` of data that has not been read. This only happens when the peer keeps sending after it was asked to pause.\n\nA frame that refers to a request or stream that has already finished, or that was never known, is ignored. The same goes for frames that arrive for a stream that has already ended or been destroyed.\n\nIf you read the reply as a stream but the peer replies without one, the reply arrives on the stream as a single chunk, unless it is empty, and the stream then ends. An error reply destroys the stream with the error instead.\n\nIf you expect a plain reply but the peer replies with a stream, `reply()` rejects with an `RPCError` with the code `UNEXPECTED_STREAM`. The session destroys the stream toward the peer and stays open."
+      "body": "`RPC` does not trust the peer to send valid frames. If a frame is larger than `maxFrameSize`, cannot be decoded, or breaks the protocol, the session fails with an `RPCError`. The code tells you why:\n\n- `FRAME_TOO_LARGE`: The frame, with its 4-byte length prefix, is larger than `maxFrameSize`, 16 MiB by default. This is checked as soon as the length prefix arrives, before the rest of the frame is read.\n- `UNKNOWN_MESSAGE`: The frame has a message type that `RPC` does not know.\n- `INVALID_MESSAGE`: The frame cannot be decoded, `stream` ends partway through a frame, or the frame is one that a valid peer never sends. Examples are a response, stream or cancel message with an id of 0, a stream message with an invalid set of flags, and a new request that reuses the id of a request that is still in flight.\n- `STREAM_OVERFLOW`: An incoming stream holds more than `maxBufferedBytes` of data that has not been read. This only happens when the peer keeps sending after it was asked to pause.\n\nA frame that refers to a request or stream that has already finished, or that was never known, is ignored. The same goes for frames that arrive for a stream that has already ended or been destroyed.\n\nIf you read the reply as a stream but the peer replies without one, the reply arrives on the stream as a single chunk, unless it is empty, and the stream then ends. An error reply destroys the stream with the error instead.\n\nIf you expect a plain reply but the peer replies with a stream, `reply()` rejects with an `RPCError` with the code `UNEXPECTED_STREAM`. The session destroys the stream toward the peer and stays open."
     }
   ],
   "exports": [
@@ -39,7 +43,7 @@
       "kind": "class",
       "static": false,
       "signatures": [
-        "interface RPC {\n  readonly idle: boolean\n  event(command: number): RPCOutgoingEvent\n  request(command: number): RPCOutgoingRequest\n}"
+        "interface RPC {\n  readonly idle: boolean\n  event(command: number): RPCOutgoingEvent\n  request(command: number, opts?: RPCRequestOptions): RPCOutgoingRequest\n}"
       ],
       "description": "Create an RPC instance using a duplex `stream`. `onrequest` is an optional callback run when a\nremote request is received. This is where processing and responding to an RPC request happens.\n`onrequest` receives a `RPCIncomingRequest` as an argument.",
       "deprecated": null,
@@ -131,7 +135,7 @@
           "kind": "method",
           "static": false,
           "signatures": [
-            "request(command: number): RPCOutgoingRequest"
+            "request(command: number, opts?: RPCRequestOptions): RPCOutgoingRequest"
           ],
           "description": null,
           "deprecated": null,
@@ -142,6 +146,13 @@
               "optional": false,
               "default": null,
               "description": "A unique number identifying the request; the remote end differentiates\nrequests by it."
+            },
+            {
+              "name": "opts",
+              "type": "RPCRequestOptions",
+              "optional": true,
+              "default": null,
+              "description": "Options for cancelling the request."
             }
           ],
           "returns": {
@@ -174,7 +185,7 @@
       "kind": "class",
       "static": false,
       "signatures": [
-        "interface RPCIncomingEvent {\n  readonly rpc: RPC\n  readonly command: number\n  readonly data: Buffer | null\n}"
+        "interface RPCIncomingEvent {\n  readonly rpc: RPC\n  readonly command: number\n  readonly data: Buffer | null\n  readonly signal: AbortSignal | null\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -258,6 +269,21 @@
             "rpc: RPC"
           ],
           "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCIncomingEvent.signal",
+          "name": "signal",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "signal: AbortSignal | null"
+          ],
+          "description": "Aborted when the connection ends while the event is still being handled, with the error it\nended with. `null` unless `RPC` was given an `AbortController`.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -401,7 +427,7 @@
       "kind": "class",
       "static": false,
       "signatures": [
-        "interface RPCIncomingRequest {\n  readonly rpc: RPC\n  readonly id: number\n  readonly command: number\n  readonly data: Buffer | null\n  readonly sent: boolean\n  readonly received: boolean\n  reply(data?: Buffer | string | null, encoding?: BufferEncoding): void\n  createResponseStream(opts?: WritableOptions): RPCOutgoingStream\n  createRequestStream(opts?: ReadableOptions): RPCIncomingStream\n}"
+        "interface RPCIncomingRequest {\n  readonly rpc: RPC\n  readonly id: number\n  readonly command: number\n  readonly data: Buffer | null\n  readonly sent: boolean\n  readonly received: boolean\n  readonly signal: AbortSignal | null\n  reply(data?: Buffer | string | null, encoding?: BufferEncoding): void\n  createResponseStream(opts?: WritableOptions): RPCOutgoingStream\n  createRequestStream(opts?: ReadableOptions): RPCIncomingStream\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -591,7 +617,7 @@
               "type": "Buffer | string | null",
               "optional": true,
               "default": null,
-              "description": "The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to\nsend no data."
+              "description": "The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to\nsend no data. Once the remote end has cancelled the request, nothing is sent."
             },
             {
               "name": "encoding",
@@ -642,6 +668,21 @@
           "returns": null,
           "throws": [],
           "members": []
+        },
+        {
+          "key": "RPCIncomingRequest.signal",
+          "name": "signal",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "signal: AbortSignal | null"
+          ],
+          "description": "Aborted when the remote end cancels the request, with the error it cancelled with, or when the\nconnection ends, with the error it ended with. `null` unless `RPC` was given an\n`AbortController`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
         }
       ]
     },
@@ -651,7 +692,7 @@
       "kind": "class",
       "static": false,
       "signatures": [
-        "interface RPCOutgoingRequest {\n  readonly rpc: RPC\n  readonly id: number\n  readonly command: number\n  readonly sent: boolean\n  readonly received: boolean\n  send(data?: Buffer | string | null, encoding?: BufferEncoding): void\n  reply(encoding?: BufferEncoding): Promise<Buffer | string | null>\n  createRequestStream(opts?: WritableOptions): RPCOutgoingStream\n  createResponseStream(opts?: ReadableOptions): RPCIncomingStream\n}"
+        "interface RPCOutgoingRequest {\n  readonly rpc: RPC\n  readonly id: number\n  readonly command: number\n  readonly sent: boolean\n  readonly received: boolean\n  send(data?: Buffer | string | null, encoding?: BufferEncoding): void\n  reply(encoding?: BufferEncoding): Promise<Buffer | string | null>\n  createRequestStream(opts?: WritableOptions): RPCOutgoingStream\n  cancel(reason?: unknown): void\n  createResponseStream(opts?: ReadableOptions): RPCIncomingStream\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -693,6 +734,32 @@
             }
           ],
           "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCOutgoingRequest.cancel",
+          "name": "cancel",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "cancel(reason?: unknown): void"
+          ],
+          "description": "Cancel the request. The reply rejects with `reason`, the streams of the request are destroyed\nwith it, and the remote end is told to stop handling the request. Does nothing once the request\nhas finished, which it has once its answer has arrived, even while its request stream is open.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "reason",
+              "type": "unknown",
+              "optional": true,
+              "default": null,
+              "description": "The error to cancel with (defaults to an `RPCError` with the code `CANCELLED`).\nIf it has no `code`, the remote end receives the code `TIMEOUT` when it is a `TimeoutError` and\n`CANCELLED` otherwise."
+            }
+          ],
+          "returns": {
+            "type": "void",
+            "description": null
+          },
           "throws": [],
           "members": []
         },
@@ -1190,6 +1257,52 @@
       ]
     },
     {
+      "key": "RPCRequestOptions",
+      "name": "RPCRequestOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface RPCRequestOptions {\n  signal?: AbortSignal\n  timeout?: number\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "RPCRequestOptions.signal",
+          "name": "signal",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "signal: AbortSignal"
+          ],
+          "description": "Cancels the request with the reason of the signal when it aborts. If the reason has no `code`,\nthe remote end receives the code `TIMEOUT` when it is a `TimeoutError`, as from\n`AbortSignal.timeout()`, and `CANCELLED` otherwise.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "RPCRequestOptions.timeout",
+          "name": "timeout",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "timeout: number"
+          ],
+          "description": "Cancels the request with an `RPCError` with the code `TIMEOUT` if its answer has not arrived\nthis many milliseconds after it is sent. Defaults to no timeout.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
       "key": "RPCValueEncoding",
       "name": "RPCValueEncoding",
       "kind": "interface",
@@ -1303,7 +1416,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface RPCOptions {\n  maxFrameSize?: number\n  maxBufferedBytes?: number\n}"
+        "interface RPCOptions {\n  maxFrameSize?: number\n  maxBufferedBytes?: number\n  AbortController?: typeof AbortController\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -1311,6 +1424,21 @@
       "returns": null,
       "throws": [],
       "members": [
+        {
+          "key": "RPCOptions.AbortController",
+          "name": "AbortController",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "AbortController: typeof AbortController"
+          ],
+          "description": "The `AbortController` class to create the `signal` of each incoming request with. Without it,\n`signal` is `null`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
         {
           "key": "RPCOptions.maxBufferedBytes",
           "name": "maxBufferedBytes",
@@ -1395,6 +1523,32 @@
               "static": true,
               "signatures": [
                 "RPCError.ALREADY_SENT(msg: string): RPCError"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                }
+              ],
+              "returns": {
+                "type": "RPCError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "RPCError.CANCELLED",
+              "name": "RPCError.CANCELLED",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "RPCError.CANCELLED(msg: string): RPCError"
               ],
               "description": null,
               "deprecated": null,
@@ -1519,6 +1673,32 @@
               "members": []
             },
             {
+              "key": "RPCError.TIMEOUT",
+              "name": "RPCError.TIMEOUT",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "RPCError.TIMEOUT(msg: string): RPCError"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                }
+              ],
+              "returns": {
+                "type": "RPCError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
               "key": "RPCError.UNEXPECTED_STREAM",
               "name": "RPCError.UNEXPECTED_STREAM",
               "kind": "method",
@@ -1601,5 +1781,5 @@
       ]
     }
   ],
-  "generatedAt": "2026-11-05T13:03:40.151Z"
+  "generatedAt": "2026-11-12T17:44:17.001Z"
 }

@@ -1,6 +1,6 @@
 {
   "name": "bare-stow",
-  "version": "0.3.2",
+  "version": "0.3.7",
   "description": "Module bundling and harness generation for Bare",
   "repoUrl": "https://github.com/holepunchto/bare-stow",
   "npmUrl": "https://www.npmjs.com/package/bare-stow",
@@ -17,7 +17,7 @@
     "bare-type-stripper",
     "bare-unpack"
   ],
-  "usage": "The entry module exports a `start()` function that receives the IPC stream and an optional `ready` callback. It may return a function to run before the bundle exits:\n\n```js\nmodule.exports = async function start(ipc, ready) {\n  ipc.on('data', (data) => {\n    // Handle messages from the host.\n  })\n\n  // Signal readiness early. Otherwise, it's signaled when `start()` resolves.\n  ready()\n\n  return async function stop() {\n    // Clean up before the bundle exits.\n  }\n}\n```\n\nIf a `server` is requested, `start()` instead receives `{ rpc, ipc }`, with `rpc` bound to the IPC stream. Its handlers are registered in `start()`, before the bundle signals ready:\n\n```js\nmodule.exports = function start({ rpc }) {\n  rpc.respond(1, (req, data) => data)\n}\n```\n\nStow it for a target:\n\n```js\nconst stow = require('bare-stow')\n\nconst entry = 'file:///app/core.js'\nconst out = 'file:///app/core-harness/'\n\nfor await (const artifact of stow(entry, 'bare-sidecar', out)) {\n  console.log(artifact.url.href)\n}\n```\n\nOr from the command line:\n\n```console\n$ bare-stow pack --target bare-sidecar --out ./core-harness ./core.js\n```\n\nThis writes a package to `out` with the harness, the bundle, and a manifest declaring the dependencies of the harness. `stow()` yields each file once written, and the bundle along with its `base`, the directory that its modules are named relative to. It's the `base` option if given, and otherwise the closest directory containing every module. Add the package as a dependency of the host and boot the bundle with `start()`, which resolves once the bundle is ready:\n\n```js\nimport * as harness from 'core-harness'\n\nconst { ipc } = await harness.start()\n\nipc.write(Buffer.from('hello from the host'))\n\n// Request a graceful shutdown, which resolves with the exit code.\nconst code = await ipc.terminate()\n```\n\nThe bundle imports `bare-stow-runtime`, and the RPC library if a `server` is requested, so the package containing the entry must depend on them.\n\n`start()` accepts `timeout`, how long to wait in milliseconds for the bundle to signal ready, and `grace`, how long a terminating bundle gets to run `stop()` and exit before it's killed. `timeout` defaults to waiting indefinitely and `grace` to 5 seconds. On Windows, a sidecar is killed along with its host, so `stop()` only runs when the host terminates it.\n\nFor `bare-sidecar` and `bare-worker`, the harness also exports `connect()`, which takes a sidecar or worker that the host started itself, such as one running a development entry with arguments, and resolves like `start()`. It accepts the same options, except those of the sidecar or worker. As the entry doesn't go through `stow()`, it attaches to the IPC itself, as described in <https://github.com/holepunchto/bare-stow-runtime>:\n\n```js\nconst runtime = require('bare-stow-runtime/process')\n\nconst ipc = runtime.attach(Bare.IPC)\n\nipc.run(() => import('./core.js'), ipc)\n```\n\n```js\nconst sidecar = new Sidecar('./dev.js', ['--verbose'], { stdio: 'inherit' })\n\nconst { ipc } = await harness.connect(sidecar)\n```\n\n`stow()` and `link()` read the module graph from disk by default. To read it from elsewhere, such as modules that aren't written to disk, pass `readModule`, `listPrefix`, and `resolveModule`. Generated files are still written to disk. A `readModule` that changes the type of a module also passes `aliases`, as for <https://github.com/holepunchto/bare-pack>, such as `{ '.mjs': '.js' }` to have ES modules converted to CommonJS loaded as such. They're merged over the aliases that `bare-stow` uses for TypeScript.",
+  "usage": "The entry module exports a `start()` function that receives the IPC stream and an optional `ready` callback. It may return a function to run before the bundle exits:\n\n```js\nmodule.exports = async function start(ipc, ready) {\n  ipc.on('data', (data) => {\n    // Handle messages from the host.\n  })\n\n  // Signal readiness early. Otherwise, it's signaled when `start()` resolves.\n  ready()\n\n  return async function stop() {\n    // Clean up before the bundle exits.\n  }\n}\n```\n\nIf a `server` is requested, `start()` instead receives `{ rpc, ipc }`, with `rpc` bound to the IPC stream. Its handlers are registered in `start()`, before the bundle signals ready:\n\n```js\nmodule.exports = function start({ rpc }) {\n  rpc.respond(1, (req, data) => data)\n}\n```\n\nStow it for a target:\n\n```js\nconst stow = require('bare-stow')\n\nconst entry = 'file:///app/core.js'\nconst out = 'file:///app/core-harness/'\n\nfor await (const artifact of stow(entry, 'bare-sidecar', out)) {\n  console.log(artifact.url.href)\n}\n```\n\nOr from the command line:\n\n```console\n$ bare-stow pack --target bare-sidecar --out ./core-harness ./core.js\n```\n\nThis writes a package to `out` with the harness, the bundle, and a manifest declaring the dependencies of the harness. `stow()` yields each file once written, and the bundle along with its `base`, the directory that its modules are named relative to. It's the `base` option if given, and otherwise the closest directory containing every module. Add the package as a dependency of the host and boot the bundle with `start()`, which resolves once the bundle is ready:\n\n```js\nimport * as harness from 'core-harness'\n\nconst { ipc } = await harness.start()\n\nipc.write(Buffer.from('hello from the host'))\n\n// Request a graceful shutdown, which resolves with the exit code.\nconst code = await ipc.terminate()\n```\n\nThe bundle imports `bare-stow-runtime`, and the RPC library if a `server` is requested, so the package containing the entry must depend on them. For `bare-rpc`, that is `bare-rpc` and `bare-abort-controller`, which gives handlers the `signal` that aborts when the peer cancels a request.\n\n`start()` accepts `timeout`, how long to wait in milliseconds for the bundle to signal ready, and `grace`, how long a terminating bundle gets to run `stop()` and exit before it's killed. `timeout` defaults to waiting indefinitely and `grace` to 5 seconds. On Windows, a sidecar is killed along with its host, so `stop()` only runs when the host terminates it.\n\nFor `bare-sidecar` and `bare-worker`, the harness also exports `connect()`, which takes a sidecar or worker that the host started itself, such as one running a development entry with arguments, and resolves like `start()`. It accepts the same options, except those of the sidecar or worker. As the entry doesn't go through `stow()`, it attaches to the IPC itself, as described in <https://github.com/holepunchto/bare-stow-runtime>:\n\n```js\nconst runtime = require('bare-stow-runtime/process')\n\nconst ipc = runtime.attach(Bare.IPC)\n\nipc.run(() => import('./core.js'), ipc)\n```\n\n```js\nconst sidecar = new Sidecar('./dev.js', ['--verbose'], { stdio: 'inherit' })\n\nconst { ipc } = await harness.connect(sidecar)\n```\n\n`stow()` and `link()` read the module graph from disk by default. To read it from elsewhere, such as modules that aren't written to disk, pass `readModule`, `listPrefix`, and `resolveModule`. Generated files are still written to disk. A `readModule` that changes the type of a module also passes `aliases`, as for <https://github.com/holepunchto/bare-pack>, such as `{ '.mjs': '.js' }` to have ES modules converted to CommonJS loaded as such. They're merged over the aliases that `bare-stow` uses for TypeScript.",
   "extraSections": [
     {
       "heading": "Targets",
@@ -143,6 +143,70 @@
           "members": []
         },
         {
+          "key": "stow.link",
+          "name": "stow.link",
+          "kind": "function",
+          "static": true,
+          "signatures": [
+            "stow.link(entries: URL | string | (URL | string)[], target: Target | TargetName, out: URL | string, opts?: LinkOptions): AsyncGenerator<StowArtifact>"
+          ],
+          "description": "Link the addons and assets of the graphs rooted at `entries` into a package at `out`, once for\nan application. The language lays out the package and the target adds what loads the addons.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "entries",
+              "type": "URL | string | (URL | string)[]",
+              "optional": false,
+              "default": null,
+              "description": "The entry modules of the graphs, as `file:` URLs or path strings."
+            },
+            {
+              "name": "target",
+              "type": "Target | TargetName",
+              "optional": false,
+              "default": null,
+              "description": "The target the graphs are stowed for, or its name."
+            },
+            {
+              "name": "out",
+              "type": "URL | string",
+              "optional": false,
+              "default": null,
+              "description": "The directory to write the package to, as a `file:` URL or path string."
+            },
+            {
+              "name": "opts",
+              "type": "LinkOptions",
+              "optional": true,
+              "default": null,
+              "description": "Options; see [`LinkOptions`](#linkoptions)."
+            }
+          ],
+          "returns": {
+            "type": "AsyncGenerator<StowArtifact>",
+            "description": "An async generator that yields the `url` of each linked addon and asset, and then of the\nmodule and manifest of the package."
+          },
+          "throws": [
+            {
+              "type": null,
+              "condition": "`entries` is empty, or the `target` or `out` argument is missing."
+            },
+            {
+              "type": null,
+              "condition": "The target does not link addons, or does not support linking for the language."
+            },
+            {
+              "type": null,
+              "condition": "The language does not support linked addons or assets."
+            },
+            {
+              "type": null,
+              "condition": "Two different assets would link to the same path."
+            }
+          ],
+          "members": []
+        },
+        {
           "key": "stow.Resolvable",
           "name": "stow.Resolvable",
           "kind": "typeAlias",
@@ -151,6 +215,21 @@
             "type Resolvable<T> = T | ((context: TargetResolveContext) => T)"
           ],
           "description": "A property of a target, or a function resolving it from the language of the harness and the\noptions it resolved, such as hosts that differ between languages.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "stow.resources",
+          "name": "stow.resources",
+          "kind": "variable",
+          "static": true,
+          "signatures": [
+            "stow.resources: string"
+          ],
+          "description": "The name of the folder that `stow.link()` writes the assets of the application to, which a Swift\napplication copies into its bundle.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -2521,5 +2600,5 @@
     }
   ],
   "subpaths": [],
-  "generatedAt": "2026-11-05T13:03:40.151Z"
+  "generatedAt": "2026-11-12T17:45:13.453Z"
 }

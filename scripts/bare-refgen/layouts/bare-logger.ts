@@ -15,7 +15,7 @@ const layout: Layout = {
   params: {
     'Log.constructor': {
       options:
-        'Logger options; `colors` forces ANSI color styling on or off, defaulting to whether the output stream is a TTY.',
+        'Logger options; `colors` forces ANSI color styling on or off, defaulting to whether both standard output and standard error are TTYs.',
     },
     'Log.format': paramData,
     'Log.debug': paramData,

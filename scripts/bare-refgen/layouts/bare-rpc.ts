@@ -43,11 +43,12 @@ const layout: Layout = {
       stream:
         'The duplex stream to frame RPC messages over, identifying each method by a unique command number — an IPC pipe, a TCP socket, or a [Bare Kit](/bare/reference/bare/bare-kit) worklet channel.',
       onrequest:
-        'Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to. Defaults to a no-op.',
+        'Callback run for each incoming request or event, receiving an `RPCIncomingRequest` (or `RPCIncomingEvent`) to inspect and `reply()` to, or an `RPCCommandRouter`. If omitted or `null`, an empty `RPCCommandRouter` handles them: every request is answered with an error whose code is `UNKNOWN_COMMAND`, and every event is dropped. Before v1.5.0, the default was a no-op that left requests unanswered.',
     },
     'RPC.request': {
       command:
         'A unique number identifying the request; the remote end differentiates requests by it.',
+      opts: 'Options for cancelling the request: `signal`, an `AbortSignal` that cancels it with its reason when it aborts, and `timeout`, the milliseconds after it is sent to cancel it with an `RPCError` with the code `TIMEOUT`. Added in v2.0.0. See [Cancellation](#cancellation).',
     },
     'RPC.event': {
       command:
@@ -60,7 +61,10 @@ const layout: Layout = {
     },
     'RPCOutgoingRequest.createRequestStream': writableOpts,
     'RPCOutgoingRequest.createResponseStream': readableOpts,
-    'RPCIncomingRequest.reply': sendParams,
+    'RPCIncomingRequest.reply': {
+      ...sendParams,
+      data: 'The payload to send: a `Buffer`, or a string encoded using `encoding`. Omit to send no data. Once the remote end has cancelled the request, nothing is sent.',
+    },
     'RPCIncomingRequest.createRequestStream': readableOpts,
     'RPCIncomingRequest.createResponseStream': writableOpts,
     'RPCOutgoingEvent.send': sendParams,
@@ -102,7 +106,7 @@ const layout: Layout = {
       'an `RPCOutgoingRequest`; call `send()` on it to dispatch the request and `await reply()` for the response.',
     'RPC.event': 'an `RPCOutgoingEvent`; call `send()` on it to dispatch the one-way event.',
     'RPCOutgoingRequest.reply':
-      "a promise that resolves with the remote end's reply payload, or rejects with the channel's teardown error if it closes before a reply arrives.",
+      "a promise that resolves with the remote end's reply payload, or rejects with the channel's teardown error if it closes before a reply arrives, or with the reason the request was cancelled with.",
   },
   throws: {
     'RPCOutgoingRequest.send': ['`ALREADY_SENT` — the request has already been sent.'],

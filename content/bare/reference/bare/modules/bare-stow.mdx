@@ -4,7 +4,7 @@ description: "Module bundling and harness generation for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.3.2"
+upstreamVersion: "0.3.7"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -74,7 +74,7 @@ ipc.write(Buffer.from('hello from the host'))
 const code = await ipc.terminate()
 ```
 
-The bundle imports `bare-stow-runtime`, and the RPC library if a `server` is requested, so the package containing the entry must depend on them.
+The bundle imports `bare-stow-runtime`, and the RPC library if a `server` is requested, so the package containing the entry must depend on them. For `bare-rpc`, that is `bare-rpc` and `bare-abort-controller`, which gives handlers the `signal` that aborts when the peer cancels a request.
 
 `start()` accepts `timeout`, how long to wait in milliseconds for the bundle to signal ready, and `grace`, how long a terminating bundle gets to run `stop()` and exit before it's killed. `timeout` defaults to waiting indefinitely and `grace` to 5 seconds. On Windows, a sidecar is killed along with its host, so `stop()` only runs when the host terminates it.
 
@@ -126,6 +126,38 @@ Bundle the module graph rooted at `entry` for `target`, writing a harness packag
 - A language option is unknown or invalid, or `out` is not valid as a package.
 - The target or an RPC library does not support the language.
 - A host in `opts.hosts` is not supported by the resolved target in the language.
+
+#### `stow.link`
+
+```ts
+stow.link(entries: URL | string | (URL | string)[], target: Target | TargetName, out: URL | string, opts?: LinkOptions): AsyncGenerator<StowArtifact>
+```
+
+Link the addons and assets of the graphs rooted at `entries` into a package at `out`, once for an application. The language lays out the package and the target adds what loads the addons. The module exported it before v0.3.3, but only v0.3.3 and later declare its types.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `entries` | `URL \| string \| (URL \| string)[]` | — | The entry modules of the graphs, as `file:` URLs or path strings. |
+| `target` | [`Target`](#target) \| `TargetName` | — | The target the graphs are stowed for, or its name. |
+| `out` | `URL` \| `string` | — | The directory to write the package to, as a `file:` URL or path string. |
+| `opts?` | [`LinkOptions`](#linkoptions) | — | Options; see [`LinkOptions`](#linkoptions). |
+
+**Returns** `AsyncGenerator<StowArtifact>` — An async generator that yields the `url` of each linked addon and asset, and then of the module and manifest of the package.
+
+**Throws**
+
+- `entries` is empty, or the `target` or `out` argument is missing.
+- The target does not link addons, or does not support linking for the language.
+- The language does not support linked addons or assets.
+- Two different assets would link to the same path.
+
+### Constants and variables
+
+#### `stow.resources: string`
+
+The name of the folder that `stow.link()` writes the assets of the application to, which a Swift application copies into its bundle. The module exported it before v0.3.3, but only v0.3.3 and later declare its types.
 
 ### Types
 
@@ -479,7 +511,7 @@ for await (const artifact of stow.link(entries, 'bare-kit', out, { language: 'sw
 }
 ```
 
-The language lays out the package and the target adds what loads the addons. For `bare-kit`, that's `bare-kit-swift` or `bare-kit-kotlin`. The assets go in a folder named by `stow.resources`, listed in a file of the same name with the `.assets` extension, which a Swift application copies into its bundle. `link()` takes the same options as `stow()`, except `client` and `base`.
+The language lays out the package and the target adds what loads the addons. For `bare-kit`, that's `bare-kit-swift` or `bare-kit-kotlin`. Changed in v0.3.7: it links bare-kit-swift `from: "2.3.0"` and bare-kit-kotlin `v0.2.+`, which build Bare Kit 3.1.0. Earlier releases linked bare-kit-swift with a `from:` requirement, which also resolves to 2.3.0, and an exact bare-kit-kotlin release, usually `v0.2.2`, which builds Bare Kit 3.0.1. See [Bundled Bare version](/bare/reference/bare/bare-kit#bundled-bare-version). The assets go in a folder named by `stow.resources`, listed in a file of the same name with the `.assets` extension, which a Swift application copies into its bundle. `link()` takes the same options as `stow()`, except `client` and `base`.
 
 ## Languages
 
@@ -513,6 +545,8 @@ asyncio.run(main())
 ```
 
 With an RPC client, `start()` takes the handlers for the requests and events of the bundle, so that they are registered before the bundle can send any.
+
+Changed in v0.3.6: the generated code depends on the releases of `bare-rpc` that support cancellation: `bare-rpc` 2.x and `bare-abort-controller` in the bundle and in a JavaScript harness, and `bare-rpc-swift` 3.x, `bare-rpc-kotlin` 0.6.x, or `bare-rpc` 0.3.x for Python in a harness in those languages. See [Changes in v2.0.0](/bare/reference/bare/modules/bare-rpc#changes-in-v200) on the `bare-rpc` page.
 
 ## Protocol
 

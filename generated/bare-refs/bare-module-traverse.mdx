@@ -4,7 +4,7 @@ description: "Low-level module graph traversal for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "2.7.4"
+upstreamVersion: "2.7.6"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -379,7 +379,7 @@ This section covers what a traversal does with these builds. For how Bare loads 
 
 [`bare-addon-resolve`](/bare/reference/bare/modules/bare-addon-resolve) treats a host that starts with `wasi-` as a WebAssembly host. It tries the native prebuilds first, then linked addons, then the `.wasm` file of the WebAssembly hosts, so a WebAssembly build is used only when no native build or linked addon was found. See [`resolve.directory`](/bare/reference/bare/modules/bare-addon-resolve#resolvedirectory).
 
-[`traverse.resolve.bare`](#bare-module-traverseresolve) adds `wasi-wasm32` to its default hosts. When `hosts` is not set, it is `[host, 'wasi-wasm32']`, where `host` is the `host` option, or the host of the running platform when `host` is not set. Pass `hosts` to leave `wasi-wasm32` out. The default resolver and `traverse.resolve.node` do not add it. Before v2.6.0 the default was `[host]`.
+[`traverse.resolve.bare`](#bare-module-traverseresolve) adds `wasi-wasm32` to its default hosts. When `hosts` is not set, it is `[host, 'wasi-wasm32']`, where `host` is the `host` option, or the host of the running platform when `host` is not set. Pass `hosts` to leave `wasi-wasm32` out. The default resolver and `traverse.resolve.node` do not add it. Before v2.6.0 the default was `[host]`. Changed in v2.7.6: on a `freertos-` host, where `bare-module` doesn't load WebAssembly addons, the default is `[host]`.
 
 ```js
 const traverse = require('bare-module-traverse')
@@ -500,7 +500,7 @@ The default resolver, which simply forwards to \<https://github.com/holepunchto/
 
 #### `bare(entry: Import, parentURL: URL, opts?: BareResolveOptions): Resolver`
 
-The Bare resolver, which matches the options used by the Bare module system. When `hosts` is not set, it defaults to `[host, 'wasi-wasm32']`, so a package with no native build for `host` resolves to its `prebuilds/wasi-wasm32/<name>.wasm` file. Changed in v2.6.0: before, `hosts` defaulted to `[host]`. See [WebAssembly addons](#webassembly-addons). As of v2.7.0 it adds the `conditions` option to the conditions of each host; see [`bare-module-traverse/resolve/bare`](#bare-module-traverseresolvebare).
+The Bare resolver, which matches the options used by the Bare module system. When `hosts` is not set, it defaults to `[host, 'wasi-wasm32']`, so a package with no native build for `host` resolves to its `prebuilds/wasi-wasm32/<name>.wasm` file. Changed in v2.6.0: before, `hosts` defaulted to `[host]`. Changed in v2.7.6: on a `freertos-` host, where `bare-module` doesn't load WebAssembly addons, the default is `[host]`. See [WebAssembly addons](#webassembly-addons). As of v2.7.0 it adds the `conditions` option to the conditions of each host; see [`bare-module-traverse/resolve/bare`](#bare-module-traverseresolvebare).
 
 **Parameters**
 
@@ -618,9 +618,9 @@ interface ResolveOptions {
 
 #### `resolve(entry: Import, parentURL: URL, opts?: BareResolveOptions): Resolver`
 
-The Bare resolver. When `hosts` is not set, it defaults to `[host, 'wasi-wasm32']`. Changed in v2.6.0: before, `hosts` defaulted to `[host]`. See [WebAssembly addons](#webassembly-addons).
+The Bare resolver. When `hosts` is not set, it defaults to `[host, 'wasi-wasm32']`. Changed in v2.6.0: before, `hosts` defaulted to `[host]`. Changed in v2.7.6: on a `freertos-` host, where `bare-module` doesn't load WebAssembly addons, the default is `[host]`. See [WebAssembly addons](#webassembly-addons).
 
-Each host gives a set of conditions to target: the condition for the kind of import, such as `require` or `addon`, then `bare`, `node`, and the parts of the host name, such as `darwin` and `arm64`. As of v2.7.0 the `conditions` option lists more conditions to target, and it's added to the set of each host. It can also be nested lists, in which case each innermost list is added to the set of each host in turn, giving one set for each, and a package is resolved for every set. A host whose conditions are in every innermost list gets no set of its own, since the other sets already target it. Before v2.7.0, `conditions` was ignored.
+Each host gives a set of conditions to target: the condition for the kind of import, such as `require` or `addon`, then `bare`, `node`, and the parts of the host name, such as `darwin` and `arm64`. Changed in v2.7.5: the host name is split with [`bare-host-parser`](https://github.com/holepunchto/bare-host-parser), so an architecture that contains a `-` stays whole, such as `arm64-32` in `watchos-arm64-32`. Before, it was split at every `-`. As of v2.7.0 the `conditions` option lists more conditions to target, and it's added to the set of each host. It can also be nested lists, in which case each innermost list is added to the set of each host in turn, giving one set for each, and a package is resolved for every set. A host whose conditions are in every innermost list gets no set of its own, since the other sets already target it. Before v2.7.0, `conditions` was ignored.
 
 ```js
 const traverse = require('bare-module-traverse')
@@ -707,7 +707,7 @@ interface NodeResolveOptions {
 
 ## See also
 
-- Builds on `bare-addon-resolve`, `bare-bundle`, `bare-mime`, `bare-module-lexer`, and `bare-module-resolve`. Addon lookup, including the WebAssembly fallback, is in [`bare-addon-resolve`](/bare/reference/bare/modules/bare-addon-resolve). The bundle format, including the addons and assets a bundle declares, is in [`bare-bundle`](/bare/reference/bare/modules/bare-bundle).
+- Builds on `bare-addon-resolve`, `bare-bundle`, `bare-host-parser`, `bare-mime`, `bare-module-lexer`, and `bare-module-resolve`. Addon lookup, including the WebAssembly fallback, is in [`bare-addon-resolve`](/bare/reference/bare/modules/bare-addon-resolve). The bundle format, including the addons and assets a bundle declares, is in [`bare-bundle`](/bare/reference/bare/modules/bare-bundle).
 - It's the engine behind [`bare-pack`](/bare/reference/bare/modules/bare-pack) — a low-level building block; use `bare-pack` to produce a bundle, and reach for this directly only when building tooling on top of the graph.
 - The step generators exposed on `traverse` (`traverse.module`, `traverse.package`, `traverse.preresolved`, `traverse.imports`, `traverse.link`, `traverse.addons`, and `traverse.assets`), and `traverse.assertAddonContext`, are subject to change between minor releases; if using them directly, specify a tilde range (for example `~2.7.0`) when declaring the dependency. v2.6.0 added a parameter to `traverse.preresolved`. `bare-pack` 2.2.5 and later and `bare-module` 7.5.0 declare `~2.7.0`. As of v2.7.0, the drive loop in the README takes queued subgraphs first in, first out, with `queue.shift()`, matching the traversal itself. See the [repository README](https://github.com/holepunchto/bare-module-traverse) for each step generator.
 - [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
