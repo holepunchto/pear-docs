@@ -1,0 +1,80 @@
+name: External links
+
+# External links hit the live network and can 404 or time out on transient
+# third-party outages, so they don't gate PRs. Instead we sweep them weekly
+# (and on demand via workflow_dispatch) to catch links that have gone dead.
+# A failed sweep opens (or comments on) a tracking issue so it's actionable.
+
+on:
+  schedule:
+    # Mondays at 06:00 UTC.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  external-links:
+    name: external links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # Only needs tsx + github-slugger (both public) — see the note in
+      # docs-lint.yml for why we install them in isolation and copy them into
+      # ./node_modules rather than installing globally or running the root install.
+      - name: Install link-checker deps
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/checker" tsx github-slugger
+          mkdir -p node_modules
+          cp -R "$RUNNER_TEMP/checker/node_modules/." node_modules/
+
+      # Capture the report but don't fail the step yet — we want to file an
+      # issue first, then fail the job at the end.
+      - name: Check external links
+        id: check
+        run: |
+          set +e
+          ./node_modules/.bin/tsx scripts/check-external-links.ts 2>&1 | tee link-report.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update tracking issue
+        if: steps.check.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Ensure the label exists (no-op if it already does).
+          gh label create broken-links \
+            --color B60205 \
+            --description "Dead external links found by the weekly sweep" \
+            2>/dev/null || true
+
+          {
+            echo "The weekly external-link sweep found broken links."
+            echo
+            echo "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo
+            echo '```'
+            cat link-report.txt
+            echo '```'
+          } > issue-body.md
+
+          existing=$(gh issue list --label broken-links --state open \
+            --json number --jq '.[0].number')
+
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file issue-body.md
+          else
+            gh issue create \
+              --title "Broken external links detected" \
+              --label broken-links \
+              --body-file issue-body.md
+          fi
+
+      - name: Fail if links are broken
+        if: steps.check.outputs.exit_code != '0'
+        run: exit 1

@@ -1,0 +1,718 @@
+---
+title: "Swift packages"
+description: "Reference for the Swift packages that let an Apple or Linux host run and drive Bare: bare-sidecar-swift to start Bare in a child process, bare-stow-host-swift for the lifecycle of a stowed bundle, bare-rpc-swift and compact-encoding-swift for the wire protocols, and the hrpc-swift and hyperschema-swift code generators."
+docType: reference
+product: bare
+schemaType: APIReference
+---
+
+{/* Maintainer note: hand-maintained from the source of each package at its latest release tag,
+audited 2026-11-12 against bare-sidecar-swift v0.1.3, bare-stow-host-swift v0.2.1, bare-rpc-swift
+v3.0.0, compact-encoding-swift v1.0.1, and the npm releases hyperschema-swift 1.0.1 and hrpc-swift
+1.0.0. Verified on macOS arm64 with Swift 6.4 by running each package's test suite and the examples
+below, including bare-rpc-swift over a sidecar against JS bare-rpc 2.0.0 and bare-stow-host-swift
+with a real worker in a sidecar. Generated hyperschema-swift output was compared byte for byte with
+JS hyperschema 1.26.2; the mismatches found are listed under hyperschema-swift. Linux and iOS were not
+run. hrpc-swift 1.0.0 emits code for the bare-rpc-swift 1.x delegate API, and its generated Package.swift
+(macOS 11) doesn't build as emitted; main (unreleased
+as of the audit) targets the bare-rpc-swift 2.x API. Re-check the hrpc-swift section on its next
+release. There are no doc-states and no `upstreamVersion` front matter, because the page covers several
+packages; re-diff it on each release of these repositories. bare-kit-swift is documented in bare-kit.mdx. */}
+
+The Swift packages below run in a macOS, iOS, or Linux host and talk to JavaScript running in Bare, either in a worklet of [`bare-kit-swift`](/bare/reference/bare/bare-kit#swift) or in a sidecar process:
+
+- [`bare-sidecar-swift`](#bare-sidecar-swift) starts Bare in a child process, with an IPC channel to it.
+- [`bare-stow-host-swift`](#bare-stow-host-swift) drives the lifecycle of a bundle stowed with [`bare-stow`](/bare/reference/bare/modules/bare-stow): readiness, termination, and exit reporting.
+- [`bare-rpc-swift`](#bare-rpc-swift) speaks the [`bare-rpc`](/bare/reference/bare/modules/bare-rpc) protocol over any byte transport.
+- [`compact-encoding-swift`](#compact-encoding-swift) encodes values in the [compact-encoding](/p2p/reference/helpers/compact-encoding) wire format.
+- [`hyperschema-swift`](#hyperschema-swift) and [`hrpc-swift`](#hrpc-swift) generate Swift packages from a [Hyperschema](/p2p/reference/helpers/hyperschema) and an [HRPC](/p2p/reference/helpers/hrpc) definition.
+
+The harnesses that `bare-stow` generates for the `swift` language depend on bare-kit-swift or bare-sidecar-swift, depending on the target, and on bare-stow-host-swift. For the same packages in other languages, see [Kotlin packages](/bare/reference/bare/native-hosts/kotlin) and [Python packages](/bare/reference/bare/native-hosts/python).
+
+| Package | Version | Product | Platforms |
+| --- | --- | --- | --- |
+| [bare-sidecar-swift](https://github.com/holepunchto/bare-sidecar-swift) | 0.1.3 | `BareSidecar` | macOS 13, Linux |
+| [bare-stow-host-swift](https://github.com/holepunchto/bare-stow-host-swift) | 0.2.1 | `BareStowHost` | macOS 13, iOS 15, Linux |
+| [bare-rpc-swift](https://github.com/holepunchto/bare-rpc-swift) | 3.0.0 | `BareRPC` | macOS 13, iOS 15, Linux |
+| [compact-encoding-swift](https://github.com/holepunchto/compact-encoding-swift) | 1.0.1 | `CompactEncoding` | macOS 13, iOS 15, Linux |
+| [hyperschema-swift](https://github.com/holepunchto/hyperschema-swift) | 1.0.1 | npm, generates `Schema` | macOS 13, iOS 15 |
+| [hrpc-swift](https://github.com/holepunchto/hrpc-swift) | 1.0.0 | npm, generates `HRPC` | See [hrpc-swift](#hrpc-swift) |
+
+## Installation
+
+Add the libraries with Swift Package Manager. The packages declare `swift-tools-version` 5.10.
+
+```swift
+dependencies: [
+  .package(url: "https://github.com/holepunchto/bare-sidecar-swift", from: "0.1.3"),
+  .package(url: "https://github.com/holepunchto/bare-stow-host-swift", from: "0.2.1"),
+  .package(url: "https://github.com/holepunchto/bare-rpc-swift", from: "3.0.0"),
+  .package(url: "https://github.com/holepunchto/compact-encoding-swift", from: "1.0.1")
+]
+
+.product(name: "BareSidecar", package: "bare-sidecar-swift")
+.product(name: "BareStowHost", package: "bare-stow-host-swift")
+.product(name: "BareRPC", package: "bare-rpc-swift")
+.product(name: "CompactEncoding", package: "compact-encoding-swift")
+```
+
+bare-rpc-swift depends on compact-encoding-swift, and the other libraries have no dependencies. The code generators are npm packages that run in Node.js or Bare:
+
+```sh
+npm install hyperschema-swift hrpc-swift
+```
+
+`BareRPC` and `BareStowHost` both declare a protocol named `Transport`, so qualify it as `BareRPC.Transport` or `BareStowHost.Transport` in a file that imports both. The conformances that this page declares across packages use `@retroactive`, which needs Swift 6. Leave it out with an older compiler.
+
+## bare-sidecar-swift
+
+`bare-sidecar-swift` starts a Bare entry point in a child process, a **sidecar**, and connects to it over IPC. Inside the sidecar, the IPC is [`Bare.IPC`](/bare/reference/bare/runtime#bareipc). It's the Swift counterpart of [`bare-sidecar`](/bare/reference/bare/modules/bare-sidecar) for Node.js and Electron.
+
+```js
+// app.js
+Bare.IPC.on('data', (data) => Bare.IPC.write(data))
+```
+
+```swift
+import BareSidecar
+import Foundation
+
+let sidecar = try await Sidecar.spawn(URL(fileURLWithPath: "app.js"))
+
+await sidecar.write(Data("Hello world".utf8))
+
+for try await data in sidecar {
+  print(String(decoding: data, as: UTF8.self))
+  break
+}
+
+await sidecar.close()
+```
+
+The package includes a build of Bare made for sidecars, Bare 1.36.2 in 0.1.3, as an artifact bundle of about 60 MB that Swift Package Manager downloads from the release when it resolves the package. The bundle has executables for macOS on arm64 and x64, and for Linux with glibc on arm64 and x64. The package doesn't support iOS, as it starts processes with `Foundation.Process`.
+
+### `Sidecar`
+
+```swift
+public final class Sidecar: AsyncSequence, @unchecked Sendable {
+  public typealias Element = Data
+
+  public static func spawn(
+    _ entry: URL,
+    arguments: [String] = [],
+    stdio: (Stdio, Stdio, Stdio) = (.inherit, .inherit, .inherit),
+    bare: URL? = nil
+  ) async throws -> Sidecar
+}
+```
+
+- `Sidecar.spawn(_:arguments:stdio:bare:)`— start `entry` in a sidecar, resolving a relative path against the current working directory, and return once it has connected. Inside it, `Bare.argv` is the path of Bare, the resolved path of `entry`, and then `arguments`. `stdio` sets the standard input, output, and error of the process. `bare` is the URL of a Bare executable to use instead of the included one, which must be a sidecar build of Bare. The child inherits the environment of the host. It throws `SidecarError.noExecutable` if there's no Bare for the platform, `SidecarError.exitedBeforeConnecting(_:)` if the process exits before connecting, a `POSIXError` if it can't create the IPC socket before starting the process, such as `ENAMETOOLONG` for a temporary directory with a long path, and the error of `Process.run()` if the process can't start.
+- `for try await data in sidecar`— iterate over the data that the sidecar writes to `Bare.IPC`, in chunks of any size. Iteration ends once the process has exited, after the end of the IPC, and throws a `POSIXError` if reading fails another way. Iterate from one task at a time.
+- `write(_ data: Data) async`— write `data` to `Bare.IPC` in the sidecar, returning once it's sent. It doesn't throw: once the sidecar has closed its end, data is dropped.
+- `wait() async -> Termination`— wait for the process to exit.
+- `close() async -> Termination`— close the IPC, send `SIGTERM` to the process at once, and wait for it to exit. A healthy sidecar therefore usually ends with `.signal(15)`.
+- `terminate()`, `kill()`, `sendSignal(_ signal: Int32)`— send `SIGTERM`, `SIGKILL`, or `signal` to the process, if it's still running.
+- `pid: Int32`— the process id.
+- `standardInput`, `standardOutput`, `standardError`— a `FileHandle` for each stream spawned with `.pipe`, the end you write to for input and read from for output, and `nil` otherwise.
+- `Sidecar.executable: URL?`— the included Bare for the platform, or `nil`.
+- `Sidecar.versions: [String: String]`— the versions of the included build, such as `["bare": "1.36.2"]`, keyed like `Bare.versions`.
+
+`wait()` and `close()` are `@discardableResult`. When the host closes the IPC, the sidecar calls `Bare.exit()`, unless the entry listens for the `close` event of `Bare.IPC`.
+
+- `Sidecar.Stdio`— `.inherit`, the stream of the host; `.pipe`, a pipe exposed as `standardInput`, `standardOutput`, or `standardError`; or `.ignore`.
+- `Sidecar.Termination`— `.exit(Int32)`, the exit code of a process that exited, or `.signal(Int32)`, the signal that ended it.
+- `SidecarError`— `.noExecutable` or `.exitedBeforeConnecting(Sidecar.Termination)`.
+
+A `Sidecar` has the shape of a [`BareStowHost.Transport`](#bare-stow-host-swift), so `extension Sidecar: @retroactive BareStowHost.Transport {}` makes it one. It isn't a `BareRPC.Transport`, as its `close()` returns a `Termination`, so wrap it to use it with [bare-rpc-swift](#bare-rpc-swift):
+
+```swift
+let transport = AnyTransport(sidecar, write: { await sidecar.write($0) }, close: { _ = await sidecar.close() })
+```
+
+## bare-stow-host-swift
+
+`bare-stow-host-swift` is the Swift counterpart of [`bare-stow-host`](/bare/reference/bare/modules/bare-stow#protocol). It multiplexes a control channel and a user data channel over a byte transport to a stowed bundle, and layers readiness, termination, and exit reporting on top. Any transport works, such as a worklet IPC of bare-kit-swift or a `Sidecar`:
+
+```swift
+import BareSidecar
+import BareStowHost
+import Foundation
+
+extension Sidecar: @retroactive Transport {}
+
+let sidecar = try await Sidecar.spawn(URL(fileURLWithPath: "index.bundle"))
+let ipc = IPC(sidecar, kill: { sidecar.kill() })
+
+Task {
+  switch await sidecar.wait() {
+  case .exit(let code): ipc.exited(code: code)
+  case .signal(let signal): ipc.exited(code: nil, signal: signal)
+  }
+}
+
+try await ipc.ready()
+try await ipc.write(Data("hello".utf8))
+
+let code = await ipc.terminate()
+```
+
+Whoever creates the `IPC` must report the exit of the worker with `exited(code:signal:)`, as above.
+
+### `IPC`
+
+```swift
+public final class IPC: AsyncSequence, @unchecked Sendable {
+  public typealias Element = Data
+
+  public init<T: Transport>(
+    _ transport: T,
+    kill: @escaping @Sendable () -> Void,
+    timeout: TimeInterval? = nil,
+    grace: TimeInterval = IPC.defaultGrace
+  )
+}
+```
+
+- `transport`— the byte transport to the worker.
+- `kill`— stops the worker without waiting. It's called when a terminating worker doesn't exit within `grace`, and when the transport fails and the worker doesn't exit within `grace`.
+- `timeout`— how many seconds from construction the worker gets to signal readiness. `nil`, the default, waits indefinitely.
+- `grace`— how many seconds a terminating or failed worker gets to exit before it's killed. Defaults to `IPC.defaultGrace`, 5 seconds.
+
+Constructing an `IPC` starts reading the transport at once, and queues a `configure` control frame carrying `grace` in milliseconds as the first frame the worker receives. Writes are made one at a time, in order.
+
+- `ready() async throws`— wait until the worker signals readiness. It throws `WorkerError` if, before then, the worker reports an error, exits, or times out. The worker is then terminated, as it is when the waiting task is cancelled, which throws `CancellationError`. If the transport ends first without an `exit` frame, the timeout stops and `ready()` waits for `exited(code:signal:)`, then throws its `WORKER_EXITED` or `WORKER_KILLED` error. Several tasks may wait at once.
+- `for try await data in ipc`— iterate over the user data that the worker writes. Iteration ends when the worker has exited or been asked to terminate, and throws the `WorkerError` that failed the handle otherwise. Iterate from one task at a time: when the `IPC` is the transport of an `RPC`, observe failures through `RPC.wait()` rather than iterating as well.
+- `write(_ data: Data) async throws`— send `data` to the worker as user data. It throws `WorkerError` with the code `WORKER_CLOSED` if the transport fails with `EPIPE`, `ECONNRESET`, or `ECONNABORTED`, or fails after the handle has ended, and with the code `TRANSPORT_ERROR` if it fails another way, which starts the grace period before `kill`.
+- `terminate() async -> Int32?`— ask the worker to exit, as `close()` does, and return `exitCode`.
+- `close() async`— if the transport is open, send the worker a `terminate` control frame, wait for the transport to end, and call `kill` if that takes longer than `grace`. Concurrent and repeated calls wait for the same termination.
+- `wait() async -> Int32?`— wait until the handle has closed and return `exitCode`.
+- `exited(code: Int32?, signal: Int32? = nil)`— report the exit of the worker process. If the worker exited without sending an `exit` control frame and without being asked to terminate, the handle fails with a `WorkerError` whose code is `WORKER_KILLED` if `signal` isn't `nil`, and `WORKER_EXITED` otherwise. It's ignored in every other case.
+- `exitCode: Int32?`— the code that the worker sent in its `exit` control frame, or `nil`. An exit reported with `exited(code:signal:)` doesn't set it.
+- `IPC.defaultGrace: TimeInterval`— 5 seconds.
+
+`wait()` and `terminate()` are `@discardableResult`. A transport that ends without an `exit` frame and without a `terminate` from the host counts as a crash: iteration and `wait()` don't end until `exited(code:signal:)` reports how the worker exited.
+
+### `Transport`
+
+```swift
+public protocol Transport: AsyncSequence, Sendable where Element == Data {
+  func write(_ data: Data) async throws
+}
+```
+
+The transport iterates the bytes from the worker and writes bytes to it. Unlike `BareRPC.Transport`, it has no `close()`. bare-stow-host-swift doesn't depend on bare-rpc-swift, so to use an `IPC` as the transport of an [`RPC`](#rpc), declare the conformance, which it already has the shape of:
+
+```swift
+extension IPC: @retroactive BareRPC.Transport {}
+```
+
+### `WorkerError`
+
+```swift
+public struct WorkerError: Error, Equatable, CustomStringConvertible, Sendable {
+  public let message: String
+  public let code: String
+  public let stack: String?
+  public let exitCode: Int32?
+  public let signal: Int32?
+  public let underlyingError: (any Error)?
+
+  public init(_ message: String, code: String = "WORKER_ERROR", stack: String? = nil,
+              exitCode: Int32? = nil, signal: Int32? = nil, underlyingError: (any Error)? = nil)
+}
+```
+
+`description` is `message`, and equality ignores `underlyingError`.
+
+| `code` | Raised when |
+| --- | --- |
+| `WORKER_ERROR` | The worker sent an `error` control frame. `message` and `stack` are the ones it sent. |
+| `WORKER_EXITED` | The worker sent an `exit` control frame before signaling readiness, or `exited(code:signal:)` reported an exit without a signal. `exitCode` is the code it reported. |
+| `WORKER_KILLED` | `exited(code:signal:)` reported an exit with a signal. `exitCode` and `signal` are the ones it reported. |
+| `WORKER_CLOSED` | The host terminated the worker with `close()` or `terminate()`, or by cancelling `ready()`, before it signaled readiness. A write also throws it if the transport fails with `EPIPE`, `ECONNRESET`, or `ECONNABORTED`, or after the handle has ended. A transport that ends on its own before readiness is a crash instead, reported as `WORKER_EXITED` or `WORKER_KILLED`. |
+| `WORKER_TIMEOUT` | `timeout` passed before the worker signaled readiness. |
+| `TRANSPORT_ERROR` | The transport failed another way. `write(_:)` throws it at once, and the handle fails with it if the worker doesn't exit within `grace`. `underlyingError` is the error of the transport. |
+
+When a crash follows a transport failure, the `WORKER_EXITED` or `WORKER_KILLED` error carries the `TRANSPORT_ERROR` as its `underlyingError`.
+
+### `Frame` and `FrameDecoder`
+
+Every frame is a 4-byte little-endian length followed by that many bytes: a 1-byte tag and the payload. The tag is `0x00` for a control frame, whose payload is a UTF-8 JSON object carrying its `type`, and `0x01` for user data. These helpers implement the framing for embedders that bring their own transport:
+
+- `Frame.control: UInt8`, `Frame.user: UInt8`— the tags, `0x00` and `0x01`.
+- `Frame.encode(_ tag: UInt8, _ payload: Data) -> Data`— encode a frame.
+- `Frame.control(_ type: String, _ fields: KeyValuePairs<String, Int> = [:]) -> Data`— encode a control frame whose payload is `{"type": type, ...fields}`. Only `Int` field values are supported.
+- `FrameDecoder()`, `mutating func feed(_ data: Data) -> [(tag: UInt8, payload: Data)]`— an incremental decoder, which buffers partial frames across calls and returns the frames that `data` completes. Empty frames are skipped. It has no maximum frame size.
+- `decodeControl(_ payload: Data) -> [String: Any]?`— parse the payload of a control frame, returning `nil` if it isn't a JSON object.
+
+`IPC` handles the `ready`, `exit`, and `error` control frames and ignores any other.
+
+## bare-rpc-swift
+
+`bare-rpc-swift` is a Swift implementation of the [`bare-rpc`](/bare/reference/bare/modules/bare-rpc) protocol, built on Swift concurrency. Each side of a session can send requests, which get a reply, and events, which don't, identified by a numeric command. Requests and replies can stream their bodies, with flow control.
+
+```swift
+import BareRPC
+import Foundation
+
+// `transport` is any BareRPC.Transport, such as an IPC from bare-stow-host-swift
+let router = CommandRouter()
+
+router.on(request: 1) { request in
+  Data("pong: ".utf8) + (request.data ?? Data())
+}
+
+router.on(event: 2) { event in
+  print(String(decoding: event.data ?? Data(), as: UTF8.self))
+}
+
+let rpc = RPC(transport, handler: router)
+
+let reply = try await rpc.request(1, data: Data("ping".utf8))
+
+await rpc.close()
+```
+
+### `RPC`
+
+```swift
+public actor RPC {
+  public init(
+    _ transport: some Transport,
+    handler: some Handler,
+    maxFrameSize: Int = RPC.defaultMaxFrameSize,
+    maxBufferedBytes: Int = RPC.defaultMaxBufferedBytes
+  )
+
+  public init(
+    _ transport: some Transport,
+    maxFrameSize: Int = RPC.defaultMaxFrameSize,
+    maxBufferedBytes: Int = RPC.defaultMaxBufferedBytes,
+    onRequest: RequestHandler? = nil,
+    onEvent: EventHandler? = nil
+  )
+}
+```
+
+Constructing an `RPC` starts reading `transport` at once. `onRequest` and `onEvent` are `@Sendable (IncomingRequest) async throws -> Void` and `@Sendable (IncomingEvent) async throws -> Void`, the `RPC.RequestHandler` and `RPC.EventHandler` type aliases. Without a request handler, every request is rejected with the code `UNKNOWN_COMMAND`, and without an event handler, events are dropped. `maxFrameSize` is the largest frame accepted from the peer, including its 4-byte length prefix, and `maxBufferedBytes` is how much of one incoming stream may be buffered without being read. Both must be positive.
+
+- `request(_ command: UInt, data: Data? = nil, timeout: TimeInterval? = nil) async throws -> Data?`— send a request and return the payload of the reply. It throws `RPCRemoteError` if the peer replies with an error, and `RPCError.unexpectedStream` if the peer replies with a stream, in which case the session stays open. With `timeout`, in seconds, it cancels the request when the time is up and throws `RPCError.timeout`. If the task is cancelled, it cancels the request and throws `CancellationError`, and if the task is already cancelled, nothing is sent.
+- `requestWithResponseStream(command: UInt, data: Data? = nil) async throws -> IncomingStream`— send a request and return the stream of the reply. A reply that isn't streamed is read from the stream as one chunk, or not at all if it's empty.
+- `createRequestStream(command: UInt) throws -> OutgoingStream`— open a request whose body you write to the stream, ignoring the reply.
+- `streamRequest(command: UInt) throws -> (outgoing: OutgoingStream, response: @Sendable () async throws -> Data?)`— open a request whose body you write to the stream, and get a function that waits for the reply. Calling `response` a second time throws `RPCError.alreadyReceived`. If the peer replies before opening the stream, later writes are dropped.
+- `createBidirectionalStream(command: UInt) async throws -> (outgoing: OutgoingStream, incoming: IncomingStream)`— open a request whose body and reply are both streamed.
+- `event(_ command: UInt, data: Data? = nil) async`— send an event. After the session has ended, the event is dropped.
+- `close() async`— end the session with `RPCError.channelClosed`, write the frames already queued, and close the transport.
+- `wait() async throws`— wait for the session to end. It returns if the session ended with `RPCError.channelClosed`, after `close()` or the end of the transport, and throws the error the session failed with otherwise.
+- `maxFrameSize`, `maxBufferedBytes`— the limits of the session.
+- `RPC.defaultMaxFrameSize`, `RPC.defaultMaxBufferedBytes`— 16 MiB each.
+
+`createRequestStream(command:)` and `streamRequest(command:)` are synchronous, so call them with `try await` from outside the actor. Request ids start at 1 and aren't reused.
+
+The session fails when the transport ends partway through a frame, throws while reading, or throws from `write(_:)`, an event handler throws, or the peer sends a bad frame. Pending and later requests then throw the error, streams fail with it, running handlers are cancelled, and queued frames are dropped. A frame for a request or stream that has already finished, or that was never known, is ignored.
+
+### `Transport` and `AnyTransport`
+
+```swift
+public protocol Transport: AsyncSequence, Sendable where Element == Data {
+  func write(_ data: Data) async throws
+  func close() async
+}
+
+public struct AnyTransport<Input: AsyncSequence & Sendable>: Transport where Input.Element == Data {
+  public init(
+    _ input: Input,
+    write: @escaping @Sendable (Data) async throws -> Void,
+    close: @escaping @Sendable () async -> Void = {}
+  )
+}
+```
+
+- `Transport`— what `RPC` reads from and writes to: the bytes from the peer, in chunks of any size, `write(_:)`, which returns once the bytes are written, and `close()`.
+- `AnyTransport(_:write:close:)`— a transport built from an async sequence of bytes and two closures.
+
+### `Handler` and `CommandRouter`
+
+```swift
+public protocol Handler: Sendable {
+  func handle(_ request: IncomingRequest) async throws
+  func handle(_ event: IncomingEvent) async throws
+}
+
+public final class CommandRouter: Handler, @unchecked Sendable {
+  public typealias RequestHandler = @Sendable (IncomingRequest) async throws -> Data?
+  public typealias EventHandler = @Sendable (IncomingEvent) async throws -> Void
+
+  public var delegate: CommandRouterDelegate?
+
+  public init(delegate: CommandRouterDelegate? = nil)
+  public func on(request command: UInt, _ handler: @escaping RequestHandler)
+  public func on(event command: UInt, _ handler: @escaping EventHandler)
+}
+```
+
+- `Handler.handle(_ request:)`— answer a request. By default, it rejects it with the code `UNKNOWN_COMMAND`. If it throws before answering, the request is rejected: an `RPCRemoteError` is sent with its fields, and another error with `String(describing:)` as the message, an empty code, and `errno` 0. If it throws after opening a response stream, the stream is destroyed with the error.
+- `Handler.handle(_ event:)`— handle an event. By default, it drops it. **An error fails the session.**
+- `CommandRouter.on(request:_:)`— register the handler of a request command, replacing any earlier one. Unless the handler answers the request itself, its return value is the reply.
+- `CommandRouter.on(event:_:)`— register the handler of an event command.
+- `CommandRouter.delegate`— a `CommandRouterDelegate`, held weakly, that handles commands without a handler. Without one, a request for such a command is rejected with the code `UNKNOWN_COMMAND`, and an event is dropped.
+
+```swift
+public protocol CommandRouterDelegate: AnyObject, Sendable {
+  func commandRouter(_ router: CommandRouter, didReceiveUnknownRequest request: IncomingRequest) async throws
+  func commandRouter(_ router: CommandRouter, didReceiveUnknownEvent event: IncomingEvent) async throws
+}
+```
+
+Both methods have defaults, which reject the request with `UNKNOWN_COMMAND` and drop the event. Each request and event is handled in a task of its own, so a slow handler doesn't hold up others.
+
+### `IncomingRequest` and `IncomingEvent`
+
+`IncomingRequest` is a request from the peer:
+
+- `id: UInt`, `command: UInt`— the request id and the command.
+- `data: Data?`— the payload. It's empty `Data` rather than `nil` when the peer sent none, and `nil` only when the request streams its body.
+- `isStreamed: Bool`— whether the request streams its body.
+- `createRequestStream() async throws -> IncomingStream?`— accept the streamed body and return it, or `nil` if the request isn't streamed. Data that arrives before it's called is dropped. A second call throws `RPCError.alreadyReceived`.
+- `reply(_ data: Data? = nil) async throws`— reply with `data`.
+- `reject(_ message: String, code: String = "", errno: Int = 0) async throws`— reply with an error.
+- `createResponseStream() async throws -> OutgoingStream`— answer by streaming the reply. If the session has failed, writes to the stream throw its error.
+- `sent: Bool`— whether the request has been answered.
+- `cancellationError: RPCRemoteError?`— the error that the peer cancelled the request with, or `nil`. When the peer cancels, the task of the handler is cancelled.
+
+Answering twice throws `RPCError.alreadySent`. Once the peer has cancelled the request, answers send nothing.
+
+`IncomingEvent` has `command: UInt` and `data: Data?`. Only the library constructs these types.
+
+### `IncomingStream` and `OutgoingStream`
+
+`IncomingStream` is an actor and an `AsyncSequence` of the chunks from the peer:
+
+- `for try await chunk in stream`— iterate until the peer ends the stream. It throws the `RPCRemoteError` that the peer closed or destroyed the stream with, or the error the session failed with. Iterate from one task at a time, as concurrent iteration traps. Cancelling the reading task throws `CancellationError`, and for the reply of a request that hasn't finished, cancels the request.
+- `destroy(error: RPCRemoteError? = nil) async`— stop reading and tell the peer to stop sending, with an error if given.
+- `requestId: UInt`— the id of the request the stream belongs to.
+- `highWaterMark: Int`— 16 KiB. The stream asks the peer to pause once this much is buffered, and to resume once it drains below it.
+- `isFinished: Bool`— whether the peer has ended or destroyed the stream. Buffered chunks can still be read.
+
+A stream that buffers more than `maxBufferedBytes` fails the session with `RPCError.streamOverflow`.
+
+`OutgoingStream` is an actor that writes a stream to the peer:
+
+- `write(_ data: Data) async throws`— write a chunk once the peer has opened the stream, waiting while the peer has paused it. After `end()` or `destroy(error:)`, writes are dropped. After the session fails, they throw its error.
+- `end() async`— end the stream.
+- `destroy(error: RPCRemoteError? = nil) async`— close the stream, with an error if given.
+- `requestId: UInt`— the id of the request the stream belongs to.
+- `isEnded: Bool`— whether the stream has been ended or destroyed.
+- `isCorked: Bool`— whether the peer has paused the stream.
+
+### Cancellation
+
+A request is cancelled by a `timeout` or by cancelling the task that waits for its reply. The peer is then sent a cancel message, with the code `TIMEOUT` and the message `Request timed out`, or the code `CANCELLED` and the message `Request was cancelled`. On the answering side, the task of the handler is cancelled, `cancellationError` holds what the peer sent, the request body fails with it, and the reply is dropped.
+
+Cancellation needs a peer that supports it. A JavaScript peer needs `bare-rpc` 2.0.0 or later, and an older one fails its session with `UNKNOWN_MESSAGE` when it receives a cancel. Requests, replies, events, and streams are compatible with older peers.
+
+### Errors
+
+```swift
+public struct RPCRemoteError: Error, Sendable, Equatable {
+  public let message: String
+  public let code: String
+  public let errno: Int
+  public init(message: String, code: String, errno: Int = 0)
+}
+
+public enum RPCError: Error, Sendable, Equatable {
+  case frameTooLarge(size: Int, limit: Int)
+  case unknownMessage(type: UInt)
+  case invalidMessage(String)
+  case channelClosed
+  case alreadySent(String)
+  case alreadyReceived(String)
+  case unexpectedStream
+  case streamOverflow
+  case timeout
+}
+```
+
+`RPCRemoteError` is an error that the peer sent, or that a handler throws to send a structured error.
+
+| `RPCError` | Raised when |
+| --- | --- |
+| `frameTooLarge` | The peer sent a frame larger than `maxFrameSize`. It's raised as soon as the length prefix arrives. |
+| `unknownMessage` | The peer sent a message of an unknown type. |
+| `invalidMessage` | The peer sent a frame that can't be decoded, the transport ended partway through a frame, or the frame is one that a valid peer never sends, such as a response without a request id or a request that reuses the id of one still in flight. |
+| `channelClosed` | The session ended with `close()` or the end of the transport. |
+| `alreadySent` | A request was answered twice. |
+| `alreadyReceived` | A request body or a streamed reply was received twice. |
+| `unexpectedStream` | `request(_:data:timeout:)` or the `response` of `streamRequest(command:)` got a streamed reply. |
+| `streamOverflow` | An incoming stream buffered more than `maxBufferedBytes`. |
+| `timeout` | `request(_:data:timeout:)` got no reply within `timeout`. |
+
+## compact-encoding-swift
+
+`compact-encoding-swift` encodes values with the same bytes as the JavaScript [`compact-encoding`](/p2p/reference/helpers/compact-encoding). The codecs are structs nested in `Primitive`:
+
+```swift
+import CompactEncoding
+import Foundation
+
+let data = try encode(Primitive.UInt(), 42) // 2a
+let value = try decode(Primitive.UInt(), data) // 42
+
+var state = State()
+Primitive.UInt().preencode(&state, 42)
+Primitive.UTF8().preencode(&state, "hi")
+state.allocate()
+try Primitive.UInt().encode(&state, 42)
+try Primitive.UTF8().encode(&state, "hi")
+state.rewind()
+
+let number = try Primitive.UInt().decode(&state) // 42
+let string = try Primitive.UTF8().decode(&state) // "hi"
+```
+
+### `Codec`
+
+```swift
+public protocol Codec {
+  associatedtype Value
+  func preencode(_ state: inout State, _ value: Value)
+  func encode(_ state: inout State, _ value: Value) throws
+  func decode(_ state: inout State) throws -> Value
+}
+```
+
+- `preencode(_:_:)`— add the encoded size of `value` to `state.end`, without writing anything.
+- `encode(_:_:)`— write `value` at `state.start` and advance `start`. It throws `EncodingError.outOfBounds` if the value runs past `state.end`. The bytes must have been allocated with `allocate()` after preencoding, as writing past the end of `buffer` traps.
+- `decode(_:)`— read a value at `state.start` and advance `start`. It throws `DecodingError.outOfBounds` if the bytes run out.
+
+To encode another type, write a `Codec` that calls the codecs of its parts.
+
+### `State`
+
+```swift
+public struct State {
+  public var start: Int
+  public var end: Int
+  public var remaining: Int { get }
+  public var buffer: Data
+  public init()
+  public init(_ buffer: Data)
+  public mutating func allocate()
+  public mutating func rewind()
+}
+```
+
+- `start`— the position of the next read or write.
+- `end`— the end of the bytes. While preencoding, it accumulates the encoded size.
+- `remaining`— `end - start`.
+- `buffer`— the bytes encoded into or decoded from.
+- `init()`— an empty state. `init(_ buffer:)` copies `buffer` and sets `end` to its size.
+- `allocate()`— replace `buffer` with `end` zeroed bytes.
+- `rewind()`— set `start` to 0.
+
+### Functions
+
+- `encode<C: Codec>(_ codec: C, _ value: C.Value) throws -> Data`— preencode, allocate, and encode `value`.
+- `decode<C: Codec>(_ codec: C, _ data: Data) throws -> C.Value`— decode one value from the start of `data`. Bytes after the value are ignored.
+
+### Codecs
+
+| Codec | `Value` | Encoding |
+| --- | --- | --- |
+| `Primitive.UInt()` | `UInt` | 1 byte up to `0xfc`, and otherwise a prefix byte, `fd`, `fe`, or `ff`, followed by 2, 4, or 8 little-endian bytes. |
+| `Primitive.Int()` | `Int` | Zigzag-encoded, then written as a `UInt`. |
+| `Primitive.UInt8()`, `UInt16()`, `UInt32()`, `UInt64()` | `UInt8` … `UInt64` | 1, 2, 4, or 8 bytes, little-endian. |
+| `Primitive.Int8()`, `Int16()`, `Int32()`, `Int64()` | `Int8` … `Int64` | Zigzag-encoded, then written as the fixed-size unsigned integer of the same size. |
+| `Primitive.Float32()`, `Float64()` | `Float`, `Double` | IEEE 754, little-endian. `Primitive.Float` and `Primitive.Double` are aliases. |
+| `Primitive.Bool()` | `Bool` | 1 byte, `01` for `true` and `00` for `false`. Any byte other than `01` decodes as `false`. |
+| `Primitive.Buffer()` | `Data` | A `UInt` length followed by the bytes. |
+| `Primitive.UTF8()` | `String` | A `Buffer` of the UTF-8 bytes. Invalid UTF-8 decodes as U+FFFD rather than throwing. `Primitive.String` is an alias. |
+| `Primitive.Array(codec)` | `[C.Value]` | A `UInt` count followed by the elements. |
+| `Primitive.Record(codec)` | `[String: C.Value]` | A `UInt` count followed by the key-value pairs, with the keys as `UTF8`, sorted. |
+| `Primitive.Frame(codec)` | `C.Value` | A `UInt` byte length followed by the value. |
+| `Primitive.JSON()` | `Any` | A `Buffer` of JSON with sorted keys. It decodes to Foundation objects. |
+
+`Primitive.Record` and `Primitive.JSON` sort keys, and `Primitive.JSON` escapes `/`, so their bytes can differ from the JavaScript ones, which both sides still decode. `Primitive.JSON` raises an Objective-C exception, which Swift can't catch, for a value that isn't valid JSON, so check it with `JSONSerialization.isValidJSONObject(_:)` first. The JavaScript codecs that aren't listed, such as `fixed32`, `uint24`, `raw`, and `bigint`, aren't ported.
+
+### Errors
+
+- `EncodingError.outOfBounds`— encoding ran past `state.end`.
+- `DecodingError.outOfBounds`— decoding ran past the end of the bytes.
+
+## hyperschema-swift
+
+`hyperschema-swift` generates a Swift package of types and codecs for a [Hyperschema](/p2p/reference/helpers/hyperschema) definition, on top of [`compact-encoding-swift`](#compact-encoding-swift). It's an npm package that extends the `hyperschema` builder, and it runs in Node.js or Bare:
+
+```js
+const SwiftHyperschema = require('hyperschema-swift')
+
+const schema = SwiftHyperschema.from('./schema')
+schema.namespace('demo').register({
+  name: 'point',
+  compact: true,
+  fields: [
+    { name: 'x', type: 'uint', required: true },
+    { name: 'y', type: 'int', required: true }
+  ]
+})
+SwiftHyperschema.toDisk(schema, './schema')
+```
+
+```swift
+import Foundation
+import Schema
+
+let data = try Schema.encode(point, Point(x: 300, y: -1)) // fd 2c 01 01
+let value = try Schema.decode(point, data)
+```
+
+### Generator
+
+`hyperschema-swift` exports a subclass of the `hyperschema` builder, so `from()`, `namespace()`, `register()`, and `toJSON()` work as they do in JavaScript.
+
+- `schema.toCode()`— return the source of `Schema.swift`.
+- `SwiftHyperschema.toDisk(schema, dir = schema.dir)`— write `schema.json`, `Package.swift`, and `Sources/Schema.swift` to `dir`.
+
+The package is named `Schema`, with one library product and target, `Schema`. It needs macOS 13 or iOS 15, and depends on compact-encoding-swift `from: "1.0.0"`. Add it to an app with `.package(path:)`, where its package identity is the name of `dir`.
+
+Generation throws for `uint64`, `int8` to `int64`, `fixed32` and `fixed64`, and other types without a Swift mapping, and, in a schema with enums or versioned types, for a type whose name maps to `SchemaDecodeError`.
+
+### Generated module
+
+`Schema.swift` imports `CompactEncoding`. Type names are the name of the schema type in PascalCase, without the namespace, so `@demo/send-message` becomes `SendMessage`. For each type, it declares:
+
+- **Struct**— a `public struct` with a `var` for each field and a memberwise `init`, where optional fields default to `nil` and `Bool` fields to `false`, a `<Name>Codec: Codec`, and a `let` instance of the codec named in camelCase, such as `sendMessage`. A struct used as an inline field also gets a `<Name>InlineCodec`.
+- **Enum**— a `public enum` with a case for each variant, a codec, and an instance. Decoding an unknown variant throws `SchemaDecodeError.unknownEnumVariant(type:tag:)`.
+- **Versioned type**— a `public enum` with a case for each version, such as `.v1(MsgV1)`, a codec, and an instance. Each version must be a struct with a `version` field. Decoding an unknown version throws `SchemaDecodeError.unknownVersion(type:version:)`.
+- **Array and record types**— an instance of `Primitive.Array` or `Primitive.Record`, without a Swift type.
+- **Alias**— nothing. Fields of the alias use its target type.
+
+| Schema type | Swift type |
+| --- | --- |
+| `uint`, `uint8`, `uint16`, `uint32` | `UInt`, `UInt8`, `UInt16`, `UInt32` |
+| `int` | `Int` |
+| `float32`, `float64` | `Float`, `Double` |
+| `bool` | `Bool` |
+| `string` | `String` |
+| `buffer` | `Data` |
+| `json` | `Any` |
+| Struct or enum | Its generated type |
+| `array: true` field | An array of the field type |
+
+The generated types have no conformances such as `Codable`, `Equatable`, or `Sendable`.
+
+`Schema.swift` also declares top-level `encode(_:_:)` and `decode(_:_:)` functions with the signatures of the ones in `CompactEncoding`. In a file that imports both modules, call them as `Schema.encode(_:_:)` and `Schema.decode(_:_:)`.
+
+The generated codecs match the bytes of JavaScript Hyperschema, with these exceptions:
+
+- **Versioned types.** From `hyperschema` 1.25.0, a versioned type registered in code frames each version that isn't a compact struct by default, which the generated Swift doesn't do. Register it with `framed: false`, or keep a schema created before 1.25.0, for the encodings to match. See [Versioned type](/p2p/reference/helpers/hyperschema#versioned-type).
+- **Flags of compact structs.** JavaScript writes the flags of a compact struct as the smallest fixed-size unsigned integer that holds them, while the generated Swift always writes a `uint`. The bytes differ for a compact struct with 9 or more optional and `bool` fields, and with 8 when the flags are `0xfd` or more.
+- **`bool` arrays.** An optional `bool` field with `array: true` is generated as a single `Bool` flag, so the array is lost. A required one generates code that doesn't compile.
+- **Constant fields.** A field with `constant` is generated as a required field that's written, which JavaScript leaves out.
+- **Older data.** JavaScript reads the flags of a struct only if bytes remain, so it decodes data written before the struct gained optional fields. The generated Swift always reads them, and throws `DecodingError.outOfBounds` instead.
+
+## hrpc-swift
+
+`hrpc-swift` generates a Swift package with a typed client and server for the commands of an [HRPC](/p2p/reference/helpers/hrpc) definition, with the types from [`hyperschema-swift`](#hyperschema-swift). It's an npm package that extends the `hrpc` builder, and it runs in Node.js or Bare:
+
+```js
+const SwiftHyperschema = require('hyperschema-swift')
+const SwiftHRPC = require('hrpc-swift')
+
+const schema = SwiftHyperschema.from(null)
+const ns = schema.namespace('chat')
+ns.register({
+  name: 'send-message-request',
+  fields: [{ name: 'text', type: 'string', required: true }]
+})
+ns.register({
+  name: 'send-message-response',
+  fields: [{ name: 'id', type: 'uint', required: true }]
+})
+
+const hrpc = SwiftHRPC.from(schema)
+hrpc.namespace('chat').register({
+  name: 'send-message',
+  request: { name: '@chat/send-message-request', stream: false },
+  response: { name: '@chat/send-message-response', stream: false }
+})
+
+SwiftHyperschema.toDisk(schema, './out/schema')
+SwiftHRPC.toDisk(hrpc, './out/hrpc')
+```
+
+### Compatibility
+
+hrpc-swift 1.0.0 generates code for the delegate API of **bare-rpc-swift 1.x**, which bare-rpc-swift 2.0.0 replaced with the [`Transport` and `Handler` API](#bare-rpc-swift) above. The generated code doesn't compile against bare-rpc-swift 2.0.0 or later.
+
+The generated `Package.swift` declares macOS 11 and iOS 14 and depends on bare-rpc-swift `from: "1.0.0"`, which now resolves to bare-rpc-swift 1.1.1 and compact-encoding-swift 1.0.1. Those, and the `Schema` package that hyperschema-swift 1.0.1 generates, need macOS 13 and iOS 15, so the generated package doesn't build until you raise its platforms to macOS 13 and iOS 15.
+
+With bare-rpc-swift 1.1.0 or later, an empty payload arrives as empty `Data`, so a Swift server fails to decode a call without arguments. A request and response command rejects it with the code `HANDLER_ERROR`, and a streamed response with `DECODE_ERROR`. A send command never reaches its handler, and the decoding error goes to the `rpc(_:didFailWith:)` of the delegate. Every command shape, including calls without arguments, works with bare-rpc-swift 1.0.1 and compact-encoding-swift 1.0.0, pinned with `exact:` in the app.
+
+### Generator
+
+`hrpc-swift` exports a subclass of the `hrpc` builder, so `from()`, `namespace()`, `register()`, and `toJSON()` work as they do in JavaScript. `from()` takes the `hyperschema-swift` schema, and command ids are assigned in order of registration, from 0 unless the builder is given an `offset`.
+
+- `SwiftHRPC.toDisk(hrpc, dir = hrpc.hrpcDir, opts)`— write `hrpc.json`, `Package.swift`, and `Sources/HRPC.swift` to `dir`. `dir` may be left out and `opts` passed in its place. `opts` has `schemaPackagePath`, the path of the `hyperschema-swift` package relative to `dir`, `'../schema'` by default; `schemaPackageName`, its product, `'Schema'` by default; and `schemaPackageId`, its package identity, `'schema'` by default.
+
+The package is named `HRPC`, with one library product and target, `HRPC`.
+
+Generation fails with an error whose `code` is one of these:
+
+| `code` | Raised when |
+| --- | --- |
+| `INVALID_HANDLER_NAME` | A command name isn't of the form `@namespace/name` in letters, digits, and `-`. |
+| `RESERVED_KEYWORD` | The name of a command or a type maps to a Swift keyword, such as `type`. |
+| `DUPLICATE_METHOD_NAME` | Two commands map to the same method name, such as the same name in different namespaces, or `foo-bar` and `fooBar`. |
+| `MISSING_RESPONSE` | A command has no response and isn't a send. |
+| `STREAM_WITHOUT_RESPONSE` | A command streams its request and has no response. |
+| `UNSUPPORTED_TYPE` | A type is neither a schema type nor a primitive, such as `uint`, `int`, `bool`, `string`, or `buffer`. |
+
+### Generated module
+
+`HRPC.swift` defines one class:
+
+```swift
+public class HRPC {
+  public init<D: RPCDelegate>(delegate: D)
+  public func receive(_ data: Data) async
+}
+```
+
+- `init(delegate:)`— one end of a session. `delegate` is a bare-rpc-swift 1.x `RPCDelegate`, which the `HRPC` keeps, and whose `rpc(_:send:)` writes the bytes of the session to the peer and `rpc(_:didFailWith:)` is told when the session fails.
+- `receive(_ data: Data) async`— pass the bytes that arrive from the peer.
+
+Each command gets a method named after it in camelCase, without the namespace, and an `on` method that registers its handler, so `@chat/send-message` becomes `sendMessage()` and `onSendMessage()`.
+
+| Command | Client method | Handler |
+| --- | --- | --- |
+| Request and response | `func m(_ args: T? = nil) async throws -> R` | `(T?) async throws -> R` |
+| Send (`request.send: true`) | `func m(_ args: T? = nil) async throws` | `(T?) async -> Void` |
+| Streamed response | `func m(_ args: T? = nil) async throws -> IncomingStream` | `(T?, OutgoingStream) async throws -> Void` |
+| Streamed request | `func m(_ body: (OutgoingStream) async throws -> Void) async throws -> R?` | `(IncomingStream) async throws -> R?` |
+| Streamed request and response | `func m(_ body: (OutgoingStream, IncomingStream) async throws -> Void) async throws` | `(IncomingStream, OutgoingStream) async throws -> Void` |
+
+Requests and responses are encoded with the codecs of their types, but the chunks of streams are `Data`, so encode and decode them with the codec of the stream type yourself. A streamed request ends its stream once `body` returns.
+
+A request that the server can't answer is rejected with one of these codes:
+
+| `code` | Raised when |
+| --- | --- |
+| `NO_HANDLER` | The command has no handler. |
+| `HANDLER_ERROR` | The handler threw, or the request couldn't be decoded. A streamed handler that throws destroys its streams with this code. |
+| `DECODE_ERROR` | The request of a streamed response couldn't be decoded. |
+| `STREAM_ERROR` | The response stream of a streamed response is already open, with the message `Stream already open`. |
+| `PROTOCOL_ERROR` | A command that streams its request arrived without a request stream. If a command that streams both can't open its response stream, its request stream is destroyed with this code. |
+| `UNKNOWN_COMMAND` | The command id is unknown. |
+
+A client gets `MISSING_RESPONSE` if a reply has no payload, and a `body` that throws destroys its streams with the code `STREAM_ERROR`. Events without a handler are dropped.
+
+## See also
+
+- [Bare Kit](/bare/reference/bare/bare-kit#swift)—the worklet and IPC of bare-kit-swift.
+- [`bare-stow`](/bare/reference/bare/modules/bare-stow)—generate a Swift harness for a bundle.
+- [`bare-sidecar`](/bare/reference/bare/modules/bare-sidecar) and [`bare-rpc`](/bare/reference/bare/modules/bare-rpc)—the JavaScript counterparts.
+- [HRPC](/p2p/reference/helpers/hrpc) and [Hyperschema](/p2p/reference/helpers/hyperschema)—the definitions the generators read.
+- [Structured RPC and schema-first design](/bare/explanation/rpc-and-schemas)—when to reach for bare-rpc rather than HRPC.
+- [Kotlin packages](/bare/reference/bare/native-hosts/kotlin) and [Python packages](/bare/reference/bare/native-hosts/python).

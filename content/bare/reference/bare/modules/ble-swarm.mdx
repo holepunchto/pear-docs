@@ -1,0 +1,202 @@
+---
+title: "ble-swarm"
+description: "Reference for ble-swarm: a Hyperswarm-shaped Bluetooth LE transport on bare-bluetooth that turns nearby peers into Noise-encrypted connections."
+docType: reference
+product: bare
+schemaType: APIReference
+upstreamVersion: "2.4.0"
+---
+
+<mark style={{ backgroundColor: '#8484ff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>experimental</mark>
+
+[`ble-swarm`](https://github.com/holepunchto/ble-swarm) is a Bluetooth LE transport shaped like [Hyperswarm](/p2p/reference/building-blocks/hyperswarm), built on [`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth). Nearby peers that share a topic find each other by advertising and scanning a service UUID derived from it. They negotiate a session over one GATT characteristic and run a [Noise](https://noiseprotocol.org/) handshake. Each link comes out as a [`NoiseSecretStream`](/p2p/reference/helpers/secretstream), the same kind of connection that Hyperswarm emits, so it plugs straight into [`store.replicate()`](/p2p/reference/helpers/corestore#storereplicateoptsorstream).
+
+<Callout type="warn">
+Upstream marks this module experimental: its API is subject to change and may break at any time.
+</Callout>
+
+<Callout type="info">
+This page describes 2.4.0, the release npm installs as `latest`. The package ships no type declarations, so this page is checked against the 2.4.0 source: [`index.js`](https://github.com/holepunchto/ble-swarm/blob/e9210ab2fe73d7717aba853d6508a9b102637e26/index.js) and [`lib/transport.js`](https://github.com/holepunchto/ble-swarm/blob/e9210ab2fe73d7717aba853d6508a9b102637e26/lib/transport.js). Where the README and the source disagree, this page follows the source and says so.
+</Callout>
+
+```sh
+npm i ble-swarm
+```
+
+## Usage
+
+```js
+const BluetoothSwarm = require('ble-swarm')
+
+const bt = new BluetoothSwarm({ keyPair, topic })
+
+bt.on('connection', (conn) => {
+  // conn is a NoiseSecretStream: handshake done, duplicate links already deduped
+  store.replicate(conn)
+})
+
+await bt.start() // scan + advertise
+
+await bt.setTopic(otherTopic) // retune discovery live, existing links close
+
+await bt.suspend() // app backgrounds: radio io paused, start intent kept
+await bt.resume() // app foregrounds: radio io restored
+```
+
+`keyPair` is a Noise key pair, such as the one from `hypercore-crypto`'s `keyPair()` or a Hyperswarm's `swarm.keyPair`. `topic` and `otherTopic` are 32-byte buffers, and `store` is a [Corestore](/p2p/reference/helpers/corestore). The example comes from the upstream README, whose comment says that `setTopic()` moves links to the new topic. In 2.4.0 it closes them instead. See [`bt.setTopic()`](#await-btsettopictopic).
+
+## Platforms
+
+The package loads `bare-bluetooth` through an import map:
+
+- `android`, `darwin`, `ios` and `linux` load [`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth).
+- Every other target, such as Windows, loads a stub. The module still loads, `bt.supported` is `false` and `bt.state` is `'unsupported'`.
+
+If `bare-bluetooth` fails to load, for example because the operating system rejects its native addon, `ble-swarm` reports `'unsupported'` the same way instead of throwing.
+
+The README lists macOS 13 and later, iOS and Android as supported. 2.4.0 maps Linux to `bare-bluetooth` too, but upstream doesn't list Linux as supported, so treat it as untested.
+
+2.4.0 depends on `bare-bluetooth` `^0.6.3-0`, which npm resolves to the latest 0.6 release. On Android it has the same host requirement as `bare-bluetooth`: the host has to publish the app's Java VM under the [`bare.android.jvm.v1`](/bare/reference/bare/embedder-context#bareandroidjvmv1) context key, as [Bare Kit](/bare/reference/bare/bare-kit) does from 2.5.0.
+
+## API
+
+### BluetoothSwarm
+
+#### `const bt = new BluetoothSwarm([options])`
+
+Create a swarm. It does nothing until [`bt.start()`](#await-btstart).
+
+| Option          | Type                                   | Default       | Description |
+| --------------- | -------------------------------------- | ------------- | ----------- |
+| `keyPair`       | `{ publicKey, secretKey }`             | —             | The static Noise key pair, used for identity and encryption. Required. |
+| `topic`         | `Buffer`                               | `null`        | The 32-byte topic that the advertised service UUID is derived from. Only peers with the same topic and `tag` find each other. Without a topic, every peer with the same `tag` does. |
+| `tag`           | `string`                               | `'ble-swarm'` | Namespace for both service UUIDs. Peers with different tags never find each other. |
+| `shouldConnect` | `(remotePublicKey: Buffer) => boolean` | —             | Return `false` to refuse a peer before the Noise handshake. Both the dialing and the accepting side call it. |
+| `maxOutbound`   | `number`                               | `4`           | The swarm stops dialing new peers once it has this many live links, in either direction. The README calls it the number of concurrent outbound dials, but 2.4.0 dials one peer at a time and compares this limit with `bt.peers.size`. |
+| `maxInbound`    | `number`                               | `8`           | The most sessions that this device accepts at once. It refuses further requests, and the dialing side retries later. |
+| `online`        | `boolean`                              | `false`       | Start with relaxed scanning, as [`bt.setOnline(true)`](#btsetonlineonline) does. |
+| `pipe`          | `'l2cap' \| 'gatt'`                    | `'l2cap'`     | The data pipe. Both peers must use the same one. See [The two pipes](#the-two-pipes). |
+| `gatt`          | `{ maxPayload?, ackWrites? }`          | `{}`          | Options for the `gatt` pipe. |
+| `l2cap`         | `{ timeout? }`                         | `{}`          | Options for the `l2cap` pipe. |
+
+The `gatt` options:
+
+- `maxPayload`: the bytes of data per write from the dialing side. Defaults to 150. On Android, the dialing side asks for a 517-byte MTU after it connects and sizes its writes to the MTU it gets instead. The accepting side always sends 150-byte notifications.
+- `ackWrites`: whether data writes wait for a write response. Defaults to `true`. With `false`, data goes out as writes without response, which saves a round trip per chunk. Control frames always use acknowledged writes.
+
+The `l2cap` option `timeout` is how long, in milliseconds, to wait for a channel to open, and for the dialing side's session id on a channel that just opened. Defaults to `3000`.
+
+2.4.0 also reads two options that the README doesn't list: `scanOptions`, which goes to [`central.startScan()`](/bare/reference/bare/modules/bare-bluetooth#centralstartscanserviceuuids-options) and defaults to `{ scanMode: Central.SCAN_MODE_LOW_LATENCY }` on Android, and `debug`, which logs to the console when `true`.
+
+**Properties**
+
+| Property      | Type                             | Description |
+| ------------- | -------------------------------- | ----------- |
+| `state`       | `string`                         | The swarm state. See the table below. |
+| `supported`   | `boolean`                        | `true` when a Bluetooth backend loaded. |
+| `started`     | `boolean`                        | `true` between `start()` and `stop()`. |
+| `suspended`   | `boolean`                        | `true` between `suspend()` and `resume()`. |
+| `topic`       | `Buffer \| null`                 | The current topic, or `null` when none was given. |
+| `connections` | `Set<NoiseSecretStream>`         | A snapshot of the live connections. |
+| `peers`       | `Map<string, NoiseSecretStream>` | A snapshot of the live links, keyed by the remote public key in hex. |
+| `connecting`  | `number`                         | The number of outbound dials in progress. |
+| `destroyed`   | `boolean`                        | `true` once the swarm has been closed. It matches Hyperswarm's `closed`. |
+
+`connections` and `peers` return a new `Set` or `Map` on every read, so changing one has no effect on the swarm.
+
+| `state`          | Meaning |
+| ---------------- | ------- |
+| `'unsupported'`  | No Bluetooth backend loaded, or the device has no Bluetooth LE. |
+| `'off'`          | The swarm isn't started, or it's suspended. |
+| `'starting'`     | The swarm has started and waits for the first state from the radio. |
+| `'waiting'`      | The radio is off, resetting, or in an unknown state. The swarm continues once it's powered on. |
+| `'unauthorized'` | The user hasn't granted the app Bluetooth access. |
+| `'on'`           | The radio is on, and the swarm advertises and scans. |
+
+**Methods**
+
+#### `await bt.start()`
+
+Start the radio: advertise the topic's service UUID and scan for it. This is the durable "enabled" intent, and it stays in effect across `suspend()` and `resume()`. Does nothing when the swarm is unsupported, already started, or closed. If the swarm is suspended, the radio starts at `resume()`.
+
+The first start creates the native Bluetooth managers, and later starts reuse them. After the radio is turned off and on again, the swarm replaces them with fresh managers, because the old ones stop delivering notifications.
+
+#### `await bt.stop()`
+
+Stop advertising and scanning, and close every connection. Each peer gets a close frame first, so it reacts at once instead of waiting for a timeout. The native managers stay, and the next `start()` reuses them.
+
+#### `await bt.suspend()`
+
+Pause all radio work for a short break such as the app going to the background, and close every connection as `stop()` does. The swarm keeps the `start()` or `stop()` intent, so `resume()` restores exactly that. The radio runs only while the swarm is started and not suspended.
+
+`ble-swarm` doesn't watch the app's lifecycle itself. Call `suspend()` and `resume()` from the host's lifecycle handling. See [Handle app suspension](/bare/how-to/run-on-native/handle-app-suspension).
+
+#### `await bt.resume()`
+
+Undo `suspend()`. If the swarm is started, it restarts advertising and scanning, and for the next 60 seconds it scans eagerly, even while online, so that peers link again quickly.
+
+#### `await bt.setTopic(topic)`
+
+Switch to another topic. Only the advertised and scanned UUID changes. The hosted GATT service keeps a fixed UUID for each `tag`, because Bluetooth has no way to remove a hosted service. If the UUID changes while the radio runs, the swarm restarts advertising and scanning, which closes every existing connection. The topic also applies to every later start. `topic` is a 32-byte buffer.
+
+#### `bt.setOnline(online)`
+
+Tell the swarm whether an internet path is up, which sets how hard it scans:
+
+- With no links and `online` `false`, it scans all the time, and restarts the scan every 5 seconds so that a peer that advertises again is reported again.
+- With at least one link, it scans for 5 seconds out of every 30.
+- With no links and `online` `true`, it scans for 5 seconds out of every 60, since Bluetooth is only a fallback then.
+- For 60 seconds after the last link closes, and after `resume()`, it scans all the time even while online, because a peer that just left is likely to come back.
+
+#### `bt.status()`
+
+Return a `{ state, peerCount }` snapshot, handy for reporting up to the host.
+
+#### `await bt.destroy()`
+
+Close the swarm for good. It is an alias for `close()`. It stops scanning and advertising and closes every connection. It doesn't destroy the native managers, because that double-frees on iOS, so it leaves them for the runtime to reclaim. The swarm can't be started again afterwards.
+
+**Events**
+
+| Event        | Arguments                 | Description |
+| ------------ | ------------------------- | ----------- |
+| `connection` | `conn: NoiseSecretStream` | A link completed its Noise handshake and survived de-duplication. If a second link to the same peer wins de-duplication later, `connection` fires again for it and the earlier connection closes. |
+| `update`     | —                         | The state or the peer count changed, or a lifecycle call or `setTopic()` finished. Useful for a user interface. |
+
+#### `BluetoothSwarm.toServiceUUID(topic[, tag])`
+
+Return the 128-bit service UUID that a swarm with this `topic` and `tag` advertises and scans for, as a lowercase string with dashes. `tag` defaults to `'ble-swarm'`. With a `null` `topic`, it returns the UUID of the hosted data service, which a swarm with no topic also advertises. Useful for finding a swarm with a generic Bluetooth scanner. The README doesn't list this function.
+
+## How a link forms
+
+1. Both sides advertise and scan. A side that discovers a peer connects to it, finds the data service and subscribes to its one characteristic.
+2. Over that characteristic, the two exchange `OPEN` and `HELLO` frames that carry each side's static public key and pipe, plus the PSM for the `l2cap` pipe.
+3. A side refuses the link with a `CLOSE` frame, before any Noise work, if the key is its own, if `shouldConnect` returns `false`, or if the pipes differ.
+4. The Noise handshake runs over the chosen pipe. Once it completes, `connection` fires.
+
+Since both sides dial, a pair can link twice. Both ends keep the link whose initiator has the smaller public key and close the other, so they always close the same one.
+
+Liveness relies on keepalives every 5 seconds and a 15-second timeout, because iOS emits no disconnect for a peer that has vanished. A dial gives up after 15 seconds. After a failed dial, the swarm waits before it dials that peer again: 2 seconds while it has no links, or 8 seconds once it has one, doubling after each further failure, up to 30 seconds.
+
+## The two pipes
+
+The `pipe` option picks how session data moves. Either way, the characteristic still carries the `OPEN`, `HELLO` and `CLOSE` control frames, and Noise runs on top.
+
+| | `l2cap` (default) | `gatt` |
+| --- | --- | --- |
+| Data path | An L2CAP channel for each session | Frames on the shared characteristic: writes one way, notifications the other |
+| Flow control | Credit-based, in the Bluetooth controller | One write in flight per peer |
+| Speed | Several times faster, according to upstream | Slower, since data moves in chunks, but behaves the same on every platform |
+
+On the `l2cap` pipe, every channel open runs under the `l2cap.timeout` deadline. Upstream reports that, historically, an iOS peripheral never answered a channel that a macOS central opened, and gave no error. With the deadline, such a hang becomes a failed dial that is retried. After a session ends, the swarm publishes a fresh channel. See [Publish a fresh channel after a session ends](/bare/explanation/bluetooth/best-practices#publish-a-fresh-channel-after-a-session-ends).
+
+Peers on different pipes refuse each other instead of falling back to the other pipe.
+
+## See also
+
+- [`bare-bluetooth`](/bare/reference/bare/modules/bare-bluetooth) — the cross-platform Bluetooth API that this module builds on.
+- [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) — the internet swarm whose shape this module follows.
+- [Secretstream](/p2p/reference/helpers/secretstream) — the `NoiseSecretStream` connections it emits.
+- [Bluetooth in Bare](/bare/explanation/bluetooth#security) — where `ble-swarm` fits, and why it encrypts on top of the link.
+- [Bluetooth best practices](/bare/explanation/bluetooth/best-practices) — rules drawn partly from this module's code.
+- [Bare modules](/bare/reference/bare/modules) — the full `bare-*` catalog.
