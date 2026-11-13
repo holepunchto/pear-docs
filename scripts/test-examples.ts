@@ -158,6 +158,26 @@ const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    // build-cli-executable: the greeting CLI that the "Build a CLI executable
+    // with pear make" how-to builds. Only its `bare bin.mjs` run is tested here;
+    // the `pear make` steps need a Pear 3.7.0 binary, which CI doesn't install.
+    // The command exits on its own after printing, so no `expectAliveMs`.
+    id: 'build-cli-executable',
+    dir: `${HOWTO}/operate-an-app/build-a-cli-executable`,
+    installs: ['.'],
+    artifacts: [],
+    steps: [
+      {
+        kind: 'run',
+        process: 'app',
+        app: '.',
+        cmd: 'bare bin.mjs Ada',
+        expect: 'Hello, Ada! (hello-cli v1.0.0)',
+        timeoutMs: 30_000,
+      },
+    ],
+  },
+  {
     // hello-pear-qvac-tui: hello-pear-bare plus a second worker
     // (workers/qvac.js) that loads an LLM via @qvac/inference and a bare-tui
     // UI on top. Unlike every other scenario here, this one does NOT boot

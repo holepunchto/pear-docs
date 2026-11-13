@@ -171,6 +171,37 @@ In both cases, start the seeder while the run waits. The run carries on once the
 
 The action commits the snapshot on top of the commit the run checked out. If someone pushes to `main` during the run, or branch protection blocks direct pushes, the direct push fails, and the action opens a `pear-ci/snapshot-<run-id>` pull request instead. Until you merge it, `main` holds an older snapshot than the drive, so every run fails before it stages with `Core <key> length (<n>) is higher than length in snapshot.json`. Merge the pull request before the next run. Merging is a push to `main`, so it starts a run that stages the latest commit.
 
+## Check which platforms reached the link
+
+A stage that succeeds does not prove it carried every platform. From Pear 3.7.0, `pear info` lists each `by-arch/` folder in the drive under `Targets:`, so a second job can fail the run when one is missing. This job reads the link from the network on a fresh runner, so it needs [Pear 3.7.0 or later](/pear/reference/pear/cli#pear-info) and something seeding the link:
+
+```yaml skip="ci-config"
+  verify:
+    needs: stage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Pear
+        run: npx --yes pear versions > /dev/null
+      - name: Check every platform reached the link
+        env:
+          LINK: pear://<drive-key>
+          EXPECTED: darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64
+        run: |
+          for attempt in 1 2 3; do
+            npx --yes pear info --json "$LINK" | grep '^{' > info.ndjson || true
+            grep -q '"tag":"info"' info.ndjson && break
+            sleep 10
+          done
+          grep -q '"tag":"info"' info.ndjson || { echo "::error::pear info returned no info object after 3 tries. Is the link seeded?"; exit 1; }
+          jq -e --arg expected "$EXPECTED" 'select(.tag == "info") | .data
+              | if has("targets") then
+                  ($expected | split(" ")) - [.targets[].platform]
+                  | if length == 0 then true else error("missing: " + join(" ")) end
+                else error("this Pear does not report targets") end' info.ndjson
+```
+
+The first step is there because on a fresh runner the first `npx pear` only installs Pear and exits without running the command. The loop is there because the first `pear info` on a fresh runner can print `[ Empty ]` while the metadata syncs. The check fails and names the missing platforms. `npx` runs the Pear on the production channel, so until 3.7.0 is there, the check fails with `this Pear does not report targets`. If it reports no `info` object after three tries, `pear info` found no peer with the link: confirm [the link is seeded](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#seed-the-link). The same check, run by hand, is step 4 of [Preflight a release before staging](/pear/how-to/operate-an-app/manual-deployment/preflight-a-release#4-after-staging-check-which-platforms-reached-the-link).
+
 ## Producing the build to stage
 
 `pear-ci` stages whatever is in `target`—the action itself has no idea whether that directory came from a desktop or a mobile build. To build and sign a desktop directory on CI first, pair it with [`make-pear-app`](/pear/reference/ci-and-release/github-actions#make-pear-app): one job produces signed, notarized distributables (see [Build and sign desktop apps in CI](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci)), and `pear-ci` stages the assembled deployment directory to your stable `pear://` link.

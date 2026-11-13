@@ -1,14 +1,14 @@
 ---
 title: "Preflight a release before staging"
-description: "Check a deployment directory and your write access before you stage: confirm every architecture landed with pear build --json, check pear info's writable field, then dry-run the stage. Includes a CI version."
+description: "Check a deployment directory and your write access before you stage, then confirm every platform reached the link: pear build --json, pear info's writable field, a stage dry run, and the Targets list. Includes a CI version."
 docType: how-to
 product: pear
 schemaType: TechArticle
 ---
 
-Run these checks between `pear build` and `pear stage`. They catch the two release problems that otherwise show up late: an architecture missing from the [deployment directory](/pear/explanation/deployment-releasing-apps-p2p#deployment-directory-and-release-lines), and a machine that cannot write to the link you are about to stage to.
+Run these checks between `pear build` and `pear stage`, and once more after the stage. They catch the release problems that otherwise show up late: an architecture missing from the [deployment directory](/pear/explanation/deployment-releasing-apps-p2p#deployment-directory-and-release-lines), a machine that cannot write to the link you are about to stage to, and a platform that never reached the link.
 
-Both checks need **Pear 3.6.0 or later**. Before 3.6.0, `pear build` printed nothing when it succeeded, and `pear info` had no `writable` field. Run `pear versions` to see which you have.
+Steps 1 and 2 need **Pear 3.6.0 or later**. Before 3.6.0, `pear build` printed nothing when it succeeded, and `pear info` had no `writable` field. Step 4 needs **Pear 3.7.0 or later**, which is the first release where `pear info` lists the platforms a link carries. Run `pear versions` to see which you have.
 
 <include>../../../../_snippets/_install-pear-cli-callout.mdx</include>
 
@@ -52,7 +52,7 @@ jq -r 'select(.tag == "executable") | .data.file
        | capture(".*[/\\\\]by-arch[/\\\\](?<arch>[^/\\\\]+)[/\\\\]app[/\\\\]").arch' build.ndjson | sort | uniq -c
 ```
 
-Each architecture you passed should appear. The count per architecture is the number of artifacts you passed for it, which is usually `1`. If you pass a flag more than once to ship a standalone binary beside the desktop app, expect that many.
+Each architecture you passed should appear. The count per architecture is the number of artifacts you passed for it, which is usually `1`. If you pass a flag more than once to ship a standalone binary beside the desktop app (for example, one built with [`pear make`](/pear/how-to/operate-an-app/build-and-package/build-a-cli-executable) on Pear 3.7.0), expect that many.
 
 ## 2. Check that this machine can write
 
@@ -65,7 +65,7 @@ pear info --json pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o \
              else error("this Pear does not report writable") end'
 ```
 
-`jq -e` exits non-zero when the answer is `false`, when `writable` is missing (a Pear older than 3.6.0), or when no `info` object came back at all, so the command works as a gate in a script. In a script, run `set -o pipefail` first so a failing `pear info` fails the gate too, and keep stdout clean, because a stray non-JSON line makes `jq` fail. In the human-readable output the same answer is the `writable` row.
+`jq -e` exits non-zero when the answer is `false`, when `writable` is missing (a Pear older than 3.6.0), or when no `info` object came back at all, so the command works as a gate in a script. In a script, run `set -o pipefail` first so a failing `pear info` fails the gate too, and keep stdout clean, because a stray non-JSON line makes `jq` fail. In the human-readable output the same answer is the `Writable:` row (the `writable` row before Pear 3.7.0).
 
 Run it against a link you have staged to at least once. A link you have only just created with `pear touch` has no data on this machine yet, so `pear info` prints `[ Empty ]` and sends an `empty` object instead of `info`. The gate then fails even though you hold the key. On a first release, skip this step and let the first real stage be the test.
 
@@ -84,6 +84,29 @@ With the deployment directory complete and write access confirmed, [dry-run the 
 pear stage --dry-run pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o ./pear-chat-1.0.1
 ```
 
+## 4. After staging, check which platforms reached the link
+
+Step 1 checks what `pear build` placed in the deployment directory. This step checks what the link now carries. `pear info` lists one entry per `by-arch/` folder in the drive under `Targets:`, with its size:
+
+```sh skip="release-flow"
+pear info pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o
+```
+
+To gate on it, read the `targets` list from `--json` and compare it with the architectures you build. This fails and names the ones that are missing:
+
+```sh skip="release-flow"
+pear info --json pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o \
+  | jq -e --arg expected "darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64" 'select(.tag == "info") | .data
+           | if has("targets") then
+               ($expected | split(" ")) - [.targets[].platform]
+               | if length == 0 then true else error("missing: " + join(" ")) end
+             else error("this Pear does not report targets") end'
+```
+
+`jq -e` exits non-zero when a platform is missing, when `targets` is absent (a Pear older than 3.7.0), or when no `info` object came back. Select on `"tag": "info"`: every line of the `--json` stream is its own JSON document, so a filter without it also runs on the `retrieving` and `keys` lines. A link with no data on this machine yet prints `[ Empty ]` and sends an `empty` object instead. That includes the first run on a machine that has never held the link, such as a fresh CI runner, even when a seeder is up: the metadata syncs in the background, and a second run reads it. Run the check on a machine that has staged to the link, or retry it, as the [GitHub Actions check](/pear/how-to/operate-an-app/github-actions/publish-with-github-actions#check-which-platforms-reached-the-link) does.
+
+The sizes come from the drive's metadata and the files' block maps. `pear info` does not download the files' contents to report them, so you can run the check on a machine that never built the release, such as a CI job or a teammate's laptop.
+
 ## Run the same checks in CI
 
 Fail the job before it stages anything. This step reuses `build.ndjson` from step 1. It fails when the build did not finish cleanly or when any architecture you expect is missing:
@@ -99,7 +122,7 @@ Fail the job before it stages anything. This step reuses `build.ndjson` from ste
     jq -e -s 'any(.[]; .tag == "final" and .data.success == true) and all(.[]; .tag != "error")' \
       build.ndjson > /dev/null || { echo "pear build did not finish cleanly"; exit 1; }
     found=$(jq -r 'select(.tag == "executable") | .data.file
-                   | capture(".*[/\\\\]by-arch[/\\\\](?<arch>[^/\\\\]+)[/\\\\]app[/\\\\]").arch' build.ndjson | sort -u)
+                   | capture(".*[/\\\\]by-arch[/\\\\](?<arch>[^/\\\\]+)[/\\\\]app[/\\\\]").arch' build.ndjson | tr -d '\r' | sort -u)
     status=0
     for arch in $EXPECTED; do
       grep -qxF "$arch" <<< "$found" || { echo "missing: $arch"; status=1; }
@@ -107,7 +130,9 @@ Fail the job before it stages anything. This step reuses `build.ndjson` from ste
     exit $status
 ```
 
-`shell: bash` makes the step stop on a failed command, and it also works on a Windows runner through Git Bash.
+`shell: bash` makes the step stop on a failed command, and it also works on a Windows runner through Git Bash. The `tr -d '\r'` is for Windows, where a native `jq.exe` ends its lines with CRLF.
+
+After the stage, run the check from step 4 against the link you staged to. It reads the link from the network, so run it where `pear info` can reach a seeder. For a link that `pear-ci` staged, see [Check which platforms reached the link](/pear/how-to/operate-an-app/github-actions/publish-with-github-actions#check-which-platforms-reached-the-link).
 
 Add the `writable` check from step 2 as a second step only when the job runs `pear stage` itself on a machine that holds the stage link's key pair, such as a persistent self-hosted runner. A fresh hosted runner has no key pair, and the [`pear-ci` staging path](/pear/how-to/operate-an-app/github-actions/publish-with-github-actions) does not use Pear's local corestore, so the check does not apply there. To produce the signed per-OS builds this assumes, see [Build and sign desktop apps with GitHub Actions](/pear/how-to/operate-an-app/github-actions/build-and-sign-in-ci).
 
