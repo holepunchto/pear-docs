@@ -204,6 +204,15 @@ export const bareTree: Node[] = [
             url: '/bare/reference/bare/bare-kit',
           },
           {
+            type: 'folder',
+            name: 'Native host packages',
+            children: [
+              { type: 'page', name: 'Swift packages', url: '/bare/reference/bare/native-hosts/swift' },
+              { type: 'page', name: 'Kotlin packages', url: '/bare/reference/bare/native-hosts/kotlin' },
+              { type: 'page', name: 'Python packages', url: '/bare/reference/bare/native-hosts/python' },
+            ],
+          },
+          {
             type: 'page',
             name: 'Native-addon CI prebuilds',
             url: '/bare/reference/native-addon-prebuilds',
