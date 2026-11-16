@@ -15,6 +15,69 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 
 {/* changelog:insert — automation inserts draft entries below this marker; keep it directly above the newest entry. */}
 
+## 2026-11-16 — P2P module updates
+
+The module releases since the previous entry. An application pins its own copies in its `package.json`, so upgrade these dependencies directly to pick the changes up.
+
+### Hypercore — v11.40.4, v11.40.3, v11.40.2, v11.40.1, v11.39.5, v11.39.4, v11.39.3, v11.39.2, v11.39.1, v11.39.0
+
+- Changed (v11.39.0): `Hypercore.purge()` is reimplemented on the RocksDB storage.
+- Fixed (v11.39.1): closing a core or session cancels a `core.recover()` or a wait-for-recovery that is in progress, instead of leaving it polling.
+- Added (v11.39.2): the `timeout` and `settle` options of [`core.recover()`](/p2p/reference/building-blocks/hypercore#await-corerecoveroptions). `recover()` throws `BAD_ARGUMENT` when it is not on the default session or no recovery peers are set, and `REQUEST_TIMEOUT` when `timeout` passes first.
+- Fixed (v11.39.3): the replicator stops running background tasks once it is destroyed.
+- Changed (v11.39.4): concurrent `core.get()` calls for the same locally stored block share one storage read.
+- Fixed (v11.39.5): after `core.clear()`, a peer no longer forgets that a remote still has the blocks after the cleared range, and a `get()` that timed out no longer uses up a peer's only update, so a live request was left unsent. Both stalled reads.
+- Added (v11.40.0): a node can apply self-contained proofs, where the upgrade does not start at its length, in any order. Hypercore refits such a proof into the delta it would have requested itself.
+- Fixed (v11.40.1): a refit proof is bounded: the length it derives is capped at 2^52 and it carries at most 128 nodes per section. A seek request stays out of the additional upgrade range. A paused peer that is asked for a block it cannot serve replies with no data.
+- Fixed (v11.40.2): a proof that upgrades by length 0 is rejected. Pending `get()` calls on blocks removed by a truncation all reject, not only some. `findFirst` on a remote bitfield segment never returns less than the position asked for. The verified remote contiguous length is cached and follows bitfield changes.
+- Fixed (v11.40.3): seek requests stay inside the seek range. Unclearing a local range restores every remote bitfield page. An empty request is no longer treated as cancelled in the receiver queue. A seek + upgrade proof is rejected when a root it needs is not stored. See [Hypercore](/p2p/reference/building-blocks/hypercore).
+
+### HyperDHT — v6.36.0
+
+- Added (v6.36.0): the `lookup` option of `node.announce()`. With `true`, each node you announce to replies with its lookup result for the topic, and the stream emits those replies after the initial lookup results. Left unset, the announce asks for it only from nodes that returned no peers in the initial lookup, so it catches peers that announce at the same time. Pass `false` to turn that off. See [HyperDHT](/p2p/reference/building-blocks/hyperdht#nodeannouncetopic-keypair-relayaddresses-options).
+
+### Autobee — v2.13.6, v2.13.5, v2.13.4, v2.13.3
+
+- Added (v2.13.4): the `recursive` and `timeout` options of [`db.cores()`](/p2p/reference/building-blocks/autobee#const-cores--await-dbcoresoptions). With `all`, `recursive` also walks the core tables of every core the bees reach, and `timeout` bounds the reads.
+- Changed (v2.13.4): a remap is cancelled when a fast-forward lands while it is still copying, and starts over from the new head. Only its commit blocks a landing.
+- Changed (v2.13.6): with no Hypercore recovery peers set, the remap is not attempted. The database emits one `warning`, `No recovery peers configured`, and tries again after the next fast-forward.
+- Fixed (v2.13.3): a peer lands on the remapped generation from lock step with the writer that remapped, and a migration that migrated nothing keeps the fast-forward boot.
+- Fixed (v2.13.5): a writer that is reset recounts the nodes it has processed. See [Autobee](/p2p/reference/building-blocks/autobee).
+
+### Compact-encoding — v3.7.0, v3.6.0
+
+- Added (v3.7.0): the big-endian codecs [`cenc.uintbe`](/p2p/reference/helpers/compact-encoding#cencuint64), `cenc.uint16be`, `cenc.intbe`, `cenc.int16be`, `cenc.int32be` and `cenc.int64be`. `cenc.uint32be` and `cenc.uint64be` already existed.
+- **Breaking (v3.7.0):** `cenc.float32` and `cenc.float64` throw a `TypeError` in `encode` for a value that is not a `number`. Before, the value was coerced.
+- Changed (v3.7.0): the range errors from `cenc.uint` and `cenc.uint64` name the wider codec to switch to (`biguint`, `biguint64`), and `cenc.int` and `cenc.int64` do the same with `bigint` and `bigint64`.
+- Added (v3.6.0): [`cenc.orderedRecord(keyEnc, valueEnc)`](/p2p/reference/helpers/compact-encoding#cencorderedrecordkeyencoding-valueencoding) and `cenc.orderedStringRecord`, which sort keys by their UTF-8 bytes so a record always encodes to the same bytes.
+- Added (v3.6.0): TypeScript declarations in `index.d.ts`, and an `exports` map with the `compact-encoding/raw`, `compact-encoding/lexint` and `compact-encoding/endian` subpaths. Deep imports of other files fail with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+- **Breaking (v3.6.0):** `encode` refuses values a codec can't represent, where it used to write wrong bytes. A non-integer passed to an integer codec throws a `TypeError`. A value outside the codec's range throws a `RangeError`: `uint8` to `uint48` and `uint16be`/`uint32be` outside their width, a negative `biguint`, `biguint64` and `bigint64` outside 64 bits, and a negative, `NaN` or infinite `cenc.lexint`. Earlier releases threw a plain `Error` for the `uint` and `int` ranges. Check values before they reach the encoder. See [Value validation](/p2p/reference/helpers/compact-encoding#value-validation).
+- **Breaking (v3.6.0):** `cenc.ipv4`, `cenc.ipv6` and `cenc.ip` throw a `RangeError` for an address with the wrong number of parts or a part that's too large.
+- Fixed (v3.6.0): the `cenc.raw` decoders stop at `state.end` instead of the end of the buffer, so a raw codec inside a [`cenc.frame(enc)`](/p2p/reference/helpers/compact-encoding#cencframeenc) frame no longer reads past it.
+- Changed (v3.6.0): the docs state that an empty buffer and `null` both encode as length 0 with `cenc.optionalBuffer`, and that `preencode` may not reject an invalid value. Codecs are reworked for engine inlining with no change to the bytes.
+
+### Corestore — v7.16.1, v7.16.0, v7.15.0, v7.14.0
+
+- Added (v7.14.0): the `userData` option of `store.get()`, forwarded to the core's local User Data store.
+- Added (v7.15.0): `store.purge(keys, { force })` deletes cores from storage in bulk and returns the discovery keys it purged. It skips a core with an open session unless you pass `force`.
+- Added (v7.15.0): `store.get()` forwards the `weak` option. A weak session doesn't stop `store.purge()`.
+- Added (v7.16.0): `store.staticify()` takes `opts.manifest` to replace the defaults of the static manifest, such as `version` or `userData`. `opts.key` and `opts.name` are ignored.
+- Fixed (v7.16.1): a core that was first opened by discovery key and later opened with its key now gets the key and id set. See [Corestore](/p2p/reference/helpers/corestore).
+
+### Protomux — v3.13.1
+
+- Changed (v3.13.1): a batch frame inside a batch destroys the stream with an `Invalid nested batch` error. See [Protomux](/p2p/reference/helpers/protomux#channeluncork).
+
+### blind-peering — v2.14.0
+
+- Changed (v2.14.0): bump updates for an autobase or Autobee run one after another. Updates that arrive while a listing runs collapse into one follow-up listing.
+- Added (v2.14.0): once the autobase reports `isLocalTrusted()`, the client also lists its cores recursively, with a 10-second limit, and registers them. See [blind-peering](/p2p/reference/helpers/blind-peering#await-blindaddautobasebase-opts).
+
+### blind-peer — v3.18.3, v3.18.2
+
+- Fixed (v3.18.2): `wakeupGcTickTime` defaults to `undefined` instead of `null`, so the wakeup protocol keeps its own default tick time of 2000 ms.
+- Added (v3.18.3): a core that failed with `UNKNOWN_CORE` is remembered (up to 1000 keys). When a later `add-cores` request names it, the blind peer stores a record from the core's local length and bytes, emits `unknown-core-readded` and counts it in `unknownCoresReAdded` and the `blind_peer_unknown_cores_readded` gauge. See [blind-peer](/p2p/reference/helpers/blind-peer).
+
 ## 2026-11-04 — P2P module updates
 
 ### Hypercore — v11.40.0, v11.39.6
