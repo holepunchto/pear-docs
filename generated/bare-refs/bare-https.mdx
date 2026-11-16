@@ -4,7 +4,7 @@ description: "HTTPS library for JavaScript"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "3.1.0"
+upstreamVersion: "4.0.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -16,6 +16,14 @@ Mirrors the Node.js [`https`](https://nodejs.org/api/https.html) module.
 ```sh
 npm i bare-https
 ```
+
+<Callout type="warn">
+**Upgrading from 3.x.** Version 4.0.0 updates [`bare-tls`](/bare/reference/bare/modules/bare-tls) to 4.0.0, which renames the event for a completed TLS handshake. Check these when you upgrade.
+
+- An `HTTPSSocket` emits `'secureConnect'` when the TLS handshake completes. Its `'connect'` event now means that the TCP connection opened, so code that waited for `'connect'` to know that a connection is secure has to wait for `'secureConnect'`.
+- An `HTTPSServer` emits `'secureConnection'` with the `HTTPSSocket` once the handshake of a connection completes, and `'tlsClientError'` when the connection fails before that. Its `'connection'` event fires when a TCP connection is accepted, before the handshake.
+- An `HTTPSServer` destroys a connection whose peer takes longer than the `handshakeTimeout` option to finish the handshake.
+</Callout>
 
 ## Usage
 
@@ -312,7 +320,7 @@ Whether the agent is currently suspended.
 new HTTPSServer(opts?: HTTPSServerOptions, onrequest?: (req: HTTPIncomingMessage, res: HTTPServerResponse) => void)
 ```
 
-An HTTPS server, reusing `bare-http1`'s request parsing and response handling over `HTTPSSocket` connections instead of plain `TCPSocket` connections.
+An HTTPS server, reusing `bare-http1`'s request parsing and response handling over `HTTPSSocket` connections instead of plain `TCPSocket` connections. Since v4.0.0, it emits `'secureConnection'` with the `HTTPSSocket` once the TLS handshake of a connection completes, and `'tlsClientError'` with the error and the socket when a connection fails before that. A connection that doesn't finish the handshake within the `handshakeTimeout` option, `120000` milliseconds by default, is destroyed and reported through `'tlsClientError'`. Pass `0` to turn the timeout off.
 
 **Parameters**
 
@@ -501,7 +509,7 @@ The default `HTTPSAgent` used by `request()` when no `agent` option is given.
 
 ```ts
 interface HTTPSSocketEvents {
-  connect: []
+  secureConnect: []
   data: [data: unknown]
   end: []
   readable: []
@@ -511,6 +519,7 @@ interface HTTPSSocketEvents {
   drain: []
   finish: []
   pipe: [src: Readable]
+  connect: []
   lookup: [err: Error | null, address: string | null, family: IPFamily | 0, host: string]
   timeout: []
 }
@@ -545,6 +554,30 @@ interface HTTPSSocketOptions {
 ```
 
 Options for `HTTPSSocket`: those of `TLSSocket` combined with `TCPSocket`'s connection options.
+
+#### `HTTPSServerEvents`
+
+```ts
+interface HTTPSServerEvents {
+  secureConnection: [socket: HTTPSSocket]
+  tlsClientError: [err: Error, socket: HTTPSSocket]
+  request: [req: HTTPIncomingMessage, res: HTTPServerResponse]
+  checkContinue: [req: HTTPIncomingMessage, res: HTTPServerResponse]
+  checkExpectation: [req: HTTPIncomingMessage, res: HTTPServerResponse]
+  upgrade: [req: HTTPIncomingMessage, socket: TCPSocket, head: Buffer]
+  connect: [req: HTTPIncomingMessage, socket: TCPSocket, head: Buffer]
+  clientError: [err: HTTPError, socket: TCPSocket]
+  timeout: [socket: TCPSocket]
+  close: []
+  connection: [socket: TCPSocket]
+  drop: [info: TCPServerDropInfo]
+  error: [err: Error]
+  listening: []
+  lookup: [err: Error | null, address: string | null, family: IPFamily | 0, host: string]
+}
+```
+
+The events an `HTTPSServer` emits: those of `HTTPServer` plus the TLS handshake events.
 
 ## See also
 

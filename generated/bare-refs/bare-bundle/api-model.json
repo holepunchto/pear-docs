@@ -1,6 +1,6 @@
 {
   "name": "bare-bundle",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "Application bundle format for JavaScript",
   "repoUrl": "https://github.com/holepunchto/bare-bundle",
   "npmUrl": "https://www.npmjs.com/package/bare-bundle",
@@ -11,7 +11,7 @@
   "extraSections": [
     {
       "heading": "Format",
-      "body": "```\n[#!hashbang]\n<header length><header><...files>\n```\n\nThe header length is an integer literal denoting the total length of the header. The header itself is a JSON string literal of header length bytes and has the following format:\n\n```js\n{\n  \"version\": 0,\n  \"id\": null | \"<string>\",\n  \"main\": null | \"<url>\",\n  \"imports\": {\n    \"<from>\": \"<to>\"\n  },\n  \"resolutions\": {\n    \"<url>\": \"<imports>\"\n  },\n  \"addons\": [\"<url>\"],\n  \"assets\": [\"<url>\"],\n  \"files\": {\n    \"<url>\": {\n      \"offset\": number,\n      \"length\": number,\n      \"mode\": number\n    }\n  }\n}\n```\n\nFor each `<url>` in `files`, `offset` provides the byte offset to the file **after** the header and `length` provides the byte length of the file.\n\nThe bundle may optionally be prefixed with a hashbang, `#!`, for use with script interpreters. The hashbang is ignored during parsing."
+      "body": "```\n[#!hashbang]\n<header length><header><...files>\n```\n\nThe header length is an integer literal denoting the total length of the header. The header itself is a JSON string literal of header length bytes and has the following format:\n\n```js\n{\n  \"version\": 0,\n  \"id\": null | \"<string>\",\n  \"main\": null | \"<url>\",\n  \"imports\": {\n    \"<from>\": \"<to>\"\n  },\n  \"resolutions\": {\n    \"<url>\": \"<imports>\"\n  },\n  \"addons\": [\"<url>\"],\n  \"assets\": [\"<url>\"],\n  \"files\": {\n    \"<url>\": {\n      \"offset\": number,\n      \"length\": number,\n      \"mode\": number,\n      \"type\"?: \"<type>\"\n    }\n  }\n}\n```\n\nFor each `<url>` in `files`, `offset` provides the byte offset to the file **after** the header and `length` provides the byte length of the file.\n\nThe optional `type` records the module type the file is loaded as, using the names of the `type` import attribute: `script`, `module`, `json`, `text`, `binary`, `addon`, or `bundle`. When it is left out, the type is inferred when the file is loaded, as for a file outside a bundle.\n\nThe bundle may optionally be prefixed with a hashbang, `#!`, for use with script interpreters. The hashbang is ignored during parsing."
     }
   ],
   "exports": [
@@ -21,7 +21,7 @@
       "kind": "class",
       "static": false,
       "signatures": [
-        "interface Bundle {\n  readonly files: Record<string, MemoryFile>\n  readonly version: number\n  readonly root: string | null\n  addons: string[]\n  assets: string[]\n  id: string | null\n  imports: RecursiveStringObject\n  main: string | null\n  resolutions: RecursiveStringObject\n  empty(): boolean\n  keys(): string[]\n  exists(key: string): boolean\n  mode(key: string): number\n  read(key: string): Buffer\n  write(key: string, data: string, opts?: BundleWriteOptions): this\n  mount(root: string | URL, opts?: BundleMountOptions): Bundle\n  unmount(root: string | URL, opts?: BundleMountOptions): Bundle\n  toBuffer(opts?: BundleToBufferOptions): Buffer\n}"
+        "interface Bundle {\n  readonly files: Record<string, MemoryFile>\n  readonly version: number\n  readonly root: string | null\n  addons: string[]\n  assets: string[]\n  id: string | null\n  imports: RecursiveStringObject\n  main: string | null\n  resolutions: RecursiveStringObject\n  empty(): boolean\n  keys(): string[]\n  exists(key: string): boolean\n  mode(key: string): number\n  type(key: string): string | null\n  read(key: string): Buffer\n  write(key: string, data: string, opts?: BundleWriteOptions): this\n  mount(root: string | URL, opts?: BundleMountOptions): Bundle\n  unmount(root: string | URL, opts?: BundleMountOptions): Bundle\n  toBuffer(opts?: BundleToBufferOptions): Buffer\n}"
       ],
       "description": "An in-memory application bundle: a set of files plus metadata (imports, resolutions, addons,\nassets) that can be serialized to and parsed from a single buffer.",
       "deprecated": null,
@@ -418,6 +418,32 @@
           "members": []
         },
         {
+          "key": "Bundle.type",
+          "name": "type",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "type(key: string): string | null"
+          ],
+          "description": "Return the module type of the file at `key`, or `null` if it is unknown or the file doesn't\nexist.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "key",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The key of the file to look up."
+            }
+          ],
+          "returns": {
+            "type": "string | null",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "Bundle.unmount",
           "name": "unmount",
           "kind": "method",
@@ -505,7 +531,7 @@
           "throws": [
             {
               "type": "TypeError",
-              "condition": "`key` is not a string."
+              "condition": "`key` is not a string, or `opts.type` is neither a string nor `null`."
             }
           ],
           "members": []
@@ -518,7 +544,7 @@
       "kind": "class",
       "static": false,
       "signatures": [
-        "interface MemoryFile {\n  mode(): number\n  read(): Buffer\n  size(): number\n}"
+        "interface MemoryFile {\n  mode(): number\n  type(): string | null\n  read(): Buffer\n  size(): number\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -609,6 +635,24 @@
           },
           "throws": [],
           "members": []
+        },
+        {
+          "key": "MemoryFile.type",
+          "name": "type",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "type(): string | null"
+          ],
+          "description": "Return the module type the file is loaded as, or `null` if unknown.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "string | null",
+            "description": null
+          },
+          "throws": [],
+          "members": []
         }
       ]
     },
@@ -618,7 +662,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface MemoryFileOptions {\n  executable?: boolean\n  mode?: number\n}"
+        "interface MemoryFileOptions {\n  executable?: boolean\n  mode?: number\n  type?: string | null\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -650,6 +694,21 @@
             "mode: number"
           ],
           "description": "An explicit file mode (permission bits), overriding `executable`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "MemoryFileOptions.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: string | null"
+          ],
+          "description": "The module type the file is loaded as, such as `'script'` or `'module'`, or `null` if unknown.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -695,7 +754,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface BundleWriteOptions {\n  addon?: boolean\n  alias?: string\n  asset?: boolean\n  executable?: boolean\n  imports?: RecursiveStringObject\n  main?: boolean\n  mode?: number\n}"
+        "interface BundleWriteOptions {\n  addon?: boolean\n  alias?: string\n  asset?: boolean\n  executable?: boolean\n  imports?: RecursiveStringObject\n  main?: boolean\n  mode?: number\n  type?: string | null\n}"
       ],
       "description": null,
       "deprecated": null,
@@ -807,6 +866,21 @@
           "returns": null,
           "throws": [],
           "members": []
+        },
+        {
+          "key": "BundleWriteOptions.type",
+          "name": "type",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "type: string | null"
+          ],
+          "description": "The module type the written file is loaded as, using the names of the `type` import attribute:\n`'script'`, `'module'`, `'json'`, `'text'`, `'binary'`, `'addon'`, or `'bundle'`. Defaults to\n`null`, meaning the type is unknown and is inferred when the file is loaded.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
         }
       ]
     },
@@ -889,5 +963,5 @@
     }
   ],
   "subpaths": [],
-  "generatedAt": "2026-11-05T13:03:40.151Z"
+  "generatedAt": "2026-11-16T14:33:29.822Z"
 }

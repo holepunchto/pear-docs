@@ -1,6 +1,6 @@
 {
   "name": "bare-tls",
-  "version": "3.2.1",
+  "version": "4.0.0",
   "description": "Transport Layer Security (TLS) streams for JavaScript",
   "repoUrl": "https://github.com/holepunchto/bare-tls",
   "npmUrl": "https://www.npmjs.com/package/bare-tls",
@@ -19,24 +19,25 @@
       "kind": "function",
       "static": false,
       "signatures": [
-        "createServer(opts?: TLSSocketOptions, onconnection?: (socket: TLSSocket) => void): TLSNetServer"
+        "createServer(opts?: Omit<TLSSocketOptions, 'eagerOpen'>, onsecureconnection?: (socket: TLSNetSocket) => void): TLSNetServer",
+        "createServer(onsecureconnection?: (socket: TLSNetSocket) => void): TLSNetServer"
       ],
-      "description": "Creates a TLS server that listens for TCP connections and wraps them with TLS. Incoming\nconnections are emitted as `'connection'` events with a `tls.Socket` instance. Options are the\nsame as `tls.Socket`, plus any options supported by <https://github.com/holepunchto/bare-net>.",
+      "description": "Creates a TLS server that listens for TCP connections and wraps them with TLS. Incoming\nconnections are emitted as `'secureConnection'` events with a `tls.Socket` instance once the\nhandshake completes. Options are the same as `tls.Socket`, plus any options supported by\n<https://github.com/holepunchto/bare-net>.",
       "deprecated": null,
       "params": [
         {
           "name": "opts",
-          "type": "TLSSocketOptions",
+          "type": "Omit<TLSSocketOptions, 'eagerOpen'>",
           "optional": true,
           "default": null,
-          "description": "Options applied to each incoming socket; the same as `TLSSocket`, plus any options\nsupported by `bare-net`."
+          "description": "Options applied to each incoming socket; the same as `TLSSocket`, except\n`eagerOpen`, plus any options supported by `bare-net`."
         },
         {
-          "name": "onconnection",
-          "type": "(socket: TLSSocket) => void",
+          "name": "onsecureconnection",
+          "type": "(socket: TLSNetSocket) => void",
           "optional": true,
           "default": null,
-          "description": "Called on each `'connection'` event."
+          "description": "Called on each `'secureConnection'` event."
         }
       ],
       "returns": {
@@ -70,7 +71,7 @@
           "type": "() => void",
           "optional": true,
           "default": null,
-          "description": "Called once the TLS handshake has completed (the socket's `'connect'` event)."
+          "description": "Called once the TLS handshake has completed (the socket's `'secureConnect'`\nevent)."
         }
       ],
       "returns": {
@@ -110,6 +111,47 @@
       "throws": [],
       "members": [
         {
+          "key": "errors.code",
+          "name": "code",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "code: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "errors.CONNECTION_RESET",
+          "name": "errors.CONNECTION_RESET",
+          "kind": "method",
+          "static": true,
+          "signatures": [
+            "errors.CONNECTION_RESET(msg: string): TLSError"
+          ],
+          "description": "The underlying socket disconnected before the TLS handshake completed.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "msg",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": null
+            }
+          ],
+          "returns": {
+            "type": "TLSError",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
           "key": "errors.from",
           "name": "errors.from",
           "kind": "method",
@@ -143,7 +185,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface TLSSocketEvents {\n  connect: []\n  data: [data: unknown]\n  end: []\n  readable: []\n  piping: [dest: Writable]\n  close: []\n  error: [err: Error]\n  drain: []\n  finish: []\n  pipe: [src: Readable]\n}"
+        "interface TLSSocketEvents {\n  secureConnect: []\n  data: [data: unknown]\n  end: []\n  readable: []\n  piping: [dest: Writable]\n  close: []\n  error: [err: Error]\n  drain: []\n  finish: []\n  pipe: [src: Readable]\n}"
       ],
       "description": "Events emitted by a `TLSSocket`.",
       "deprecated": null,
@@ -160,21 +202,6 @@
             "close: []"
           ],
           "description": null,
-          "deprecated": null,
-          "params": [],
-          "returns": null,
-          "throws": [],
-          "members": []
-        },
-        {
-          "key": "TLSSocketEvents.connect",
-          "name": "connect",
-          "kind": "property",
-          "static": false,
-          "signatures": [
-            "connect: []"
-          ],
-          "description": "Emitted when the TLS handshake completes.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -295,6 +322,21 @@
             "readable: []"
           ],
           "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSSocketEvents.secureConnect",
+          "name": "secureConnect",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "secureConnect: []"
+          ],
+          "description": "Emitted when the TLS handshake completes.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -562,6 +604,202 @@
       "inheritsBase": true
     },
     {
+      "key": "TLSNetSocketEvents",
+      "name": "TLSNetSocketEvents",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface TLSNetSocketEvents {\n  connect: []\n  timeout: []\n  secureConnect: []\n  data: [data: unknown]\n  end: []\n  readable: []\n  piping: [dest: Writable]\n  close: []\n  error: [err: Error]\n  drain: []\n  finish: []\n  pipe: [src: Readable]\n}"
+      ],
+      "description": "Events emitted by a `TLSNetSocket`.",
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "TLSNetSocketEvents.close",
+          "name": "close",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "close: []"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetSocketEvents.connect",
+          "name": "connect",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "connect: []"
+          ],
+          "description": "Emitted when the underlying TCP connection opens, before the TLS handshake.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetSocketEvents.data",
+          "name": "data",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "data: [data: unknown]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetSocketEvents.drain",
+          "name": "drain",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "drain: []"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetSocketEvents.end",
+          "name": "end",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "end: []"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetSocketEvents.error",
+          "name": "error",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "error: [err: Error]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetSocketEvents.finish",
+          "name": "finish",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "finish: []"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetSocketEvents.pipe",
+          "name": "pipe",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "pipe: [src: Readable]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetSocketEvents.piping",
+          "name": "piping",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "piping: [dest: Writable]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetSocketEvents.readable",
+          "name": "readable",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "readable: []"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetSocketEvents.secureConnect",
+          "name": "secureConnect",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "secureConnect: []"
+          ],
+          "description": "Emitted when the TLS handshake completes.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetSocketEvents.timeout",
+          "name": "timeout",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "timeout: []"
+          ],
+          "description": "Emitted when the underlying socket times out.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
       "key": "TLSNetSocket",
       "name": "TLSNetSocket",
       "kind": "interface",
@@ -757,7 +995,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface TLSNetServerEvents {\n  listening: []\n  connection: [socket: TLSSocket]\n  error: [err: Error]\n  close: []\n}"
+        "interface TLSNetServerEvents {\n  listening: []\n  connection: [socket: NetSocket]\n  secureConnection: [socket: TLSNetSocket]\n  tlsClientError: [err: Error, socket: TLSNetSocket]\n  error: [err: Error]\n  close: []\n}"
       ],
       "description": "Events emitted by a TLS server.",
       "deprecated": null,
@@ -786,9 +1024,9 @@
           "kind": "property",
           "static": false,
           "signatures": [
-            "connection: [socket: TLSSocket]"
+            "connection: [socket: NetSocket]"
           ],
-          "description": "Emitted when a new TLS connection is established.",
+          "description": "Emitted when a new TCP connection is accepted, before the TLS handshake.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -824,6 +1062,36 @@
           "returns": null,
           "throws": [],
           "members": []
+        },
+        {
+          "key": "TLSNetServerEvents.secureConnection",
+          "name": "secureConnection",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "secureConnection: [socket: TLSNetSocket]"
+          ],
+          "description": "Emitted when the TLS handshake of a new connection completes.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TLSNetServerEvents.tlsClientError",
+          "name": "tlsClientError",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "tlsClientError: [err: Error, socket: TLSNetSocket]"
+          ],
+          "description": "Emitted when a new connection fails before the TLS handshake completes.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
         }
       ]
     },
@@ -835,7 +1103,7 @@
       "signatures": [
         "interface TLSNetServer extends EventEmitter<TLSNetServerEvents> {\n  readonly listening: boolean\n}"
       ],
-      "description": "A TLS server over TCP; incoming connections are wrapped with TLS and emitted as `'connection'`\nevents.",
+      "description": "A TLS server over TCP; incoming connections are wrapped with TLS and emitted as\n`'secureConnection'` events once the handshake completes.",
       "deprecated": null,
       "params": [],
       "returns": null,
@@ -898,6 +1166,47 @@
           "throws": [],
           "members": [
             {
+              "key": "TLSError.code",
+              "name": "code",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "code: string"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            },
+            {
+              "key": "TLSError.CONNECTION_RESET",
+              "name": "TLSError.CONNECTION_RESET",
+              "kind": "method",
+              "static": true,
+              "signatures": [
+                "TLSError.CONNECTION_RESET(msg: string): TLSError"
+              ],
+              "description": "The underlying socket disconnected before the TLS handshake completed.",
+              "deprecated": null,
+              "params": [
+                {
+                  "name": "msg",
+                  "type": "string",
+                  "optional": false,
+                  "default": null,
+                  "description": null
+                }
+              ],
+              "returns": {
+                "type": "TLSError",
+                "description": null
+              },
+              "throws": [],
+              "members": []
+            },
+            {
               "key": "TLSError.from",
               "name": "TLSError.from",
               "kind": "method",
@@ -928,5 +1237,5 @@
       ]
     }
   ],
-  "generatedAt": "2026-11-12T14:09:32.059Z"
+  "generatedAt": "2026-11-16T14:37:02.189Z"
 }
