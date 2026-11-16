@@ -1,8 +1,8 @@
 # hello-pear-qvac-tui (documentation snapshot)
 
 Vendored from [holepunchto/hello-pear-qvac-tui](https://github.com/holepunchto/hello-pear-qvac-tui)
-(package name `hello-pear-qvac`), branch **`main`**, at commit `605eb96`
-([tree](https://github.com/holepunchto/hello-pear-qvac-tui/tree/605eb96186d25b1b3f888bb234844e4216433c57)).
+(package name `hello-pear-qvac`), branch **`main`**, at commit `cf7515c`
+([tree](https://github.com/holepunchto/hello-pear-qvac-tui/tree/cf7515cad71ae7022414a3bb8f511bc6ffb25ca8)).
 
 `bin.mjs`, `app.js`, `lib/inference.js`, and `workers/qvac.js` back the code imports in
 `content/bare/how-to/add-on-device-ai/build-a-local-ai-chat-tui-with-qvac.mdx`, and `bin.mjs`,

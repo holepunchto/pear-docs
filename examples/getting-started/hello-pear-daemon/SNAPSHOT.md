@@ -1,8 +1,8 @@
 # hello-pear-daemon (documentation snapshot)
 
 Vendored from [`holepunchto/hello-pear-daemon`](https://github.com/holepunchto/hello-pear-daemon),
-branch **`main`**, at commit `4aac96e`
-([tree](https://github.com/holepunchto/hello-pear-daemon/tree/4aac96ee0a83f4c1d915177ffeb212e1f80249be)).
+branch **`main`**, at commit `dd802b7`
+([tree](https://github.com/holepunchto/hello-pear-daemon/tree/dd802b7a03837f5c1f3fc9bc798b590179dfe09e)).
 
 This is the detached-updater boilerplate: the foreground command spawns a `bare-daemon` updater and
 returns immediately, so a short-lived CLI invocation never blocks on an update check. There is no

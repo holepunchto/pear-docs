@@ -1,8 +1,8 @@
 # hello-pear-react-native (documentation snapshot)
 
 Vendored from [holepunchto/hello-pear-react-native](https://github.com/holepunchto/hello-pear-react-native),
-branch **`main`**, at commit `972e44a`
-([tree](https://github.com/holepunchto/hello-pear-react-native/tree/972e44ab06277537ca961d69ef3ce62ee570887e)).
+branch **`main`**, at commit `133069a`
+([tree](https://github.com/holepunchto/hello-pear-react-native/tree/133069a53527e7b6fa6721f1bb6ed1d4eeb0b168)).
 
 `src/App.tsx` backs the code imports in
 `content/p2p/getting-started/from-a-template/start-from-hello-pear-react-native.mdx` and
@@ -15,9 +15,10 @@ not a runnable app.
 ## No vendored `workers/main.js`
 
 Unlike the `hello-pear-electron` and `hello-pear-bare` snapshots beside it, this snapshot does
-**not** vendor a copy of `workers/main.js`. Upstream's is the literal `require('hello-pear-worker')`
-one-liner (the other two templates inline the same package into their `workers/main.js`), and the
-docs already inline and explain that shared worker once, via
+**not** vendor a copy of `workers/main.js`. Since `133069a` upstream's is `hello-pear-worker`'s
+`index.js` inlined by `npm run inline-worker` (the same worker, under a two-line source header),
+like the other two templates; before that it was the literal `require('hello-pear-worker')`
+one-liner. The docs already inline and explain that shared worker once, via
 `content/_snippets/_hello-pear-worker-source-callout.mdx`, which imports
 from the **canonical** copy at `examples/getting-started/hello-pear-electron/workers/main.js`. This
 page's "Where the app logic goes" section includes that same snippet rather than duplicating the
@@ -31,7 +32,7 @@ pipe in a `pipeRef` and derives `applyUpdate` with `useCallback`, and drops the 
 `!applyUpdate` guard that goes with it. The behaviour is identical.
 `content/pear/how-to/operate-an-app/integrate-pear-ota/mobile.mdx` calls this out for readers, and
 it must change in step with this file. Upstream's `src/App.tsx` was unchanged between the previous
-pins (`5c79f39`, `aa421c0`) and `972e44a`, so only the hunks above differ.
+pins (`5c79f39`, `aa421c0`, `972e44a`) and `133069a`, so only the hunks above differ.
 
 ## Refreshing
 
