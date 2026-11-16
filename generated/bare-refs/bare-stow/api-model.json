@@ -1,6 +1,6 @@
 {
   "name": "bare-stow",
-  "version": "0.3.7",
+  "version": "0.3.9",
   "description": "Module bundling and harness generation for Bare",
   "repoUrl": "https://github.com/holepunchto/bare-stow",
   "npmUrl": "https://www.npmjs.com/package/bare-stow",
@@ -17,11 +17,11 @@
     "bare-type-stripper",
     "bare-unpack"
   ],
-  "usage": "The entry module exports a `start()` function that receives the IPC stream and an optional `ready` callback. It may return a function to run before the bundle exits:\n\n```js\nmodule.exports = async function start(ipc, ready) {\n  ipc.on('data', (data) => {\n    // Handle messages from the host.\n  })\n\n  // Signal readiness early. Otherwise, it's signaled when `start()` resolves.\n  ready()\n\n  return async function stop() {\n    // Clean up before the bundle exits.\n  }\n}\n```\n\nIf a `server` is requested, `start()` instead receives `{ rpc, ipc }`, with `rpc` bound to the IPC stream. Its handlers are registered in `start()`, before the bundle signals ready:\n\n```js\nmodule.exports = function start({ rpc }) {\n  rpc.respond(1, (req, data) => data)\n}\n```\n\nStow it for a target:\n\n```js\nconst stow = require('bare-stow')\n\nconst entry = 'file:///app/core.js'\nconst out = 'file:///app/core-harness/'\n\nfor await (const artifact of stow(entry, 'bare-sidecar', out)) {\n  console.log(artifact.url.href)\n}\n```\n\nOr from the command line:\n\n```console\n$ bare-stow pack --target bare-sidecar --out ./core-harness ./core.js\n```\n\nThis writes a package to `out` with the harness, the bundle, and a manifest declaring the dependencies of the harness. `stow()` yields each file once written, and the bundle along with its `base`, the directory that its modules are named relative to. It's the `base` option if given, and otherwise the closest directory containing every module. Add the package as a dependency of the host and boot the bundle with `start()`, which resolves once the bundle is ready:\n\n```js\nimport * as harness from 'core-harness'\n\nconst { ipc } = await harness.start()\n\nipc.write(Buffer.from('hello from the host'))\n\n// Request a graceful shutdown, which resolves with the exit code.\nconst code = await ipc.terminate()\n```\n\nThe bundle imports `bare-stow-runtime`, and the RPC library if a `server` is requested, so the package containing the entry must depend on them. For `bare-rpc`, that is `bare-rpc` and `bare-abort-controller`, which gives handlers the `signal` that aborts when the peer cancels a request.\n\n`start()` accepts `timeout`, how long to wait in milliseconds for the bundle to signal ready, and `grace`, how long a terminating bundle gets to run `stop()` and exit before it's killed. `timeout` defaults to waiting indefinitely and `grace` to 5 seconds. On Windows, a sidecar is killed along with its host, so `stop()` only runs when the host terminates it.\n\nFor `bare-sidecar` and `bare-worker`, the harness also exports `connect()`, which takes a sidecar or worker that the host started itself, such as one running a development entry with arguments, and resolves like `start()`. It accepts the same options, except those of the sidecar or worker. As the entry doesn't go through `stow()`, it attaches to the IPC itself, as described in <https://github.com/holepunchto/bare-stow-runtime>:\n\n```js\nconst runtime = require('bare-stow-runtime/process')\n\nconst ipc = runtime.attach(Bare.IPC)\n\nipc.run(() => import('./core.js'), ipc)\n```\n\n```js\nconst sidecar = new Sidecar('./dev.js', ['--verbose'], { stdio: 'inherit' })\n\nconst { ipc } = await harness.connect(sidecar)\n```\n\n`stow()` and `link()` read the module graph from disk by default. To read it from elsewhere, such as modules that aren't written to disk, pass `readModule`, `listPrefix`, and `resolveModule`. Generated files are still written to disk. A `readModule` that changes the type of a module also passes `aliases`, as for <https://github.com/holepunchto/bare-pack>, such as `{ '.mjs': '.js' }` to have ES modules converted to CommonJS loaded as such. They're merged over the aliases that `bare-stow` uses for TypeScript.",
+  "usage": "The entry module exports a `start()` function that receives the IPC stream and an optional `ready` callback. It may return a function to run before the bundle exits:\n\n```js\nmodule.exports = async function start(ipc, ready) {\n  ipc.on('data', (data) => {\n    // Handle messages from the host.\n  })\n\n  // Signal readiness early. Otherwise, it's signaled when `start()` resolves.\n  ready()\n\n  return async function stop() {\n    // Clean up before the bundle exits.\n  }\n}\n```\n\nIf a `server` is requested, `start()` instead receives `{ rpc, ipc }`, with `rpc` bound to the IPC stream. Its handlers are registered in `start()`, before the bundle signals ready:\n\n```js\nmodule.exports = function start({ rpc }) {\n  rpc.respond(1, (req, data) => data)\n}\n```\n\nStow it for a target:\n\n```js\nconst stow = require('bare-stow')\n\nconst entry = 'file:///app/core.js'\nconst out = 'file:///app/core-harness/'\n\nfor await (const artifact of stow(entry, 'bare-sidecar', out)) {\n  console.log(artifact.url.href)\n}\n```\n\nOr from the command line:\n\n```console\n$ bare-stow pack --target bare-sidecar --out ./core-harness ./core.js\n```\n\nThis writes a package to `out` with the harness, the bundle, and a manifest declaring the dependencies of the harness. `stow()` yields each file once written, and the bundle along with its `base`, the directory that its modules are named relative to. It's the `base` option if given, and otherwise the closest directory containing every module. Add the package as a dependency of the host and boot the bundle with `start()`, which resolves once the bundle is ready:\n\n```js\nimport * as harness from 'core-harness'\n\nconst { ipc } = await harness.start()\n\nipc.write(Buffer.from('hello from the host'))\n\n// Request a graceful shutdown, which resolves with the exit code.\nconst code = await ipc.terminate()\n```\n\nThe bundle imports `bare-stow-runtime`, and the RPC library if a `server` is requested, so the package containing the entry must depend on them. For `bare-rpc`, that is `bare-rpc` and `bare-abort-controller`, which gives handlers the `signal` that aborts when the peer cancels a request.\n\n`start()` accepts `timeout`, how long to wait in milliseconds for the bundle to signal ready, and `grace`, how long a terminating bundle gets to run `stop()` and exit before it's killed. `timeout` defaults to waiting indefinitely and `grace` to 5 seconds. On Windows, a sidecar is killed along with its host, so `stop()` only runs when the host terminates it.\n\nFor `bare-sidecar` and `bare-worker`, the harness also exports `connect()`, which takes a sidecar or worker that the host started itself, such as one running a development entry with arguments, and resolves like `start()`. It accepts the same options, except those of the sidecar or worker. As the entry doesn't go through `stow()`, it attaches to the IPC itself, as described in <https://github.com/holepunchto/bare-stow-runtime>:\n\n```js\nconst runtime = require('bare-stow-runtime/process')\n\nconst ipc = runtime.attach(Bare.IPC)\n\nipc.run(() => require('./core.js'), ipc)\n```\n\n```js\nconst sidecar = new Sidecar('./dev.js', ['--verbose'], { stdio: 'inherit' })\n\nconst { ipc } = await harness.connect(sidecar)\n```\n\n`stow()` and `link()` read the module graph from disk by default. To read it from elsewhere, such as modules that aren't written to disk, pass `readModule`, `listPrefix`, and `resolveModule`. Generated files are still written to disk. A `readModule` that changes the type of a module also passes `aliases`, as for <https://github.com/holepunchto/bare-pack>, such as `{ '.mjs': '.js' }` to have ES modules converted to CommonJS loaded as such. They're merged over the aliases that `bare-stow` uses for TypeScript.",
   "extraSections": [
     {
       "heading": "Targets",
-      "body": "- `bare-sidecar` runs the bundle in a separate process using <https://github.com/holepunchto/bare-sidecar>, with the `javascript`, `python`, and `swift` languages on desktop. In JavaScript and Python, `start()` also accepts the options of `bare-sidecar`.\n- `bare-worker` runs the bundle in a thread of a Bare host using <https://github.com/holepunchto/bare-worker>, with the `javascript` language.\n- `bare-kit` runs the bundle in a worklet using <https://github.com/holepunchto/bare-kit>, with the `swift` language on macOS and iOS and the `kotlin` language on Android and the JVM. `start()` also accepts the options of the worklet and returns it alongside `ipc`, and on Android takes the `Context` first. In Kotlin, the worklet is closed once it exits, so it needs no closing of its own, and in Swift it's released with its last reference. Native addons are linked with <https://github.com/holepunchto/bare-link> and declared in the manifest, and assets are written next to the bundle. With the target option `linking` set to `'app'`, both are left to `link()` instead. On the JVM, addons and assets are written next to the bundle as files, which `start()` extracts along with the bundle to a temporary directory, so `linking` must be `'package'`."
+      "body": "The bundle runs in one of these targets, selected with `target` and configured with `targetOptions`.\n\n#### `bare-sidecar`\n\nRuns the bundle in a separate process using <https://github.com/holepunchto/bare-sidecar>, with the `javascript`, `python`, and `swift` languages on desktop. In JavaScript and Python, `start()` also accepts the options of `bare-sidecar`.\n\n#### `bare-worker`\n\nRuns the bundle in a thread of a Bare host using <https://github.com/holepunchto/bare-worker>, with the `javascript` language.\n\n#### `bare-kit`\n\nRuns the bundle in a worklet using <https://github.com/holepunchto/bare-kit>, with the `swift` language on macOS and iOS and the `kotlin` language on Android and the JVM. `start()` also accepts the options of the worklet and returns it alongside `ipc`, and on Android takes the `Context` first.\n\nNative addons are linked with <https://github.com/holepunchto/bare-link> and declared in the manifest, and assets are written next to the bundle. With the target option `linking` set to `'app'`, both are left to `link()` instead. On the JVM, addons and assets are written next to the bundle as files, which `start()` extracts along with the bundle to a temporary directory, so `linking` must be `'package'`.\n\nThe target option `engine` selects the JavaScript engine of the worklet, either `'v8'`, the default, or a smaller one: `'javascriptcore'` in Swift and `'quickjs'` in Kotlin. Stow every bundle of an application, and link its addons, with the same engine, as an application can only include one."
     },
     {
       "heading": "Linking",
@@ -29,7 +29,7 @@
     },
     {
       "heading": "Languages",
-      "body": "The harness is generated in one of these languages, selected with `language` and configured with `languageOptions`:\n\n- `javascript` writes an npm package. The `module` option is either `'esm'`, the default, or `'cjs'`.\n- `kotlin` writes a Gradle module. The `package` option names the package of the generated code and is required. The `platform` option is either `'android'`, the default, for an Android library module, or `'jvm'` for a Kotlin/JVM library module on Linux, macOS, and Windows. The dependencies are published to JitPack (<https://jitpack.io>), so add it to the repositories of the application.\n- `python` writes a Python package.\n- `swift` writes a Swift package.\n\nFor example, with an RPC client and server:\n\n```console\n$ bare-stow pack --target bare-sidecar --language python --client bare-rpc --server bare-rpc --out ./my-core ./core.js\n```\n\n```python\nimport asyncio\n\nimport my_core\n\n\nasync def main():\n    ipc, rpc = await my_core.start(\n        handlers=lambda router: router.on_request(2, lambda req: b\"hello\")\n    )\n\n    await rpc.request(1, b\"ping\")\n    await ipc.terminate()\n\n\nasyncio.run(main())\n```\n\nWith an RPC client, `start()` takes the handlers for the requests and events of the bundle, so that they are registered before the bundle can send any."
+      "body": "The harness is generated in one of these languages, selected with `language` and configured with `languageOptions`. For example, with an RPC client and server:\n\n```console\n$ bare-stow pack --target bare-sidecar --language python --client bare-rpc --server bare-rpc --out ./my-core ./core.js\n```\n\n```python\nimport asyncio\n\nimport my_core\n\n\nasync def main():\n    ipc, rpc = await my_core.start(\n        handlers=lambda router: router.on_request(2, lambda req: b\"hello\")\n    )\n\n    await rpc.request(1, b\"ping\")\n    await ipc.terminate()\n\n\nasyncio.run(main())\n```\n\nWith an RPC client, `start()` takes the handlers for the requests and events of the bundle, so that they are registered before the bundle can send any.\n\n#### `javascript`\n\nWrites an npm package. The `module` option is either `'esm'`, the default, or `'cjs'`.\n\n#### `kotlin`\n\nWrites a Gradle module. The `package` option names the package of the generated code and is required. The `platform` option is either `'android'`, the default, for an Android library module, or `'jvm'` for a Kotlin/JVM library module on Linux, macOS, and Windows.\n\nThe dependencies are published to JitPack (<https://jitpack.io>), so add it to the repositories of the application.\n\n#### `python`\n\nWrites a Python package.\n\n#### `swift`\n\nWrites a Swift package."
     },
     {
       "heading": "Protocol",
@@ -1069,7 +1069,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface TargetContext<O extends LanguageOptions = LanguageOptions> {\n  bundle: string\n  client: string | null\n  resources: string | null\n  options: O\n}"
+        "interface TargetContext<O extends LanguageOptions = LanguageOptions> {\n  bundle: string\n  client: string | null\n  resources: string | null\n  options: O\n  targetOptions: TargetOptions\n}"
       ],
       "description": "The context passed to a target language's `generate()`.",
       "deprecated": null,
@@ -1131,6 +1131,21 @@
             "resources: string | null"
           ],
           "description": "The application resource holding the assets of the bundle, which is then started as\n`<resources>.bundle`, or `null` if the assets are next to the bundle.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TargetContext.targetOptions",
+          "name": "targetOptions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "targetOptions: TargetOptions"
+          ],
+          "description": "The options resolved by the target.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -1289,7 +1304,7 @@
       "kind": "interface",
       "static": false,
       "signatures": [
-        "interface TargetLinkContext<O extends LanguageOptions = LanguageOptions> {\n  options: O\n}"
+        "interface TargetLinkContext<O extends LanguageOptions = LanguageOptions> {\n  options: O\n  targetOptions: TargetOptions\n}"
       ],
       "description": "The context passed to a target language's `link()`.",
       "deprecated": null,
@@ -1306,6 +1321,21 @@
             "options: O"
           ],
           "description": "The options resolved by the language, with any pinned by the target applied.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "TargetLinkContext.targetOptions",
+          "name": "targetOptions",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "targetOptions: TargetOptions"
+          ],
+          "description": "The options resolved by the target.",
           "deprecated": null,
           "params": [],
           "returns": null,
@@ -2600,5 +2630,5 @@
     }
   ],
   "subpaths": [],
-  "generatedAt": "2026-11-12T17:46:26.812Z"
+  "generatedAt": "2026-11-16T14:33:29.822Z"
 }

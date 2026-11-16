@@ -27,11 +27,11 @@ const layout: Layout = {
     },
     createServer: {
       opts: 'Options applied to each incoming socket; the same as `TLSSocket`, plus any options supported by `bare-net`.',
-      onconnection: "Called on each `'connection'` event.",
+      onsecureconnection: "Called on each `'secureConnection'` event.",
     },
     createConnection: {
       opts: "Options passed to both the underlying TCP socket and `TLSSocket`; `port` is required and `host` defaults to `'localhost'`.",
-      onconnect: "Called once the TLS handshake has completed (the socket's `'connect'` event). Before v3.2.0, it was called when the TCP connection opened, before the handshake.",
+      onconnect: "Called once the TLS handshake has completed (the socket's `'secureConnect'` event). Before v3.2.0, it was called when the TCP connection opened, before the handshake.",
     },
     'errors.from': {
       err: 'The error to convert.',

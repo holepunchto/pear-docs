@@ -4,7 +4,7 @@ description: "Transport Layer Security (TLS) streams for JavaScript"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "3.2.1"
+upstreamVersion: "4.0.0"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -16,6 +16,16 @@ Mirrors the Node.js [`tls`](https://nodejs.org/api/tls.html) module.
 ```sh
 npm i bare-tls
 ```
+
+<Callout type="warn">
+**Upgrading from 3.x.** Version 4.0.0 aligns the events with Node.js. Check these when you upgrade.
+
+- A `TLSSocket` emits `'secureConnect'` instead of `'connect'` when the TLS handshake completes. The `onconnect` callback of `createConnection()` still runs at that point.
+- A socket from `createConnection()` emits `'connect'` when its TCP connection opens, before the handshake.
+- A server from `createServer()` emits `'secureConnection'` with the `TLSNetSocket` once the handshake of a connection completes, and `'tlsClientError'` when the connection fails before that. Its `onconnection` callback became `onsecureconnection`, and its `'connection'` event now fires when a TCP connection is accepted, before the handshake, with the plain `bare-net` socket.
+- `createServer()` no longer takes `eagerOpen`.
+- A socket whose underlying connection closes before the handshake completes fails with a `TLSError` that has the code `ECONNRESET`, available as `errors.CONNECTION_RESET()`.
+</Callout>
 
 ## Usage
 
@@ -43,6 +53,18 @@ client.on('data', (data) => console.log(data)).end('ping')
 ## API
 
 ### errors
+
+#### `errors.code: string`
+
+#### `errors.CONNECTION_RESET(msg: string): TLSError`
+
+The underlying socket disconnected before the TLS handshake completed.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
 
 #### `errors.from(err: Error): TLSError`
 
@@ -87,16 +109,20 @@ The underlying duplex stream.
 
 ### Functions
 
-#### `createServer(opts?: TLSSocketOptions, onconnection?: (socket: TLSSocket) => void): TLSNetServer`
+#### `createServer`
 
-Creates a TLS server that listens for TCP connections and wraps them with TLS. Incoming connections are emitted as `'connection'` events with a `tls.Socket` instance. Options are the same as `tls.Socket`, plus any options supported by \<https://github.com/holepunchto/bare-net>.
+```ts
+createServer(opts?: Omit<TLSSocketOptions, 'eagerOpen'>, onsecureconnection?: (socket: TLSNetSocket) => void): TLSNetServer
+```
+
+Creates a TLS server that listens for TCP connections and wraps them with TLS. Incoming connections are emitted as `'secureConnection'` events with a `tls.Socket` instance once the handshake completes. Options are the same as `tls.Socket`, plus any options supported by \<https://github.com/holepunchto/bare-net>.
 
 **Parameters**
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `opts?` | [`TLSSocketOptions`](#tlssocketoptions) | — | Options applied to each incoming socket; the same as `TLSSocket`, plus any options supported by `bare-net`. |
-| `onconnection?` | `(socket: TLSSocket) => void` | — | Called on each `'connection'` event. |
+| `opts?` | `Omit<TLSSocketOptions, 'eagerOpen'>` | — | Options applied to each incoming socket; the same as `TLSSocket`, plus any options supported by `bare-net`. |
+| `onsecureconnection?` | `(socket: TLSNetSocket) => void` | — | Called on each `'secureConnection'` event. |
 
 #### `createConnection`
 
@@ -111,7 +137,7 @@ Creates a TCP connection and wraps it with TLS. `opts` are passed to both the un
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `opts` | `TLSSocketOptions & { port: number; host?: string }` | — | Options passed to both the underlying TCP socket and `TLSSocket`; `port` is required and `host` defaults to `'localhost'`. |
-| `onconnect?` | `() => void` | — | Called once the TLS handshake has completed (the socket's `'connect'` event). Before v3.2.0, it was called when the TCP connection opened, before the handshake. |
+| `onconnect?` | `() => void` | — | Called once the TLS handshake has completed (the socket's `'secureConnect'` event). Before v3.2.0, it was called when the TCP connection opened, before the handshake. |
 
 ### Constants and variables
 
@@ -134,7 +160,7 @@ Internal state flags used by `TLSSocket`, such as `state.CONNECTED`.
 
 ```ts
 interface TLSSocketEvents {
-  connect: []
+  secureConnect: []
   data: [data: unknown]
   end: []
   readable: []
@@ -168,6 +194,27 @@ interface TLSSocketOptions {
 
 Options for a `TLSSocket`.
 
+#### `TLSNetSocketEvents`
+
+```ts
+interface TLSNetSocketEvents {
+  connect: []
+  timeout: []
+  secureConnect: []
+  data: [data: unknown]
+  end: []
+  readable: []
+  piping: [dest: Writable]
+  close: []
+  error: [err: Error]
+  drain: []
+  finish: []
+  pipe: [src: Readable]
+}
+```
+
+Events emitted by a `TLSNetSocket`.
+
 #### `TLSNetSocket`
 
 ```ts
@@ -190,7 +237,9 @@ A `TLSSocket` over a `bare-net` socket, as returned by `createConnection()`. `re
 ```ts
 interface TLSNetServerEvents {
   listening: []
-  connection: [socket: TLSSocket]
+  connection: [socket: NetSocket]
+  secureConnection: [socket: TLSNetSocket]
+  tlsClientError: [err: Error, socket: TLSNetSocket]
   error: [err: Error]
   close: []
 }
@@ -206,7 +255,7 @@ interface TLSNetServer extends EventEmitter<TLSNetServerEvents> {
 }
 ```
 
-A TLS server over TCP; incoming connections are wrapped with TLS and emitted as `'connection'` events.
+A TLS server over TCP; incoming connections are wrapped with TLS and emitted as `'secureConnection'` events once the handshake completes.
 
 ## `bare-tls/constants`
 
@@ -228,6 +277,18 @@ Internal state flags used by `TLSSocket`, such as `state.CONNECTED`.
 ## `bare-tls/errors`
 
 ### TLSError
+
+#### `TLSError.code: string`
+
+#### `TLSError.CONNECTION_RESET(msg: string): TLSError`
+
+The underlying socket disconnected before the TLS handshake completed.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `msg` | `string` | — | — |
 
 #### `TLSError.from(err: Error): TLSError`
 

@@ -4,7 +4,7 @@ description: "Module bundling and harness generation for Bare"
 docType: reference
 product: bare
 schemaType: APIReference
-upstreamVersion: "0.3.7"
+upstreamVersion: "0.3.9"
 ---
 
 <mark style={{ backgroundColor: '#7dde9a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 500 }}>stable</mark>
@@ -85,7 +85,7 @@ const runtime = require('bare-stow-runtime/process')
 
 const ipc = runtime.attach(Bare.IPC)
 
-ipc.run(() => import('./core.js'), ipc)
+ipc.run(() => require('./core.js'), ipc)
 ```
 
 ```js
@@ -311,6 +311,7 @@ interface TargetContext<O extends LanguageOptions = LanguageOptions> {
   client: string | null
   resources: string | null
   options: O
+  targetOptions: TargetOptions
 }
 ```
 
@@ -345,6 +346,7 @@ The context passed to the properties of a target that are functions.
 ```ts
 interface TargetLinkContext<O extends LanguageOptions = LanguageOptions> {
   options: O
+  targetOptions: TargetOptions
 }
 ```
 
@@ -488,9 +490,23 @@ An artifact written by `stow()`, yielded once its file has been written.
 
 ## Targets
 
-- `bare-sidecar` runs the bundle in a separate process using [https://github.com/holepunchto/bare-sidecar](https://github.com/holepunchto/bare-sidecar), with the `javascript`, `python`, and `swift` languages on desktop. In JavaScript and Python, `start()` also accepts the options of `bare-sidecar`.
-- `bare-worker` runs the bundle in a thread of a Bare host using [https://github.com/holepunchto/bare-worker](https://github.com/holepunchto/bare-worker), with the `javascript` language.
-- `bare-kit` runs the bundle in a worklet using [https://github.com/holepunchto/bare-kit](https://github.com/holepunchto/bare-kit), with the `swift` language on macOS and iOS and the `kotlin` language on Android and the JVM. `start()` also accepts the options of the worklet and returns it alongside `ipc`, and on Android takes the `Context` first. In Kotlin, the worklet is closed once it exits, so it needs no closing of its own, and in Swift it's released with its last reference. Native addons are linked with [https://github.com/holepunchto/bare-link](https://github.com/holepunchto/bare-link) and declared in the manifest, and assets are written next to the bundle. With the target option `linking` set to `'app'`, both are left to `link()` instead. On the JVM, addons and assets are written next to the bundle as files, which `start()` extracts along with the bundle to a temporary directory, so `linking` must be `'package'`.
+The bundle runs in one of these targets, selected with `target` and configured with `targetOptions`.
+
+#### `bare-sidecar`
+
+Runs the bundle in a separate process using [https://github.com/holepunchto/bare-sidecar](https://github.com/holepunchto/bare-sidecar), with the `javascript`, `python`, and `swift` languages on desktop. In JavaScript and Python, `start()` also accepts the options of `bare-sidecar`.
+
+#### `bare-worker`
+
+Runs the bundle in a thread of a Bare host using [https://github.com/holepunchto/bare-worker](https://github.com/holepunchto/bare-worker), with the `javascript` language.
+
+#### `bare-kit`
+
+Runs the bundle in a worklet using [https://github.com/holepunchto/bare-kit](https://github.com/holepunchto/bare-kit), with the `swift` language on macOS and iOS and the `kotlin` language on Android and the JVM. `start()` also accepts the options of the worklet and returns it alongside `ipc`, and on Android takes the `Context` first.
+
+Native addons are linked with [https://github.com/holepunchto/bare-link](https://github.com/holepunchto/bare-link) and declared in the manifest, and assets are written next to the bundle. With the target option `linking` set to `'app'`, both are left to `link()` instead. On the JVM, addons and assets are written next to the bundle as files, which `start()` extracts along with the bundle to a temporary directory, so `linking` must be `'package'`.
+
+The target option `engine` selects the JavaScript engine of the worklet, either `'v8'`, the default, or a smaller one: `'javascriptcore'` in Swift and `'quickjs'` in Kotlin. Stow every bundle of an application, and link its addons, with the same engine, as an application can only include one.
 
 ## Linking
 
@@ -515,14 +531,7 @@ The language lays out the package and the target adds what loads the addons. For
 
 ## Languages
 
-The harness is generated in one of these languages, selected with `language` and configured with `languageOptions`:
-
-- `javascript` writes an npm package. The `module` option is either `'esm'`, the default, or `'cjs'`.
-- `kotlin` writes a Gradle module. The `package` option names the package of the generated code and is required. The `platform` option is either `'android'`, the default, for an Android library module, or `'jvm'` for a Kotlin/JVM library module on Linux, macOS, and Windows. The dependencies are published to JitPack ([https://jitpack.io](https://jitpack.io)), so add it to the repositories of the application.
-- `python` writes a Python package.
-- `swift` writes a Swift package.
-
-For example, with an RPC client and server:
+The harness is generated in one of these languages, selected with `language` and configured with `languageOptions`. For example, with an RPC client and server:
 
 ```console
 $ bare-stow pack --target bare-sidecar --language python --client bare-rpc --server bare-rpc --out ./my-core ./core.js
@@ -547,6 +556,24 @@ asyncio.run(main())
 With an RPC client, `start()` takes the handlers for the requests and events of the bundle, so that they are registered before the bundle can send any.
 
 Changed in v0.3.6: the generated code depends on the releases of `bare-rpc` that support cancellation: `bare-rpc` 2.x and `bare-abort-controller` in the bundle and in a JavaScript harness, and `bare-rpc-swift` 3.x, `bare-rpc-kotlin` 0.6.x, or `bare-rpc` 0.3.x for Python in a harness in those languages. See [Changes in v2.0.0](/bare/reference/bare/modules/bare-rpc#changes-in-v200) on the `bare-rpc` page.
+
+#### `javascript`
+
+Writes an npm package. The `module` option is either `'esm'`, the default, or `'cjs'`.
+
+#### `kotlin`
+
+Writes a Gradle module. The `package` option names the package of the generated code and is required. The `platform` option is either `'android'`, the default, for an Android library module, or `'jvm'` for a Kotlin/JVM library module on Linux, macOS, and Windows.
+
+The dependencies are published to JitPack ([https://jitpack.io](https://jitpack.io)), so add it to the repositories of the application.
+
+#### `python`
+
+Writes a Python package.
+
+#### `swift`
+
+Writes a Swift package.
 
 ## Protocol
 
