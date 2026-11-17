@@ -21,7 +21,7 @@ const TIERS: Product[] = [
     href: '/',
     tagline: 'The peer-to-peer platform',
     blurb:
-      'A CLI to build, stage, provision, and seed releases, and Pear OTA, a library your app embeds to update itself.',
+      'A CLI to build, stage, provision, and seed releases, and Pear OTA, a library your app embeds to update itself, run its Bare workers, and manage its storage.',
   },
   {
     key: 'p2p',
