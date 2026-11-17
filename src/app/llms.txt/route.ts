@@ -23,7 +23,9 @@ const QUADRANTS: [key: string, title: string][] = [
 ];
 
 const SUMMARY =
-  'Pear loads applications remotely from peers and lets anyone create and share them. ' +
+  'Pear is a platform for building, distributing, and updating peer-to-peer applications: ' +
+  'a CLI to build, stage, provision, and seed releases, and Pear OTA (pear-runtime), a ' +
+  'library your app embeds to update itself. ' +
   'P2P is the set of building blocks it is made from (Hypercore, Hyperswarm, Hyperbee, ' +
   'Hyperdrive, Autobase, HyperDHT, Corestore), usable with or without Pear. Bare is the ' +
   'small JavaScript runtime underneath, for desktop, mobile, and embedded use.';

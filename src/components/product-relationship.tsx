@@ -21,7 +21,7 @@ const TIERS: Product[] = [
     href: '/',
     tagline: 'The peer-to-peer platform',
     blurb:
-      'Runtime, CLI, and over-the-air updates for building, sharing, and updating peer-to-peer apps on desktop, mobile, and terminal.',
+      'A CLI to build, stage, provision, and seed releases, and Pear OTA, a library your app embeds to update itself.',
   },
   {
     key: 'p2p',
