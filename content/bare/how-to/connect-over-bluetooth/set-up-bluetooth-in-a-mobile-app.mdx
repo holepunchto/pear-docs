@@ -79,9 +79,9 @@ In a native Kotlin activity, make the same check with [`checkSelfPermission()`](
 
 ## Link the native addons
 
-`bare-bluetooth` is JavaScript, but it loads [native addons](/bare/explanation/native-addons): `bare-bluetooth-apple` on iOS and `bare-bluetooth-android` on Android. You have to link them into the app. [`bare-link`](https://github.com/holepunchto/bare-link) does this from the worklet's entry point.
+`bare-bluetooth` is JavaScript, but it loads [native addons](/bare/explanation/native-addons): `bare-bluetooth-apple` on iOS and `bare-bluetooth-android` on Android. You have to link them into the app, from the worklet's entry point. With Bare Kit 3, which react-native-bare-kit 0.17 and the Swift and Kotlin bindings use, [`bare-stow link --target bare-kit`](/bare/reference/bare/bare-kit#linking-addons-and-assets) does this. With Bare Kit 2 and react-native-bare-kit 0.16, [`bare-link`](https://github.com/holepunchto/bare-link) does.
 
-On Android, `bare-bluetooth-android` also carries Java helper classes. `bare-link` copies them next to the addon, and the app has to compile them in too.
+On Android, `bare-bluetooth-android` also carries Java helper classes, as a `.jar` next to the addon, and the app has to compile them in too. The Gradle module that `bare-stow link` writes adds the `.jar` as a dependency for you. With `bare-link`, add it yourself.
 
 `bare-mobile-doctor` links every worklet into the addon folders that `react-native-bare-kit` already picks up, with a short script that you run as `npm run link`:
 
@@ -89,10 +89,10 @@ On Android, `bare-bluetooth-android` also carries Java helper classes. `bare-lin
 ```
 
 <Callout type="warn">
-This script is for react-native-bare-kit 0.16, which `bare-mobile-doctor` uses. From 0.17, the package no longer builds those addon folders into the app, and the app brings Bare Kit itself. Link the worklets with `bare-stow link --target bare-kit` instead, which writes the addons and Bare Kit into a Swift package and a Gradle module. See [Migrate to Bare Kit 3](/bare/how-to/run-on-native/migrate-to-bare-kit-3#link-bare-kit-addons-and-assets).
+This script is for react-native-bare-kit 0.16, which `bare-mobile-doctor` uses. From 0.17, the package no longer builds those addon folders into the app, and the app brings Bare Kit itself. Link the worklets with `bare-stow link --target bare-kit` instead, which writes the addons and Bare Kit into a Swift package and a Gradle module. In an Expo app such as `bare-mobile-doctor`, list them in the `workers` option of [`expo-bare-kit`](https://github.com/holepunchto/expo-bare-kit) 0.3.0 or later, which runs `bare-stow link` for you. See [Migrate to Bare Kit 3](/bare/how-to/run-on-native/migrate-to-bare-kit-3#link-bare-kit-addons-and-assets).
 </Callout>
 
-A native Android app has to run `bare-link` itself before every build, for example from a [Gradle](https://gradle.org/) task, so that the addon and its class files are in place when the app compiles.
+A native Android app on Bare Kit 3 runs `bare-stow link --target bare-kit --language kotlin` and includes the Gradle module it writes, running it again whenever the worklet's dependencies change. On Bare Kit 2, it ran `bare-link` itself before every build, for example from a [Gradle](https://gradle.org/) task, so that the addon and its class files were in place when the app compiled.
 
 R8 is the other Android build step to check. The addon finds its helper classes (`to.holepunch.bare.bluetooth.*`) by name through JNI, which R8 can't see when it shrinks a release build. As of `bare-bluetooth-android` 0.11.7, the classes JAR embeds a keep rule for them, so R8 applies it to an app that depends on that JAR. With an earlier version, add this rule to the app's own R8 rules:
 
