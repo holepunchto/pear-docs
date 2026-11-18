@@ -147,7 +147,7 @@ export async function generateMetadata(props: PageProps<'/[[...slug]]'>): Promis
   // The home title is `{ absolute }` (no template), so it would otherwise equal
   // the on-page <h1>. Give it a distinct, keyword-rich title instead.
   if (isHomePage) {
-    metadata.title = { absolute: `${page.data.title} — Peer-to-Peer Application Runtime` };
+    metadata.title = { absolute: `${page.data.title} — Peer-to-Peer Application Platform` };
   } else if (page.data.seoTitle) {
     // Plain string → root layout's title template appends " | Pear Docs".
     // The on-page <h1> keeps `page.data.title`.

@@ -1,37 +1,42 @@
 ---
 title: "Distribute as a binary"
-description: "Ship a Pear application as a small bootstrap binary that pulls the latest version from the swarm. One binary serves every future release."
+description: "Get a Pear app onto machines that don't have Pear: install it from a pear:// link, or hand out a signed binary that updates itself over the air with Pear OTA."
 docType: how-to
 product: pear
 schemaType: WebPage
 ---
 
-The default Pear distribution model assumes users already have the `pear` runtime installed; they open `pear://<your-link>` to launch your application. For users who don't—or for app stores that want a self-contained download—Pear supports compiling a small bootstrap binary that pulls the platform and the application from the swarm at first launch. For why this stays small, see [Storage and distribution](/pear/explanation/storage-and-distribution).
+A Pear v3 app is a normal installed binary. It embeds [Pear OTA](/pear/reference/pear/runtime) (`pear-runtime`) and follows an `upgrade` link, so one binary can serve every future release. There is no bootstrap binary to compile: `pear run` was removed in v3, so a `pear://` link no longer launches an app through an installed Pear. This guide gets that binary to users who don't have Pear, then covers what to do for each release after that.
 
-The binary is bootstrap-only: it doesn't ship the application's code or assets, only the references needed to fetch them. Once a user has run any version, future releases reach them via the swarm without recompilation—the same delivery channel covered in [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment).
+<Callout type="warn">
+The `pear-appling` template and its `cmake-pear` build were the v2 way to do this. Both are archived upstream, and the launcher they build bootstraps a pinned v2 platform rather than Pear v3, so don't start new work from them. If you have an appling-era app, see [Migrate from pear run to Pear OTA](/pear/how-to/operate-an-app/migration).
+</Callout>
+
+## Before you begin
+
+- An app that embeds Pear OTA and sets an `upgrade` link; see [Integrate Pear OTA](/pear/how-to/operate-an-app/integrate-pear-ota). The [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron) and [`hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare) templates already do.
+- The [`pear` CLI](/pear/getting-started#install-pear) on the machine you release from. Your users don't need it.
 
 ## Steps
 
-1. **Clone the [`pear-appling`](https://github.com/holepunchto/pear-appling/) template repository.** It's a CMake-based project that produces native binaries for macOS, Linux, and Windows from one source tree. (The repository is archived/read-only upstream, but remains usable as a template.)
+1. **Version and build the release.** For every release after the first, raise `version` in `package.json` with `npm version patch` (or the level you intend). An installed copy takes a release only if the release's `version` is higher than the copy's, so without a bump nobody receives it; see [Version](/pear/how-to/operate-an-app/manual-deployment/deployment#2-version). Then make the distributables and assemble the deployment directory with `pear build`: see [Build desktop distributables](/pear/how-to/operate-an-app/build-and-package/build-desktop-distributables) for an Electron app, or [Build a CLI executable with pear make](/pear/how-to/operate-an-app/build-and-package/build-a-cli-executable) for a Bare command-line app (Pear 3.7.0 or later). Steps 3 and 4 of [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment) show the whole sequence.
 
-2. **Edit `CMakeLists.txt` with your application metadata.** The `add_pear_appling()` call holds the application name (`NAME`), `pear://` link (`ID`), version (`VERSION`), author and description, plus the platform-specific identifiers and signing inputs (`MACOS_IDENTIFIER`, `MACOS_SIGNING_IDENTITY`, `WINDOWS_SIGNING_SUBJECT`, `WINDOWS_SIGNING_THUMBPRINT`, and so on). Replace each placeholder with your own value.
+2. **Publish it to the link your binaries follow.** Each binary's `upgrade` link decides its release line, and `pear stage` appends only to the link you name, so release along the path that line expects; see [Set the upgrade link](/pear/how-to/operate-an-app/manual-deployment/deployment#1-set-the-upgrade-link) and [Release lines](/pear/explanation/deployment-releasing-apps-p2p#release-lines). Keep the link seeded so users can fetch it ([Touch and seed](/pear/how-to/operate-an-app/manual-deployment/deployment#0-touch-and-seed)). Whichever line it is, the link must carry a build made with `pear build`.
+   - **Stage link** (developer builds): [stage](/pear/how-to/operate-an-app/manual-deployment/deployment#5-stage) the deployment directory to it.
+   - **Provision link** (internal preview): stage, then [provision](/pear/how-to/operate-an-app/manual-deployment/deployment#6-provision) onto it.
+   - **Multisig link** (production): stage, provision, then have a quorum of signers cosign and commit with [Sign with multisig](/pear/how-to/operate-an-app/multisig/sign-with-multisig), after the one-time [Set up multisig](/pear/how-to/operate-an-app/multisig/set-up-multisig). Only `pear multisig` writes this drive, so staging and provisioning alone leave production binaries where they were.
 
-3. **Build the binary** with [`bare-make`](https://github.com/holepunchto/bare-make):
+3. **Give users the binary.** Choose how they first get it:
+   - **From the link.** Use the link your binaries follow. On a machine without Pear, run `npx pear-install pear://<key>`; it needs Node.js and npm, not Pear. On a machine with Pear, run `pear install pear://<key>`. [`pear install`](/pear/reference/pear/cli#pear-install) lists where each OS puts the result.
+   - **As a download.** Publish the distributable from step 1 on GitHub Releases or a download page, signed first: macOS and Windows builds need vendor signing, `pear make` output isn't signed, and Windows MSIX updates need the same certificate on every build; see [Build desktop distributables](/pear/how-to/operate-an-app/build-and-package/build-desktop-distributables).
+   - **Through a store.** Submit the build to the Mac App Store, Flathub, the Snap Store, or a mobile store; see [Submit to app stores](/pear/how-to/operate-an-app/build-and-package/submit-to-app-stores).
 
-   ```sh
-   npm i -g bare-make
-   npm i
-   bare-make generate
-   bare-make build
-   ```
-
-   The output is one small binary—typically a few MB—that bootstraps Pear when launched. Run the same steps on each target OS to produce that platform's binary.
-
-4. **Distribute the binary** via your channel of choice (GitHub Releases, an MSI/dmg, an app store, a download link). End users run it; on first launch it replicates the Pear platform and your application, then runs it. On subsequent launches, the swarm delivers any new version of the application—usually no recompile or redistribution is needed.
+4. **Ship each later release the same way.** Repeat steps 1 and 2, raising `version` each time. Installed copies poll their `upgrade` link and update themselves over the air, so users don't download a new binary. [Confirm stage updates](/pear/how-to/operate-an-app/manual-deployment/deployment#confirm-stage-updates) shows how to check that a release is visible. Two cases need more than the link:
+   - **Mac App Store builds** keep the updater off, so each release is a new store submission; see [Updates](/pear/how-to/operate-an-app/build-and-package/submit-to-app-stores#updates). Flathub and Snap installs still update over the air.
+   - **Mobile apps** take only the Metro bundle over the air. The Bare worker bundle loads from the installed build on every launch, so changing it needs a new store build; see [Two bundles, not one](/pear/how-to/operate-an-app/manual-deployment/mobile#two-bundles-not-one).
 
 ## When this is the wrong tool
 
-- **For a command-line app that should carry its own code**, build a standalone executable with [`pear make`](/pear/how-to/operate-an-app/build-and-package/build-a-cli-executable) instead, from Pear 3.7.0.
-- **For users who already run Pear**, `pear://<your-link>` is the lighter path: zero compilation, instant updates.
-- **For installing apps or binaries from a link**, the [`pear install`](/pear/reference/pear/cli#pear-install) command (or `npx pear-install pear://<key>` on machines without Pear) pulls a build from the swarm without compiling a bootstrap binary yourself. See [Installing applications](/pear/explanation/storage-and-distribution#installing-applications).
-- **For mobile distribution**, `pear-appling`'s bootstrap-binary model doesn't apply—mobile apps ship through the App Store and Google Play (or TestFlight / Play Console internal testing for pre-release builds), not as a standalone compiled binary. See [Submit to app stores](/pear/how-to/operate-an-app/build-and-package/submit-to-app-stores#ios). For the raw `Worklet`/`IPC` primitive `pear-mobile` builds on, see [Bare Kit](/bare/reference/bare/bare-kit).
+- **For users who already have Pear**, `pear install pear://<key>` skips the download page entirely.
+- **For a command-line app that never updates itself**, [`pear make`](/pear/how-to/operate-an-app/build-and-package/build-a-cli-executable) alone is enough, from Pear 3.7.0. It writes a standalone executable that needs no Node.js, Bare, or Pear, so you can skip the link, stage, and provision steps. Its output isn't signed for distribution, so sign it yourself. If the app should update itself, follow the steps above with `pear make` as step 1.
+- **For mobile distribution**, there is no standalone binary to hand out—mobile apps ship through the App Store and Google Play (or TestFlight / Play Console internal testing for pre-release builds). See [Submit to app stores](/pear/how-to/operate-an-app/build-and-package/submit-to-app-stores#ios). For the raw `Worklet`/`IPC` primitive `pear-mobile` builds on, see [Bare Kit](/bare/reference/bare/bare-kit).
