@@ -1,0 +1,151 @@
+---
+title: "speedtest-p2p"
+description: "Reference for speedtest-p2p: a terminal app that measures download and upload throughput against other peers over Hyperswarm, with no speed-test server."
+seoTitle: "speedtest-p2p: Peer-to-Peer Network Speed Test"
+docType: reference
+product: p2p
+schemaType: APIReference
+---
+
+speedtest-p2p measures your connection's download and upload throughput against other peers instead of a speed-test server. Every running copy joins the same [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) topic as both client and server, so each one serves tests for the others while it waits. A test runs against all available peers at once to saturate the link. This page documents the terminal app in the [`speedtest-p2p`](https://github.com/holepunchto/speedtest-p2p) repository, version 0.1.0, which runs on [Bare](/bare).
+
+<Callout type="warn">
+speedtest-p2p is a **Pear Labs** project: experimental, lightly reviewed, and with no commitment to maintenance, backwards compatibility, or security response times. It has no npm package, no tagged release, and no `pear://` link yet, so you build it from source.
+</Callout>
+
+## System support
+
+Desktop only: macOS, Linux, and Windows, on x64 and arm64. Running from source needs Bare 1.30.0 or later. speedtest-p2p is not available on Android or iOS.
+
+## Install
+
+Build from source:
+
+```sh
+git clone https://github.com/holepunchto/speedtest-p2p.git
+cd speedtest-p2p
+npm i -g bare
+npm ci
+```
+
+Run it from the checkout:
+
+```sh
+bare index.js
+```
+
+Or build a standalone executable for this machine with [`bare-build`](https://github.com/holepunchto/bare-build), written to `out/<platform>-<arch>/speedtest-p2p`:
+
+```sh
+npm run make
+```
+
+## `speedtest-p2p`
+
+[Command source on GitHub](https://github.com/holepunchto/speedtest-p2p/blob/78c1264449dadfbe6976ecadf82f2e1d9a99749f/cmd/index.js)
+
+Open the speed-test terminal UI and join a lobby.
+
+```sh
+speedtest-p2p [flags]
+```
+
+Flags:
+
+- `--lobby <name>`: join a private lobby instead of the public one.
+  Default: the public lobby
+- `--relay <public-key>`: register a [blind relay](/p2p/how-to/connect-to-peers/relay-connections-through-a-blind-relay) for connections to peers that can't be reached directly.
+- `--version, -v`: print the version and exit.
+- `--help, -h`: show help.
+
+Only peers in the same lobby find each other. A lobby name is hashed into the topic, so it is case- and space-sensitive, but it is not a password: anyone who knows the name can join.
+
+The standalone executable also accepts `--updates`, `--no-updates`, and `--storage <dir>`, which control over-the-air updates. The repository's `package.json` has no upgrade link set, so builds from it never update themselves.
+
+Example:
+
+```sh
+speedtest-p2p --lobby "team office"
+```
+
+### Terminal UI
+
+The UI lists the connected peers with their latency and their last download and upload speeds in Mbps, sorted by latency, plus your public address. On a terminal at least 104 columns wide it also shows a **Leechers** table of the peers your copy has served tests to.
+
+| Key | Action |
+| --- | --- |
+| `Enter` | Start a test, once at least one peer is available and no test is running |
+| `Tab` | Switch between the peers table and the Leechers table |
+| `↑` / `k`, `↓` / `j` | Scroll the active table by one row |
+| `Page Up`, `Page Down` | Scroll the active table by one page |
+| `Home`, `End` | Jump to the top or bottom of the active table |
+| `q`, `Ctrl+C` | Quit |
+
+### Environment variables
+
+- `SPEEDTEST_P2P_BOOTSTRAP`: a comma-separated list of DHT bootstrap nodes, for testing on a private DHT. It changes the route, not the protocol or the topic.
+
+## How a test works
+
+Each copy joins its topic as both client and server, refreshes discovery every 2 seconds, and keeps up to 32 connections. A test uses every connected peer that is ready and idle:
+
+1. **Download, 8 seconds.** Each peer streams data to you, and you count the bytes received.
+2. **Upload, 8 seconds.** You stream data to each peer, and each peer counts the bytes it receives.
+3. **Verification.** Each peer replies with the bytes it sent and received. A peer that disconnects first, or whose counts don't match yours, counts as zero for upload.
+
+Download speed is the bytes received in the first phase over its measured duration. Upload speed is the confirmed bytes across all peers over the longer of the local upload phase and the time until the last verified reply. Both measure application payload, so the peers, the network path, a relay, or the device itself can be the limit. The app doesn't detect whether the link was saturated.
+
+When two peers start a test against each other at the same moment, the one with the smaller Hyperswarm public key keeps its test and the other serves it.
+
+## Protocol
+
+What a compatible peer must implement. Upstream documents it in [`PROTOCOL.md`](https://github.com/holepunchto/speedtest-p2p/blob/78c1264449dadfbe6976ecadf82f2e1d9a99749f/PROTOCOL.md).
+
+### Topics
+
+| Lobby | Topic |
+| --- | --- |
+| Public | `SHA256(UTF8("speedtest-p2p/public/v1\0"))` |
+| Private | `SHA256(UTF8("speedtest-p2p/lobby/v1\0" + name))` |
+
+Both are 32 bytes. The `\0` is part of each prefix.
+
+### Messages
+
+All traffic runs over the encrypted Hyperswarm stream. Messages are ASCII tokens with no length prefix or delimiter, and may span chunks:
+
+| Token | Sent by | Meaning |
+| --- | --- | --- |
+| `speedtest-p2p/3` | Both peers, on connection | Protocol version. A peer is ready once the tokens match. |
+| `speedtest-p2p/download` | Initiator | Start a test. The responder starts streaming data. |
+| `speedtest-p2p/upload` | Initiator | Switch phases. The responder stops sending and counts what it receives. |
+| `speedtest-p2p/stop` | Initiator | End the test. The responder replies with its counts. |
+
+Data is `0x00` bytes in blocks of 65,536 bytes. The reply is UTF-8 JSON of at most 1,024 bytes, such as `{"type":"result","downloaded":65536,"uploaded":65536}`, where `downloaded` is the bytes the responder sent and `uploaded` the bytes it received. A connection can serve another test after the reply.
+
+### Limits
+
+| Limit | Value |
+| --- | --- |
+| Version handshake | 10 seconds |
+| A started request to an idle peer | 10 seconds |
+| Serving a test | 30 seconds |
+| Waiting for a reply | 10 seconds |
+| Largest incoming chunk | 65,536 bytes |
+
+An invalid token or an oversized chunk closes the stream.
+
+## Running under pm2
+
+To keep a copy running in the background, so it serves tests for other peers, build the standalone executable and start it with [pm2](https://github.com/Unitech/pm2):
+
+```sh
+npm run make
+pm2 start ./out/<platform>-<arch>/speedtest-p2p
+```
+
+## See also
+
+- [Hyperswarm](/p2p/reference/building-blocks/hyperswarm)—the topic-based discovery speedtest-p2p uses.
+- [Relay connections through a blind relay](/p2p/how-to/connect-to-peers/relay-connections-through-a-blind-relay)—run the relay that `--relay` points at.
+- [Peer-to-peer, demystified](/p2p/explanation/peer-to-peer-demystified)—why some peers can't connect directly.
