@@ -1,0 +1,45 @@
+---
+title: PearPass
+description: How PearPass, an open-source peer-to-peer password manager, is built on Pear—Autobase vaults via autopass, an Electron host on pear-runtime, mobile and browser-extension clients, and where to read the source.
+seoTitle: "PearPass: An Open-Source Password Manager Built on Pear"
+docType: explanation
+product: pear
+schemaType: WebPage
+---
+
+[PearPass](https://pass.pears.com) is an open-source, end-to-end encrypted password and identity manager built on Pear Runtime. Vaults are encrypted and stored on the user's own device and synced directly between that user's devices, with no central server holding the data. It ships as a desktop app for macOS, Linux, and Windows, a mobile app, and a browser extension, and the source for all three is public under the [`tetherto`](https://github.com/tetherto) GitHub organization.
+
+That makes PearPass the Pear app whose architecture you can read rather than infer, which is why it's documented here. Keep one thing in mind while reading it: the desktop repository's README states that PearPass is **currently paused from active development**, so treat the code as a reference architecture, not a template to track.
+
+## What PearPass is
+
+- **Encrypted at rest.** Passwords, cards, secure notes, and custom fields are encrypted before they are written to disk, behind a master password.
+- **Synced peer-to-peer.** Devices are paired with an invite; from then on vault changes replicate directly between them.
+- **Offline first.** The vault is local, so it is readable with no network at all.
+- **Three clients, one vault library.** Desktop, mobile, and the browser extension share the vault logic and differ in their host.
+
+## How PearPass uses the stack
+
+Everything in this table is read from the public repositories' manifests and READMEs.
+
+| Layer | What PearPass uses | Where to read about it |
+| --- | --- | --- |
+| Data model | [`autopass`](https://github.com/holepunchto/autopass), a distributed password/notes store built on Autobase and Corestore: a multi-writer log that every paired device appends to, with an invite-and-pair flow to add a device. | [Autobase](/p2p/reference/building-blocks/autobase), [Corestore](/p2p/reference/helpers/corestore), the [Getting started](/pear/getting-started) tutorial (part 2 builds an Autobase room with pairing invites) |
+| Connectivity | HyperDHT, for paired devices to find each other by key. | [Connect two peers by key with HyperDHT](/p2p/how-to/connect-to-peers/connect-two-peers-by-key-with-hyperdht) |
+| Desktop host | Electron with [`pear-electron`](/pear/reference/modules/pear-modules), the `pear-runtime` library and `pear-runtime-updater` for over-the-air updates, `pear-build` and `bare-pack` to produce the build, plus `pear-bridge` and `pear-ipc` between renderer and worker. | [Pear OTA](/pear/reference/pear/runtime), [Pear desktop application architecture](/pear/explanation/pear-desktop-architecture), [Build desktop distributables](/pear/how-to/operate-an-app/build-and-package/build-desktop-distributables) |
+| Mobile host | A React Native app whose vault client runs on Bare—the `pearpass-lib-vault` library requires a Bare client for React Native and a desktop client for Pear desktop. | [Pear mobile application architecture](/pear/explanation/pear-mobile-architecture), [Run on mobile & native](/bare/how-to/run-on-native) |
+| Browser extension | A separate client that talks to the desktop app through a native-messaging bridge, so the extension never holds the vault itself. | [Workers](/pear/explanation/workers) (the host/core boundary this reuses) |
+| Shared libraries | `pearpass-lib-vault` and `pearpass-lib-vault-core` for vault operations, `pearpass-lib-data-import` / `-export`, password generation and strength checking, and a shared React Native UI kit. | — |
+
+## What to learn from it
+
+- **One core, three hosts, for real.** The vault library is written once and given a different *client* per platform. The desktop client runs in a Pear app; the mobile client runs on Bare inside React Native; the browser extension doesn't run the core at all and bridges to the desktop app instead. That is the [core / UI-host split](/p2p/explanation/how-the-stack-fits-together#apps-one-core-many-ui-hosts) applied to a product with unusual hosts.
+- **Autobase as the sync layer.** PearPass doesn't implement sync. Each device is a writer in an Autobase, so "sync" is replication plus the Autobase view, and adding a device is a pairing invite. Part 2 of the [Getting started](/pear/getting-started) tutorial builds the same structure for a chat room.
+- **Updates ride the same rails as data.** The desktop app's `pear-runtime-updater` pulls new versions from the swarm, exactly as [Release pipeline](/pear/explanation/deployment-releasing-apps-p2p) describes.
+
+## Read the source
+
+- [`tetherto/pearpass-app-desktop`](https://github.com/tetherto/pearpass-app-desktop)—the Electron app, including its `pear-*` dependencies and release scripts.
+- [`tetherto/pearpass-app-mobile`](https://github.com/tetherto/pearpass-app-mobile) and [`tetherto/pearpass-app-browser-extension`](https://github.com/tetherto/pearpass-app-browser-extension)—the other two hosts.
+- [`tetherto/pearpass-lib-vault`](https://github.com/tetherto/pearpass-lib-vault)—the shared vault library and its client contract.
+- [`holepunchto/pearpass-example`](https://github.com/holepunchto/pearpass-example)—a minimal Autobase + autopass app, if you want the idea without the product around it.
