@@ -1,0 +1,252 @@
+---
+title: "gip-remote"
+description: "Git repository database on Hyperbee and HyperDB: push and fetch Git objects, read a branch as a drive, and write objects back to a .git directory."
+upstreamVersion: "2.2.0"
+seoTitle: "gip-remote: Store Git Repositories on a Hypercore"
+docType: reference
+product: p2p
+schemaType: APIReference
+---
+
+<Status level="experimental" />
+
+[`gip-remote`](https://github.com/holepunchto/gip-remote) stores a Git repository in a [HyperDB](/p2p/reference/building-blocks/hyperdb) database on a [Hyperbee](/p2p/reference/building-blocks/hyperbee), so the repository replicates like any other [Hypercore](/p2p/reference/building-blocks/hypercore). It keeps Git objects, branches, tags, and `HEAD`, indexes each branch's files so a branch can be read as a drive, and writes objects back into a `.git` directory. It is the database behind [Gip](/p2p/reference/tools/gip), the `git+pear://` remote helper.
+
+`gip-remote` does not manage networking. Replicate the [Corestore](/p2p/reference/helpers/corestore) you give it over your own [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) connections, and register `remote.core` with [blind-peering](/p2p/reference/helpers/blind-peering) yourself if you want blind peers to keep it available.
+
+<Callout type="warn">
+The upstream `main` branch already carries an API that 2.2.0 doesn't have, including `pushRef()`, `deleteRef()`, `refObjects()`, and streaming `toDisk()`. This page documents the 2.2.0 release on npm, which is the version [`gip-transport`](/p2p/reference/tools/gip) 3.0.0 installs. The upstream README describes the newer API and also shows an import path, `gip-remote/lib/git`, that the package's `exports` map rejects with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Use `gip-remote/git`.
+</Callout>
+
+## Install
+
+```sh
+npm i gip-remote
+```
+
+## Quickstart
+
+```js
+const Corestore = require('corestore')
+const Hyperswarm = require('hyperswarm')
+const { Remote } = require('gip-remote')
+const { toDisk } = require('gip-remote/git')
+
+const store = new Corestore('./storage')
+const swarm = new Hyperswarm()
+swarm.on('connection', (conn) => store.replicate(conn))
+
+// A new, writable repository named my-repo
+const remote = new Remote(store.namespace('my-repo'), 'my-repo')
+await remote.ready()
+swarm.join(remote.discoveryKey)
+
+// objects: Map of oid -> { type, size, data }, every object the commit reaches
+await remote.push('main', commitOid, objects)
+console.log(remote.url) // git+pear://0.1.<key>/my-repo
+
+// Read the branch as a drive
+const drive = await remote.toDrive('main')
+console.log((await drive.get('/README.md')).toString())
+
+// Write the branch into an existing repository's .git directory
+const fetched = await remote.getRefObjects(commitOid)
+await toDisk({
+  gitDir: './checkout/.git',
+  objects: fetched,
+  refs: { 'refs/heads/main': commitOid },
+  head: 'main'
+})
+```
+
+`data` is an object's content without the Git header, as `git cat-file <type> <oid>` prints it, and `size` is its length in bytes.
+
+## Exports
+
+| Import | Exports |
+| --- | --- |
+| `gip-remote` | `Remote`, `RemoteDrive`, `GitPearLink`, `parseCommit`, `walkTree` |
+| `gip-remote/git` | `toDisk`, `parseCommit`, `parseTag`, `walkTree`, `treeEntries` |
+| `gip-remote/schema/hyperdb` | The HyperDB definition the database uses |
+| `gip-remote/schema/hyperschema` | The Hyperschema the database uses |
+
+## API Reference
+
+### Constructor and lifecycle
+
+#### `new Remote(store, link[, opts])`
+
+Create a remote. `store` is a [Corestore](/p2p/reference/helpers/corestore) or a namespace of one. The remote closes whatever store it is given when it closes, so pass a session or namespace if you use the store elsewhere.
+
+`link` selects the repository:
+
+- A name such as `'my-repo'` opens the core named `my-repo` in `store`. A new name creates a new, writable repository.
+- A `git+pear://` URL string opens the repository with that key. The name comes from the URL path. A `<fork>.<length>.` prefix is parsed but doesn't pin the remote to that length. The remote is writable only if `store` holds the key's secret key, which means the repository was created with this store.
+- `{ name, key }` opens the repository with that key under that name.
+- A link already parsed by [`GitPearLink.parse()`](#gitpearlink) works like the URL string.
+
+`opts`:
+
+- `timeout`: how long [`waitForPeers()`](#await-remotewaitforpeers) waits, in milliseconds.
+  Default: `240000`
+
+#### `await remote.ready()`
+
+Open the database. Call it before anything else.
+
+#### `await remote.close()`
+
+Close the database and the store passed to the constructor.
+
+### Properties
+
+#### `remote.name`
+
+The repository name.
+
+#### `remote.core`
+
+The Hypercore underneath. Pass it to blind-peering, or read its `length` and `peers`.
+
+#### `remote.key`
+
+The core's public key, a 32-byte buffer.
+
+#### `remote.discoveryKey`
+
+The core's discovery key. Join it on Hyperswarm to find peers for this repository.
+
+#### `remote.availablePeers`
+
+The number of peers the core is connected to.
+
+#### `remote.url`
+
+The versioned URL of the repository at its current length, `git+pear://0.<length>.<key>/<name>`, with the key z32-encoded.
+
+### Pushing
+
+#### `await remote.push(name, oid, objects)`
+
+Store `objects` and point a branch or tag at `oid`.
+
+- `name` is a branch name such as `main`, or `tags/<name>` for a tag.
+- `oid` must be a commit, or an annotated tag whose object is a commit. Anything else throws `Expected commit, got <type>: <oid>`.
+- `objects` is a `Map` from oid to `{ type, size, data }`. It only needs the objects the remote doesn't have yet: anything else the push needs is read from the store. A push that needs an object that is in neither throws `Object not found: <oid>`.
+
+A push overwrites the branch or tag; there is no fast-forward check. It also indexes the commit's files, which [`toDrive()`](#await-remotetodrivename) reads. The first branch pushed to a repository becomes its `HEAD`. The write is a single transaction, so a failed push leaves the repository unchanged.
+
+#### `await remote.deleteBranch(name)`
+
+Delete a branch and its file index. Returns `true` if the branch existed, `false` if it didn't.
+
+#### `await remote.deleteTag(name)`
+
+Delete a tag. Returns `true` if the tag existed, `false` if it didn't.
+
+### Reading refs and objects
+
+#### `await remote.getHead()`
+
+The branch name `HEAD` points at, or `null`.
+
+#### `await remote.setHead(branch)`
+
+Point `HEAD` at `branch`.
+
+#### `await remote.getAllRefs()`
+
+Every ref, as an array of `{ ref, oid }`. `ref` is a full name, such as `refs/heads/main` or `refs/tags/v1.0.0`. When `HEAD` is set and its branch exists, the array starts with `{ ref: 'HEAD', symref: 'refs/heads/<branch>', oid }`.
+
+#### `await remote.getBranchRef(branch)`
+
+`{ ref, oid }` for one branch, or `null`.
+
+#### `await remote.getObject(oid)`
+
+One object as `{ oid, type, size, data }`, or `null`. Large objects are reassembled from their chunks.
+
+#### `await remote.getRefObjects(oid[, onLoad][, opts])`
+
+Every object reachable from `oid`, as an array of `{ id, oid, type, size, data }`, where `id` is the oid. `oid` must be the tip of a branch or tag; any other oid returns `[]`. The result has what [`toDisk()`](#await-todiskopts) takes.
+
+- `onLoad(size)` is called once per object as it is read.
+- `opts.seen` is a `Set` of oids to leave out. The oids returned are added to it, so sharing one set across calls walks shared history once.
+
+### Drives
+
+#### `await remote.toDrive(name)`
+
+A read-only drive over the files of a branch, or of a tag if no branch has that name. Returns `null` if neither exists. The drive works with [Mirrordrive](/p2p/reference/helpers/mirrordrive), so you can mirror a branch into a [Localdrive](/p2p/reference/helpers/localdrive) or a [Hyperdrive](/p2p/reference/building-blocks/hyperdrive). Paths start with `/`.
+
+| Method | Returns |
+| --- | --- |
+| `await drive.entry(path)` | The entry `{ key, value: { executable, linkname, blob: { byteLength }, metadata } }`, or `null` |
+| `await drive.get(path)` | The file's content as a buffer, or `null` |
+| `drive.createReadStream(path)` | A readable stream of the file's content |
+| `drive.list(folder[, { ignore }])` | A readable stream of every entry under `folder`, at any depth. `ignore(path)` returning `true` skips a path. |
+| `drive.readdir(folder)` | A readable stream of the names directly in `folder` |
+| `drive.mirror(out[, opts])` | A [`MirrorDrive`](/p2p/reference/helpers/mirrordrive) from this drive to `out` |
+
+```js
+const Localdrive = require('localdrive')
+
+const drive = await remote.toDrive('main')
+const mirror = drive.mirror(new Localdrive('./checkout'))
+await mirror.done()
+```
+
+### Peers
+
+#### `await remote.update()`
+
+Update the database to the latest length known from connected peers.
+
+#### `await remote.waitForPeers()`
+
+Wait until the core has at least one peer, then update. Rejects with `Timeout waiting for peers after <timeout>ms` once [`opts.timeout`](#new-remotestore-link-opts) passes, or with `Remote closed while waiting for peers` if the remote closes first.
+
+### Writing to disk
+
+#### `await toDisk(opts)`
+
+Import from `gip-remote/git`. Write Git objects, refs, and `HEAD` into a repository's `.git` directory. Each object is written loose.
+
+- `gitDir`: path to the `.git` directory of a non-bare repository. Required.
+- `objects`: a non-empty array of `{ type, id, size, data }`, such as the result of [`getRefObjects()`](#await-remotegetrefobjectsoid-onload-opts). Required. An object whose hash isn't `id` throws `OID mismatch`.
+- `refs`: an object mapping ref names to oids, for example `{ 'refs/heads/main': oid }`. Existing refs are overwritten.
+- `head`: a branch name to point `HEAD` at.
+- `objectFormat`: only `'sha1'` is supported.
+  Default: `'sha1'`
+- `verifySizes`: check that each `data` is `size` bytes long, and throw `Size mismatch` if not.
+  Default: `true`
+
+### Links
+
+#### `GitPearLink`
+
+Parse and serialize `git+pear://` URLs. A link that doesn't start with `git+pear:` is handled as a plain `pear://` link.
+
+- `GitPearLink.parse(link)` returns `{ protocol, origin, pathname, drive: { key, length, fork } }`. For `git+pear://0.5.<key>/my-repo`, `drive.fork` is `0`, `drive.length` is `5`, and `pathname` is `/my-repo`. Without a `<fork>.<length>.` prefix, `drive.length` is `-1`.
+- `GitPearLink.serialize(parsed)` turns a parsed link back into a string.
+
+### Git object helpers
+
+#### `parseCommit(data)`
+
+Parse a commit object's content into `{ tree, parents, author, timestamp, message }`.
+
+#### `walkTree(objects, treeOid, prefix)`
+
+List the files under a tree, as an array of `{ path, oid, mode, size }`. `objects` is a `Map` from oid to `{ type, size, data }` that must hold every tree and blob reached.
+
+## Storage format
+
+Object content is stored deflated, unless deflating doesn't make it smaller. An object larger than 8 MiB is split into 8 MiB chunks, each deflated on its own, so that no Hypercore block goes over its size limit. [`getObject()`](#await-remotegetobjectoid) and [`getRefObjects()`](#await-remotegetrefobjectsoid-onload-opts) inflate and reassemble objects, so callers always get the original content.
+
+## See also
+
+- [Gip](/p2p/reference/tools/gip)—the CLI and Git remote helper built on this library.
+- [Hyperbee](/p2p/reference/building-blocks/hyperbee)—the key-value store the database runs on.
+- [Mirrordrive](/p2p/reference/helpers/mirrordrive)—copies a branch's drive to another drive.
+- [blind-peering](/p2p/reference/helpers/blind-peering)—keeps `remote.core` available when you are offline.
