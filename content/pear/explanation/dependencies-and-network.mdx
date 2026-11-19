@@ -1,0 +1,52 @@
+---
+title: "Dependencies"
+description: "Why Pear apps use npm for dependencies even though they run on Bare, and how those dependencies reach users: packaged into the build you stage, not replicated from node_modules."
+docType: explanation
+product: pear
+schemaType: WebPage
+---
+
+A question that comes up enough during onboarding: [why does Pear use npm at all when applications run on Bare, not Node?](#why-npm-for-dependencies) The answer is a deliberate trade-off between developer ergonomics and the platform's clean-room ideals.
+
+<Callout type="info">
+Looking for what your IP address discloses when you join a swarm? That's covered in [Peer-to-peer, demystified](/p2p/explanation/peer-to-peer-demystified#what-peers-learn-from-your-ip).
+</Callout>
+
+## Why npm for dependencies
+
+npm is a great package manager for JavaScript, and most JavaScript developers already know how to use it. All of Holepunch's modules—[Hypercore](/p2p/reference/building-blocks/hypercore), [Hyperdrive](/p2p/reference/building-blocks/hyperdrive), [Hyperbee](/p2p/reference/building-blocks/hyperbee), the lot—are published there. Reinventing a peer-to-peer package manager would have meant reinventing every developer's habits at the same time, for very little upside.
+
+npm is where your dependency story starts, not where Pear starts. You don't need Node.js or npm to install Pear—the `curl` and `irm` installers at [install.pears.com](https://install.pears.com) fetch a platform binary—and your app's peer-to-peer code runs on Bare, not Node. npm's job is delivering your dependencies while you develop.
+
+## How dependencies reach users
+
+Declaring a dependency in `package.json` still matters, because the build you stage carries it. Pear v3 stages a **deployment directory** of finished builds, not your project folder, and `pear stage` no longer runs a JavaScript analysis pass over your source. So each dependency ships inside the build:
+
+- **Desktop apps.** Your packaging tool (Electron Forge, in [`hello-pear-electron`](https://github.com/holepunchto/hello-pear-electron)) packs the app and its dependencies into each distributable. [`pear build`](/pear/reference/pear/cli#pear-build) then assembles those distributables into the deployment directory.
+- **Terminal apps.** From Pear 3.7.0, [`pear make`](/pear/how-to/operate-an-app/build-and-package/build-a-cli-executable) bundles the app and its dependencies from `node_modules` into one standalone executable.
+
+A few practical implications follow:
+
+- **Audit before you ship.** Run `pear stage --dry-run` on the deployment directory to see what a stage would change without writing it; this is where you'd catch a dependency that ballooned in size or pulled in something unexpected.
+- **A dependency update ships a new build.** If you update a dependency, you're not merely changing a `package-lock.json`—you're shipping new code to every running peer whose copy takes the release over the air through [Pear OTA](/pear/reference/pear/runtime), which needs a higher `version` ([Bump `version`](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#bump-version)). Ordinary semver discipline applies, but the consequence is more direct than on a server-rendered web app.
+- **Not every install takes the new code from the link.** Mac App Store builds keep the updater off, so they need a new store submission ([Updates](/pear/how-to/operate-an-app/build-and-package/submit-to-app-stores#updates)). On mobile, only the Metro bundle updates over the air. The Bare worker bundle packs the worker's dependencies and never travels over the air, so a worker dependency change needs a new store build ([Two bundles, not one](/pear/how-to/operate-an-app/manual-deployment/mobile#two-bundles-not-one)).
+
+### Dependency layout for Pear apps
+
+Bare loads modules from `node_modules` the same way Node does during development. A few layout rules keep builds predictable:
+
+1. **Use `node_modules` for dependencies**—Bare resolves them from there while you develop, and `pear make` bundles them from there.
+2. **Use `package.json`**—your build tooling and Pear OTA read the app's name, version, and `upgrade` link from it.
+3. **Stage the deployment directory, not the project.** `pear build` writes the layout `pear stage` expects, so your sources and `node_modules` stay out of the drive. Run it from outside the app folder; see [`pear stage` shows huge size growth](/pear/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases#pear-stage-shows-huge-size-growth).
+
+TypeScript is supported. Not every Holepunch module ships its own typings yet; the community [holepunch-types](https://github.com/Drache93/holepunch-types) project aggregates coverage. An IDE with TypeScript language service helps even for plain JavaScript projects.
+
+<Callout type="warn">
+**Never load JavaScript over HTTP(S).** Loading code from an external source is dangerous—if that source is compromised or malicious, your app can be exploited, and the risk is worse for apps with native API access. Ship dependencies with the app (as above) instead of fetching them at runtime.
+</Callout>
+
+## See also
+
+- [Peer-to-peer, demystified](/p2p/explanation/peer-to-peer-demystified)—conceptual overview of HyperDHT and Hyperswarm, including what your IP discloses on a swarm.
+- [Storage and distribution](/pear/explanation/storage-and-distribution)—what actually crosses the wire when peers replicate.
+- [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment)—make, build, stage, and provision a release.

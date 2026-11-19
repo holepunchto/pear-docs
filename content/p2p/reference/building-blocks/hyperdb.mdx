@@ -1,0 +1,687 @@
+---
+title: "HyperDB"
+description: "Typed collections and secondary indexes generated from a Hyperschema definition, stored in Hyperbee for peer-to-peer apps or RocksDB for local ones."
+upstreamVersion: "6.11.2"
+seoTitle: "HyperDB: Typed Collections and Indexes for P2P Apps"
+docType: reference
+product: p2p
+schemaType: APIReference
+---
+
+<Status level="stable" />
+
+`HyperDB` stores typed documents in collections and keeps secondary indexes over them. You declare the collections and indexes in a build script, alongside the [Hyperschema](/p2p/reference/helpers/hyperschema) types they hold, and the builder generates a definition module. At runtime you open that definition on one of three engines: a [Hyperbee](/p2p/reference/building-blocks/hyperbee) or [Hyperbee2](https://github.com/holepunchto/hyperbee2) tree that replicates to peers, or a local RocksDB database. The same definition works on all three.
+
+In the Pear chat examples, HyperDB is the view of an [Autobase](/p2p/reference/building-blocks/autobase): each writer appends operations, and `apply` writes them into a HyperDB. [A production Autobase-backed chat room](/p2p/explanation/autobase-backed-chat-room) walks through that setup. For upstream source and releases, see the [HyperDB repository](https://github.com/holepunchto/hyperdb).
+
+## Install
+
+```sh
+npm i hyperdb hyperschema
+```
+
+Keep both installed wherever the generated code runs. The definition module imports `hyperdb/runtime`, and the `messages.js` file next to it imports `hyperschema/runtime`.
+
+## Quickstart
+
+Declare a type with Hyperschema, then a collection and an index over it with the HyperDB builder:
+
+```js
+// build.js
+const Hyperschema = require('hyperschema')
+const HyperDBBuilder = require('hyperdb/builder')
+
+const SCHEMA_DIR = './spec/hyperschema'
+const DB_DIR = './spec/hyperdb'
+
+const schema = Hyperschema.from(SCHEMA_DIR)
+schema.namespace('example').register({
+  name: 'member',
+  fields: [
+    { name: 'name', type: 'string', required: true },
+    { name: 'age', type: 'uint', required: true }
+  ]
+})
+Hyperschema.toDisk(schema)
+
+const db = HyperDBBuilder.from(SCHEMA_DIR, DB_DIR)
+const example = db.namespace('example')
+
+example.require('./helpers.js')
+
+example.collections.register({
+  name: 'members',
+  schema: '@example/member',
+  key: ['name']
+})
+
+example.indexes.register({
+  name: 'members-by-lower-name',
+  collection: '@example/members',
+  unique: true,
+  key: { type: 'string', map: 'lowerName' }
+})
+
+HyperDBBuilder.toDisk(db)
+```
+
+The index key comes from a helper function, so define it in the module passed to `require()`:
+
+```js
+// helpers.js
+exports.lowerName = (record, context) => {
+  const name = record.name.toLowerCase().trim()
+  return name ? [name] : []
+}
+```
+
+Run `node build.js` from the project root to generate `spec/`. Then open the definition, write some documents and read them back:
+
+```js
+// run.mjs
+import HyperDB from 'hyperdb'
+import def from './spec/hyperdb/index.js'
+
+const db = HyperDB.rocks('./my-rocks.db', def)
+
+await db.insert('@example/members', { name: 'Maf', age: 37 })
+await db.insert('@example/members', { name: 'sean', age: 36 })
+await db.flush()
+
+console.log(await db.get('@example/members', { name: 'Maf' }))
+// { name: 'Maf', age: 37 }
+
+console.log(await db.get('@example/members-by-lower-name', 'maf'))
+// { name: 'Maf', age: 37 }
+
+console.log(await db.find('@example/members', { gte: { name: 'n' } }).toArray())
+// [ { name: 'sean', age: 36 } ]
+
+await db.close()
+```
+
+Writes stay in memory until `flush()` commits them in one batch. To replicate the same data, open the definition with [`HyperDB.bee()`](#const-db--hyperdbbeecore-definition-options) on a Hypercore instead:
+
+```js
+import Corestore from 'corestore'
+
+const store = new Corestore('./storage')
+const db = HyperDB.bee(store.get({ name: 'members' }), def, { autoUpdate: true })
+```
+
+## Engines
+
+| | `HyperDB.rocks()` | `HyperDB.bee()` | `HyperDB.bee2()` |
+| --- | --- | --- | --- |
+| Stores data in | RocksDB, on local disk | A [Hyperbee](/p2p/reference/building-blocks/hyperbee) on a [Hypercore](/p2p/reference/building-blocks/hypercore) | A [`hyperbee2`](https://github.com/holepunchto/hyperbee2) tree on a [Corestore](/p2p/reference/helpers/corestore) |
+| Replicates to peers | No | Yes | Yes |
+| `checkout` reads | Current state only | A core length | A head, `{ key, length }` |
+| `db.changes()` | Throws | History entries, by `seq` | Net changes since a head |
+| `db.diff()` | Throws | Throws | Supported |
+| `db.download()` | Does nothing | Does nothing | Downloads the tree |
+
+A comment in the upstream source says the `hyperbee` (v1) engine is being phased out, which is why `download()` does nothing on it.
+
+## API Reference
+
+### Opening a database
+
+#### `const db = HyperDB.rocks(storage, definition[, options])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L306)
+
+Open a local database backed by RocksDB. It doesn't replicate.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `storage` | `string\|RocksDB` | A directory path, or an open [`rocksdb-native`](https://github.com/holepunchto/rocksdb-native) instance. |
+| `definition` | `object` | The generated definition module, such as `require('./spec/hyperdb')`. |
+| `options` | `object` | The [common options](#common-options), plus `readOnly`. |
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `readOnly` | `boolean` | `false` | Open RocksDB read-only. `readonly` also works. It doesn't change `db.writable`, so pass `writable: false` as well. |
+
+- Returns: `HyperDB`
+
+#### `const db = HyperDB.bee(core, definition[, options])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L314)
+
+Open a database stored in a Hyperbee on `core`. HyperDB creates the Hyperbee itself, with binary key and value encodings, so pass a [Hypercore](/p2p/reference/building-blocks/hypercore) rather than a Hyperbee. Inside an Autobase `open` handler, that's the view core: `HyperDB.bee(store.get('view'), def, { extension: false, autoUpdate: true })`.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `core` | `Hypercore` | The core that holds the tree. |
+| `definition` | `object` | The generated definition module. |
+| `options` | `object` | The [common options](#common-options), plus the ones below. |
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `autoUpdate` | `boolean` | `false` | Call [`db.update()`](#dbupdate) whenever `core` emits `append` or `truncate`, so reads follow the core. Without it, the database stays on the state it opened with until you call `update()`. |
+| `extension` | `object\|false` | Hyperbee's default | Passed to Hyperbee. `false` turns off the Hyperbee wire extension. |
+
+- Returns: `HyperDB`
+
+#### `const db = HyperDB.bee2(bee, definition[, options])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L331)
+
+Open a database stored in a `hyperbee2` tree, which you create yourself: `new Hyperbee2(store)` from the [`hyperbee2`](https://github.com/holepunchto/hyperbee2) package. This is the only engine that supports [`db.diff()`](#const-stream--dbdiffcollection-query). The upstream README doesn't list `bee2()` yet.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `bee` | `Hyperbee2` | The tree that holds the data. |
+| `definition` | `object` | The generated definition module. |
+| `options` | `object` | The [common options](#common-options), plus the ones below. |
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `autoUpdate` | `boolean` | `false` | Call [`db.update()`](#dbupdate) whenever `bee` emits `update`. |
+| `key`, `length` | `Buffer`, `number` | `null`, `-1` | Move `bee` to the head `{ key, length }` before opening. A `length` of `-1` leaves it where it is. |
+
+- Returns: `HyperDB`
+
+#### Common options
+
+All three constructors accept these:
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `writable` | `boolean` | `true` | With `false`, `flush()` throws and `transaction()` can't be used. |
+| `context` | `any` | `null` | Passed as the second argument to every index map function. A snapshot or transaction can override it. |
+| `trace` | `function` | `null` | `trace(collection, doc, checkout)`, called for each document read through the main instance or a snapshot. Reads inside a transaction aren't traced. |
+
+#### `HyperDB.isDefinition(value)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L302)
+
+Whether `value` looks like a generated definition, which is any object with a `resolveCollection()` function.
+
+- Returns: `boolean`
+
+#### `await db.ready()`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L392)
+
+Wait until the database has opened. Reads and writes wait for it on their own, so calling `ready()` is optional.
+
+#### `await db.close()`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L396)
+
+Close the instance. Closing the main instance also closes every snapshot and transaction made from it, and the underlying engine once nothing uses it. Close snapshots and abandoned transactions yourself when you're done with them. Reads and writes after `close()` throw `Hyperdb is closed`.
+
+### Reading
+
+Reads on the main instance and on a transaction include that instance's unflushed writes, unless you pass `checkout`.
+
+#### `const doc = await db.get(collectionOrIndex, query[, options])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L570)
+
+Look up one document by key.
+
+- With a collection name, `query` holds the collection's key fields: `db.get('@example/members', { name: 'Maf' })`.
+- With a unique index name, `query` is that index's key. For an index whose key is a single primitive type, pass the value itself: `db.get('@example/members-by-lower-name', 'maf')`.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `collectionOrIndex` | `string` | A collection or unique index name, such as `@example/members`. |
+| `query` | `object\|any` | The key to look up. |
+| `options` | `object` | `{ checkout }`. Read the state at an earlier point: a core length on the Hyperbee engine, or a head on the Hyperbee2 engine. RocksDB keeps no history and reads the current committed state. On every engine, a `checkout` leaves out unflushed writes. |
+
+- Returns: `Promise<object|null>`. Fields that aren't set come back as `null`.
+- Throws: `Unknown index or collection: <name>`.
+
+#### `const docs = await db.getAll(requests)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L561)
+
+Run several `get()` calls in parallel. Each array entry is spread into `get()`, so `[collectionOrIndex, query, options]`. Any other entry, such as a promise, is resolved and returned in its place.
+
+```js
+const [maf, sean] = await db.getAll([
+  ['@example/members', { name: 'Maf' }],
+  ['@example/members', { name: 'sean' }]
+])
+```
+
+- Returns: `Promise<Array>`, in the order of `requests`.
+
+#### `const stream = db.find(collectionOrIndex[, query][, options])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L513)
+
+Stream the documents whose key falls in a range, in key order. With an index name, the stream yields the collection documents the index points to. [Query ranges](#query-ranges) describes the shape of `gt`, `gte`, `lt` and `lte`. With no bounds, the stream covers the whole collection or index.
+
+The query runs on a snapshot taken when you call `find()`, so writes made while it streams don't change its results.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `collectionOrIndex` | `string` | A collection or index name. |
+| `query` | `object` | `{ gt, gte, lt, lte }`. The options below can go here too. |
+| `options` | `object` | Merged into `query`. |
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `limit` | `number` | `-1` | The most documents to yield. `-1` means no limit. |
+| `reverse` | `boolean` | `false` | Stream in descending key order. |
+| `checkout` | `number\|object` | `-1` | Read the state at an earlier point, as for `get()`. Leaves out unflushed writes. |
+
+- Returns: a [streamx](https://github.com/mafintosh/streamx) `Readable` of documents, with the helpers below.
+- Throws: `Unknown index: <name>`.
+
+```js
+for await (const member of db.find('@example/members', {}, { reverse: true })) {
+  console.log(member.name)
+}
+```
+
+#### `const docs = await stream.toArray()`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/lib/stream.js#L231)
+
+Read the rest of the stream into an array.
+
+- Returns: `Promise<Array<object>>`
+
+#### `const doc = await stream.one()`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/lib/stream.js#L207)
+
+Read the rest of the stream and resolve with the **last** document, or `null` if it was empty. To get the first match, use `findOne()`, which sets `limit: 1`.
+
+- Returns: `Promise<object|null>`
+
+#### `const doc = await db.findOne(collectionOrIndex[, query][, options])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L545)
+
+`find()` with `limit: 1`: the first document in the range, or `null`.
+
+- Returns: `Promise<object|null>`
+
+### Writing
+
+`insert()` and `delete()` change memory only. Call `flush()` to commit them.
+
+#### `await db.insert(collection, doc)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L675)
+
+Insert `doc`, or replace the document with the same key, and update the collection's indexes to match. Inserting a document identical to the stored one changes nothing.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `collection` | `string` | The collection name. |
+| `doc` | `object` | The document, in the collection's schema. |
+
+- Throws: `Unknown collection: <name>`.
+
+#### `await db.delete(collection, query)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L624)
+
+Delete the document whose key matches `query`, and its index entries. If no such document has been committed, `delete()` drops any unflushed insert of that key instead.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `collection` | `string` | The collection name. |
+| `query` | `object` | The collection's key fields. |
+
+<Callout type="warn">
+Unlike `insert()`, `delete()` does nothing and doesn't throw when `collection` isn't a known collection name, so a typo there fails silently.
+</Callout>
+
+#### `await db.insertAll(entries)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L735)
+
+Run several inserts and deletes in parallel. Each entry is `[collection, doc]`, or `[collection, query, { type: 'delete' }]` for a delete.
+
+```js
+await db.insertAll([
+  ['@example/members', { name: 'ana', age: 29 }],
+  ['@example/members', { name: 'sean' }, { type: 'delete' }]
+])
+await db.flush()
+```
+
+#### `await db.flush()`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L781)
+
+Commit the instance's unflushed writes to the engine in one batch, then move the instance to the new state and call its watchers. Flushing a transaction also closes it. If there are no unflushed writes, nothing is committed.
+
+- Throws:
+  - `Insert/delete in progress, refusing to commit`: an `insert()` or `delete()` hasn't finished. Await it first.
+  - `Instance is not writable, refusing to commit`: the instance is a snapshot, or was opened with `writable: false`.
+  - `Database has changed, refusing to commit`: something else committed since this instance's snapshot, such as another transaction or new data on the core. Call `db.update()`, which drops these writes, and make them again.
+
+#### `const changed = db.updated([collection][, query])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L549)
+
+Whether the instance has unflushed writes. Pass a collection and a key to ask about one document.
+
+- Returns: `boolean`
+
+### Snapshots and transactions
+
+#### `const snap = db.snapshot([options])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L478)
+
+A read-only view of the database as it is now, including the instance's unflushed writes. Later writes to `db` don't show up in it. Close it when you're done.
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `context` | `any` | Replaces the instance's `context`. |
+
+- Returns: `HyperDB`
+
+#### `const tx = db.transaction([options])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L498)
+
+A writable snapshot. Write to it, then `flush()` it to commit those writes and update the main instance. Takes the same options as `snapshot()`.
+
+- Returns: `HyperDB`
+- Throws: `Can only make transactions on main instance`, when called on a snapshot, another transaction, or an instance opened with `writable: false`.
+
+<Callout type="warn">
+- A transaction you don't flush, for example after an error, must be closed with `tx.close()`.
+- Don't run two transactions at once. The second `flush()` throws `Database has changed, refusing to commit`. Use `exclusiveTransaction()` to queue them.
+- A transaction starts with the main instance's unflushed writes and commits them along with its own. The main instance's next `flush()` then throws until you call `db.update()`. Flush the main instance before you open a transaction.
+</Callout>
+
+#### `const tx = await db.exclusiveTransaction([options])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L486)
+
+Like `transaction()`, but waits until no other exclusive transaction is open. The lock is released when `tx` is flushed or closed.
+
+- Returns: `Promise<HyperDB>`
+
+```js
+const tx = await db.exclusiveTransaction()
+try {
+  await tx.insert('@example/members', { name: 'ana', age: 29 })
+  await tx.flush()
+} catch (err) {
+  await tx.close()
+  throw err
+}
+```
+
+### Following changes
+
+#### `db.update()`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L749)
+
+If the engine has newer state than the instance, drop the instance's unflushed writes, move to the newest state and call the watchers. Otherwise do nothing. `autoUpdate` calls this for you on the Hyperbee engines.
+
+#### `db.watch(fn)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L427)
+
+Call `fn()`, with no arguments, every time the instance moves to a new state: after its own `flush()`, and after `update()` picks up changes from elsewhere.
+
+#### `db.unwatch(fn)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L432)
+
+Stop calling `fn`.
+
+#### `const stream = db.changes([range])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L401)
+
+Stream the collection changes stored in the engine. Index entries are left out. The stream doesn't have `toArray()` or `one()`, so read it with `for await`. RocksDB throws `Not supported in Rocks engine`.
+
+On the **Hyperbee** engine, the stream is the Hyperbee history, one entry per change:
+
+| `range` option | Description |
+| --- | --- |
+| `gt`, `gte`, `lt`, `lte` | Bounds on the Hyperbee `seq`. |
+| `reverse`, `limit` | Passed to Hyperbee's history stream. |
+| `live` | `true` reads from the live tree instead of the instance's snapshot, and keeps the stream open for new entries. |
+
+Each entry is `{ type, seq, collection, value }`: `type` is `'insert'` or `'delete'`, and `value` is the document, or only its key fields for a delete.
+
+On the **Hyperbee2** engine, the stream holds the net changes between a head and now, so a document inserted and then deleted in that time doesn't appear:
+
+| `range` option | Description |
+| --- | --- |
+| `from` | The head to compare against, `{ key, length }`. Pass `{ key: null, length: 0 }` for everything. Without it, the stream is empty. |
+
+Each entry is `{ type, head, collection, value }`. An updated document comes through as `'insert'`. `head` is the `{ key, length }` of the core as it was when the stream read the entry, the same for every entry, not the point where the change happened.
+
+#### `const stream = db.diff(collection[, query])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L407)
+
+Stream how one collection's committed documents changed between an earlier head and now, in key order. Hyperbee2 engine only. Each entry is `{ left, right }`:
+
+```js
+{ left: null, right: doc } // inserted
+{ left: doc, right: null } // deleted
+{ left: doc, right: doc }  // updated
+```
+
+| `query` option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `from` | `{ key, length }` | The empty database | The head to compare against. Get the current one from `db.engine.head()`. |
+| `gt`, `gte`, `lt`, `lte` | `object` | — | Key bounds, as for [`find()`](#query-ranges). |
+| `limit` | `number` | `-1` | The most entries to yield. |
+
+```js
+const head = db.engine.head()
+// ... later
+for await (const { left, right } of db.diff('@example/members', { from: head })) {
+  console.log(left, '->', right)
+}
+```
+
+- Throws: `Cannot diff an index, pass a collection: <name>`, `Unknown collection: <name>`, `Reverse diffs are not supported` (for `reverse: true`), and `Not supported in Bee engine` or `Not supported in Rocks engine` on the other engines.
+
+### Properties
+
+#### `db.closed`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L352)
+
+`true` once `close()` has finished.
+
+#### `db.writable`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L356)
+
+`true` for the main instance and transactions. `false` for snapshots and for instances opened with `writable: false`.
+
+#### `db.readable`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L365)
+
+<Callout type="warn">
+In v6.11.2 `readable` is `false` while the database is open and turns `true` once `close()` is called, the opposite of what the upstream README says. Use `db.closed` instead.
+</Callout>
+
+#### `db.core` / `db.db` / `db.engine`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L344)
+
+The Hypercore under the Hyperbee engines (`null` on RocksDB), the store itself (the Hyperbee, `hyperbee2` or RocksDB instance), and the engine wrapper. On the Hyperbee2 engine, `db.engine.head()` returns the current head, `{ key, length }`, for `checkout`, `changes()` and `diff()`.
+
+#### `db.definition` / `db.versions` / `db.context`
+
+The definition the instance is using, its `{ schema, db }` versions, and the `context` passed to map functions.
+
+### Other methods
+
+#### `db.setDefinition(definition)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L377)
+
+Switch an open instance to another generated definition, such as a newer build.
+
+#### `db.setVersions(versions)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L373)
+
+Set the `{ schema, db }` versions that new writes are encoded with. Writes at a lower `db` version skip the indexes added after it.
+
+#### `db.cork()` / `db.uncork()`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L384)
+
+On RocksDB, group the reads made between the two calls into one batch. They do nothing on the Hyperbee engines.
+
+#### `await db.download()`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/index.js#L792)
+
+On the Hyperbee2 engine, download the whole tree from peers. It does nothing on the other engines.
+
+## Builder API
+
+The builder runs at build time, usually from a `build.js` script you rerun whenever the schema changes. Import it from the `builder` subpath:
+
+```js
+const HyperDBBuilder = require('hyperdb/builder')
+```
+
+#### `const db = HyperDBBuilder.from(schema, dbDir)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/builder/index.js#L459)
+
+Create a builder from the Hyperschema types and any existing HyperDB definition.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `schema` | `string\|object` | The Hyperschema directory, or its `schema.json` content. With a directory, call `Hyperschema.toDisk()` first, because the builder reads the file from disk. |
+| `dbDir` | `string\|object\|null` | The HyperDB output directory. If it has a `db.json`, the builder continues from it. An object is taken as `db.json` content. |
+
+- Returns: `Builder`
+
+#### `HyperDBBuilder.toDisk(db[, dbDir][, options])`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/builder/index.js#L436)
+
+Write the definition to `dbDir`, which defaults to the directory passed to `from()`, creating it if needed:
+
+- `db.json`: the collections and indexes with their ids and versions. Commit it, because the next build continues from it.
+- `index.js`: the definition module you pass to `HyperDB.rocks()`, `bee()` or `bee2()`.
+- `messages.js`: the encodings for the stored values.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `esm` | `boolean` | `false` from `require()`, `true` from `import` | Generate ES module output instead of CommonJS. |
+
+#### `const ns = db.namespace(name)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/builder/index.js#L421)
+
+Create a namespace. Collections and indexes registered through it are named `@name/...`. Give it the same name as the Hyperschema namespace that holds the types: an enum key field only works when the two names match.
+
+- Returns: a namespace with `collections`, `indexes` and `require()`.
+- Throws: `Namespace already exists: <name>`.
+
+#### `ns.require(filename)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/builder/index.js#L316)
+
+Load index map functions from a module. `filename` is resolved against the current working directory, so run the build from the directory it's relative to. The generated `index.js` imports the module by a path relative to itself.
+
+#### `ns.collections.register(description)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/builder/index.js#L286)
+
+Declare a collection.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | The collection name within the namespace. |
+| `schema` | `string` | The Hyperschema struct its documents use, such as `@example/member`. |
+| `key` | `string[]` | The primary key: field names, from least to most specific. Dot notation reaches into nested structs, such as `'foo.id'`. Leave it out for a collection that holds a single document. |
+| `derived` | `boolean` | Recorded in `db.json`. The generated code in v6.11.2 doesn't use it. |
+
+- Throws: `Schema not found: <schema>` and `Field not found: <field>`.
+
+A second `register()` with a name that already exists, including one loaded from `db.json`, is ignored. To change a collection's key, register a new collection under another name.
+
+#### `ns.indexes.register(description)`
+
+[src](https://github.com/holepunchto/hyperdb/blob/v6.11.2/builder/index.js#L297)
+
+Declare an index over a collection.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | The index name within the namespace. |
+| `collection` | `string` | The collection to index, such as `@example/members`. Register it first. |
+| `key` | `string[]\|object` | Field names from the collection's schema, or `{ type, map }` to compute the key. See [Mapped keys](#mapped-keys). |
+| `unique` | `boolean` | Whether each index key maps to one document. Without it, the document's primary key is appended to the index key, so documents with equal index keys all stay in the index. |
+| `deprecated` | `boolean` | Stop maintaining the index. See [Schema updates](#schema-updates). |
+
+- Throws: `Could not resolve path: <field>` for a key field the collection's schema doesn't have, and a `TypeError` if `collection` hasn't been registered.
+
+<Callout type="warn">
+`unique: true` doesn't reject duplicates. When a second document produces the same index key, the index points to the newer document, and the older one is still in the collection but no longer reachable through the index.
+</Callout>
+
+#### Mapped keys
+
+With `key: { type, map }`, the index key comes from a function in the module loaded with `ns.require()`:
+
+```js
+// helpers.js
+exports.tags = (record, context) => record.tags
+```
+
+```js
+ns.indexes.register({
+  name: 'posts-by-tag',
+  collection: '@example/posts',
+  key: { type: 'string', map: 'tags' }
+})
+```
+
+`map(record, context)` returns an array of keys, and the document gets one index entry per key. Return `[]` to leave the document out of the index. `context` is the database's `context` option. `type` is a Hyperschema type name for a single-value key, or `{ fields: [...] }` for a compound one, with the fields in the same format as a Hyperschema struct.
+
+## Query ranges
+
+`find()`, `findOne()` and `diff()` take range bounds whose shape follows the key:
+
+- **Collection**: an object with the key fields, `{ gte: { name: 'a' }, lt: { name: 'n' } }`.
+- **Index with a field-list key**: an object with the index's fields, `{ gte: { age: 30 } }`.
+- **Mapped index with a single-value `type`**: the value itself, `{ gte: 'docs', lte: 'docs' }`.
+- **Mapped index with a struct `type`**: an object with that struct's fields.
+
+For a compound key, a bound can give only the leading fields. On an index with `key: ['team', 'age']`, `{ gte: { team: 'core' }, lte: { team: 'core' } }` matches every document in the `core` team, ordered by age.
+
+Key fields can use these Hyperschema types: `uint` and `int` in any width, `string`, `utf8`, `ascii`, `hex`, `base64`, `fixed32`, `fixed64`, `buffer`, `date`, `bool`, and enums.
+
+Set key fields on every document. An index over an optional numeric or enum field makes `insert()` throw `Invalid number undefined` for a document that leaves it unset. Mark such fields `required`, or use a mapped key that returns `[]` when the field is missing.
+
+## Schema updates
+
+Run the build again after you change the schema. The builder continues from `db.json`, and every collection and index keeps its id.
+
+- **Adding a collection or index** bumps the database version. An index added to an existing collection doesn't cover the documents already stored. A document enters the new index when it's written again, and inserting an unchanged copy is enough.
+- **Re-registering** an existing name with a different description is ignored. Register a new collection or index under a new name instead.
+- **Deprecating an index**: register it again with `deprecated: true`. Writes stop updating it, and it's left out of the definition's `indexes` list. `find()` on it still works but only returns the documents it held before.
+- **Renaming a namespace**: delete the generated `spec/` directories first. The generators merge into the existing files, so the old registrations would stay next to the new ones.
+
+For the rules on changing the Hyperschema types themselves, see [Hyperschema](/p2p/reference/helpers/hyperschema).
+
+## See also
+
+- [A production Autobase-backed chat room](/p2p/explanation/autobase-backed-chat-room)—HyperDB as an Autobase view, with a generated `spec/` directory.
+- [Host multiple rooms in one chat app](/p2p/how-to/connect-to-peers/host-multiple-rooms-in-one-chat-app)—adds a collection to an existing HyperDB definition.
+- [Structured RPC and schema-first design](/bare/explanation/rpc-and-schemas)—where HyperDB sits next to Hyperschema, HRPC and HyperDispatch.
+- [Hyperschema](/p2p/reference/helpers/hyperschema)—the types that collections and index keys are built from.
+- [Hyperbee](/p2p/reference/building-blocks/hyperbee)—the B-tree under the `bee()` engine.
+- [Upstream HyperDB repository](https://github.com/holepunchto/hyperdb)—source, releases and tests.
