@@ -287,6 +287,11 @@ export const p2pTree: Node[] = [
           },
           {
             type: 'page',
+            name: 'HyperDB',
+            url: '/p2p/reference/building-blocks/hyperdb',
+          },
+          {
+            type: 'page',
             name: 'HyperDHT',
             url: '/p2p/reference/building-blocks/hyperdht',
           },
