@@ -35,6 +35,7 @@ export const REPOS: Record<string, RepoConfig> = {
   autobase: { org: 'holepunchto', repo: 'autobase' },
   autobee: { org: 'holepunchto', repo: 'autobee' },
   hyperbee: { org: 'holepunchto', repo: 'hyperbee' },
+  hyperdb: { org: 'holepunchto', repo: 'hyperdb' },
   hypercore: { org: 'holepunchto', repo: 'hypercore' },
   hyperdht: { org: 'holepunchto', repo: 'hyperdht' },
   hyperdrive: { org: 'holepunchto', repo: 'hyperdrive' },
