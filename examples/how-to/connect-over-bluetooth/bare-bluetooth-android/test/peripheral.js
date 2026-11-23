@@ -2,20 +2,13 @@ const test = require('brittle')
 const Central = require('../lib/central')
 const Peripheral = require('../lib/peripheral')
 const Device = require('../lib/device')
-const { isCI } = require('./helpers')
+const { isCI, waitForOn } = require('./helpers')
 
 test('connect and discover services', { skip: isCI }, async (t) => {
   const central = new Central()
   t.teardown(() => central.destroy())
 
-  const state = await new Promise((resolve) => {
-    central.on('stateChange', resolve)
-  })
-
-  if (state !== 'on') {
-    t.comment('bluetooth not on: ' + state + ', skipping')
-    return
-  }
+  if (!(await waitForOn(t, central))) return
 
   central.startScan()
 
@@ -165,14 +158,7 @@ test('dial a bonded device', { skip: isCI, timeout: 30000 }, async (t) => {
   const central = new Central()
   t.teardown(() => central.destroy())
 
-  const state = await new Promise((resolve) => {
-    central.on('stateChange', resolve)
-  })
-
-  if (state !== 'on') {
-    t.comment('bluetooth not on: ' + state + ', skipping')
-    return
-  }
+  if (!(await waitForOn(t, central))) return
 
   const [device] = central.getBondedDevices().filter((d) => d.type !== Device.DEVICE_TYPE_CLASSIC)
 

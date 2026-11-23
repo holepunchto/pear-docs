@@ -1,8 +1,8 @@
 # hello-pear-electron (documentation snapshot)
 
 Vendored from [holepunchto/hello-pear-electron](https://github.com/holepunchto/hello-pear-electron),
-branch **`main`**, at commit `ad51b38`
-([tree](https://github.com/holepunchto/hello-pear-electron/tree/ad51b38d2081869b513cc9a86ae1f82c4b43ad67)).
+branch **`main`**, at commit `ed067ea`
+([tree](https://github.com/holepunchto/hello-pear-electron/tree/ed067ea5d8a9b22a98a879789ef8b56bfc4acbd2)).
 
 `renderer/app.js` and `workers/main.js` back the code imports in
 `content/p2p/getting-started/from-a-template/start-from-hello-pear-electron.mdx`
