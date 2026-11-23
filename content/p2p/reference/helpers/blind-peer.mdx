@@ -111,7 +111,7 @@ How many [announced](#announce-and-trusted-peers) cores the blind peer has joine
 
 [src](https://github.com/holepunchto/blind-peer/blob/v3.20.0/index.js#L346)
 
-Counters since the process started. They are also the source of the [Prometheus gauges](#blindpeerregistermetricspromclient). With [`metricsOpts`](#blindpeeroptions) set, four gauges count per client instead, and these counters still hold the totals.
+Counters since the process started. They are also the source of the [Prometheus gauges](#blindpeerregistermetricspromclient), except `blind_peer_wakeups` since v3.19.0. With [`metricsOpts`](#blindpeeroptions) set, four gauges count per client instead, and these counters still hold the totals.
 
 - Returns: `object`
 
@@ -207,7 +207,7 @@ These are registered only when the RocksDB handle exposes `stats`: `blind_peer_r
 
 With [`metricsOpts`](#blindpeeroptions) set, `blind_peer_add_cores_rx`, `blind_peer_core_activations`, `blind_peer_push_notifications_rx` and `blind_peer_push_notifications_errors` carry `client_name` and `client_version` labels. Added in v3.17.0.
 
-Since v3.19.0 `blind_peer_wakeups` carries `source` and `result` labels, and `blindPeer.stats.wakeups` still holds the total. `source` is `direct` for a wakeup received over the wakeup protocol, `onaddcore` or `onaddcores` for one the blind peer raises while it handles an `add-core` or `add-cores` request. `result` says what the blind peer did: `unknown_topic` (it has no core for that discovery key), `stream_closed` (the connection is already closing), `stream_exists` (the connection already follows the core), `added_inactive` (it added the connection to the core's session) or `added_active` (it added the connection and the peer was already active, so the blind peer told it).
+Since v3.19.0 `blind_peer_wakeups` carries `source` and `result` labels, and `blindPeer.stats.wakeups` still holds the total. The unlabeled series is gone and no series exists until the first wakeup, so alert on `sum(blind_peer_wakeups)`. `source` is `direct` for a wakeup received over the wakeup protocol, `onaddcore` or `onaddcores` for one the blind peer raises for the request's `referrer` key, only when the request names one. `result` says what the blind peer did: `unknown_topic` (it has no core for that discovery key), `stream_closed` (the connection is already closing), `stream_exists` (the connection already follows the core), `added_inactive` (it added the connection to the core's session) or `added_active` (it added the connection and the peer was already active, so the blind peer told it).
 
 ```js
 import promClient from 'prom-client'
@@ -267,7 +267,7 @@ A blind peer is an event emitter. The events below are listed by what they repor
 
 | Event | Arguments | Emitted when |
 | --- | --- | --- |
-| `notification-rx` | `(request, stream)` | A notification request arrives. `request` has `block` (`{ key, index }`), `destination` (`{ key, discoveryKey }`), `extra` and `appId`. Since v3.20.0 `block` is `{ key, index, upgrade }`, and `upgrade` is `{ start, length }` or `null` when the client sent none. Before, the request had an `upgradeLength` property (`0` when the client sent none). |
+| `notification-rx` | `(request, stream)` | A notification request arrives. `request` has `block` (`{ key, index }`), `destination` (`{ key, discoveryKey }`), `extra`, `appId` and `upgradeLength`. Since v3.20.0 `block` is `{ key, index, upgrade }`, and `upgrade` is `{ start, length }` or `null` when the client sent none. `upgradeLength` is deprecated and ignored: it stays `0` for a `blind-peering` 2.15.0 client, and carries the old value for a 2.13.0 to 2.14.0 client, so you can use it to spot clients that haven't upgraded. |
 | `notification-sent` | `(request, payload, stream, ms)` | The notification went to a push gateway. `ms` is how long it took. |
 | `notification-error` | `(error, stream, request)` | Handling a notification failed. See [errors](#errors). |
 | `notification-error-snapshot` | `(snapshot)` | Diagnostics gathered after a failed notification. Upstream marks this event as temporary, with no semver guarantees. |
