@@ -117,7 +117,14 @@ public final class Sidecar: AsyncSequence, @unchecked Sendable {
 - `Sidecar.executable: URL?`— the included Bare for the platform, or `nil`.
 - `Sidecar.versions: [String: String]`— the versions of the included build, such as `["bare": "1.36.2"]`, keyed like `Bare.versions`.
 
-`wait()` and `close()` are `@discardableResult`. When the host closes the IPC, the sidecar calls `Bare.exit()`, unless the entry listens for the `close` event of `Bare.IPC`.
+`wait()` and `close()` are `@discardableResult`.
+
+When the host ends or closes the IPC, or exits, the entry reads the end of `Bare.IPC`. The IPC closes only once the entry has ended its side too, for example by calling `Bare.IPC.end()` on `end`, and the sidecar then calls `Bare.exit()`, unless the entry listens for the `close` event of `Bare.IPC`. Until then the sidecar exits only when its event loop has no work left, so an entry with other work, such as a timer, keeps running, even after the host process has exited. An entry that must exit with its host ends its side on `end`:
+
+```js
+Bare.IPC.on('end', () => Bare.IPC.end())
+```
+
 
 - `Sidecar.Stdio`— `.inherit`, the stream of the host; `.pipe`, a pipe exposed as `standardInput`, `standardOutput`, or `standardError`; or `.ignore`.
 - `Sidecar.Termination`— `.exit(Int32)`, the exit code of a process that exited, or `.signal(Int32)`, the signal that ended it.
@@ -411,7 +418,7 @@ A request is cancelled by a `timeout` or by cancelling the task that waits for i
 
 Cancellation needs a peer that supports it. A JavaScript peer needs `bare-rpc` 2.0.0 or later, and an older one fails its session with `UNKNOWN_MESSAGE` when it receives a cancel. Requests, replies, events, and streams are compatible with older peers.
 
-### Errors
+### RPC errors
 
 ```swift
 public struct RPCRemoteError: Error, Sendable, Equatable {
@@ -535,7 +542,7 @@ public struct State {
 
 `Primitive.Record` and `Primitive.JSON` sort keys, and `Primitive.JSON` escapes `/`, so their bytes can differ from the JavaScript ones, which both sides still decode. `Primitive.JSON` raises an Objective-C exception, which Swift can't catch, for a value that isn't valid JSON, so check it with `JSONSerialization.isValidJSONObject(_:)` first. The JavaScript codecs that aren't listed, such as `fixed32`, `uint24`, `raw`, and `bigint`, aren't ported.
 
-### Errors
+### Encoding errors
 
 - `EncodingError.outOfBounds`— encoding ran past `state.end`.
 - `DecodingError.outOfBounds`— decoding ran past the end of the bytes.
@@ -567,7 +574,7 @@ let data = try Schema.encode(point, Point(x: 300, y: -1)) // fd 2c 01 01
 let value = try Schema.decode(point, data)
 ```
 
-### Generator
+### Schema generator
 
 `hyperschema-swift` exports a subclass of the `hyperschema` builder, so `from()`, `namespace()`, `register()`, and `toJSON()` work as they do in JavaScript.
 
@@ -578,7 +585,7 @@ The package is named `Schema`, with one library product and target, `Schema`. It
 
 Generation throws for `uint64`, `int8` to `int64`, `fixed32` and `fixed64`, and other types without a Swift mapping, and, in a schema with enums or versioned types, for a type whose name maps to `SchemaDecodeError`.
 
-### Generated module
+### Generated schema module
 
 `Schema.swift` imports `CompactEncoding`. Type names are the name of the schema type in PascalCase, without the namespace, so `@demo/send-message` becomes `SendMessage`. For each type, it declares:
 
@@ -609,6 +616,7 @@ The generated codecs match the bytes of JavaScript Hyperschema, with these excep
 - **Versioned types.** From `hyperschema` 1.25.0, a versioned type registered in code frames each version that isn't a compact struct by default, which the generated Swift doesn't do. Register it with `framed: false`, or keep a schema created before 1.25.0, for the encodings to match. See [Versioned type](/p2p/reference/helpers/hyperschema#versioned-type).
 - **Flags of compact structs.** JavaScript writes the flags of a compact struct as the smallest fixed-size unsigned integer that holds them, while the generated Swift always writes a `uint`. The bytes differ for a compact struct with 9 or more optional and `bool` fields, and with 8 when the flags are `0xfd` or more.
 - **`bool` arrays.** An optional `bool` field with `array: true` is generated as a single `Bool` flag, so the array is lost. A required one generates code that doesn't compile.
+- **Inline fields.** The generated encoder of a struct with an inline field doesn't write the flags of the optional and `bool` fields of the inline struct into its own flags, but the decoder reads them there. A value whose inline struct has any of those fields set is written with different bytes from JavaScript, and doesn't decode back correctly, even in Swift: the field reads as `nil` and the fields after it are misread. The bytes match only while all of them are unset or `false`.
 - **Constant fields.** A field with `constant` is generated as a required field that's written, which JavaScript leaves out.
 - **Older data.** JavaScript reads the flags of a struct only if bytes remain, so it decodes data written before the struct gained optional fields. The generated Swift always reads them, and throws `DecodingError.outOfBounds` instead.
 
@@ -650,7 +658,7 @@ The generated `Package.swift` declares macOS 11 and iOS 14 and depends on bare-r
 
 With bare-rpc-swift 1.1.0 or later, an empty payload arrives as empty `Data`, so a Swift server fails to decode a call without arguments. A request and response command rejects it with the code `HANDLER_ERROR`, and a streamed response with `DECODE_ERROR`. A send command never reaches its handler, and the decoding error goes to the `rpc(_:didFailWith:)` of the delegate. Every command shape, including calls without arguments, works with bare-rpc-swift 1.0.1 and compact-encoding-swift 1.0.0, pinned with `exact:` in the app.
 
-### Generator
+### RPC generator
 
 `hrpc-swift` exports a subclass of the `hrpc` builder, so `from()`, `namespace()`, `register()`, and `toJSON()` work as they do in JavaScript. `from()` takes the `hyperschema-swift` schema, and command ids are assigned in order of registration, from 0 unless the builder is given an `offset`.
 
@@ -669,7 +677,7 @@ Generation fails with an error whose `code` is one of these:
 | `STREAM_WITHOUT_RESPONSE` | A command streams its request and has no response. |
 | `UNSUPPORTED_TYPE` | A type is neither a schema type nor a primitive, such as `uint`, `int`, `bool`, `string`, or `buffer`. |
 
-### Generated module
+### Generated RPC module
 
 `HRPC.swift` defines one class:
 
@@ -702,9 +710,9 @@ A request that the server can't answer is rejected with one of these codes:
 | `NO_HANDLER` | The command has no handler. |
 | `HANDLER_ERROR` | The handler threw, or the request couldn't be decoded. A streamed handler that throws destroys its streams with this code. |
 | `DECODE_ERROR` | The request of a streamed response couldn't be decoded. |
-| `STREAM_ERROR` | The response stream of a streamed response is already open, with the message `Stream already open`. |
-| `PROTOCOL_ERROR` | A command that streams its request arrived without a request stream. If a command that streams both can't open its response stream, its request stream is destroyed with this code. |
-| `UNKNOWN_COMMAND` | The command id is unknown. |
+| `UNKNOWN_COMMAND` | The command id is unknown, or a command that streams its request arrived without a request stream. |
+
+The generated code also rejects with `STREAM_ERROR` (`Stream already open`) when it can't open the response stream of a streamed response, and destroys the request stream of a command that streams both with `PROTOCOL_ERROR` in the same case. In bare-rpc-swift 1.0.1 that happens only once the `RPC` has been released, when the rejection can't reach the peer either.
 
 A client gets `MISSING_RESPONSE` if a reply has no payload, and a `body` that throws destroys its streams with the code `STREAM_ERROR`. Events without a handler are dropped.
 

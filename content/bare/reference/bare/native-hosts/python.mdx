@@ -97,7 +97,13 @@ On other versions of these systems, such as Linux with musl or an older glibc, p
 - `signal_code`— the name of the signal that ended the process, such as `"SIGTERM"`, or `None`.
 - `stdin`, `stdout`, `stderr`— the `asyncio` streams of the process for streams spawned with `"pipe"`, and `None` otherwise.
 
-When the host closes the IPC, the sidecar calls `Bare.exit()`, unless the entry listens for the `close` event of `Bare.IPC`. An uncaught exception in the entry aborts the sidecar.
+When the host ends or closes the IPC, or exits, the entry reads the end of `Bare.IPC`. The IPC closes only once the entry has ended its side too, for example by calling `Bare.IPC.end()` on `end`, and the sidecar then calls `Bare.exit()`, unless the entry listens for the `close` event of `Bare.IPC`. Until then the sidecar exits only when its event loop has no work left, so an entry with other work, such as a timer, keeps running, even after the host process has exited. An entry that must exit with its host ends its side on `end`:
+
+```js
+Bare.IPC.on('end', () => Bare.IPC.end())
+```
+
+An uncaught exception in the entry aborts the sidecar.
 
 ## bare-stow-host-python
 
@@ -151,7 +157,7 @@ def wrap(transport, **opts) -> IPC: ...
 Constructing an `IPC` starts reading the transport, and sends the worker a `configure` control frame carrying `grace` in milliseconds. `IPC` is itself a transport for [`bare-rpc`](#bare-rpc-python), as `RPC(ipc, handler=router)`.
 
 - `ready`— an `asyncio.Future` that resolves when the worker signals readiness. It raises `WorkerError` if, before then, the worker reports an error, exits, or times out. The worker is then terminated, as it is when `ready` is cancelled. If the transport ends first without an `exit` frame, the timeout is cancelled and `ready` waits for `exited()`, then raises its `WORKER_EXITED` or `WORKER_KILLED` error.
-- `async def read() -> bytes`— the next chunk of user data from the worker, or `b""` once the transport has ended. Once the worker fails, the chunks already received are returned first, and then every call raises the `WorkerError` that failed it.
+- `async def read() -> bytes`— the next chunk of user data from the worker, or `b""` once the transport has ended. Once the worker fails, the chunks already received are returned first, and the next call raises the `WorkerError` that failed it. In 0.2.1, later calls alternate between returning `b""` and raising that error again, so stop reading after the first raise.
 - `async for data in ipc`— iterate over `read()` until it returns `b""`.
 - `async def write(data)`— send `data` to the worker as user data. Writes are made one at a time. If the `write()` of the transport raises `BrokenPipeError`, `ConnectionResetError`, or `ConnectionAbortedError`, or raises anything once the transport has ended, the worker has exited, or termination has begun, it raises `WorkerError` with the code `WORKER_CLOSED`. If it raises another way, it raises `WorkerError` with the code `TRANSPORT_ERROR`. A transport that drops writes instead, as a `Sidecar` does once it's closing or its peer has gone, raises nothing.
 - `def terminate() -> asyncio.Future`— ask the worker to exit, as `close()` does, and return a future that resolves to `exit_code`.
@@ -302,7 +308,7 @@ class StreamTransport:
 
 Cancelling the task that awaits `request()`, or passing a `timeout`, cancels the request: the peer is sent a cancel message with the code `CANCELLED` or `TIMEOUT`. Cancellation needs a peer that supports it. A JavaScript peer needs `bare-rpc` 2.0.0 or later, and an older one fails its session with `UNKNOWN_MESSAGE` when it receives a cancel, which ends the session for both sides. Requests, replies, events, and streams are compatible with older peers.
 
-### Errors
+### RPC errors
 
 ```python
 class RPCError(RuntimeError):
@@ -396,7 +402,7 @@ Codec factories:
 
 The JavaScript codecs that aren't listed, such as `uint64`, `int8`, `int16`, `int32`, `int64`, `bigint`, `raw`, and `any`, aren't ported.
 
-### Errors
+### Encoding errors
 
 - `CompactError`— the base class of decoding errors.
 - `OutOfBounds`— a subclass of `CompactError`, raised when the input ends before the value does.
@@ -454,7 +460,7 @@ async with HRPC(transport, schema.resolve) as client:
     await client.greet({"name": "Ada", "times": 2})  # 'Hello Ada Hello Ada'
 ```
 
-### Generator
+### RPC generator
 
 `hrpc-python` exports a subclass of the `hrpc` builder, so `from()`, `namespace()`, `register()`, and `toJSON()` work as they do in JavaScript. It overrides one method:
 
@@ -475,7 +481,7 @@ Generation fails with an error whose `code` is one of these:
 | `STREAM_WITHOUT_RESPONSE` | A command streams its request and has no response. |
 | `UNSUPPORTED_TYPE` | A type is neither a namespaced schema type nor one of `uint`, `uint32`, `int`, `string`, and `buffer`. |
 
-### Generated module
+### Generated RPC module
 
 `hrpc.py` imports `compact_encoding` and `bare_rpc`, and defines the `HRPC` class, along with the stream classes it returns when a command streams:
 
@@ -499,7 +505,7 @@ Handlers must be `async def`. A handler of a streamed response that raises destr
 
 In 0.1.1, the `destroy()` method of an outgoing stream awaits `bare-rpc`'s `destroy()`, which is synchronous from `bare-rpc` 0.2.0. With current `bare-rpc`, it sends the error to the peer and then raises `TypeError`. For the same reason, when the handler of a streamed request and response raises, its response stream is destroyed but its request stream isn't.
 
-The generated client has no timeout or cancellation of its own, but cancelling the task that awaits a call cancels its request. The JavaScript `hrpc` 4.3.1 runs on `bare-rpc` 1.x, which doesn't support cancellation, so cancelling a call to a JavaScript HRPC server ends the session.
+The generated client has no timeout or cancellation of its own, but cancelling the task that awaits a call cancels its request. The JavaScript `hrpc` 4.x, 4.3.2 as of this writing, runs on `bare-rpc` 1.x, which doesn't support cancellation, so cancelling a call to a JavaScript HRPC server ends the session.
 
 ## hyperschema-python
 
@@ -533,7 +539,7 @@ data = c.encode(greeting, {"name": "Ada", "times": 2})  # b'\x03Ada\x01\x02'
 c.decode(greeting, data)  # {'name': 'Ada', 'times': 2}
 ```
 
-### Generator
+### Schema generator
 
 `hyperschema-python` exports a subclass of the `hyperschema` builder, so `from()`, `namespace()`, `register()`, `resolve()`, and `toJSON()` work as they do in JavaScript. Build the schema with this class rather than with `hyperschema` itself, as `toDisk()` calls the `toCode()` of the schema it's given.
 
@@ -542,7 +548,7 @@ c.decode(greeting, data)  # {'name': 'Ada', 'times': 2}
 
 Generation supports the primitives `uint`, `uint8`, `uint16`, `uint24`, `uint32`, `uint40`, `uint48`, `uint56`, `int`, `int24`, `int40`, `int48`, `int56`, `float32`, `float64`, `string`, `buffer`, `fixed32`, `fixed64`, and `json`, and `bool` only as a field of a struct. It fails with an error whose `code` is `UNSUPPORTED_TYPE` for any other primitive, such as `uint64`, `int8`, `int16`, `int32`, `int64`, `utf8`, `ascii`, `hex`, `fixed8`, `date`, `raw`, `lexint`, or the bigint and IP types, for `bool` as an array or record type, for external types, and for a compact struct with more than 56 optional fields.
 
-### Generated module
+### Generated schema module
 
 `schema.py` imports `compact_encoding` and defines a codec for each type, and one function:
 

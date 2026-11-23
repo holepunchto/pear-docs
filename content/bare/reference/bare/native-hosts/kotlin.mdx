@@ -267,7 +267,7 @@ public class CommandRouter : Handler {
 - `Handler.handle(event)`— handle an event. By default, it drops it. **An exception fails the session.**
 - `CommandRouter.onRequest(command, handler)`, `CommandRouter.onEvent(command, handler)`— register the handler of a command, replacing any earlier one. A request for a command without a handler gets an error reply with the code `UNKNOWN_COMMAND`, and an event for one is dropped. Registration isn't synchronized, so register every handler before creating the `Rpc`.
 
-Each handler runs in a coroutine of its own, so a slow handler doesn't hold up others, and handlers can send requests to the peer of their own session.
+Each handler runs in a coroutine of its own, so a handler that suspends doesn't hold up others, and handlers can send requests to the peer of their own session. Request and event handlers start undispatched on the coroutine that reads the transport, so code that blocks the thread before the handler first suspends, such as `Thread.sleep()`, stalls every frame of the session until it returns. Move blocking work off that thread, for example with `withContext(Dispatchers.IO)`.
 
 ### `Reply`
 
@@ -316,7 +316,7 @@ An incoming stream, whether the body of a request or a streamed reply, asks the 
 
 ### Errors
 
-Every error that the library raises is an `RpcException`, a sealed subclass of `Exception`, except `RequestCancelledException`, which is a `CancellationException`. Only `RemoteException` has a public constructor, so that handlers can throw it to send a structured error.
+Every protocol and session error that the library raises is an `RpcException`, a sealed subclass of `Exception`, except `RequestCancelledException`, which is a `CancellationException`. Invalid arguments throw `IllegalArgumentException`, as their entries note, and exceptions of the transport propagate as they are. Only `RemoteException` has a public constructor, so that handlers can throw it to send a structured error.
 
 | Exception | Raised when |
 | --- | --- |
