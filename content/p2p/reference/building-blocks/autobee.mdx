@@ -1,7 +1,7 @@
 ---
 title: "Autobee"
 description: "Multiwriter Hyperbee: many writers linearized into one deterministic key/value view."
-upstreamVersion: "2.13.6"
+upstreamVersion: "2.14.0"
 seoTitle: "Autobee: Multiwriter Hyperbee Key/Value Views"
 docType: reference
 product: p2p
@@ -15,7 +15,7 @@ schemaType: APIReference
 It sits alongside [Autobase](/p2p/reference/building-blocks/autobase) rather than replacing it. Autobase linearizes into a view of any shape you open; Autobee is the case where that view is always a Hyperbee, with the B-tree write path built in.
 
 <Callout type="warn">
-Upstream describes Autobee as **experimental and under heavy development, with breaking changes expected**. Pin an exact version, and re-read this page against your installed release before upgrading. It is documented here against **v2.13.6**.
+Upstream describes Autobee as **experimental and under heavy development, with breaking changes expected**. Pin an exact version, and re-read this page against your installed release before upgrading. It is documented here against **v2.14.0**.
 </Callout>
 
 ## The apply handler
@@ -87,7 +87,7 @@ console.log(b4a.toString(entry.value))
 
 #### `const db = new Autobee(store, key, options)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L40)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L41)
 
 Create an Autobee. Passing `key` joins an existing database; omitting it or passing `null` creates a new one. `options` may be passed as the second argument when there is no `key`.
 
@@ -114,6 +114,9 @@ Create an Autobee. Passing `key` joins an existing database; omitting it or pass
 | `fastForward` | `{}` | Fast-forward configuration, or `false` to disable fast-forwarding entirely. See [FastForwardOptions](#fastforwardoptions). |
 | `preapply` | — | One-shot gate awaited before the first apply, for state `apply` depends on. |
 | `name` | `null` | Label used in debug output only. |
+| `headBarrier` | `false` | **Experimental.** Added in v2.14.0. Turn on two-phase catch-up: while any known writer's data that the next apply needs is missing locally, the database holds the drain and downloads it, then applies once with complete knowledge instead of applying and undoing on partial knowledge. Upstream marks it experimental and doesn't document it. |
+| `headBarrierStallMs` | `10000` | **Experimental.** Added in v2.14.0. Milliseconds without a new block arriving before a `headBarrier` hold gives up and applies what it has. Only with `headBarrier: true`. |
+| `headBarrierMaxHoldMs` | `headBarrierStallMs × 6` | **Experimental.** Added in v2.14.0. The longest a `headBarrier` hold lasts, even while blocks keep arriving. After either limit the database applies everything available, and anything still missing starts a new hold. Only with `headBarrier: true`. |
 | `ackThreshold` | `32` | Flushes-behind threshold below which acking is skipped, unless overridden per call via [`db.setAcking()`](#dbsetackingacking-options)'s own `threshold`. |
 
 <Callout type="warn">
@@ -136,7 +139,7 @@ Closes the database, its view, and the sessions it opened on `store`.
 
 #### `db.key`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L76)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L77)
 
 The public key of this Autobee. Share it so other peers can join.
 
@@ -144,7 +147,7 @@ The public key of this Autobee. Share it so other peers can join.
 
 #### `db.discoveryKey`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L77)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L78)
 
 The discovery key, used as the swarm topic.
 
@@ -152,7 +155,7 @@ The discovery key, used as the swarm topic.
 
 #### `db.id`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L78)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L79)
 
 `db.key` as a z-base-32 string — the printable form to hand to peers.
 
@@ -160,7 +163,7 @@ The discovery key, used as the swarm topic.
 
 #### `db.local`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L104)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L105)
 
 This peer's own writer Hypercore. `db.local.key` or `db.local.id` is what an existing writer passes to [`host.addWriter`](#hostaddwriterkey-options) to grant write access.
 
@@ -170,7 +173,7 @@ This peer's own writer Hypercore. `db.local.key` or `db.local.id` is what an exi
 
 #### `db.writable`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L213)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L222)
 
 Whether this instance has been added as a writer. Listen for [`db.on('writable', ...)`](#dbonwritable-----) to be notified when this flips, rather than polling it.
 
@@ -178,7 +181,7 @@ Whether this instance has been added as a writer. Listen for [`db.on('writable',
 
 #### `db.isIndexer`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L195)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L204)
 
 Whether this writer is an indexer.
 
@@ -186,25 +189,25 @@ Whether this writer is an indexer.
 
 #### `db.view`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L99)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L100)
 
 The readable view, updated after each apply cycle. Without an `open` handler this is the Hyperbee snapshot itself, so read it with the [Hyperbee](/p2p/reference/building-blocks/hyperbee) API — `view.get(key)`, `view.createReadStream()`, `view.peek(range)`.
 
 #### `views = db.views()`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L392)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L402)
 
 - Returns: `object` — the current system and view core positions.
 
 #### `db.bee`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L98)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L99)
 
 The underlying Hyperbee snapshot. This is what `open` receives, so it is the same object as `db.view` only when no `open` handler is set — with one, `db.view` is whatever that handler returned and `db.bee` is still the raw B-tree.
 
 #### `db.stats`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L81)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L82)
 
 Counters for the current session: `{ undos, fastForwards, drains, applies, appends, writersOpened, writersClosed }`. Useful for confirming that apply cycles and reorders are happening.
 
@@ -212,7 +215,7 @@ Counters for the current session: `{ undos, fastForwards, drains, applies, appen
 
 #### `db.optimistic`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L100)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L101)
 
 Whether optimistic appends are accepted.
 
@@ -220,7 +223,7 @@ Whether optimistic appends are accepted.
 
 #### `db.setAcking(acking, [options])`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L241)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L250)
 
 Override acking, which is otherwise driven by the `isTrusted` constructor option. `options.threshold` defaults to the current threshold.
 
@@ -231,7 +234,7 @@ Override acking, which is otherwise driven by the `isTrusted` constructor option
 
 #### `db.encrypted`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L56)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L57)
 
 Whether writer cores and the view are encrypted at rest.
 
@@ -241,7 +244,7 @@ Whether writer cores and the view are encrypted at rest.
 
 #### `await db.append(value, options)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L1616)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L1640)
 
 Append one value, or an array of values as one batch, to the local writer and trigger an apply cycle. Strings are converted to buffers; anything else must already be a buffer, so encode structured values yourself.
 
@@ -257,7 +260,7 @@ Append one value, or an array of values as one batch, to the local writer and tr
 
 #### `await db.update()`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L661)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L672)
 
 Run an apply cycle over everything currently available. Call it after replicating to process what arrived.
 
@@ -265,7 +268,7 @@ Run an apply cycle over everything currently available. Call it after replicatin
 
 #### `await db.updated()`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L665)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L676)
 
 Resolves once the in-flight apply cycle has finished, or immediately if none is running.
 
@@ -273,7 +276,7 @@ Resolves once the in-flight apply cycle has finished, or immediately if none is 
 
 #### `await db.flush()`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L478)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L489)
 
 Resolves once the database has finished booting online — that is, once known writers have been indexed.
 
@@ -283,7 +286,7 @@ Resolves once the database has finished booting online — that is, once known w
 
 #### `const stream = db.replicate(isInitiatorOrStream, options)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L472)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L483)
 
 Create a replication stream. Arguments match [`store.replicate()`](/p2p/reference/helpers/corestore), and the stream is also registered with the wakeup protocol.
 
@@ -299,7 +302,7 @@ swarm.on('connection', (conn) => db.replicate(conn))
 
 #### `await db.wakeup({ key, length })`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L1610)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L1634)
 
 Tell the database that the writer core `key` has at least `length` entries, then run a cycle. Use it when you learn about a writer out of band.
 
@@ -307,13 +310,13 @@ Tell the database that the writer core `key` has at least `length` entries, then
 
 #### `db.hintWakeup(wakeup)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L482)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L493)
 
 Queue a wakeup hint, or an array of them, without awaiting a cycle.
 
 #### `const cores = await db.cores(options)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L329)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L339)
 
 _Added in v2.2.0._ Report which cores a mirror should pin so it can replicate this database without knowing its internal structure — the local writer, this peer's views if it is trusted, and (with `wait`) the most recently trusted head, so a mirror that pins only what this call returns still lands on a valid entrypoint.
 
@@ -333,7 +336,7 @@ Fast-forward lets a peer that is far behind jump onto a head another peer vouche
 
 #### `await db.moveTo(head, [options])`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L1701)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L1725)
 
 Fast-forward onto `head`, even backwards, skipping the usual distance and conservative checks. Pass `{ timeout }` to bound the reads, so a head nobody serves fails instead of hanging.
 
@@ -366,7 +369,7 @@ The inverse of `db.remapped`: `true` while the database is on the generation bef
 
 #### `await db.setLocal(key, options)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L1156)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L1167)
 
 Rotate the local writer onto a different key; the new core takes over as the active oplog. Pass `{ keyPair }` to supply its signing keys. Emits [`rotate-local-writer`](#dbonrotate-local-writer-----).
 
@@ -376,7 +379,7 @@ Rotate the local writer onto a different key; the new core takes over as the act
 
 #### `Autobee.isAutobee(value)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L191)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L200)
 
 Whether `value` is an Autobee instance.
 
@@ -384,7 +387,7 @@ Whether `value` is an Autobee instance.
 
 #### `const buf = Autobee.encodeValue(value, opts)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L1604)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L1628)
 
 Encode a value into an Autobee block with its metadata.
 
@@ -392,13 +395,13 @@ Encode a value into an Autobee block with its metadata.
 
 #### `const value = Autobee.decodeValue(buf, opts)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L1600)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L1624)
 
 Decode an Autobee block back to its value.
 
 #### `Autobee.GENESIS`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L189)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L198)
 
 `{ key: null, length: 0 }` — the empty head representing the genesis state.
 
@@ -406,37 +409,37 @@ Decode an Autobee block back to its value.
 
 #### `db.on('update', () => { ... })`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L689)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L700)
 
-Emitted after an interrupt, alongside `interrupt`, and separately whenever the local writer's writable state flips (see [`db.on('writable', ...)`](#dbonwritable-----) below) — [src](https://github.com/holepunchto/autobee/blob/v2.13.6/lib/writers.js#L216). It is not a general view-changed signal for an ordinary apply cycle; use the `update(view, changes)` handler option for that.
+Emitted after an interrupt, alongside `interrupt`, and separately whenever the local writer's writable state flips (see [`db.on('writable', ...)`](#dbonwritable-----) below) — [src](https://github.com/holepunchto/autobee/blob/v2.14.0/lib/writers.js#L216). It is not a general view-changed signal for an ordinary apply cycle; use the `update(view, changes)` handler option for that.
 
 #### `db.on('writable', () => { ... })`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/lib/writers.js#L215)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/lib/writers.js#L215)
 
 Emitted when this instance transitions from not-writable to writable — that is, when [`db.writable`](#dbwritable) flips to `true`. Fired from `ActiveWriters._updateLocalState()`, which runs as part of ordinary writer-set processing during an apply cycle, not only from an interrupt.
 
 #### `db.on('unwritable', () => { ... })`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/lib/writers.js#L215)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/lib/writers.js#L215)
 
 Emitted when this instance transitions from writable to not-writable — the counterpart to `'writable'`, fired by the same `_updateLocalState()` check.
 
 #### `db.on('interrupt', (reason) => { ... })`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L688)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L699)
 
 Emitted when [`host.interrupt(reason)`](#hostinterruptreason) is called inside `apply`.
 
 #### `db.on('error', (err) => { ... })`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L702)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L713)
 
 Emitted when applying fails. With no listener attached the process crashes deliberately, so attach one.
 
 #### `db.on('rotate-local-writer', () => { ... })`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L1207)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L1218)
 
 Emitted after [`db.setLocal()`](#await-dbsetlocalkey-options) swaps the local writer.
 
@@ -450,7 +453,7 @@ _Added in v2.13.1._ Emitted when the background [remap](#remapping) fails, or, s
 
 #### `db.on('move-to', (to, from) => { ... })`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/index.js#L1862)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/index.js#L1890)
 
 Emitted after a fast-forward, with the heads landed on and left behind.
 
@@ -460,7 +463,7 @@ The `host` argument passed to `apply`. Its calls change the writer set, and beca
 
 #### `host.addWriter(key, options)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/lib/apply-calls.js#L33)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/lib/apply-calls.js#L33)
 
 Add a writer. `key` may be a buffer, a hex string, or a z-base-32 id.
 
@@ -471,19 +474,19 @@ Add a writer. `key` may be a buffer, a hex string, or a z-base-32 id.
 
 #### `host.removeWriter(key)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/lib/apply-calls.js#L49)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/lib/apply-calls.js#L49)
 
 Remove a writer.
 
 #### `host.ackWriter(key)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/lib/apply-calls.js#L44)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/lib/apply-calls.js#L44)
 
 Deprecated, and does nothing. Autobee records every optimistic node it applies whether or not `apply` acks its writer, so validate optimistic nodes in `apply` itself. The call is kept so apply handlers written for older releases still run.
 
 #### `host.interrupt(reason)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/lib/apply-calls.js#L58)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/lib/apply-calls.js#L58)
 
 Stop the current apply cycle and emit `interrupt` with `reason`. An escape hatch for when `apply` meets a node it cannot handle — a newer block type, say — so the peer stops rather than diverging.
 
@@ -491,7 +494,7 @@ Stop the current apply cycle and emit `interrupt` with `reason`. An escape hatch
 
 #### `const anchor = await host.createAnchor(key, length)`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/lib/apply-calls.js#L66)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/lib/apply-calls.js#L66)
 
 Create a verifiable checkpoint for the node at `key`/`length`, which future writers can use to prove causal ordering.
 
@@ -500,7 +503,7 @@ Create a verifiable checkpoint for the node at `key`/`length`, which future writ
 
 #### `host.genesis`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/lib/apply-calls.js#L29)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/lib/apply-calls.js#L29)
 
 Whether the system has processed no nodes yet. Use it to bootstrap the first writer.
 
@@ -508,7 +511,7 @@ Whether the system has processed no nodes yet. Use it to bootstrap the first wri
 
 #### `host.clock`
 
-[src](https://github.com/holepunchto/autobee/blob/v2.13.6/lib/apply-calls.js#L25)
+[src](https://github.com/holepunchto/autobee/blob/v2.14.0/lib/apply-calls.js#L25)
 
 The system flush count — a monotonic counter of committed apply cycles.
 
@@ -517,7 +520,7 @@ The system flush count — a monotonic counter of committed apply cycles.
 `host` also mirrors `id`, `key`, `discoveryKey`, and `name` from the database.
 
 <Callout type="info">
-Two host calls are stubs as of v2.13.6 and should not be relied on: `host.removeable(key)` always returns `true`, and `host.preferFastForward()` does nothing.
+Two host calls are stubs as of v2.14.0 and should not be relied on: `host.removeable(key)` always returns `true`, and `host.preferFastForward()` does nothing.
 </Callout>
 
 ## Types
