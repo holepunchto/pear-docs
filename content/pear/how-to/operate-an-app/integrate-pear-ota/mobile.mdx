@@ -56,10 +56,14 @@ It also does not cover the raw [`bare-kit`](/bare/reference/bare/bare-kit) primi
 ### Install the dependencies
 
 ```sh skip="install-instruction"
-npm install pear-mobile react-native-bare-kit framed-stream b4a
+npm install pear-mobile react-native-bare-kit@^0.16.0 framed-stream b4a
 ```
 
 `pear-mobile` is the runtime, `react-native-bare-kit` the worklet host it runs on, and `framed-stream`/`b4a` are what the JS thread uses to frame and decode the worklet's IPC duplex.
+
+<Callout type="warn">
+Pin `react-native-bare-kit` to 0.16. `pear-mobile` doesn't declare which version it needs, and an unpinned install gets 0.17, which moved to [Bare Kit 3](/bare/how-to/run-on-native/migrate-to-bare-kit-3) and doesn't include Bare Kit itself, so `new Worklet()` throws until the app links Bare Kit with `bare-stow link`. Bare Kit 3 also removed the `BareKit` global, which the worker in [Add the updater worker](#add-the-updater-worker) uses through `which-runtime` to find its arguments, so on 0.17 it reads the wrong ones.
+</Callout>
 
 The worker added two steps from now brings its own requires, which have to resolve from this same `package.json`—[`bare-pack`](https://github.com/holepunchto/bare-pack) resolves them at pack time, from `node_modules`, not at runtime on the device:
 
@@ -151,7 +155,7 @@ Either way—package or vendored copy—here's what's actually running:
 
 For this guide, don't add your own peer-to-peer logic to this file the way the callout above suggests for a from-scratch app—keep it dedicated to updates, as the intro to this step said, and start a second worker for anything else.
 
-Nothing in the worker's own code needs to change for mobile beyond the `imports` map above. One more place does the rest of the platform-specific work for you: lines 8–13 in [the canonical copy](https://github.com/holepunchto/pear-docs/blob/published/examples/getting-started/hello-pear-electron/workers/main.js#L8) branch on `isBareKit` from [`which-runtime`](https://www.npmjs.com/package/which-runtime) to pick the right offset into `Bare.argv`—mobile's worklet argv has no executable-path or entry-path slot the way a spawned desktop process does, so the same file produces a correct config object on both sides without edits.
+Nothing in the worker's own code needs to change for mobile beyond the `imports` map above. One more place does the rest of the platform-specific work for you: lines 8–13 in [the canonical copy](https://github.com/holepunchto/pear-docs/blob/published/examples/getting-started/hello-pear-electron/workers/main.js#L8) branch on `isBareKit` from [`which-runtime`](https://www.npmjs.com/package/which-runtime) to pick the right offset into `Bare.argv`—mobile's worklet argv has no executable-path or entry-path slot the way a spawned desktop process does, so the same file produces a correct config object on both sides without edits. `isBareKit` is `typeof BareKit !== 'undefined'` in `which-runtime` 1.4.0, so it holds only on Bare Kit 2, which react-native-bare-kit 0.16 embeds. A Bare Kit 3 worklet has no `BareKit` global, so the check is `false` there, although its `Bare.argv` still holds only the arguments that the host passed, and the worker reads every argument two places too far.
 
 </Step>
 

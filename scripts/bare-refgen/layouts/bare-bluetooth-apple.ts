@@ -2,8 +2,8 @@
 // Editorial layout for bare-bluetooth-apple: param/returns prose grounded in
 // the upstream README, index.js, and lib/*.{js,d.ts}. `write`'s `withResponse`
 // default (`true`) is read from lib/peripheral.js; option shapes from the lib
-// `.d.ts` interfaces. Errors surface via the `'error'` event rather than being
-// thrown, so there are no `throws` overrides. Bare method names are shared
+// `.d.ts` interfaces. Errors surface via the `'error'` event, except `NOT_CONNECTED`
+// (0.8.2), which `Peripheral` methods throw; that is in the Errors section. Bare method names are shared
 // across Central/Peripheral/PeripheralManager, so keys are fully qualified.
 // Prose that replaces or extends upstream TSDoc (version history, behaviour
 // checked against lib/*.js) is in bare-bluetooth-apple.patches.json, so a

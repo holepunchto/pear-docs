@@ -646,6 +646,8 @@ interface DiscoveredPeripheral {
 }
 ```
 
+`serviceUUIDs` lists the advertised service UUIDs as CoreBluetooth spells them, so a 16-bit UUID stays short and uppercase, such as `180D`. `bare-bluetooth-android` reports the full lowercase form, such as `0000180d-0000-1000-8000-00805f9b34fb`, so normalize before you compare across platforms. Added in v0.8.1.
+
 #### `RetrievedPeripheral`
 
 ```ts
@@ -656,7 +658,7 @@ interface RetrievedPeripheral {
 }
 ```
 
-A peripheral resolved without scanning, as returned by `central.retrievePeripherals()` and `central.retrieveConnectedPeripherals()`. It carries no advertisement data, so it has no `rssi` or `serviceData`. `state` is the connection state, which may reflect a connection made by another app. Added in v0.6.0.
+A peripheral resolved without scanning, as returned by `central.retrievePeripherals()` and `central.retrieveConnectedPeripherals()`. It carries no advertisement data, so it has no `rssi`, `serviceData` or `serviceUUIDs`. `state` is the connection state, which may reflect a connection made by another app. Added in v0.6.0.
 
 #### `PeripheralState`
 
@@ -705,11 +707,13 @@ interface PeripheralEventMap {
 }
 ```
 
+`'disconnect'` is emitted when the link goes down, after which `connected` is `false`. Added in v0.8.2.
+
 `'nameChange'` is emitted when the device reports a new name, with `null` if it no longer has one. From then on `peripheral.name` returns the new value. Added in v0.8.0.
 
 ## Errors
 
-Failures are emitted as `'error'` events carrying a `BluetoothError`. It is not exported from the module, but its `code` identifies the failure:
+Failures are emitted as `'error'` events carrying a `BluetoothError`. As of v0.8.2, the `Peripheral` methods that talk to the device (`discoverServices()`, `discoverCharacteristics()`, `read()`, `write()`, `subscribe()`, `unsubscribe()` and `openL2CAPChannel()`) instead throw a `BluetoothError` with code `NOT_CONNECTED` once the peripheral is disconnected or destroyed. Check `peripheral.connected` or listen for `'disconnect'`. It is not exported from the module, but its `code` identifies the failure:
 
 | Code | Emitted by | When |
 | --- | --- | --- |
@@ -721,6 +725,7 @@ Failures are emitted as `'error'` events carrying a `BluetoothError`. It is not 
 | `NOTIFY_FAILED` | `Peripheral` | A notification update for a subscribed characteristic reported an error. |
 | `NOTIFY_STATE_FAILED` | `Peripheral` | Changing a characteristic's notification state (subscribing or unsubscribing) failed. |
 | `CHANNEL_FAILED` | `Peripheral`, `PeripheralManager` | Opening an L2CAP channel failed. |
+| `NOT_CONNECTED` | `Peripheral` | Thrown, not emitted: the peripheral is disconnected or destroyed. Added in v0.8.2. |
 | `ADVERTISE_FAILED` | `PeripheralManager` | Advertising failed. |
 | `SERVICE_ADD_FAILED` | `PeripheralManager` | Adding a service failed. |
 | `CHANNEL_PUBLISH_FAILED` | `PeripheralManager` | Publishing an L2CAP channel failed. |

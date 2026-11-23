@@ -26,7 +26,7 @@ const layout: Layout = {
       opts: 'Options; `rejectUnauthorized`, `eagerOpen`, and `allowHalfOpen` default to `true`, and `readBufferSize` to `65536`.',
     },
     createServer: {
-      opts: 'Options applied to each incoming socket; the same as `TLSSocket`, plus any options supported by `bare-net`.',
+      opts: 'Options applied to each incoming socket; the same as `TLSSocket` except `eagerOpen`, plus any options supported by `bare-net`. From v4.0.0 it can be left out, so that `createServer(onsecureconnection)` takes the defaults.',
       onsecureconnection: "Called on each `'secureConnection'` event.",
     },
     createConnection: {
