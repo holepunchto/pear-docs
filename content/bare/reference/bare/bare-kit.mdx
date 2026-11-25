@@ -20,8 +20,8 @@ This axis tracks `react-native-bare-kit` specifically (the only canonical typed 
 the Swift and Kotlin bindings and the C library ship no .d.ts) and is independent of `bare-cli`
 and `bare-runtime`.
 
-As of 2026-11-12 (audited against react-native-bare-kit 0.17.1, bare-kit 3.1.0, bare-kit-swift
-2.3.0, bare-kit-kotlin 0.2.3, and bare-kit-python 0.2.1, the latest release of each), the doc-states are 0.17.1,
+As of 2026-11-18 (audited against react-native-bare-kit 0.17.1, bare-kit 3.2.1, bare-kit-swift
+2.4.2, bare-kit-kotlin 0.2.7, and bare-kit-python 0.2.2, the latest release of each), the doc-states are 0.17.1,
 0.17.0, 0.14, 0.10.5, and 0.9.2. 0.17.0 moved the package onto bare-kit 3 and removed the
 `assets` option. 0.17.1 added `exit` and `wait()`, and typed the `started`, `terminated`, and
 `suspended` getters, which index.js had long before, so they carry a "Typed in 0.17.1" label.
@@ -44,11 +44,21 @@ prose. Re-diff them on each release of those repos. react-native-bare-kit 0.17.x
 embed Bare Kit: shared/BareKitModule.cc dlopens BareKit.framework or libbare-kit.so, which the
 app brings in through bare-kit-swift or bare-kit-kotlin, usually with
 `bare-stow link --target bare-kit`. bare-stow 0.3.7 pins bare-kit-swift `from: 2.3.0` and
-bare-kit-kotlin `v0.2.+`. bare-kit-swift 2.3.0, bare-kit-kotlin 0.2.3 and bare-kit-python 0.2.1
-build bare-kit 3.1.0, which fetches Bare 1.37.1; the 2.2.0, 0.2.2 and 0.2.0 releases built
-3.0.1, which fetches Bare 1.36.2 (3.0.0 fetched 1.36.1). "Bundled Bare version" records this.
-Bare 1.37 needs the iOS extended virtual addressing entitlement, documented under "iOS
-entitlement" from the chromium-prebuilds README; none of the binding READMEs mentions it. The page has no `upstreamVersion` front
+bare-kit-kotlin `v0.2.+`; 0.3.8 and 0.3.9 pin bare-kit-swift `from: 2.4.0` (lib/target/bare-kit.js),
+with the `JavaScriptCore` trait for `engine: 'javascriptcore'`, and bare-kit-kotlin-quickjs
+`v0.2.+` for `engine: 'quickjs'`. bare-kit-swift 2.4.2, bare-kit-kotlin 0.2.7 and
+bare-kit-python 0.2.2 build bare-kit 3.2.1, which fetches Bare 1.38.0 (3.2.0 does too; 3.2.0
+changed only the build, renaming the CMake targets to `bare_kit::static`, `bare_kit::shared` and
+`bare_kit::exports`). bare-kit-swift 2.3.0 to 2.4.1, bare-kit-kotlin 0.2.3 to 0.2.6 and
+bare-kit-python 0.2.1 built bare-kit 3.1.0, which fetches Bare 1.37.1; the 2.2.0, 0.2.2 and
+0.2.0 releases built 3.0.1, which fetches Bare 1.36.2 (3.0.0 fetched 1.36.1). "Bundled Bare
+version" records this. bare-kit-swift 2.4.0 added the `JavaScriptCore` trait and moved its
+manifest to swift-tools-version 6.1, which traits need; 2.4.1 ships privacy manifests
+(lib/v8.xcprivacy, lib/javascriptcore.xcprivacy). bare-kit-kotlin 0.2.4 added the
+bare-kit-kotlin-quickjs artifact (jitpack.yml publishes both). Bare 1.37 needs the iOS extended
+virtual addressing entitlement for V8, documented under "iOS entitlement" from the
+chromium-prebuilds README; none of the binding READMEs mentions it, and nothing upstream says
+whether the JavaScriptCore build needs it. The page has no `upstreamVersion` front
 matter because it sits on a version axis, which scripts/check-upstream-pins.ts skips. */}
 
 [Bare Kit](https://github.com/holepunchto/bare-kit) embeds [Bare](/bare/reference/bare/runtime) in native applications. It is a C library that runs each JavaScript entry point on a thread of its own, called a **worklet**, with an in-process IPC channel between the host app and the worklet. Bindings for several languages build on it:
@@ -159,11 +169,19 @@ The Swift, Kotlin, and Python bindings are thin layers over the [C API](#c-api).
 
 ```swift
 dependencies: [
-  .package(url: "https://github.com/holepunchto/bare-kit-swift", from: "2.3.0")
+  .package(url: "https://github.com/holepunchto/bare-kit-swift", from: "2.4.2")
 ]
 
 .product(name: "BareKit", package: "bare-kit-swift")
 ```
+
+From 2.4.0 the package declares Swift tools 6.1, so it needs Xcode 16.3 or later. Bare Kit runs worklets with V8 by default. From 2.4.0, enabling the `JavaScriptCore` trait in place of the default `V8` trait runs them with the JavaScriptCore of the system instead, which leaves V8 out of the app:
+
+```swift
+.package(url: "https://github.com/holepunchto/bare-kit-swift", from: "2.4.2", traits: ["JavaScriptCore"])
+```
+
+Traits apply to the package across the app, so every package that depends on bare-kit-swift must agree on the engine. With both traits enabled, the build fails. `bare-stow link` enables the trait when given `--target-option engine=javascriptcore`, as [`bare-stow`](/bare/reference/bare/modules/bare-stow) describes.
 
 ```swift
 import BareKit
@@ -219,7 +237,15 @@ repositories {
 }
 
 dependencies {
-  implementation "com.github.holepunchto.bare-kit-kotlin:bare-kit-kotlin:v0.2.3"
+  implementation "com.github.holepunchto.bare-kit-kotlin:bare-kit-kotlin:v0.2.7"
+}
+```
+
+Bare Kit runs worklets with V8 by default. From 0.2.4, depending on `bare-kit-kotlin-quickjs` in place of `bare-kit-kotlin` runs them with QuickJS instead, which is much smaller than V8. Depend on only one of the two, because both include the same classes and the same native library. `bare-stow link` depends on it when given `--target-option engine=quickjs`.
+
+```groovy
+dependencies {
+  implementation "com.github.holepunchto.bare-kit-kotlin:bare-kit-kotlin-quickjs:v0.2.7"
 }
 ```
 
@@ -390,8 +416,8 @@ Poll callbacks run on a thread that the IPC owns, not on the thread that started
 
 The native addons of a worklet resolve the symbols of Bare from the host process. This works as is when the host links or loads Bare Kit as a shared library, as bare-kit-swift and bare-kit-kotlin do. Otherwise:
 
-- A host that links Bare Kit statically into an executable must export its symbols, for example with `ENABLE_EXPORTS` and, on Windows, `WINDOWS_EXPORT_ALL_SYMBOLS` in CMake.
-- A host that links Bare Kit statically into a shared library must keep its symbols exported, and on Android must also link with `-z global`. From bare-kit 3.0.1, linking the `bare::kit::exports` CMake target into the library exports the functions of Bare Kit and the symbols of Bare that addons need, and nothing else.
+- A host that links Bare Kit statically must link the whole archive, so that the builtin native addons are kept, and export its symbols. From bare-kit 3.2.0, the CMake targets are `bare_kit::static`, `bare_kit::shared`, and `bare_kit::exports`, so link `$<LINK_LIBRARY:WHOLE_ARCHIVE,bare_kit::static>` and `bare_kit::exports`. Linking `bare_kit::exports` exports the functions of Bare Kit and the symbols of Bare that addons need, and nothing else. In bare-kit 3.0.1 and 3.1.0 that target is `bare::kit::exports`, and an executable exports its symbols with `ENABLE_EXPORTS` and, on Windows, `WINDOWS_EXPORT_ALL_SYMBOLS` instead.
+- A host that links Bare Kit statically into a shared library must, on Android, also link with `-z global`.
 
 Addons may bind to the wrong symbols if the process already exports libuv, V8, or Node-API, as Node.js and Electron do, or holds more than one copy of Bare Kit.
 
@@ -427,7 +453,7 @@ app.assets
 app/node_modules/a/asset.txt
 ```
 
-[`bare-stow`](/bare/reference/bare/modules/bare-stow) lays out the resources of the worklets it links this way under the name `bare-stow`: `bare-stow link` writes `bare-stow.assets` and the `bare-stow` folder, as [Linking addons and assets](#linking-addons-and-assets) describes, and a worklet packed by `bare-stow pack` starts as `bare-stow.bundle`, with the bundle as its source.
+[`bare-stow`](/bare/reference/bare/modules/bare-stow) lays out the resources of the worklets it links this way under the name `bare-stow`: `bare-stow link` writes `bare-stow.assets` and the `bare-stow` folder, as [Linking addons and assets](#linking-addons-and-assets) describes. A worklet that `bare-stow pack` packs for the React Native target, or for the `bare-kit` target with `--target-option linking=app`, starts as `bare-stow.bundle`, with the bundle as its source. With the default `linking=package`, the `bare-kit` target starts the packed bundle file instead.
 
 From 0.17.0, you can also pack a worker and its dependencies into a package with [`bare-stow`](/bare/reference/bare/modules/bare-stow) and its React Native target, [`bare-stow-target-react-native`](https://github.com/holepunchto/bare-stow-target-react-native). The worker exports a function that receives the IPC stream:
 
@@ -517,15 +543,16 @@ A worklet runs the Bare that Bare Kit embeds, not the Bare installed on your mac
 
 | Bare Kit | Embeds Bare | Built by |
 | --- | --- | --- |
-| 3.1.0 | 1.37.1 | bare-kit-swift 2.3.0, bare-kit-kotlin 0.2.3, bare-kit-python 0.2.1 |
+| 3.2.0, 3.2.1 | 1.38.0 | bare-kit-swift 2.4.2, bare-kit-kotlin 0.2.7, bare-kit-python 0.2.2 |
+| 3.1.0 | 1.37.1 | bare-kit-swift 2.3.0 to 2.4.1, bare-kit-kotlin 0.2.3 to 0.2.6, bare-kit-python 0.2.1 |
 | 3.0.1 | 1.36.2 | bare-kit-swift 2.0.0 to 2.2.0, bare-kit-kotlin 0.1.2 to 0.2.2, bare-kit-python 0.1.0 to 0.2.0 |
 | 3.0.0 | 1.36.1 | |
 | 2.5.4, 2.5.5 | 1.33.4 | react-native-bare-kit 0.15.5 to 0.16.0 |
 
-From Bare Kit 3.1.0, iOS apps need the entitlement that [iOS entitlement](#ios-entitlement) describes. bare-stow 0.2.0 through 0.3.6 linked bare-kit-swift with a `from:` requirement, `from: "2.0.0"` in 0.2.0 and `from: "2.2.0"` after it, which Swift Package Manager resolves to any later 2.x release. A package update therefore brings an app they linked onto bare-kit-swift 2.3.0 and Bare Kit 3.1.0 without a new bare-stow. They linked one bare-kit-kotlin release exactly: `v0.1.1` in 0.2.0, `v0.2.3` in 0.3.4, and `v0.2.2` in the others.
+From Bare Kit 3.1.0, iOS apps need the entitlement that [iOS entitlement](#ios-entitlement) describes. bare-stow 0.2.0 through 0.3.6 linked bare-kit-swift with a `from:` requirement, `from: "2.0.0"` in 0.2.0 and `from: "2.2.0"` after it, which Swift Package Manager resolves to any later 2.x release. A package update therefore brings an app they linked onto the latest bare-kit-swift 2.x, and with it the Bare Kit and Bare that it embeds, without a new bare-stow. From bare-kit-swift 2.4.0, that release needs Xcode 16.3 or later. They linked one bare-kit-kotlin release exactly: `v0.1.1` in 0.2.0, `v0.2.3` in 0.3.4, and `v0.2.2` in the others.
 
 <VersionGate since="0.17.0">
-From 0.17.0, react-native-bare-kit includes no Bare Kit, so the Bare version depends on the bare-kit-swift and bare-kit-kotlin releases in the app. bare-stow 0.3.7 links bare-kit-swift 2.3.0 or a later 2.x release, and the latest 0.2.x release of bare-kit-kotlin.
+From 0.17.0, react-native-bare-kit includes no Bare Kit, so the Bare version depends on the bare-kit-swift and bare-kit-kotlin releases in the app. bare-stow 0.3.7 links bare-kit-swift 2.3.0 or a later 2.x release, and the latest 0.2.x release of bare-kit-kotlin. bare-stow 0.3.8 and later link bare-kit-swift 2.4.0 or a later 2.x release, with the `JavaScriptCore` trait for `--target-option engine=javascriptcore`, and the latest 0.2.x release of `bare-kit-kotlin`, or of `bare-kit-kotlin-quickjs` for `--target-option engine=quickjs`.
 </VersionGate>
 
 <VersionGate until="0.17.0">
@@ -534,7 +561,7 @@ The react-native-bare-kit package contains prebuilt bare-kit libraries for iOS a
 
 ## iOS entitlement
 
-From Bare Kit 3.1.0, which embeds Bare 1.37.1, an iOS app that runs worklets must be signed with the [`com.apple.developer.kernel.extended-virtual-addressing`](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.kernel.extended-virtual-addressing) entitlement. This applies to bare-kit-swift 2.3.0 and later, and so to a react-native-bare-kit app that links them. When V8 starts, it reserves a large region of virtual memory for pointer compression and for the heap of its C++ garbage collector. On iOS that is more than the default address space of an app, so without the entitlement the app aborts on a device with this fatal error:
+From Bare Kit 3.1.0, which embeds Bare 1.37.1, an iOS app that runs worklets with V8, the default engine, must be signed with the [`com.apple.developer.kernel.extended-virtual-addressing`](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.kernel.extended-virtual-addressing) entitlement. This applies to bare-kit-swift 2.3.0 and later with the default `V8` trait, and so to a react-native-bare-kit app that links them. When V8 starts, it reserves a large region of virtual memory for pointer compression and for the heap of its C++ garbage collector. On iOS that is more than the default address space of an app, so without the entitlement the app aborts on a device with this fatal error:
 
 ```text
 Failed to reserve virtual memory for process-wide V8 pointer compression cage
@@ -547,7 +574,7 @@ Add the entitlement to the entitlements file of the app target:
 <true/>
 ```
 
-In Xcode, the **Extended Virtual Addressing** capability under **Signing & Capabilities** of the target adds it for you, and with automatic signing also enables it for the App ID. Entitlements belong to the binary they are signed into, so an app extension that runs worklets, such as a notification service extension, starts V8 in a process of its own under its own entitlements. The upstream sources don't say whether an extension needs the entitlement as well, so test an extension on a device. The macOS builds don't need it.
+In Xcode, the **Extended Virtual Addressing** capability under **Signing & Capabilities** of the target adds it for you, and with automatic signing also enables it for the App ID. Entitlements belong to the binary they are signed into, so an app extension that runs worklets, such as a notification service extension, starts V8 in a process of its own under its own entitlements. The upstream sources don't say whether an extension needs the entitlement as well, so test an extension on a device. The macOS builds don't need it. The reservation is made by V8, which the `JavaScriptCore` trait of bare-kit-swift 2.4.0 and later leaves out of the app, so the error above can't occur in that build. The upstream sources don't say whether that build needs the entitlement for anything else, so test it on a device too.
 
 ## Error handling
 
