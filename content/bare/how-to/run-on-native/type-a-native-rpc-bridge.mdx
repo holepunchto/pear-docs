@@ -134,6 +134,16 @@ for await (const chunk of updates) {
 
 From bare-rpc 2.0.0, breaking out of that loop before the reply ends cancels the request, and a cancel is a message that a bare-rpc 1.x peer rejects by failing the whole session with `UNKNOWN_MESSAGE`. Keep both ends on a release with cancellation: `bare-rpc` 2.0.0 in the worklet, and in the shell `bare-rpc` 2.0.0 too for a React Native host like the one above, or [`bare-rpc-swift`](/bare/reference/bare/native-hosts/swift#bare-rpc-swift) 3.0.0, [`bare-rpc-kotlin`](/bare/reference/bare/native-hosts/kotlin#bare-rpc-kotlin) 0.6.0, or [`bare-rpc-python`](/bare/reference/bare/native-hosts/python#bare-rpc-python) 0.3.0 or later, which is installed from PyPI as `bare-rpc`. See [Changes in v2.0.0](/bare/reference/bare/modules/bare-rpc#changes-in-v200).
 
+A cancel that reaches the worklet while a response stream is still open destroys that stream with a `CANCELLED: Request was cancelled` error, so the stream emits `error`. An `error` event with no listener is an uncaught error, and an uncaught error in a worklet crashes the host, as [Error handling](/bare/reference/bare/bare-kit#error-handling) describes. Add a listener to each stream that a handler creates:
+
+```js skip="snippet-illustration"
+// inside the worklet
+const updates = req.createResponseStream()
+updates.on('error', () => {}) // a cancel from the host arrives here
+```
+
+A JavaScript host that breaks out of the loop above closes its stream first, so the worklet sees `close` and no error. A call to `req.cancel()`, or a native host that sends a cancel while the stream is open, produces the error.
+
 </Step>
 
 </Steps>
