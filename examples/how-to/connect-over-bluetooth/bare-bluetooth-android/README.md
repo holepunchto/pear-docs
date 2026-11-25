@@ -1,8 +1,8 @@
 # bare-bluetooth-android (documentation snapshot)
 
 Vendored from [holepunchto/bare-bluetooth-android](https://github.com/holepunchto/bare-bluetooth-android),
-branch **`main`**, at commit `bc9f057`
-([tree](https://github.com/holepunchto/bare-bluetooth-android/tree/bc9f05760382db69f85f196ccf2f5a14999ea756)).
+branch **`main`**, at commit `473e942`
+([tree](https://github.com/holepunchto/bare-bluetooth-android/tree/473e942edffad6635e0bfdec71ec9ff701b4b5a9)).
 The repository has no `LICENSE` file; its `package.json` declares Apache-2.0. Paths mirror
 upstream's.
 

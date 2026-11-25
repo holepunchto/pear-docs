@@ -8,7 +8,7 @@ central.on('stateChange', (state) => {
 })
 
 central.on('discover', (peripheral) => {
-  console.log('found:', peripheral.id, peripheral.name, peripheral.rssi)
+  console.log('found:', peripheral.id, peripheral.name, peripheral.rssi, peripheral.serviceUUIDs)
 })
 
 central.on('error', (err) => console.error('error:', err.message))

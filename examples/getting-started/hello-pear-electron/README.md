@@ -1,8 +1,8 @@
 # hello-pear-electron (documentation snapshot)
 
 Vendored from [holepunchto/hello-pear-electron](https://github.com/holepunchto/hello-pear-electron),
-branch **`main`**, at commit `ad51b38`
-([tree](https://github.com/holepunchto/hello-pear-electron/tree/ad51b38d2081869b513cc9a86ae1f82c4b43ad67)).
+branch **`main`**, at commit `ed067ea`
+([tree](https://github.com/holepunchto/hello-pear-electron/tree/ed067ea5d8a9b22a98a879789ef8b56bfc4acbd2)).
 
 `renderer/app.js` and `workers/main.js` back the code imports in
 `content/p2p/getting-started/from-a-template/start-from-hello-pear-electron.mdx`
@@ -18,11 +18,11 @@ not a runnable app. (The `hello-pear-bare` snapshot beside it *is* complete and 
 Preserve these when refreshing; they are intentional, not drift:
 
 - **`workers/main.js` is `hello-pear-worker`'s `index.js` without the two-line source header
-  upstream adds.** Upstream inlines the worker too since `016be67` (its `npm run inline-worker`
+  upstream adds.** Upstream inlines the worker too since `56f9d15` (its `npm run inline-worker`
   script runs `inline-worker-module` over the `hello-pear-worker` package), so its file starts with
   `// https://github.com/holepunchto/hello-pear-worker v1.2.0` and a blank line, followed by the
   same source. This copy drops those two lines, as `../hello-pear-bare/workers/main.js` does. Before
-  `016be67` upstream's file was the two-line `require('hello-pear-worker')`, and this copy was an
+  `56f9d15` upstream's file was the two-line `require('hello-pear-worker')`, and this copy was an
   inline made by hand. The real upstream for the body is
   [holepunchto/hello-pear-worker](https://github.com/holepunchto/hello-pear-worker), tracked by the
   `hello-pear-worker` entry in `watch-boilerplates.yml` — do **not** overwrite this file from this
