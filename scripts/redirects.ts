@@ -182,7 +182,7 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // hello-pear-electron template walkthrough.
   out.push({
     from: '/examples/react-app-using-pear/',
-    to: '/p2p/getting-started/from-a-template/start-from-hello-pear-electron/',
+    to: '/pear/getting-started/from-a-template/start-from-hello-pear-electron/',
   });
 
   // /reference/{cli,configuration,runtime}/ moved under /reference/pear/ in the
@@ -210,18 +210,38 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // /getting-started/ restructure: flat pages moved into subdirectories.
   out.push({
     from: '/getting-started/start-from-hello-pear-electron/',
-    to: '/p2p/getting-started/from-a-template/start-from-hello-pear-electron/',
+    to: '/pear/getting-started/from-a-template/start-from-hello-pear-electron/',
   });
   out.push({
     from: '/getting-started/chat/',
-    to: '/p2p/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat/',
+    to: '/pear/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat/',
   });
   out.push({
     from: '/getting-started/production-shape/',
-    to: '/p2p/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app/',
+    to: '/pear/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app/',
   });
-  out.push({ from: '/getting-started/ship/', to: '/p2p/getting-started/build-a-peer-to-peer-chat/ship/' });
-  out.push({ from: '/getting-started/update/', to: '/p2p/getting-started/build-a-peer-to-peer-chat/update/' });
+  out.push({ from: '/getting-started/ship/', to: '/pear/getting-started/build-a-peer-to-peer-chat/ship/' });
+  out.push({ from: '/getting-started/update/', to: '/pear/getting-started/build-a-peer-to-peer-chat/update/' });
+
+  // The chat tutorial and the hello-pear-* templates moved from the P2P tab
+  // back under Pear's Getting Started: parts 1–2 embed pear-runtime and parts
+  // 3–4 are pear CLI releases, so they teach Pear, not the building blocks.
+  // /p2p/getting-started/ itself stays live as P2P's own (building-blocks-only)
+  // getting-started page, so it is not redirected.
+  for (const slug of [
+    'build-a-peer-to-peer-chat/build-a-peer-to-peer-chat',
+    'build-a-peer-to-peer-chat/reshape-into-a-production-app',
+    'build-a-peer-to-peer-chat/ship',
+    'build-a-peer-to-peer-chat/update',
+    'from-a-template',
+    'from-a-template/start-from-hello-pear-electron',
+    'from-a-template/start-from-hello-pear-bare',
+    'from-a-template/start-from-hello-pear-daemon',
+    'from-a-template/start-from-hello-pear-qvac-tui',
+    'from-a-template/start-from-hello-pear-react-native',
+  ]) {
+    out.push({ from: withSlash(`/p2p/getting-started/${slug}`), to: withSlash(`/pear/getting-started/${slug}`) });
+  }
 
   // /how-to/operate-an-app/ internal restructure: pages moved into sub-sections.
   out.push({
@@ -255,17 +275,17 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   out.push({ from: '/guides/getting-started/', to: '/pear/getting-started/' });
   out.push({
     from: '/guide/starting-a-pear-desktop-project/',
-    to: '/p2p/getting-started/from-a-template/start-from-hello-pear-electron/',
+    to: '/pear/getting-started/from-a-template/start-from-hello-pear-electron/',
   });
   out.push({
     from: '/guide/making-a-pear-desktop-app/',
-    to: '/p2p/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat/',
+    to: '/pear/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat/',
   });
   out.push({ from: '/guide/starting-a-pear-terminal-project/', to: '/pear/getting-started/' });
   out.push({ from: '/guide/making-a-pear-terminal-app/', to: '/pear/getting-started/' });
   out.push({
     from: '/guide/making-a-bare-mobile-app/',
-    to: '/p2p/getting-started/from-a-template/start-from-hello-pear-bare/',
+    to: '/pear/getting-started/from-a-template/start-from-hello-pear-bare/',
   });
   out.push({ from: '/guide/releasing-a-pear-app/', to: '/pear/how-to/' });
   out.push({ from: '/guide/sharing-a-pear-app/', to: '/pear/how-to/' });
@@ -309,17 +329,17 @@ export function buildRedirects(contentRoot = 'content'): Redirect[] {
   // which now lives under P2P (Pear's own /pear/getting-started is a new,
   // unrelated short page — see the P2P split). Route legacy visitors to
   // where that content actually is.
-  out.push({ from: withSlash('/getting-started'), to: withSlash('/p2p/getting-started') });
-  out.push({ from: withSlash('/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat'), to: withSlash('/p2p/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat') });
-  out.push({ from: withSlash('/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app'), to: withSlash('/p2p/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app') });
-  out.push({ from: withSlash('/getting-started/build-a-peer-to-peer-chat/ship'), to: withSlash('/p2p/getting-started/build-a-peer-to-peer-chat/ship') });
-  out.push({ from: withSlash('/getting-started/build-a-peer-to-peer-chat/update'), to: withSlash('/p2p/getting-started/build-a-peer-to-peer-chat/update') });
-  out.push({ from: withSlash('/getting-started/from-a-template'), to: withSlash('/p2p/getting-started/from-a-template') });
-  out.push({ from: withSlash('/getting-started/from-a-template/start-from-hello-pear-bare'), to: withSlash('/p2p/getting-started/from-a-template/start-from-hello-pear-bare') });
-  out.push({ from: withSlash('/getting-started/from-a-template/start-from-hello-pear-electron'), to: withSlash('/p2p/getting-started/from-a-template/start-from-hello-pear-electron') });
+  out.push({ from: withSlash('/getting-started'), to: withSlash('/pear/getting-started') });
+  out.push({ from: withSlash('/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat'), to: withSlash('/pear/getting-started/build-a-peer-to-peer-chat/build-a-peer-to-peer-chat') });
+  out.push({ from: withSlash('/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app'), to: withSlash('/pear/getting-started/build-a-peer-to-peer-chat/reshape-into-a-production-app') });
+  out.push({ from: withSlash('/getting-started/build-a-peer-to-peer-chat/ship'), to: withSlash('/pear/getting-started/build-a-peer-to-peer-chat/ship') });
+  out.push({ from: withSlash('/getting-started/build-a-peer-to-peer-chat/update'), to: withSlash('/pear/getting-started/build-a-peer-to-peer-chat/update') });
+  out.push({ from: withSlash('/getting-started/from-a-template'), to: withSlash('/pear/getting-started/from-a-template') });
+  out.push({ from: withSlash('/getting-started/from-a-template/start-from-hello-pear-bare'), to: withSlash('/pear/getting-started/from-a-template/start-from-hello-pear-bare') });
+  out.push({ from: withSlash('/getting-started/from-a-template/start-from-hello-pear-electron'), to: withSlash('/pear/getting-started/from-a-template/start-from-hello-pear-electron') });
   // Added to published after this Phase 6 snapshot was taken; landed here via
   // the published merge rather than the original reorg pass.
-  out.push({ from: withSlash('/getting-started/from-a-template/start-from-hello-pear-react-native'), to: withSlash('/p2p/getting-started/from-a-template/start-from-hello-pear-react-native') });
+  out.push({ from: withSlash('/getting-started/from-a-template/start-from-hello-pear-react-native'), to: withSlash('/pear/getting-started/from-a-template/start-from-hello-pear-react-native') });
   out.push({ from: withSlash('/how-to'), to: withSlash('/pear/how-to') });
   // Added to published after this Phase 6 snapshot was taken.
   out.push({ from: withSlash('/how-to/add-typed-rpc-to-a-pear-app'), to: withSlash('/p2p/how-to/add-typed-rpc-to-a-pear-app') });
