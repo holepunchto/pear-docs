@@ -70,7 +70,7 @@ const layout: Layout = {
       title: 'Option patterns',
       body:
         '#### `transformers`\n\n' +
-        '[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L88)\n' +
+        '[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.3/index.js#L88)\n' +
         '- Returns: A copy pipeline hook. Each transformer is a function `(key) => stream | null`; returning `null` skips that transform for the current file.\n' +
         '- Example:\n\n' +
         '```js\n' +
@@ -81,7 +81,7 @@ const layout: Layout = {
         '})\n' +
         '```\n\n' +
         '#### `entries`\n\n' +
-        '[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L87)\n' +
+        '[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.3/index.js#L87)\n' +
         '- Returns: A fixed list of entries to mirror instead of reading them from `src.list(...)`. When this option is used, `prefix` is ignored.\n' +
         '- Example:\n\n' +
         '```js\n' +
@@ -89,7 +89,7 @@ const layout: Layout = {
         'const mirror = new MirrorDrive(src, dst, { entries })\n' +
         '```\n\n' +
         '#### `metadataEquals`\n\n' +
-        '[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.2/index.js#L85)\n' +
+        '[API definition on GitHub](https://github.com/holepunchto/mirror-drive/blob/v1.14.3/index.js#L85)\n' +
         '- Returns: A predicate used to decide whether metadata changes should count as a diff when both drives support metadata.\n' +
         '- Example:\n\n' +
         '```js\n' +
