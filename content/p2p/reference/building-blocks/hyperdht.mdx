@@ -97,11 +97,10 @@ Create a new server for accepting incoming encrypted P2P connections.
     // validate if you want a connection from remotePublicKey
     // if you do return false, else return true
     // remoteHandshakePayload contains their ip and some more info
-    return true
+    return false
   },
   accept (remotePublicKey, remoteHandshakePayload) {
-    // called after the firewall lets the connection through
-    // return false if you are busy, the connect then fails fast with PEER_BUSY
+    // return false if you are busy: the client fails fast with PEER_BUSY
     return true
   }
 }
@@ -409,7 +408,7 @@ Options for `node.createServer()`.
 | Property | Type | Default | Description |
 | --- | --- | --- | --- |
 | `firewall` | [`function(Buffer, object): boolean`](https://nodejs.org/api/buffer.html#class-buffer) | — | Called with `(remotePublicKey, remoteHandshakePayload)`. Return `true` to block, `false` to allow. |
-| `accept` | [`function(Buffer, object): boolean\|Promise<boolean>`](https://nodejs.org/api/buffer.html#class-buffer) | `() => true` | Called with `(remotePublicKey, remoteHandshakePayload)` after the firewall allows the connection. Return `false` to say the server is busy; the client's connect then fails fast with `PEER_BUSY`. Added in 6.37.0. |
+| `accept` | [`function(Buffer, object): boolean\|Promise<boolean>`](https://nodejs.org/api/buffer.html#class-buffer) | `() => true` | Called with `(remotePublicKey, remoteHandshakePayload)` after the firewall allows the connection. Return `false` to say the server is busy. Any falsy return, thrown error or rejected promise counts as busy, and a third `clientAddress` argument (`{ host, port }`) is also passed. A client on 6.37.0 or later then fails fast with `PEER_BUSY`; older clients get `SERVER_ERROR`. Added in 6.37.0. |
 | `holepunch` | [`function(number, number, Array, Array): boolean`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) | — | Called before holepunching begins. Return `false` to abort. |
 | `relayThrough` | [`Buffer\|Array<Buffer>\|function(): Buffer\|null`](https://nodejs.org/api/buffer.html#class-buffer) | — | Optionally relay through a specific peer — pass a public key (Buffer), an array of public keys to pick from, or a function returning one. |
 | `relayKeepAlive` | `number` | `5000` | Keep-alive interval in ms for the relay socket. |
@@ -453,7 +452,7 @@ Coded errors this module can throw — catch them via `err.code`.
 | --- | --- |
 | `ALREADY_LISTENING` | if the server is already listening. |
 | `NODE_DESTROYED` | if the DHT node has been destroyed. |
-| `PEER_BUSY` | on `node.connect()`, when the server's `accept` option returned `false`. Added in 6.37.0. |
+| `PEER_BUSY` | emitted as `'error'` on the stream returned by `node.connect()`, when the server's `accept` option returned `false` and the client runs 6.37.0 or later. Added in 6.37.0. |
 
 ## See also
 

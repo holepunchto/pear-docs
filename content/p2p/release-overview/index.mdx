@@ -19,11 +19,11 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 
 ### HyperDHT — v6.37.0
 
-- Added: the `accept` option of [`node.createServer()`](/p2p/reference/building-blocks/hyperdht#nodecreateserveroptions-onconnection). It runs after the `firewall` check; return `false` to tell the client the server is busy. The client's `node.connect()` then fails fast with a `PEER_BUSY` error instead of waiting for a timeout. `server.on('connection')` now fires only for connections that pass both checks.
+- Added: the `accept` option of [`node.createServer()`](/p2p/reference/building-blocks/hyperdht#nodecreateserveroptions-onconnection). It runs after the `firewall` check; return `false` to tell the client the server is busy. A client on 6.37.0 or later then fails fast with a `PEER_BUSY` error on its `node.connect()` stream instead of waiting for a timeout; older clients get `SERVER_ERROR`. `server.on('connection')` now fires only for connections that pass both checks.
 
 ### Autobee — v2.15.0
 
-- Changed: the promotion bookkeeping reads each writer's anchored level once per flush instead of once per writer. There is no API change.
+- Changed: the promotion bookkeeping caches each pending entry's anchored level instead of re-reading it on every flush. There is no API change.
 
 ### Compact-encoding — v3.7.1
 
@@ -37,7 +37,7 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 
 ### blind-peer — v3.20.0, v3.19.0
 
-- Added (v3.19.0): the `blind_peer_wakeups` gauge carries `source` and `result` labels that say where a wakeup came from and what the blind peer did with it. `stats.wakeups` still holds the total.
+- Changed (v3.19.0): the `blind_peer_wakeups` gauge carries `source` and `result` labels that say where a wakeup came from and what the blind peer did with it. The unlabeled series is gone, so alert on `sum(blind_peer_wakeups)`. `stats.wakeups` still holds the total.
 - **Breaking (v3.20.0):** a notification request carries the proof split as `block.upgrade` (`{ start, length }`) instead of `upgradeLength`. A blind peer ignores `upgradeLength` from `blind-peering` 2.13.0 to 2.14.0 and upgrades the proof to its full length, so upgrade both sides together to keep the shorter proofs. The `notification-rx` event's `request` gains `block.upgrade`, and `request.upgradeLength` stays for old clients but is ignored.
 - Added (v3.20.0): a notification request resolves with `{ length }`, the core length the proof reaches, instead of `null`. See [blind-peer](/p2p/reference/helpers/blind-peer#push-notifications).
 
@@ -48,7 +48,7 @@ Looking for `pear` CLI or `pear-*` module releases instead? See [Pear's release 
 
 ### Autobee — v2.14.0, v2.13.7
 
-- Fixed (v2.13.7): after a restart, a writer whose op threw during apply and froze the database is replayed instead of possibly being skipped.
+- Fixed (v2.13.7): after a restart, a writer whose nodes were downloaded but not yet applied (blocked on a missing dependency, or an unknown optimistic writer) is applied instead of possibly being skipped, because the saved drain checkpoint no longer moves past it.
 - Added (v2.14.0): the experimental `headBarrier`, `headBarrierStallMs` and `headBarrierMaxHoldMs` options hold the apply while a writer's needed data is still downloading, so a bulk catch-up applies once with complete knowledge. Upstream doesn't document them yet. See [Autobee](/p2p/reference/building-blocks/autobee#constructor-and-lifecycle).
 
 ### Mirrordrive — v1.14.3
