@@ -1,0 +1,77 @@
+name: Site checks
+
+# Builds the whole site and checks what it ships to AI clients, plus a smoke
+# check of the live site after a deploy. docs-lint.yml cannot do either: it
+# only runs scripts that need no build.
+#
+#   - build:       `npm ci`, the full build (OG images, next build, postbuild),
+#                  then the checks that read out/: redirects, agent-ready
+#                  metadata and SEO. These caught nothing before because
+#                  nothing built the site in CI, and llms.txt, the .md twins
+#                  and the 303 rules all shipped broken unnoticed.
+#   - live-smoke:  after a push to `published`, fetch the deployed site and
+#                  check it (scripts/check-live-site.ts). The deploy lands some
+#                  minutes after the push, so the script retries for 20.
+#
+# live-smoke runs on push rather than on a schedule: scheduled workflows only
+# run from the default branch (`main`), which carries no workflows here, and
+# nothing in this repo reports when Sevalla has finished deploying.
+
+on:
+  pull_request:
+    paths:
+      - 'content/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'public/**'
+      - 'examples/**'
+      - 'generated/**'
+      - 'source.config.ts'
+      - 'next.config.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.env.production'
+      - '.github/workflows/site-checks.yml'
+  push:
+    branches:
+      - published
+
+jobs:
+  build:
+    name: build and check out/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # lastModified comes from git history.
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build
+        env:
+          NEXT_PUBLIC_DOCS_ORIGIN: https://docs.pears.com
+        run: npm run build
+      - name: Check redirects
+        run: npm run check:redirects
+      - name: Check agent-ready metadata
+        run: npm run check:agent-ready
+      - name: Check SEO
+        run: npm run check:seo
+
+  live-smoke:
+    name: live site smoke check
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check the deployed site
+        run: npx tsx scripts/check-live-site.ts --wait 20

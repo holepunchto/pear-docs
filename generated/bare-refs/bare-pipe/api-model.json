@@ -1,0 +1,1490 @@
+{
+  "name": "bare-pipe",
+  "version": "4.4.0",
+  "description": "Native I/O pipes for JavaScript",
+  "repoUrl": "https://github.com/holepunchto/bare-pipe",
+  "npmUrl": "https://www.npmjs.com/package/bare-pipe",
+  "minBare": ">=1.16.0",
+  "native": true,
+  "dependencies": [
+    "bare-events",
+    "bare-stream"
+  ],
+  "usage": "```js\nconst Pipe = require('bare-pipe')\n\nconst [read, write] = Pipe.pipe()\n\nconst reader = new Pipe(read)\nconst writer = new Pipe(write)\n\nreader.on('data', (data) => console.log(data.toString()))\n\nwriter.end('Hello world!\\n')\n```",
+  "extraSections": [
+    {
+      "heading": "IPC handle passing",
+      "body": "Pipes created with `ipc: true` can transfer libuv handles (named pipes, TCP sockets, UDP sockets) to a peer alongside the byte stream. The peer receives a `'handle'` event for each transferred handle, in arrival order, before the corresponding `'data'` event.\n\nHandle passing needs a bidirectional socket on both ends, so the descriptors must come from a socket pair, such as `bare-tcp`'s `socketpair()`. The descriptors from `Pipe.pipe()` are a unidirectional pipe and cannot carry handles.\n\nSender:\n\n```js\nconst left = new Pipe(fd, { ipc: true })\nconst socket = tcp.createConnection(port)\n\nsocket.on('connect', () => {\n  left.write(Buffer.from('here'), socket)\n})\n```\n\nReceiver:\n\n```js\nconst right = new Pipe(fd, { ipc: true })\n\nright.on('handle', (type) => {\n  if (type === Pipe.constants.handle.TCP) {\n    const socket = new tcp.Socket()\n    right.accept(socket)\n    socket.on('data', console.log)\n  }\n})\n```\n\n### `IPCAcceptable` protocol\n\nAny object passed to `pipe.accept(target)` or `pipe.write(chunk, handle, ...)` must implement two well-known symbols:\n\n```js\nconst ipcHandle = Symbol.for('bare.ipc.handle')\nconst ipcAccept = Symbol.for('bare.ipc.accept')\n\nclass MyTarget {\n  get [ipcHandle]() {\n    return this._handle // An ArrayBuffer backing a libuv `uv_*_t` struct\n  }\n\n  [ipcAccept]() {\n    // Optional: Called synchronously after the handle has been transferred\n  }\n}\n```\n\n- `Symbol.for('bare.ipc.handle')` (required): A getter returning the underlying libuv handle (typically an `ArrayBuffer` whose first bytes are a `uv_stream_t` / `uv_udp_t`).\n- `Symbol.for('bare.ipc.accept')` (optional): A method invoked synchronously after the handle has been transferred. Use it to initialize per-handle state (e.g. address lookup).\n\n`Pipe`, `bare-tcp`'s `Socket`, `bare-dgram`'s `Socket`, and any compatible package implement this protocol natively, so a `bare-tcp` socket can be passed and received via `bare-pipe` IPC without any glue code.\n\nTypeScript users can import the `IPCAcceptable` interface from `bare-pipe` to type the protocol."
+    },
+    {
+      "heading": "Local access control",
+      "body": "A server can restrict its pipe to the current user, and either end can ask the operating system who is on the other end.\n\n```js\nconst server = Pipe.createServer((pipe) => {\n  const credentials = pipe.remoteCredentials()\n\n  if (/* not valid credentials */) return pipe.destroy()\n\n  pipe.end('hello\\n')\n})\n\nserver.listen({ path, ownerOnly: true })\n```\n\nWhat counts as valid credentials is up to the application, such as a `uid` matching the current user on Unix or a `sid` matching it on Windows.\n\n`ownerOnly` applies the restriction before the server listens, and disconnects some clients as soon as they are accepted, without a `connection` event.\n\nOn Unix the socket file is made `0600`, without following a symbolic link that replaced it, which on Linux requires Linux 6.6 or later or a mounted `/proc`. A client whose user is neither that of the server nor root is disconnected, which the mode alone admits when the client may bypass it, such as a process with `CAP_DAC_OVERRIDE` on Linux.\n\nOn Windows the pipe gets a protected DACL that allows only the current user and `SYSTEM`, any client that opened the pipe before the DACL was applied is disconnected, and so is:\n\n- A remote client.\n- A client whose process runs as a user other than that of the server or `SYSTEM`. The DACL alone admits these when they connect while impersonating the current user.\n- A client running at a lower integrity level than the server, such as an unelevated process seen from an elevated server or a sandboxed low integrity process. The DACL alone admits these, as they run as the same user.\n- A client whose process the server may not query, such as one running as `SYSTEM` seen from an unelevated server, or one that has exited.\n\nAn elevated process of the current user is admitted by an unelevated server, as it runs as the same user at a higher integrity level.\n\nKeep the socket in a directory only the current user can write to, so that its path cannot be replaced. An abstract socket has no file to restrict, so `ownerOnly` is rejected for one.\n\n`pipe.remoteCredentials()` returns `{ pid, uid, gid, sid }`, with `null` for anything the platform cannot report. On Linux it reads `SO_PEERCRED`; on macOS and the BSDs `getpeereid()`, plus `LOCAL_PEERPID` on macOS. Read the credentials while the peer is connected: on macOS the process ID is no longer available once the peer has closed its end.\n\nOn Windows the process ID comes from the pipe. A remote peer reports no process ID or SID, since its process ID names a process on another machine.\n\nOn the server end, the SID is the user of the client process with that ID: the user the process runs as, not one it impersonated while connecting. It does not tell an elevated process from an unelevated one of the same user. The SID is `null`:\n\n- For a client that has exited, once nothing holds its process open. Read the credentials while the client is alive.\n- For a process created after the server accepted the connection, as it has reused the ID of a client that exited.\n- For a client process the server may not query, such as one running as `SYSTEM` seen from an unelevated server.\n- For a server end opened from a handle or received over IPC, as it may have connected at any time.\n\nThe check for a reused ID, which `ownerOnly` also relies on, has two gaps. A client that exits and has its ID reused while its connection waits to be accepted goes unnoticed, and so does a reuse after the system clock is set back, as process creation times are read from it.\n\nOn the client end, the process ID names the process that created the pipe, which may since have exited and had its ID reused. The SID is instead the owner of the pipe, which the kernel records when the server creates it, and which is the user of the server process, except for an elevated administrator, whose pipes are owned by the `Administrators` group (`S-1-5-32-544`). Only a process holding `SeRestorePrivilege`, such as an elevated administrator, can make another user the owner."
+    }
+  ],
+  "exports": [
+    {
+      "key": "Pipe",
+      "name": "Pipe",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "interface Pipe<M extends PipeEvents = PipeEvents> extends Duplex<M> {\n  readonly connecting: boolean\n  readonly pending: boolean\n  readonly readyState: 'open' | 'opening' | 'readOnly' | 'writeOnly' | 'closed'\n  connect(path: string, opts?: PipeConnectOptions, onconnect?: () => void): this\n  open(fd: number, opts?: PipeOpenOptions, onconnect?: () => void): this\n  write(\n    chunk: Buffer | string,\n    encoding: BufferEncoding,\n    handle?: IPCAcceptable,\n    cb?: (err: Error | null) => void\n  ): boolean\n  accept<T extends IPCAcceptable>(target: T): T\n  remoteCredentials(): PipeCredentials\n  ref(): this\n  unref(): this\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "Pipe.constructor",
+          "name": "Pipe",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new Pipe(path: string | number, opts?: PipeOptions)",
+            "new Pipe(opts?: PipeOptions)"
+          ],
+          "description": "Create a new pipe. If `path` is a number, it is treated as a file descriptor to open. If it is\na string, it is treated as a path to connect to.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "path",
+              "type": "string | number",
+              "optional": false,
+              "default": null,
+              "description": "A file descriptor to open (number), or a path to connect to (string)."
+            },
+            {
+              "name": "opts",
+              "type": "PipeOptions",
+              "optional": true,
+              "default": null,
+              "description": "Options; `readBufferSize` defaults to `65536`, `allowHalfOpen` and `eagerOpen` to\n`true`, and `ipc` to `false` (set `ipc: true` to enable handle passing over the pipe)."
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Pipe.accept",
+          "name": "accept",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "accept<T extends IPCAcceptable>(target: T): T"
+          ],
+          "description": "Accept a pending handle into `target`. `target` must implement the\n[`IPCAcceptable`](#ipcacceptable) protocol. Call this synchronously from the `'handle'` event\nlistener.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "target",
+              "type": "T",
+              "optional": false,
+              "default": null,
+              "description": "The object to accept the pending handle into; must implement the\n`IPCAcceptable` protocol. Call synchronously from the `'handle'` event listener."
+            }
+          ],
+          "returns": {
+            "type": "T",
+            "description": "`target`, for chaining the accepted handle into an expression."
+          },
+          "throws": [
+            {
+              "type": "INVALID_IPC_TARGET",
+              "condition": "`target` does not implement the IPC handle protocol."
+            }
+          ],
+          "members": []
+        },
+        {
+          "key": "Pipe.connect",
+          "name": "connect",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "connect(path: string, opts?: PipeConnectOptions, onconnect?: () => void): this",
+            "connect(path: string, onconnect: () => void): this",
+            "connect(opts: PipeConnectOptions, onconnect?: () => void): this"
+          ],
+          "description": "Connect the pipe to `path`. `onconnect` is called when the connection is established.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "path",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The path to connect to."
+            },
+            {
+              "name": "opts",
+              "type": "PipeConnectOptions",
+              "optional": true,
+              "default": null,
+              "description": "Options; `path` may be given here instead of as the first argument."
+            },
+            {
+              "name": "onconnect",
+              "type": "() => void",
+              "optional": true,
+              "default": null,
+              "description": "Called when the connection is established."
+            }
+          ],
+          "returns": {
+            "type": "this",
+            "description": null
+          },
+          "throws": [
+            {
+              "type": "PIPE_ALREADY_CONNECTED",
+              "condition": "the pipe is already connecting or connected."
+            }
+          ],
+          "members": []
+        },
+        {
+          "key": "Pipe.connecting",
+          "name": "connecting",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "connecting: boolean"
+          ],
+          "description": "Whether the pipe is currently connecting.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Pipe.open",
+          "name": "open",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "open(fd: number, opts?: PipeOpenOptions, onconnect?: () => void): this",
+            "open(fd: number, onconnect: () => void): this",
+            "open(opts: PipeOpenOptions & { fd: number }, onconnect?: () => void): this"
+          ],
+          "description": "Open the pipe on the given file descriptor.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "fd",
+              "type": "number",
+              "optional": false,
+              "default": null,
+              "description": "The file descriptor to open the pipe on."
+            },
+            {
+              "name": "opts",
+              "type": "PipeOpenOptions",
+              "optional": true,
+              "default": null,
+              "description": null
+            },
+            {
+              "name": "onconnect",
+              "type": "() => void",
+              "optional": true,
+              "default": null,
+              "description": "Called once when the pipe emits `'connect'`."
+            }
+          ],
+          "returns": {
+            "type": "this",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Pipe.pending",
+          "name": "pending",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "pending: boolean"
+          ],
+          "description": "Whether the pipe has not yet connected.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Pipe.constants",
+          "name": "Pipe.constants",
+          "kind": "variable",
+          "static": true,
+          "signatures": [
+            "Pipe.constants: {\n  state: {\n    CONNECTING: number\n    CONNECTED: number\n    BINDING: number\n    BOUND: number\n    READING: number\n    CLOSING: number\n    CLOSED: number\n    UNREFED: number\n    READABLE: number\n    WRITABLE: number\n  }\n  path: {\n    MAX_LENGTH: number\n  }\n  handle: {\n    NAMED_PIPE: number\n    TCP: number\n    UDP: number\n  }\n}"
+          ],
+          "description": "Object containing internal state constants and handle type constants.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Pipe.createConnection",
+          "name": "Pipe.createConnection",
+          "kind": "function",
+          "static": true,
+          "signatures": [
+            "Pipe.createConnection(path: string, opts?: CreateConnectionOptions, onconnect?: () => void): Pipe",
+            "Pipe.createConnection(path: string, onconnect: () => void): Pipe",
+            "Pipe.createConnection(opts: CreateConnectionOptions, onconnect?: () => void): Pipe"
+          ],
+          "description": "Create a new pipe and connect it to `path`. Shorthand for `new Pipe(options).connect(path,\noptions, onconnect)`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "path",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The path to connect to."
+            },
+            {
+              "name": "opts",
+              "type": "CreateConnectionOptions",
+              "optional": true,
+              "default": null,
+              "description": "Options passed to both the `Pipe` constructor and `connect()`."
+            },
+            {
+              "name": "onconnect",
+              "type": "() => void",
+              "optional": true,
+              "default": null,
+              "description": "Called when the connection is established."
+            }
+          ],
+          "returns": {
+            "type": "Pipe",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Pipe.createServer",
+          "name": "Pipe.createServer",
+          "kind": "function",
+          "static": true,
+          "signatures": [
+            "Pipe.createServer(opts?: PipeServerOptions, onconnection?: (pipe: Pipe) => void): PipeServer",
+            "Pipe.createServer(onconnection: (pipe: Pipe) => void): PipeServer"
+          ],
+          "description": "Create a new pipe server. The server extends\n[`EventEmitter`](https://github.com/holepunchto/bare-events).",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "PipeServerOptions",
+              "optional": true,
+              "default": null,
+              "description": "Options applied to each incoming pipe; `readBufferSize` defaults to `65536`,\n`allowHalfOpen` to `true`, `pauseOnConnect` to `false`, and `ipc` to `false`."
+            },
+            {
+              "name": "onconnection",
+              "type": "(pipe: Pipe) => void",
+              "optional": true,
+              "default": null,
+              "description": "Called on each `'connection'` event."
+            }
+          ],
+          "returns": {
+            "type": "PipeServer",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Pipe.pipe",
+          "name": "Pipe.pipe",
+          "kind": "function",
+          "static": true,
+          "signatures": [
+            "Pipe.pipe(): [read: number, write: number]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "[read: number, write: number]",
+            "description": "A `[read, write]` pair of file descriptors connected to each other."
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Pipe.readyState",
+          "name": "readyState",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "readyState: 'open' | 'opening' | 'readOnly' | 'writeOnly' | 'closed'"
+          ],
+          "description": "The current state of the pipe. One of `'open'`, `'opening'`, `'readOnly'`, `'writeOnly'`, or\n`'closed'`.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Pipe.ref",
+          "name": "ref",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "ref(): this"
+          ],
+          "description": "Ref the pipe, preventing the process from exiting.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "this",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Pipe.remoteCredentials",
+          "name": "remoteCredentials",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "remoteCredentials(): PipeCredentials"
+          ],
+          "description": "The operating system's account of the process on the other end of the pipe, read from the\nkernel rather than from anything the peer sent.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "PipeCredentials",
+            "description": "The peer's credentials."
+          },
+          "throws": [
+            {
+              "type": "PIPE_IS_CLOSED",
+              "condition": "the pipe is closed."
+            },
+            {
+              "type": "PIPE_NOT_CONNECTED",
+              "condition": "the pipe is not connected."
+            },
+            {
+              "type": "ENOTSOCK",
+              "condition": "the pipe is not a socket, on Unix."
+            }
+          ],
+          "members": []
+        },
+        {
+          "key": "Pipe.unref",
+          "name": "unref",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "unref(): this"
+          ],
+          "description": "Unref the pipe, allowing the process to exit.",
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "this",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "Pipe.write",
+          "name": "write",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "write(chunk: Buffer | string, encoding: BufferEncoding, handle?: IPCAcceptable, cb?: (err: Error | null) => void): boolean",
+            "write(chunk: Buffer | string, encoding: BufferEncoding, cb?: (err: Error | null) => void): boolean",
+            "write(chunk: Buffer | string, handle?: IPCAcceptable, cb?: (err: Error | null) => void): boolean",
+            "write(chunk: Buffer | string, cb?: (err: Error | null) => void): boolean"
+          ],
+          "description": "Write `chunk` to the pipe. If `handle` is given and the pipe was created with `ipc: true`, the\nhandle is transferred to the receiver alongside the chunk. `handle` must implement the\n[`IPCAcceptable`](#ipcacceptable) protocol.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "chunk",
+              "type": "Buffer | string",
+              "optional": false,
+              "default": null,
+              "description": "The data to write."
+            },
+            {
+              "name": "encoding",
+              "type": "BufferEncoding",
+              "optional": false,
+              "default": null,
+              "description": "The encoding of `chunk` when it is a string."
+            },
+            {
+              "name": "handle",
+              "type": "IPCAcceptable",
+              "optional": true,
+              "default": null,
+              "description": "A handle to transfer to the receiver alongside the chunk; requires the pipe to\nhave been created with `ipc: true` and `handle` to implement the `IPCAcceptable` protocol."
+            },
+            {
+              "name": "cb",
+              "type": "(err: Error | null) => void",
+              "optional": true,
+              "default": null,
+              "description": "Called when the chunk has been processed."
+            }
+          ],
+          "returns": {
+            "type": "boolean",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ],
+      "inheritsBase": true
+    },
+    {
+      "key": "CreateConnectionOptions",
+      "name": "CreateConnectionOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface CreateConnectionOptions {\n  allowHalfOpen?: boolean\n  eagerOpen?: boolean\n  ipc?: boolean\n  readBufferSize?: number\n  path?: string\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "CreateConnectionOptions.allowHalfOpen",
+          "name": "allowHalfOpen",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "allowHalfOpen: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "CreateConnectionOptions.eagerOpen",
+          "name": "eagerOpen",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "eagerOpen: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "CreateConnectionOptions.ipc",
+          "name": "ipc",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "ipc: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "CreateConnectionOptions.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "CreateConnectionOptions.readBufferSize",
+          "name": "readBufferSize",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "readBufferSize: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "PipeServer",
+      "name": "PipeServer",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "interface PipeServer<M extends PipeServerEvents = PipeServerEvents> extends EventEmitter<M> {\n  readonly listening: boolean\n  readonly closing: boolean\n  address(): string | null\n  listen(\n    path: string,\n    backlog?: number,\n    opts?: PipeServerListenOptions,\n    onlistening?: () => void\n  ): this\n  close(onclose?: () => void): this\n  ref(): this\n  unref(): this\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PipeServer.constructor",
+          "name": "PipeServer",
+          "kind": "constructor",
+          "static": false,
+          "signatures": [
+            "new PipeServer(opts?: PipeServerOptions, onconnection?: (pipe: Pipe) => void)",
+            "new PipeServer(onconnection: (pipe: Pipe) => void)"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [
+            {
+              "name": "opts",
+              "type": "PipeServerOptions",
+              "optional": true,
+              "default": null,
+              "description": "Options applied to each incoming pipe; `readBufferSize` defaults to `65536`,\n`allowHalfOpen` to `true`, `pauseOnConnect` to `false`, and `ipc` to `false`."
+            },
+            {
+              "name": "onconnection",
+              "type": "(pipe: Pipe) => void",
+              "optional": true,
+              "default": null,
+              "description": "Called on each `'connection'` event."
+            }
+          ],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServer.address",
+          "name": "address",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "address(): string | null"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "string | null",
+            "description": "The bound path, or `null` if the server is not listening."
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServer.close",
+          "name": "close",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "close(onclose?: () => void): this"
+          ],
+          "description": "Close the server. No new connections will be accepted. The server emits `close` after all\nexisting connections have ended.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "onclose",
+              "type": "() => void",
+              "optional": true,
+              "default": null,
+              "description": "Called once when the server emits `'close'`, after all existing connections\nhave ended."
+            }
+          ],
+          "returns": {
+            "type": "this",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServer.closing",
+          "name": "closing",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "closing: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServer.listen",
+          "name": "listen",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "listen(path: string, backlog?: number, opts?: PipeServerListenOptions, onlistening?: () => void): this",
+            "listen(path: string, backlog: number, onlistening: () => void): this",
+            "listen(path: string, onlistening: () => void): this",
+            "listen(opts: PipeServerListenOptions, onlistening?: () => void): this"
+          ],
+          "description": "Start listening for connections on `path`. `backlog` defaults to `511`.",
+          "deprecated": null,
+          "params": [
+            {
+              "name": "path",
+              "type": "string",
+              "optional": false,
+              "default": null,
+              "description": "The path to listen on."
+            },
+            {
+              "name": "backlog",
+              "type": "number",
+              "optional": true,
+              "default": null,
+              "description": "The maximum length of the queue of pending connections (default `511`)."
+            },
+            {
+              "name": "opts",
+              "type": "PipeServerListenOptions",
+              "optional": true,
+              "default": null,
+              "description": "`path` and `backlog` may be given here instead of as positional arguments."
+            },
+            {
+              "name": "onlistening",
+              "type": "() => void",
+              "optional": true,
+              "default": null,
+              "description": "Called once when the server emits `'listening'`."
+            }
+          ],
+          "returns": {
+            "type": "this",
+            "description": null
+          },
+          "throws": [
+            {
+              "type": "SERVER_ALREADY_LISTENING",
+              "condition": "the server is already listening."
+            },
+            {
+              "type": "SERVER_IS_CLOSED",
+              "condition": "the server has been closed."
+            },
+            {
+              "type": "INVALID_ARGUMENT",
+              "condition": "`ownerOnly` is not a boolean, or was given for an abstract socket."
+            }
+          ],
+          "members": []
+        },
+        {
+          "key": "PipeServer.listening",
+          "name": "listening",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "listening: boolean"
+          ],
+          "description": "Whether the server is listening.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServer.ref",
+          "name": "ref",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "ref(): this"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "this",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServer.unref",
+          "name": "unref",
+          "kind": "method",
+          "static": false,
+          "signatures": [
+            "unref(): this"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": {
+            "type": "this",
+            "description": null
+          },
+          "throws": [],
+          "members": []
+        }
+      ],
+      "inheritsBase": true
+    },
+    {
+      "key": "PipeError",
+      "name": "PipeError",
+      "kind": "class",
+      "static": false,
+      "signatures": [
+        "PipeError"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PipeError.code",
+          "name": "code",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "code: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "IPCAcceptable",
+      "name": "IPCAcceptable",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface IPCAcceptable {\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": []
+    },
+    {
+      "key": "PipeConnectOptions",
+      "name": "PipeConnectOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface PipeConnectOptions {\n  path?: string\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PipeConnectOptions.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "PipeCredentials",
+      "name": "PipeCredentials",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface PipeCredentials {\n  pid: number | null\n  uid: number | null\n  gid: number | null\n  sid: string | null\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PipeCredentials.gid",
+          "name": "gid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "gid: number | null"
+          ],
+          "description": "The peer's group ID on Unix; `null` on Windows.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeCredentials.pid",
+          "name": "pid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "pid: number | null"
+          ],
+          "description": "The peer's process ID, or `null` where the platform cannot report it.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeCredentials.sid",
+          "name": "sid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "sid: string | null"
+          ],
+          "description": "The peer's user SID on Windows: the user of the client process on the server end, and the owner\nof the pipe on the client end. `null` on Unix and wherever the peer cannot be identified.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeCredentials.uid",
+          "name": "uid",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "uid: number | null"
+          ],
+          "description": "The peer's user ID on Unix; `null` on Windows.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "PipeEvents",
+      "name": "PipeEvents",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface PipeEvents {\n  connect: []\n  handle: [type: number]\n  data: [data: unknown]\n  end: []\n  readable: []\n  piping: [dest: Writable]\n  close: []\n  error: [err: Error]\n  drain: []\n  finish: []\n  pipe: [src: Readable]\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PipeEvents.close",
+          "name": "close",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "close: []"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeEvents.connect",
+          "name": "connect",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "connect: []"
+          ],
+          "description": "Emitted once the pipe has connected.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeEvents.data",
+          "name": "data",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "data: [data: unknown]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeEvents.drain",
+          "name": "drain",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "drain: []"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeEvents.end",
+          "name": "end",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "end: []"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeEvents.error",
+          "name": "error",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "error: [err: Error]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeEvents.finish",
+          "name": "finish",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "finish: []"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeEvents.handle",
+          "name": "handle",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "handle: [type: number]"
+          ],
+          "description": "Emitted when an IPC handle is received, carrying the handle type.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeEvents.pipe",
+          "name": "pipe",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "pipe: [src: Readable]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeEvents.piping",
+          "name": "piping",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "piping: [dest: Writable]"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeEvents.readable",
+          "name": "readable",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "readable: []"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "PipeOpenOptions",
+      "name": "PipeOpenOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface PipeOpenOptions {\n  fd?: number\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PipeOpenOptions.fd",
+          "name": "fd",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "fd: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "PipeOptions",
+      "name": "PipeOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface PipeOptions {\n  allowHalfOpen?: boolean\n  eagerOpen?: boolean\n  ipc?: boolean\n  readBufferSize?: number\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PipeOptions.allowHalfOpen",
+          "name": "allowHalfOpen",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "allowHalfOpen: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeOptions.eagerOpen",
+          "name": "eagerOpen",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "eagerOpen: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeOptions.ipc",
+          "name": "ipc",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "ipc: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeOptions.readBufferSize",
+          "name": "readBufferSize",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "readBufferSize: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "PipeServerEvents",
+      "name": "PipeServerEvents",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface PipeServerEvents {\n  close: []\n  connection: [pipe: Pipe]\n  error: [err: Error]\n  listening: []\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PipeServerEvents.close",
+          "name": "close",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "close: []"
+          ],
+          "description": "Emitted once the server has closed and all existing connections have ended.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServerEvents.connection",
+          "name": "connection",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "connection: [pipe: Pipe]"
+          ],
+          "description": "Emitted with the accepted pipe each time a client connects.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServerEvents.error",
+          "name": "error",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "error: [err: Error]"
+          ],
+          "description": "Emitted when the server fails to accept a connection or its handle closes with an error.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServerEvents.listening",
+          "name": "listening",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "listening: []"
+          ],
+          "description": "Emitted once the server has begun listening.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "PipeServerListenOptions",
+      "name": "PipeServerListenOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface PipeServerListenOptions {\n  backlog?: number\n  ownerOnly?: boolean\n  path?: string\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PipeServerListenOptions.backlog",
+          "name": "backlog",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "backlog: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServerListenOptions.ownerOnly",
+          "name": "ownerOnly",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "ownerOnly: boolean"
+          ],
+          "description": "Restrict the pipe to the current user before any client can connect, and disconnect clients\nthat the restriction alone would admit. Not supported for an abstract socket.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServerListenOptions.path",
+          "name": "path",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "path: string"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "key": "PipeServerOptions",
+      "name": "PipeServerOptions",
+      "kind": "interface",
+      "static": false,
+      "signatures": [
+        "interface PipeServerOptions {\n  allowHalfOpen?: boolean\n  ipc?: boolean\n  pauseOnConnect?: boolean\n  readBufferSize?: number\n}"
+      ],
+      "description": null,
+      "deprecated": null,
+      "params": [],
+      "returns": null,
+      "throws": [],
+      "members": [
+        {
+          "key": "PipeServerOptions.allowHalfOpen",
+          "name": "allowHalfOpen",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "allowHalfOpen: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServerOptions.ipc",
+          "name": "ipc",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "ipc: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServerOptions.pauseOnConnect",
+          "name": "pauseOnConnect",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "pauseOnConnect: boolean"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        },
+        {
+          "key": "PipeServerOptions.readBufferSize",
+          "name": "readBufferSize",
+          "kind": "property",
+          "static": false,
+          "signatures": [
+            "readBufferSize: number"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    }
+  ],
+  "subpaths": [
+    {
+      "name": "bare-pipe/constants",
+      "exports": [
+        {
+          "key": "constants",
+          "name": "constants",
+          "kind": "variable",
+          "static": false,
+          "signatures": [
+            "constants: {\n  state: {\n    CONNECTING: number\n    CONNECTED: number\n    BINDING: number\n    BOUND: number\n    READING: number\n    CLOSING: number\n    CLOSED: number\n    UNREFED: number\n    READABLE: number\n    WRITABLE: number\n  }\n  path: {\n    MAX_LENGTH: number\n  }\n  handle: {\n    NAMED_PIPE: number\n    TCP: number\n    UDP: number\n  }\n}"
+          ],
+          "description": "Object containing internal state constants and handle type constants.",
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": []
+        }
+      ]
+    },
+    {
+      "name": "bare-pipe/errors",
+      "exports": [
+        {
+          "key": "PipeError",
+          "name": "PipeError",
+          "kind": "class",
+          "static": false,
+          "signatures": [
+            "PipeError"
+          ],
+          "description": null,
+          "deprecated": null,
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "members": [
+            {
+              "key": "PipeError.code",
+              "name": "code",
+              "kind": "property",
+              "static": false,
+              "signatures": [
+                "code: string"
+              ],
+              "description": null,
+              "deprecated": null,
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "members": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "generatedAt": "2026-11-05T13:07:07.049Z"
+}

@@ -1,0 +1,234 @@
+---
+title: "NoiseSecretStream"
+description: "Noise-encrypted duplex stream used for Holepunch peer transports."
+docType: reference
+schemaType: APIReference
+---
+
+<Status level="stable" />
+
+`Secretstream` wraps a transport stream in a Noise handshake plus libsodium `secretstream` encryption. It is the encrypted stream layer used underneath [Hyperswarm](/p2p/reference/building-blocks/hyperswarm) and related peer transports. For the upstream package, source, and release notes, see the [@hyperswarm/secret-stream repository](https://github.com/holepunchto/hyperswarm-secret-stream).
+
+## Install
+
+```sh
+npm i hyperswarm-secret-stream
+```
+
+## Quickstart
+
+```js
+import SecretStream from '@hyperswarm/secret-stream'
+
+const a = new SecretStream(true)
+const b = new SecretStream(false)
+
+a.rawStream.pipe(b.rawStream).pipe(a.rawStream)
+
+a.write(Buffer.from('hello encrypted world'))
+
+b.on('data', (data) => {
+  console.log(data.toString())
+})
+```
+
+## API Reference
+
+### Constructor and lifecycle
+
+#### `new SecretStream(isInitiator, [rawStream], [options])`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L16)
+
+Make a new stream. `isInitiator` is a boolean indication whether you are the client or the server. `rawStream` can be set to an underlying transport stream you want to run the noise stream over.
+
+| Parameter | Default |
+| --- | --- |
+| `options` | `{}` |
+
+- Throws: if `isInitiator` is not a boolean.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `pattern` | `'XX'` | which noise pattern to use |
+| `remotePublicKey` | — | set if your handshake requires it |
+| `keyPair` | — | — |
+| `handshake` | — | — |
+| `enableSend` | `true` | (advanced) set false to disable the send API |
+
+#### `s.start(rawStream, [options])`
+
+Start a SecretStream from a rawStream asynchrously.
+
+```js
+const s = new SecretStream({
+  autoStart: false // call start manually
+})
+
+// ... do async stuff or destroy the stream
+
+s.start(rawStream, {
+  ... options from above
+})
+```
+
+#### `await stream.flush()`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L158)
+
+Resolves to `true` when pending encrypted writes and the underlying raw stream have flushed successfully, or `false` if the stream closed before that happened.
+
+### Stream configuration
+
+#### `s.setTimeout(ms)`
+
+Set the stream timeout. If no data is received within a `ms` window, the stream is auto destroyed.
+
+#### `s.setKeepAlive(ms)`
+
+Send a heartbeat (empty message) every time the socket is idle for `ms` milliseconds. Note: If one side calls `s.setKeepAlive()` and the other does not, then the empty messages will be passed through to the piped stream.
+
+#### `s.sendKeepAlive()`
+
+A convenience method that sends an empty message.
+
+### Ordered stream I/O
+
+#### `stream.write(data)`
+
+Writes an ordered payload to be encrypted and sent through the duplex stream, returning the usual writable-stream backpressure boolean.
+
+#### `stream.end()`
+
+Ends the stream, optionally writing a final ordered payload, following standard writable-stream behavior.
+
+#### `stream.on('data', listener)`
+
+Receives ordered decrypted payloads as `Buffer` instances.
+
+### Unordered messages
+
+#### `await s.send(buffer)`
+
+Sends an encrypted unordered message, see [udx-native](https://github.com/holepunchto/udx-native/tree/main?tab=readme-ov-file#await-streamsendbuffer) for details. This method silently fails if called before the handshake is complete, or if the underlying `rawStream` is not a UDX stream (not capable of UDP).
+
+#### `s.trySend(buffer)`
+
+Same as `send(buffer)` but does not return a promise.
+
+#### `s.on('message', onmessage)`
+
+Emmitted when an unordered message is received
+
+### Utility methods
+
+#### `stream.alloc(len)`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L607)
+
+Returns a writable payload slice backed by a preallocated encrypted output buffer. Write into it, then pass it to `stream.write(...)`.
+
+#### `stream.toJSON()`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L614)
+
+Returns a diagnostic object containing connection state, keys, and any serializable raw-stream metadata.
+
+### Static helpers
+
+#### `keyPair = SecretStream.keyPair([seed])`
+
+Generate a ed25519 key pair.
+
+#### `NoiseSecretStream.id(handshakeHash, isInitiator, id)`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L91)
+
+Derives a 32-byte stream identity from the completed handshake hash, choosing the initiator/responder namespace via `isInitiator`.
+
+### Public properties
+
+#### `stream.isInitiator`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L24)
+
+- Returns: `true` on the dialing side and `false` on the accepting side.
+
+#### `stream.rawStream`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L25)
+
+- Returns: The wrapped transport stream, or a bridge stream when no raw stream was supplied up front.
+
+#### `s.publicKey`
+
+Get the local public key.
+
+#### `s.remotePublicKey`
+
+Get the remote's public key. Populated after `open` is emitted.
+
+#### `s.handshakeHash`
+
+Get the unique hash of this handshake. Populated after `open` is emitted.
+
+#### `stream.connected`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L30)
+
+- Returns: `true` once the handshake is complete and the stream has emitted `connect`.
+
+#### `s.keepAlive`
+
+Get the interval (in milliseconds) at which keep-alive messages are sent (0 means none are sent).
+
+#### `stream.timeout`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L32)
+
+- Returns: The configured idle-timeout interval in milliseconds.
+
+#### `stream.enableSend`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L33)
+
+- Returns: `true` when unordered `send(...)` and `trySend(...)` support is enabled.
+
+#### `stream.opened`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L39)
+
+- Returns: A promise that resolves to `true` when the handshake succeeds, or `false` if the stream closes before opening.
+
+#### `s.rawBytesWritten`
+
+The number of bytes (measured after encryption) written.
+
+#### `s.rawBytesRead`
+
+The number of bytes (measured before decryption) received.
+
+#### `stream.userData`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L36)
+
+- Returns: An arbitrary user-controlled field that higher-level protocols often use to attach transport metadata.
+
+### Events
+
+#### `s.on('connect', onconnect)`
+
+Emitted when the handshake is fully done. It is safe to write to the stream immediately though, as data is buffered internally before the handshake has been completed.
+
+#### `stream.on('handshake', listener)`
+
+[src](https://github.com/holepunchto/hyperswarm-secret-stream/blob/v6.9.2/index.js#L394)
+
+Fires when the Noise handshake keys and hash have been established.
+
+## See also
+
+- [Hyperswarm](/p2p/reference/building-blocks/hyperswarm)—the peer-discovery and connection layer that typically hands sockets to Secretstream.
+- [HyperDHT](/p2p/reference/building-blocks/hyperdht)—lower-level DHT whose direct keyed connections are also wrapped in Secretstream.
+- [Protomux](/p2p/reference/helpers/protomux)—multiplex higher-level protocols across one framed encrypted stream.
+- [Upstream @hyperswarm/secret-stream repository](https://github.com/holepunchto/hyperswarm-secret-stream)—source, releases, and implementation details.
