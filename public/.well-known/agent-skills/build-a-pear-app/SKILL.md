@@ -15,7 +15,8 @@ A Pear app is one of two shapes, both built around embedding the
   `hello-pear-electron` template.
 - **Terminal** — a standalone Bare binary with no Electron and no HTML/CSS/JS
   UI at all: CLIs, REPLs, TUIs, services. The Pear CLI itself is built this
-  way. See the `hello-pear-bare` template, the `hello-pear-daemon` sibling
+  way. See the `hello-pear-bare` template, `hello-pear-bare-tui` for the same
+  shape with a full-screen terminal interface, the `hello-pear-daemon` sibling
   for short-lived CLI commands that shouldn't block on an update check, or
   `hello-pear-qvac-tui` for a terminal app that runs a language model on the
   user's machine. From Pear 3.7.0, `pear make --name <name>` builds the
@@ -34,6 +35,8 @@ Desktop architecture (main/renderer/worker split):
 https://docs.pears.com/pear/explanation/pear-desktop-architecture/
 Terminal template (hello-pear-bare):
 https://docs.pears.com/p2p/getting-started/from-a-template/start-from-hello-pear-bare/
+Terminal UI template (hello-pear-bare-tui):
+https://docs.pears.com/p2p/getting-started/from-a-template/start-from-hello-pear-bare-tui/
 Short-lived CLI template (hello-pear-daemon):
 https://docs.pears.com/p2p/getting-started/from-a-template/start-from-hello-pear-daemon/
 On-device AI terminal template (hello-pear-qvac-tui):
