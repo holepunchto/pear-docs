@@ -12,7 +12,7 @@ schemaType: TechArticle
 
 This is the terminal counterpart to [Start from the hello-pear-electron template](/p2p/getting-started/from-a-template/start-from-hello-pear-electron). Instead of a desktop window, you start from a finished command-line boilerplate and learn how a Bare app wires peer-to-peer updates and replication through a worker—then ship it as a standalone binary.
 
-[`holepunchto/hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare) is Holepunch's official boilerplate for peer-to-peer terminal applications. Where the Electron template embeds [`pear-runtime`](/pear/reference/pear/runtime) into Electron, this template embeds it into [Bare](/bare/reference/bare/modules), the zero-core embeddable JavaScript runtime. The application and runtime compile into a single standalone executable per OS and architecture with no peer dependencies—no Node.js, and no Bare or [Pear CLI](/pear/reference/pear/cli) required on the user's machine.
+[`holepunchto/hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare) is Holepunch's official boilerplate for peer-to-peer terminal applications. Where the Electron template embeds [`pear-runtime`](/pear/reference/pear/runtime) into Electron, this template embeds it into [Bare](/bare/reference/bare/modules), the zero-core embeddable JavaScript runtime. The application and runtime compile into a single standalone executable per OS and architecture with no peer dependencies. Running that binary needs no Node.js, Bare, or [Pear CLI](/pear/reference/pear/cli) on the user's machine. Installing it peer-to-peer does need Pear, see [Install over the air](#install-over-the-air).
 
 With this shape you can build CLIs, REPLs, long-running services, or transport hooks—anything headless—and ship it with peer-to-peer over-the-air (OTA) updates. The Pear CLI v3 is built on this same architecture: a Bare standalone executable that updates itself peer-to-peer through `pear-runtime`.
 
@@ -45,14 +45,14 @@ The template ships with a placeholder `upgrade` link in `package.json`. Until yo
 pear touch
 ```
 
-This prints a link, for example: `pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o`.
+This prints a `pear://<key>` link on its own line. Use the link your own `pear touch` printed, not one from these docs.
 
 ### 3. Set the `upgrade` link in `package.json`
 
-Set the `upgrade` field in `package.json` to the link you just created:
+Replace the placeholder `upgrade` value in `package.json` with the link you just created:
 
 ```json
-"upgrade": "pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o"
+"upgrade": "pear://<your key from pear touch>"
 ```
 
 ### 4. Run the app
@@ -143,6 +143,8 @@ See [Start a short-lived CLI from the hello-pear-daemon template](/p2p/getting-s
 HOST=linux-arm64 npm run make
 ```
 
+The output path doesn't depend on `HOST`, so a second non-Windows build overwrites the first in `out/make`. To keep several targets, use the `make:<platform>-<arch>` scripts below, or move each file out of `out/make` after its build.
+
 `npm run make` signs the binary when signing credentials are in the environment—the same ones the [`make-pear-app`](/pear/reference/ci-and-release/github-actions#make-pear-app) GitHub Action provides. With none of them set, the binary is unsigned:
 
 | Variable | Platform | What it does |
@@ -151,16 +153,35 @@ HOST=linux-arm64 npm run make
 | `KEYCHAIN_PROFILE` | macOS | Also submits the signed executable to Apple's notary service with `xcrun notarytool`, using this keychain profile, and waits for the result. Set it together with `MAC_CODESIGN_IDENTITY`. |
 | `WINDOWS_CERT_SHA1` | Windows | Signs the executable with the certificate that has this SHA-1 thumbprint, using `signtool.exe` from the Windows 10 SDK. |
 
-The per-platform `make:<platform>-<arch>` scripts in `package.json` are still there for one-off builds. Each one builds an **unsigned** binary into `out/<platform>-<arch>`, under the fixed name `hello-pear-bare`.
+The per-platform `make:<platform>-<arch>` scripts in `package.json` each build an **unsigned** binary into its own folder, `out/<platform>-<arch>/hello-pear-bare`. The [release steps](#release-the-binary) use them.
 
 From Pear 3.7.0, `pear make --name hello-pear-bare --path out/make` builds the same binary as `npm run make` without the signing variables, from the `bin` in `package.json` and without the npm scripts. See [Build a CLI executable with pear make](/pear/how-to/operate-an-app/build-and-package/build-a-cli-executable).
 
 See [Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app#standalone-executable-with-bare-build) for what `npm run make` runs under the hood—[`bare-build`](https://github.com/holepunchto/bare-build), the same tool behind any standalone Bare executable, Pear app or not.
 
+## Release the binary
+
+A release is one executable per target, assembled into a deployment directory by `pear build`:
+
+1. Build each target into its own folder. The `make:<platform>-<arch>` scripts do this, but they're unsigned. For a signed build, run `npm run make` on that OS, then move `out/make/hello-pear-bare` (`hello-pear-bare.exe` on Windows) into `out/<platform>-<arch>/`, because the next build overwrites `out/make`.
+2. Copy every executable onto one machine. `pear build` reads them from disk.
+3. Run `pear build` from the folder above the project, so the deployment output doesn't land inside the source tree. Pass each executable as its host's app:
+
+```bash
+pear build \
+  --package=./hello-pear-bare/package.json \
+  --darwin-arm64-app ./hello-pear-bare/out/darwin-arm64/hello-pear-bare \
+  --linux-x64-app ./hello-pear-bare/out/linux-x64/hello-pear-bare \
+  --win32-x64-app ./hello-pear-bare/out/win32-x64/hello-pear-bare.exe
+```
+
+This writes `hello-pear-bare-0.0.0-rc.0/`, with a `by-arch/<platform-arch>/app/` folder for each target. Each file must be named after `productName`, or `name` when there's no `productName`, and the template's default name already fits. Then stage, provision, and seed that directory, as in [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment) from step 5. Users can install the binary peer-to-peer only after that release is seeding.
+
 ## Install over the air
 
 Distribute the executable through the usual channels—a download on your website, `apt`, or Homebrew.
-You can also install it peer-to-peer: once your `upgrade` link is [seeding](/pear/explanation/availability-and-blind-peering#seeding-with-pear-seed) a release, pull it directly with the [`pear install`](/pear/reference/pear/cli#pear-install) command:
+
+You can also install it peer-to-peer, once you have [released it with `pear build`](#release-the-binary) and your `upgrade` link is [seeding](/pear/explanation/availability-and-blind-peering#seeding-with-pear-seed) that release. Users need the Pear CLI for [`pear install`](/pear/reference/pear/cli#pear-install). Without it, `npx pear-install pear://<key>` installs the same app, but needs Node.js. `pear install` also adds its folder to `PATH`, unless the user sets `PEAR_INSTALL_NO_PATH=1` (Pear 3.7.0 and later). Run:
 
 ```bash
 pear install pear://<key>
@@ -205,7 +226,7 @@ Before you ship, set your identity in `package.json`:
 - `name`, `productName`, `description`, `author`, and `license`.
 - the `upgrade` `pear://` link (see [Create a valid upgrade link](#2-create-a-valid-upgrade-link)).
 
-`bin.mjs` reads `productName || name` for both the binary name and the persistent storage directory, so set these before your first release. Then build with `npm run make` and release with [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment).
+`bin.mjs` reads `productName || name` for both the binary name and the persistent storage directory, so set these before your first release. Then build each target and release it, as in [Release the binary](#release-the-binary).
 
 ## Where to go next
 
@@ -220,6 +241,6 @@ Before you ship, set your identity in `package.json`:
 - [Bare modules](/bare/reference/bare/modules)—the Bare standard library this template builds on.
 - [Pear OTA](/pear/reference/pear/runtime)—the `pear-runtime` API behind the updater.
 - [Migrate from pear run to Pear OTA](/pear/how-to/operate-an-app/migration)—if you're moving an existing app onto `pear-runtime`.
-- [Publish with GitHub Actions](/pear/how-to/operate-an-app/github-actions/publish-with-github-actions)—stage a stable `pear://` link on every push with the `pear-ci` action.
+- [Publish with GitHub Actions](/pear/how-to/operate-an-app/github-actions/publish-with-github-actions)—the `pear-ci` action stages a directory committed to your repo, typically a `pear build` deployment directory, to a stable `pear://` link on every push.
 - [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment)—the full-control manual path for staging, provisioning, and release lines.
 - [Seeding with `pear seed`](/pear/explanation/availability-and-blind-peering#seeding-with-pear-seed)—keep your `pear://` link online so peers can fetch releases.
