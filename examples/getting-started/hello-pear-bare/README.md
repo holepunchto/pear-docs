@@ -1,8 +1,8 @@
 # hello-pear-bare (documentation snapshot)
 
 Vendored from [holepunchto/hello-pear-bare](https://github.com/holepunchto/hello-pear-bare),
-branch **`main`**, at commit `c77cf57`
-([tree](https://github.com/holepunchto/hello-pear-bare/tree/c77cf57152a7906b124e7128792a59934085740c)).
+branch **`main`**, at commit `5f28cc1`
+([tree](https://github.com/holepunchto/hello-pear-bare/tree/5f28cc15c370c86ed64ae65e542a1b28be902211)).
 
 `bin.mjs` and `app.js` back the code imports in
 `content/p2p/getting-started/from-a-template/start-from-hello-pear-bare.mdx` (via

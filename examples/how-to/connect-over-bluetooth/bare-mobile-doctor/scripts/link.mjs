@@ -3,6 +3,7 @@
 import link from 'bare-link'
 
 const worklets = [
+  'bare/beacon.js',
   'bare/bluetooth.js',
   'bare/checksum.js',
   'bare/hypercore/hypercore.mjs',
