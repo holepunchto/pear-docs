@@ -10,9 +10,9 @@ product: p2p
 schemaType: TechArticle
 ---
 
-This is the terminal-UI counterpart to [Start a terminal app from the hello-pear-bare template](/p2p/getting-started/from-a-template/start-from-hello-pear-bare). It is the same boilerplate with a [`bare-tui`](https://github.com/holepunchto/bare-tui) front end: the entrypoint, the update resource, and the worker are unchanged, but instead of logging lines to stdout the app draws a full-screen interface.
+This is the terminal-UI counterpart to [Start a terminal app from the hello-pear-bare template](/p2p/getting-started/from-a-template/start-from-hello-pear-bare). It is the same boilerplate with a [`bare-tui`](https://github.com/holepunchto/bare-tui) front end. `app.js`, the updater, and the worker are unchanged. `bin.mjs` adds a `--message` flag and three lines that hand its output to the interface, so instead of logging lines to stdout the app draws a full-screen interface.
 
-[`holepunchto/hello-pear-bare-tui`](https://github.com/holepunchto/hello-pear-bare-tui) is Holepunch's official boilerplate for peer-to-peer terminal UIs. It embeds [`pear-runtime`](/pear/reference/pear/runtime) into the [Bare](/bare/reference/bare/modules) worker of a standalone executable, and compiles the application and runtime into a single binary per OS and architecture with no peer dependencies—no Node.js, and no Bare or [Pear CLI](/pear/reference/pear/cli) required on the user's machine. `bare-tui` is an Elm-style framework for Bare, after Bubble Tea: you write a model with `init`, `update`, and `view`, and a `Program` owns the screen.
+[`holepunchto/hello-pear-bare-tui`](https://github.com/holepunchto/hello-pear-bare-tui) is Holepunch's official boilerplate for peer-to-peer terminal UIs. It embeds [`pear-runtime`](/pear/reference/pear/runtime) into the [Bare](/bare/reference/bare/modules) worker of a standalone executable, and compiles the application and runtime into a single binary per OS and architecture with no peer dependencies. Running that binary needs no Node.js, Bare, or [Pear CLI](/pear/reference/pear/cli) on the user's machine. Installing it peer-to-peer does need Pear, see [Install over the air](#install-over-the-air). `bare-tui` is an Elm-style framework for Bare, after Bubble Tea: you write a model with `init`, `update`, and `view`, and a `Program` owns the screen.
 
 <include>../../../_snippets/_p2p-intro-callout.mdx</include>
 
@@ -42,14 +42,14 @@ The template ships with a placeholder `upgrade` link in `package.json`, and it n
 pear touch
 ```
 
-This prints a link, for example: `pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o`.
+This prints a `pear://<key>` link on its own line. Use the link your own `pear touch` printed, not one from these docs.
 
 ### 3. Set the `upgrade` link in `package.json`
 
-Set the `upgrade` field in `package.json` to the link you just created:
+Replace the placeholder `upgrade` value in `package.json` with the link you just created:
 
 ```json
-"upgrade": "pear://qxenz5wmspmryjc13m9yzsqj1conqotn8fb4ocbufwtz9mtbqq5o"
+"upgrade": "pear://<your key from pear touch>"
 ```
 
 ### 4. Run the app
@@ -60,7 +60,7 @@ Set the `upgrade` field in `package.json` to the link you just created:
 npm start
 ```
 
-It opens a live console: a spinner header, a bordered feed of the app's log lines and the worker's messages, and a footer that lists the keys.
+It opens a live console: a spinner header, a bordered feed of the app's log lines and the worker's messages, and a footer that lists `enter` and `q`. Ctrl+C also quits.
 
 | Key | Does |
 | --- | --- |
@@ -80,6 +80,8 @@ To exercise the updater locally, opt back in:
 ```bash
 npm start -- --updates
 ```
+
+`--storage <dir>` picks where the app keeps its data. Without it, `npm start` uses `<os temp dir>/pear/hello-pear-bare-tui`, which the OS may clear. Standalone builds use the persistent app data folder instead.
 
 ### When there is no interface
 
@@ -143,6 +145,7 @@ The model in `tui.js` receives these messages:
 | `{ type: 'log', level, line }` | A line `bin.mjs` printed. |
 | `{ type: 'worker', data }` | A message from the worker. |
 | `{ type: 'key' }` and `{ type: 'resize' }` | Terminal input and window size, from `bare-tui`. |
+| `{ type: 'spinner.tick' }` | Animation frame for the header spinner, from `bare-tui`. |
 
 <Callout type="warn">
 The worker shares the terminal with the interface, so it must report over IPC (`pipe.write(...)`) and never call `console.log` or `console.error`. Anything it prints goes straight onto the screen and garbles the interface.
@@ -166,6 +169,8 @@ Development runs start with `--no-updates` so a live release never replaces the 
 HOST=linux-arm64 npm run make
 ```
 
+The output path doesn't depend on `HOST`, so a second non-Windows build overwrites the first in `out/make`. To keep several targets, use the `make:<platform>-<arch>` scripts below, or move each file out of `out/make` after its build.
+
 `npm run make` signs the binary when signing credentials are in the environment—the same ones the [`make-pear-app`](/pear/reference/ci-and-release/github-actions#make-pear-app) GitHub Action provides. With none of them set, the binary is unsigned:
 
 | Variable | Platform | What it does |
@@ -174,14 +179,35 @@ HOST=linux-arm64 npm run make
 | `KEYCHAIN_PROFILE` | macOS | Also submits the signed executable to Apple's notary service with `xcrun notarytool`, using this keychain profile, and waits for the result. Set it together with `MAC_CODESIGN_IDENTITY`. |
 | `WINDOWS_CERT_SHA1` | Windows | Signs the executable with the certificate that has this SHA-1 thumbprint, using `signtool.exe` from the Windows 10 SDK. |
 
-The per-platform `make:<platform>-<arch>` scripts in `package.json` are still there for one-off builds. Each one builds an **unsigned** binary into `out/<platform>-<arch>`.
+The per-platform `make:<platform>-<arch>` scripts in `package.json` each build an **unsigned** binary into its own folder, `out/<platform>-<arch>/hello-pear-bare-tui`. The [release steps](#release-the-binary) use them.
 
 See [Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app#standalone-executable-with-bare-build) for what `npm run make` runs under the hood—[`bare-build`](https://github.com/holepunchto/bare-build), the same tool behind any standalone Bare executable, Pear app or not.
+
+## Release the binary
+
+A release is one executable per target, assembled into a deployment directory by `pear build`:
+
+1. Build each target into its own folder. The `make:<platform>-<arch>` scripts do this, but they're unsigned. For a signed build, run `npm run make` on that OS, then move `out/make/hello-pear-bare-tui` (`hello-pear-bare-tui.exe` on Windows) into `out/<platform>-<arch>/`, because the next build overwrites `out/make`.
+2. Copy every executable onto one machine. `pear build` reads them from disk.
+3. Run `pear build` from the folder above the project, so the deployment output doesn't land inside the source tree. Pass each executable as its host's app:
+
+```bash
+pear build \
+  --package=./hello-pear-bare-tui/package.json \
+  --darwin-arm64-app ./hello-pear-bare-tui/out/darwin-arm64/hello-pear-bare-tui \
+  --linux-x64-app ./hello-pear-bare-tui/out/linux-x64/hello-pear-bare-tui \
+  --win32-x64-app ./hello-pear-bare-tui/out/win32-x64/hello-pear-bare-tui.exe
+```
+
+This writes `hello-pear-bare-tui-0.0.0-rc.0/`, with a `by-arch/<platform-arch>/app/` folder for each target. Each file must be named after `productName`, or `name` when there's no `productName`, and the template's default name already fits. Then stage, provision, and seed that directory, as in [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment) from step 5. Users can install the binary peer-to-peer only after that release is seeding.
+
+To build the executable with `pear make` instead of `npm run make`, see [Build a CLI executable with pear make](/pear/how-to/operate-an-app/build-and-package/build-a-cli-executable).
 
 ## Install over the air
 
 Distribute the executable through the usual channels—a download on your website, `apt`, or Homebrew.
-You can also install it peer-to-peer: once your `upgrade` link is [seeding](/pear/explanation/availability-and-blind-peering#seeding-with-pear-seed) a release, pull it directly with the [`pear install`](/pear/reference/pear/cli#pear-install) command:
+
+You can also install it peer-to-peer, once you have [released it with `pear build`](#release-the-binary) and your `upgrade` link is [seeding](/pear/explanation/availability-and-blind-peering#seeding-with-pear-seed) that release. Users need the Pear CLI for [`pear install`](/pear/reference/pear/cli#pear-install). Without it, `npx pear-install pear://<key>` installs the same app, but needs Node.js. `pear install` also adds its folder to `PATH`, unless the user sets `PEAR_INSTALL_NO_PATH=1` (Pear 3.7.0 and later). Run:
 
 ```bash
 pear install pear://<key>
@@ -209,7 +235,7 @@ Then list it in the footer, in `view()`:
 +    const footer = style().faint(true).render(' enter ping · c clear · q quit')
 ```
 
-The template's first test asserts the footer text, so update `includes('enter ping · q quit')` in `test/index.js` to match, and add a test for the key. Models are plain objects, so `npm test` exercises them headless, with no terminal:
+The template's first test asserts the footer text, so update `includes('enter ping · q quit')` in `test/index.js` to match, and add a test for the key. The model never touches the terminal, so `npm test` exercises it headless:
 
 ```js
 test('c clears the feed', (t) => {
@@ -237,7 +263,7 @@ Before you ship, set your identity in `package.json`:
 - `name`, `productName`, `description`, `author`, and `license`.
 - the `upgrade` `pear://` link (see [Create a valid upgrade link](#2-create-a-valid-upgrade-link)).
 
-`bin.mjs` reads `productName || name` for both the binary name and the persistent storage directory, so set these before your first release. Then build with `npm run make` and release with [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment).
+`bin.mjs` reads `productName || name` for both the binary name and the persistent storage directory, so set these before your first release. Then build each target and release it, as in [Release the binary](#release-the-binary).
 
 ## Where to go next
 
@@ -248,7 +274,8 @@ Before you ship, set your identity in `package.json`:
 - [Inside Bare](/bare/explanation/bare-runtime)—what the runtime this template builds on actually is, and its lifecycle.
 - [Runtime and languages](/pear/explanation/runtime-and-languages)—where Bare fits among Pear's runtimes.
 - [Bundle a Bare app](/bare/how-to/run-on-native/bundle-a-bare-app)—the `bare-pack` and `bare-build` paths behind `npm run make`.
+- [Build a CLI executable with pear make](/pear/how-to/operate-an-app/build-and-package/build-a-cli-executable)—the `pear make` route to a standalone executable, from Pear 3.7.0.
 - [Pear OTA](/pear/reference/pear/runtime)—the `pear-runtime` API behind the updater.
-- [Publish with GitHub Actions](/pear/how-to/operate-an-app/github-actions/publish-with-github-actions)—stage a stable `pear://` link on every push with the `pear-ci` action.
+- [Publish with GitHub Actions](/pear/how-to/operate-an-app/github-actions/publish-with-github-actions)—the `pear-ci` action stages a directory committed to your repo, typically a `pear build` deployment directory, to a stable `pear://` link on every push.
 - [Deploy your application](/pear/how-to/operate-an-app/manual-deployment/deployment)—the full-control manual path for staging, provisioning, and release lines.
 - [Seeding with `pear seed`](/pear/explanation/availability-and-blind-peering#seeding-with-pear-seed)—keep your `pear://` link online so peers can fetch releases.
