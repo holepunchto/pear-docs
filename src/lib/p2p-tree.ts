@@ -60,6 +60,11 @@ export const p2pTree: Node[] = [
           },
           {
             type: 'page',
+            name: 'Start a terminal UI app from the hello-pear-bare-tui template',
+            url: '/p2p/getting-started/from-a-template/start-from-hello-pear-bare-tui',
+          },
+          {
+            type: 'page',
             name: 'Start a short-lived CLI from the hello-pear-daemon template',
             url: '/p2p/getting-started/from-a-template/start-from-hello-pear-daemon',
           },
