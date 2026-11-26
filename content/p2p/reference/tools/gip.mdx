@@ -1,0 +1,289 @@
+---
+title: "Gip"
+description: "Reference for gip-transport: the gip CLI, the git-remote-git+pear remote helper, the git+pear wrapper for npm, and git+pear:// remote URLs."
+seoTitle: "Gip: Peer-to-Peer Git Remotes with git+pear://"
+docType: reference
+product: p2p
+schemaType: APIReference
+---
+
+Gip lets Git push to and fetch from a repository that lives on a [Hypercore](/p2p/reference/building-blocks/hypercore) instead of a server. A remote is a `git+pear://` URL; peers find each other through [Hyperswarm](/p2p/reference/building-blocks/hyperswarm), and [blind peers](/p2p/explanation/blind-peering) can keep a repository available while you are offline. This page documents the binaries installed by [`gip-transport`](https://github.com/holepunchto/gip-transport) v3.0.0. The repository database underneath is [gip-remote](/p2p/reference/helpers/gip-remote).
+
+## System support
+
+Desktop only: macOS, Linux, and Windows, on x64 and arm64. Gip is not available on Android or iOS. `git` must be on the `PATH`.
+
+## Install
+
+Install the standalone binaries with [`pear install`](/pear/reference/pear/cli#pear-install), or with `npx pear-install` on a machine without Pear:
+
+```sh
+pear install pear://gipjk71nbuj3zasm4ywczb93zqk5xbfup16c6d5j8w8yeja4ob6o
+```
+
+```sh
+npx pear-install pear://gipjk71nbuj3zasm4ywczb93zqk5xbfup16c6d5j8w8yeja4ob6o
+```
+
+The binaries land in `~/.local/bin` on macOS and Linux, and in `%LOCALAPPDATA%\Programs\gip\` on Windows. On macOS and Linux, add `~/.local/bin` to the `PATH` if it is not there already. Standalone binaries update themselves over the air; see [Updates](#updates).
+
+Or install the npm package, which needs Node.js and does **not** receive over-the-air updates:
+
+```sh
+npm i -g gip-transport
+```
+
+Either way you get three binaries:
+
+| Binary | Purpose |
+| --- | --- |
+| [`gip`](#gip) | Create, add, list, delete, and seed repositories, and manage configuration. |
+| [`git-remote-git+pear`](#git-remote-gitpear) | The remote helper Git runs for `git+pear://` URLs. You don't call it directly. |
+| [`git+pear`](#gitpear) | Runs `git` with `file://pear/` URLs mapped to `git+pear://`, for npm Git dependencies. |
+
+## Remote URLs
+
+```
+git+pear://<key>/<name>
+git+pear://<fork>.<length>.<key>/<name>
+git+pear://<key>/<name>?storage=<dir>
+```
+
+- `<key>` is the repository's public key, z32-encoded. It is the key of the repository's Hypercore, not your [`gip id`](#gip-id) key.
+- `<name>` is the repository name given to [`gip new`](#gip-new).
+- `<fork>.<length>.` is the versioned form that [`gip list`](#gip-list) and every push print. The remote helper reads only `<key>` and `<name>`, so a versioned URL still fetches the repository's latest state.
+- `?storage=<dir>` makes the remote helper use `<dir>` as its storage directory instead of `~/.gip`. It is the remote-helper counterpart of [`--storage`](#gip).
+
+## `gip`
+
+[Command source on GitHub](https://github.com/holepunchto/gip-transport/blob/v3.0.0/bin-tui.js)
+
+Manage the repositories in the local store.
+
+```sh
+gip [flags] [command]
+```
+
+Flags go before the command:
+
+- `--storage <dir>`: use `<dir>` as the storage directory.
+  Default: `~/.gip`
+- `--no-updates`: don't check for over-the-air updates during this run.
+- `--version, -v`: print the version, for example `gip v3.0.0`.
+- `--help, -h`: show help. Every subcommand also takes `--help`.
+
+With no command, `gip` prints its help.
+
+### `gip new`
+
+Create a repository that you own and can push to.
+
+```sh
+gip new <name>
+```
+
+`<name>` can hold letters, digits, `_`, and `-`; any other name fails with `Invalid repository name. Support alphanumeric characters, underscores, and hyphens.` The command prints the repository's URL:
+
+```
+Repository my-repo created git+pear://bm541t4dgktjrenytm9izjmttn6hczjbjdeo38h3hu4dzz6hb9ay/my-repo
+```
+
+Each repository gets its own key. Creating a repository again under the name of a deleted one gives it a new key, never the old one.
+
+### `gip add`
+
+Add someone else's repository to the local store by URL.
+
+```sh
+gip add <url>
+```
+
+`<url>` must start with `git+pear://`. The command joins the swarm, waits until it finds a peer that has the repository, and downloads all of it. It then prints `added`, or `already in store` if the name was already present, with the block count. After that, [`gip seed`](#gip-seed) serves the repository along with your own.
+
+You don't need `gip add` to clone: [`git clone`](#git-remote-gitpear) adds the repository to the store on its own.
+
+### `gip list`
+
+List the repositories in the local store.
+
+```sh
+gip list [--json]
+```
+
+Each line shows the repository's name, block count, connected peers, and versioned URL:
+
+```
+* my-repo  5 blocks · 0 peers · git+pear://0.5.bm541t4dgktjrenytm9izjmttn6hczjbjdeo38h3hu4dzz6hb9ay/my-repo
+```
+
+With `--json`, it prints one array instead:
+
+```json
+[{"name":"my-repo","url":"git+pear://0.5.bm541t4dgktjrenytm9izjmttn6hczjbjdeo38h3hu4dzz6hb9ay/my-repo"}]
+```
+
+`gip list` only reads the local store. It doesn't announce anything on the swarm. With no repositories it prints `No repositories`, or `[]` with `--json`.
+
+### `gip delete`
+
+Remove a repository from the local store.
+
+```sh
+gip delete <name>
+```
+
+The command asks `Delete repository <name>? [y/N]` and continues only on `y` or `yes`. It removes the repository's record, stops announcing it, and clears its blocks locally. Copies that other peers or blind peers already hold are not affected. An unknown name prints `Repository <name> not found`.
+
+### `gip seed`
+
+Serve every repository in the local store until you stop the process.
+
+```sh
+gip seed
+```
+
+`gip seed` announces each repository on the swarm as a server, including repositories you only added or cloned, whatever the [`seed-read-only`](#gip-config) setting says. It prints your public key and each repository's block count, then logs peers and block transfers:
+
+```
+Seeding — Public key: i1zckagoe1mrzjcngtk7uqn9hi8gkkaaqmgzj1c93e1zwinfyu3y
+
+  my-repo — 5 blocks
+
++ Peer connected 7xk9m3f2
+  ↑ my-repo block 0 → 7xk9m3f2
+```
+
+`↑` marks a block sent to a peer and `↓` a block received. With no repositories it prints `No repositories to seed` and exits.
+
+### `gip id`
+
+Print your public key.
+
+```sh
+gip id
+```
+
+This is the key of the key pair gip uses on the DHT, z32-encoded. Give it to a blind peer operator who needs to recognize your requests. It is not a repository key.
+
+### `gip config`
+
+Read and change configuration. It is stored in the local database under the storage directory.
+
+```sh
+gip config
+gip config get <key>
+gip config set <key> <value>
+gip config add <key> <value>
+gip config remove <key> <value>
+```
+
+With no subcommand, `gip config` prints every key. There are two keys:
+
+| Key | Type | Default | Subcommands | Meaning |
+| --- | --- | --- | --- | --- |
+| `blind-peers` | list of z32 keys | none | `get`, `add`, `remove` | Blind peers that mirror your repositories. |
+| `seed-read-only` | `on` or `off` | `on` | `get`, `set` | Announce repositories you don't own as a server, so peers can fetch them from you, while Git fetches or pushes or `gip add` runs. |
+
+With `blind-peers` set, gip registers each repository it opens with the blind peers and asks for two mirrors. `gip config add` ignores a key that is already in the list, and `gip config remove` prints `Value not found` for a key that isn't. `gip config get blind-peers` prints `(not set)` for an empty list.
+
+`gip config set seed-read-only` accepts `on`, `true`, `yes`, or `1`, and `off`, `false`, `no`, or `0`. Anything else fails with `Invalid boolean: <value> (use on|off)`. An unknown key prints `Unknown config key: <key>`.
+
+```sh
+gip config add blind-peers <z32-key>
+gip config set seed-read-only off
+```
+
+## `git-remote-git+pear`
+
+[Command source on GitHub](https://github.com/holepunchto/gip-transport/blob/v3.0.0/bin.js)
+
+Git runs `git-remote-<scheme>` for any URL whose scheme it doesn't know, so with this binary on the `PATH`, `git+pear://` URLs work with the usual commands:
+
+```sh
+git remote add origin git+pear://<key>/my-repo
+git push origin main
+git fetch origin
+git clone git+pear://<key>/my-repo
+git push origin --delete my-branch
+```
+
+Behavior:
+
+- **Refs:** branches (`refs/heads/*`) and tags (`refs/tags/*`) are supported, including annotated tags.
+- **Push:** you can push only to a repository you created with [`gip new`](#gip-new) in the same storage directory. A forced push (`git push --force`) overwrites the branch. After each push the helper prints the new versioned URL on standard error, as `Latest: git+pear://<fork>.<length>.<key>/<name>`.
+- **Delete:** `git push origin --delete <branch>` removes a branch or tag.
+- **Remote `HEAD`:** after a push, the remote's `HEAD` points at the branch checked out locally, if that branch exists on the remote.
+- **Fetch and clone:** the helper joins the swarm, waits for a peer that has the repository, downloads it, and adds it to the local store, as [`gip add`](#gip-add) does.
+- **Progress:** Git-style progress lines (`Enumerating objects`, `Writing objects`, `Receiving objects`) go to standard error, so they never mix with the protocol on standard output.
+- **Storage:** the helper uses `~/.gip`, or the directory in the URL's [`?storage=`](#remote-urls) parameter.
+- **Updates:** set `GIP_NO_UPDATES` to any non-empty value to skip the over-the-air update check for one command, for example `GIP_NO_UPDATES=1 git push`.
+
+## `git+pear`
+
+[Command source on GitHub](https://github.com/holepunchto/gip-transport/blob/v3.0.0/git.js)
+
+Run `git` with two extra configuration entries, passed through the `GIT_CONFIG_COUNT`, `GIT_CONFIG_KEY_<n>`, and `GIT_CONFIG_VALUE_<n>` environment variables and appended to any that are already set:
+
+| Key | Value |
+| --- | --- |
+| `url.git+pear://.insteadOf` | `file://pear/` |
+| `protocol.git+pear.allow` | `always` |
+
+```sh
+git+pear [git arguments]
+```
+
+`git+pear` exists for npm. npm doesn't accept `git+pear://` in a dependency, but it does accept `git+file://`. It strips the `git+` before it calls Git, and the `url.git+pear://.insteadOf` entry then makes Git rewrite `file://pear/<key>/<name>` to `git+pear://<key>/<name>`. To use it, add these lines to the project's `.npmrc`:
+
+```ini
+git=git+pear
+allow-git=all
+```
+
+Then install a repository as a dependency:
+
+```sh
+npm install git+file://pear/<key>/<name>
+```
+
+npm records the dependency as `git+file://pear/<key>/<name>` in `package.json`, and the commit it installed in `package-lock.json`. A versioned link such as `git+file://pear/0.32.<key>/<name>` installs the latest commit too, because the remote helper ignores the `<fork>.<length>.` prefix; the commit in `package-lock.json` is what pins the version. The repository must be reachable: someone has to be seeding it, or a blind peer has to hold it.
+
+## Storage
+
+Everything gip keeps on disk lives in one directory: the corestore with every repository, the local database with the repository list and configuration, and the updater's staging area. The default is `~/.gip`. Change it with [`gip --storage <dir>`](#gip) for the CLI, and with [`?storage=<dir>`](#remote-urls) in the URL for the remote helper. Point both at the same directory to use the same repositories.
+
+## Updates
+
+Standalone binaries installed from the `pear://` link update themselves over the air. Each binary replaces itself with the build for its platform from the upgrade drive. The npm package never updates itself.
+
+Updates download only during long-running work: for as long as [`gip seed`](#gip-seed) runs, and for the duration of a fetch or push. Other `gip` commands skip the check. A partial download stays in storage and resumes next time. `gip seed` logs `Downloading update`, then `Update applied — restart to run the new version`.
+
+To opt out for one run:
+
+```sh
+gip --no-updates seed
+GIP_NO_UPDATES=1 git push
+```
+
+## Library
+
+The package also exports `GipLocalDB`, the local store the CLI and the remote helper share. Its type declaration is `any`, so treat it as unstable. It accepts `{ dir, store, swarm, readonly }` and opens [gip-remote](/p2p/reference/helpers/gip-remote) `Remote` instances by URL:
+
+```js
+const { GipLocalDB } = require('gip-transport')
+
+const local = new GipLocalDB()
+await local.ready()
+
+const remote = await local.openRemote('git+pear://<key>/my-repo')
+console.log(remote.availablePeers)
+
+await local.close()
+```
+
+## See also
+
+- [gip-remote](/p2p/reference/helpers/gip-remote)—the repository database Gip stores Git objects in.
+- [Blind peering](/p2p/explanation/blind-peering)—what a blind peer does with the repositories you register.
+- [`pear install`](/pear/reference/pear/cli#pear-install)—installs the standalone binaries.
+- [Hyperswarm](/p2p/reference/building-blocks/hyperswarm)—how peers find each repository.

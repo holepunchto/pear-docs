@@ -361,6 +361,11 @@ export const p2pTree: Node[] = [
             name: 'blind-peer',
             url: '/p2p/reference/helpers/blind-peer',
           },
+          {
+            type: 'page',
+            name: 'gip-remote',
+            url: '/p2p/reference/helpers/gip-remote',
+          },
         ],
       },
       {
@@ -384,6 +389,8 @@ export const p2pTree: Node[] = [
           },
           { type: 'page', name: 'Hyperssh', url: '/p2p/reference/tools/hyperssh' },
           { type: 'page', name: 'Drives', url: '/p2p/reference/tools/drives' },
+          { type: 'page', name: 'Gip', url: '/p2p/reference/tools/gip' },
+          { type: 'page', name: 'speedtest-p2p', url: '/p2p/reference/tools/speedtest-p2p' },
         ],
       },
     ],
